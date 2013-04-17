@@ -97,18 +97,13 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       });
       _.each(n.children, function(c) {
         var check = findNode(c);
-        if (check) {
-          insertEdge(n, check);
-          self.requestCentralityChildren(check._id, function(c) {
-            n._centrality = c;
-          });
-        } else {
-          insertNode(c);
-          insertEdge(n, c);
-          self.requestCentralityChildren(c._id, function(c) {
-            n._centrality = c;
-          });
+        if (!check) {
+          check = insertNode(c);
         }
+        insertEdge(n, check);
+        self.requestCentralityChildren(check._id, function(c) {
+          n._centrality = c;
+        });
       });
       if (callback) {
         callback(n);
@@ -132,32 +127,32 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
     });
   };
   
-  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback){
-      alert("Sorry this adapter is read-only");
+  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+    throw "Sorry this adapter is read-only";
   };
   
   self.createEdge = function(edgeToCreate, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.deleteEdge = function(edgeToDelete, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.patchEdge = function(edgeToPatch, patchData, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.createNode = function(nodeToCreate, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.deleteNode = function(nodeToDelete, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.patchNode = function(nodeToPatch, patchData, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   

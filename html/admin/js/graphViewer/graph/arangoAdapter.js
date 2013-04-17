@@ -34,6 +34,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   initialX = {},
   initialY = {},
   api = {},
+  queries = {},
   
   findNode = function(id) {
     var res = $.grep(nodes, function(e){
@@ -156,8 +157,15 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   },
   
   
-  sendQuery = function(query, onSuccess) {
-    var data = {query: query};
+  sendQuery = function(query, bindVars, onSuccess) {
+    if (query !== queries.connectedEdges) {
+      bindVars["@nodes"] = nodeCollection;
+    }
+    bindVars["@edges"] = edgeCollection;
+    var data = {
+      query: query,
+      bindVars: bindVars
+    };
     $.ajax({
       type: "POST",
       url: api.cursor,
@@ -234,11 +242,9 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   },
   
   permanentlyRemoveEdgesOfNode = function (nodeId) {
-    var query = "FOR e IN " + edgeCollection
-     + " FILTER e._to == " + JSON.stringify(nodeId)
-     + " || e._from == " + JSON.stringify(nodeId)
-     + " RETURN e";
-     sendQuery(query, function(res) {
+     sendQuery(queries.connectedEdges, {
+       id: nodeId
+     }, function(res) {
        _.each(res, self.deleteEdge);
      });
   };
@@ -252,6 +258,50 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   api.node = api.base + "document?collection=" + nodeCollection; 
   api.edge = api.base + "edge?collection=" + edgeCollection; 
   
+  queries.nodeById = "FOR n IN @@nodes"
+    + " FILTER n._id == @id"
+    + " LET links = ("
+    + "  FOR l IN @@edges"
+    + "  FILTER n._id == l._from"
+    + "   FOR t IN @@nodes"
+    + "   FILTER t._id == l._to"
+    + "   RETURN t._id"
+    + " )"
+    + " RETURN MERGE(n, {\"children\" : links})";
+  queries.traversalById = "RETURN TRAVERSAL("
+    + "@@nodes, "
+    + "@@edges, "
+    + "@id, "
+    + "\"outbound\", {"
+    + "strategy: \"depthfirst\","
+    + "maxDepth: 1,"
+    + "paths: true"
+    + "})";
+  queries.traversalByAttribute = function(attr) {
+    return "FOR n IN @@nodes "
+      + " FILTER n." + attr
+      + " == @value"
+      + " RETURN TRAVERSAL("
+      + "@@nodes, "
+      + "@@edges, "
+      + "n._id, "
+      + "\"outbound\", {"
+      + "strategy: \"depthfirst\","
+      + "maxDepth: 1,"
+      + "paths: true"
+      + "})";
+  };
+  queries.childrenCentrality = "FOR u IN @@nodes"
+    + " FILTER u._id == @id"
+    + " LET g = ("
+    + " FOR l in @@edges"
+    + " FILTER l._from == u._id"
+    + " RETURN 1 )"
+    + " RETURN length(g)";
+  queries.connectedEdges = "FOR e IN @@edges"
+   + " FILTER e._to == @id"
+   + " || e._from == @id"
+   + " RETURN e";
   
   initialX.range = width / 2;
   initialX.start = width / 4;
@@ -266,65 +316,33 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   };
   
   self.oldLoadNodeFromTreeById = function(nodeId, callback) {
-    var loadNodeQuery =
-        "FOR n IN " + nodeCollection
-      + " FILTER n._id == " + JSON.stringify(nodeId)
-      + " LET links = ("
-      + "  FOR l IN " + edgeCollection
-      + "  FILTER n._id == l._from"
-      + "   FOR t IN " + nodeCollection
-      + "   FILTER t._id == l._to"
-      + "   RETURN t._id"
-      + " )"
-      + " RETURN MERGE(n, {\"children\" : links})";
-    sendQuery(loadNodeQuery, function(res) {
+    sendQuery(queries.nodeById, {
+      id: nodeId
+    }, function(res) {
       parseResultOfQuery(res, callback);
     });
   };
   
   self.loadNodeFromTreeById = function(nodeId, callback) {
-    var traversal = "RETURN TRAVERSAL("
-    + nodeCollection + ", "
-    + edgeCollection + ", "
-    + "\"" + nodeId + "\", "
-    + "\"outbound\", {"
-    + "strategy: \"depthfirst\","
-    + "maxDepth: 1,"
-    + "paths: true"
-    + "})";
-    sendQuery(traversal, function(res) {
+    sendQuery(queries.traversalById, {
+      id: nodeId
+    }, function(res) {
       parseResultOfTraversal(res, callback);
     });
   };
   
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
-    var traversal = "FOR n in "
-      + nodeCollection
-      + " FILTER n." + attribute
-      + " == " + JSON.stringify(value)
-      + " RETURN TRAVERSAL("
-      + nodeCollection + ", "
-      + edgeCollection + ", "
-      + "n._id, "
-      + "\"outbound\", {"
-      + "strategy: \"depthfirst\","
-      + "maxDepth: 1,"
-      + "paths: true"
-      + "})";
-    sendQuery(traversal, function(res) {
+    sendQuery(queries.traversalByAttribute(attribute), {
+      value: value
+    }, function(res) {
       parseResultOfTraversal(res, callback);
     });
   };  
   
   self.requestCentralityChildren = function(nodeId, callback) {
-    var requestChildren = "for u in " + nodeCollection
-      + " filter u._id == " + JSON.stringify(nodeId)
-      + " let g = ("
-      + " for l in " + edgeCollection
-      + " filter l._from == u._id"
-      + " return 1 )"
-      + " return length(g)";
-    sendQuery(requestChildren, function(res) {
+    sendQuery(queries.childrenCentrality,{
+      id: nodeId
+    }, function(res) {
       callback(res[0]);
     });
   };
@@ -380,7 +398,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        edgeToPatch = $.extend(edgeToPatch, patchData);
+        edgeToPatch._data = $.extend(edgeToPatch._data, patchData);
         callback();
       },
       error: function(data) {
@@ -438,7 +456,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        nodeToPatch = $.extend(nodeToPatch, patchData);
+        nodeToPatch._data = $.extend(nodeToPatch._data, patchData);
         callback(nodeToPatch);
       },
       error: function(data) {
@@ -447,5 +465,11 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     });
   };
   
+  self.changeTo = function (nodesCol, edgesCol ) {
+    nodeCollection = nodesCol;
+    edgeCollection = edgesCol;
+    api.node = api.base + "document?collection=" + nodeCollection; 
+    api.edge = api.base + "edge?collection=" + edgeCollection;
+  };
   
 }

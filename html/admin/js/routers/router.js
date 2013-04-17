@@ -18,7 +18,8 @@ $(document).ready(function() {
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
-      "applications/documentation"          : "applicationsDocumentation"
+      "application/documentation/:key"     : "appDocumentation",
+      "graph"                               : "graph"
       
     },
     initialize: function () {
@@ -63,6 +64,7 @@ $(document).ready(function() {
       this.footerView = new window.footerView();
       this.naviView.render();
       this.footerView.render();
+      this.graphView = new window.graphView();
     },
     collections: function() {
       var naviView = this.naviView;
@@ -157,6 +159,11 @@ $(document).ready(function() {
       });
     },
     
+    graph: function() {
+      this.graphView.render();
+      this.naviView.selectMenuItem('graph-menu'); 
+    },
+    
     applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
@@ -216,12 +223,9 @@ $(document).ready(function() {
       
     },
     
-    
-    applicationsDocumentation: function() {
-      if (this.appDocuView === undefined) {
-        this.appDocuView = new window.AppDocumentationView();
-      }
-      this.appDocuView.render();
+    appDocumentation: function(key) {
+      var docuView = new window.AppDocumentationView({key: key});
+      docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 

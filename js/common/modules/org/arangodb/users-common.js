@@ -158,8 +158,8 @@ var getStorage = function () {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").save("my-user", "my-secret-password");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").save("my-user", "my-secret-password");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -231,8 +231,8 @@ exports.save = function (username, passwd, active, extra) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").replace("my-user", "my-changed-password");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").replace("my-user", "my-changed-password");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -304,8 +304,8 @@ exports.replace = function (username, passwd, active, extra) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").replace("my-user", "my-secret-password");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").replace("my-user", "my-secret-password");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -364,8 +364,8 @@ exports.update = function (username, passwd, active, extra) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").remove("my-user");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").remove("my-user");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   

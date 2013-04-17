@@ -779,7 +779,7 @@ AQL supports functions to allow more complex computations. Functions can be
 called at any query position where an expression is allowed. The general
 function call syntax is:
 
-    FUNCTIONAME(arguments)
+    FUNCTIONNAME(arguments)
 
 where `FUNCTIONNAME` is the name of the function to be called, and `arguments`
 is a comma-separated list of function arguments. If a function does not need any
@@ -793,7 +793,30 @@ Some example function calls:
     LENGTH(friends)
     COLLECTIONS()
 
-Function names are not case-sensitive.
+In contrast to collection and variable names, function names are case-insensitive, 
+i.e. `LENGTH(foo)` and `length(foo)` are equivalent.
+
+@subsubsection AqlFunctionsExtending Extending AQL
+ 
+Since ArangoDB 1.3, it is possible to extend AQL with user-defined functions. 
+These functions need to be written in Javascript, and be registered before usage
+in a query.
+
+Please refer to @ref ExtendingAql for more details on this.
+
+By default, any function used in an AQL query will be sought in the built-in 
+function namespace `_aql`. This is the default namespace that contains all AQL
+functions that are shipped with ArangoDB. 
+To refer to a user-defined AQL function, the function name must be fully qualified
+to also include the user-defined namespace. The `:` symbol is used as the namespace
+separator:
+
+    MYGROUP:MYFUNC()
+
+    MYFUNCTIONS.MATH.RANDOM()
+    
+As all AQL function names, user function names are also case-insensitive.
+
 
 @subsubsection AqlFunctionsCasting Type cast functions
 
@@ -985,6 +1008,33 @@ AQL supports the following functions to operate on list values:
 - @FN{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
   Calling this function might return the unique elements in any order.
+
+- @FN{UNION(@FA{list1\, list2\, ...})}: returns the union of all lists specified.
+  The function expects at least two list values as its arguments.
+  Note: no duplicates will be removed. In order to remove duplicates, please use the
+  @LIT{UNIQUE} function.
+
+  Example:
+    RETURN UNION(
+      [ 1, 2, 3 ],
+      [ 1, 2 ]
+    )
+
+  will produce:
+    [ [ 1, 2, 3, 1, 2 ] ]
+
+  with duplicate removal:
+
+    RETURN UNIQUE(
+      UNION(
+        [ 1, 2, 3 ],
+        [ 1, 2 ]
+      )
+    )
+  
+  will produce:
+    [ [ 1, 2, 3 ] ]
+
 
 Apart from these functions, AQL also offers several language constructs (e.g.
 `FOR`, `SORT`, `LIMIT`, `COLLECT`) to operate on lists.

@@ -78,7 +78,6 @@ function EventLibrary() {
   
   this.Expand = function (config) {
     self.checkExpandConfig(config);
-    
     var edges = config.edges,
     nodes = config.nodes,
     startCallback = config.startCallback,

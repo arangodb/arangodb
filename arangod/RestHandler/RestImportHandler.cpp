@@ -303,7 +303,7 @@ bool RestImportHandler::createByDocumentsLines () {
         int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, values, waitForSync, &edge, false);
+          res = trx.createEdge(&document, values, waitForSync, &edge);
         }
 
         if (edge._fromKey != 0) {
@@ -315,7 +315,7 @@ bool RestImportHandler::createByDocumentsLines () {
       }
       else {
         // do not acquire an extra lock
-        res = trx.createDocument(&document, values, waitForSync, false);
+        res = trx.createDocument(&document, values, waitForSync);
       }
 
 
@@ -477,7 +477,7 @@ bool RestImportHandler::createByDocumentsList () {
         int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, values, waitForSync, &edge, false);
+          res = trx.createEdge(&document, values, waitForSync, &edge);
         }
 
         if (edge._fromKey != 0) {
@@ -489,7 +489,7 @@ bool RestImportHandler::createByDocumentsList () {
       }
       else {
         // do not acquire an extra lock
-        res = trx.createDocument(&document, values, waitForSync, false);
+        res = trx.createDocument(&document, values, waitForSync);
       }
 
 
@@ -718,7 +718,7 @@ bool RestImportHandler::createByKeyValueList () {
         int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, json, waitForSync, &edge, false);
+          res = trx.createEdge(&document, json, waitForSync, &edge);
         }
 
         if (edge._fromKey != 0) {
@@ -730,7 +730,7 @@ bool RestImportHandler::createByKeyValueList () {
       }
       else {
         // do not acquire an extra lock
-        res = trx.createDocument(&document, json, waitForSync, false);
+        res = trx.createDocument(&document, json, waitForSync);
       }
 
 

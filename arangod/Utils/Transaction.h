@@ -92,6 +92,8 @@ namespace triagens {
           _nestingLevel(0),
           _readOnly(true),
           _hints(0),
+          _timeout(0.0),
+          _waitForSync(false),
           _trx(0),
           _vocbase(vocbase),
           _resolver(resolver) {
@@ -173,7 +175,7 @@ namespace triagens {
 
         int begin () {
           if (_trx == 0) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
           if (_setupState != TRI_ERROR_NO_ERROR) {
@@ -192,7 +194,7 @@ namespace triagens {
         int commit () {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_CommitTransaction(_trx, _nestingLevel);
@@ -207,7 +209,7 @@ namespace triagens {
         int abort () {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_AbortTransaction(_trx, _nestingLevel);
@@ -298,7 +300,7 @@ namespace triagens {
           if (status == TRI_TRANSACTION_COMMITTED ||
               status == TRI_TRANSACTION_ABORTED) {
             // transaction already finished?
-            return registerError(TRI_ERROR_TRANSACTION_INVALID_STATE);
+            return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
           }
 
           int res;
@@ -323,8 +325,27 @@ namespace triagens {
 
         int addCollection (const string& name,
                            TRI_transaction_type_e type) {
+          if (name == TRI_TRANSACTION_COORDINATOR_COLLECTION) {
+            return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+          }
 
           return addCollection(_resolver.getCollectionId(name), type);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the lock acquisition timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        void setTimeout (double timeout) {
+          _timeout = timeout; 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the waitForSync property
+////////////////////////////////////////////////////////////////////////////////
+
+        void setWaitForSync () {
+          _waitForSync = true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,7 +364,7 @@ namespace triagens {
                   const TRI_transaction_type_e type) {
 
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
@@ -359,7 +380,7 @@ namespace triagens {
                     const TRI_transaction_type_e type) {
 
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
@@ -398,7 +419,13 @@ namespace triagens {
           }
 
           // READ-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_READ);
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            TRI_FreeBarrier(*barrier);
+            *barrier = 0;
+            return res;
+          }
 
           if (primary->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
@@ -432,15 +459,14 @@ namespace triagens {
 
         int readSingle (TRI_transaction_collection_t* trxCollection,
                         TRI_doc_mptr_t* mptr,
-                        const string& key,
-                        const bool lock) {
+                        const string& key) {
           
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           int res = primary->read(trxCollection,
                                   (TRI_voc_key_t) key.c_str(), 
                                   mptr,
-                                  lock && ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+                                  ! isLocked(trxCollection, TRI_TRANSACTION_READ));
 
           return res;
         }
@@ -455,7 +481,11 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           // READ-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_READ);
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+          
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
@@ -497,7 +527,11 @@ namespace triagens {
           }
 
           // READ-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_READ);
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
           if (primary->_primaryIndex._nrUsed == 0) {
             // nothing to do
@@ -587,8 +621,7 @@ namespace triagens {
                     TRI_doc_mptr_t* mptr,
                     TRI_json_t const* json,
                     void const* data,
-                    const bool forceSync,
-                    const bool lock) {
+                    const bool forceSync) {
 
           TRI_voc_key_t key = 0;
           int res = DocumentHelper::getKey(json, &key);
@@ -609,8 +642,7 @@ namespace triagens {
                        mptr, 
                        shaped, 
                        data, 
-                       forceSync, 
-                       lock);
+                       forceSync); 
 
           TRI_FreeShapedJson(shaper(trxCollection), shaped);
 
@@ -627,18 +659,17 @@ namespace triagens {
                            TRI_doc_mptr_t* mptr,
                            TRI_shaped_json_t const* shaped,
                            void const* data,
-                           const bool forceSync,
-                           const bool lock) {
+                           const bool forceSync) {
          
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
-           
+
           int res = primary->insert(trxCollection,
                                     key, 
                                     mptr, 
                                     markerType, 
                                     shaped, 
                                     data, 
-                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
+                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
                                     forceSync);
 
           return res;
@@ -655,8 +686,7 @@ namespace triagens {
                     const TRI_doc_update_policy_e policy,
                     const TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
-                    const bool forceSync,
-                    const bool lock) {
+                    const bool forceSync) {
 
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper(trxCollection), json);
 
@@ -671,8 +701,7 @@ namespace triagens {
                            policy, 
                            expectedRevision, 
                            actualRevision, 
-                           forceSync, 
-                           lock);
+                           forceSync); 
 
           TRI_FreeShapedJson(shaper(trxCollection), shaped);
 
@@ -690,8 +719,7 @@ namespace triagens {
                            const TRI_doc_update_policy_e policy,
                            const TRI_voc_rid_t expectedRevision,
                            TRI_voc_rid_t* actualRevision,
-                           const bool forceSync,
-                           const bool lock) {
+                           const bool forceSync) {
 
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
@@ -703,7 +731,7 @@ namespace triagens {
                                     mptr, 
                                     shaped, 
                                     &updatePolicy, 
-                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
+                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
                                     forceSync);
           
           return res;
@@ -718,8 +746,7 @@ namespace triagens {
                     const TRI_doc_update_policy_e policy,
                     const TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
-                    const bool forceSync,
-                    const bool lock) {
+                    const bool forceSync) {
           
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
@@ -729,7 +756,7 @@ namespace triagens {
           int res = primary->remove(trxCollection,
                                     (TRI_voc_key_t) key.c_str(), 
                                     &updatePolicy, 
-                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
+                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
                                     forceSync);
 
           return res;
@@ -756,10 +783,13 @@ namespace triagens {
           size_t n = ids.size();
 
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
-          res = TRI_ERROR_NO_ERROR;
 
           // WRITE-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_WRITE);
+          res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
@@ -840,7 +870,7 @@ namespace triagens {
 
           if (getStatus() != TRI_TRANSACTION_CREATED) {
             // transaction already started?
-            res = TRI_ERROR_TRANSACTION_INVALID_STATE;
+            res = TRI_ERROR_TRANSACTION_INTERNAL;
           }
           else {
             res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
@@ -903,7 +933,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext);
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _timeout, _waitForSync);
 
           if (_trx == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -969,6 +999,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_transaction_hint_t _hints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout for lock acquisition
+////////////////////////////////////////////////////////////////////////////////
+
+        double _timeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for sync property for transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _waitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

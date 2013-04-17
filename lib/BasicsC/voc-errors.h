@@ -47,6 +47,8 @@ extern "C" {
 ///   Will be raised when an attempt is made to overwrite an existing file.
 /// - 17: @LIT{type error}
 ///   Will be raised when a type error is unencountered.
+/// - 18: @LIT{lock timeout}
+///   Will be raised when there's a timeout waiting for a lock.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -192,9 +194,9 @@ extern "C" {
 ///   allowed value.
 /// - 1530: @LIT{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
-/// - 1540: @LIT{usage of unknown function '\%s'}
+/// - 1540: @LIT{usage of unknown function '\%s()'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @LIT{invalid number of arguments for function '\%s'}
+/// - 1541: @LIT{invalid number of arguments for function '\%s()'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
 /// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
@@ -236,30 +238,22 @@ extern "C" {
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
 ///   Will be raised when a user function is registered with invalid code.
-/// - 1582: @LIT{user function not found}
+/// - 1582: @LIT{user function '\%s()' not found}
 ///   Will be raised when a user function is accessed but not found.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @LIT{transaction definition is incomplete}
-///   Will be raised when the transaction definition is incomplete (e.g. lacks
-///   collections to use).
-/// - 1651: @LIT{invalid transaction state}
-///   Will be raised when an operation is requested on a transaction that has
-///   an incompatible state.
-/// - 1652: @LIT{nested transactions detected}
-///   Will be raised when transactions are nested.
-/// - 1653: @LIT{internal transaction error}
+/// - 1650: @LIT{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
-/// - 1654: @LIT{unregistered collection used in transaction}
+/// - 1651: @LIT{nested transactions detected}
+///   Will be raised when transactions are nested.
+/// - 1652: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
-/// - 1655: @LIT{disallowed operation inside a transaction}
+/// - 1653: @LIT{disallowed operation inside transaction}
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
-/// - 1656: @LIT{deadlock detected during transaction execution}
-///   Will be raised when a deadlock is detected during transaction execution.
 /// - 1700: @LIT{invalid user name}
 ///   Will be raised when an invalid user name is used
 /// - 1701: @LIT{invalid password}
@@ -596,6 +590,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TYPE_ERROR                                              (17)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 18: ERROR_LOCK_TIMEOUT
+///
+/// lock timeout
+///
+/// Will be raised when there's a timeout waiting for a lock.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCK_TIMEOUT                                            (18)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1244,7 +1248,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
 ///
-/// usage of unknown function '%s'
+/// usage of unknown function '%s()'
 ///
 /// Will be raised when an undefined function is called.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1254,7 +1258,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
 ///
-/// invalid number of arguments for function '%s'
+/// invalid number of arguments for function '%s()'
 ///
 /// Will be raised when the number of arguments used in a function call does
 /// not match the expected number of arguments for the function.
@@ -1422,7 +1426,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1582: ERROR_QUERY_FUNCTION_NOT_FOUND
 ///
-/// user function not found
+/// user function '%s()' not found
 ///
 /// Will be raised when a user function is accessed but not found.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1441,39 +1445,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1650: ERROR_TRANSACTION_INCOMPLETE
-///
-/// transaction definition is incomplete
-///
-/// Will be raised when the transaction definition is incomplete (e.g. lacks
-/// collections to use).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INCOMPLETE                                  (1650)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1651: ERROR_TRANSACTION_INVALID_STATE
-///
-/// invalid transaction state
-///
-/// Will be raised when an operation is requested on a transaction that has an
-/// incompatible state.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1651)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1652: ERROR_TRANSACTION_NESTED
-///
-/// nested transactions detected
-///
-/// Will be raised when transactions are nested.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_NESTED                                      (1652)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1653: ERROR_TRANSACTION_INTERNAL
+/// @brief 1650: ERROR_TRANSACTION_INTERNAL
 ///
 /// internal transaction error
 ///
@@ -1481,10 +1453,20 @@ void TRI_InitialiseErrorMessages (void);
 /// internal error and indicates a bug in ArangoDB.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1653)
+#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1654: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
+/// @brief 1651: ERROR_TRANSACTION_NESTED
+///
+/// nested transactions detected
+///
+/// Will be raised when transactions are nested.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_NESTED                                      (1651)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1652: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
 ///
 /// unregistered collection used in transaction
 ///
@@ -1492,27 +1474,17 @@ void TRI_InitialiseErrorMessages (void);
 /// was not registered at transaction start.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
+#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1652)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1655: ERROR_TRANSACTION_DISALLOWED_OPERATION
+/// @brief 1653: ERROR_TRANSACTION_DISALLOWED_OPERATION
 ///
-/// disallowed operation inside a transaction
+/// disallowed operation inside transaction
 ///
 /// Will be raised when a disallowed operation is carried out in a transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1655)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1656: ERROR_TRANSACTION_DEADLOCK
-///
-/// deadlock detected during transaction execution
-///
-/// Will be raised when a deadlock is detected during transaction execution.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_DEADLOCK                                    (1656)
+#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1653)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME

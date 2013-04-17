@@ -59,8 +59,16 @@
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.ArangoError = ArangoError;
-  delete ArangoError;
+  try {
+    // necessary for the web interface
+    if (ArangoError !== undefined) {
+      exports.ArangoError = ArangoError;
+      delete ArangoError;
+    }
+  }
+  catch (err) {
+    exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
+  }
 
   exports.ArangoError.prototype._PRINT = function (context) {
     context.output += this.toString();
@@ -832,7 +840,7 @@
               context.output += s;
             }
           }
-          catch (e) {
+          catch (e1) {
             context.output += "[Function]";
           }
         }
@@ -840,7 +848,7 @@
           try {
             context.output += value.toString();
           }
-          catch (e) {
+          catch (e2) {
             context.output += "[Object ";
             printObject(value, context);
             context.output += "]";
