@@ -62,8 +62,20 @@
       return result;
     },
     
+    listOne: function(basePath, key) {
+      var result = {},
+      res = db._collection("_aal").document(key);
+      result.swaggerVersion = "1.1";
+      result.basePath = basePath;
+      result.apis = [
+        {path: res.mount}
+      ];
+      return result;
+    },
+    
     // Get details of one specific installed foxx. 
     show: function(appname) {
+      require("console").log(appname);
       var result = {},
       apis = [],
       pathes,

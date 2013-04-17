@@ -370,9 +370,13 @@ function get_graph_graph (req, res) {
 function delete_graph_graph (req, res) {
   try {
     var g = graph_by_request(req);
+    if (g === null || g === undefined) {
+      throw "graph not found";
+    }
   }
   catch (err) {
     actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    return;
   }
     
   if (matchError(req, res, g._properties, actions.ERROR_GRAPH_INVALID_GRAPH)) {

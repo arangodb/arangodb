@@ -395,7 +395,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     found2 = CONST_CAST(found);
     // the fid won't change
-    TRI_ASSERT_MAINTAINER(found2->_fid == context->_dfi._fid);
 
     // let marker point to the new position
     found2->_data = result;

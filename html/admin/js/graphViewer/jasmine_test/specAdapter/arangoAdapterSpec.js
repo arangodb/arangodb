@@ -48,8 +48,12 @@
       arangodb,
       nodesCollection,
       nodesCollId,
+      altNodesCollection,
+      altNodesCollId,
       edgesCollection,
       edgesCollId,
+      altEdgesCollection,
+      altEdgesCollId,
       callbackCheck,
       checkCallbackFunction = function() {
         callbackCheck = true;
@@ -182,6 +186,8 @@
         try {
           dropCollection(nodesCollection);
           dropCollection(edgesCollection);
+          dropCollection(altNodesCollection);
+          dropCollection(altEdgesCollection);
         }catch(e){
           
         }
@@ -190,11 +196,17 @@
       setupArangoContent = function() {
         nodesCollection = "TestNodes321";
         edgesCollection = "TestEdges321";
+        altNodesCollection = "TestNodes654";
+        altEdgesCollection = "TestEdges654";
+        
         
         deleteArangoContent();
         
         createCollection(nodesCollection, "Document", function(id) {nodesCollId = id;});
         createCollection(edgesCollection, "Edge", function(id) {edgesCollId = id;});
+        
+        createCollection(altNodesCollection, "Document", function(id) {altNodesCollId = id;});
+        createCollection(altEdgesCollection, "Edge", function(id) {altEdgesCollId = id;});
       };
     
     beforeEach(function() {
@@ -235,6 +247,37 @@
         
         callbackCheck = false;
         adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+      });
+      
+      waitsFor(function() {
+        return callbackCheck;
+      });
+      
+      runs(function() {
+        existNodes([c0, c1, c2, c3, c4]);
+        expect(nodes.length).toEqual(5);
+      });
+    });
+    
+    it('should be able to load a tree node from ArangoDB'
+      + ' by internal attribute and value', function() {
+      
+      var c0, c1, c2, c3, c4;
+      
+      runs(function() {
+        c0 = insertNode(nodesCollection, 0);
+        c1 = insertNode(nodesCollection, 1);
+        c2 = insertNode(nodesCollection, 2);
+        c3 = insertNode(nodesCollection, 3);
+        c4 = insertNode(nodesCollection, 4);
+        
+        insertEdge(edgesCollection, c0, c1);
+        insertEdge(edgesCollection, c0, c2);
+        insertEdge(edgesCollection, c0, c3);
+        insertEdge(edgesCollection, c0, c4);
+        
+        callbackCheck = false;
+        adapter.loadNodeFromTreeByAttributeValue("id", 0, checkCallbackFunction);
       });
       
       waitsFor(function() {
@@ -321,6 +364,73 @@
         });
       });
        
+      
+    });
+   
+    it('should be able to switch to different collections', function() {
+      var c0, c1, e1_2, insertedId;
+      
+      runs(function() {
+        c0 = insertNode(altNodesCollection, 0);
+        c1 = insertNode(altNodesCollection, 1);
+        e1_2 = insertEdge(altEdgesCollection, c0, c1);
+      
+        adapter.changeTo(altNodesCollection, altEdgesCollection);
+      
+        callbackCheck = false;
+        adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+      });
+    
+      waitsFor(function() {
+        return callbackCheck;
+      });
+    
+      runs(function() {
+        existNodes([c0, c1]);
+        expect(nodes.length).toEqual(2);
+        
+        callbackCheck = false;
+        adapter.createNode({}, function(node) {
+          insertedId = node._id;
+          callbackCheck = true;
+        });
+        this.addMatchers({
+          toBeStoredPermanently: function() {
+            var id = this.actual,
+            res = false;
+            $.ajax({
+              type: "GET",
+              url: arangodb + "/_api/document/" + id,
+              contentType: "application/json",
+              processData: false,
+              async: false,
+              success: function(data) {
+                res = true;
+              },
+              error: function(data) {
+                try {
+                  var temp = JSON.parse(data);
+                  throw "[" + temp.errorNum + "] " + temp.errorMessage;
+                }
+                catch (e) {
+                  throw "Undefined ERROR";
+                }
+              }
+            });
+            return res;
+          }
+        });
+        
+      });
+      
+      waitsFor(function() {
+        return callbackCheck;
+      });
+      
+      runs(function() {
+        expect(insertedId).toBeStoredPermanently();
+        existNode(insertedId);
+      });
       
     });
    

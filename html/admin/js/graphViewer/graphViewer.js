@@ -54,7 +54,6 @@ function GraphViewer(svg, width, height,
   var self = this,
     nodeContainer,
     edgeContainer,
-    layouter,
     fixedSize,
     dispatcher,
     edges = [],
@@ -68,7 +67,7 @@ function GraphViewer(svg, width, height,
       config.links = edges;
       config.width = width;
       config.height = height;
-      layouter = new ForceLayouter(config);
+      self.layouter = new ForceLayouter(config);
       return;
     }
     switch (config.type.toLowerCase()) {
@@ -77,7 +76,7 @@ function GraphViewer(svg, width, height,
         config.links = edges;
         config.width = width;
         config.height = height;
-        layouter = new ForceLayouter(config);
+        self.layouter = new ForceLayouter(config);
         break;
       default:
         throw "Sorry unknown layout type.";
@@ -93,7 +92,7 @@ function GraphViewer(svg, width, height,
     self.edgeShaper = new EdgeShaper(edgeContainer, esConf);
     nodeContainer = svg.append("svg:g");
     self.nodeShaper = new NodeShaper(nodeContainer, nsConf, idFunc);
-    layouter.setCombinedUpdateFunction(self.nodeShaper, self.edgeShaper);
+    self.layouter.setCombinedUpdateFunction(self.nodeShaper, self.edgeShaper);
   };
   
   switch (adapterConfig.type.toLowerCase()) {
@@ -124,10 +123,10 @@ function GraphViewer(svg, width, height,
   parseConfig(config || {});
     
   self.start = function() {
-    layouter.stop();
+    self.layouter.stop();
     self.edgeShaper.drawEdges(edges);
     self.nodeShaper.drawNodes(nodes);
-    layouter.start();
+    self.layouter.start();
   };
   
   self.loadGraph = function(nodeId) {
@@ -163,7 +162,7 @@ function GraphViewer(svg, width, height,
       reshapeNode: self.nodeShaper.reshapeNode
     },
     drag: {
-      layouter: layouter
+      layouter: self.layouter
     },
     nodeEditor: {
       nodes: nodes,

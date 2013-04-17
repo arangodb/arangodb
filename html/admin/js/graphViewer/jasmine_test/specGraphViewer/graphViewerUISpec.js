@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper, mocks*/
+/*global helper, mocks, JSONAdapter:true*/
 /*global GraphViewerUI*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,9 +42,22 @@
     
     var div,
     ui,
-    adapterConfig;
+    adapterConfig,
+    adapterMockCall;
     
     beforeEach(function() {
+      //Mock for jsonAdapter
+      var Tmp = JSONAdapter;
+      JSONAdapter = function (jsonPath, nodes, edges, width, height) {
+        var r = new Tmp(jsonPath, nodes, edges, width, height);
+        r.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+          adapterMockCall = {
+            attribute: attribute,
+            value: value
+          };
+        };
+        return r;
+      };
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -77,7 +90,7 @@
           this.message = function() {
             return "Expected " + msg;
           };
-          expect(div).toBeOfClass("btn-group pull-right");
+          expect(div).toBeOfClass("btn-group");
           expect(btn).toBeTag("button");
           expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
           if (btn.getAttribute("data-toggle") !== "dropdown") {
@@ -177,19 +190,33 @@
         expect($("#contentDiv #menubar").length).toEqual(1);
       });
       
-      it('should contain a field to load a node', function() {
-        expect($("#contentDiv #menubar #nodeid").length).toEqual(1);
-        expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
-        var field = $("#contentDiv #menubar #nodeid")[0],
-          btn = $("#contentDiv #menubar #loadnode")[0];
-        expect(field).toBeTag("input");
-        expect(field.type).toEqual("text");
-        expect(field.className).toEqual("searchInput");
+      it('should contain a field to load a node by attribute', function() {
+        var barSelector = "#contentDiv #menubar",
+          attrfield = $(barSelector + " #attribute")[0],
+          valfield = $(barSelector + " #value")[0],
+          btn = $(barSelector + " #loadnode")[0];
+        expect($(barSelector + " #attribute").length).toEqual(1);
+        expect($(barSelector + " #value").length).toEqual(1);
+        expect($(barSelector + " #loadnode").length).toEqual(1);
+        expect(attrfield).toBeTag("input");
+        expect(attrfield.type).toEqual("text");
+        expect(attrfield.className).toEqual("input-mini searchByAttribute");
+        expect(attrfield.placeholder).toEqual("key");
+        expect(valfield).toBeTag("input");
+        expect(valfield.type).toEqual("text");
+        expect(valfield.className).toEqual("searchInput");
+        expect(valfield.placeholder).toEqual("value");
         expect(btn).toBeTag("img");
         expect(btn.width).toEqual(16);
         expect(btn.height).toEqual(16);
         expect(btn.className).toEqual("searchSubmit");
       });
+      
+      it('should contain a position for the layout buttons', function() {
+        expect($("#contentDiv #menubar #modifiers").length).toEqual(1);
+        expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
+      });
+      
       
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
@@ -220,8 +247,18 @@
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect(false).toBeTruthy();
+        expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
+      
+      it('should contain a menu for the layouter', function() {
+        var menuSelector = "#contentDiv #menubar #layoutermenu";
+        expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
+        expect($(menuSelector + " #control_gravity").length).toEqual(1);
+        expect($(menuSelector + " #control_distance").length).toEqual(1);
+        expect($(menuSelector + " #control_charge").length).toEqual(1);
+      });
+      
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
@@ -238,14 +275,74 @@
         expect(searchField).toBeTag("div");
         expect(searchField.id).toEqual("transparentPlaceholder");
         expect(searchField.className).toEqual("pull-left");
-        expect(searchField.children[0].id).toEqual("nodeid");
-        expect(searchField.children[1].id).toEqual("loadnode");
+        expect(searchField.children[0].id).toEqual("attribute");
+        expect(searchField.children[1].id).toEqual("value");
+        expect(searchField.children[2].id).toEqual("loadnode");
       });
+    });
+    
+    describe('checking to load a graph', function() {
+      
+      var waittime = 100;
+      
+      beforeEach(function() {
+        this.addMatchers({
+          toBeDisplayed: function() {
+            var nodes = this.actual,
+            nonDisplayed = [];
+            this.message = function(){
+              var msg = "Nodes: [";
+              _.each(nonDisplayed, function(n) {
+                msg += n + " ";
+              });
+              msg += "] are not displayed.";
+              return msg;
+            };
+            _.each(nodes, function(n) {
+              if ($("svg #" + n)[0] === undefined) {
+                nonDisplayed.push(n);
+              }
+            });
+            return nonDisplayed.length === 0;
+          }
+        });
+      });
+      
+      it('should load the graph by _id', function() {
+        
+        runs(function() {
+          $("#contentDiv #menubar #value").attr("value", "0");
+          helper.simulateMouseEvent("click", "loadnode");
+        });
+        
+        waits(waittime);
+        
+        runs(function() {
+          expect([0, 1, 2, 3, 4]).toBeDisplayed();
+        });
+        
+      });
+      
+      it('should load the graph by attribute and value', function() {
+        
+        runs(function() {
+          adapterMockCall = {};
+          $("#contentDiv #menubar #attribute").attr("value", "name");
+          $("#contentDiv #menubar #value").attr("value", "0");
+          helper.simulateMouseEvent("click", "loadnode");
+          expect(adapterMockCall).toEqual({
+            attribute: "name",
+            value: "0"
+          });
+        });
+        
+      });
+      
     });
     
     
     describe('set up with jsonAdapter and click Expand rest default', function() {
-      // This waittime is rather opcimistic, on a slow machine this has to be increased
+      // This waittime is rather optimistic, on a slow machine this has to be increased
       var waittime = 100, 
     
       clickOnNode = function(id) {
@@ -309,7 +406,7 @@
         });
       
         runs (function() {
-          $("#contentDiv #menubar #nodeid").attr("value", "0");
+          $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
           helper.simulateMouseEvent("click", "control_expand");
         });
@@ -318,9 +415,7 @@
       
       });
     
-      it('should have loaded the graph', function() {
-        expect([0, 1, 2, 3, 4]).toBeDisplayed();
-      });
+      
     
       it("should be able to expand a node", function() {
   
@@ -354,7 +449,7 @@
     
       it("should be able to load a different graph", function() {
         runs (function() {
-          $("#contentDiv #menubar #nodeid").attr("value", "42");
+          $("#contentDiv #menubar #value").attr("value", "42");
           helper.simulateMouseEvent("click", "loadnode");
         });
   

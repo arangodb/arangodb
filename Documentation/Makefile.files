@@ -33,20 +33,24 @@ dist_man_MANS += \
 ################################################################################
 
 DOXYGEN = \
+	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
 	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-foxx.c \
 	Doxygen/js/actions/api-graph.c \
 	Doxygen/js/actions/api-index.c \
 	Doxygen/js/actions/api-query.c \
 	Doxygen/js/actions/api-simple.c \
 	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-transaction.c \
 	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
@@ -76,6 +80,7 @@ WIKI = \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
+	ExtendingAql \
 	FirstStepsArangoDB \
 	Glossary \
 	HandlingCollections \
@@ -83,6 +88,7 @@ WIKI = \
 	HandlingEdges \
 	HandlingIndexes \
 	Home \
+	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
 	HttpCursor \
@@ -93,6 +99,7 @@ WIKI = \
 	HttpQuery \
 	HttpSimple \
 	HttpSystem \
+	HttpTransactions \
 	HttpUser \
 	ImpManual \
 	ImpManualBasics \
@@ -152,6 +159,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
 	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
@@ -303,34 +311,37 @@ swagger:
 		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-collection.js  > @srcdir@/html/admin/api-docs/collection
+		< @srcdir@/js/actions/api-collection.js  > @srcdir@/html/admin/api-docs/collection
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-graph.js  > @srcdir@/html/admin/api-docs/graph
+		< @srcdir@/js/actions/api-graph.js  > @srcdir@/html/admin/api-docs/graph
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-user.js  > @srcdir@/html/admin/api-docs/user
+		< @srcdir@/js/actions/api-user.js  > @srcdir@/html/admin/api-docs/user
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-system.js  > @srcdir@/html/admin/api-docs/system
+		< @srcdir@/js/actions/api-system.js  > @srcdir@/html/admin/api-docs/system
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
+		< @srcdir@/js/actions/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-explain.js  > @srcdir@/html/admin/api-docs/explain
+		< @srcdir@/js/actions/api-explain.js  > @srcdir@/html/admin/api-docs/explain
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-index.js  > @srcdir@/html/admin/api-docs/index
+		< @srcdir@/js/actions/api-index.js  > @srcdir@/html/admin/api-docs/index
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-simple.js  > @srcdir@/html/admin/api-docs/simple
+		< @srcdir@/js/actions/api-aqlfunction.js  > @srcdir@/html/admin/api-docs/aqlfunction
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-query.js  > @srcdir@/html/admin/api-docs/query
+		< @srcdir@/js/actions/api-simple.js  > @srcdir@/html/admin/api-docs/simple
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-structure.js  > @srcdir@/html/admin/api-docs/structure
+		< @srcdir@/js/actions/api-query.js  > @srcdir@/html/admin/api-docs/query
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
 	
 
 ################################################################################

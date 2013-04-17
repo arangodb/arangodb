@@ -103,7 +103,7 @@ case $TRI_OS_LONG in
 
   Linux-Fedora*)
     echo "Using configuration for Fedora"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --disable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
     LDD_INFO="yes"
     ;;
 
@@ -115,7 +115,7 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12.X"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --disable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
     LDD_INFO="yes"
     ;;
 

@@ -1,0 +1,20 @@
+arangod> db._executeTransaction({
+  collections: { },
+  action: "function (params) { return params[1]; }",
+  params: [ 1, 2, 3 ]
+});
+
+
+
+arangod> db._executeTransaction({
+  collections: { 
+    write: "users",
+    read: [ "c1", "c2" ]
+  },
+  action: "function (params) { var db = require('internal').db; var doc = db.c1.document(params['c1Key']); db.users.save(doc); doc = db.c2.document(params['c2Key']); db.users.save(doc);}",
+  params: {
+    c1Key: "user1",
+    c2Key: "user2"
+  }
+});
+

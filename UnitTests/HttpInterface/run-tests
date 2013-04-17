@@ -4,6 +4,7 @@ test -d logs || mkdir logs
 rspec --color --format d \
 	api-http-spec.rb \
 	api-admin-spec.rb \
+	api-aqlfunction-spec.rb \
 	api-attributes-spec.rb \
 	api-batch-spec.rb \
 	api-collection-spec.rb \
@@ -23,4 +24,5 @@ rspec --color --format d \
 	api-cursor-spec.rb \
 	api-statistics-spec.rb \
 	api-simple-spec.rb \
+	api-transactions-spec.rb \
         api-users-spec.rb 

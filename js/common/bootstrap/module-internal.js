@@ -59,8 +59,16 @@
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.ArangoError = ArangoError;
-  delete ArangoError;
+  try {
+    // necessary for the web interface
+    if (ArangoError !== undefined) {
+      exports.ArangoError = ArangoError;
+      delete ArangoError;
+    }
+  }
+  catch (err) {
+    exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
+  }
 
   exports.ArangoError.prototype._PRINT = function (context) {
     context.output += this.toString();
@@ -150,13 +158,13 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief plattform
+/// @brief platform
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.plattform = "unknown";
+  exports.platform = "unknown";
 
   if (typeof SYS_PLATFORM !== "undefined") {
-    exports.plattform = SYS_PLATFORM;
+    exports.platform = SYS_PLATFORM;
     delete SYS_PLATFORM;
   }
 
