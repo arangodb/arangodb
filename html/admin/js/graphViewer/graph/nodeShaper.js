@@ -63,7 +63,8 @@
 function NodeShaper(parent, flags, idfunc) {
   "use strict";
   
-  var self = this,  
+  var self = this,
+    nodes = [],  
     noop = function (node) {
     
     },
@@ -121,37 +122,21 @@ function NodeShaper(parent, flags, idfunc) {
       }
     },
     
-    shapeNodes = function (nodes) {
-      if (nodes !== undefined) {
-        var data, g;
-        data = self.parent
-          .selectAll(".node")
-          .data(nodes, idFunction);
-        g = data
-          .enter()
-          .append("g")
-          .attr("class", "node") // node is CSS class that might be edited
-          .attr("id", idFunction);
-        addQue(g);
-        data.exit().remove();
-        return g;
+    shapeNodes = function (newNodes) {
+      if (newNodes !== undefined) {
+        nodes = newNodes;
       }
-    },
-    
-    reshapeNodes = function () {
-      var g = self.parent
-        .selectAll(".node");
-      $(".node").empty();
-      addQue(g);
-    },
-    
-    reshapeNode = function (node) {
       var g = self.parent
         .selectAll(".node")
-        .filter(function (n) {
-          return n._id === node._id;
-        });
-      $("#" + node._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
+        .data(nodes, idFunction);
+      // Append the group and class to all new    
+      g.enter()
+        .append("g")
+        .attr("class", "node") // node is CSS class that might be edited
+        .attr("id", idFunction);
+      // Remove all old
+      g.exit().remove();
+      g.selectAll("* > *").remove();
       addQue(g);
     },
     
@@ -316,23 +301,19 @@ function NodeShaper(parent, flags, idfunc) {
   
   self.changeTo = function(config) {
     parseConfig(config);
-    reshapeNodes();
+    shapeNodes();
   };
   
   self.drawNodes = function (nodes) {
-    return shapeNodes(nodes);
+    shapeNodes(nodes);
   };
   
   self.updateNodes = function () {
     updateNodes();
   };
   
-  self.reshapeNode = function(node) {
-    reshapeNode(node);
-  };
-  
   self.reshapeNodes = function() {
-    reshapeNodes();
+    shapeNodes();
   };
   
 }

@@ -96,7 +96,7 @@
           nodes: nodes,
           startCallback: function() {},
           loadNode: this.loadNode,
-          reshapeNode: function() {}
+          reshapeNodes: function() {}
         },
       
         dragConfig = {
