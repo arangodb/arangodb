@@ -78,7 +78,7 @@ var collectionView = Backbone.View.extend({
   },
   saveModifiedCollection: function() {
     var newname = $('#change-collection-name').val();
-    if (newname == '') {
+    if (newname === '') {
       arangoHelper.arangoError('No collection name entered!');
       return 0;
     }
@@ -146,6 +146,9 @@ var collectionView = Backbone.View.extend({
         else {
           arangoHelper.arangoError("Collection error: " + result2);
         }
+      }
+      else {
+        arangoHelper.arangoNotification("No changes.");
       }
     }
   },
