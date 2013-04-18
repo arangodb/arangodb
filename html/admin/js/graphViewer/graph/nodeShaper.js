@@ -68,6 +68,19 @@ function NodeShaper(parent, flags, idfunc) {
     noop = function (node) {
     
     },
+    defaultDistortion = function(n) {
+      return {
+        x: n.x,
+        y: n.y,
+        z: 1
+      };
+    },
+    distortion = defaultDistortion,
+    addDistortion = function() {
+      _.each(nodes, function(n) {
+        n.position = distortion(n);
+      });
+    },
     colourMapper = new ColourMapper(),
     events,
     addUpdate,
@@ -110,6 +123,7 @@ function NodeShaper(parent, flags, idfunc) {
       addLabel(g);
       addColor(g);
       addEvents(g);
+      addDistortion();
     },
     
     bindEvent = function (type, func) {
@@ -120,6 +134,14 @@ function NodeShaper(parent, flags, idfunc) {
       } else {
         events[type] = func;
       }
+    },
+    
+    updateNodes = function () {
+      var nodes = self.parent.selectAll(".node");
+      nodes.attr("transform", function(d) {
+        return "translate(" + d.position.x + "," + d.position.y + ")"; 
+      });
+      addUpdate(nodes);
     },
     
     shapeNodes = function (newNodes) {
@@ -138,16 +160,9 @@ function NodeShaper(parent, flags, idfunc) {
       g.exit().remove();
       g.selectAll("* > *").remove();
       addQue(g);
+      updateNodes();
     },
-    
-    updateNodes = function () {
-      var nodes = self.parent.selectAll(".node");
-      nodes.attr("transform", function(d) {
-        return "translate(" + d.x + "," + d.y + ")"; 
-      });
-      addUpdate(nodes);
-    },
-    
+
     parseShapeFlag = function (shape) {
       var radius, width, height;
       switch (shape.type) {
@@ -245,6 +260,16 @@ function NodeShaper(parent, flags, idfunc) {
       }
     },
     
+    parseDistortionFlag = function (dist) {
+      if (dist === "reset") {
+        distortion = defaultDistortion;
+      } else if (_.isFunction(dist)) {
+        distortion = dist;
+      } else {
+        throw "Sorry distortion cannot be parsed.";
+      }
+    },
+    
     parseConfig = function(config) {
       if (config.shape !== undefined) {
         parseShapeFlag(config.shape);
@@ -258,8 +283,11 @@ function NodeShaper(parent, flags, idfunc) {
       if (config.color !== undefined) {
         parseColorFlag(config.color);
       }
+      if (config.distortion !== undefined) {
+        parseDistortionFlag(config.distortion);
+      }
+      
     };
-    
     
   self.parent = parent;
   
@@ -288,6 +316,11 @@ function NodeShaper(parent, flags, idfunc) {
       stroke: "#8AA051"
     }; 
   }
+  
+  if (flags.distortion === undefined) {
+    flags.distortion = "reset";
+  }
+  
   parseConfig(flags);
 
   if (_.isFunction(idfunc)) {

@@ -896,7 +896,7 @@
         shaper.drawNodes(nodes);
       });
       
-      it('should be able to add a distortion to the node positions', function() {
+      it('should be able to add a distortion for the node positions', function() {
         expect(nodes[0].position).toEqual({
           x: 10,
           y: 10,
@@ -924,6 +924,43 @@
         expect(n.attr("transform")).toEqual("translate(52,5)");
       });
       
+      it('should be able to revoke a distortion for the node positions', function() {
+        expect(nodes[0].position).toEqual({
+          x: 10,
+          y: 10,
+          z: 1
+        });
+        
+        var distortion = function (node) {
+            return {
+              x: node.x + 42,
+              y: node.y -5,
+              z: 10
+            };
+          },
+          n = $("#1");
+        expect(n.attr("transform")).toEqual("translate(10,10)");
+        
+        shaper.changeTo({
+          distortion: distortion
+        });
+        expect(nodes[0].position).toEqual({
+          x: 52,
+          y: 5,
+          z: 10
+        });
+        expect(n.attr("transform")).toEqual("translate(52,5)");
+        
+        shaper.changeTo({
+          distortion: "reset"
+        });
+        expect(nodes[0].position).toEqual({
+          x: 10,
+          y: 10,
+          z: 1
+        });
+        expect(n.attr("transform")).toEqual("translate(10,10)");
+      });
     });
 
   });
