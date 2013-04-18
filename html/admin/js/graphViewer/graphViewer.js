@@ -157,7 +157,7 @@ function GraphViewer(svg, width, height,
       nodes: nodes,
       startCallback: self.start,
       loadNode: self.adapter.loadNodeFromTreeById,
-      reshapeNode: self.nodeShaper.reshapeNode
+      reshapeNodes: self.nodeShaper.reshapeNodes
     },
     drag: {
       layouter: self.layouter

@@ -216,8 +216,27 @@
         setupArangoContent();
         nodes = [];
         edges = [];
+        this.addMatchers({
+          toHaveCorrectCoordinates: function() {
+            var list = this.actual,
+              evil;
+            _.each(list, function(n) {
+              if (isNaN(n.x) || isNaN(n.y)) {
+                evil = n;
+              }
+            });
+            this.message = function() {
+              return "Expected " + JSON.stringify(evil) + " to contain Numbers as X and Y.";
+            };
+            return evil === undefined;
+          }
+        });
       });
-    
+      
+      afterEach(function() {
+        expect(nodes).toHaveCorrectCoordinates();
+      });
+      
       it('should throw an error if no nodes are given', function() {
         expect(
           function() {
@@ -490,7 +509,6 @@
         });
    
     
-   
         describe('that has already loaded one graph', function() {
           var c0, c1, c2, c3, c4, c5, c6, c7;
       
@@ -658,6 +676,7 @@
             runs(function() {
               toDelete = edgeWithSourceAndTargetId(c0, c4);
               adapter.deleteEdge(toDelete, checkCallbackFunction);
+              existEdge(c0, c4);
             });
         
             waitsFor(function() {
@@ -666,7 +685,7 @@
         
             runs(function() {
               expect(toDelete._id).toNotBeStoredPermanently();
-              notExistEdge(c1, c5);
+              notExistEdge(c0, c4);
             });
         
           });
@@ -737,8 +756,9 @@
       
             it('should be able to add an edge permanently', function() {
               var insertedId,
-              source,
-              target;
+                source,
+                target,
+                insertedEdge;
         
         
               runs(function() {
@@ -747,6 +767,7 @@
                 adapter.createEdge({source: source, target: target}, function(edge) {
                   insertedId = edge._id;
                   callbackCheck = true;
+                  insertedEdge = edge;
                 });
               });
         
@@ -757,6 +778,18 @@
               runs(function() {
                 expect(insertedId).toBeStoredPermanently();
                 existEdge(source._id, target._id);
+                expect(insertedEdge).toEqual({
+                  source: source,
+                  target: target,
+                  _id: insertedId,
+                  _data: {
+                    _id: insertedId,
+                    _from: source._id,
+                    _to: target._id,
+                    _rev: jasmine.any(String),
+                    _key: jasmine.any(String)
+                  }
+                });
               });
         
             });

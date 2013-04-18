@@ -283,7 +283,7 @@
     
     describe('checking to load a graph', function() {
       
-      var waittime = 100;
+      var waittime = 200;
       
       beforeEach(function() {
         this.addMatchers({

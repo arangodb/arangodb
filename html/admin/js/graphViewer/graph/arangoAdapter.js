@@ -59,16 +59,16 @@ function ArangoAdapter(nodes, edges, config) {
     height,
     
     setWidth = function(w) {
-      initialX.range = width / 2;
-      initialX.start = width / 4;
+      initialX.range = w / 2;
+      initialX.start = w / 4;
       initialX.getStart = function () {
         return this.start + Math.random() * this.range;
       };
     },
     
     setHeight = function(h) {
-      initialY.range = height / 2;
-      initialY.start = height / 4;
+      initialY.range = h / 2;
+      initialY.start = h / 4;
       initialY.getStart = function () {
         return this.start + Math.random() * this.range;
       };
@@ -127,8 +127,6 @@ function ArangoAdapter(nodes, edges, config) {
       if (n) {
         return n;
       }
-    
-      initialY.getStart();
       node.x = initialX.getStart();
       node.y = initialY.getStart();
       nodes.push(node);
@@ -169,6 +167,16 @@ function ArangoAdapter(nodes, edges, config) {
       for ( i = 0; i < nodes.length; i++ ) {
         if ( nodes[i] === node ) {
           nodes.splice( i, 1 );
+          return;
+        }
+      }
+    },
+  
+    removeEdge = function (edge) {
+      var i;
+      for ( i = 0; i < edges.length; i++ ) {
+        if ( edges[i] === edge ) {
+          edges.splice( i, 1 );
           return;
         }
       }
@@ -405,6 +413,7 @@ function ArangoAdapter(nodes, edges, config) {
       success: function(data) {
         data._from = edgeToAdd.source._id;
         data._to = edgeToAdd.target._id;
+        delete data.error;
         var edge = insertEdge(data);
         callback(edge);
       },
@@ -423,6 +432,7 @@ function ArangoAdapter(nodes, edges, config) {
       dataType: "json",
       processData: false,
       success: function() {
+        removeEdge(edgeToRemove);
         if (callback !== undefined && _.isFunction(callback)) {
           callback();
         }
@@ -484,7 +494,9 @@ function ArangoAdapter(nodes, edges, config) {
         removeEdgesForNode(nodeToRemove);
         permanentlyRemoveEdgesOfNode(nodeToRemove._id);    
         removeNode(nodeToRemove);
-        callback();
+        if (callback !== undefined && _.isFunction(callback)) {
+          callback();
+        }
       },
       error: function(data) {
         throw data.statusText;
