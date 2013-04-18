@@ -156,7 +156,6 @@ function EventLibrary() {
     return config.layouter.drag;
   };
   
-  
   this.checkNodeEditorConfig = function (config) {
     if (config.adapter === undefined) {
       throw "An adapter has to be defined";

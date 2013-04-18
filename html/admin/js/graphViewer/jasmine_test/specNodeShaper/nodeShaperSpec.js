@@ -408,7 +408,6 @@
         expect(dragged).toEqual(1);
       });
       
-      
       it('should display each node exactly once if an event is added', function() {
         shaper.changeTo({actions: {
           click: function() {return 0;}
@@ -881,6 +880,50 @@
         expect($("svg .node text")[0].textContent).toEqual("correct");
       });
 
+    });
+
+    describe('testing for positioning', function() {
+      
+      var nodes, shaper;
+      
+      beforeEach(function() {
+        nodes = [{
+          _id: 1,
+          x: 10,
+          y: 10
+        }];
+        shaper = new NodeShaper(d3.select("svg"));
+        shaper.drawNodes(nodes);
+      });
+      
+      it('should be able to add a distortion to the node positions', function() {
+        expect(nodes[0].position).toEqual({
+          x: 10,
+          y: 10,
+          z: 1
+        });
+        
+        var distortion = function (node) {
+            return {
+              x: node.x + 42,
+              y: node.y -5,
+              z: 10
+            };
+          },
+          n = $("#1");
+        expect(n.attr("transform")).toEqual("translate(10,10)");
+        
+        shaper.changeTo({
+          distortion: distortion
+        });
+        expect(nodes[0].position).toEqual({
+          x: 52,
+          y: 5,
+          z: 10
+        });
+        expect(n.attr("transform")).toEqual("translate(52,5)");
+      });
+      
     });
 
   });
