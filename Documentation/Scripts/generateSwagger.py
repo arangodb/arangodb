@@ -8,7 +8,6 @@
 ### find files in
 ###   arangod/RestHandler/*.cpp
 ###   js/actions/system/api-*.js
-### TODO usage aendern!
 ### @usage generateSwagger.py < RestXXXX.cpp > restSwagger.json
 ###
 ### @file
