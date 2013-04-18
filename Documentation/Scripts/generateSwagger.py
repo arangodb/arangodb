@@ -94,36 +94,37 @@ class InitializationError(Exception): pass
 
 # idea from http://gnosis.cx/TPiP/chap4.txt
 class StateMachine:
-		def __init__(self):
-				self.handlers = []
-				self.startState = None
-				self.endStates = []
+    def __init__(self):
+        self.handlers = []
+        self.startState = None
+        self.endStates = []
 
-		def add_state(self, handler, end_state=0):
-				self.handlers.append(handler)
-				if end_state:
-						self.endStates.append(handler)
+    def add_state(self, handler, end_state=0):
+        self.handlers.append(handler)
+        if end_state:
+            self.endStates.append(handler)
 
-		def set_start(self, handler):
-				self.startState = handler
+    def set_start(self, handler):
+        self.startState = handler
 
-		def run(self, cargo=None):
-				if not self.startState:
-						raise InitializationError,\
-									"must call .set_start() before .run()"
-				if not self.endStates:
-						raise InitializationError, \
-									"at least one state must be an end_state"
-				handler = self.startState
-				while 1:
-						(newState, cargo) = handler(cargo)
-						if newState in self.endStates:
-								newState(cargo)
-								break
-						elif newState not in self.handlers:
-								raise RuntimeError, "Invalid target %s" % newState
-						else:
-								handler = newState
+    def run(self, cargo=None):
+        if not self.startState:
+            raise InitializationError,\
+                "must call .set_start() before .run()"
+        if not self.endStates:
+            raise InitializationError, \
+                "at least one state must be an end_state"
+        handler = self.startState
+        while 1:
+            (newState, cargo) = handler(cargo)
+            if newState in self.endStates:
+                newState(cargo)
+                break
+            elif newState not in self.handlers:
+                raise RuntimeError, "Invalid target %s" % newState
+            else:
+                handler = newState
+
 class Regexen:
     def __init__(self):
         self.brief = re.compile('.*@brief')
@@ -398,22 +399,22 @@ def read_through(cargo):
 
 
 if __name__ == "__main__":
-		automat = StateMachine()
-		automat.add_state(read_through)
-		automat.add_state(eof, end_state=1)
-		automat.add_state(comment)
-		automat.add_state(resturlparameters)
-		automat.add_state(resturlparam)
-		automat.add_state(restqueryparameters)
-		automat.add_state(restqueryparam)
-		automat.add_state(restbodyparam)
-		automat.add_state(restheaderparameters)
-		automat.add_state(restheaderparam)
-		automat.add_state(restdescription)
-		automat.add_state(restreturncodes)
-		automat.add_state(restreturncode)
-		automat.add_state(examples)
-		automat.add_state(example_arangosh_run)
-		automat.add_state(error, end_state=1)
-		automat.set_start(read_through)
-		automat.run((sys.stdin, ''))
+    automat = StateMachine()
+    automat.add_state(read_through)
+    automat.add_state(eof, end_state=1)
+    automat.add_state(comment)
+    automat.add_state(resturlparameters)
+    automat.add_state(resturlparam)
+    automat.add_state(restqueryparameters)
+    automat.add_state(restqueryparam)
+    automat.add_state(restbodyparam)
+    automat.add_state(restheaderparameters)
+    automat.add_state(restheaderparam)
+    automat.add_state(restdescription)
+    automat.add_state(restreturncodes)
+    automat.add_state(restreturncode)
+    automat.add_state(examples)
+    automat.add_state(example_arangosh_run)
+    automat.add_state(error, end_state=1)
+    automat.set_start(read_through)
+    automat.run((sys.stdin, ''))
