@@ -148,7 +148,8 @@ var collectionView = Backbone.View.extend({
         }
       }
       else {
-        arangoHelper.arangoNotification("No changes.");
+        //arangoHelper.arangoNotification("No changes.");
+        this.hideModal();
       }
     }
   },
