@@ -1177,6 +1177,11 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
   assert(trxCollection->_locked == true);
 
   primary = trxCollection->_collection->_collection;
+    
+  if (trxCollection->_nestingLevel < nestingLevel) {
+    // only process our own collections
+    return TRI_ERROR_NO_ERROR;
+  }
 
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction,

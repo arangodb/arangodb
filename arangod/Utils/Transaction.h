@@ -414,6 +414,7 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
           if (*barrier == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
@@ -422,6 +423,7 @@ namespace triagens {
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
             TRI_FreeBarrier(*barrier);
             *barrier = 0;
             return res;
@@ -484,6 +486,7 @@ namespace triagens {
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
           
           if (res != TRI_ERROR_NO_ERROR) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
             return res;
           }
 
@@ -530,6 +533,7 @@ namespace triagens {
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
             return res;
           }
 
@@ -542,7 +546,9 @@ namespace triagens {
           }
 
           *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
           if (*barrier == 0) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
