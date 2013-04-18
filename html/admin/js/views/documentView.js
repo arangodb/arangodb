@@ -10,16 +10,16 @@ var documentView = Backbone.View.extend({
   },
 
   events: {
-    "click #saveDocument"       : "saveDocument",
-    //"click #addDocumentLine"    : "addLine",
-    "click #deleteRow"          : "deleteLine",
-    "click #sourceView"         : "sourceView",
-    "click #editFirstRow"       : "editFirst",
-    "click #documentTableID tr" : "clicked",
-    "click #editSecondRow"      : "editSecond",
-    "keydown .sorting_1"        : "listenKey",
-    "keydown"                   : "listenGlobalKey",
-    "blur textarea"             : "checkFocus",
+    "click #saveDocument"               : "saveDocument",
+    //"click #addDocumentLine"          : "addLine",
+    "click #documentTableID #deleteRow" : "deleteLine",
+    "click #sourceView"                 : "sourceView",
+    "click #editFirstRow"               : "editFirst",
+    "click #documentTableID tr"         : "clicked",
+    "click #editSecondRow"              : "editSecond",
+    "keydown .sorting_1"                : "listenKey",
+    "keydown"                           : "listenGlobalKey",
+    "blur textarea"                     : "checkFocus",
   },
 
   checkFocus: function(e) {
@@ -27,7 +27,9 @@ var documentView = Backbone.View.extend({
     var self = this;
     var data = $(this.table).dataTable().fnGetData();
     $.each(data, function(key, val) {
-      if (val[0] === self.currentKey) {
+
+      var rowContent = $('.jediTextarea textarea').val();
+      if (val[0] === self.currentKey && rowContent === '') {
         $(self.table).dataTable().fnDeleteRow( key );
         $('#addRow').removeClass('disabledBtn');
       }
@@ -107,6 +109,7 @@ var documentView = Backbone.View.extend({
       var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Document saved');
+        $('#addRow').removeClass('disabledBtn');
         $('td').removeClass('validateError');
       }
       else if (result === false) {
@@ -119,6 +122,7 @@ var documentView = Backbone.View.extend({
       var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Edge saved');
+        $('#addRow').removeClass('disabledBtn');
         $('td').removeClass('validateError');
       }
       else if (result === false) {
@@ -281,7 +285,7 @@ var documentView = Backbone.View.extend({
   },
   makeEditable: function () {
     var documentEditTable = $(this.table).dataTable();
-    var self=this;
+    var self = this;
     var i = 0;
     $('.writeable', documentEditTable.fnGetNodes() ).each(function () {
       var aPos = documentEditTable.fnGetPosition(this);
@@ -351,8 +355,24 @@ var documentView = Backbone.View.extend({
       cancel: 'Cancel',
       submit: 'Save',
       onblur: 'cancel',
-      onsubmit: self.validate
+      onsubmit: self.validate,
+      onreset: self.resetFunction
     });
+  },
+  resetFunction: function (settings, original) {
+    try {
+      var currentKey2 = window.documentView.currentKey;
+      var data = $('#documentTableID').dataTable().fnGetData();
+      $.each(data, function(key, val) {
+        if (val[0] == currentKey2) {
+          $('#documentTableID').dataTable().fnDeleteRow(key);
+          $('#addRow').removeClass('disabledBtn');
+        }
+      });
+    }
+    catch (e) {
+    }
+
   },
   validate: function (settings, td) {
     var returnval = true;
