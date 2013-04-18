@@ -74,6 +74,20 @@ function EdgeShaper(parent, flags, idfunc) {
      addUpdate = noop;
     },
     
+    
+    getCorner = function(s, t) {
+      return Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
+    },
+    
+    getDistance = function(s, t) {
+      return Math.sqrt(
+        (t.y - s.y)
+        * (t.y - s.y)
+        + (t.x - s.x)
+        * (t.x - s.x)
+      );
+    },
+    
     addEvents = function (line, g) {
       _.each(events, function (func, type) {
         g.on(type, func);
@@ -90,11 +104,26 @@ function EdgeShaper(parent, flags, idfunc) {
       }
     },
     
+    addPosition = function (line, g) {
+      g.attr("transform", function(d) {
+        return "translate("
+          + d.source.x + ", "
+          + d.source.y + ")"
+          + "rotate("
+          + getCorner(d.source, d.target)
+          + ")";
+      });
+      line.attr("x2", function(d) {
+        return getDistance(d.source, d.target);
+      });
+    },
+    
     addQue = function (line, g) {
       addShape(line, g);
       addLabel(line, g);
       addColor(line, g);
       addEvents(line, g);
+      addPosition(line, g);
     },
     
     shapeEdges = function (newEdges) {
@@ -118,36 +147,11 @@ function EdgeShaper(parent, flags, idfunc) {
       addQue(line, g);     
     },
     
-    getCorner = function(s, t) {
-      return Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
-    },
-    
-    getDistance = function(s, t) {
-      return Math.sqrt(
-        (t.y - s.y)
-        * (t.y - s.y)
-        + (t.x - s.x)
-        * (t.x - s.x)
-      );
-    },
-    
     updateEdges = function () {
-      
-      var edges = self.parent.selectAll(".link")
-        // Set source x coordinate for edge.
-        .attr("transform", function(d) {
-          return "translate("
-            + d.source.x + ", "
-            + d.source.y + ")"
-            + "rotate("
-            + getCorner(d.source, d.target)
-            + ")";
-        });
-      edges.select("line")
-          .attr("x2", function(d) {
-            return getDistance(d.source, d.target);
-          });
-      addUpdate(edges);
+      var g = self.parent.selectAll(".link"),
+        line = g.select("line");
+      addPosition(line, g);
+      addUpdate(g);
     },
     
     parseShapeFlag = function (shape) {
