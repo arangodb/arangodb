@@ -1,6 +1,11 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
 --------------------------
 
+* added "attributes.count" to output of `collection.figures()`
+  this also affects the REST API /_api/collection/<name>/figures
+
+* added IndexedPropertyGetter for ShapedJson objects
+
 * added API for user-defined AQL functions
 
 * issue #475: A better error message for deleting a non-existent graph
