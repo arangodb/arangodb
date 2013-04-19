@@ -422,7 +422,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
  
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
-  
+ 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -657,7 +657,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
-  
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
@@ -817,6 +817,20 @@ static size_t NumShapes (TRI_shaper_t* shaper) {
 
   s = (voc_shaper_t*) shaper;
   n = (size_t) TRI_GetLengthAssociativeSynced(&s->_shapeIds);
+
+  return n;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of attributes
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t NumAttributes (TRI_shaper_t* shaper) {
+  voc_shaper_t* s;
+  size_t n;
+
+  s = (voc_shaper_t*) shaper;
+  n = (size_t) TRI_GetLengthAssociativeSynced(&s->_attributeNames);
 
   return n;
 }
@@ -1025,6 +1039,7 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
   shaper->base.findShape = FindShape;
   shaper->base.lookupShapeId = LookupShapeId;
   shaper->base.numShapes = NumShapes;
+  shaper->base.numAttributes = NumAttributes;
 
   TRI_InitAssociativeSynced(&shaper->_attributeNames,
                             TRI_UNKNOWN_MEM_ZONE,

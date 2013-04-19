@@ -4552,6 +4552,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> shapes = v8::Object::New();
   result->Set(v8::String::New("shapes"), shapes);
   shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
+  
+  // attributes info
+  v8::Handle<v8::Object> attributes = v8::Object::New();
+  result->Set(v8::String::New("attributes"), attributes);
+  attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -6246,11 +6251,11 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects an attribute from the shaped json
+/// @brief selects a named attribute from the shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
-                                               const v8::AccessorInfo& info) {
+static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
+                                                    const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
   // sanity check
@@ -6278,7 +6283,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (TRI_IsSystemCollectionName(key.c_str())) {
+  if (key[0] == '_') {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -6435,6 +6440,21 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an indexed attribute from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t index,
+                                                      const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  char* str = TRI_StringUInt32(index);
+  v8::Local<v8::String> strVal = v8::String::New(str);
+  TRI_Free(TRI_CORE_MEM_ZONE, str);
+
+  return scope.Close(MapGetNamedShapedJson(strVal, info));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6806,12 +6826,22 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
-  rt->SetNamedPropertyHandler(MapGetShapedJson,         // NamedPropertyGetter,
+  // accessor for named properties (e.g. doc.abcdef)
+  rt->SetNamedPropertyHandler(MapGetNamedShapedJson,    // NamedPropertyGetter,
                               0,                        // NamedPropertySetter setter = 0
                               PropertyQueryShapedJson,  // NamedPropertyQuery,
                               0,                        // NamedPropertyDeleter deleter = 0,
                               KeysOfShapedJson          // NamedPropertyEnumerator,
                                                         // Handle<Value> data = Handle<Value>());
+                              );
+  
+  // accessor for indexed properties (e.g. doc[1])
+  rt->SetIndexedPropertyHandler(MapGetIndexedShapedJson,  // IndexedPropertyGetter,
+                                0,                        // IndexedPropertySetter setter = 0
+                                0,                        // IndexedPropertyQuery,
+                                0,                        // IndexedPropertyDeleter deleter = 0,
+                                0                         // IndexedPropertyEnumerator,
+                                                          // Handle<Value> data = Handle<Value>());
                               );
 
   v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
