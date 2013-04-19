@@ -40,7 +40,12 @@ var newCollectionView = Backbone.View.extend({
   hidden: function () {
   },
 
-  saveNewCollection: function() {
+  saveNewCollection: function(a) {
+    //TODO: other solution
+    if (window.location.hash !== '#new') {
+      return;
+    }
+
     var self = this;
 
     var collName = $('#new-collection-name').val();
