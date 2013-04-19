@@ -32,6 +32,10 @@ input {
   box-shadow: 0;
 }
 
+#transparentHeader h4 {
+  margin-top: 7px;
+}
+
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
 	background: #788f3d;
 }
