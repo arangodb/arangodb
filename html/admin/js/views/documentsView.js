@@ -138,7 +138,7 @@ var documentsView = Backbone.View.extend({
     var hash = window.location.hash.split("/");
     var page = hash[3];
     var deleted = false;
-    this.docid = $(self.idelement).text();
+    this.docid = $(self.idelement).next().text();
 
     if (this.type === 'document') {
       var result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
@@ -184,12 +184,13 @@ var documentsView = Backbone.View.extend({
     }
 
     var checkData = $(this.table).dataTable().fnGetData(self);
-    if (checkData && checkData[0] === '') {
+    if (checkData && checkData[1] === '') {
       this.addDocument();
       return;
     }
-    var docId = self.firstChild.textContent;
-    window.location.hash = "#collection/" + this.colid + "/" + docId;
+    var docId = self.firstChild;
+    var NeXt = $(docId).next().text();
+    window.location.hash = "#collection/" + this.colid + "/" + NeXt;
   },
 
   initTable: function (colid, pageid) {
@@ -207,9 +208,9 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
+        { "sClass":"","bSortable": false, "sWidth":"500px"},
         { "sClass":"", "bSortable": false, "sWidth":"30px"},
-        { "sClass":"","bSortable": false},
-        { "bSortable": false, "sClass": ""}
+        { "bSortable": false, "sClass": "", "sWidth":"20px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
@@ -219,23 +220,36 @@ var documentsView = Backbone.View.extend({
   },
   drawTable: function() {
     var self = this;
-      
+
     $(self.table).dataTable().fnAddData([
-      '',
       '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+      '',
       '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
     ]);
-    
+
     $.each(window.arangoDocumentsStore.models, function(key, value) {
+
+      var tempObj = {};
+      $.each(value.attributes.content, function(k, v) {
+        if (k === '_id' || k === '_rev' || k === '_key') {
+        }
+        else {
+          tempObj[k] = v;
+        }
+      });
+
       $(self.table).dataTable().fnAddData([
+
+        '<pre class="prettify" title="'
+        + self.escaped(JSON.stringify(tempObj))
+        + '">'
+        + self.cutByResolution(JSON.stringify(tempObj))
+        + '</pre>',
+
         '<div class="key">'
         + value.attributes.key
         + '</div>',
-        '<pre class="prettify" title="'
-        + self.escaped(JSON.stringify(value.attributes.content))
-        + '">'
-        + self.cutByResolution(JSON.stringify(value.attributes.content))
-        + '</pre>',
+
         '<button class="enabled" id="deleteDoc">'
         + '<img src="img/icon_delete.png" width="16" height="16"></button>'
       ]);
