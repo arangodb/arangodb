@@ -1,131 +1,72 @@
 var dashboardView = Backbone.View.extend({
   el: '#content',
+  updateInterval: 3000,
 
-  collectionStats: {
-    totalCollections: 0,
-    loadedCollections: 0,
-    unloadedCollections: 0,
-    systemCollections: 0,
-    deletedCollections: 0,
-    newbornCollections: 0
-  },
+  initialize: function () {
+    //notes
+    //this.collection.fetch();
+    //this.options.description.fetch();
+    var self = this;
 
-  init: function () {
+    this.collection.fetch({
+      success: function() {
+        window.setInterval(function() {
+          self.updateSystems();
+          self.collection.fetch();
+        }, self.updateInterval);
+      }
+    });
+
+
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   render: function() {
-    $.gritter.removeAll();
+    var self = this;
     $(this.el).html(this.template.text);
-    this.updateCollectionsStats();
-    this.renderCollections();
+
+    $.each(this.options.description.models[0].attributes.groups, function(key, val) {
+      $('#content').append(
+        '<div class="statGroups" id="'+this.group+'">' +
+          '<h4>'+this.name+'</h4>' +
+        '</div>');
+    });
+    $.each(this.options.description.models[0].attributes.figures, function(key, val) {
+      if (this.group === 'system') {
+        self.renderSystem(this.identifier, this.name, this.description, this.type, this.units);
+      }
+      else if (this.group === 'client') {
+        self.renderClient(this.identifier, this.name, this.description, this.type, this.units);
+      }
+    });
+
     return this;
   },
-  renderCollections: function () {
-    var self = this;
-    nv.addGraph(function() {
-      var chart = nv.models.discreteBarChart()
-      .x(function(d) { return d.label })
-      .y(function(d) { return d.value })
-      .staggerLabels(false)
-      .tooltips(true)
-      .showValues(false);
-
-      d3.select("#dashboardCollectionsGraph svg")
-      .datum(self.formatCollectionsStats())
-      .transition().duration(1200)
-      .call(chart)
-
-      return chart;
-    });
-
-    $('#dashboardCollectionsText').html('');
-    $('#dashboardCollectionsText').append(''
-      +'<table>'
-        +'<tr>'
-          +'<th>Total: </th>'
-          +'<th>'+this.collectionStats.totalCollections+'</th>'
-        +'</tr>'
-        +'<tr>'
-          +'<th>Loaded: </th>'
-          +'<th>'+this.collectionStats.loadedCollections+'</th>'
-        +'</tr>'
-        +'<tr>'
-          +'<th>Unloaded: </th>'
-          +'<th>'+this.collectionStats.unloadedCollections+'</th>'
-        +'</tr>'
-        +'<tr>'
-          +'<th>System: </th>'
-          +'<th>'+this.collectionStats.systemCollections+'</th>'
-        +'</tr>'
-      +'</table>'
+  renderClient: function (identifier, name, desc, type, units) {
+    $('#client').append(
+      '<div class="statClient" id="'+identifier+'">' +
+        '<h5>' + name + '</h5>' +
+      '</div>'
     );
+  },
+  renderSystem: function (identifier, name, desc, type, units) {
+    $('#system').append(
+      '<div class="statSystem" id="'+identifier+'">' +
+        '<table><tr>' +
+          '<th>'+ name +'</th>' +
+          '<th class="updateValue">'+ 'counting...' +'</th>' +
+        '</tr></table>' +
+      '</div>'
+    );
+  },
+  updateClient: function (identifier, count, counts) {
 
   },
-  updateCollectionsStats: function () {
-    var self = this;
-    this.collectionStats.loadedCollections = 0;
-    this.collectionStats.unloadedCollections = 0;
-    this.collectionStats.deletedCollections = 0;
-    this.collectionStats.newbornCollections = 0;
-    this.collectionStats.totalCollections = this.collection.length;
-
-    this.collection.each(function (arango_collection) {
-      if (arango_collection.get('status') === 'new born collection') {
-        self.collectionStats.newbornCollections++;
-      }
-      else if (arango_collection.get('status') === 'loaded') {
-        self.collectionStats.loadedCollections++;
-      }
-      else if (arango_collection.get('status') === 'unloaded') {
-        self.collectionStats.unloadedCollections++;
-      }
-      else if (arango_collection.get('status') === 'deleted') {
-        self.collectionStats.deletedCollections++;
-      }
-      if (arango_collection.get('name').substr(0,1) === "_") {
-        self.collectionStats.systemCollections++;
-      }
+  updateSystems: function () {
+    $.each(this.collection.models[0].attributes.system, function(key, val) {
+      $('#'+key+' .updateValue').html(val);
     });
-  },
-  formatCollectionsStats: function () {
-    return [{
-      key: "Collection Status",
-      values: [
-        {
-          "label" : "total",
-          "value" : this.collectionStats.totalCollections
-        },
-        {
-          "label" : "loaded",
-          "value" : this.collectionStats.loadedCollections
-        },
-        {
-          "label" : "unloaded",
-          "value" : this.collectionStats.unloadedCollections
-        },
-        {
-          "label" : "system",
-          "value" : this.collectionStats.systemCollections
-        },
-        {
-          "label" : "new born",
-          "value" : this.collectionStats.newbornCollections
-        },
-        {
-          "label" : "deleted",
-          "value" : this.collectionStats.deletedCollections
-        }
-      ]
-    }]
-  },
-
-  updateSystem: function () {
-
-  },
-
-  updateClient: function () {
 
   }
 

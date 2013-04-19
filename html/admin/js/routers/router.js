@@ -36,10 +36,6 @@ $(document).ready(function() {
         model: arangoCollection
       });
 
-      window.dashboardView = new window.dashboardView({
-        collection: window.arangoCollectionsStore
-      });
-
       window.documentsView = new window.documentsView({
         collection: window.arangoDocuments,
       });
@@ -150,6 +146,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('logs-menu');
     },
     dashboard: function() {
+      /*
       var self = this;
       window.arangoCollectionsStore.fetch({
         success: function () {
@@ -157,6 +154,25 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
+      */
+      if (this.statisticsDescription === undefined) {
+        this.statisticsDescription = new window.StatisticsDescription;
+        this.statisticsDescription.fetch({
+          async:false
+        });
+      }
+      if (this.statistics === undefined) {
+        this.statisticsCollection = new window.StatisticsCollection;
+        //this.statisticsCollection.fetch();
+      }
+      if (this.dashboardView === undefined) {
+        this.dashboardView = new dashboardView({
+          collection: this.statisticsCollection,
+          description: this.statisticsDescription
+        });
+      }
+
+      this.dashboardView.render();
     },
     
     graph: function() {
