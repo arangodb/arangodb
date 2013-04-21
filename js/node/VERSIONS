@@ -1,5 +1,9 @@
-assert: 0.11.0
-buffer: 0.11.0
-punycode.js: 0.11.0
-querystring.js: 0.11.0
-url.js: 0.11.0
+assert:         0.11.0
+buffer:         0.11.0          	(SlowBuffer)
+child_process:  not supported
+path.js:        0.11.0          	(process)
+punycode.js:    0.11.0
+querystring.js: 0.11.0          	(urlDecode)
+url.js:         0.11.0
+util.js:        compatibility
+vm.js:          not supported

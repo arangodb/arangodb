@@ -1,11 +1,8 @@
 /*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true, sloppy: true */
-/*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
-  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_FILESIZE, 
-  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
-  SYS_READ, SYS_SAVE, PATH_SEPARATOR, HOME */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief node helper module "utils"
+/// @brief node helper module "util"
 ///
 /// @file
 ///
@@ -55,7 +52,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    Module "uitls"
+// --SECTION--                                                     Module "util"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -63,15 +60,18 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Node
-/// @{
+/// @brief deprected methods
 ////////////////////////////////////////////////////////////////////////////////
+
+exports.deprecate = function (fn, msg) {
+  return fn;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inherits the prototype methods from one constructor into another.
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.inherits = function(ctor, superCtor) {
+exports.inherits = function (ctor, superCtor) {
   ctor.super_ = superCtor;
   ctor.prototype = Object.create(superCtor.prototype, {
     constructor: {
