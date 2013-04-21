@@ -4277,10 +4277,18 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
   // extract constraint
   constraint = false;
-  bv = TRI_LookupArrayJson(definition, "constraint");
-
+  // first try "unique" attribute
+  bv = TRI_LookupArrayJson(definition, "unique");
   if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
     constraint = bv->_value._boolean;
+  }
+  else {
+    // then "constraint" 
+    bv = TRI_LookupArrayJson(definition, "constraint");
+
+    if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+      constraint = bv->_value._boolean;
+    }
   }
 
   // extract ignore null
