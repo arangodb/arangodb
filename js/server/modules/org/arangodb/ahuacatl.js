@@ -2523,6 +2523,11 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
+  if (limit === null || limit === undefined) {
+    // use default value
+    limit = 100;
+  }
+
   var result = COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;

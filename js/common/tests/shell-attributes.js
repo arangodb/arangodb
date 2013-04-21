@@ -123,6 +123,30 @@ function AttributesSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief "numeric" attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumericAttributes : function () {
+      var doc = { "12345" : 1, "6669" : "foo", "7734" : true };
+      
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+
+      assertEqual(1, d2["12345"]);
+      assertEqual("foo", d2["6669"]);
+      assertEqual(true, d2["7734"]);
+      
+      assertEqual(undefined, d2["999"]);
+
+      d2 = c.toArray()[0];
+      assertEqual(1, d2["12345"]);
+      assertEqual("foo", d2["6669"]);
+      assertEqual(true, d2["7734"]);
+      
+      assertEqual(undefined, d2["999"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reserved attribute names
 ////////////////////////////////////////////////////////////////////////////////
 
