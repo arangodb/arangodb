@@ -1,6 +1,10 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
 --------------------------
 
+* made "limit" an optional parameter in AQL function NEAR().
+  limit can now be either omitted completely, or set to 0. If so, an internal
+  default value (currently 100) will be applied for the limit.
+
 * issue #481
 
 * added "attributes.count" to output of `collection.figures()`
