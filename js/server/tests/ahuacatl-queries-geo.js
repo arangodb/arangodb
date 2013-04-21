@@ -166,12 +166,30 @@ function ahuacatlGeoTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test near3 function
+/// @brief test near function
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear3 : function () {
       var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 }, { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
       var actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      assertEqual(expected, actual);
+     
+      expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ]; 
+      actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near function
+////////////////////////////////////////////////////////////////////////////////
+
+    testNear4 : function () {
+      var expected = [ {"latitude" : -40, "longitude" : 40 }, { "latitude" : -40, "longitude" : 39 }, { "latitude" : -40, "longitude" : 38 } ];
+      var actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -70, 70, null) SORT x.latitude, x.longitude DESC LIMIT 3 RETURN x");
+      assertEqual(expected, actual);
+
+      expected = [ { "latitude" : -40, "longitude" : 40 }, { "latitude" : -40, "longitude" : 39 } ];
+      actual = getQueryResults("FOR x IN NEAR(" + locations.name() + ", -70, 70, 2) SORT x.latitude, x.longitude DESC LIMIT 3 RETURN x");
       assertEqual(expected, actual);
     },
 
@@ -239,6 +257,16 @@ function ahuacatlGeoTestSuite () {
     testNonIndexed : function () {
       assertEqual(ERRORS.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN NEAR(" + locationsNon.name() + ", 0, 0, 10)"); } ));
       assertEqual(ERRORS.ERROR_QUERY_GEO_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN WITHIN(" + locationsNon.name() + ", 0, 0, 10)"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid NEAR arguments count
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidNearArgument : function () {
+      assertEqual(ERRORS.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, \"foo\")"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, true)"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, 10, true)"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
