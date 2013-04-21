@@ -529,8 +529,8 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.app-path", &_appPath, "one directory for applications")
     ("javascript.dev-app-path", &_devAppPath, "one directory for dev aaplications")
-    ("javascript.modules-path", &_modulesPath, "one or more directories separated by (semi-) colons")
-    ("javascript.package-path", &_packagePath, "one or more directories separated by (semi-) colons")
+    ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
+    ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
