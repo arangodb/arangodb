@@ -272,9 +272,12 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx,
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
+  
+  // "constraint" and "unique" are identical for geo indexes. 
+  // we return it for downwards-compatibility
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
-  if (geo->_constraint) {
+  if (idx->_unique) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
   }
 
@@ -329,9 +332,11 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
+  // "constraint" and "unique" are identical for geo indexes. 
+  // we return it for downwards-compatibility
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
-  if (geo->_constraint) {
+  if (idx->_unique) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
   }
 
@@ -380,8 +385,8 @@ static int InsertGeoIndex (TRI_index_t* idx,
   }
 
   if (! ok) {
-    if (geo->_constraint) {
-      if (geo->base._ignoreNull && missing) {
+    if (idx->_unique) {
+      if (idx->_ignoreNull && missing) {
         return TRI_ERROR_NO_ERROR;
       }
       else {
@@ -409,7 +414,7 @@ static int InsertGeoIndex (TRI_index_t* idx,
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
   else if (res == -3) {
-    if (geo->_constraint) {
+    if (idx->_unique) {
       LOG_DEBUG("illegal geo-coordinates, ignoring entry");
       return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
     }
@@ -488,7 +493,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
                                   bool geoJson,
-                                  bool constraint,
+                                  bool unique,
                                   bool ignoreNull) {
   TRI_geo_index_t* geo;
   TRI_index_t* idx;
@@ -500,7 +505,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->typeName = TypeNameGeo1Index;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO1_INDEX, primary, false, true);
+  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO1_INDEX, primary, unique, true);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -520,7 +525,6 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
     return NULL;
   }
 
-  geo->_constraint = constraint;
   geo->_variant    = geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
   geo->_location   = location;
   geo->_latitude   = 0;
@@ -543,7 +547,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
                                   TRI_shape_pid_t longitude,
-                                  bool constraint,
+                                  bool unique,
                                   bool ignoreNull) {
   TRI_geo_index_t* geo;
   TRI_index_t* idx;
@@ -556,7 +560,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->typeName = TypeNameGeo2Index;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO2_INDEX, primary, false, true);
+  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO2_INDEX, primary, unique, true);
 
   idx->_ignoreNull = ignoreNull;
   
@@ -578,7 +582,6 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
     return NULL;
   }
 
-  geo->_constraint = constraint;
   geo->_variant    = INDEX_GEO_INDIVIDUAL_LAT_LON;
   geo->_location   = 0;
   geo->_latitude   = latitude;

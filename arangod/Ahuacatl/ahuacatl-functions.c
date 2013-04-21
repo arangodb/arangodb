@@ -661,7 +661,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("KEEP", "KEEP", true, false, "a,sl|+", NULL);
 
   // geo functions
-  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);
+  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n|nz,s", NULL);
   REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s", NULL);
 
   // fulltext functions
