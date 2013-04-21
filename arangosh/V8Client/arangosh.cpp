@@ -117,7 +117,7 @@ static string StartupModules = "";
 /// @brief path for Node modules files
 ////////////////////////////////////////////////////////////////////////////////
 
-static string StartupNodeModules = "";
+static string StartupPackages = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path for JavaScript bootstrap files
@@ -432,9 +432,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   javascript
     ("javascript.execute", &ExecuteScripts, "execute Javascript code from file")
     ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
-    ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
-    ("javascript.package-path", &StartupNodeModules, "one or more directories separated by cola")
-    ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
+    ("javascript.modules-path", &StartupModules, "one or more directories separated by semi-colons")
+    ("javascript.package-path", &StartupPackages, "one or more directories separated by semi-colons")
+    ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
   ;
@@ -1454,7 +1454,7 @@ int main (int argc, char* argv[]) {
   TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
   TRI_InitV8Buffer(context);
-  TRI_InitV8Utils(context, StartupModules, StartupNodeModules, BaseClient.tempPath());
+  TRI_InitV8Utils(context, StartupModules, StartupPackages, BaseClient.tempPath());
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)
