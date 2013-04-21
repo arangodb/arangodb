@@ -841,6 +841,7 @@
               }
               else {
                 f = f.substr(8, f.length - 10).trim();
+                context.output += '[Function "' + f + '"]';
               }
             }
             else {

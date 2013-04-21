@@ -1627,7 +1627,7 @@ void TRI_InitV8Buffer (v8::Handle<v8::Context> context) {
 
   // create the exports
   v8::Handle<v8::Object> exports = v8::Object::New();
-  TRI_AddGlobalVariableVocbase(context, "EXPORTS_BUFFER", exports);
+  TRI_AddGlobalVariableVocbase(context, "EXPORTS_SLOW_BUFFER", exports);
 
   // .............................................................................
   // generate the general SlowBuffer template
