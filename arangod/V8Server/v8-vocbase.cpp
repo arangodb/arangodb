@@ -1482,7 +1482,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 /// @brief ensures that a geo index or constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool constraint) {
+static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool unique) {
   v8::HandleScope scope;
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
@@ -1504,7 +1504,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
   bool created;
-  int off = constraint ? 1 : 0;
+  int off = unique ? 1 : 0;
   bool ignoreNull = false;
 
   // .............................................................................
@@ -1519,11 +1519,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[1]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1538,11 +1538,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1563,11 +1563,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION_PARAMETER(scope, "<longitude> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1577,7 +1577,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   else {
     ReleaseCollection(collection);
 
-    if (constraint) {
+    if (unique) {
       TRI_V8_EXCEPTION_USAGE(
         scope, 
         "ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) "  \
