@@ -50,6 +50,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -1452,6 +1453,7 @@ int main (int argc, char* argv[]) {
   // add function SYS_OUTPUT to use pager
   TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
+  TRI_InitV8Buffer(context);
   TRI_InitV8Utils(context, StartupModules, StartupNodeModules, BaseClient.tempPath());
   TRI_InitV8Shell(context);
 

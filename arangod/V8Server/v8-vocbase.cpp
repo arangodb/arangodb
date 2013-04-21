@@ -6881,21 +6881,21 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   ft = v8::FunctionTemplate::New();
   ft->SetClassName(TRI_V8_SYMBOL("ArangoCursor"));
 
-  pt = ft->PrototypeTemplate();
-  TRI_AddProtoMethodVocbase(pt, "count", JS_CountGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "dispose", JS_DisposeGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "getRows", JS_GetRowsGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "hasCount", JS_HasCountGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "hasNext", JS_HasNextGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "id", JS_IdGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "next", JS_NextGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "persist", JS_PersistGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "toArray", JS_ToArrayGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "unuse", JS_UnuseGeneralCursor);
-
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
+
+  TRI_AddMethodVocbase(rt, "count", JS_CountGeneralCursor);
+  TRI_AddMethodVocbase(rt, "dispose", JS_DisposeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getRows", JS_GetRowsGeneralCursor);
+  TRI_AddMethodVocbase(rt, "hasCount", JS_HasCountGeneralCursor);
+  TRI_AddMethodVocbase(rt, "hasNext", JS_HasNextGeneralCursor);
+  TRI_AddMethodVocbase(rt, "id", JS_IdGeneralCursor);
+  TRI_AddMethodVocbase(rt, "next", JS_NextGeneralCursor);
+  TRI_AddMethodVocbase(rt, "persist", JS_PersistGeneralCursor);
+  TRI_AddMethodVocbase(rt, "toArray", JS_ToArrayGeneralCursor);
+  TRI_AddMethodVocbase(rt, "unuse", JS_UnuseGeneralCursor);
+
   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCursor", ft->GetFunction());
 

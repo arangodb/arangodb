@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -731,6 +732,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_InitV8Actions(context->_context, this);
   }
 
+  TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
   TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _tempPath);
   TRI_InitV8Shell(context->_context);
