@@ -1,6 +1,8 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
 --------------------------
 
+* issue #481
+
 * added "attributes.count" to output of `collection.figures()`
   this also affects the REST API /_api/collection/<name>/figures
 

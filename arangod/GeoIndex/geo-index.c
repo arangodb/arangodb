@@ -272,7 +272,11 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx,
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
+  
+  // "constraint" and "unique" are identical for geo indexes. 
+  // we return "unique", too, because all other index types do that and doing it here improves consistency and ease of use
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
 
   if (geo->_constraint) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
@@ -329,7 +333,10 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
+  // "constraint" and "unique" are identical for geo indexes. 
+  // we return "unique", too, because all other index types do that and doing it here improves consistency and ease of use
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
 
   if (geo->_constraint) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
