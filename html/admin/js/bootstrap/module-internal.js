@@ -158,13 +158,13 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief plattform
+/// @brief platform
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.plattform = "unknown";
+  exports.platform = "unknown";
 
   if (typeof SYS_PLATFORM !== "undefined") {
-    exports.plattform = SYS_PLATFORM;
+    exports.platform = SYS_PLATFORM;
     delete SYS_PLATFORM;
   }
 
@@ -784,6 +784,8 @@
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
+  var funcRE = /function ([^\(]*)?\(\) { \[native code\] }/;
+
   exports.printRecursive = printRecursive = function (value, context) {
     'use strict';
 
@@ -827,20 +829,26 @@
               var a = s.split("\n");
               var f = a[0];
 
-              if (f === "function () { [native code] }") {
-                f = "native code";
+              var m = funcRE.exec(f);
+
+              if (m !== null) {
+                if (m[1] === undefined) {
+                  context.output += '[Function {native code}]';
+                }
+                else {
+                  context.output += '[Function "' + m[1] + '" {native code}]';
+                }
               }
               else {
                 f = f.substr(8, f.length - 10).trim();
               }
-
-              context.output += '[Function "' + f + '"]';
             }
             else {
               context.output += s;
             }
           }
           catch (e1) {
+            exports.stdOutput(String(e1));
             context.output += "[Function]";
           }
         }
