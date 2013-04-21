@@ -5852,7 +5852,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
   result->Set(j++, v8::String::New("_drop()"));
-  result->Set(j++, v8::String::New("_executeTransaction()"));
+  result->Set(j++, v8::String::New("_query()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
