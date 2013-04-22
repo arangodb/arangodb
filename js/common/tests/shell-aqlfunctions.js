@@ -60,6 +60,7 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      aqlfunctions.unregisterGroup("UnitTests:");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +68,43 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      aqlfunctions.unregisterGroup("UnitTests:");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toArray 
+////////////////////////////////////////////////////////////////////////////////
+
+    testToArray1 : function () {
+      aqlfunctions.register("UnitTests:tryme:foo", function (what) { return what * 2; }, true);
+      aqlfunctions.register("UnitTests:tryme:bar", function (what) { return what * 2; }, true);
+
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests:").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests:tryme").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests:tryme:").sort().map(function (f) { return f.name; }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toArray 
+////////////////////////////////////////////////////////////////////////////////
+
+    testToArray2 : function () {
+      aqlfunctions.register("UnitTests:tryme:foo", function (what) { return what * 2; }, true);
+      aqlfunctions.register("UnitTests:tryme:bar", function (what) { return what * 2; }, true);
+      aqlfunctions.register("UnitTests58:tryme:bar", function (what) { return what * 2; }, true);
+      aqlfunctions.register("UnitTests58:whyme:bar", function (what) { return what * 2; }, true);
+
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests:").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests:tryme:bar", "UnitTests:tryme:foo" ], aqlfunctions.toArray("UnitTests:tryme").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests58:tryme:bar", "UnitTests58:whyme:bar" ], aqlfunctions.toArray("UnitTests58").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests58:tryme:bar", "UnitTests58:whyme:bar" ], aqlfunctions.toArray("UnitTests58:").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests58:tryme:bar" ], aqlfunctions.toArray("UnitTests58:tryme").sort().map(function (f) { return f.name; }));
+      assertEqual([ "UnitTests58:tryme:bar" ], aqlfunctions.toArray("UnitTests58:tryme:").sort().map(function (f) { return f.name; }));
+      
+      aqlfunctions.unregister("UnitTests58:tryme:bar", function (what) { return what * 2; }, true);
+      aqlfunctions.unregister("UnitTests58:whyme:bar", function (what) { return what * 2; }, true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

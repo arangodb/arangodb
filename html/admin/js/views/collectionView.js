@@ -78,7 +78,7 @@ var collectionView = Backbone.View.extend({
   },
   saveModifiedCollection: function() {
     var newname = $('#change-collection-name').val();
-    if (newname == '') {
+    if (newname === '') {
       arangoHelper.arangoError('No collection name entered!');
       return 0;
     }
@@ -88,7 +88,7 @@ var collectionView = Backbone.View.extend({
 
     if (status === 'loaded') {
       if (this.myCollection.name !== newname) {
-        window.arangoCollectionsStore.renameCollection(collid, newname);
+        var result = window.arangoCollectionsStore.renameCollection(collid, newname);
       }
 
       var wfs = $('#change-collection-sync').val();
@@ -100,15 +100,57 @@ var collectionView = Backbone.View.extend({
         arangoHelper.arangoError('Please enter a valid number');
         return 0;
       }
-      window.arangoCollectionsStore.changeCollection(collid, wfs, journalSize);
-      this.hideModal();
+      var changeResult = window.arangoCollectionsStore.changeCollection(collid, wfs, journalSize);
+
+      if (result === true) {
+        arangoHelper.arangoNotification("Collection renamed");
+      }
+
+      if (result !== true) {
+        if (result === undefined) {
+        }
+        else {
+          arangoHelper.arangoError("Collection error: " + result);
+          return 0;
+        }
+      }
+
+      if (changeResult !== true) {
+        arangoHelper.arangoNotification("Collection error: " + changeResult);
+        return 0;
+      }
+
+      if (changeResult === true) {
+        arangoHelper.arangoNotification("Saved collection properties");
+          window.arangoCollectionsStore.fetch({
+            success: function () {
+              window.collectionsView.render();
+            }
+          });
+          this.hideModal();
+      }
     }
     else if (status === 'unloaded') {
       if (this.myCollection.name !== newname) {
-        window.arangoCollectionsStore.renameCollection(collid, newname);
+        var result2 = window.arangoCollectionsStore.renameCollection(collid, newname);
+        if (result2 === true) {
+
+          window.arangoCollectionsStore.fetch({
+            success: function () {
+              window.collectionsView.render();
+            }
+          });
+          this.hideModal();
+          arangoHelper.arangoNotification("Collection renamed");
+        }
+        else {
+          arangoHelper.arangoError("Collection error: " + result2);
+        }
       }
-      // we're closing the dialogue after renaming is done & in case nothing was changed
-      this.hideModal();
+      else {
+        //arangoHelper.arangoNotification("No changes.");
+        this.hideModal();
+      }
     }
   },
   getCollectionId: function () {

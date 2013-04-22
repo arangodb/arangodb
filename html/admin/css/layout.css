@@ -6,6 +6,10 @@ input {
   border-radius: 2px 2px 2px 2px !important;
 }
 
+.arango-logo img {
+  margin-left: 22px;
+}
+
 .arangoBtn {
   background: none repeat scroll 0 0 #FFFFFF;
   color: #333232;
@@ -30,6 +34,10 @@ input {
 .thumbnail, .navbar-inner, .btn, .btn-primary {
   border-radius:0;
   box-shadow: 0;
+}
+
+#transparentHeader h4 {
+  margin-top: 7px;
 }
 
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {

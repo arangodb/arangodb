@@ -8,7 +8,7 @@
 ### find files in
 ###   arangod/RestHandler/*.cpp
 ###   js/actions/system/api-*.js
-### TODO usage aendern! 
+### TODO usage aendern!
 ### @usage generateSwagger.py < RestXXXX.cpp > restSwagger.json
 ###
 ### @file
@@ -47,13 +47,12 @@
 
 import sys, re, json, string
 operation = {}
-errorResponse = { 'code': None, 'reason': None } 
+errorResponse = { 'code': None, 'reason': None }
 # api = {'path': '/_api/document', 'description': '', 'operations': []}
 swagger = {'apiVersion': '0.1',
-					'swaggerVersion': '1.1', 
+					'swaggerVersion': '1.1',
 					'basePath': '/',
 					'apis': [],
-          # 'my': my 
 					}
 
 rc = re.compile
@@ -67,16 +66,9 @@ def parameters(line):
     line , c , r = line.rpartition('}')
     return line
 
-def replaceWordBoundaries(txt, tag=['@FA\{', '\}'],  wordboundary = ['<b>','</b>']):
+def FA(txt, wordboundary = ['<b>','</b>']):
     # @FA{word} -> <b>word</b>
-    r = rc(r"""([\(\s'/">]|^|.)"""+ tag[0] + """(.*?)"""+tag[1]+"""([<\s\.\),:;'"?!/-]|$)""", MS)
-    subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
-    return r.sub(subpattern, txt)
-
-
-def hochkomma(txt, wordboundary = [' <b>','</b>']):
-    # @FA{word} -> <b>word</b>
-    r = rc(r"""([\(\s'/">]|^|.)\`(.*?)\`([<\s\.\),:;'"?!/-]|$)""", MS)
+    r = rc(r"""([\(\s'/">]|^|.)@FA\{(.*?)\}([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
     return r.sub(subpattern, txt)
 
@@ -93,51 +85,46 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
     return r.sub(subpattern, txt)
 
 def Typography(txt):
-    # TODO uncomment and test
-
-    txt = replaceWordBoundaries(txt, ["@FN\{","\}"])
-    txt = replaceWordBoundaries(txt, ["@LIT\{","\}"], ['<i>','</i>'])
-    txt = replaceWordBoundaries(txt, ["@FA\{","\}"])
-    txt = hochkomma(txt)
-    # txt = FN(txt)
-    # txt = LIT(txt)
-    # txt = FA(txt)
+    txt = FN(txt)
+    txt = LIT(txt)
+    txt = FA(txt)
     return txt
 
 class InitializationError(Exception): pass
 
 # idea from http://gnosis.cx/TPiP/chap4.txt
 class StateMachine:
-		def __init__(self):
-				self.handlers = []
-				self.startState = None
-				self.endStates = []
+    def __init__(self):
+        self.handlers = []
+        self.startState = None
+        self.endStates = []
 
-		def add_state(self, handler, end_state=0):
-				self.handlers.append(handler)
-				if end_state:
-						self.endStates.append(handler)
+    def add_state(self, handler, end_state=0):
+        self.handlers.append(handler)
+        if end_state:
+            self.endStates.append(handler)
 
-		def set_start(self, handler):
-				self.startState = handler
+    def set_start(self, handler):
+        self.startState = handler
 
-		def run(self, cargo=None):
-				if not self.startState:
-						raise InitializationError,\
-									"must call .set_start() before .run()"
-				if not self.endStates:
-						raise InitializationError, \
-									"at least one state must be an end_state"
-				handler = self.startState
-				while 1:
-						(newState, cargo) = handler(cargo)
-						if newState in self.endStates:
-								newState(cargo)
-								break
-						elif newState not in self.handlers:
-								raise RuntimeError, "Invalid target %s" % newState
-						else:
-								handler = newState
+    def run(self, cargo=None):
+        if not self.startState:
+            raise InitializationError,\
+                "must call .set_start() before .run()"
+        if not self.endStates:
+            raise InitializationError, \
+                "at least one state must be an end_state"
+        handler = self.startState
+        while 1:
+            (newState, cargo) = handler(cargo)
+            if newState in self.endStates:
+                newState(cargo)
+                break
+            elif newState not in self.handlers:
+                raise RuntimeError, "Invalid target %s" % newState
+            else:
+                handler = newState
+
 class Regexen:
     def __init__(self):
         self.brief = re.compile('.*@brief')
@@ -213,7 +200,7 @@ def restheaderparameters(cargo, r=Regexen()):
         else:																				 continue
 
 def restheaderparam(cargo, r=Regexen()):
-    # TODO 
+    # TODO
     fp, last = cargo
     parametersList = parameters(last).split(',')
     para = {}
@@ -239,23 +226,14 @@ def restheaderparam(cargo, r=Regexen()):
             para['description'] += Typography(line[4:-1]) + ' '
 
 def restbodyparam(cargo, r=Regexen()):
+    # TODO see POST processing in comment till PUT
     fp, last = cargo
-    #parameter = {}
-    #parameter['paramType'] = 'body'
-    #parameter['name'] = 'body'
-    #parameter['description'] = 'A valid json document for your data, for instance {"hello": "world"}.'
-    #parameter['dataType'] = 'String'
-    #parameter['required'] = 'false'
-    #operation['parameters'].append(parameter)
-    # wo wuss das hin _operation[] ???
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
         elif r.RESTQUERYPARAM.match(line):           return restqueryparam, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
-        elif r.EMPTY_COMMENT.match(line):            continue
-        elif len(line) >= 4 and line[:4] == "////":  continue
         else:																				 continue
 
 def restqueryparam(cargo, r=Regexen()):
@@ -290,7 +268,7 @@ def restdescription(cargo, r=Regexen()):
                 operation['notes'] += '<br>'
             else:
                 operation['notes'] += '<br><br>'
-        elif r.DESCRIPTION_LI.match(line):           operation['notes'] += Typography(line[4:-1]) + '<br>' 
+        elif r.DESCRIPTION_LI.match(line):           operation['notes'] += Typography(line[4:-1]) + '<br>'
         elif r.read_through.match(line):             return read_through, (fp, line)
         elif r.EXAMPLES.match(line):
             return examples, (fp, line)
@@ -345,7 +323,7 @@ def examples(cargo, r=Regexen()):
 def example_arangosh_run(cargo, r=Regexen()):
     fp, last = cargo
     import os
-    # old examples code: TODO should be deleted after last @EXAMPLE_ARANGOSH_RUN in RestSourcefiles added
+    # old examples code
     verbinclude = last[4:-1].split()[0] == "@verbinclude"
     if verbinclude:
         examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + last[4:-1].split()[1]))
@@ -359,7 +337,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
-        elif r.END_EXAMPLE_ARANGOSH_RUN.match(line) or verbinclude: 
+        elif r.END_EXAMPLE_ARANGOSH_RUN.match(line) or verbinclude:
             return examples, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
 
@@ -382,10 +360,10 @@ def comment(cargo, r=Regexen()):
             summary = temp[1]
             '# create new api'
             api = {}
-            api['path'] = replaceWordBoundaries(path, ["@FA\{","\}"])
+            api['path'] = FA(path, wordboundary = ['{', '}'])
             api['operations']=[]
             swagger['apis'].append(api)
-            _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [], 
+            _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [],
                 'summary': None, 'notes': '', 'examples': '', 'errorResponses':[]}
             _operation['httpMethod'] = method
             if method == 'POST':
@@ -401,7 +379,7 @@ def comment(cargo, r=Regexen()):
             _operation['nickname'] = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
             _operation['summary'] = summary
             api['operations'].append(_operation)
-            global operation 
+            global operation
             operation = _operation
         elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
         elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
@@ -421,22 +399,22 @@ def read_through(cargo):
 
 
 if __name__ == "__main__":
-		automat = StateMachine()
-		automat.add_state(read_through)
-		automat.add_state(eof, end_state=1)
-		automat.add_state(comment)
-		automat.add_state(resturlparameters)
-		automat.add_state(resturlparam)
-		automat.add_state(restqueryparameters)
-		automat.add_state(restqueryparam)
-		automat.add_state(restbodyparam)
-		automat.add_state(restheaderparameters)
-		automat.add_state(restheaderparam)
-		automat.add_state(restdescription)
-		automat.add_state(restreturncodes)
-		automat.add_state(restreturncode)
-		automat.add_state(examples)
-		automat.add_state(example_arangosh_run)
-		automat.add_state(error, end_state=1)
-		automat.set_start(read_through)
-		automat.run((sys.stdin, ''))
+    automat = StateMachine()
+    automat.add_state(read_through)
+    automat.add_state(eof, end_state=1)
+    automat.add_state(comment)
+    automat.add_state(resturlparameters)
+    automat.add_state(resturlparam)
+    automat.add_state(restqueryparameters)
+    automat.add_state(restqueryparam)
+    automat.add_state(restbodyparam)
+    automat.add_state(restheaderparameters)
+    automat.add_state(restheaderparam)
+    automat.add_state(restdescription)
+    automat.add_state(restreturncodes)
+    automat.add_state(restreturncode)
+    automat.add_state(examples)
+    automat.add_state(example_arangosh_run)
+    automat.add_state(error, end_state=1)
+    automat.set_start(read_through)
+    automat.run((sys.stdin, ''))

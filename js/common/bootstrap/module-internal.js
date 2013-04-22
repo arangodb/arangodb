@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true, regexp: true */
 /*global require, module, Module, ArangoError, SYS_DOWNLOAD,
   SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT,
   SYS_RAND, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
@@ -59,8 +59,16 @@
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.ArangoError = ArangoError;
-  delete ArangoError;
+  try {
+    // necessary for the web interface
+    if (ArangoError !== undefined) {
+      exports.ArangoError = ArangoError;
+      delete ArangoError;
+    }
+  }
+  catch (err) {
+    exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
+  }
 
   exports.ArangoError.prototype._PRINT = function (context) {
     context.output += this.toString();
@@ -463,6 +471,8 @@
 // -----------------------------------------------------------------------------
 
 (function () {
+  // cannot use strict here as we are going to delete globals
+
   var exports = require("internal");
 
 // -----------------------------------------------------------------------------
@@ -776,6 +786,8 @@
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
+  var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
+
   exports.printRecursive = printRecursive = function (value, context) {
     'use strict';
 
@@ -819,20 +831,27 @@
               var a = s.split("\n");
               var f = a[0];
 
-              if (f === "function () { [native code] }") {
-                f = "native code";
+              var m = funcRE.exec(f);
+
+              if (m !== null) {
+                if (m[1] === undefined) {
+                  context.output += '[Function {native code}]';
+                }
+                else {
+                  context.output += '[Function "' + m[1] + '" {native code}]';
+                }
               }
               else {
                 f = f.substr(8, f.length - 10).trim();
+                context.output += '[Function "' + f + '"]';
               }
-
-              context.output += '[Function "' + f + '"]';
             }
             else {
               context.output += s;
             }
           }
           catch (e1) {
+            exports.stdOutput(String(e1));
             context.output += "[Function]";
           }
         }

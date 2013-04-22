@@ -891,7 +891,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
-  res = trx.read(&document, key, true);
+  res = trx.read(&document, key);
 
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
@@ -995,7 +995,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   TRI_doc_mptr_t document;
-  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision, true);
+  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
 
   res = trx.finish(res);
 
@@ -1024,8 +1024,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv,
-    bool replace,
-    bool lock) {
+    bool replace) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
@@ -1066,7 +1065,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   const bool forceSync = ExtractForceSync(argv, 2);
 
   TRI_doc_mptr_t document;
-  res = trx->createDocument(key, &document, shaped, forceSync, lock);
+  res = trx->createDocument(key, &document, shaped, forceSync);
 
   res = trx->finish(res);
 
@@ -1092,8 +1091,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv,
-    bool replace,
-    bool lock) {
+    bool replace) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -1172,7 +1170,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
 
   TRI_doc_mptr_t document;
-  res = trx->createEdge(key, &document, shaped, forceSync, &edge, lock);
+  res = trx->createEdge(key, &document, shaped, forceSync, &edge);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1266,8 +1264,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   trx.lockWrite();
 
   TRI_doc_mptr_t document;
-  // do not acquire an extra lock
-  res = trx.read(&document, key, false);
+  res = trx.read(&document, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
@@ -1289,8 +1286,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  // do not acquire an extra-lock
-  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision, false);
+  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1371,7 +1367,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision, false);
+  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1486,7 +1482,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 /// @brief ensures that a geo index or constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool constraint) {
+static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool unique) {
   v8::HandleScope scope;
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
@@ -1508,7 +1504,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
   bool created;
-  int off = constraint ? 1 : 0;
+  int off = unique ? 1 : 0;
   bool ignoreNull = false;
 
   // .............................................................................
@@ -1523,11 +1519,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[1]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1542,11 +1538,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1567,11 +1563,11 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       TRI_V8_EXCEPTION_PARAMETER(scope, "<longitude> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1581,7 +1577,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   else {
     ReleaseCollection(collection);
 
-    if (constraint) {
+    if (unique) {
       TRI_V8_EXCEPTION_USAGE(
         scope, 
         "ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) "  \
@@ -1963,19 +1959,55 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   // extract the "action" property
   static const string actionError = "missing/invalid action definition for transaction";
 
-  if (! object->Has(TRI_V8_SYMBOL("action")) || ! object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+  if (! object->Has(TRI_V8_SYMBOL("action"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
+  }
+
+  // function parameters
+  v8::Handle<v8::Value> params;
+
+  if (object->Has(TRI_V8_SYMBOL("params"))) {
+    params = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("params")));
+  }
+  else {
+    params = v8::Undefined();
+  }
+  
+  if (params.IsEmpty()) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+  
+
+  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+
+  // callback function
+  v8::Handle<v8::Function> action;
+
+  if (object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+    action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
+  }
+  else if (object->Get(TRI_V8_SYMBOL("action"))->IsString()) {
+    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+
+    // Invoke Function constructor to create function with the given body and no arguments
+    string body = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("action"))->ToString());
+    body = "return (" + body + ")(params);";
+    v8::Handle<v8::Value> argv[2] = { v8::String::New("params"), v8::String::New(body.c_str(), body.size()) };
+    v8::Local<v8::Object> function = ctor->NewInstance(2, argv);
+
+    action = v8::Local<v8::Function>::Cast(function);
+  }
+  else {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
   
-  v8::Handle<v8::Function> action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
-
   if (action.IsEmpty()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
-  
+
+
   // start actual transaction
-  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-  
   CollectionNameResolver resolver(vocbase);
   ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
                                                                         resolver, 
@@ -1990,8 +2022,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  v8::Handle<v8::Value> args;
-  v8::Handle<v8::Value> result = action->Call(current, 0, &args);
+  v8::Handle<v8::Value> args = params;
+  v8::Handle<v8::Value> result = action->Call(current, 1, &args);
 
   if (tryCatch.HasCaught()) {
     trx.abort();
@@ -1999,19 +2031,13 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (! TRI_ObjectToBoolean(result)) {
-    trx.abort();
-    
-    return scope.Close(v8::False());
-  }
-  
   res = trx.commit();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  return scope.Close(v8::True());
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4526,6 +4552,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> shapes = v8::Object::New();
   result->Set(v8::String::New("shapes"), shapes);
   shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
+  
+  // attributes info
+  v8::Handle<v8::Object> attributes = v8::Object::New();
+  result->Set(v8::String::New("attributes"), attributes);
+  attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -5107,10 +5138,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, col, argv, false, true);
+    result = SaveVocbaseCol(&trx, col, argv, false);
   }
   else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, col, argv, false, true);
+    result = SaveEdgeCol(&trx, col, argv, false);
   }
 
   return scope.Close(result);
@@ -5237,7 +5268,7 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
 
   if (key != 0) {
     TRI_doc_mptr_t document;
-    res = trx.read(&document, key, false);
+    res = trx.read(&document, key);
   }
   else {
     res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -5258,7 +5289,7 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_doc_mptr_t document;
     TRI_voc_rid_t rid = 0;
     TRI_voc_rid_t actualRevision = 0;
-    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision, true);
+    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision);
 
     res = trx.finish(res);
 
@@ -5278,10 +5309,10 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
   }
   else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-      result = SaveVocbaseCol(&trx, col, argv, true, false);
+      result = SaveVocbaseCol(&trx, col, argv, true);
     }
     else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-      result = SaveEdgeCol(&trx, col, argv, true, false);
+      result = SaveEdgeCol(&trx, col, argv, true);
     }
   }
   else {
@@ -5818,8 +5849,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_create()"));
   result->Set(j++, v8::String::New("_createDocumentCollection()"));
   result->Set(j++, v8::String::New("_createEdgeCollection()"));
+  result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
   result->Set(j++, v8::String::New("_drop()"));
+  result->Set(j++, v8::String::New("_query()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
@@ -6218,11 +6251,11 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects an attribute from the shaped json
+/// @brief selects a named attribute from the shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
-                                               const v8::AccessorInfo& info) {
+static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
+                                                    const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
   // sanity check
@@ -6250,7 +6283,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (TRI_IsSystemCollectionName(key.c_str())) {
+  if (key[0] == '_') {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -6407,6 +6440,21 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an indexed attribute from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t index,
+                                                      const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  char* str = TRI_StringUInt32(index);
+  v8::Local<v8::String> strVal = v8::String::New(str);
+  TRI_Free(TRI_CORE_MEM_ZONE, str);
+
+  return scope.Close(MapGetNamedShapedJson(strVal, info));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6778,12 +6826,22 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
-  rt->SetNamedPropertyHandler(MapGetShapedJson,         // NamedPropertyGetter,
+  // accessor for named properties (e.g. doc.abcdef)
+  rt->SetNamedPropertyHandler(MapGetNamedShapedJson,    // NamedPropertyGetter,
                               0,                        // NamedPropertySetter setter = 0
                               PropertyQueryShapedJson,  // NamedPropertyQuery,
                               0,                        // NamedPropertyDeleter deleter = 0,
                               KeysOfShapedJson          // NamedPropertyEnumerator,
                                                         // Handle<Value> data = Handle<Value>());
+                              );
+  
+  // accessor for indexed properties (e.g. doc[1])
+  rt->SetIndexedPropertyHandler(MapGetIndexedShapedJson,  // IndexedPropertyGetter,
+                                0,                        // IndexedPropertySetter setter = 0
+                                0,                        // IndexedPropertyQuery,
+                                0,                        // IndexedPropertyDeleter deleter = 0,
+                                0                         // IndexedPropertyEnumerator,
+                                                          // Handle<Value> data = Handle<Value>());
                               );
 
   v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
@@ -6853,21 +6911,21 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   ft = v8::FunctionTemplate::New();
   ft->SetClassName(TRI_V8_SYMBOL("ArangoCursor"));
 
-  pt = ft->PrototypeTemplate();
-  TRI_AddProtoMethodVocbase(pt, "count", JS_CountGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "dispose", JS_DisposeGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "getRows", JS_GetRowsGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "hasCount", JS_HasCountGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "hasNext", JS_HasNextGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "id", JS_IdGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "next", JS_NextGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "persist", JS_PersistGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "toArray", JS_ToArrayGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "unuse", JS_UnuseGeneralCursor);
-
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
+
+  TRI_AddMethodVocbase(rt, "count", JS_CountGeneralCursor);
+  TRI_AddMethodVocbase(rt, "dispose", JS_DisposeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getRows", JS_GetRowsGeneralCursor);
+  TRI_AddMethodVocbase(rt, "hasCount", JS_HasCountGeneralCursor);
+  TRI_AddMethodVocbase(rt, "hasNext", JS_HasNextGeneralCursor);
+  TRI_AddMethodVocbase(rt, "id", JS_IdGeneralCursor);
+  TRI_AddMethodVocbase(rt, "next", JS_NextGeneralCursor);
+  TRI_AddMethodVocbase(rt, "persist", JS_PersistGeneralCursor);
+  TRI_AddMethodVocbase(rt, "toArray", JS_ToArrayGeneralCursor);
+  TRI_AddMethodVocbase(rt, "unuse", JS_UnuseGeneralCursor);
+
   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCursor", ft->GetFunction());
 

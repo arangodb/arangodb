@@ -21,7 +21,6 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,9 +315,8 @@ function PATCH_api_user (req, res) {
 ///
 /// - @LIT{code}: the HTTP status code
 ///
-/// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with @LIT{HTTP 400}. If the specified user
-/// does not exist, the server will respond with @LIT{HTTP 404}.
+/// If the specified user does not exist, the server will respond with 
+/// @LIT{HTTP 404}.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:

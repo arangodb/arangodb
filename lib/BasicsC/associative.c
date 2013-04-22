@@ -77,7 +77,7 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
 static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   char * oldTable;
   uint32_t oldAlloc;
-  uint64_t j;
+  uint32_t j;
 
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
@@ -211,7 +211,7 @@ void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t*
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
+/// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key) {
@@ -257,7 +257,7 @@ void* TRI_FindByKeyAssociativeArray (TRI_associative_array_t* array, void* key) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given an element
+/// @brief looks up an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByElementAssociativeArray (TRI_associative_array_t* array, void* element) {
@@ -590,7 +590,7 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   void** oldTable;
   uint32_t oldAlloc;
-  uint64_t j;
+  uint32_t j;
 
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
@@ -731,7 +731,7 @@ bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
+/// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
@@ -761,7 +761,7 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given an element
+/// @brief looks up an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
@@ -1079,7 +1079,7 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   void** oldTable;
   uint32_t oldAlloc;
-  uint64_t j;
+  uint32_t j;
 
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
@@ -1195,7 +1195,7 @@ void TRI_FreeAssociativeSynced (TRI_memory_zone_t* zone, TRI_associative_synced_
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
+/// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
 void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
@@ -1232,7 +1232,7 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given an element
+/// @brief looks up an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
 void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* array,

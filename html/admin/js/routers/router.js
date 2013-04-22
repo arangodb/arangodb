@@ -18,7 +18,7 @@ $(document).ready(function() {
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
-      "applications/documentation"          : "applicationsDocumentation",
+      "application/documentation/:key"     : "appDocumentation",
       "graph"                               : "graph"
       
     },
@@ -34,10 +34,6 @@ $(document).ready(function() {
       
       window.collectionView = new window.collectionView({
         model: arangoCollection
-      });
-
-      window.dashboardView = new window.dashboardView({
-        collection: window.arangoCollectionsStore
       });
 
       window.documentsView = new window.documentsView({
@@ -150,6 +146,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('logs-menu');
     },
     dashboard: function() {
+      /*
       var self = this;
       window.arangoCollectionsStore.fetch({
         success: function () {
@@ -157,6 +154,25 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
+      */
+      if (this.statisticsDescription === undefined) {
+        this.statisticsDescription = new window.StatisticsDescription;
+        this.statisticsDescription.fetch({
+          async:false
+        });
+      }
+      if (this.statistics === undefined) {
+        this.statisticsCollection = new window.StatisticsCollection;
+        //this.statisticsCollection.fetch();
+      }
+      if (this.dashboardView === undefined) {
+        this.dashboardView = new dashboardView({
+          collection: this.statisticsCollection,
+          description: this.statisticsDescription
+        });
+      }
+
+      this.dashboardView.render();
     },
     
     graph: function() {
@@ -223,12 +239,9 @@ $(document).ready(function() {
       
     },
     
-    
-    applicationsDocumentation: function() {
-      if (this.appDocuView === undefined) {
-        this.appDocuView = new window.AppDocumentationView();
-      }
-      this.appDocuView.render();
+    appDocumentation: function(key) {
+      var docuView = new window.AppDocumentationView({key: key});
+      docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 

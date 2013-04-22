@@ -102,6 +102,28 @@
                 }
             ],
             "path": "/_admin/statistics-description"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "false",
+                            "name": "body",
+                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
+                        }
+                    ],
+                    "notes": "",
+                    "summary": "executes a program",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "executesAProgram"
+                }
+            ],
+            "path": "/_admin/execute"
         }
     ]
 }

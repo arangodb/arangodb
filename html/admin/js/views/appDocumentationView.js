@@ -5,25 +5,23 @@ window.AppDocumentationView = Backbone.View.extend({
   
   initialize: function() {
     this.swaggerUi = new SwaggerUi({
-        discoveryUrl:"../aardvark/docus",
+        discoveryUrl:"../aardvark/docu/" + this.options.key,
 
         apiKey: false,
         dom_id:"swagger-ui-container",
         supportHeaderParams: true,
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch', 'head'],
         onComplete: function(swaggerApi, swaggerUi){
-        	if(console) {
-            console.log("Loaded SwaggerUI")
-            console.log(swaggerApi);
-            console.log(swaggerUi);
-          }
           $('pre code').each(function(i, e) {hljs.highlightBlock(e)});
         },
         onFailure: function(data) {
-        	if(console) {
-            console.log("Unable to Load SwaggerUI");
-            console.log(data);
-          }
+          var div = document.createElement("div"),
+            strong = document.createElement("strong");
+          strong.appendChild(document.createTextNode("Sorry the code is not documented properly"));
+          div.appendChild(strong);
+          div.appendChild(document.createElement("br"));
+          div.appendChild(document.createTextNode(JSON.stringify(data)));
+          $("#swagger-ui-container").append(div);
         },
         docExpansion: "none"
     });

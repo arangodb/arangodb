@@ -46,14 +46,25 @@
 function ForceLayouter(config) {
   "use strict";
   var self = this,
-  force = d3.layout.force(),
-  distance = config.distance || 100,
-  gravity = config.gravity || 0.5,
-  charge = config.charge || -100,
-  onUpdate = config.onUpdate || function () {},
-  width = config.width || 940,
-  height = config.height || 640;
-    
+    force = d3.layout.force(),
+    distance = config.distance || 100,
+    gravity = config.gravity || 0.01,
+    charge = config.charge || -300,
+    onUpdate = config.onUpdate || function () {},
+    width = config.width || 940,
+    height = config.height || 640,
+    parseConfig = function(config) {
+      if (config.distance) {
+        force.linkDistance(config.distance);
+      }
+      if (config.gravity) {
+        force.gravity(config.gravity);
+      }
+      if (config.charge) {
+        force.charge(config.charge);
+      }
+    };
+   
   if (config.nodes === undefined) {
     throw "No nodes defined";
   }
@@ -66,8 +77,7 @@ function ForceLayouter(config) {
   force.size([width, height]); // Set width and height
   force.linkDistance(distance); // Set distance between nodes
   force.gravity(gravity); // Set gravity
-  force.charge(charge);
-  
+  force.charge(charge); // Set charge
   force.on("tick", function(){}); // Bind tick function
     
   self.start = function() {
@@ -105,5 +115,9 @@ function ForceLayouter(config) {
       };
       force.on("tick", onUpdate);
     }
+  };
+  
+  self.changeTo = function(config) {
+    parseConfig(config);
   };
 }

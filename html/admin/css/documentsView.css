@@ -1,3 +1,7 @@
+#documentsTableID .key {
+  margin-top: 4px;
+}
+
 table.dataTable thead th {
   cursor: default !important;
 }

@@ -520,6 +520,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   }
 
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
+  info->_numberAttributes = (TRI_voc_ssize_t) primary->_shaper->numAttributes(primary->_shaper);
   
   return info;
 }
@@ -710,6 +711,40 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
 
 void TRI_DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary) {
   DebugDatafileInfoPrimaryCollection(primary);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over all documents in the collection, using a user-defined
+/// callback function. Returns the total number of documents in the collection
+///
+/// The user can abort the iteration by return "false" from the callback
+/// function.
+///
+/// Note: the function will not acquire any locks. It is the task of the caller
+/// to ensure the collection is properly locked
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t* primary,
+                                              void* data,
+                                              bool (*callback)(TRI_doc_mptr_t const*, void*)) {
+  if (primary->_primaryIndex._nrUsed > 0) {
+    void** ptr = primary->_primaryIndex._table;
+    void** end = ptr + primary->_primaryIndex._nrAlloc;
+
+    for (;  ptr < end;  ++ptr) {
+      if (*ptr) {
+        TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+        if (d->_validTo == 0) {
+          if (! callback(d, data)) {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return (size_t) primary->_primaryIndex._nrUsed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
