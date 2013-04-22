@@ -80,6 +80,8 @@ exports.ArangoError = internal.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineModule = function (path, file) {
+  'use strict';
+
   var content;
   var m;
   var mc;
@@ -255,6 +257,8 @@ exports.printObject = internal.printObject;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printTable = function  (list, columns, framed) {
+  'use strict';
+
   if (! Array.isArray(list) || list.length === 0) {
     // not an array or empty
     return;

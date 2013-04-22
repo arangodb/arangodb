@@ -164,6 +164,12 @@ function GET_api_index (req, res) {
 ///
 /// - @LIT{size}: The maximal number of documents for the collection.
 ///
+/// Note that the cap constraint does not index particular attributes of the
+/// documents in a collection, but limits the number of documents in the
+/// collection to a maximum value. The cap constraint thus does not support
+/// attribute names specified in the @LIT{fields} attribute nor uniqueness of
+/// any kind via the @LIT{unique} attribute.
+///
 /// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned. If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
@@ -181,8 +187,9 @@ function POST_api_index_cap (req, res, collection, body) {
   if (! body.hasOwnProperty("size")) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expecting a size");
+    return;
   }
-
+  
   var size = body.size;
   var index = collection.ensureCapConstraint(size);
 
@@ -206,15 +213,15 @@ function POST_api_index_cap (req, res, collection, body) {
 ///
 /// - @LIT{type}: must be equal to @LIT{"geo"}.
 ///
-/// - @LIT{fields}: A list with one or two attribute paths. <br>
-///   <br>
+/// - @LIT{fields}: A list with one or two attribute paths. 
+///
 ///   If it is a list with one attribute path @FA{location}, then a geo-spatial
 ///   index on all documents is created using @FA{location} as path to the
 ///   coordinates. The value of the attribute must be a list with at least two
 ///   double values. The list must contain the latitude (first value) and the
 ///   longitude (second value). All documents, which do not have the attribute
-///   path or with value that are not suitable, are ignored.<br>
-///   <br>
+///   path or with value that are not suitable, are ignored.
+///   
 ///   If it is a list with two attribute paths @FA{latitude} and @FA{longitude},
 ///   then a geo-spatial index on all documents is created using @FA{latitude}
 ///   and @FA{longitude} as paths the latitude and the longitude. The value of
@@ -224,12 +231,13 @@ function POST_api_index_cap (req, res, collection, body) {
 ///
 /// - @LIT{geoJson}: If a geo-spatial index on a @FA{location} is constructed
 ///   and @LIT{geoJson} is @LIT{true}, then the order within the list is longitude
-///   followed by latitude. This corresponds to the format described in <br>
-///   <br>
+///   followed by latitude. This corresponds to the format described in 
 ///   http://geojson.org/geojson-spec.html#positions
 ///
 /// - @LIT{constraint}: If @LIT{constraint} is @LIT{true}, then a geo-spatial
-///   constraint instead of an index is created. 
+///   constraint is created. The constraint is a non-unique variant of the index. 
+///   Note that it is also possible to set the @LIT{unique} attribute instead of 
+///   the @LIT{constraint} attribute.
 ///
 /// - @LIT{ignoreNull}: If a geo-spatial constraint is created and
 ///   @FA{ignoreNull} is true, then documents with a null in @FA{location} or at
@@ -258,15 +266,29 @@ function POST_api_index_geo (req, res, collection, body) {
   if (! (fields instanceof Array)) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths: " + fields);
+    return;
   }
 
   var index;
+  var constraint;
+
+  if (body.hasOwnProperty("unique")) {
+    // try "unique" first
+    constraint = body.unique;
+  }
+  else if (body.hasOwnProperty("constraint")) {
+    // "constraint" next
+    constraint = body.constraint;
+  }
+  else {
+    constraint = false;
+  }
 
   if (fields.length === 1) {
 
     // attribute list and geoJson
     if (body.hasOwnProperty("geoJson")) {
-      if (body.hasOwnProperty("constraint") && body.constraint) {
+      if (constraint) {
         if (body.hasOwnProperty("ignoreNull")) {
           index = collection.ensureGeoConstraint(fields[0], body.geoJson, body.ignoreNull);
         }
@@ -281,7 +303,7 @@ function POST_api_index_geo (req, res, collection, body) {
 
     // attribute list
     else {
-      if (body.hasOwnProperty("constraint") && body.constraint) {
+      if (constraint) {
         if (body.hasOwnProperty("ignoreNull")) {
           index = collection.ensureGeoConstraint(fields[0], body.ignoreNull);
         }
@@ -297,7 +319,7 @@ function POST_api_index_geo (req, res, collection, body) {
 
   // attributes
   else if (fields.length === 2) {
-    if (body.hasOwnProperty("constraint") && body.constraint) {
+    if (constraint) {
       if (body.hasOwnProperty("ignoreNull")) {
         index = collection.ensureGeoConstraint(fields[0], fields[1], body.ignoreNull);
       }
@@ -368,7 +390,8 @@ function POST_api_index_hash (req, res, collection, body) {
 
   if (! (fields instanceof Array)) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute paths: " + fields);
+                      "fields must be a list of attribute names: " + fields);
+    return;
   }
 
   var index;
@@ -427,7 +450,8 @@ function POST_api_index_skiplist (req, res, collection, body) {
 
   if (! (fields instanceof Array)) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute paths: " + fields);
+                      "fields must be a list of attribute names: " + fields);
+    return;
   }
 
   var index;
@@ -487,11 +511,19 @@ function POST_api_index_fulltext (req, res, collection, body) {
   if (! (fields instanceof Array)) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute names: " + fields);
+    return;
   }
 
   if (fields.length != 1 || typeof fields[0] !== 'string') {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "fields must contain exactly one attribute name");
+    return;
+  }
+
+  if (body.hasOwnProperty("unique") && body.unique) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "unique fulltext indexes are not supported");
+    return;
   }
 
   var index = collection.ensureFulltextIndex.call(collection, fields, body.minLength || undefined);
@@ -540,12 +572,15 @@ function POST_api_index_bitarray (req, res, collection, body) {
   if (! (fields instanceof Array)) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths: " + fields);
+    return;
   }
 
   var index;
 
   if (body.unique) {
-    throw "Bitarray indexes can not be unique";
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
+                      "Bitarray indexes can not be unique");
+    return;
   }
   else {
     index = collection.ensureBitarray.apply(collection, fields);
@@ -569,11 +604,29 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// Creates a new index in the collection @FA{collection-name}. Expects
 /// an object containing the index details.
 ///
+/// The type of the index to be created must specified in the @LIT{type}
+/// attribute of the index details. Depending on the index type, additional
+/// other attributes may need to specified in the request in order to create
+/// the index.
+///
 /// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, 
 /// @ref IndexFulltextHttp, and @ref IndexSkiplistHttp for details. 
+/// 
+/// Most indexes (a notable exception being the cap constraint) require the
+/// list of attributes to be indexed in the @LIT{fields} attribute of the index
+/// details. Depending on the index type, a single attribute or multiple 
+/// attributes may be indexed.
 ///
-/// By default, non-unique indexes will be created. To change this, use the 
-/// @LIT{unique} attribute in the index details and set its value to @LIT{true}.
+/// Some indexes can be created as unique or non-unique variants. Uniqueness
+/// can be controlled for most indexes by specifying the @LIT{unique} in the
+/// index details. Setting it to @LIT{true} will create a unique index. 
+/// Setting it to @LIT{false} or omitting the @LIT{unique} attribute will
+/// create a non-unique index.
+///
+/// Note that the following index types do not support uniqueness, and using 
+/// the @LIT{unique} attribute with these types may lead to an error:
+/// - cap constraints
+/// - fulltext indexes
 ///
 /// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
@@ -608,7 +661,7 @@ function POST_api_index (req, res) {
 
   if (req.suffix.length !== 0) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect POST /" + API + "?collection=<collection-name>");
+                      "expecting POST /" + API + "?collection=<collection-name>");
     return;
   }
 
