@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, db, edges, Module, ArangoCollection, ArangoDatabase, 
-         ArangoError, ShapedJson, SYS_DEFINE_ACTION */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -9,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,11 +25,21 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 // extend prototypes for internally defined classes
 require("org/arangodb");
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  global functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global 'Buffer'
+////////////////////////////////////////////////////////////////////////////////
+
+var Buffer = require("buffer").Buffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -38,5 +47,5 @@ require("org/arangodb");
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:

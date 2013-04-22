@@ -150,10 +150,11 @@ lib_libarango_fe_a_SOURCES = \
 ################################################################################
 ### @brief library "libarango.a", JavaScript part
 ################################################################################
-	
+
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
+	lib/V8/v8-buffer.cpp \
 	lib/V8/v8-conv.cpp \
 	lib/V8/v8-execution.cpp \
 	lib/V8/v8-globals.cpp \

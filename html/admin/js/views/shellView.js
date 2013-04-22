@@ -9,14 +9,21 @@ var shellView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+
     this.replShell();
     this.editor();
+
+    var windowHeight = $(window).height() - 200;
+    $('#shell_workspace').height(windowHeight);
+
     $("#shell_workspace").splitter({
       dock: true
     });
+
     $("#shell_workspace").trigger("resize", [ 200 ]);
     $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
     $.gritter.removeAll();
+
     return this;
   },
   renderEditor: function () {
