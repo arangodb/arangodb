@@ -550,12 +550,12 @@ function process_properties_filter (data, properties, collname) {
 /// @brief fills a labels filter
 ////////////////////////////////////////////////////////////////////////////////
 
-function process_labels_filter (data, labels) {
+function process_labels_filter (data, labels, collname) {
 
   // filter edge labels
   if (labels !== undefined && labels instanceof Array && labels.length > 0) {
-    if (data.edgeFilter === "") { data.edgeFilter = " FILTER"; } else { data.edgeFilter += " &&";}
-    data.edgeFilter += ' e["$label"] IN @labels';
+    if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
+    data.filter += ' ' + collname + '["$label"] IN @labels';
     data.bindVars.labels = labels;
   }
 }
@@ -670,6 +670,10 @@ function post_graph_all_vertices (req, res, g) {
 ///
 /// @verbinclude api-graph-get-vertex-vertices
 ///
+/// Select vertices by direction and property filter
+///
+/// @verbinclude api-graph-get-vertex-vertices2
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_vertices (req, res, g) {
@@ -684,7 +688,6 @@ function post_graph_vertex_vertices (req, res, g) {
 
     var data = {
       'filter' : '',
-      'edgeFilter' : '',
       'bindVars' : {
          '@vertexColl' : g._vertices.name(),
          '@edgeColl' : g._edges.name(),
@@ -697,44 +700,27 @@ function post_graph_vertex_vertices (req, res, g) {
       limit = " LIMIT " + parseInt(json.limit);
     }
 
-    var direction = "all";
+    var direction = "any";
     if (json.filter !== undefined && json.filter.direction !== undefined) {
       if (json.filter.direction === "in") {
-        direction = "in";
+        direction = "inbound";
       }
       else if (json.filter.direction === "out") {
-        direction = "out";
+        direction = "outbound";
       }
-    }
-
-    // get inbound neighbors
-    if (direction === "in") {
-      data.edgeFilter = "FILTER e._to == @id";
-      data.filter = "FILTER e._from == v._id";
-    }
-    // get outbound neighbors
-    else if (direction === "out") {
-      data.edgeFilter = "FILTER e._from == @id";
-      data.filter = "FILTER e._to == v._id";
-    }
-    // get all neighbors
-    else {
-      data.filter = "FILTER ((e._from == @id && e._to == v._id)"
-                  + " || (e._to == @id && e._from == v._id))";
     }
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
-      process_properties_filter(data, json.filter.properties, "e");
+      process_properties_filter(data, json.filter.properties, "n.edge");
     }
 
     if (json.filter !== undefined && json.filter.labels !== undefined) {
-      process_labels_filter(data, json.filter.labels);
+      process_labels_filter(data, json.filter.labels, "n.edge");
     }
 
     // build aql query
-    var query = "FOR e IN @@edgeColl " + data.edgeFilter 
-              + " FOR v IN @@vertexColl " + data.filter + 
-              limit + " RETURN v";
+    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '") ' + 
+            data.filter + limit + " RETURN n.vertex ";
 
     var cursor = QUERY(query,
                           data.bindVars,
@@ -1030,7 +1016,6 @@ function post_graph_all_edges (req, res, g) {
 
     var data = {
       'filter' : '',
-      'edgeFilter' : '',
       'bindVars' : {
          '@edgeColl' : g._edges.name()
       }
@@ -1043,14 +1028,13 @@ function post_graph_all_edges (req, res, g) {
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
       process_properties_filter(data, json.filter.properties, "e");
-      data.edgeFilter = data.filter;
     }
 
     if (json.filter !== undefined && json.filter.labels !== undefined) {
-      process_labels_filter(data, json.filter.labels);
+      process_labels_filter(data, json.filter.labels, "e");
     }
 
-    var query = "FOR e IN @@edgeColl" + data.edgeFilter + limit + " RETURN e";
+    var query = "FOR e IN @@edgeColl" + data.filter + limit + " RETURN e";
 
     var cursor = QUERY(query,
                           data.bindVars,
@@ -1122,7 +1106,6 @@ function post_graph_vertex_edges (req, res, g) {
 
     var data = {
       'filter' : '',
-      'edgeFilter' : '',
       'bindVars' : {
          '@edgeColl' : g._edges.name(),
          'id' : v._properties._id
@@ -1134,40 +1117,26 @@ function post_graph_vertex_edges (req, res, g) {
       limit = " LIMIT " + parseInt(json.limit);
     }
 
-    var direction = "all";
+    var direction = "any";
     if (json.filter !== undefined && json.filter.direction !== undefined) {
       if (json.filter.direction === "in") {
-        direction = "in";
+        direction = "inbound";
       }
       else if (json.filter.direction === "out") {
-        direction = "out";
+        direction = "outbound";
       }
-    }
-
-    // get inbound neighbors
-    if (direction === "in") {
-      data.edgeFilter = "FILTER e._to == @id";
-    }
-    // get outbound neighbors
-    else if (direction === "out") {
-      data.edgeFilter = "FILTER e._from == @id";
-    }
-    // get all neighbors
-    else {
-      data.edgeFilter = "FILTER (e._from == @id || e._to == @id)";
     }
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
-      data.filter = data.edgeFilter;
       process_properties_filter(data, json.filter.properties, "e");
-      data.edgeFilter = data.filter;
     }
 
     if (json.filter !== undefined && json.filter.labels !== undefined) {
-      process_labels_filter(data, json.filter.labels);
+      process_labels_filter(data, json.filter.labels, "e");
     }
 
-    var query = "FOR e IN @@edgeColl " + data.edgeFilter + limit + " RETURN e";
+    var query = 'FOR e in EDGES( @@edgeColl , @id , "' + direction + '") ' 
+            + data.filter + limit + " RETURN e";
 
     var cursor = QUERY(query,
                        data.bindVars,
