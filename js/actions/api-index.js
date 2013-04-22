@@ -213,15 +213,15 @@ function POST_api_index_cap (req, res, collection, body) {
 ///
 /// - @LIT{type}: must be equal to @LIT{"geo"}.
 ///
-/// - @LIT{fields}: A list with one or two attribute paths. <br>
-///   <br>
+/// - @LIT{fields}: A list with one or two attribute paths. 
+///
 ///   If it is a list with one attribute path @FA{location}, then a geo-spatial
 ///   index on all documents is created using @FA{location} as path to the
 ///   coordinates. The value of the attribute must be a list with at least two
 ///   double values. The list must contain the latitude (first value) and the
 ///   longitude (second value). All documents, which do not have the attribute
-///   path or with value that are not suitable, are ignored.<br>
-///   <br>
+///   path or with value that are not suitable, are ignored.
+///   
 ///   If it is a list with two attribute paths @FA{latitude} and @FA{longitude},
 ///   then a geo-spatial index on all documents is created using @FA{latitude}
 ///   and @FA{longitude} as paths the latitude and the longitude. The value of
@@ -231,12 +231,13 @@ function POST_api_index_cap (req, res, collection, body) {
 ///
 /// - @LIT{geoJson}: If a geo-spatial index on a @FA{location} is constructed
 ///   and @LIT{geoJson} is @LIT{true}, then the order within the list is longitude
-///   followed by latitude. This corresponds to the format described in <br>
-///   <br>
+///   followed by latitude. This corresponds to the format described in 
 ///   http://geojson.org/geojson-spec.html#positions
 ///
 /// - @LIT{constraint}: If @LIT{constraint} is @LIT{true}, then a geo-spatial
-///   constraint instead of an index is created. 
+///   constraint is created. The constraint is a non-unique variant of the index. 
+///   Note that it is also possible to set the @LIT{unique} attribute instead of 
+///   the @LIT{constraint} attribute.
 ///
 /// - @LIT{ignoreNull}: If a geo-spatial constraint is created and
 ///   @FA{ignoreNull} is true, then documents with a null in @FA{location} or at
