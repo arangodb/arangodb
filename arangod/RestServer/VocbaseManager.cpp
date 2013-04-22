@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VocbaseManager.h"
+#include "RestServer/VocbaseManager.h"
 
 #include "build.h"
 
@@ -35,6 +35,7 @@
 #include "RestServer/VocbaseContext.h"
 #include "BasicsC/tri-strings.h"
 #include "VocBase/auth.h"
+#include "Actions/actions.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -146,7 +147,9 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpRequest* request) {
   ConnectionInfo ci = request->connectionInfo();
 
-  string prefix = "tcp://" + ci.serverAddress + ":" + basics::StringUtils::itoa(ci.serverPort);
+  string prefix = (ci.serverPort > 0) 
+          ? "tcp://" + ci.serverAddress + ":" + basics::StringUtils::itoa(ci.serverPort)
+          : "unix:///localhost";
   
   READ_LOCKER(_rwLock);
   map<string, TRI_vocbase_s*>::iterator find = _prefix2Vocbases.find(prefix);
@@ -249,14 +252,14 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
 /// @brief get list of database names
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> VocbaseManager::vocbases () {
-  vector<string> result;
-  result.push_back(_vocbase->_name);
+vector<TRI_vocbase_t*> VocbaseManager::vocbases () {
+  vector<TRI_vocbase_t*> result;
+  result.push_back(_vocbase);
   
   std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();  
   
   for (; i != _vocbases.end(); ++i) {
-    result.push_back(i->first);
+    result.push_back(i->second);
   }
   
   return result;
