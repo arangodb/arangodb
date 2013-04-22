@@ -1,5 +1,5 @@
 > curl --data @- -X POST --dump - http://localhost:8529/_api/graph/graph1/edges/id2
-{"batchSize" : 100}
+{"batchSize" : 100, "filter" : { "direction" : "any" }}
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8

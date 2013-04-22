@@ -45,6 +45,10 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     VocbaseColTempl(),
     VocbaseTempl(),
 
+    BufferTempl(),
+    FastBufferConstructor(),
+
+    BufferConstant(),
     DeleteConstant(),
     GetConstant(),
     HeadConstant(),
@@ -68,6 +72,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     IsVolatileKey(),
     JournalSizeKey(),
     KeyOptionsKey(),
+    LengthKey(),
     LifeTimeKey(),
     NameKey(),
     ParametersKey(),
@@ -100,6 +105,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _vocbase(0) {
   v8::HandleScope scope;
 
+  BufferConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("Buffer"));
   DeleteConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("DELETE"));
   GetConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("GET"));
   HeadConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("HEAD"));
@@ -124,6 +130,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   IsVolatileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isVolatile"));
   JournalSizeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("journalSize"));
   KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
+  LengthKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("length"));
   LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
   NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
@@ -176,24 +183,6 @@ TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
   }
 
   return v8g;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a method to a prototype object
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
-                                const char* const name,
-                                v8::Handle<v8::Value>(*func)(v8::Arguments const&),
-                                const bool isHidden) {
-  if (isHidden) {
-    // hidden method
-    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
-  }
-  else {
-    // normal method
-    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

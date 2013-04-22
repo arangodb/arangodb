@@ -186,6 +186,7 @@ window.arangoCollections = Backbone.Collection.extend({
         return returnobj;
       },
       renameCollection: function (id, name) {
+        var result = false;
         $.ajax({
           cache: false,
           type: "PUT",
@@ -195,22 +196,25 @@ window.arangoCollections = Backbone.Collection.extend({
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            arangoHelper.arangoNotification("Collection renamed");
+            result = true;
             this.alreadyRenamed = true;
-            window.arangoCollectionsStore.fetch({
-              success: function () {
-                window.collectionsView.render();
-              }
-            });
           },
           error: function(data) {
-            arangoHelper.arangoNotification("Collection error");
-            failed = true;
+            try {
+              var parsed = JSON.parse(data.responseText);
+              result = parsed.errorMessage;
+            }
+            catch (e) {
+              result = false;
+            }
           }
         });
+        return result;
       },
       changeCollection: function (id, wfs, journalSize) {
         var self = this;
+        var result = false;
+
         $.ajax({
           cache: false,
           type: "PUT",
@@ -220,23 +224,22 @@ window.arangoCollections = Backbone.Collection.extend({
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            arangoHelper.arangoNotification("Saved collection properties");
-
+            result = true;
             if (self.alreadyRenamed === true) {
               self.alreadyRenamed = false;
-              window.arangoCollectionsStore.fetch({
-                success: function () {
-                  window.collectionsView.render();
-                }
-              });
             }
-
           },
           error: function(data) {
-            arangoHelper.arangoNotification("Collection error");
-            failed = true;
+            try {
+              var parsed = JSON.parse(data.responseText);
+              result = parsed.errorMessage;
+            }
+            catch (e) {
+              result = false;
+            }
           }
         });
+        return result;
       },
       deleteCollection: function (id) {
         var returnval = false;

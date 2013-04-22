@@ -520,6 +520,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   }
 
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
+  info->_numberAttributes = (TRI_voc_ssize_t) primary->_shaper->numAttributes(primary->_shaper);
   
   return info;
 }

@@ -1139,13 +1139,15 @@ AQL offers the following functions to filter data based on geo indexes:
 
 - @FN{NEAR(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{limit}\, @FA{distancename})}: 
   returns at most @FA{limit} documents from collection @FA{collection} that are near
-  @FA{latitude} and @FA{longitude}. The result contains at @FA{limit} documents, returned in
+  @FA{latitude} and @FA{longitude}. The result contains at most @FA{limit} documents, returned in
   any order. If more than @FA{limit} documents qualify, it is undefined which of the qualifying
   documents are returned. Optionally, the distances between the specified coordinate
   (@FA{latitude} and @FA{longitude}) and the document coordinates can be returned as well.
   To make use of that, an attribute name for the distance result has to be specified in
   the @FA{distancename} argument. The result documents will contain the distance value in
   an attribute of that name.
+  @FA{limit} is an optional parameter since ArangoDB 1.3. If it is not specified or null, a limit
+  value of 100 will be applied.
 
 - @FN{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
   returns all documents from collection @FA{collection} that are within a radius of
