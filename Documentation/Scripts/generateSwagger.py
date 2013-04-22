@@ -65,6 +65,12 @@ def parameters(line):
     line , c , r = line.rpartition('}')
     return line
 
+def BackTicks(txt, wordboundary = ['<em>','</em>']):
+    # `word` -> <b>word</b>
+    r = rc(r"""([\(\s'/">]|^|.)\`(.*?)\`([<\s\.\),:;'"?!/-]|$)""", MS)
+    subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
+    return r.sub(subpattern, txt)
+
 def FA(txt, wordboundary = ['<b>','</b>']):
     # @FA{word} -> <b>word</b>
     r = rc(r"""([\(\s'/">]|^|.)@FA\{(.*?)\}([<\s\.\),:;'"?!/-]|$)""", MS)
@@ -84,6 +90,7 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
     return r.sub(subpattern, txt)
 
 def Typography(txt):
+    txt = BackTicks(txt)
     txt = FN(txt)
     txt = LIT(txt)
     txt = FA(txt)
