@@ -196,11 +196,11 @@ function matchError (req, res, doc, errorCode) {
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{_key}: The name of the new graph.
-/// - @LIT{vertices}: The name of the vertices collection.
-/// - @LIT{edges}: The name of the egde collection.
+/// - `_key`: The name of the new graph.
+/// - `vertices`: The name of the vertices collection.
+/// - `edges`: The name of the egde collection.
 ///
-/// Returns an object with an attribute @LIT{graph} containing a
+/// Returns an object with an attribute `graph` containing a
 /// list of all graph properties.
 ///
 /// @RESTRETURNCODES
@@ -271,17 +271,17 @@ function post_graph_graph (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Returns an object with an attribute @LIT{graph} containing a
+/// Returns an object with an attribute `graph` containing a
 /// list of all graph properties.
 ///
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+/// given etag. Otherwise a `HTTP 304` is returned.
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -297,7 +297,7 @@ function post_graph_graph (req, res) {
 /// version
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current graph has 
+/// "If-Match" header or `rev` is given and the current graph has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -346,8 +346,8 @@ function get_graph_graph (req, res) {
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is deleted, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -359,7 +359,7 @@ function get_graph_graph (req, res) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current graph has 
+/// "If-Match" header or `rev` is given and the current graph has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -412,7 +412,7 @@ function delete_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a graph vertex
 ///
-/// @RESTHEADER{POST /_api/graph/@FA{graph-name}/vertex,create vertex}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/vertex,create vertex}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -424,10 +424,10 @@ function delete_graph_graph (req, res) {
 ///
 /// The call expects a JSON hash array as body with the vertex properties:
 ///
-/// - @LIT{_key}: The name of the vertex (optional).
+/// - `_key`: The name of the vertex (optional).
 /// - further optional attributes.
 ///
-/// Returns an object with an attribute @LIT{vertex} containing a
+/// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///
 /// @RESTRETURNCODES
@@ -481,7 +481,7 @@ function post_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the vertex properties
 ///
-/// @RESTHEADER{GET /_api/graph/@FA{graph-name}/vertex,get vertex}
+/// @RESTHEADER{GET /_api/graph/`graph-name`/vertex,get vertex}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -489,17 +489,17 @@ function post_graph_vertex (req, res, g) {
 /// Revision of a vertex
 ///
 /// @RESTDESCRIPTION
-/// Returns an object with an attribute @LIT{vertex} containing a
+/// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+/// given etag. Otherwise a `HTTP 304` is returned.
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -515,7 +515,7 @@ function post_graph_vertex (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-None-Match" header or @LIT{rev} is given and the current graph has 
+/// "If-None-Match" header or `rev` is given and the current graph has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -549,7 +549,7 @@ function get_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
 ///
-/// @RESTHEADER{DELETE /_api/graph/@FA{graph-name}/vertex,delete vertex}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`/vertex,delete vertex}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -564,8 +564,8 @@ function get_graph_vertex (req, res, g) {
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is deleted, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -577,7 +577,7 @@ function get_graph_vertex (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current vertex has 
+/// "If-Match" header or `rev` is given and the current vertex has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -679,7 +679,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PUT /_api/graph/@FA{graph-name}/vertex,update vertex}
+/// @RESTHEADER{PUT /_api/graph/`graph-name`/vertex,update vertex}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -694,13 +694,13 @@ function update_graph_vertex (req, res, g, isPatch) {
 ///
 /// The call expects a JSON hash array as body with the new vertex properties.
 ///
-/// Returns an object with an attribute @LIT{vertex} containing a
+/// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is updated, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -717,7 +717,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current vertex has 
+/// "If-Match" header or `rev` is given and the current vertex has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -732,7 +732,7 @@ function put_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PATCH /_api/graph/@FA{graph-name}/vertex,update vertex}
+/// @RESTHEADER{PATCH /_api/graph/`graph-name`/vertex,update vertex}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -750,20 +750,20 @@ function put_graph_vertex (req, res, g) {
 ///
 /// The call expects a JSON hash array as body with the properties to patch.
 ///
-/// Setting an attribute value to @LIT{null} in the patch document will cause a value 
-/// of @LIT{null} be saved for the attribute by default. If the intention is to 
+/// Setting an attribute value to `null` in the patch document will cause a value 
+/// of `null` be saved for the attribute by default. If the intention is to 
 /// delete existing attributes with the patch command, the URL parameter 
-/// @LIT{keepNull} can be used with a value of @LIT{false}. 
+/// `keepNull` can be used with a value of `false`. 
 /// This will modify the behavior of the patch command to remove any attributes 
 /// from the existing document that are contained in the patch document 
-/// with an attribute value of @LIT{null}.
+/// with an attribute value of `null`.
 //
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is updated, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
-/// Returns an object with an attribute @LIT{vertex} containing a
+/// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///
 /// @RESTRETURNCODES
@@ -781,7 +781,7 @@ function put_graph_vertex (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current vertex has 
+/// "If-Match" header or `rev` is given and the current vertex has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -876,25 +876,25 @@ function process_labels_filter (data, labels, collname) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the vertices of a graph
 ///
-/// @RESTHEADER{POST /_api/graph/@FA{graph-name}/vertices,get vertices}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/vertices,get vertices}
 ///
 /// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the result:
 ///
-/// - @LIT{batchSize}: the batch size of the returned cursor
-/// - @LIT{limit}: limit the result size
-/// - @LIT{count}: return the total number of results (default "false")
-/// - @LIT{filter}: a optional filter
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
 ///
 /// The attributes of filter
-/// - @LIT{properties}: filter by an array of vertex properties
+/// - `properties`: filter by an array of vertex properties
 ///
 /// The attributes of a property filter
-/// - @LIT{key}: filter the result vertices by a key value pair
-/// - @LIT{value}: the value of the @LIT{key}
-/// - @LIT{compare}: a compare operator
+/// - `key`: filter the result vertices by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
 //
 /// @RESTRETURNCODES
 /// 
@@ -957,28 +957,28 @@ function post_graph_all_vertices (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get neighbors of a vertex
 ///
-/// @RESTHEADER{POST /_api/graph/@FA{graph-name}/vertices/@FA{vertice-name},get vertices}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/vertices/`vertice-name`,get vertices}
 ///
 /// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the result:
 ///
-/// - @LIT{batchSize}: the batch size of the returned cursor
-/// - @LIT{limit}: limit the result size
-/// - @LIT{count}: return the total number of results (default "false")
-/// - @LIT{filter}: a optional filter
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
 ///
 /// The attributes of filter
-/// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out")
+/// - `direction`: Filter for inbound (value "in") or outbound (value "out")
 ///   neighbors. Default value is "any".
-/// - @LIT{labels}: filter by an array of edge labels (empty array means no restriction)
-/// - @LIT{properties}: filter neighbors by an array of edge properties
+/// - `labels`: filter by an array of edge labels (empty array means no restriction)
+/// - `properties`: filter neighbors by an array of edge properties
 ///
 /// The attributes of a property filter
-/// - @LIT{key}: filter the result vertices by a key value pair
-/// - @LIT{value}: the value of the @LIT{key}
-/// - @LIT{compare}: a compare operator
+/// - `key`: filter the result vertices by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
 /// 
@@ -1071,7 +1071,7 @@ function post_graph_vertex_vertices (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge
 ///
-/// @RESTHEADER{POST /_api/graph/@FA{graph-name}/edge,create edge}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/edge,create edge}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1083,13 +1083,13 @@ function post_graph_vertex_vertices (req, res, g) {
 ///
 /// The call expects a JSON hash array as body with the edge properties:
 ///
-/// - @LIT{_key}: The name of the edge.
-/// - @LIT{_from}: The name of the from vertex.
-/// - @LIT{_to}: The name of the to vertex.
-/// - @LIT{$label}: A label for the edge (optional).
+/// - `_key`: The name of the edge.
+/// - `_from`: The name of the from vertex.
+/// - `_to`: The name of the to vertex.
+/// - `$label`: A label for the edge (optional).
 /// - further optional attributes.
 ///
-/// Returns an object with an attribute @LIT{edge} containing the
+/// Returns an object with an attribute `edge` containing the
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
@@ -1148,7 +1148,7 @@ function post_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge properties
 ///
-/// @RESTHEADER{GET /_api/graph/@FA{graph-name}/edge,get edge}
+/// @RESTHEADER{GET /_api/graph/`graph-name`/edge,get edge}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1156,17 +1156,17 @@ function post_graph_edge (req, res, g) {
 /// Revision of an edge
 ///
 /// @RESTDESCRIPTION
-/// Returns an object with an attribute @LIT{edge} containing a
+/// Returns an object with an attribute `edge` containing a
 /// list of all edge properties.
 ///
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+/// given etag. Otherwise a `HTTP 304` is returned.
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -1182,7 +1182,7 @@ function post_graph_edge (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-None-Match" header or @LIT{rev} is given and the current edge has 
+/// "If-None-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -1212,7 +1212,7 @@ function get_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/graph/@FA{graph-name}/edge,delete edge}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`/edge,delete edge}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1227,8 +1227,8 @@ function get_graph_edge (req, res, g) {
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -1245,7 +1245,7 @@ function get_graph_edge (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current edge has 
+/// "If-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -1347,7 +1347,7 @@ function update_graph_edge (req, res, g, isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PUT /_api/graph/@FA{graph-name}/edge,update edge}
+/// @RESTHEADER{PUT /_api/graph/`graph-name`/edge,update edge}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1364,10 +1364,10 @@ function update_graph_edge (req, res, g, isPatch) {
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
-/// Returns an object with an attribute @LIT{edge} containing a
+/// Returns an object with an attribute `edge` containing a
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
@@ -1385,7 +1385,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current edge has 
+/// "If-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -1400,7 +1400,7 @@ function put_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PATCH /_api/graph/@FA{graph-name}/edge,update edge}
+/// @RESTHEADER{PATCH /_api/graph/`graph-name`/edge,update edge}
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1418,20 +1418,20 @@ function put_graph_edge (req, res, g) {
 ///
 /// The call expects a JSON hash array as body with the properties to patch.
 ///
-/// Setting an attribute value to @LIT{null} in the patch document will cause a value 
-/// of @LIT{null} be saved for the attribute by default. If the intention is to 
+/// Setting an attribute value to `null` in the patch document will cause a value 
+/// of `null` be saved for the attribute by default. If the intention is to 
 /// delete existing attributes with the patch command, the URL parameter 
-/// @LIT{keepNull} can be used with a value of @LIT{false}. 
+/// `keepNull` can be used with a value of `false`. 
 /// This will modify the behavior of the patch command to remove any attributes 
 /// from the existing document that are contained in the patch document 
-/// with an attribute value of @LIT{null}.
+/// with an attribute value of `null`.
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 //
-/// Returns an object with an attribute @LIT{edge} containing a
+/// Returns an object with an attribute `edge` containing a
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
@@ -1449,7 +1449,7 @@ function put_graph_edge (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or @LIT{rev} is given and the current edge has 
+/// "If-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
 /// @EXAMPLES
@@ -1464,26 +1464,26 @@ function patch_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges of a graph
 ///
-/// @RESTHEADER{POST /_api/graph/@FA{graph-name}/edges,get edges}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/edges,get edges}
 ///
 /// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the result:
 ///
-/// - @LIT{batchSize}: the batch size of the returned cursor
-/// - @LIT{limit}: limit the result size
-/// - @LIT{count}: return the total number of results (default "false")
-/// - @LIT{filter}: a optional filter
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
 ///
 /// The attributes of filter
-/// - @LIT{labels}: filter by an array of edge labels
-/// - @LIT{properties}: filter by an array of edge properties
+/// - `labels`: filter by an array of edge labels
+/// - `properties`: filter by an array of edge properties
 ///
 /// The attributes of a property filter
-/// - @LIT{key}: filter the result edges by a key value pair
-/// - @LIT{value}: the value of the @LIT{key}
-/// - @LIT{compare}: a compare operator
+/// - `key`: filter the result edges by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
 /// 
@@ -1555,29 +1555,29 @@ function post_graph_all_edges (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges of a vertex
 ///
-/// @RESTHEADER{POST /_api/graph/@FA{graph-name}/edges/@FA{vertex-name},get edges}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/edges/`vertex-name`,get edges}
 ///
-/// @REST{POST /_api/graph/@FA{graph-name}/edges/@FA{vertex-name}}
+/// @REST{POST /_api/graph/`graph-name`/edges/`vertex-name`}
 ///
 /// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the result:
 ///
-/// - @LIT{batchSize}: the batch size of the returned cursor
-/// - @LIT{limit}: limit the result size
-/// - @LIT{count}: return the total number of results (default "false")
-/// - @LIT{filter}: a optional filter
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
 ///
 /// The attributes of filter
-/// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out")
+/// - `direction`: Filter for inbound (value "in") or outbound (value "out")
 ///   neighbors. Default value is "any".
-/// - @LIT{labels}: filter by an array of edge labels
-/// - @LIT{properties}: filter neighbors by an array of properties
+/// - `labels`: filter by an array of edge labels
+/// - `properties`: filter neighbors by an array of properties
 ///
 /// The attributes of a property filter
-/// - @LIT{key}: filter the result vertices by a key value pair
-/// - @LIT{value}: the value of the @LIT{key}
-/// - @LIT{compare}: a compare operator
+/// - `key`: filter the result vertices by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
 /// 

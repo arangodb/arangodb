@@ -45,18 +45,18 @@ var ArangoError = arangodb.ArangoError;
 ///
 /// @RESTHEADER{GET /_api/user,fetches a user}
 ///
-/// @REST{GET /_api/user/@FA{username}}
+/// @REST{GET /_api/user/`username`}
 ///
 /// Fetches data about the specified user.
 ///
 /// The call will return a JSON document with at least the following attributes
 /// on success:
 ///
-/// - @LIT{username}: The name of the user as a string.
+/// - `username`: The name of the user as a string.
 ///
-/// - @LIT{active}: an optional flag that specifies whether the user is active.
+/// - `active`: an optional flag that specifies whether the user is active.
 ///
-/// - @LIT{extra}: an optional JSON object with arbitrary extra data about the
+/// - `extra`: an optional JSON object with arbitrary extra data about the
 ///   user.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,40 +91,40 @@ function GET_api_user (req, res) {
 /// The following data need to be passed in a JSON representation in the body of
 /// the POST request:
 ///
-/// - @LIT{username}: The name of the user as a string. This is mandatory.
+/// - `username`: The name of the user as a string. This is mandatory.
 ///
-/// - @LIT{passwd}: The user password as a string. If no password is specified,
+/// - `passwd`: The user password as a string. If no password is specified,
 ///   the empty string will be used.
 ///
-/// - @LIT{active}: an optional flag that specifies whether the user is active.
-///   If not specified, this will default to @LIT{true}.
+/// - `active`: an optional flag that specifies whether the user is active.
+///   If not specified, this will default to `true`.
 ///
-/// - @LIT{extra}: an optional JSON object with arbitrary extra data about the
+/// - `extra`: an optional JSON object with arbitrary extra data about the
 ///   user.
 ///
 /// If the user can be added by the server, the server will respond with 
-/// @LIT{HTTP 201}.
+/// `HTTP 201`.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with @LIT{HTTP 400}.
+/// request, the server will respond with `HTTP 400`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_user (req, res) {
@@ -145,47 +145,47 @@ function POST_api_user (req, res) {
 ///
 /// @RESTHEADER{PUT /_api/user,replaces user}
 ///
-/// @REST{PUT /_api/user/@FA{username}}
+/// @REST{PUT /_api/user/`username`}
 ///
 /// Replaces the data of an existing user. The name of an existing user must
-/// be specified in @FA{username}.
+/// be specified in `username`.
 ///
 /// The following data can to be passed in a JSON representation in the body of
 /// the POST request:
 ///
-/// - @LIT{passwd}: The user password as a string. Specifying a password is
+/// - `passwd`: The user password as a string. Specifying a password is
 ///   mandatory, but the empty string is allowed for passwords.
 ///
-/// - @LIT{active}: an optional flag that specifies whether the user is active.
-///   If not specified, this will default to @LIT{true}.
+/// - `active`: an optional flag that specifies whether the user is active.
+///   If not specified, this will default to `true`.
 ///
-/// - @LIT{extra}: an optional JSON object with arbitrary extra data about the
+/// - `extra`: an optional JSON object with arbitrary extra data about the
 ///   user.
 ///
 /// If the user can be replaced by the server, the server will respond with 
-/// @LIT{HTTP 200}. 
+/// `HTTP 200`. 
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with @LIT{HTTP 400}. If the specified user
-/// does not exist, the server will respond with @LIT{HTTP 404}.
+/// request, the server will respond with `HTTP 400`. If the specified user
+/// does not exist, the server will respond with `HTTP 404`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_user (req, res) {
@@ -223,48 +223,48 @@ function PUT_api_user (req, res) {
 ///
 /// @RESTHEADER{PATCH /_api/user,updates user}
 ///
-/// @REST{PATCH /_api/user/@FA{username}}
+/// @REST{PATCH /_api/user/`username`}
 ///
 /// Partially updates the data of an existing user. The name of an existing user 
-/// must be specified in @FA{username}.
+/// must be specified in `username`.
 ///
 /// The following data can be passed in a JSON representation in the body of
 /// the POST request:
 ///
-/// - @LIT{passwd}: The user password as a string. Specifying a password is
+/// - `passwd`: The user password as a string. Specifying a password is
 ///   optional. If not specified, the previously existing value will not be
 ///   modified.
 ///
-/// - @LIT{active}: an optional flag that specifies whether the user is active.
+/// - `active`: an optional flag that specifies whether the user is active.
 ///   If not specified, the previously existing value will not be modified.
 ///
-/// - @LIT{extra}: an optional JSON object with arbitrary extra data about the
+/// - `extra`: an optional JSON object with arbitrary extra data about the
 ///   user. If not specified, the previously existing value will not be modified.
 ///
 /// If the user can be updated by the server, the server will respond with 
-/// @LIT{HTTP 200}. 
+/// `HTTP 200`. 
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with @LIT{HTTP 400}. If the specified user
-/// does not exist, the server will respond with @LIT{HTTP 404}.
+/// request, the server will respond with `HTTP 400`. If the specified user
+/// does not exist, the server will respond with `HTTP 404`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ////////////////////////////////////////////////////////////////////////////////
 
 function PATCH_api_user (req, res) {
@@ -301,33 +301,33 @@ function PATCH_api_user (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/user,removes a user}
 ///
-/// @REST{DELETE /_api/user/@FA{username}}
+/// @REST{DELETE /_api/user/`username`}
 ///
-/// Removes an existing user, identified by @FA{username}.
+/// Removes an existing user, identified by `username`.
 ///
 /// If the user can be removed by the server, the server will respond with 
-/// @LIT{HTTP 202}. 
+/// `HTTP 202`. 
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
 /// If the specified user does not exist, the server will respond with 
-/// @LIT{HTTP 404}.
+/// `HTTP 404`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ////////////////////////////////////////////////////////////////////////////////
 
 function DELETE_api_user (req, res) {
