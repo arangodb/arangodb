@@ -642,7 +642,7 @@ function update_graph_vertex (req, res, g, isPatch) {
       waitForSync = true;
     }
     
-    var shallow = json.shallowCopy;
+    var shallow = json._shallowCopy;
 
     var id2 = null;
     if (isPatch) {
@@ -1310,7 +1310,7 @@ function update_graph_edge (req, res, g, isPatch) {
       waitForSync = true;
     }
     
-    var shallow = json.shallowCopy;
+    var shallow = json._shallowCopy;
     shallow.$label = e._properties.$label;
     
     var id2 = null;
