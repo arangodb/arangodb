@@ -896,6 +896,14 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     border-bottom-right-radius: 6px;
     margin: 0 0 20px 0;
 }
+body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.post div.content .example_text {
+    display: none;
+}
+
+body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.post div.content em {
+    color: #400;
+    font-weight: bold;
+}
 
 body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.post div.content h4 {
     color: #10a54a;

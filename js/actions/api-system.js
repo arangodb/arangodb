@@ -242,7 +242,7 @@ actions.defineHttp({
 ///
 /// @REST{GET /_admin/time}
 ///
-/// The call returns an object with the attribute @LIT{time}. This contains the
+/// The call returns an object with the attribute `time`. This contains the
 /// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -266,11 +266,11 @@ actions.defineHttp({
 ///
 /// The call returns an object with the following attributes:
 ///
-/// - @LIT{headers}: a list of HTTP headers received
+/// - `headers`: a list of HTTP headers received
 ///
-/// - @LIT{requestType}: the HTTP request method (e.g. GET)
+/// - `requestType`: the HTTP request method (e.g. GET)
 ///
-/// - @LIT{parameters}: list of URL parameters received
+/// - `parameters`: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

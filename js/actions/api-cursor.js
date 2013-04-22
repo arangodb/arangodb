@@ -59,56 +59,56 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// The following attributes can be used inside the JSON object:
 ///
-/// - @LIT{query}: contains the query string to be executed (mandatory)
+/// - `query`: contains the query string to be executed (mandatory)
 ///
-/// - @LIT{count}: boolean flag that indicates whether the number of documents
+/// - `count`: boolean flag that indicates whether the number of documents
 ///   found should be returned as "count" attribute in the result set (optional).
 ///   Calculating the "count" attribute might have a performance penalty for
 ///   some queries so this option is turned off by default.
 ///
-/// - @LIT{batchSize}: maximum number of result documents to be transferred from
+/// - `batchSize`: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
 ///
-/// - @LIT{bindVars}: key/value list of bind parameters (optional). 
+/// - `bindVars`: key/value list of bind parameters (optional). 
 ///
 /// If the result set can be created by the server, the server will respond with
-/// @LIT{HTTP 201}. The body of the response will contain a JSON object with the
+/// `HTTP 201`. The body of the response will contain a JSON object with the
 /// result set.
 ///
 /// The JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{result}: an array of result documents (might be empty if query has no results)
+/// - `result`: an array of result documents (might be empty if query has no results)
 ///
-/// - @LIT{hasMore}: a boolean indicator whether there are more results
+/// - `hasMore`: a boolean indicator whether there are more results
 ///   available on the server
 ///
-/// - @LIT{count}: the total number of result documents available (only
-///   available if the query was executed with the @LIT{count} attribute set.
+/// - `count`: the total number of result documents available (only
+///   available if the query was executed with the `count` attribute set.
 ///
-/// - @LIT{id}: id of temporary cursor created on the server (optional, see above)
+/// - `id`: id of temporary cursor created on the server (optional, see above)
 ///
 /// If the JSON representation is malformed or the query specification is
-/// missing from the request, the server will respond with @LIT{HTTP 400}.
+/// missing from the request, the server will respond with `HTTP 400`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ///
 /// If the query specification is complete, the server will process the query. If an
-/// error occurs during query processing, the server will respond with @LIT{HTTP 400}.
+/// error occurs during query processing, the server will respond with `HTTP 400`.
 /// Again, the body of the response will contain details about the error.
 ///
 /// A list of query errors can be found @ref ArangoErrors here.
@@ -168,24 +168,24 @@ function POST_api_cursor(req, res) {
 ///
 /// @RESTHEADER{PUT /_api/cursor,reads next batch from a cursor}
 ///
-/// @REST{PUT /_api/cursor/@FA{cursor-identifier}}
+/// @REST{PUT /_api/cursor/`cursor-identifier`}
 ///
 /// If the cursor is still alive, returns an object with the following
 /// attributes.
 ///
-/// - @LIT{id}: the @FA{cursor-identifier}
-/// - @LIT{result}: a list of documents for the current batch
-/// - @LIT{hasMore}: @LIT{false} if this was the last batch
-/// - @LIT{count}: if present the total number of elements
+/// - `id`: the `cursor-identifier`
+/// - `result`: a list of documents for the current batch
+/// - `hasMore`: `false` if this was the last batch
+/// - `count`: if present the total number of elements
 ///
-/// Note that even if @LIT{hasMore} returns @LIT{true}, the next call might
-/// still return no documents. If, however, @LIT{hasMore} is @LIT{false}, then
-/// the cursor is exhausted.  Once the @LIT{hasMore} attribute has a value of
-/// @LIT{false}, the client can stop.
+/// Note that even if `hasMore` returns `true`, the next call might
+/// still return no documents. If, however, `hasMore` is `false`, then
+/// the cursor is exhausted.  Once the `hasMore` attribute has a value of
+/// `false`, the client can stop.
 ///
-/// The server will respond with @LIT{HTTP 200} in case of success. If the
+/// The server will respond with `HTTP 200` in case of success. If the
 /// cursor identifier is ommitted or somehow invalid, the server will respond
-/// with @LIT{HTTP 404}.
+/// with `HTTP 404`.
 ///
 /// @EXAMPLES
 ///
@@ -234,7 +234,7 @@ function PUT_api_cursor (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/cursor,deletes a cursor}
 ///
-/// @REST{DELETE /_api/cursor/@FA{cursor-identifier}}
+/// @REST{DELETE /_api/cursor/`cursor-identifier`}
 ///
 /// Deletes the cursor and frees the resources associated with it. 
 ///
@@ -244,11 +244,11 @@ function PUT_api_cursor (req, res) {
 /// be included as part of the URL.
 /// 
 /// In case the server is aware of the cursor, it will respond with @LIT{HTTP
-/// 202}. Otherwise, it will respond with @LIT{404}.
+/// 202}. Otherwise, it will respond with `404`.
 /// 
 /// Cursors that have been explicitly destroyed must not be used afterwards. If
 /// a cursor is used after it has been destroyed, the server will respond with
-/// @LIT{HTTP 404} as well.
+/// `HTTP 404` as well.
 ///
 /// Note: the server will also destroy abandoned cursors automatically after a 
 /// certain server-controlled timeout to avoid resource leakage.
