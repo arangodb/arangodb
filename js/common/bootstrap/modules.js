@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true */
-/*global require, module: true, PACKAGE_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH */
+/*global require, module: true, PACKAGE_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
+  EXPORTS_SLOW_BUFFER */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -191,10 +192,14 @@ function require (path) {
 
   var GlobalPackage = new Package("/", {name: "ArangoDB"}, undefined, packagePath);
 
-  Package.prototype.defineSystemModule = function (path) {
+  Package.prototype.defineSystemModule = function (path, exports) {
     'use strict';
 
     var module = this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+
+    if (exports !== undefined) {
+      module.exports = exports;
+    }
 
     return module;
   };
@@ -292,6 +297,15 @@ function require (path) {
   GlobalPackage.defineSystemModule("/internal");
   var internal = GlobalPackage.module("/internal").exports;
 
+  var key;
+
+  for (key in EXPORTS_SLOW_BUFFER) {
+    if (EXPORTS_SLOW_BUFFER.hasOwnProperty(key)) {
+      internal[key] = EXPORTS_SLOW_BUFFER[key];
+    }
+  }
+
+  delete EXPORTS_SLOW_BUFFER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "fs"

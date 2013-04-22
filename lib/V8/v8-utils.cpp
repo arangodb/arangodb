@@ -261,6 +261,7 @@ static void FillDistribution (v8::Handle<v8::Object> list,
                               StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
+  result->Set(TRI_V8_SYMBOL("sum"), v8::Number::New(dist._total));
   result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
 
   v8::Handle<v8::Array> counts = v8::Array::New(dist._counts.size());
@@ -2368,7 +2369,7 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& modules,
-                      string const& nodes,
+                      string const& packages,
                       string const& tempPath) {
   v8::HandleScope scope;
 
@@ -2453,7 +2454,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "HOME", v8::String::New(FileUtils::homeDirectory().c_str()));
 
   TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
-  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(nodes));
+  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(packages));
   TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
   TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));

@@ -1,75 +1,15 @@
-.dashboardHeader {
-  width: 100%;
-  height: 25px;
-  background-color: rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid #A0A0A0;
-  border-top: 1px solid #A0A0A0;
+.statGroups {
+  margin-bottom: 10px;
+  border: 1px solid black;
+  background-color: white;
 }
 
-.dashboardBox {
-  min-height: 230px;
-  width: 940px;
-  padding-top: 10px;
-  margin-bottom: 20px;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 4px 4px 0px 0px;
-}
-
-#dashboardCollections {
-  margin-top: 10px;
-}
-
-.leftBox {
+.statSystem th{
   width: 300px;
-  float: left;
-  padding-left: 20px;
-  padding-top: 15px;
 }
 
-.leftBox th {
-  padding-left: 5px;
-  float:left;
-  width: 100px;
-  text-align: left;
-  font-weight: normal !important;
-}
-
-.leftBox table {
-  border-collapse:separate;
-  border-spacing:0 5px;
-}
-
-.leftBox table tr {
-  background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
-  background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: linear-gradient(top, #f3efec, #ebe7e3);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
-  border:1px solid #c1bdba;
-  -webkit-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-  -moz-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-  box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-}
-
-.rightBox {
-  padding-bottom: 0;
-  float: right;
-  height: 160px !important;
-  max-height: 220px !important;
-  width: 598px;
-  border:1px solid #c1bdba;
-  background-color: red;
-  margin-top: 20px;
-  margin-right: 20px;
-  background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
-  background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: linear-gradient(top, #f3efec, #ebe7e3);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
-  -webkit-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-  -moz-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+.statClient {
+  height: 100px;
+  margin: 10px;
+  border: 1px solid black;
 }

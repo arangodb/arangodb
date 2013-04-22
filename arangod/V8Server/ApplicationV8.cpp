@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -535,8 +536,8 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.app-path", &_appPath, "one directory for applications")
     ("javascript.dev-app-path", &_devAppPath, "one directory for dev aaplications")
-    ("javascript.modules-path", &_modulesPath, "one or more directories separated by (semi-) colons")
-    ("javascript.package-path", &_packagePath, "one or more directories separated by (semi-) colons")
+    ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
+    ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
@@ -738,6 +739,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_InitV8Actions(context->_context, this);
   }
 
+  TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
   TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _tempPath);
   TRI_InitV8Shell(context->_context);

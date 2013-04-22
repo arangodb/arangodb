@@ -991,6 +991,11 @@ function post_graph_all_vertices (req, res, g) {
 ///
 /// @verbinclude api-graph-get-vertex-vertices
 ///
+/// Select vertices by direction and property filter
+///
+/// @verbinclude api-graph-get-vertex-vertices2
+///
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_vertices (req, res, g) {

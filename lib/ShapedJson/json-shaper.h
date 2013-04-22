@@ -92,6 +92,7 @@ typedef struct TRI_shaper_s {
   TRI_shape_path_t const* (*lookupAttributePathByPid) (struct TRI_shaper_s*, TRI_shape_pid_t);
   TRI_shape_pid_t (*findAttributePathByName) (struct TRI_shaper_s*, char const*);
   size_t (*numShapes) (struct TRI_shaper_s*);
+  size_t (*numAttributes) (struct TRI_shaper_s*);
 
   TRI_associative_synced_t _attributePathsByName;
   TRI_associative_synced_t _attributePathsByPid;

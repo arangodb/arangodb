@@ -934,7 +934,35 @@ void TRI_FreeString (TRI_memory_zone_t* zone, char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts into hex reqpresentation
+/// @brief converts into printable representation
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_PrintableString (char const* source, size_t sourceLen) {
+  unsigned char* result;
+  unsigned char* p;
+  unsigned char* end;
+
+  p = result = (unsigned char*) TRI_Allocate(TRI_CORE_MEM_ZONE, sourceLen + 1, false);
+  end = p + sourceLen;
+
+  while (p < end) {
+    if (*source >= ' ' && *source <= 'z') {
+      *p = *source;
+    }
+    else {
+      *p = '.';
+    }
+    source++;
+    p++;
+  }
+
+  *p = '\0';
+
+  return (char*) result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts into hex representation
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_EncodeHexString (char const* source, size_t sourceLen, size_t* dstLen) {
