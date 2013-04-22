@@ -1,3 +1,10 @@
+.ui-resizable-s {
+  bottom: 0;
+  height: 10px;
+  background-color: #686766 !important;
+  cursor: ns-resize;
+}
+
 #queryOutput .ace_cursor-layer {
   display:none;
 }
@@ -31,6 +38,7 @@
 #aqlEditor {
   width: 898px;
   height: 200px;
+  min-height: 100px;
   border: 1px solid #C0C0C0;
   margin-bottom: 20px;
 }
@@ -59,9 +67,9 @@
 #queryOutput {
   width: 898px;
   background-color: white;
-  height: 350px;
+  height: 200px;
+  min-height: 100px;
   overflow-y: hidden;
-  resize: vertical !important;
   border: 1px solid #c0c0c0;
 }
 

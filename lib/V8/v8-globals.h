@@ -41,18 +41,39 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 symbol for the specified string
+/// @brief shortcut for creating a v8 symbol for the specified string
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_SYMBOL(name) \
   v8::String::NewSymbol(name, strlen(name))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 string for the specified string
+/// @brief shortcut for creating a v8 string for the specified string
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_STRING(name) \
   v8::String::New(name)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for current v8 globals
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_CURRENT_GLOBALS                                  \
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData(); \
+  while (0)
+  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for current v8 globals and scope
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                        \
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData(); \
+  v8::HandleScope scope;                                        \
+  while (0)
+  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception with an error code
@@ -74,7 +95,7 @@
 
 #define TRI_V8_EXCEPTION_USAGE(scope, usage)                           \
   do {                                                                 \
-    string msg = "usage: ";                                            \
+    std::string msg = "usage: ";                                       \
     msg += usage;                                                      \
     return scope.Close(                                                \
       v8::ThrowException(                                              \
@@ -110,7 +131,7 @@
 #define TRI_V8_EXCEPTION_SYS(scope, message)                        \
   do {                                                              \
     TRI_set_errno(TRI_ERROR_SYS_ERROR);                             \
-    string msg = message;                                           \
+    std::string msg = message;                                      \
     msg += ": ";                                                    \
     msg += TRI_LAST_ERROR_STR;                                      \
     return scope.Close(v8::ThrowException(                          \
@@ -121,11 +142,18 @@
   while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for throwing a type error
+/// @brief shortcut for throwing an error
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_TYPE_ERROR(scope, message) \
-  return scope.Close(v8::ThrowException(v8::Exception::TypeError(v8::String::New(message))))
+#define TRI_V8_ERROR(scope, message) \
+  return scope.Close(v8::ThrowException(v8::Exception::Error(v8::String::New(message))))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing a range error
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RANGE_ERROR(scope, message) \
+  return scope.Close(v8::ThrowException(v8::Exception::RangeError(v8::String::New(message))))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a syntax error
@@ -133,6 +161,13 @@
 
 #define TRI_V8_SYNTAX_ERROR(scope, message) \
   return scope.Close(v8::ThrowException(v8::Exception::SyntaxError(v8::String::New(message))))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing a type error
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_TYPE_ERROR(scope, message) \
+  return scope.Close(v8::ThrowException(v8::Exception::TypeError(v8::String::New(message))))
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -207,47 +242,69 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                     JAVASCRIPT FUNCTION TEMPLATES
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Buffer template
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::FunctionTemplate> BufferTempl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fast Buffer constructor
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::Function> FastBufferConstructor;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              JAVASCRIPT CONSTANTS
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "DELETE" function name
+/// @brief "Buffer" constant
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> BufferConstant;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "DELETE" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> DeleteConstant;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "GET" function name
+/// @brief "GET" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> GetConstant;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "HEAD" function name
+/// @brief "HEAD" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> HeadConstant;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "OPTIONS" function name
+/// @brief "OPTIONS" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> OptionsConstant;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "PATCH" function name
+/// @brief "PATCH" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> PatchConstant;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "POST" function name
+/// @brief "POST" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> PostConstant;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "PUT" function name
+/// @brief "PUT" constant
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> PutConstant;
@@ -351,6 +408,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> KeyOptionsKey;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "length" key
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> LengthKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "lifeTime" key
@@ -535,13 +598,77 @@ TRI_v8_global_t;
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a method to a prototype object
+/// @brief adds a method to the prototype of an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
-                                const char* const name,
-                                v8::Handle<v8::Value>(*func)(v8::Arguments const&),
-                                const bool isHidden = false);
+template <typename TARGET>
+void TRI_V8_AddProtoMethod (TARGET tpl,
+                            const char* const name,
+                            v8::InvocationCallback callback,
+                            const bool isHidden = false) {
+  // hidden method
+  if (isHidden) {
+    tpl->PrototypeTemplate()->Set(TRI_V8_SYMBOL(name),
+                                  v8::FunctionTemplate::New(callback),
+                                  v8::DontEnum);
+  }
+
+  // normal method
+  else {
+    tpl->PrototypeTemplate()->Set(TRI_V8_SYMBOL(name),
+                                  v8::FunctionTemplate::New(callback));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a method to an object
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename TARGET>
+inline void TRI_V8_AddMethod (TARGET tpl,
+                              const char* const name,
+                              v8::Handle<v8::FunctionTemplate> callback,
+                              const bool isHidden = false) {
+  // hidden method
+  if (isHidden) {
+    tpl->Set(TRI_V8_SYMBOL(name),
+             callback->GetFunction(),
+             v8::DontEnum);
+  }
+
+  // normal method
+  else {
+    tpl->Set(TRI_V8_SYMBOL(name),
+             callback->GetFunction());
+  }
+}
+
+template <typename TARGET>
+inline void TRI_V8_AddMethod (TARGET tpl,
+                              const char* const name,
+                              v8::InvocationCallback callback,
+                              const bool isHidden = false) {
+  // hidden method
+  if (isHidden) {
+    tpl->Set(TRI_V8_SYMBOL(name),
+             v8::FunctionTemplate::New(callback)->GetFunction(),
+             v8::DontEnum);
+  }
+
+  // normal method
+  else {
+    tpl->Set(TRI_V8_SYMBOL(name),
+             v8::FunctionTemplate::New(callback)->GetFunction());
+  }
+}
+
+template <>
+inline void TRI_V8_AddMethod (v8::Handle<v8::FunctionTemplate> tpl,
+                              const char* const name,
+                              v8::InvocationCallback callback,
+                              const bool isHidden) {
+  TRI_V8_AddMethod(tpl->GetFunction(), name, callback, isHidden);
+}                       
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a method to an object
