@@ -50,14 +50,14 @@ var PARSE = require("internal").AQL_PARSE;
 /// To validate a query string without executing it, the query string can be
 /// passed to the server via an HTTP POST request.
 ///
-/// These query string needs to be passed in the attribute @LIT{query} of a JSON
+/// These query string needs to be passed in the attribute `query` of a JSON
 /// object as the body of the POST request.
 ///
-/// If the query is valid, the server will respond with @LIT{HTTP 200} and
+/// If the query is valid, the server will respond with `HTTP 200` and
 /// return the names of the bind parameters it found in the query (if any) in
-/// the @LIT{"bindVars"} attribute of the response.
+/// the `"bindVars"` attribute of the response.
 ///
-/// The server will respond with @LIT{HTTP 400} in case of a malformed request,
+/// The server will respond with `HTTP 400` in case of a malformed request,
 /// or if the query contains a parse error. The body of the response will
 /// contain the error details embedded in a JSON object.
 ///
