@@ -39,6 +39,8 @@
 
 #include "build.h"
 
+#include "Utils/DocumentWrapper.h"
+
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -1148,15 +1150,6 @@ static TRI_vocbase_t* openDatabase(char const* path,
   return vocbase;
 }
 
-static bool getBooleanValue(TRI_json_t* json, string const& name, bool defaultValue) {
-  TRI_json_t const* b = TRI_LookupArrayJson(json, name.c_str());
-  if (b != 0 && b->_type == TRI_JSON_BOOLEAN) {
-    return b->_value._boolean;
-  }
-
-  return defaultValue;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read database name and configuration from document and
 ///        load database
@@ -1164,60 +1157,61 @@ static bool getBooleanValue(TRI_json_t* json, string const& name, bool defaultVa
 
 static bool handleUserDatabase (TRI_doc_mptr_t const* document, 
         TRI_primary_collection_t* primary, void* data) {
-  TRI_shaped_json_t shapedJson;
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
-    
-  // get document as json
-  TRI_json_t* json = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
   
-  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+  DocumentWrapper doc(document, primary);
+  
+  if (!doc.isArrayDocument()) {
     // wrong document type
-    if (json) TRI_FreeJson(primary->_shaper->_memoryZone, json);
     return true;
   }
-  
-  TRI_json_t const* dbName = TRI_LookupArrayJson(json, "name");
-  if (dbName == 0 || dbName->_type != TRI_JSON_STRING) {
+
+  string dbName = doc.getStringValue("name", "");
+  if (dbName == "") {
     // database name not found
     LOG_ERROR("Database name not found. User database not loaded!");
-    TRI_FreeJson(primary->_shaper->_memoryZone, json);
     return true;
   }
 
-  TRI_json_t const* dbPath = TRI_LookupArrayJson(json, "path");
-  if (dbPath == 0 || dbPath->_type != TRI_JSON_STRING) {
+  string dbPath = doc.getStringValue("path", "");
+  if (dbPath == "") {
     // database path not found
     LOG_ERROR("Database path not found. User database not loaded!");
-    TRI_FreeJson(primary->_shaper->_memoryZone, json);
     return true;
   }
 
   local_vocbase_defaults_t* defaults = (local_vocbase_defaults_t*) data;
 
 
-  bool waitForSync = getBooleanValue(json, "waitForSync", 
+  bool waitForSync = doc.getBooleanValue("waitForSync", 
           defaults->defaultWaitForSync);
-  bool requireAuthentication = getBooleanValue(json, "requireAuthentication", 
+  bool requireAuthentication = doc.getBooleanValue("requireAuthentication", 
           defaults->requireAuthentication);  
+  bool removeOnDrop = doc.getBooleanValue("removeOnDrop", 
+          defaults->removeOnDrop);  
+  bool removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
+          defaults->removeOnCompacted);  
+  bool forceSyncShapes = doc.getBooleanValue("forceSyncShapes", 
+          defaults->forceSyncShapes);  
+  bool forceSyncProperties = doc.getBooleanValue("forceSyncProperties", 
+          defaults->forceSyncProperties);  
+  uint64_t defaultMaximalSize = (uint64_t) doc.getNumericValue("defaultMaximalSize", 
+          defaults->defaultMaximalSize);  
   
   // open/load the system database
-  TRI_vocbase_t* userVocbase = openDatabase(dbPath->_value._string.data, 
-        dbName->_value._string.data, 
-        defaults->removeOnDrop,
-        defaults->removeOnCompacted,
-        defaults->defaultMaximalSize,
+  TRI_vocbase_t* userVocbase = openDatabase(dbPath.c_str(), 
+        dbName.c_str(), 
+        removeOnDrop,
+        removeOnCompacted,
+        defaultMaximalSize,
         waitForSync,
-        defaults->forceSyncShapes,
-        defaults->forceSyncProperties,
+        forceSyncShapes,
+        forceSyncProperties,
         false,
         requireAuthentication);
   
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
   }
-  
-  TRI_FreeJson(primary->_shaper->_memoryZone, json);
   
   return true;
 }
@@ -1282,32 +1276,24 @@ bool ArangoServer::loadUserDatabases () {
 
 static bool handleEnpoint (TRI_doc_mptr_t const* document, 
         TRI_primary_collection_t* primary, void* data) {
-  TRI_shaped_json_t shapedJson;
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
-    
-  // get document as json
-  TRI_json_t* json = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
   
-  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+  DocumentWrapper doc(document, primary);
+  
+  if (!doc.isArrayDocument()) {
     // wrong document type
-    if (json) TRI_FreeJson(primary->_shaper->_memoryZone, json);
     return true;
   }
   
-  TRI_json_t const* endpoint = TRI_LookupArrayJson(json, "endpoint");
-  if (endpoint == 0 || endpoint->_type != TRI_JSON_STRING) {
+  string endpoint = doc.getStringValue("endpoint", "");
+  if (endpoint == "") {
     // endpoint string not found
     LOG_ERROR("Endpoint string not found!");
-    TRI_FreeJson(primary->_shaper->_memoryZone, json);
     return true;
   }
 
   triagens::rest::ApplicationEndpointServer* applicationEndpointServer = 
           (triagens::rest::ApplicationEndpointServer*) data;
-  applicationEndpointServer->addEndpoint(endpoint->_value._string.data);
-  
-  TRI_FreeJson(primary->_shaper->_memoryZone, json);
+  applicationEndpointServer->addEndpoint(endpoint);
   
   return true;
 }

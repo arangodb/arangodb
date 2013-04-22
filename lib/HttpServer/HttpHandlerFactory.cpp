@@ -246,9 +246,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 
   HttpRequest* request = new HttpRequest(info, ptr, length);
   
-  if (request) {
-    setRequestContext(request);
-  }
+  setRequestContext(request);
   
   return request;
 }
