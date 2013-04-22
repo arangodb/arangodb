@@ -139,10 +139,10 @@ namespace triagens {
         static const string getEncryptionName (const Endpoint::EncryptionType encryption) {
           switch (encryption) {
             case Endpoint::ENCRYPTION_SSL:
-              return "ssl";
+              return "ssl-encrypted";
             case Endpoint::ENCRYPTION_NONE:
             default:
-              return "tcp";
+              return "non-encrypted";
           }
         }
 
