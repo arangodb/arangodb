@@ -32,7 +32,6 @@ JAVASCRIPT_BROWSER = \
 	\
 	html/admin/js/client/client.js \
 	html/admin/js/client/bootstrap/module-internal.js
-        
 
 BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
 

@@ -80,7 +80,7 @@ SERVER_OPT := \
 	--database.force-sync-properties false \
 	--javascript.action-directory @top_srcdir@/js/actions \
 	--javascript.gc-interval 1 \
-	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
+	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
 	--ruby.action-directory @top_srcdir@/mr/actions \
@@ -92,7 +92,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules \
+	--javascript.modules-path @top_srcdir@/js/client/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--no-colors \
 	--quiet

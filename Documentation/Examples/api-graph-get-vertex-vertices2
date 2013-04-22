@@ -1,0 +1,40 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/grap/graph1/vertices/id2
+{
+  "batchSize" : 100, 
+  limit : 10, 
+  count : true, 
+  "filter" : { 
+    "direction" : "out", 
+    "properties" : [
+      {
+        "key" : "optional1",
+        "value" : "val1",
+        "compare" : "=="
+      },
+      {
+        "key" : "optional2",
+        "value" : 2,
+        "compare" : "=="
+      }
+    ]
+  }
+}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{
+  "result": [
+    {
+      "_id": "v/id3",
+      "_rev": "47810529",
+      "_key": "id3",
+      "optional2": 2,
+      "optional1": "val1"
+    }
+  ],
+  "hasMore": false,
+  "error": false,
+  "count" : 1,
+  "code": 201
+}
