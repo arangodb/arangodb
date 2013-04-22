@@ -5455,17 +5455,25 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-
+  
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+  }
+  
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+
+  if (barrier == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   res = trx.truncate(forceSync);
   res = trx.finish(res);
+
+  TRI_FreeBarrier(barrier);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
