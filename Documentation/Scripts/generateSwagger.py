@@ -373,7 +373,7 @@ def comment(cargo, r=Regexen()):
             _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [],
                 'summary': None, 'notes': '', 'examples': '', 'errorResponses':[]}
             _operation['httpMethod'] = method
-            if method == 'POST':
+            if method == 'POST' or method == 'PUT' or method == 'PATCH':
                 parameter = {}
                 parameter['paramType'] = 'body'
                 parameter['name'] = 'body'
@@ -381,7 +381,6 @@ def comment(cargo, r=Regexen()):
                 parameter['dataType'] = 'String'
                 parameter['required'] = 'false'
                 _operation['parameters'] = [parameter]
-            # TODO body processing in PUT ...
             summaryList = summary.split()
             _operation['nickname'] = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
             _operation['summary'] = summary
@@ -391,6 +390,7 @@ def comment(cargo, r=Regexen()):
         elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
         elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
         elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
+        elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
         elif len(line) >= 4 and line[:4] == "////":  continue
         elif len(line) >= 3 and line[:3] =="///":    continue
         else:                                        return read_through, (fp, line)
