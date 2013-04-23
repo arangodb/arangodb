@@ -390,7 +390,7 @@ form.fullwidth ol li.string input, form.fullwidth ol li.url input, form.fullwidt
 }
 
 body {
-  /*  font-family: "Droid Sans", sans-serif; */
+  /* font-family: "Droid Sans", sans-serif; */
 }
 
 body #content_message {
@@ -571,6 +571,11 @@ body ul#resources li.resource:hover div.heading h2 a, body ul#resources li.resou
 
 body ul#resources li.resource:hover div.heading ul.options li a, body ul#resources li.resource.active div.heading ul.options li a {
     color: #555555;
+}
+
+body ul#resources li.resource ul.endpoints li.endpoint ul.operations div.content em {
+    color: black;
+    font-weight: bold;
 }
 
 body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.get {
@@ -895,14 +900,6 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     -khtml-border-bottom-right-radius: 6px;
     border-bottom-right-radius: 6px;
     margin: 0 0 20px 0;
-}
-body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.post div.content .example_text {
-    display: none;
-}
-
-body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.post div.content em {
-    color: #400;
-    font-weight: bold;
 }
 
 body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.post div.content h4 {

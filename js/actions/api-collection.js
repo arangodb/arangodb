@@ -98,8 +98,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// @RESTHEADER{POST /_api/collection,creates a collection}
 ///
-/// @REST{POST /_api/collection}
-///
+/// @RESTDESCRIPTION
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
 ///
@@ -245,8 +244,11 @@ function post_api_collection (req, res) {
 ///
 /// @RESTHEADER{GET /_api/collection,reads all collections}
 ///
-/// @REST{GET /_api/collection}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{excludeSystem,boolean,optional}
+///
+/// @RESTDESCRIPTION
 /// Returns an object with an attribute `collections` containing a 
 /// list of all collection descriptions. The same information is also
 /// available in the `names` as hash map with the collection names
@@ -296,11 +298,13 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
 ///
-/// @RESTHEADER{GET /_api/collection,reads a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name},reads a collection}
 ///
-/// @REST{GET /_api/collection/`collection-name`}
-//////////////////////////////////////////////////////////
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+/// 
+/// @RESTDESCRIPTION
 /// The result is an object describing the collection with the following
 /// attributes:
 ///
@@ -321,12 +325,23 @@ function get_api_collections (req, res) {
 ///   - 2: document collection (normal case)
 ///   - 3: edges collection
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is
 /// returned.
 ///
-/// @REST{GET /_api/collection/`collection-name`/properties}
-////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////
 ///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/properties,reads a collection with properties}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
 /// `waitForSync`, `journalSize`, and `isVolatile` properties. 
 /// This is achieved by forcing a load of the underlying collection.
@@ -340,17 +355,69 @@ function get_api_collections (req, res) {
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
 ///
-/// @REST{GET /_api/collection/`collection-name`/count}
-////////////////////////////////////////////////////////////////
+/// @RESTRETURNCODES
 ///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
+/// @EXAMPLES
+///
+/// Using an identifier:
+///
+/// @verbinclude api-collection-get-collection-identifier
+///
+/// Using a name:
+///
+/// @verbinclude api-collection-get-collection-name
+///
+////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/count,reads a collection with count}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents.
 /// Note that this will always load the collection into memory.
 ///
 /// - `count`: The number of documents inside the collection.
 ///
-/// @REST{GET /_api/collection/`collection-name`/figures}
-//////////////////////////////////////////////////////////////////
+/// @RESTRETURNCODES
 ///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
+/// @EXAMPLES
+///
+/// Using an identifier and requesting the number of documents:
+///
+/// @verbinclude api-collection-get-collection-count
+///
+////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/figures,reads a collection with stats}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents
 /// and additional statistical information about the collection.  Note that this
 /// will always load the collection into memory.
@@ -385,9 +452,32 @@ function get_api_collections (req, res) {
 ///
 /// Note: the filesizes of shapes and compactor files are not reported.
 ///
-/// @REST{GET /_api/collection/`collection-name`/revision}
-/////////////////////////////////////////////////////////////
+/// @RESTRETURNCODES
 ///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
+/// @EXAMPLES
+///
+/// Using an identifier and requesting the figures of the collection:
+///
+/// @verbinclude api-collection-get-collection-figures
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/revision, reads a collection with revision id}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// In addition to the above, the result will also contain the
 /// collection's revision id. The revision id is a server-generated
 /// string that clients can use to check whether data in a collection
@@ -395,24 +485,16 @@ function get_api_collections (req, res) {
 ///
 /// - `revision`: The collection revision id as a string.
 ///
-/// @EXAMPLES
-/////////////
+/// @RESTRETURNCODES
 ///
-/// Using an identifier:
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
 ///
-/// @verbinclude api-collection-get-collection-identifier
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
 ///
-/// Using a name:
-///
-/// @verbinclude api-collection-get-collection-name
-///
-/// Using an identifier and requesting the number of documents:
-///
-/// @verbinclude api-collection-get-collection-count
-///
-/// Using an identifier and requesting the figures of the collection:
-///
-/// @verbinclude api-collection-get-collection-figures
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collection (req, res) {
@@ -523,10 +605,13 @@ function get_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../load,loads a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/load,loads a collection}
 ///
-/// @REST{PUT /_api/collection/`collection-name`/load}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Loads a collection into memory. Returns the collection on success.
 ///
 /// The request might optionally contain the following attribute:
@@ -552,9 +637,15 @@ function get_api_collection (req, res) {
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
 /// If the `collection-name` is missing, then a `HTTP 400` is
-/// returned.  If the `collection-name` is unknown, then a @LIT{HTTP
-/// 404} is returned.
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
 ///
 /// @EXAMPLES
 ///
@@ -584,10 +675,13 @@ function put_api_collection_load (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../unload,unloads a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/unload,unloads a collection}
 ///
-/// @REST{PUT /_api/collection/`collection-name`/unload}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
 /// memory, again. On success an object with the following attributes is
@@ -603,9 +697,14 @@ function put_api_collection_load (req, res, collection) {
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
 /// If the `collection-name` is missing, then a `HTTP 400` is
-/// returned.  If the `collection-name` is unknown, then a @LIT{HTTP
-/// 404} is returned.
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
 ///
@@ -628,10 +727,13 @@ function put_api_collection_unload (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../truncate,truncates a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/truncate,truncates a collection}
 ///
-/// @REST{PUT /_api/collection/`collection-name`/truncate}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
 /// @EXAMPLES
@@ -655,10 +757,13 @@ function put_api_collection_truncate (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../properties,changes the properties of a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/properties,changes the properties of a collection}
 ///
-/// @REST{PUT /_api/collection/`collection-name`/properties}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
 ///
@@ -714,10 +819,13 @@ function put_api_collection_properties (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../rename,renames a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/rename,renames a collection}
 ///
-/// @REST{PUT /_api/collection/`collection-name`/rename}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Renames a collection. Expects an object with the attribute(s)
 ///
 /// - `name`: The new name.
@@ -812,10 +920,13 @@ function put_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a collection
 ///
-/// @RESTHEADER{DELETE /_api/collection,deletes a collection}
+/// @RESTHEADER{DELETE /_api/collection/{collection-name},deletes a collection}
 ///
-/// @REST{DELETE /_api/collection/`collection-name`}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Deletes a collection identified by `collection-name`.
 ///
 /// If the collection was successfully deleted then, an object is returned with
@@ -825,8 +936,14 @@ function put_api_collection (req, res) {
 ///
 /// - `id`: The identifier of the deleted collection.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
 /// If the `collection-name` is missing, then a `HTTP 400` is
-/// returned.  If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
 ///
