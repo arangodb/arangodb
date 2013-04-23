@@ -59,25 +59,6 @@ module = null;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
-///
-/// @FUN{require(@FA{path})}
-///
-/// @FN{require} checks if the file specified by @FA{path} has already been
-/// loaded.  If not, the content of the file is executed in a new
-/// context. Within the context you can use the global variable @LIT{exports}
-/// in order to export variables and functions. This variable is returned by
-/// @FN{require}.
-///
-/// Assume that your module file is @LIT{test1.js} and contains
-///
-/// @verbinclude modules-require-1
-///
-/// Then you can use @FN{require} to load the file and access the exports.
-///
-/// @verbinclude modules-require-2
-///
-/// @FN{require} follows the specification
-/// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {

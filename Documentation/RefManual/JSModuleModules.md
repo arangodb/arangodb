@@ -7,14 +7,109 @@ JavaScript Modules{#JSModules}
 Introduction to Javascript Modules{#JSModulesIntro}
 ===================================================
 
-The ArangoDB uses a <a href="http://wiki.commonjs.org/wiki/Modules">CommonJS</a>
-compatible module concept. You can use the function @FN{require} in order to
-load a module. @FN{require} returns the exported variables and functions of the
-module. You can use the option @CO{startup.modules-path} to specify the location
-of the JavaScript files.
+The ArangoDB uses a <a href="http://wiki.commonjs.org/wiki">CommonJS</a>
+compatible module and package concept. You can use the function @FN{require} in
+order to load a module or package. It returns the exported variables and
+functions of the module or package.
 
-@anchor JSModulesRequire
-@copydetails JSF_require
+CommonJS Modules{#JSModulesCommonJS}
+------------------------------------
+
+Unfortunately, the JavaScript libraries are just in the process of being
+standardized. CommonJS has defined some important modules. ArangoDB implements
+the following
+
+- "console" is a well known logging facility to all the JavaScript developers.
+  ArangoDB implements all of the functions described
+  <a href="http://wiki.commonjs.org/wiki/Console">here</a>, with the exceptions
+  of `profile` and `count`.
+
+- "fs" provides a file system API for the manipulation of paths, directories, 
+  files, links, and the construction of file streams. ArangoDB implements
+  most of Filesystem/A functions described
+  <a href="http://wiki.commonjs.org/wiki/Filesystem/A">here</a>.
+
+- Modules are implemented according to 
+  <a href="http://wiki.commonjs.org/wiki/Modules">Modules/1.1.1</a>
+
+- Packages are implemented according to
+  <a href="http://wiki.commonjs.org/wiki/Packages">Packages/1.0</a>
+
+ArangoDB Specific Modules{#JSModulesArangoDB}
+---------------------------------------------
+
+A lot of the modules, however, are ArangoDB specific. These are described in the
+following chapters. You can use the command-line option
+@CO{startup.modules-path} to specify the location of the JavaScript files.
+
+Node Modules{#JSModulesNode}
+----------------------------
+
+ArangoDB also support some <a href="http://www.nodejs.org/">node</a> modules.
+
+- <a href="http://www.nodejs.org/api/assert.html">"assert"</a> implements 
+  assertion and testing functions.
+
+- <a href="http://www.nodejs.org/api/buffer.html">"buffer"</a> implements
+  a binary data type for JavaScript.
+
+- <a href="http://www.nodejs.org/api/path.html">"path"</a> implements
+  functions dealing with filenames and paths.
+
+- <a href="http://www.nodejs.org/api/punycode.html">"punycode"</a> implements
+  conversion functions for
+  <a href="http://en.wikipedia.org/wiki/Punycode">punycode</a> encoding.
+
+- <a href="http://www.nodejs.org/api/querystring.html">"querystring"</a>
+  provides utilities for dealing with query strings.
+
+- <a href="http://www.nodejs.org/api/url.html">"url"</a>
+  has utilities for URL resolution and parsing.
+
+Node Packages{#JSModulesNPM}
+----------------------------
+
+The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
+
+- <a href="http://coffeescript.org/">"coffee-script"</a> implements a
+  coffee-script to JavaScript compiler. ArangoDB supports the `compile` 
+  function of the package, but not the `eval` functions.
+
+You can use the command-line option @CO{startup.package-path} to specify the
+location of the node packages.
+
+require{#JSModulesRequire}
+--------------------------
+
+@FUN{require(@FA{path})}
+
+@FN{require} checks if the module or package specified by @FA{path} has already
+been loaded.  If not, the content of the file is executed in a new
+context. Within the context you can use the global variable @LIT{exports} in
+order to export variables and functions. This variable is returned by
+@FN{require}.
+
+Assume that your module file is @LIT{test1.js} and contains
+
+    exports.func1 = function() {
+      print("1");
+    };
+
+    exports.const1 = 1;
+
+Then you can use @FN{require} to load the file and access the exports.
+
+    unix> ./arangod --console /tmp/vocbase
+    arangod> var test1 = require("test1");
+
+    arangod> test1.const1;
+    1
+
+    arangod> test1.func1();
+    1
+
+@FN{require} follows the specification
+<a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
 
 Modules Path versus Modules Collection{#JSModulesPath}
 ======================================================
@@ -28,8 +123,8 @@ JavaScript modules. This would require you to become root and copy the files
 into the share directory. In order to easy the deployment of extensions,
 ArangoDB uses a second mechanism to look up JavaScript modules.
 
-JavaScript for extension can either be stored in the filesystem as regular file
-or in the database collection `_modules`.
+JavaScript modules can either be stored in the filesystem as regular file or in
+the database collection `_modules`.
 
 Given the directory paths
 

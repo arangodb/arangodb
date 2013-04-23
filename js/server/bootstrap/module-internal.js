@@ -146,25 +146,6 @@
       var i;
 
       console.debug("actions loaded");
-
-      modules = internal.db._collection("_modules");
-
-      if (modules !== null) {
-        modules = modules.byExample({ autoload: true }).toArray();
-
-        for (i = 0;  i < modules.length;  ++i) {
-          var module = modules[i];
-
-          console.debug("autoloading module: %s", module.path);
-
-          try {
-            require(module.path);
-          }
-          catch (err) {
-            console.error("while loading '%s': %s", module.path, String(err));
-          }
-        }
-      }
     };
   }
 
