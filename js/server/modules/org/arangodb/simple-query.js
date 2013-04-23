@@ -31,7 +31,7 @@
 var internal = require("internal");
 var console = require("console");
 
-var ArangoError = require("org/arangodb/arango-error");
+var ArangoError = require("org/arangodb").ArangoError;
 
 var sq = require("org/arangodb/simple-query-common");
 
@@ -112,7 +112,7 @@ function byExample (collection, example, skip, limit) {
       if (example[k] === null) {
         unique = false;
       }
-      else if (k === '_id') {
+      else if (k === '_id' || k === '_key') {
         // example contains the document id in attribute "_id"
         documentId = example[k];
         break;
@@ -126,23 +126,40 @@ function byExample (collection, example, skip, limit) {
     try {
       // look up document by id
       doc = collection.document(documentId);
+    
+      // we have used the primary index to look up the document
+      // now we need to post-filter because non-indexed values might not have matched  
+      for (k in example) {
+        if (example.hasOwnProperty(k)) {
+          if (doc[k] !== example[k]) {
+            doc = null;
+            break;
+          }
+        }
+      }
     }
     catch (e) {
     }
+
     return { "total" : doc ? 1 : 0, "count" : doc ? 1 : 0, "documents" : doc ? [ doc ] : [ ] };
   }
 
-  var idx = collection.lookupHashIndex.apply(collection, attributes);
+  var idx = null;
 
-  if (idx === null && unique) {
-    idx = collection.lookupUniqueConstraint.apply(collection, attributes);
+  try {
+    idx = collection.lookupHashIndex.apply(collection, attributes);
+    if (idx === null && unique) {
+      idx = collection.lookupUniqueConstraint.apply(collection, attributes);
 
-    if (idx !== null) {
-      console.debug("found unique constraint %s", idx.id);
+      if (idx !== null) {
+        console.debug("found unique constraint %s", idx.id);
+      }
+    }
+    else if (idx !== null) {
+      console.debug("found hash index %s", idx.id);
     }
   }
-  else if (idx !== null) {
-    console.debug("found hash index %s", idx.id);
+  catch (err) {
   }
 
   if (idx !== null) {

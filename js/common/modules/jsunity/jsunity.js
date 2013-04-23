@@ -8,7 +8,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
-jsUnity = (function () {
+var jsUnity = exports.jsUnity = (function () {
     function fmt(str) {
         var a = Array.prototype.slice.call(arguments, 1);
         return str.replace(/\?/g, function () { return a.shift(); });
@@ -443,7 +443,12 @@ jsUnity = (function () {
                     } catch (e) {
                         tearDown(test.name); // if tearDown above throws exc, will call again!
 
+                        if (e.stack !== undefined) {
+                            this.results.fail(j + 1, test.name, String(e.stack));
+                        }
+                        else {
                         this.results.fail(j + 1, test.name, e);
+                        }
                     }
                 }
             }

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
-/*global require, exports, COMPARE_STRING */
+/*global require, exports, COMPARE_STRING, MATCHES */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions 
@@ -32,9 +32,7 @@
 
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
-
-var RegexCache = { 'i' : { }, '' : { } };
+var ArangoError = require("org/arangodb").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -44,6 +42,18 @@ var RegexCache = { 'i' : { }, '' : { } };
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cache for compiled regexes
+////////////////////////////////////////////////////////////////////////////////
+
+var RegexCache = { };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user functions cache
+////////////////////////////////////////////////////////////////////////////////
+
+var UserFunctions = { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
@@ -68,6 +78,43 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalise a function name
+////////////////////////////////////////////////////////////////////////////////
+
+function NORMALIZE_FNAME (functionName) {
+  var p = functionName.indexOf(':');
+
+  if (p === -1) {
+    return functionName;
+  }
+
+  return functionName.substr(p + 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief filter using a list of examples
+////////////////////////////////////////////////////////////////////////////////
+
+function FILTER (list, 
+                 examples) {
+  var result = [ ], i;
+
+  if (examples === undefined || examples === null) {
+    return list;
+  }
+
+  for (i = 0; i < list.length; ++i) {
+    var element = list[i];
+
+    if (MATCHES(element, examples, false)) {
+      result.push(element);
+    }
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throw a runtime exception
@@ -210,6 +257,44 @@ function CLONE (obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief box a value into the AQL datatype system
+////////////////////////////////////////////////////////////////////////////////
+
+function FIX_VALUE (value) {
+  var type = typeof(value), i;
+
+  if (value === undefined || 
+      value === null || 
+      (type === 'number' && (isNaN(value) || ! isFinite(value)))) {
+    return null;
+  }
+  
+  if (type === 'boolean' || type === 'string' || type === 'number') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    for (i = 0; i < value.length; ++i) {
+      value[i] = FIX_VALUE(value[i]);
+    }
+
+    return value;
+  }
+
+  if (type === 'object') {
+    for (i in value) {
+      if (value.hasOwnProperty(i)) {
+        value[i] = FIX_VALUE(value[i]);
+      }
+    }
+
+    return value;
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the sort type of an operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -246,7 +331,8 @@ function TYPEWEIGHT (value) {
 
 function ARG_CHECK (actualValue, expectedType, functionName) {
   if (TYPEWEIGHT(actualValue) !== expectedType) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
+          NORMALIZE_FNAME(functionName));
   }
 }
 
@@ -318,6 +404,20 @@ function FCALL (name, parameters) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief call a user function
+////////////////////////////////////////////////////////////////////////////////
+
+function FCALL_USER (name, parameters) {
+  if (UserFunctions.hasOwnProperty(name)) {
+    var result = UserFunctions[name].func.apply(null, parameters);
+
+    return FIX_VALUE(result);
+  }
+
+  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the numeric value or undefined if it is out of range
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -376,7 +476,8 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
           keys[key2] = true;
         }
         else {
-          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
+                NORMALIZE_FNAME(functionName));
         }
       }
     }
@@ -2422,6 +2523,11 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
+  if (limit === null || limit === undefined) {
+    // use default value
+    limit = 100;
+  }
+
   var result = COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
@@ -2741,6 +2847,7 @@ function MATCHES (element, examples, returnIndex) {
   if (! Array.isArray(examples)) {
     examples = [ examples ];
   }
+
   if (examples.length === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
   }
@@ -2784,6 +2891,20 @@ function MATCHES (element, examples, returnIndex) {
 
 function PASSTHRU (value) {
   return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleep
+///
+/// sleep for the specified duration
+////////////////////////////////////////////////////////////////////////////////
+
+function SLEEP (duration) {
+  if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
+  }
+
+  INTERNAL.wait(duration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3196,7 +3317,8 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 
 function GRAPH_EDGES (edgeCollection, 
                       vertex, 
-                      direction) {
+                      direction, 
+                      examples) {
   var c = COLLECTION(edgeCollection), result;
 
   // validate arguments
@@ -3213,8 +3335,122 @@ function GRAPH_EDGES (edgeCollection,
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
   }
 
+  return FILTER(result, examples);
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_NEIGHBORS (vertexCollection,
+                          edgeCollection, 
+                          vertex, 
+                          direction,
+                          examples) {
+  var c = COLLECTION(vertexCollection);
+
+  if (vertex.indexOf('/') === -1) {
+    vertex = vertexCollection + '/' + vertex;
+  }
+
+  var edges = GRAPH_EDGES(edgeCollection, vertex, direction);
+  var result = [ ];
+  
+  FILTER(edges, examples).forEach (function (e) {
+    var key;
+
+    if (direction === "inbound") {
+      key = e._from;
+    }
+    else if (direction === "outbound") {
+      key = e._to;
+    }
+    else if (direction === "any") {
+      key = e._from;
+      if (key === vertex) {
+        key = e._to;
+      }
+    }
+
+    if (key === vertex) {
+      // do not return the start vertex itself
+      return;
+    }
+
+    try {
+      result.push({ edge: CLONE(e), vertex: c.document(key) });
+    }
+    catch (err) {
+    }
+  });
+
   return result;
 } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           setup / reset functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the regex cache
+////////////////////////////////////////////////////////////////////////////////
+
+function resetRegexCache () {
+  RegexCache = { 'i' : { }, '' : { } };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the user functions and reload them from the database
+////////////////////////////////////////////////////////////////////////////////
+
+function reloadUserFunctions () {
+  var c;
+
+  UserFunctions = { };
+
+  c = INTERNAL.db._collection("_aqlfunctions");
+  if (c === null) {
+    return;
+  }
+
+  c.toArray().forEach(function (f) {
+    var code;
+
+    code = "(function() { var callback = " + f.code + "; return callback; })();";
+
+    try {
+      var res = INTERNAL.executeScript(code, undefined, "(user function " + f._key + ")"); 
+
+      UserFunctions[f._key.toUpperCase()] = {
+        name: f._key,
+        func: res,
+        isDeterministic: f.isDeterministic || false
+      }; 
+  
+    }
+    catch (err) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+    }
+  });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the query engine
+////////////////////////////////////////////////////////////////////////////////
+
+function resetEngine () {
+  resetRegexCache();
+  reloadUserFunctions();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -3230,6 +3466,7 @@ function GRAPH_EDGES (edgeCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.FCALL = FCALL;
+exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
@@ -3318,6 +3555,7 @@ exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GRAPH_EDGES = GRAPH_EDGES;
+exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
@@ -3329,11 +3567,18 @@ exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
+exports.SLEEP = SLEEP;
 exports.FAIL = FAIL;
+
+exports.reload = reloadUserFunctions;
+
+// initialise the query engine
+resetEngine();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

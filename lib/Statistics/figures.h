@@ -85,16 +85,17 @@ namespace triagens {
 
     struct StatisticsDistribution {
       StatisticsDistribution ()
-        : _count(0), _cuts(), _counts() {
+        : _count(0), _total(0.0), _cuts(), _counts() {
       }
 
       StatisticsDistribution (StatisticsVector const& dist)
-        : _count(0), _cuts(dist._value), _counts() {
+        : _count(0), _total(0.0), _cuts(dist._value), _counts() {
         _counts.resize(_cuts.size() + 1);
       }
 
       void addFigure (double value) {
         ++_count;
+        _total += value;
 
         std::vector<double>::iterator i = _cuts.begin();
         std::vector<uint64_t>::iterator j = _counts.begin();
@@ -110,6 +111,7 @@ namespace triagens {
       }
 
       uint64_t _count;
+      double _total;
       std::vector<double> _cuts;
       std::vector<uint64_t> _counts;
     };

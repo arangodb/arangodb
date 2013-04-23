@@ -28,9 +28,9 @@ describe ArangoDB do
       cmd = "/_admin/statistics-description/asd123"
       doc = ArangoDB.log_get("#{prefix}", cmd) 
    
-      doc.code.should eq(501)
+      doc.code.should eq(404)
       doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['errorNum'].should eq(9)
+      doc.parsed_response['errorNum'].should eq(404)
     end
 
 ################################################################################
@@ -52,9 +52,9 @@ describe ArangoDB do
       cmd = "/_admin/statistics/asd123"
       doc = ArangoDB.log_get("#{prefix}", cmd) 
    
-      doc.code.should eq(501)
+      doc.code.should eq(404)
       doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['errorNum'].should eq(9)
+      doc.parsed_response['errorNum'].should eq(404)
     end
 
 

@@ -1,0 +1,31 @@
+<small>
+  <div class="plain">
+    <% var appInfos = attributes.app.split(":"); %>
+    <h5 class="applicationName"><%= appInfos[1] %></h5>
+    <div class="pull-right">
+        <i class="icon-edit" alt="Properties" title="Change foxx properties"></i>
+    </div>
+    <img src="../aardvark/foxxes/thumbnail/<%=attributes.app %>" alt="icon" class="foxxIcon"/>
+    <p class="foxxDescription">
+      <!--Description: <%=attributes.description %><br /> -->
+      <strong>Mount-Point:</strong>&nbsp;<%=attributes.mount %><br />
+      <strong>Version:</strong>&nbsp;<%=appInfos[2] %><br />
+      <strong>Prefix:</strong>&nbsp;<%=attributes.collectionPrefix%><br />
+      
+      <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
+    </p>
+    <%if (attributes.active) {%>
+      <span class="badge badge-success loaded badge-foxx">
+        <div class="cornered">
+          active
+        </div>
+      </span>
+    <%} else {%>
+      <span class="badge badge-success unloaded badge-foxx">
+        <div class="cornered">
+          inactive
+        </div>
+      </span>
+    <%}%>
+  </div>
+</small>

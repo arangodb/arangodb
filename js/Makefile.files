@@ -12,7 +12,6 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb.js \
 	html/admin/js/modules/org/arangodb/arango-collection.js \
 	html/admin/js/modules/org/arangodb/arango-database.js \
-	html/admin/js/modules/org/arangodb/arango-error.js \
 	html/admin/js/modules/org/arangodb/arango-query-cursor.js \
 	html/admin/js/modules/org/arangodb/arango-statement.js \
 	html/admin/js/modules/org/arangodb/arangosh.js \
@@ -21,11 +20,18 @@ JAVASCRIPT_BROWSER = \
 	\
 	html/admin/js/modules/org/arangodb-common.js \
 	html/admin/js/modules/org/arangodb/arango-collection-common.js \
-	html/admin/js/modules/org/arangodb/arango-error-common.js \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
 	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
-	html/admin/js/modules/org/arangodb/simple-query-common.js
+	html/admin/js/modules/org/arangodb/mimetypes.js \
+	html/admin/js/modules/org/arangodb/simple-query-common.js \
+	\
+	html/admin/js/bootstrap/errors.js \
+	html/admin/js/bootstrap/monkeypatches.js \
+	html/admin/js/bootstrap/module-internal.js \
+	\
+	html/admin/js/client/client.js \
+	html/admin/js/client/bootstrap/module-internal.js
 
 BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
 
@@ -46,11 +52,11 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/html/admin/js/arangodb/browser.js \
+	@srcdir@/html/admin/js/shell/browser.js \
 	\
-	@srcdir@/js/actions/system/api-collection.js \
-	@srcdir@/js/actions/system/api-structure.js \
-	@srcdir@/js/actions/system/api-system.js
+	@srcdir@/js/actions/api-collection.js \
+	@srcdir@/js/actions/api-structure.js \
+	@srcdir@/js/actions/api-system.js
 
 ################################################################################
 ### @brief executes jslint
@@ -77,7 +83,22 @@ BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
+	@test -d html/admin/js/bootstrap || mkdir -p html/admin/js/bootstrap
+	@test -d html/admin/js/client/bootstrap || mkdir -p html/admin/js/client/bootstrap
 	@touch $@
+
+################################################################################
+### @brief copy JavaScript files
+################################################################################
+
+html/admin/js/bootstrap/%.js: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
+	cat $< > $@
+
+html/admin/js/client/bootstrap/%.js: @srcdir@/js/client/bootstrap/%.js .setup-js-directories
+	cat $< > $@
+
+html/admin/js/client/%.js: @srcdir@/js/client/%.js .setup-js-directories
+	cat $< > $@
 
 ################################################################################
 ### @brief converts JavaScript files to header files

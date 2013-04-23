@@ -789,7 +789,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   options[OPTIONS_LOGGER + ":help-log"]
     ("log.application", &_logApplicationName, "application name for syslog")
     ("log.facility", &_logFacility, "facility name for syslog")
-    ("log.filter", &_logFilter, "filter for debug and trace")
+    ("log.filter", &_logFilter, "only debug and trace messages originated by specific C source file")
     ("log.format", &_logFormat, "log format")
     ("log.hostname", &_logHostName, "host name")
     ("log.line-number", "always log file and line number")
@@ -918,41 +918,12 @@ bool ApplicationServer::readConfigurationFile () {
     // A safer approach below
     // .........................................................................
 
-    string homeDir;
-    string homeEnv;
-    const char* envResult;
+    string homeDir = FileUtils::homeDirectory();
 
 #ifdef _WIN32
-    string homeDrive;
-    string homePath;
-
-    homeEnv = string("%HOMEDRIVE% and/or %HOMEPATH%");
-
-    envResult = getenv("HOMEDRIVE");
-    if (envResult != 0) {
-      homeDrive = string(envResult);
-    }
-
-    envResult = getenv("HOMEPATH");
-    if (envResult != 0) {
-      homePath = string(envResult);
-    }
-
-    if (! homeDrive.empty() && ! homePath.empty()) {
-      homeDir = homeDrive + homePath;
-    }
-    else {
-      homeDir = string("");
-    }
+    string homeEnv = string("%HOMEDRIVE% and/or %HOMEPATH%");
 #else
-    homeEnv = string("$HOME");
-    envResult = getenv("HOME");
-    if (envResult != 0) {
-      homeDir = string(envResult);
-    }
-    else {
-      homeDir = string("");
-    }
+    string homeEnv = string("$HOME");
 #endif
 
     if (! homeDir.empty()) {

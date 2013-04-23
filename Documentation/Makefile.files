@@ -33,30 +33,35 @@ dist_man_MANS += \
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/actions/system/api-collection.c \
-	Doxygen/js/actions/system/api-cursor.c \
-	Doxygen/js/actions/system/api-edges.c \
-	Doxygen/js/actions/system/api-explain.c \
-	Doxygen/js/actions/system/api-graph.c \
-	Doxygen/js/actions/system/api-index.c \
-	Doxygen/js/actions/system/api-query.c \
-	Doxygen/js/actions/system/api-simple.c \
-	Doxygen/js/actions/system/api-system.c \
-	Doxygen/js/actions/system/api-user.c \
+	Doxygen/js/actions/api-aqlfunction.c \
+	Doxygen/js/actions/api-collection.c \
+	Doxygen/js/actions/api-cursor.c \
+	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-foxx.c \
+	Doxygen/js/actions/api-graph.c \
+	Doxygen/js/actions/api-index.c \
+	Doxygen/js/actions/api-query.c \
+	Doxygen/js/actions/api-simple.c \
+	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-transaction.c \
+	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
-	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
+	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
+	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
+	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
 	Doxygen/js/common/modules/org/arangodb/users-common.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
-	Doxygen/js/server/modules/org/arangodb/arango-database.c \
-	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
+	Doxygen/js/server/modules/org/arangodb/arango-database.c \
+	Doxygen/js/server/modules/org/arangodb/foxx.c \
 	Doxygen/js/server/modules/org/arangodb/graph.c \
+	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/server.c
 
 ################################################################################
@@ -75,6 +80,7 @@ WIKI = \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
+	ExtendingAql \
 	FirstStepsArangoDB \
 	Glossary \
 	HandlingCollections \
@@ -82,6 +88,7 @@ WIKI = \
 	HandlingEdges \
 	HandlingIndexes \
 	Home \
+	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
 	HttpCursor \
@@ -92,6 +99,7 @@ WIKI = \
 	HttpQuery \
 	HttpSimple \
 	HttpSystem \
+	HttpTransactions \
 	HttpUser \
 	ImpManual \
 	ImpManualBasics \
@@ -124,12 +132,14 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \
+	Transactions \
 	Upgrading11 \
 	Upgrading12 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
 	UserManualWebInterface \
+	UserManualFoxx \
 	jsUnity
 
 ## -----------------------------------------------------------------------------
@@ -147,8 +157,9 @@ BUILT_SOURCES += Doxygen/.setup-directories
 Doxygen/.setup-directories:
 	@test -d Doxygen/doc/images || mkdir -p Doxygen/doc/images
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
-	@test -d Doxygen/js/actions/system || mkdir -p Doxygen/js/actions/system
+	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
 	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
@@ -157,7 +168,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 	@touch $@
 
-Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
+Doxygen/js/actions/%.c: @srcdir@/js/actions/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
@@ -287,6 +298,53 @@ CLEANUP += \
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief generate json for swagger REST-API
+################################################################################
+
+.PHONY: swagger
+
+swagger:
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/html/admin/api-docs/edges	
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-collection.js  > @srcdir@/html/admin/api-docs/collection
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-graph.js  > @srcdir@/html/admin/api-docs/graph
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-user.js  > @srcdir@/html/admin/api-docs/user
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-system.js  > @srcdir@/html/admin/api-docs/system
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-explain.js  > @srcdir@/html/admin/api-docs/explain
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-index.js  > @srcdir@/html/admin/api-docs/index
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-aqlfunction.js  > @srcdir@/html/admin/api-docs/aqlfunction
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-simple.js  > @srcdir@/html/admin/api-docs/simple
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-query.js  > @srcdir@/html/admin/api-docs/query
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
+	
+
+################################################################################
 ### @brief generate examples
 ################################################################################
 
@@ -298,7 +356,7 @@ examples:
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/js/actions/system/*.js \
+		@srcdir@/js/actions/*.js \
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \

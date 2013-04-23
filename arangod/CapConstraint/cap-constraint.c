@@ -28,8 +28,9 @@
 #include "cap-constraint.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/headers.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT
@@ -45,11 +46,127 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the cap constraint for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int ApplyCap (TRI_cap_constraint_t* cap,
+                     TRI_primary_collection_t* primary,
+                     TRI_transaction_collection_t* trxCollection) {
+  TRI_document_collection_t* document;
+  TRI_headers_t* headers;
+  size_t count;
+  int res;
+
+  document = (TRI_document_collection_t*) primary;
+  headers = document->_headers;
+  count = headers->count(headers);
+
+  res = TRI_ERROR_NO_ERROR;
+
+  while (count > cap->_size) {
+    TRI_doc_mptr_t* oldest = headers->front(headers);
+
+    if (oldest != NULL) {
+      if (trxCollection != NULL) {
+        res = TRI_DeleteDocumentDocumentCollection(trxCollection, NULL, oldest);
+        
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_WARNING("cannot cap collection: %s", TRI_errno_string(res));
+          break;
+        }
+      }
+      else {
+        headers->unlink(headers, oldest);
+      }
+
+      count--;
+    }
+    else {
+      // we should not get here
+      LOG_WARNING("logic error in %s", __FUNCTION__);
+      break;
+    }
+  }
+
+  return res;
+}
+
+static int InitialiseCap (TRI_cap_constraint_t* cap, 
+                          TRI_primary_collection_t* primary) { 
+  TRI_document_collection_t* document;
+  TRI_headers_t* headers;
+  size_t count;
+  
+  TRI_ASSERT_MAINTAINER(cap->_size > 0);
+  
+  document = (TRI_document_collection_t*) primary;
+  headers = document->_headers;
+  count = headers->count(headers);
+  
+  if (count <= cap->_size) {
+    // nothing to do
+    return TRI_ERROR_NO_ERROR;
+  }
+  else {
+    TRI_vocbase_t* vocbase;
+    TRI_transaction_t* trx;
+    TRI_transaction_collection_t* trxCollection;
+    TRI_voc_cid_t cid;
+    int res;
+
+    vocbase = primary->base._vocbase;
+    cid = primary->base._info._cid;
+
+    trx = TRI_CreateTransaction(vocbase->_transactionContext, 0.0, false);
+
+    if (trx == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
+
+      if (trxCollection != NULL) {
+        res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER, TRI_TRANSACTION_TOP_LEVEL);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          res = ApplyCap(cap, primary, trxCollection);
+
+          if (res == TRI_ERROR_NO_ERROR) {
+            res = TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
+          }
+          else {
+            TRI_AbortTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
+          }
+        }
+      }
+      else {
+        res = TRI_ERROR_INTERNAL;
+      }
+    }
+
+    TRI_FreeTransaction(trx);
+
+    return res;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameCapConstraint (const TRI_index_t const* idx) {
+  return "cap";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
-                                      TRI_primary_collection_t const* collection) {
+                                      TRI_primary_collection_t const* primary) {
   TRI_json_t* json;
   TRI_cap_constraint_t* cap;
 
@@ -57,10 +174,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
   cap = (TRI_cap_constraint_t*) idx;
 
   // create json object and fill it
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id",   TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "cap"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
 
   return json;
@@ -80,63 +195,34 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertCapConstraint (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* doc) {
-  TRI_cap_constraint_t* cap;
-
-  cap = (TRI_cap_constraint_t*) idx;
-
-  return TRI_AddLinkedArray(&cap->_array, doc);
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief post processing of insert
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PostInsertCapConstraint (TRI_index_t* idx,
+static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
+                                    TRI_index_t* idx,
                                     TRI_doc_mptr_t const* doc) {
   TRI_cap_constraint_t* cap;
-  TRI_primary_collection_t* primary;
 
   cap = (TRI_cap_constraint_t*) idx;
-  primary = idx->_collection;
 
-  while (cap->_size < cap->_array._array._nrUsed) {
-    TRI_doc_operation_context_t rollbackContext;
-    TRI_doc_mptr_t* oldest;
-    int res;
+  TRI_ASSERT_MAINTAINER(cap->_size > 0);
 
-    oldest = CONST_CAST(TRI_PopFrontLinkedArray(&cap->_array));
-
-    if (oldest == NULL) {
-      LOG_WARNING("cap collection %llu is empty, but collection contains elements",
-                  (unsigned long long) primary->base._info._cid);
-      break;
-    }
-
-    LOG_DEBUG("removing document '%s' because of cap constraint", (char*) oldest->_key);
-
-    TRI_InitContextPrimaryCollection(&rollbackContext, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
-    res = TRI_DeleteDocumentDocumentCollection(&rollbackContext, oldest);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("cannot cap collection: %s", TRI_last_error());
-      return res;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return ApplyCap(cap, trxCollection->_collection->_collection, trxCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  TRI_cap_constraint_t* cap;
-
-  cap = (TRI_cap_constraint_t*) idx;
-  TRI_RemoveLinkedArray(&cap->_array, doc);
-
+static int RemoveCapConstraint (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -157,25 +243,28 @@ static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief creates a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
                                       size_t size) {
   TRI_cap_constraint_t* cap;
+  TRI_index_t* idx;
 
   cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  idx = &cap->base;
 
-  TRI_InitIndex(&cap->base, TRI_IDX_TYPE_CAP_CONSTRAINT, collection, false);
-  cap->base.json = JsonCapConstraint;
-  cap->base.removeIndex = RemoveIndexCapConstraint;
+  idx->typeName = TypeNameCapConstraint;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
 
-  cap->base.insert     = InsertCapConstraint;
-  cap->base.postInsert = PostInsertCapConstraint;
-  cap->base.remove     = RemoveCapConstraint;
-
-  TRI_InitLinkedArray(&cap->_array, TRI_CORE_MEM_ZONE);
+  idx->json        = JsonCapConstraint;
+  idx->removeIndex = RemoveIndexCapConstraint;
+  idx->insert      = InsertCapConstraint;
+  idx->postInsert  = PostInsertCapConstraint;
+  idx->remove      = RemoveCapConstraint;
 
   cap->_size = size;
 
-  return &cap->base;
+  InitialiseCap(cap, primary);
+
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,9 +272,6 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCapConstraint (TRI_index_t* idx) {
-  TRI_cap_constraint_t* cap = (TRI_cap_constraint_t*) idx;
-
-  TRI_DestroyLinkedArray(&cap->_array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -10,14 +10,17 @@ mr-*.h
 .v8-build-64
 .icu-build-64
 .mruby-build-64
+.zlib-build-64
 .libev-build-32
 .v8-build-32
+.zlib-build-32
 .icu-build-32
 .mruby-build-32
 .setup-mr-directories
 .setup-js-directories
 3rdParty/libev/ARCH.x64/
 3rdParty/libev/ARCH.ia32/
+3rdParty/zlib-1.2.7/
 
 Doxygen/doc/
 Doxygen/manuals/
@@ -77,3 +80,7 @@ cppcheck.tmp
 Installation/arangod.conf
 Installation/epm/arangodb.sublist
 nbproject/
+
+html/admin/api-docs/
+!html/admin/api-docs/api-docs.json
+test.cpp.txt

@@ -128,7 +128,8 @@ ArangoStatement.prototype.parse = function () {
 
 ArangoStatement.prototype.explain = function () {
   var body = {
-    query: this._query
+    query: this._query,
+    bindVars: this._bindVars
   };
 
   var requestResult = this._database._connection.POST(

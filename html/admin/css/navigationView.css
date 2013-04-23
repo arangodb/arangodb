@@ -1,0 +1,51 @@
+.arango-nav {
+}
+
+.dropdown-menu li > a:hover, .dropdown-menu li > a:focus, .dropdown-submenu:hover > a {
+  background-image:none;
+  background-color: #8AA051 !important;
+}
+
+.navbar .nav > .active > a, .navbar .nav > .active > a:hover, .navbar .nav > .active > a:focus {
+  background-color: #8AA051 !important;
+  color: white !important;
+  box-shadow: 0 0px 0px rgba(0, 0, 0, 0.0) inset !important;
+}
+.navbar .nav > li > a:focus {
+  background-color: #333232 !important;
+}
+
+.navbar .nav > li > a:hover {
+  background-color: #8AA051 !important;
+  color: white !important
+}
+
+.arango-nav .dropdown-toggle, .arango-nav .dropdown-toggle:hover, .arango-nav .dropdown:hover, .arango-nav .dropdown:active {
+  background-color: rgba(0, 0, 0, 0) !important;
+  color: white !important;
+  margin-bottom: -8px !important;
+}
+
+body, input, textarea, .page-title span, .pingback a.url {
+  font-family: "Helvetica",sans-serif;
+  font-weight: 300;
+}
+
+.arango-top-nav {
+  background-color: #333232;
+}
+
+.arango-nav {
+  height: 34px;
+  min-height: 34px;
+  background-color: #333232;
+}
+
+.arango-logo {
+  height: 34px;
+  padding: 0 !important;
+}
+
+.applications-menu {
+  display: block;
+}

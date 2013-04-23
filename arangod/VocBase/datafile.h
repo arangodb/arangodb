@@ -152,29 +152,30 @@ TRI_df_state_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_MARKER_MIN                    = 999,  // not a real marker type,
-                                            // but used for bounds checking
+  TRI_MARKER_MIN                     = 999,  // not a real marker type,
+                                             // but used for bounds checking
 
-  TRI_DF_MARKER_HEADER              = 1000,
-  TRI_DF_MARKER_FOOTER              = 1001,
-  TRI_DF_MARKER_SKIP                = 1002, // currently unused
-  TRI_DF_MARKER_ATTRIBUTE           = 1003,
-  TRI_DF_MARKER_SHAPE               = 1004,
+  TRI_DF_MARKER_HEADER               = 1000,
+  TRI_DF_MARKER_FOOTER               = 1001,
+  TRI_DF_MARKER_SKIP                 = 1002, // currently unused
+  TRI_DF_MARKER_ATTRIBUTE            = 1003,
+  TRI_DF_MARKER_SHAPE                = 1004,
 
-  TRI_COL_MARKER_HEADER             = 2000,
+  TRI_COL_MARKER_HEADER              = 2000,
 
-  TRI_DOC_MARKER_HEADER             = 3000,
-  TRI_DOC_MARKER_DOCUMENT           = 3001,
-  TRI_DOC_MARKER_DELETION           = 3002,
-  TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003, // currently unused
-  TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
-  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
-  TRI_DOC_MARKER_EDGE               = 3006,
+  TRI_DOC_MARKER_HEADER              = 3000,
+  TRI_DOC_MARKER_DOCUMENT            = 3001,
+  TRI_DOC_MARKER_DELETION            = 3002,
+  TRI_DOC_MARKER_EDGE                = 3006,
 
-  TRI_DOC_MARKER_KEY_DOCUMENT       = 3007, // new marker with key values
-  TRI_DOC_MARKER_KEY_EDGE           = 3008, // new marker with key values
-  TRI_DOC_MARKER_KEY_DELETION       = 3009, // new marker with key values
+  TRI_DOC_MARKER_KEY_DOCUMENT        = 3007, // new marker with key values
+  TRI_DOC_MARKER_KEY_EDGE            = 3008, // new marker with key values
+  TRI_DOC_MARKER_KEY_DELETION        = 3009, // new marker with key values
 
+  TRI_DOC_MARKER_BEGIN_TRANSACTION   = 3100, 
+  TRI_DOC_MARKER_COMMIT_TRANSACTION  = 3101, 
+  TRI_DOC_MARKER_ABORT_TRANSACTION   = 3102,
+  TRI_DOC_MARKER_PREPARE_TRANSACTION = 3103,
 
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for
@@ -312,16 +313,16 @@ TRI_datafile_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_marker_s {
-  TRI_voc_size_t _size;                 // 4 bytes, must be supplied
-  TRI_voc_crc_t _crc;                   // 4 bytes, will be generated
+  TRI_voc_size_t       _size;    // 4 bytes, must be supplied
+  TRI_voc_crc_t        _crc;     // 4 bytes, will be generated
 
-  TRI_df_marker_type_t _type;           // 4 bytes, must be supplied
+  TRI_df_marker_type_t _type;    // 4 bytes, must be supplied
 
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
 #endif
 
-  TRI_voc_tick_t _tick;                 // 8 bytes, will be generated
+  TRI_voc_tick_t _tick;          // 8 bytes, will be generated
 }
 TRI_df_marker_t;
 
@@ -437,6 +438,7 @@ TRI_df_skip_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateDatafile (char const*,
+                                    TRI_voc_fid_t fid,
                                     TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +451,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t, 
+                                             TRI_voc_size_t);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,6 +468,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreatePhysicalDatafile (char const*,
+                                            TRI_voc_fid_t,
                                             TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,18 +516,7 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
-                                TRI_df_marker_t* marker,
-                                TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
-                                void const* body,
-                                TRI_voc_size_t bodySize);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a CRC and writes that into the header
+/// @deprecated this function is deprecated. do not use for new code.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
@@ -540,21 +533,28 @@ void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
 
 int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
-                                TRI_df_marker_t** position);
+                                TRI_df_marker_t** position,
+                                TRI_voc_size_t maximalJournalSize);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker and body to the datafile
+/// @brief writes a marker to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
-                              void const* keyBody,
-                              TRI_voc_size_t keyBodySize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               bool sync);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checksums and writes a marker to the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
+                                 void* position,
+                                 TRI_df_marker_t* marker,
+                                 TRI_voc_size_t markerSize,
+                                 bool sync);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile

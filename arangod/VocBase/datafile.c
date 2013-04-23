@@ -34,8 +34,10 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
+
+#include "VocBase/marker.h"
 
 
 // #define DEBUG_DATAFILE 1
@@ -195,7 +197,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
                           void* mmHandle,
                           TRI_voc_size_t maximalSize,
                           TRI_voc_size_t currentSize,
-                          TRI_voc_fid_t tick,
+                          TRI_voc_fid_t fid,
                           char* data) {
 
   // filename is a string for physical datafiles, and NULL for anonymous regions
@@ -208,7 +210,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
   }
 
   datafile->_state       = TRI_DF_STATE_READ;
-  datafile->_fid         = tick;
+  datafile->_fid         = fid;
 
   datafile->_filename    = filename;
   datafile->_fd          = fd;
@@ -551,29 +553,44 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     // the following sanity check offers some, but not 100% crash-protection when reading
     // totally corrupted datafiles
     if (! TRI_IsValidMarkerDatafile(marker)) {
-      datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-      datafile->_currentSize = currentSize;
-      datafile->_next = datafile->_data + datafile->_currentSize;
-      datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-      LOG_WARNING("marker in datafile '%s' is corrupt", datafile->getName(datafile));
-      return false;
+      if (marker->_type == 0 && marker->_size < 128) {
+        // ignore markers with type 0 and a small size
+        LOG_WARNING("ignoring suspicious marker in datafile '%s': type: %d, size: %lu", 
+                    datafile->getName(datafile), 
+                    (int) marker->_type, 
+                    (unsigned long) marker->_size);
+      }
+      else {
+        datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+        datafile->_currentSize = currentSize;
+        datafile->_next = datafile->_data + datafile->_currentSize;
+        datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+
+        LOG_WARNING("marker in datafile '%s' is corrupt: type: %d, size: %lu", 
+                    datafile->getName(datafile), 
+                    (int) marker->_type, 
+                    (unsigned long) marker->_size);
+        return false;
+      }
     }
 
-    ok = TRI_CheckCrcMarkerDatafile(marker);
+    if (marker->_type != 0) {
+      ok = TRI_CheckCrcMarkerDatafile(marker);
 
-    if (! ok) {
-      datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-      datafile->_currentSize = currentSize;
-      datafile->_next = datafile->_data + datafile->_currentSize;
-      datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+      if (! ok) {
+        datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+        datafile->_currentSize = currentSize;
+        datafile->_next = datafile->_data + datafile->_currentSize;
+        datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-      LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
+        LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
 
-      return false;
+        return false;
+      }
+
+      TRI_UpdateTickVocBase(marker->_tick);
     }
-
-    TRI_UpdateTickVocBase(marker->_tick);
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
     currentSize += size;
@@ -754,6 +771,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateDatafile (char const* filename,
+                                    TRI_voc_fid_t fid,
                                     TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   TRI_df_marker_t* position;
@@ -774,14 +792,14 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   // create either an anonymous or a physical datafile
   if (filename == NULL) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-    datafile = TRI_CreateAnonymousDatafile(maximalSize);
+    datafile = TRI_CreateAnonymousDatafile(fid, maximalSize);
 #else
     // system does not support anonymous mmap
     return NULL;
 #endif
   }
   else {
-    datafile = TRI_CreatePhysicalDatafile(filename, maximalSize);
+    datafile = TRI_CreatePhysicalDatafile(filename, fid, maximalSize);
   }
 
   if (datafile == NULL) {
@@ -793,24 +811,17 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   datafile->_state = TRI_DF_STATE_WRITE;
 
   // create the header
-  memset(&header, 0, sizeof(TRI_df_header_marker_t));
-
-  header.base._size   = sizeof(TRI_df_header_marker_t);
-  header.base._tick   = TRI_NewTickVocBase();
-  header.base._type   = TRI_DF_MARKER_HEADER;
+  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
 
   header._version     = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
-  header._fid         = TRI_NewTickVocBase();
-
-  // create CRC
-  TRI_FillCrcMarkerDatafile(datafile, &header.base, sizeof(TRI_df_header_marker_t), 0, 0, 0, 0);
+  header._fid         = fid;
 
   // reserve space and write header to file
-  result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
+  result = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
 
   if (result == TRI_ERROR_NO_ERROR) {
-    result = TRI_WriteElementDatafile(datafile, position, &header.base, header.base._size, 0, 0, 0, 0, true);
+    result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, true);
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
@@ -840,7 +851,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
-TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
+                                             const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   ssize_t res;
   void* data;
@@ -898,7 +910,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
                mmHandle,
                maximalSize,
                0,
-               TRI_NewTickVocBase(),
+               fid,
                data);
 
   return datafile;
@@ -910,7 +922,8 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
 /// @brief creates a new physical datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
+TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename, 
+                                            TRI_voc_fid_t fid,
                                             const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   int fd;
@@ -959,7 +972,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                mmHandle,
                maximalSize,
                0,
-               TRI_NewTickVocBase(),
+               fid,
                data);
 
   return datafile;
@@ -1066,8 +1079,6 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
 void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
                                 TRI_df_marker_t* marker,
                                 TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
                                 void const* body,
                                 TRI_voc_size_t bodySize) {
   marker->_crc = 0;
@@ -1079,10 +1090,6 @@ void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
     crc = TRI_InitialCrc32();
     crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
 
-    if (keyBody != NULL && 0 < keyBodySize) {
-      crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
-    }
-
     if (body != NULL && 0 < bodySize) {
       crc = TRI_BlockCrc32(crc, body, bodySize);
     }
@@ -1093,6 +1100,7 @@ void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
+/// @deprecated this function is deprecated. do not use for new code
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
@@ -1125,11 +1133,16 @@ void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserves room for an element, advances the pointer
+///
+/// note: maximalJournalSize is the collection's maximalJournalSize property,
+/// which may be different from the size of the current datafile
+/// some callers do not set the value of maximalJournalSize
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
-                                TRI_df_marker_t** position) {
+                                TRI_df_marker_t** position,
+                                TRI_voc_size_t maximalJournalSize) {
   *position = 0;
   size = TRI_DF_ALIGN_BLOCK(size);
 
@@ -1145,7 +1158,25 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
   // check the maximal size
   if (size + TRI_JOURNAL_OVERHEAD > datafile->_maximalSize) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    // marker is bigger than journal size.
+    // adding the marker to this datafile will not work
+
+    if (maximalJournalSize <= datafile->_maximalSize) {
+      // the collection property 'maximalJournalSize' is equal to 
+      // or smaller than the size of this datafile
+      // creating a new file and writing the marker into it will not work either
+      return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    }
+
+    // if we get here, the collection's 'maximalJournalSize' property is
+    // higher than the size of this datafile.
+    // maybe the marker will fit into a new datafile with the bigger size?
+    if (size + TRI_JOURNAL_OVERHEAD > maximalJournalSize) {
+      // marker still won't fit
+      return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    }
+  
+    // fall-through intentional
   }
 
   // add the marker, leave enough room for the footer
@@ -1167,26 +1198,19 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker and body to the datafile
+/// @brief writes a marker to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
-                              void const* keyBody,
-                              TRI_voc_size_t keyBodySize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               bool forceSync) {
-  TRI_voc_size_t size;
 
-  size = markerSize + keyBodySize + bodySize;
-
-  if (size != marker->_size) {
+  if (markerSize != marker->_size) {
     LOG_ERROR("marker size is %lu, but size is %lu",
               (unsigned long) marker->_size,
-              (unsigned long) size);
+              (unsigned long) markerSize);
   }
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
@@ -1201,18 +1225,11 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   memcpy(position, marker, markerSize);
 
-  if (keyBody != NULL && 0 < keyBodySize) {
-    memcpy(((char*) position) + markerSize, keyBody, keyBodySize);
-  }
-
-  if (body != NULL && 0 < bodySize) {
-    memcpy(((char*) position) + markerSize + keyBodySize, body, bodySize);
-  }
 
   if (forceSync) {
     bool ok;
 
-    ok = datafile->sync(datafile, position, ((char*) position) + size);
+    ok = datafile->sync(datafile, position, ((char*) position) + markerSize);
 
     if (! ok) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
@@ -1229,11 +1246,30 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       return datafile->_lastError;
     }
     else {
-      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) size);
+      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) markerSize);
     }
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checksums and writes a marker to the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
+                                 void* position,
+                                 TRI_df_marker_t* marker,
+                                 TRI_voc_size_t markerSize,
+                                 bool forceSync) {
+  if (datafile->isPhysical(datafile)) {
+    TRI_voc_crc_t crc = TRI_InitialCrc32();
+  
+    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+    marker->_crc = TRI_FinalCrc32(crc);
+  }
+
+  return TRI_WriteElementDatafile(datafile, position, marker, markerSize, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1247,8 +1283,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
   char* ptr;
   char* end;
 
-  // this function must not be called for non-physical datafiles
-  assert(datafile->isPhysical(datafile));
+  LOG_TRACE("iterating over datafile '%s', fid: %llu", datafile->getName(datafile), (unsigned long long) datafile->_fid);
 
   ptr = datafile->_data;
   end = datafile->_data + datafile->_currentSize;
@@ -1448,23 +1483,17 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_SEALED);
   }
 
+
   // create the footer
-  memset(&footer, 0, sizeof(TRI_df_footer_marker_t));
-
-  footer.base._size = sizeof(TRI_df_footer_marker_t);
-  footer.base._tick = TRI_NewTickVocBase();
-  footer.base._type = TRI_DF_MARKER_FOOTER;
-
-  // create CRC
-  TRI_FillCrcMarkerDatafile(datafile, &footer.base, sizeof(TRI_df_footer_marker_t), 0, 0, 0, 0);
+  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;
 
-  res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position);
+  res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteElementDatafile(datafile, position, &footer.base, footer.base._size, 0, 0, 0, 0, true);
+    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, footer.base._size, true);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

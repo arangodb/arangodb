@@ -312,6 +312,86 @@ function SimpleQueryByExampleSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _key
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleKey : function () {
+      var d, s;
+      
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _key: "foo" });
+      assertEqual(null, s);
+      
+      s = collection.firstExample({ _key: "meow" });
+      assertEqual(d._id, s._id);
+      assertEqual(d._key, s._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _key & others
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleKeyMore : function () {
+      var d, s;
+      
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _key: "meow", a: 1 });
+      assertEqual(null, s);
+      
+      d = collection.save({ _key: "foo", a: 2 });
+      s = collection.firstExample({ _key: "foo", a: 2 });
+      assertEqual(d._id, s._id);
+      assertEqual(d._key, s._key);
+      assertEqual(2, s.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _id
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleId : function () {
+      var d, s;
+      
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _id: cn + "/foo" });
+      assertEqual(null, s);
+      
+      s = collection.firstExample({ _id: cn + "/meow" });
+      assertEqual(d._id, s._id);
+      assertEqual(d._key, s._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _id & others
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleIdMore : function () {
+      var d, s;
+      
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _id: cn + "/meow", a: 1 });
+      assertEqual(null, s);
+      
+      d = collection.save({ _key: "foo", a: 2 });
+      s = collection.firstExample({ _id: cn + "/foo", a: 2 });
+      assertEqual(d._id, s._id);
+      assertEqual(d._key, s._key);
+      assertEqual(2, s.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using non existing system attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleNonExisting : function () {
+      var d, s;
+      
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _foo: "foo" });
+      assertEqual(null, s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: byExample
 ////////////////////////////////////////////////////////////////////////////////
 

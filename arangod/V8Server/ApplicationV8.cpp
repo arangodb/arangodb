@@ -28,10 +28,14 @@
 #include "ApplicationV8.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/FileUtils.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -121,6 +125,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
+  MUTEX_LOCKER(_globalMethodsLock);
+
   _globalMethods.push_back(method);
 }
 
@@ -130,6 +136,8 @@ void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
   v8::HandleScope scope;
+  
+  MUTEX_LOCKER(_globalMethodsLock);
 
   for (vector<string>::iterator i = _globalMethods.begin();  i != _globalMethods.end();  ++i) {
     string const& func = *i;
@@ -166,13 +174,17 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::ApplicationV8 (string const& binaryPath)
+ApplicationV8::ApplicationV8 (string const& binaryPath, string const& tempPath)
   : ApplicationFeature("V8"),
+    _tempPath(tempPath),
     _startupPath(),
-    _startupModules(),
-    _startupNodeModules(),
+    _modulesPath(),
+    _packagePath(),
     _actionPath(),
+    _appPath(),
+    _devAppPath(),
     _useActions(true),
+    _developmentMode(false),
     _performUpgrade(false),
     _skipUpgrade(false),
     _gcInterval(1000),
@@ -246,7 +258,7 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext () {
+ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -274,7 +286,17 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
   context->_isolate->Enter();
   context->_context->Enter();
 
+  LOGGER_TRACE("entering V8 context " << context->_id);
   context->handleGlobalContextMethods();
+
+  if (_developmentMode && ! initialise) {
+    v8::HandleScope scope;
+
+    TRI_ExecuteJavaScriptString(context->_context,
+                                v8::String::New("require(\"internal\").resetEngine()"),
+                                v8::String::New("global context method"),
+                                false);
+  }
 
   return context;
 }
@@ -287,6 +309,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   assert(gc != 0);
 
+  LOGGER_TRACE("leaving V8 context " << context->_id);
   double lastGc = gc->getLastGcStamp();
 
   CONDITION_LOCKER(guard, _contextCondition);
@@ -324,24 +347,8 @@ void ApplicationV8::exitContext (V8Context* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::addGlobalContextMethod (string const& method) {
-  CONDITION_LOCKER(guard, _contextCondition);
-
-  for (vector<V8Context*>::iterator i = _freeContexts.begin();  i != _freeContexts.end();  ++i) {
-    V8Context* context = *i;
-
-    context->addGlobalContextMethod(method);
-  }
-
-  for (vector<V8Context*>::iterator i = _dirtyContexts.begin();  i != _dirtyContexts.end();  ++i) {
-    V8Context* context = *i;
-
-    context->addGlobalContextMethod(method);
-  }
-
-  for (set<V8Context*>::iterator i = _busyContexts.begin();  i != _busyContexts.end();  ++i) {
-    V8Context* context = *i;
-
-    context->addGlobalContextMethod(method);
+  for (size_t i = 0; i < _nrInstances; ++i) {
+    _contexts[i]->addGlobalContextMethod(method);
   }
 }
 
@@ -491,6 +498,14 @@ void ApplicationV8::disableActions () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enables development mode
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::enableDevelopmentMode () {
+  _developmentMode = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -512,8 +527,10 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
-    ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
-    ("javascript.package-path", &_startupNodeModules, "one or more directories separated by (semi-) colons")
+    ("javascript.app-path", &_appPath, "one directory for applications")
+    ("javascript.dev-app-path", &_devAppPath, "one directory for dev aaplications")
+    ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
+    ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
@@ -525,7 +542,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   // check the startup modules
-  if (_startupModules.empty()) {
+  if (_modulesPath.empty()) {
     LOGGER_FATAL_AND_EXIT("no 'javascript.modules-path' has been supplied, giving up");
   }
 
@@ -543,20 +560,47 @@ bool ApplicationV8::prepare () {
   {
     vector<string> paths;
 
-    paths.push_back(string("Javascript startup path '" + _startupPath + "'"));
-    paths.push_back(string("Javascript modules path '" + _startupModules + "'"));
-    if (! _startupNodeModules.empty()) {
-      paths.push_back(string("Node modules path '" + _startupNodeModules + "'"));
-    }
-    if (_useActions) {
-      paths.push_back(string("Javascript action path '" + _actionPath + "'"));
+    paths.push_back(string("startup '" + _startupPath + "'"));
+    paths.push_back(string("modules '" + _modulesPath + "'"));
+
+    if (! _packagePath.empty()) {
+      paths.push_back(string("packages '" + _packagePath + "'"));
     }
 
-    LOGGER_INFO("using " << StringUtils::join(paths, ", "));
+    if (_useActions) {
+      paths.push_back(string("actions '" + _actionPath + "'"));
+    }
+
+    if (! _appPath.empty()) {
+      paths.push_back(string("application '" + _appPath + "'"));
+    }
+
+    if (! _devAppPath.empty()) {
+      paths.push_back(string("dev application '" + _devAppPath + "'"));
+    }
+
+    LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
+  }
+  
+  // check whether app-paths exist
+  if (! _appPath.empty() && ! FileUtils::isDirectory(_appPath.c_str())) {
+    LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
   }
 
-  _startupLoader.setDirectory(_startupPath);
+  if (! _devAppPath.empty() && ! FileUtils::isDirectory(_devAppPath.c_str())) {
+    LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
+  }
 
+
+  _startupLoader.setDirectory(_startupPath);
+  
+
+  // check for development mode
+  if (! _devAppPath.empty()) {
+    _developmentMode = true;
+  }
 
   // set up action loader
   if (_useActions) {
@@ -688,14 +732,23 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_InitV8Actions(context->_context, this);
   }
 
+  TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _startupModules, _startupNodeModules);
+  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _tempPath);
   TRI_InitV8Shell(context->_context);
+
+  {
+    v8::HandleScope scope;
+
+    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str()));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str()));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
+  }
 
   // set global flag before loading system files
   if (i == 0 && ! _skipUpgrade) {
     v8::HandleScope scope;
-    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+    TRI_AddGlobalVariableVocbase(context->_context, "UPGRADE", v8::Boolean::New(_performUpgrade));
   }
 
   // load all init files
@@ -734,11 +787,29 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     context->_isolate->Exit();
     delete context->_locker;
 
+    // regular shutdown... wait for all threads to finish
+    _vocbase->_state = 2;
+    TRI_JoinThread(&_vocbase->_synchroniser);
+    TRI_JoinThread(&_vocbase->_compactor);
+    _vocbase->_state = 3;
+    TRI_JoinThread(&_vocbase->_cleanup);
+
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  }
+
+  // scan for foxx applications
+  if (i == 0) {
+    v8::HandleScope scope;
+    TRI_ExecuteJavaScriptString(context->_context,
+                                v8::String::New("require(\"internal\").initializeFoxx()"),
+                                v8::String::New("initialize foxx"),
+                                false);
   }
 
   // load all actions
   if (_useActions) {
+    v8::HandleScope scope;
+
     bool ok = _actionLoader.executeAllScripts(context->_context);
 
     if (! ok) {
@@ -792,7 +863,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   }
 
   context->_context->Exit();
-  context->_context.Dispose();
+  context->_context.Dispose(context->_isolate);
 
   context->_isolate->Exit();
   delete context->_locker;

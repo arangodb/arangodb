@@ -45,6 +45,7 @@
 #include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
+#include "BasicsC/tri-strings.h"
 
 namespace triagens {
   namespace basics {
@@ -93,10 +94,13 @@ namespace triagens {
           }
 
           if (n < 0) {
-            TRI_CLOSE(fd);
+            TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
             LOGGER_TRACE("read failed for '" << filename
                          << "' with " << strerror(errno) << " and result " << n
                          << " on fd " << fd);
+
+            TRI_CLOSE(fd);
             THROW_FILE_FUNC_ERROR("read", "", errno);
           }
 
@@ -105,7 +109,7 @@ namespace triagens {
 
         TRI_CLOSE(fd);
 
-        string r(result.c_str());
+        string r(result.c_str(), result.length());
 
         return r;
       }
@@ -142,6 +146,33 @@ namespace triagens {
         TRI_CLOSE(fd);
       }
 
+      
+      void spit (string const& filename, const char* ptr, size_t len) {
+        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
+
+        if (fd == -1) {
+          LOGGER_TRACE("open failed for '" << filename << "' with " << strerror(errno));
+          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC", errno);
+        }
+
+        while (0 < len) {
+          ssize_t n = TRI_WRITE(fd, ptr, len);
+
+          if (n < 1) {
+            TRI_CLOSE(fd);
+            LOGGER_TRACE("write failed for '" << filename
+                         << "' with " << strerror(errno) << " and result " << n
+                         << " on fd " << fd);
+            THROW_FILE_FUNC_ERROR("write", "", errno);
+          }
+
+          ptr += n;
+          len -= n;
+        }
+
+        TRI_CLOSE(fd);
+        return;
+      }
 
 
       void spit (string const& filename, string const& content) {
@@ -431,6 +462,15 @@ namespace triagens {
         string result = current;
 
         delete[] current;
+
+        return result;
+      }
+
+
+      string homeDirectory () {
+        char* dir = TRI_HomeDirectory();
+        string result = dir;
+        TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
 
         return result;
       }

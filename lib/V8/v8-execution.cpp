@@ -45,45 +45,33 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execution context
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct js_exec_context_s {
+  v8::Isolate* _isolate;
   v8::Persistent<v8::Function> _func;
   v8::Persistent<v8::Object> _arguments;
 }
 js_exec_context_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   js_exec_context_t* ctx;
 
   // execute script inside the context
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(script),
                                                         v8::String::New("--script--"));
 
-  // compilation failed, print errors that happened during compilation
+  // compilation failed, return
   if (compiled.IsEmpty()) {
     return 0;
   }
@@ -97,8 +85,9 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script) {
 
   ctx = new js_exec_context_t;
 
-  ctx->_func = v8::Persistent<v8::Function>::New(v8::Handle<v8::Function>::Cast(val));
-  ctx->_arguments = v8::Persistent<v8::Object>::New(v8::Object::New());
+  ctx->_func = v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(val));
+  ctx->_arguments = v8::Persistent<v8::Object>::New(isolate, v8::Object::New());
+  ctx->_isolate = isolate;
 
   // return the handle
   return (TRI_js_exec_context_t) ctx;
@@ -113,27 +102,18 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t context) {
 
   ctx = (js_exec_context_t*) context;
 
-  ctx->_func.Dispose();
+  ctx->_func.Dispose(ctx->_isolate);
   ctx->_func.Clear();
 
-  ctx->_arguments.Dispose();
+  ctx->_arguments.Dispose(ctx->_isolate);
   ctx->_arguments.Clear();
 
   delete ctx;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a result context
@@ -157,9 +137,9 @@ TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t context) {
   return TRI_ObjectToJson(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

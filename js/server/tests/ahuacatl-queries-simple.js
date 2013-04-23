@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var ArangoError = require("org/arangodb").ArangoError; 
 var QUERY = require("internal").AQL_QUERY;
 var errors = require("internal").errors;
 

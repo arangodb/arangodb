@@ -32,7 +32,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "ShapedJson/json-shaper.h"
 
@@ -49,11 +49,6 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* b
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
@@ -309,6 +304,8 @@ static int WeightShapeType (TRI_shape_type_t type) {
     case TRI_SHAPE_LIST:                   return 800;
     case TRI_SHAPE_HOMOGENEOUS_LIST:       return 900;
   }
+
+  LOG_ERROR("invalid shape type: %d\n", (int) type);
 
   assert(false);
   return 0;
@@ -805,8 +802,19 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
     key = TRI_AtVector(&json->_value._objects, 2 * i);
     val = TRI_AtVector(&json->_value._objects, 2 * i + 1);
 
+    assert(key != NULL);
+    assert(val != NULL);
+
+    if (key->_value._string.data == NULL ||
+        key->_value._string.length == 1 ||
+        key->_value._string.data[0] == '_') {
+      // empty or reserved attribute name
+      p--;
+      continue;
+    }
+
     // first find an identifier for the name
-    p->_aid = shaper->findAttributeName(shaper, key->_value._string.data);
+    p->_aid = shaper->findAttributeByName(shaper, key->_value._string.data);
 
     // convert value
     if (p->_aid == 0) {
@@ -840,6 +848,9 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
   // add variable offset table size
   total += (v + 1) * sizeof(TRI_shape_size_t);
+
+  // now adjust n because we might have excluded empty attributes
+  n = f + v;
 
   // now sort the shape entries
   TRI_SortShapeValues(values, n);
@@ -2087,18 +2098,9 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a deep copy of a shaped json object
@@ -2146,18 +2148,9 @@ void TRI_FreeShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* shaped) {
   TRI_Free(shaper->_memoryZone, shaped);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
@@ -2450,10 +2443,6 @@ bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
 
   return false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

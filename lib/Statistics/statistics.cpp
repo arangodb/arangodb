@@ -418,7 +418,7 @@ double TRI_StatisticsTime () {
 #else
 
 double TRI_StatisticsTime () {
-  return (double)(time(0));
+  return TRI_microtime(); 
 }
 
 #endif

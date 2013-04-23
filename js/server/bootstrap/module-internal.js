@@ -1,7 +1,7 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoError, ArangoCursor,
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
+/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         DATABASEPATH, THREAD_NUMBER, AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
+         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -56,9 +56,6 @@
   internal.ArangoDatabase = ArangoDatabase;
   delete ArangoDatabase;
 
-  internal.ArangoError = ArangoError;
-  delete ArangoError;
-
   internal.ArangoCursor = ArangoCursor;
   delete ArangoCursor;
 
@@ -77,20 +74,6 @@
 /// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief database path
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.DATABASEPATH = DATABASEPATH;
-  delete DATABASEPATH;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal thread number
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.THREAD_NUMBER = THREAD_NUMBER;
-  delete THREAD_NUMBER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query
@@ -125,6 +108,15 @@
 /// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resets engine in development mode
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.resetEngine = function () {
+    internal.flushModuleCache();
+    require("org/arangodb/actions").reloadRouting();
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rebuilds the authentication cache
@@ -173,6 +165,35 @@
           }
         }
       }
+    };
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize foxx applications
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.initializeFoxx = function () {
+    try {
+      require("org/arangodb/foxx-manager").scanAppDirectory();
+    }
+    catch (err) {
+      console.error("cannot initialize FOXX application: %s", String(err));
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the AQL user functions
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
+    internal.reloadAqlFunctions = function () {
+      require("org/arangodb/ahuacatl").reload();
+    };
+  }
+  else {
+    internal.reloadAqlFunctions = function () {
+      internal.executeGlobalContextFunction("require(\"org/arangodb/ahuacatl\").reload();");
+      require("org/arangodb/ahuacatl").reload();
     };
   }
 

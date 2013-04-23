@@ -76,23 +76,37 @@ function RequirePackageSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RequireModuleSuite () {
-  var internal = require("internal");
+  var fs = require("fs");
   var console = require("console");
-  var modulePath = internal.MODULES_PATH;
-  var first = modulePath[0];
 
-  function appendModulePath (testPath) {
-    internal.MODULES_PATH = modulePath.concat([ first + "/../../common/test-data/modules/commonjs/tests/modules/1.0/" + testPath ]);
-    module.root.unloadAll();
+  function createTestPackage (testPath) {
+    var lib = fs.join(
+      "./js/common/test-data/modules/commonjs/tests/modules/1.0/",
+      testPath);
 
-    var test = internal.GlobalPackage.defineSystemModule("/test");
+    var desc = {
+      name: "/test-" + testPath,
+      packageLib: [ lib ],
+      content: ""
+    };
 
-    test.exports.print = internal.print;
+    var pkg = module.createPackage(module._package, desc);
+
+    desc = {
+      name: "/test",
+      content: ""
+    };
+
+    var test = pkg.createModule(desc, "module", pkg._package);
+
+    test.exports.print = require("internal").print;
 
     test.exports.assert = function (guard, message) {
       console.log("running test %s", message);
       assertEqual(guard !== false, true);
     };
+
+    return test;
   }
 
   return {
@@ -102,7 +116,6 @@ function RequireModuleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.MODULES_PATH = modulePath;
       module.root.unloadAll();
     },
 
@@ -120,8 +133,8 @@ function RequireModuleSuite () {
         var name = tests[i];
 
         console.log("running CommonJS test '%s'", name);
-        appendModulePath(name);
-        require("program");
+        var test = createTestPackage(name);
+        test.require("program");
       }
     }
 

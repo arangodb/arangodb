@@ -121,8 +121,6 @@ void TRI_FreeShapeCollection (TRI_shape_collection_t* collection);
 int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
                               TRI_df_marker_t* marker,
                               TRI_voc_size_t markerSize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               TRI_df_marker_t** result);
 
 ////////////////////////////////////////////////////////////////////////////////

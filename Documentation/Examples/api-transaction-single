@@ -1,0 +1,7 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/transaction
+{ "collections" : { "write" : "users" }, "action" : "function () { var users = require(\"internal\").db.users; users.save({ _key: \"hello\" }); return users.count(); }" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ "result" : 1, "error" : false, "code" : 200 }

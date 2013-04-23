@@ -1,0 +1,41 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                            LIBEV
+dnl ----------------------------------------------------------------------------
+
+TRI_ZLIB_VERSION="1.2.7"
+
+ZLIB_CPPFLAGS=""
+ZLIB_LDFLAGS=""
+ZLIB_LIBS="${srcdir}/3rdParty/zlib-${TRI_ZLIB_VERSION}/libz.a"
+
+dnl ----------------------------------------------------------------------------
+dnl add substitutions
+dnl ----------------------------------------------------------------------------
+
+AC_SUBST(ZLIB_CPPFLAGS)
+AC_SUBST(ZLIB_LDFLAGS)
+AC_SUBST(ZLIB_LIBS)
+
+dnl ----------------------------------------------------------------------------
+dnl informational output
+dnl ----------------------------------------------------------------------------
+
+LIB_INFO="$LIB_INFO|ZLIB: 3rdParty version"
+LIB_INFO="$LIB_INFO|ZLIB VERSION: ${TRI_ZLIB_VERSION}"
+
+LIB_INFO="$LIB_INFO|ZLIB_CPPFLAGS: ${ZLIB_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|ZLIB_LDFLAGS:  ${ZLIB_LDFLAGS}"
+LIB_INFO="$LIB_INFO|ZLIB_LIBS:     ${ZLIB_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

@@ -29,7 +29,7 @@
 #include "BasicsC/common.h"
 
 #include "BasicsC/json.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/logging.h"
 
 #ifdef _WIN32
@@ -286,7 +286,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 
       // do proper unescaping
       name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, nameLen, &outLength);
-
+      nameLen = outLength;
     }
     else if (c == STRING_CONSTANT_ASCII) {
       // ASCII-only attribute name

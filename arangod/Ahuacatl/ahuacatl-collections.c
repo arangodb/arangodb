@@ -28,7 +28,7 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/index.h"
 #include "VocBase/primary-collection.h"
 
@@ -234,7 +234,7 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            indexDescription,
                            "type",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(idx)));
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idx->typeName(idx)));
 
       // index attributes
       buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);

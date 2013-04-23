@@ -9,8 +9,9 @@
 %x COMMENT
 
 %{
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/common.h"
+
+#include "BasicsC/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"

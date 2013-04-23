@@ -32,7 +32,7 @@
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/voc-errors.h"
 
 #include "VocBase/vocbase.h"
@@ -191,6 +191,10 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
     userKeyLength = strlen(userKey);
     if (userKeyLength > maxLength) {
       // user key is too long
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    }
+    else if (userKeyLength == 0) {
+      // user key is empty
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 

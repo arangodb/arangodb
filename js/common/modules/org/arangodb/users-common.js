@@ -31,8 +31,9 @@
 var internal = require("internal"); // OK: time
 var arangodb = require("org/arangodb");
 var crypto = require("org/arangodb/crypto");
+
 var db = arangodb.db;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = arangodb.ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/users"
@@ -157,8 +158,8 @@ var getStorage = function () {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").save("my-user", "my-secret-password");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").save("my-user", "my-secret-password");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -230,8 +231,8 @@ exports.save = function (username, passwd, active, extra) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").replace("my-user", "my-changed-password");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").replace("my-user", "my-changed-password");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -303,8 +304,8 @@ exports.replace = function (username, passwd, active, extra) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").replace("my-user", "my-secret-password");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").replace("my-user", "my-secret-password");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -326,7 +327,7 @@ exports.update = function (username, passwd, active, extra) {
     throw err;
   }
 
-  var data = user.shallowCopy;
+  var data = user._shallowCopy;
 
   if (passwd !== undefined) {
     var hash = encodePassword(passwd);
@@ -363,8 +364,8 @@ exports.update = function (username, passwd, active, extra) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("users").remove("my-user");
-/// arangosh> require("users").reload();
+/// arangosh> require("org/arangodb/users").remove("my-user");
+/// arangosh> require("org/arangodb/users").reload();
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   

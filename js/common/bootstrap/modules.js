@@ -1,5 +1,6 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, module: true, PACKAGE_PATH */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true */
+/*global require, module: true, PACKAGE_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
+  EXPORTS_SLOW_BUFFER */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -33,7 +34,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,7 +53,7 @@ module = null;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,85 +81,69 @@ module = null;
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {
+  'use strict';
+
   return module.require(path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global print function
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-function print () {
-  var internal = require("internal");
-  internal.print.apply(internal.print, arguments);
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global printf function
+/// @addtogroup ArangoDB
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-function printf () {
-  var internal = require("internal");
-  internal.printf.apply(internal.printf, arguments);
-}
+(function () {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief turn off pretty printing
+/// @brief appPath
 ////////////////////////////////////////////////////////////////////////////////
 
-function print_plain () {
-  var internal = require("internal");
+  var appPath;
 
-  var p = internal.PRETTY_PRINT;
-  internal.PRETTY_PRINT = false;
-
-  var c = internal.COLOR_OUTPUT;
-  internal.COLOR_OUTPUT = false;
-
-  try {
-    internal.print.apply(internal.print, arguments);
-
-    internal.PRETTY_PRINT = p;
-    internal.COLOR_OUTPUT = c;
+  if (typeof APP_PATH !== "undefined") {
+    appPath = APP_PATH;
+    delete APP_PATH;
   }
-  catch (e) {
-    internal.PRETTY_PRINT = p;
-    internal.COLOR_OUTPUT = c;
 
-    throw e.message;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief devAppPath
+////////////////////////////////////////////////////////////////////////////////
+
+  var devAppPath;
+
+  if (typeof DEV_APP_PATH !== "undefined") {
+    devAppPath = DEV_APP_PATH;
+    delete DEV_APP_PATH;
   }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty printing
+/// @brief modulesPath
 ////////////////////////////////////////////////////////////////////////////////
 
-function start_pretty_print () {
-  require("internal").startPrettyPrint();
-}
+  var modulesPath = [];
+
+  if (typeof MODULES_PATH !== "undefined") {
+    modulesPath = MODULES_PATH;
+    delete MODULES_PATH;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
+/// @brief packagePath
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_pretty_print () {
-  require("internal").stopPrettyPrint();
-}
+  var packagePath = [];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty printing with optional color
-////////////////////////////////////////////////////////////////////////////////
-
-function start_color_print (color) {
-  require("internal").startColorPrint(color, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function stop_color_print () {
-  require("internal").stopColorPrint();
-}
+  if (typeof PACKAGE_PATH !== "undefined") {
+    packagePath = PACKAGE_PATH;
+    delete PACKAGE_PATH;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -169,17 +154,17 @@ function stop_color_print () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module constructor
+/// @brief Module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
   function Module (id, type, pkg) {
+    'use strict';
+
     this.id = id;                    // commonjs Module/1.1.1
     this.exports = {};               // commonjs Module/1.1.1
 
@@ -191,11 +176,11 @@ function stop_color_print () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief package constructor
+/// @brief Package constructor
 ////////////////////////////////////////////////////////////////////////////////
 
   function Package (id, description, parent, paths) {
-    var i;
+    'use strict';
 
     this.id = id;			// same of the corresponding module
     this._description = description;    // the package.json file
@@ -205,23 +190,39 @@ function stop_color_print () {
     this._paths = paths;                // path to the package
   }
 
-  var GlobalPackage = new Package("/", {name: "ArangoDB"}, undefined, PACKAGE_PATH);
+  var GlobalPackage = new Package("/", {name: "ArangoDB"}, undefined, packagePath);
 
-  Package.prototype.defineSystemModule = function (path) {
-    var result = this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+  Package.prototype.defineSystemModule = function (path, exports) {
+    'use strict';
 
-    return result;
+    var module = this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+
+    if (exports !== undefined) {
+      module.exports = exports;
+    }
+
+    return module;
   };
 
+
+
   Package.prototype.defineModule = function (path, module) {
+    'use strict';
+
     this._moduleCache[path] = module;
 
     return module;
   };
 
+
+
   Package.prototype.clearModule = function (path) {
+    'use strict';
+
     delete this._moduleCache[path];
   };
+
+
 
   Package.prototype.module = function (path) {
     if (this._moduleCache.hasOwnProperty(path)) {
@@ -231,7 +232,11 @@ function stop_color_print () {
     return null;
   };
 
+
+
   Package.prototype.moduleNames = function () {
+    'use strict';
+
     var name;
     var names = [];
 
@@ -245,6 +250,21 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoApp constructor
+////////////////////////////////////////////////////////////////////////////////
+
+  function ArangoApp (id, name, version, manifest, root, path) {
+    'use strict';
+
+    this._id = id;
+    this._name = name;
+    this._version = version;
+    this._manifest = manifest;
+    this._root = root;
+    this._path = path;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -253,214 +273,225 @@ function stop_color_print () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global module cache
+/// @brief moduleExistsCache
 ////////////////////////////////////////////////////////////////////////////////
 
-  var ModuleExistsCache = {};
+  var moduleExistsCache = {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief root module
+////////////////////////////////////////////////////////////////////////////////
 
   GlobalPackage.defineSystemModule("/");
-  GlobalPackage.defineSystemModule("/internal");
-  GlobalPackage.defineSystemModule("/fs");
-  GlobalPackage.defineSystemModule("/console");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief top-level-module
-////////////////////////////////////////////////////////////////////////////////
-
   module = Module.prototype.root = GlobalPackage.module("/");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "internal"
+////////////////////////////////////////////////////////////////////////////////
+
+  GlobalPackage.defineSystemModule("/internal");
+  var internal = GlobalPackage.module("/internal").exports;
+
+  var key;
+
+  for (key in EXPORTS_SLOW_BUFFER) {
+    if (EXPORTS_SLOW_BUFFER.hasOwnProperty(key)) {
+      internal[key] = EXPORTS_SLOW_BUFFER[key];
+    }
+  }
+
+  delete EXPORTS_SLOW_BUFFER;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "fs"
+////////////////////////////////////////////////////////////////////////////////
+
+  GlobalPackage.defineSystemModule("/fs");
+  var fs = GlobalPackage.module("/fs").exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "console"
+////////////////////////////////////////////////////////////////////////////////
+
+  GlobalPackage.defineSystemModule("/console");
+  var console = GlobalPackage.module("/console").exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                            private module methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  var internal = GlobalPackage.module("/internal").exports;
-  var console = GlobalPackage.module("/console").exports;
-
-  internal.GlobalPackage = GlobalPackage;
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalizes a module name
-///
-/// If @FA{path} starts with "." or "..", then it is a relative path.
-/// Otherwise it is an absolute path.
-///
-/// @FA{prefix} must not end in `/` unless it is equal to `"/"`.
-///
-/// The normalized name will start with a `/`, but not end in `/' unless it
-/// is equal to `"/"`.
+/// @brief loads a manifest file
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.normalizeModuleName = function (prefix, path) {
-    var i;
-    var n;
-    var p;
-    var q;
-    var x;
+  function appManifestAal (appId) {
+    'use strict';
 
-    if (path === "") {
-      return prefix;
+    var doc = null;
+    var re = /^app:([0-9a-zA-Z_\-\.]+):([0-9a-zA-Z_\-\.]+|lastest)$/;
+    var m = re.exec(appId);
+
+    if (m === null) {
+      throw "illegal app identifier '" + appId + "'";
     }
 
-    p = path.split('/');
+    var aal = internal.db._collection("_aal");
 
-    // relative path
-    if (p[0] === "." || p[0] === "..") {
-      q = prefix.split('/');
-      q.pop();
-      q = q.concat(p);
+    if (m[2] === "latest") {
+      var docs = aal.byExample({ type: "app", name: m[1] }).toArray();
+
+      docs.sort(function(a,b) {return module.compareVersions(b.version, a.version);});
+
+      if (0 < docs.length) {
+        doc = docs[0];
+      }
     }
-
-    // absolute path
     else {
-      q = p;
+      doc = aal.firstExample({ type: "app", app: appId });
     }
 
-    // normalize path
-    n = [];
-
-    for (i = 0;  i < q.length;  ++i) {
-      x = q[i];
-
-      if (x === "..") {
-        if (n.length === 0) {
-          throw "cannot use '..' to escape top-level-directory";
-        }
-
-        n.pop();
-      }
-      else if (x !== "" && x !== ".") {
-        n.push(x);
-      }
+    if (doc === null) {
+      return null;
     }
 
-    return "/" + n.join('/');
-  };
+    return {
+      appId: doc.app,
+      root: appPath,
+      path: doc.path
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a module package description file
+/// @brief loads a manifest file for development
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.loadPackageDescription = function (main, pkg) {
-    var paths;
-    var i;
+  function appManifestDev (appId) {
+    'use strict';
 
-    paths = pkg._paths;
+    var re = /dev:([^:]*):(.*)/;
+    var m = re.exec(appId);
 
-    for (i = 0;  i < paths.length;  ++i) {
-      var p = paths[i];
-      var n;
-      var m;
-
-      if (p === "") {
-        m = "./node_modules" + main;
-      }
-      else if (p[p.length - 1] === '/') {
-        m = p + "node_modules" + main;
-      }
-      else {
-        m = p + "/node_modules" + main;
-      }
-
-      n = m + "/package.json";
-
-      if (internal.exists(n)) {
-        try {
-          var desc = JSON.parse(internal.read(n));
-          var mainfile = m + internal.normalizeModuleName("", desc.main) + ".js";
-
-          if (internal.exists(mainfile)) {
-            var content = internal.read(mainfile);
-
-            return { name: main,
-                     description: desc,
-                     packagePath: m,
-                     path: 'file://' + mainfile,
-                     content: content };
-          }
-        }
-        catch (err) {
-          if (console.hasOwnProperty('error')) {
-            console.error("cannot load package '%s': %s - %s",
-                          main,
-                          String(err),
-                          String(err.stack));
-          }
-        }
-      }
+    if (m === null) {
+      throw "illegal app identifier '" + appId + "'";
     }
 
-    return null;
-  };
+    return {
+      appId: appId,
+      root: devAppPath,
+      path: m[2]
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a file from the package path
+/// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.loadPackageFile = function (main, pkg) {
-    var n;
-    var i;
-    var mc;
-    var paths;
+  function appDescription (appId) {
+    'use strict';
 
-    paths = pkg._paths;
+    var mp;
 
-// -----------------------------------------------------------------------------
-    // normal modules, file based
-// -----------------------------------------------------------------------------
-
-     // try to load the file
-    for (i = 0;  i < paths.length;  ++i) {
-      var p = paths[i];
-
-      if (p === "") {
-        n = "." + main + ".js";
-      }
-      else if (p[p.length - 1] === '/') {
-        n = p + main.substr(1) + ".js";
-      }
-      else {
-        n = p + main + ".js";
+    if (appId.substr(0,4) === "app:") {
+      if (typeof appPath === "undefined") {
+        console.error("ignored app '%s', because no app-path is specified", appId);
+        return;
       }
 
-      if (internal.exists(n)) {
-        return { name: main,
-                 path: 'file://' + n,
-                 content: internal.read(n) };
+      mp = appManifestAal(appId);
+    }
+    else if (appId.substr(0,4) === "dev:") {
+      if (! internal.developmentMode) {
+        console.error("ignoring development app '%s'", appId);
+        return null;
       }
+
+      if (typeof devAppPath === "undefined") {
+        console.error("ignored development app '%s', because no dev-app-path is specified", appId);
+        return;
+      }
+
+      mp = appManifestDev(appId);
+    }
+    else {
+      console.error("cannot load application '%s', unknown type", appId);
+      return null;
     }
 
-    return null;
-  };
+    if (mp === null) {
+      return null;
+    }
+
+    var file = fs.join(mp.root, mp.path, "manifest.json");
+    
+    if (! fs.exists(file)) {
+      console.error("manifest file is missing '%s'", file);
+      return null;
+    }
+
+    var manifest;
+
+    try {
+      manifest = JSON.parse(fs.read(file));
+    }
+    catch (err) {
+      console.error("cannot load manifest file '%s': %s - %s",
+                    file,
+                    String(err),
+                    String(err.stack));
+      return null;
+    }
+
+    if (! manifest.hasOwnProperty("name")) {
+      console.error("cannot manifest file is missing a name '%s'", file);
+      return null;
+    }
+        
+    if (! manifest.hasOwnProperty("version")) {
+      console.error("cannot manifest file is missing a version '%s'", file);
+      return null;
+    }
+        
+    if (appId.substr(0,4) === "dev:") {
+      appId = "dev:" + manifest.name + ":" + mp.path;
+    }
+
+    return {
+      id: mp.appId,
+      root: mp.root,
+      path: mp.path,
+      manifest: manifest
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file from the module path or the database
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.loadModuleFile = function (main) {
-    var n;
+  function loadModuleFile (main) {
+    'use strict';
+
     var i;
-    var mc;
-    var paths;
+    var n;
 
-    paths = internal.MODULES_PATH;
+    var paths = modulesPath;
 
-// -----------------------------------------------------------------------------
+    // .............................................................................
     // normal modules, file based
-// -----------------------------------------------------------------------------
+    // .............................................................................
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -476,19 +507,19 @@ function stop_color_print () {
         n = p + main + ".js";
       }
 
-      if (internal.exists(n)) {
+      if (fs.exists(n)) {
         return { name: main,
                  path: 'file://' + n,
-                 content: internal.read(n) };
+                 content: fs.read(n) };
       }
     }
 
-// -----------------------------------------------------------------------------
+    // .............................................................................
     // normal modules, database based
-// -----------------------------------------------------------------------------
+    // .............................................................................
 
     if (internal.db !== undefined) {
-      mc = internal.db._collection("_modules");
+      var mc = internal.db._collection("_modules");
 
       if (mc !== null && typeof mc.firstExample === "function") {
         n = mc.firstExample({ path: main });
@@ -508,48 +539,172 @@ function stop_color_print () {
     }
 
     return null;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a module
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype._PRINT = function (context) {
+    'use strict';
+
+    var parent = "";
+
+    if (this._package._parent !== undefined) {
+      parent = ', parent package "' + this._package._parent.id + '"';
+    }
+
+    context.output += '[module "' + this.id + '"'
+                    + ', type "' + this._type + '"'
+                    + ', package "' + this._package.id + '"'
+                    + parent
+                    + ', origin "' + this._origin + '"'
+                    + ']';
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a module
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             public module methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appPath
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.appPath = function () {
+    'use strict';
+
+    return appPath;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief devAppPath
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.devAppPath = function () {
+    'use strict';
+
+    return devAppPath;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compareVersions
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.compareVersions = function (a, b) {
+    'use strict';
+
+    var i;
+
+    if (a === b) {
+      return 0;
+    }
+
+    var aComponents = a.split(".");
+    var bComponents = b.split(".");
+    var len = Math.min(aComponents.length, bComponents.length);
+
+    // loop while the components are equal
+    for (i = 0; i < len; i++) {
+
+      // A bigger than B
+      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
+        return 1;
+      }
+
+      // B bigger than A
+      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
+        return -1;
+      }
+    }
+
+    // If one's a prefix of the other, the longer one is greater.
+    if (aComponents.length > bComponents.length) {
+      return 1;
+    }
+
+    if (aComponents.length < bComponents.length) {
+      return -1;
+    }
+
+    // Otherwise they are the same.
+    return 0;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createModule
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.createModule = function (description, type, pkg) {
-    var content;
-    var fun;
-    var module;
+    'use strict';
+
+    var key;
 
     // mark that we have seen the definition, used for debugging only
-    ModuleExistsCache[description.name] = true;
+    moduleExistsCache[description.name] = true;
 
     // test for parse errors first and fail early if a parse error detected
+    if (typeof description.content !== "string") {
+      throw new Error("description must be a string, not '" + typeof description.content + "'");
+    }
+
     if (! internal.parse(description.content)) {
-      throw "Javascript parse error in file '" + description.path + "'";
+      throw new Error("Javascript parse error in file '" + description.path + "'");
     }
 
     // create a new sandbox and execute
-    module = new Module(description.name, type, pkg);
+    var module = new Module(description.name, type, pkg);
     module._origin = description.path;
 
     pkg.defineModule(description.name, module);
 
-    // try to execute the module source code
-    content = "(function (module, exports, require, print) {"
-            + description.content
-            + "\n});";
+    // setup a sandbox
+    var env = pkg._environment;
 
-    fun = internal.execute(content, undefined, description.name);
+    var sandbox = {};
+    sandbox.print = internal.print;
 
-    if (fun === undefined) {
-      pkg.clearModule(description.name);
-      throw "cannot create context function";
+    if (env !== undefined) {
+      for (key in env) {
+        if (env.hasOwnProperty(key) && key !== "__myenv__") {
+          sandbox[key] = env[key];
+        }
+      }
     }
 
+    sandbox.module = module;
+    sandbox.exports = module.exports;
+    sandbox.require = function(path) { return module.require(path); };
+
+    // try to execute the module source code
+    var content = "(function (__myenv__) {";
+
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
+    }
+
+    content += "delete __myenv__;"
+             + description.content
+             + "\n});";
+
     try {
-      fun(module,
-          module.exports,
-          function(path) { return module.require(path); },
-          internal.print);
+      var fun = internal.executeScript(content, undefined, description.name);
+
+      if (fun === undefined) {
+        throw "cannot create module context function for: " + content;
+      }
+
+      fun(sandbox);
     }
     catch (err) {
       pkg.clearModule(description.name);
@@ -560,22 +715,43 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a package
+/// @brief createApp
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.createApp = function (appId) {
+    'use strict';
+
+    var description = appDescription(appId);
+
+    if (description === null) {
+      return description;
+    }
+
+    return new ArangoApp(
+      description.id,
+      description.manifest.name,
+      description.manifest.version,
+      description.manifest,
+      description.root,
+      description.path
+    );
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createPackage
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.createPackage = function (parent, description) {
-    var path;
-    var module;
-    var pkg;
+    'use strict';
 
-    path = description.name;
+    var path = description.name;
 
-    pkg = new Package(path,
-                      description.description,
-                      parent,
-                      [description.packagePath]);
+    var pkg = new Package(path,
+                          description.description,
+                          parent,
+                          description.packageLib);
 
-    module = this.createModule(description, 'package', pkg);
+    var module = this.createModule(description, 'package', pkg);
 
     if (module !== null) {
       parent.defineModule(path, module);
@@ -585,34 +761,32 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief requires a package
+/// @brief requirePackage
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.requirePackage = function (unormalizedPath) {
-    var current;
-    var module;
-    var path;
+    'use strict';
 
     // first get rid of any ".." and "."
-    path = this.normalize(unormalizedPath);
+    var path = this.normalize(unormalizedPath);
 
     if (this._package.id === "/" && path === "/internal") {
       return null;
     }
 
     // try to locate the package file starting with the current package
-    current = this._package;
+    var current = this._package;
 
     while (current !== undefined) {
 
       // check if already know a package with that name
-      module = current.module(path);
+      var module = current.module(path);
 
       if (module !== null && module._type === 'package') {
         return module;
       }
 
-      var description = internal.loadPackageDescription(path, current);
+      var description = current.loadPackageDescription(path);
 
       if (description !== null) {
         module = this.createPackage(current, description);
@@ -629,29 +803,28 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief requires a module
+/// @brief requireModule
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.requireModule = function (unormalizedPath) {
-    var description;
-    var module;
-    var path;
+    'use strict';
 
     // first get rid of any ".." and "."
-    path = this.normalize(unormalizedPath);
+    var path = this.normalize(unormalizedPath);
 
     // check if already know a module with that name
-    module = this._package.module(path);
+    var module = this._package.module(path);
 
     if (module) {
       if (module.type === 'package') {
         module = null;
       }
+
       return module;
     }
 
     // first check: we are talking about module within a package
-    description = internal.loadPackageFile(path, this._package);
+    var description = this._package.loadPackageFile(path);
 
     if (description !== null) {
       module = this.createModule(description, 'module', this._package);
@@ -669,11 +842,12 @@ function stop_color_print () {
       if (module.type === 'package') {
         module = null;
       }
+
       return module;
     }
 
     // second check: we are talking about a global module
-    description = internal.loadModuleFile(path);
+    description = loadModuleFile(path);
 
     if (description !== null) {
       module = this.createModule(description, 'module', GlobalPackage);
@@ -688,15 +862,25 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file and creates a new module descriptor
+/// @brief require
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.require = function (unormalizedPath) {
-    var module;
-    var path;
+    'use strict';
+
+    // special modules are returned immediately
+    if (this._package.id === "/") {
+      if (unormalizedPath === "internal") {
+        return this._package.module("/internal").exports;
+      }
+
+      if (unormalizedPath === "fs") {
+        return this._package.module("/fs").exports;
+      }
+    }
 
     // check if path points to a package or a module in a package
-    module = this.requirePackage(unormalizedPath);
+    var module = this.requirePackage(unormalizedPath);
 
     if (module !== null) {
       return module.exports;
@@ -711,31 +895,94 @@ function stop_color_print () {
 
     throw "cannot locate module '" + unormalizedPath + "'"
       + " for package '" + this._package.id + "'"
-      + " using module path '" + internal.MODULES_PATH + "'"
+      + " using module path '" + modulesPath + "'"
       + " and package path '" + this._package._paths + "'";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if require found a file
+/// @brief exists
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.exists = function (path) {
-    return ModuleExistsCache[path];
+    'use strict';
+
+    return moduleExistsCache[path];
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalizes a path
+/// @brief normalizes a module name
+///
+/// If @FA{path} starts with "." or "..", then it is a relative path.
+/// Otherwise it is an absolute path.
+///
+/// @FA{prefix} must not end in `/` unless it is equal to `"/"`.
+///
+/// The normalized name will start with a `/`, but not end in `/' unless it
+/// is equal to `"/"`.
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.normalizeModuleName = function (prefix, path) {
+    'use strict';
+
+    var i;
+
+    if (path === "") {
+      return prefix;
+    }
+
+    var p = path.split('/');
+    var q;
+
+    // relative path
+    if (p[0] === "." || p[0] === "..") {
+      q = prefix.split('/');
+      q.pop();
+      q = q.concat(p);
+    }
+
+    // absolute path
+    else {
+      q = p;
+    }
+
+    // normalize path
+    var n = [];
+
+    for (i = 0;  i < q.length;  ++i) {
+      var x = q[i];
+
+      if (x === "..") {
+        if (n.length === 0) {
+          throw "cannot use '..' to escape top-level-directory";
+        }
+
+        n.pop();
+      }
+      else if (x !== "" && x !== ".") {
+        n.push(x);
+      }
+    }
+
+    return "/" + n.join('/');
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.normalize = function (path) {
-    return internal.normalizeModuleName(this.id, path);
+    'use strict';
+
+    return this.normalizeModuleName(this.id, path);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unloads module
+/// @brief unload
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.unload = function (path) {
+    'use strict';
+
     if (! path) {
       return;
     }
@@ -755,7 +1002,6 @@ function stop_color_print () {
         || norm === "/org/arangodb/actions"
         || norm === "/org/arangodb/arango-collection"
         || norm === "/org/arangodb/arango-database"
-        || norm === "/org/arangodb/arango-error"
         || norm === "/org/arangodb/arango-statement"
         || norm === "/org/arangodb/shaped-json") {
       return;
@@ -765,14 +1011,15 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unloads module
+/// @brief unloadAll
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.unloadAll = function () {
-    var i;
-    var names;
+    'use strict';
 
-    names = GlobalPackage.moduleNames();
+    var i;
+
+    var names = GlobalPackage.moduleNames();
 
     for (i = 0;  i < names.length;  ++i) {
       this.unload(names[i]);
@@ -780,46 +1027,283 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a module
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype._PRINT = function () {
-    var parent = "";
+// -----------------------------------------------------------------------------
+// --SECTION--                                           private package methods
+// -----------------------------------------------------------------------------
 
-    if (this._package._parent !== undefined) {
-      parent = ', parent package "' + this._package._parent.id + '"';
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a file from the package path
+////////////////////////////////////////////////////////////////////////////////
+
+  Package.prototype.loadPackageFile = function (main) {
+    'use strict';
+
+    var i;
+
+    var paths = this._paths;
+
+    // .............................................................................
+    // normal modules, file based
+    // .............................................................................
+
+     // try to load the file
+    for (i = 0;  i < paths.length;  ++i) {
+      var n;
+      var p = paths[i];
+
+      if (p === "") {
+        n = "." + main + ".js";
+      }
+      else if (p[p.length - 1] === '/') {
+        n = p + main.substr(1) + ".js";
+      }
+      else {
+        n = p + main + ".js";
+      }
+
+      if (fs.exists(n)) {
+        return { name: main,
+                 path: 'file://' + n,
+                 content: fs.read(n) };
+      }
     }
 
-    internal.output('[module "' + this.id + '"'
-                    + ', type "' + this._type + '"'
-                    + ', package "' + this._package.id + '"'
-                    + parent
-                    + ', origin "' + this._origin + '"'
-                    + ']');
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a module package description file
+////////////////////////////////////////////////////////////////////////////////
+
+  Package.prototype.loadPackageDescription = function (main) {
+    'use strict';
+
+    var i;
+
+    var paths = this._paths;
+
+    for (i = 0;  i < paths.length;  ++i) {
+      var p = paths[i];
+      var n;
+      var m;
+
+      if (p === "") {
+        m = "./node_modules" + main;
+      }
+      else if (p[p.length - 1] === '/') {
+        m = p + "node_modules" + main;
+      }
+      else {
+        m = p + "/node_modules" + main;
+      }
+
+      n = m + "/package.json";
+
+      if (fs.exists(n)) {
+        try {
+          var desc = JSON.parse(fs.read(n));
+          var mainfile = m + module.normalizeModuleName("", desc.main) + ".js";
+
+          if (fs.exists(mainfile)) {
+            var content = fs.read(mainfile);
+            var mypaths;
+
+            if (typeof desc.directories !== "undefined" && typeof desc.directories.lib !== "undefined") {
+              var full = m + module.normalizeModuleName("", desc.directories.lib);
+
+              mypaths = [ full ];
+            }
+            else {
+              mypaths = [ m ];
+            }
+
+            return { name: main,
+                     description: desc,
+                     packagePath: m,
+                     packageLib: mypaths,
+                     path: 'file://' + mainfile,
+                     content: content };
+          }
+        }
+        catch (err) {
+          if (console.hasOwnProperty('error')) {
+            console.error("cannot load package '%s': %s - %s",
+                          main,
+                          String(err),
+                          String(err.stack));
+          }
+        }
+      }
+    }
+
+    return null;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a package
 ////////////////////////////////////////////////////////////////////////////////
 
-  Package.prototype._PRINT = function () {
+  Package.prototype._PRINT = function (context) {
+    'use strict';
+
     var parent = "";
 
     if (this._parent !== undefined) {
       parent = ', parent "' + this._package._parent.id + '"';
     }
 
-    internal.output('[module "' + this.id + '"'
+    context.output += '[module "' + this.id + '"'
                     + ', path "' + this._path + '"'
                     + parent
-                    + ']');
+                    + ']';
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               private app methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a package
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype._PRINT = function (context) {
+    'use strict';
+
+    var parent = "";
+
+    if (this._parent !== undefined) {
+      parent = ', parent "' + this._package._parent.id + '"';
+    }
+
+    context.output += '[app "' + this._name + '" (' + this._version + ')]';
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                public app methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createAppModule
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.createAppModule = function (type) {
+    'use strict';
+
+    if (type === undefined) {
+      type = 'lib';
+    }
+
+    var libpath;
+
+    if (this._manifest.hasOwnProperty(type)) {
+      libpath = fs.join(this._root, this._path, this._manifest[type]);
+    }
+    else {
+      libpath = fs.join(this._root, this._path, type);
+    }
+
+    var pkg = new Package("application",
+                          {name: "application '" + this._name + "'"},
+                          undefined,
+                          [ libpath ]);
+
+    return new Module("application", 'application', pkg);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loadAppScript
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.loadAppScript = function (appModule, file, appContext, context) {
+    'use strict';
+
+    var fileContent;
+    var full;
+    var key;
+
+    try {
+      full = fs.join(this._root, this._path, file);
+      fileContent = fs.read(full);
+    }
+    catch (err1) {
+      throw "cannot read file '" + full + "': " + err1 + " - " + err1.stack;
+    }
+
+    var sandbox = {};
+
+    if (context !== undefined) {
+      for (key in context) {
+        if (context.hasOwnProperty(key) && key !== "__myenv__") {
+          sandbox[key] = context[key];
+        }
+      }
+    }
+
+    sandbox.module = appModule;
+    sandbox.applicationContext = appContext;
+
+    sandbox.require = function (path) {
+      return appModule.require(path);
+    };
+
+    var content = "(function (__myenv__) {";
+
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
+    }
+
+    content += "delete __myenv__;"
+             + fileContent
+             + "\n});";
+
+    try {
+      var fun = internal.executeScript(content, undefined, full);
+
+      if (fun === undefined) {
+        throw "cannot create application script: " + content;
+      }
+
+      fun(sandbox);
+    }
+    catch (err2) {
+      throw "JavaScript exception in application file '" 
+        + full + "': " + err2+ " - " + err2.stack;
+    }
+  };
+
 }());
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

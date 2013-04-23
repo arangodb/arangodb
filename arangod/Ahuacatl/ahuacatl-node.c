@@ -183,6 +183,8 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "parameter";
     case TRI_AQL_NODE_FCALL:
       return "function call";
+    case TRI_AQL_NODE_FCALL_USER:
+      return "function call (user)";
   }
 
   assert(false);
@@ -202,7 +204,7 @@ bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   if (node->_type != TRI_AQL_NODE_VALUE &&
       node->_type != TRI_AQL_NODE_LIST &&
@@ -246,7 +248,7 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   if (node->_type != TRI_AQL_NODE_VALUE) {
     return false;
@@ -261,7 +263,7 @@ bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsBooleanValueNodeAql (const TRI_aql_node_t* const node) {
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   return (node->_type == TRI_AQL_NODE_VALUE && node->_value._type == TRI_AQL_TYPE_BOOL);
 }

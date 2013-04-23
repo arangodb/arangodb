@@ -33,7 +33,7 @@
 #endif
 #endif
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/associative.h"
 
@@ -235,7 +235,7 @@ char const* TRI_last_error () {
   entry = (TRI_error_t*)
     TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &err);
 
-  if (!entry) {
+  if (entry == NULL) {
     return "general error";
   }
 
@@ -392,11 +392,8 @@ void TRI_ShutdownError () {
   for (i = 0; i < ErrorMessages._nrAlloc; i++) {
     TRI_error_t* entry = ErrorMessages._table[i];
 
-    if (entry) {
-      if (entry->_message) {
-        TRI_Free(TRI_CORE_MEM_ZONE, entry->_message);
-      }
-
+    if (entry != NULL) {
+      TRI_Free(TRI_CORE_MEM_ZONE, entry->_message);
       TRI_Free(TRI_CORE_MEM_ZONE, entry);
     }
   }

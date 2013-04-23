@@ -1,0 +1,128 @@
+.arango-nav li {
+  margin-left: 1px !important;
+}
+
+#transparentHeader .btn-group {
+  margin-top: 6px !important;
+}
+
+#newCollection {
+  margin-left: 22px;
+  margin-top: 2px;
+  margin-right: 10px;
+}
+
+
+.thumbnail, .navbar-inner, .btn, .btn-primary {
+  border-radius:0;
+  box-shadow: 0;
+}
+
+.thumbnails2 {
+  padding-top: 1px !important;
+  background-color: rgba(0, 0, 0, 0.05);
+  margin-left:0;
+  margin-bottom:0;
+  border-radius: 4px 4px 0 0;
+}
+
+.thumbnails {
+  margin-left:0px;
+  padding-left: 10px;
+  padding-bottom: 10px;
+  padding-top: 10px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.thumbnails li {
+  background-color: #f4f3f3;
+  border: 8px solid #FFF;
+}
+
+.thumbnails a.add {
+	padding:40px 0;	
+	display:block;
+	font-weight:bold;
+	text-align:left;
+}
+
+.thumbnails .icon {
+	padding-right:5px;
+	padding-left: 5px;
+	padding-top: 5px;
+  cursor: pointer;
+}
+
+.btn-group {
+  border-radius: 2px 2px 2px 2px !important;
+}
+
+.searchInput {
+  background-color: #FFFFFF;
+  border: 1px solid #c0c0c0;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset;
+  color: #555555;
+  display: inline-block;
+  font-size: 12px;
+  height: 18px;
+  line-height: 18px;
+  margin-top: 3px;
+  padding: 2px;
+  vertical-align: middle;
+  width:280px;
+  border-radius: 2px 2px 2px 2px !important;
+}
+
+#searchSubmit {
+  height: 14px;
+  margin-left: -18px;
+  margin-top: 11px;
+  opacity: 0.2;
+  position: absolute;
+  width: 14px;
+}
+
+#searchSubmit:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+#transparentHeader {
+  height: 36px;
+  margin-top: 20px !important;
+  margin-right: 0px;
+  margin-left: 0px;
+  margin-bottom: -10px !important;
+  background-color:#686766;
+  border-top: 1px solid #a0a0a0;
+  border-bottom: 1px solid #a0a0a0;
+  color:#FFF;
+  padding:0 20px;
+  position:relative;
+}
+
+
+#transparentHeader i {
+  margin-top: 2px;
+  margin-right: 2px;
+  left: 10px;
+  position: absolute;
+}
+
+#transparentHeader a.disabledBread {
+	color:#fff;
+}
+
+#transparentHeader .pagination {
+	position:absolute;
+	right:20px;
+	margin:5px 0;
+}
+
+#transparentHeader .pagination-small ul > li:last-child > a {
+	margin-left:0px
+}
+
+#transparentHeader .btn-group {
+	margin-top:4px;
+}

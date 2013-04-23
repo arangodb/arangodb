@@ -1,0 +1,32 @@
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+  <fieldset>
+    <legend>Create the Viewer</legend>
+    <fieldset>
+      <legend>Setup Arango Connection</legend>
+      <div class="control-group">
+        <label for="host" class="control-label">Host</label>
+        <div class="controls">
+          <input id="host" type="text" name="host" placeholder="Host" maxlength="75" class="input-xlarge" value="http://localhost:8529">
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="nodeCollection" class="control-label">Node Collection</label>
+        <div class="controls">
+          <input id="nodeCollection" type="text" name="nodeCollection" placeholder="Node Collection" maxlength="75" class="input-xlarge" value="Classes">
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="edgeCollection" class="control-label">Edge Collection</label>
+        <div class="controls">
+          <input id="edgeCollection" type="text" name="edgeCollection" placeholder="Edge Collection" maxlength="75" class="input-xlarge" value="Connections">
+        </div>
+      </div>
+    </fieldset>
+         
+    <div class="control-group">
+      <div class="controls">
+        <button type="submit" class="btn btn-primary" id="createViewer" >Create</button>
+      </div>
+    </div>
+  </fieldset>
+</form>

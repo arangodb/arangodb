@@ -46,7 +46,7 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/shell-colors.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
 #include "MRClient/MRubyClientConnection.h"
