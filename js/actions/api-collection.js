@@ -300,6 +300,10 @@ function get_api_collections (req, res) {
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name},reads a collection}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+/// 
 /// @RESTDESCRIPTION
 /// The result is an object describing the collection with the following
 /// attributes:
@@ -332,6 +336,10 @@ function get_api_collections (req, res) {
 /////////////////////////////////////////////////////////////////////////////
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/properties,reads a collection with properties}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
@@ -373,6 +381,10 @@ function get_api_collections (req, res) {
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/count,reads a collection with count}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents.
 /// Note that this will always load the collection into memory.
@@ -400,6 +412,10 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/figures,reads a collection with stats}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents
@@ -456,6 +472,10 @@ function get_api_collections (req, res) {
 ///////////////////////////////////////////////////////////////////////////////
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/revision, reads a collection with revision id}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will also contain the
@@ -587,6 +607,10 @@ function get_api_collection (req, res) {
 ///
 /// @RESTHEADER{PUT /_api/collection/{collection-name}/load,loads a collection}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
 /// @RESTDESCRIPTION
 /// Loads a collection into memory. Returns the collection on success.
 ///
@@ -653,6 +677,10 @@ function put_api_collection_load (req, res, collection) {
 ///
 /// @RESTHEADER{PUT /_api/collection/{collection-name}/unload,unloads a collection}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
 /// @RESTDESCRIPTION
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
@@ -701,6 +729,10 @@ function put_api_collection_unload (req, res, collection) {
 ///
 /// @RESTHEADER{PUT /_api/collection/{collection-name}/truncate,truncates a collection}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
 /// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
@@ -726,6 +758,10 @@ function put_api_collection_truncate (req, res, collection) {
 /// @brief changes a collection
 ///
 /// @RESTHEADER{PUT /_api/collection/{collection-name}/properties,changes the properties of a collection}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
 ///
 /// @RESTDESCRIPTION
 /// Changes the properties of a collection. Expects an object with the
@@ -784,6 +820,10 @@ function put_api_collection_properties (req, res, collection) {
 /// @brief renames a collection
 ///
 /// @RESTHEADER{PUT /_api/collection/{collection-name}/rename,renames a collection}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
 ///
 /// @RESTDESCRIPTION
 /// Renames a collection. Expects an object with the attribute(s)
@@ -880,7 +920,11 @@ function put_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a collection
 ///
-/// @RESTHEADER{DELETE /_api/collection/{collcetion-name},deletes a collection}
+/// @RESTHEADER{DELETE /_api/collection/{collection-name},deletes a collection}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
 ///
 /// @RESTDESCRIPTION
 /// Deletes a collection identified by `collection-name`.
