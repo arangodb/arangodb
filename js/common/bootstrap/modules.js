@@ -1091,7 +1091,11 @@ function require (path) {
       if (fs.exists(n)) {
         try {
           var desc = JSON.parse(fs.read(n));
-          var mainfile = m + module.normalizeModuleName("", desc.main) + ".js";
+          var mainfile = m + module.normalizeModuleName("", desc.main);
+
+          if (mainfile.length < 3 || mainfile.substr(mainfile.length - 3) != ".js") {
+            mainfile += ".js";
+          }
 
           if (fs.exists(mainfile)) {
             var content = fs.read(mainfile);
