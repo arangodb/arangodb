@@ -327,7 +327,7 @@ exports.update = function (username, passwd, active, extra) {
     throw err;
   }
 
-  var data = user.shallowCopy;
+  var data = user._shallowCopy;
 
   if (passwd !== undefined) {
     var hash = encodePassword(passwd);

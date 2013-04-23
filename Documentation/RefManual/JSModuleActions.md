@@ -9,14 +9,6 @@ The action module provides the infrastructure for defining HTTP actions.
 Basics {#JSModuleActionsBasics}
 ===============================
 
-@anchor JSModuleActionsDefineHttp
-@copydetails JSF_defineHttp
-
-@CLEARPAGE
-@anchor JSModuleActionsResultError
-@copydetails JSF_resultError
-
-@CLEARPAGE
 @anchor JSModuleActionsGetErrorMessage
 @copydetails JSF_getErrorMessage
 
@@ -24,6 +16,7 @@ Basics {#JSModuleActionsBasics}
 Standard HTTP Result Generators {#JSModuleActionsHTTP}
 ======================================================
 
+@CLEARPAGE
 @anchor JSModuleActionsResultOk
 @copydetails JSF_resultOk
 
@@ -38,6 +31,10 @@ Standard HTTP Result Generators {#JSModuleActionsHTTP}
 @CLEARPAGE
 @anchor JSModuleActionsResultUnsupported
 @copydetails JSF_resultUnsupported
+
+@CLEARPAGE
+@anchor JSModuleActionsResultError
+@copydetails JSF_resultError
 
 @CLEARPAGE
 ArangoDB Result Generators {#JSModuleActionsArangoDB}

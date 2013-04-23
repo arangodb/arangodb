@@ -457,7 +457,7 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document/@FA{document-handle},reads a document}
+/// @RESTHEADER{GET /_api/document/`document-handle`,reads a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -468,18 +468,18 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTHEADERPARAM{If-None-Match,string}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+/// given etag. Otherwise a `HTTP 304` is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
 ///
 /// @RESTDESCRIPTION
-/// Returns the document identified by @FA{document-handle}. The returned
-/// document contains two special attributes: @LIT{_id} containing the document
-/// handle and @LIT{_rev} containing the revision.
+/// Returns the document identified by `document-handle`. The returned
+/// document contains two special attributes: `_id` containing the document
+/// handle and `_rev` containing the revision.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -494,7 +494,7 @@ bool RestDocumentHandler::readDocument () {
 /// same version
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the found
+/// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
 ///
 /// @EXAMPLES
@@ -642,7 +642,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
-/// by @FA{collection}.
+/// by `collection`.
 ///
 /// @EXAMPLES
 ///
@@ -729,16 +729,32 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document/@FA{document-handle},reads a document header}
+/// @RESTHEADER{HEAD /_api/document/`document-handle`,reads a document header}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 ///
 /// @RESTDESCRIPTION
-/// Like @FN{GET}, but only returns the header fields and not the body. You
+/// Like `GET`, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the document was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the document or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the document has
+/// same version
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version
 ///
 /// @EXAMPLES
 ///
@@ -774,77 +790,77 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document/@FA{document-handle},replaces a document}
+/// @RESTHEADER{PUT /_api/document/`document-handle`,replaces a document}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 /// 
 /// @RESTDESCRIPTION
-/// Completely updates (i.e. replaces) the document identified by @FA{document-handle}.
-/// If the document exists and can be updated, then a @LIT{HTTP 201} is returned
+/// Completely updates (i.e. replaces) the document identified by `document-handle`.
+/// If the document exists and can be updated, then a `HTTP 201` is returned
 /// and the "ETag" header field contains the new revision of the document.
 ///
 /// If the new document passed in the body of the request contains the
-/// @FA{document-handle} in the attribute @LIT{_id} and the revision in @LIT{_rev},
+/// `document-handle` in the attribute `_id` and the revision in `_rev`,
 /// these attributes will be ignored. Only the URI and the "ETag" header are
 /// relevant in order to avoid confusion when using proxies.
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force
+/// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document replacement operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute @LIT{_id} contains the known
-/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
 /// contains the new document revision.
 ///
-/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a `HTTP 404` is returned and the
 /// body of the response contains an error document.
 ///
 /// There are two ways for specifying the targeted document revision id for
 /// conditional replacements (i.e. replacements that will only be executed if
 /// the revision id found in the database matches the document revision id specified
 /// in the request):
-/// - specifying the target revision in the @LIT{rev} URL parameter
-/// - specifying the target revision in the @LIT{if-match} HTTP header
+/// - specifying the target revision in the `rev` URL parameter
+/// - specifying the target revision in the `if-match` HTTP header
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
-/// described mechanisms must be used (either the @LIT{rev} URL parameter or the
-/// @LIT{if-match} HTTP header).
+/// described mechanisms must be used (either the `rev` URL parameter or the
+/// `if-match` HTTP header).
 /// Regardless which mechanism is used, the parameter needs to contain the target
-/// document revision id as returned in the @LIT{_rev} attribute of a document or
-/// by an HTTP @LIT{etag} header.
+/// document revision id as returned in the `_rev` attribute of a document or
+/// by an HTTP `etag` header.
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you the following request:
-/// @REST{PUT /_api/document/@FA{document-handle}?rev=@FA{etag}}
+/// @REST{PUT /_api/document/`document-handle`?rev=`etag`}
 ///
-/// If a target revision id is provided in the request (e.g. via the @FA{etag} value
-/// in the @LIT{rev} URL parameter above), ArangoDB will check that
+/// If a target revision id is provided in the request (e.g. via the `etag` value
+/// in the `rev` URL parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
 /// revision id provided in the request. If there is a mismatch between the revision
-/// id, then by default a @LIT{HTTP 412} conflict is returned and no replacement is
+/// id, then by default a `HTTP 412` conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the @FA{policy} URL parameter:
+/// The conditional update behavior can be overriden with the `policy` URL parameter:
 ///
-/// @REST{PUT /_api/document/@FA{document-handle}?policy=@FA{policy}}
+/// @REST{PUT /_api/document/`document-handle`?policy=`policy`}
 ///
-/// If @FA{policy} is set to @LIT{error}, then the behavior is as before: replacements
+/// If `policy` is set to `error`, then the behavior is as before: replacements
 /// will fail if the revision id found in the database does not match the target
 /// revision id specified in the request.
 ///
-/// If @FA{policy} is set to @LIT{last}, then the replacement will succeed, even if the
+/// If `policy` is set to `last`, then the replacement will succeed, even if the
 /// revision id found in the database does not match the target revision id specified
-/// in the request. You can use the @LIT{last} @FA{policy} to force replacements.
+/// in the request. You can use the `last` `policy` to force replacements.
 ///
 /// @RESTRETURNCODES
 ///
@@ -864,7 +880,7 @@ bool RestDocumentHandler::checkDocument () {
 /// is returned if collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the found
+/// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
 ///
 /// @EXAMPLES
@@ -962,50 +978,50 @@ bool RestDocumentHandler::replaceDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document/@FA{document-handle},patches a document}
+/// @RESTHEADER{PATCH /_api/document/`document-handle`,patches a document}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 ///
 /// @RESTDESCRIPTION
-/// Partially updates the document identified by @FA{document-handle}.
+/// Partially updates the document identified by `document-handle`.
 /// The body of the request must contain a JSON document with the attributes
 /// to patch (the patch document). All attributes from the patch document will
 /// be added to the existing document if they do not yet exist, and overwritten
 /// in the existing document if they do exist there.
 ///
-/// Setting an attribute value to @LIT{null} in the patch document will cause a
-/// value of @LIT{null} be saved for the attribute by default. If the intention
+/// Setting an attribute value to `null` in the patch document will cause a
+/// value of `null` be saved for the attribute by default. If the intention
 /// is to delete existing attributes with the patch command, the URL parameter
-/// @LIT{keepNull} can be used with a value of @LIT{false}.
+/// `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing document that are contained in the patch document with an
-/// attribute value of @LIT{null}.
+/// attribute value of `null`.
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force
+/// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document update operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision. The attribute @LIT{_id} contains the known
-/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// the handle and the revision. The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
 /// contains the new document revision.
 ///
-/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a `HTTP 404` is returned and the
 /// body of the response contains an error document.
 ///
 /// You can conditionally update a document based on a target revision id by
-/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header.
+/// using either the `rev` URL parameter or the `if-match` HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the @FA{policy} parameter. This is the same as when replacing
+/// can use the `policy` parameter. This is the same as when replacing
 /// documents (see replacing documents for details).
 ///
 /// @RESTRETURNCODES
@@ -1026,7 +1042,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// is returned if collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the found
+/// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
 ///
 /// @EXAMPLES
@@ -1181,40 +1197,40 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/@FA{documenthandle},deletes a document}
+/// @RESTHEADER{DELETE /_api/document/`document-handle`,deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{documenthandle,string,required}
+/// @RESTURLPARAM{document-handle,string,required}
 /// 
 /// @RESTDESCRIPTION
-/// Deletes the document identified by @FA{document-handle}. If the document
-/// exists and could be deleted, then a @LIT{HTTP 200} is returned.
+/// Deletes the document identified by `document-handle`. If the document
+/// exists and could be deleted, then a `HTTP 200` is returned.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute @LIT{_id} contains the known
-/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
 /// contains the known document revision.
 ///
-/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a `HTTP 404` is returned and the
 /// body of the response contains an error document.
 ///
 /// You can conditionally delete a document based on a target revision id by
-/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header.
+/// using either the `rev` URL parameter or the `if-match` HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the @FA{policy} parameter. This is the same as when replacing
+/// can use the `policy` parameter. This is the same as when replacing
 /// documents (see replacing documents for more details).
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force
+/// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document deletion operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1231,7 +1247,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the current
+/// is returned if a "If-Match" header or `rev` is given and the current
 /// document has a different version
 ///
 /// @EXAMPLES

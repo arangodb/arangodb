@@ -8,7 +8,6 @@
 ### find files in
 ###   arangod/RestHandler/*.cpp
 ###   js/actions/system/api-*.js
-### TODO usage aendern!
 ### @usage generateSwagger.py < RestXXXX.cpp > restSwagger.json
 ###
 ### @file
@@ -64,7 +63,14 @@ def parameters(line):
     # gib alles dazwischen zurck
     l, c, line =line.partition('{')
     line , c , r = line.rpartition('}')
+    line = BackTicks(line, wordboundary = ['{','}'])
     return line
+
+def BackTicks(txt, wordboundary = ['<em>','</em>']):
+    # `word` -> <b>word</b>
+    r = rc(r"""([\(\s'/">]|^|.)\`(.*?)\`([<\s\.\),:;'"?!/-]|$)""", MS)
+    subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
+    return r.sub(subpattern, txt)
 
 def FA(txt, wordboundary = ['<b>','</b>']):
     # @FA{word} -> <b>word</b>
@@ -85,6 +91,7 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
     return r.sub(subpattern, txt)
 
 def Typography(txt):
+    txt = BackTicks(txt)
     txt = FN(txt)
     txt = LIT(txt)
     txt = FA(txt)
@@ -366,7 +373,7 @@ def comment(cargo, r=Regexen()):
             _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [],
                 'summary': None, 'notes': '', 'examples': '', 'errorResponses':[]}
             _operation['httpMethod'] = method
-            if method == 'POST':
+            if method == 'POST' or method == 'PUT' or method == 'PATCH':
                 parameter = {}
                 parameter['paramType'] = 'body'
                 parameter['name'] = 'body'
@@ -374,7 +381,6 @@ def comment(cargo, r=Regexen()):
                 parameter['dataType'] = 'String'
                 parameter['required'] = 'false'
                 _operation['parameters'] = [parameter]
-            # TODO body processing in PUT ...
             summaryList = summary.split()
             _operation['nickname'] = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
             _operation['summary'] = summary
@@ -384,6 +390,7 @@ def comment(cargo, r=Regexen()):
         elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
         elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
         elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
+        elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
         elif len(line) >= 4 and line[:4] == "////":  continue
         elif len(line) >= 3 and line[:3] =="///":    continue
         else:                                        return read_through, (fp, line)

@@ -52,22 +52,22 @@ var API = "_api/simple/";
 /// Returns all documents of a collections. The call expects a JSON object
 /// as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{skip}: The number of documents to skip in the query (optional).
+/// - `skip`: The number of documents to skip in the query (optional).
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip}
-///   is applied before the @LIT{limit} restriction. (optional)
+/// - `limit`: The maximal amount of documents to return. The `skip`
+///   is applied before the `limit` restriction. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
 ///
-/// Limit the amount of documents using @LIT{limit}
+/// Limit the amount of documents using `limit`
 ///
 /// @verbinclude api-simple-all-skip-limit
 /// 
-/// Using a @LIT{batchSize} value
+/// Using a `batchSize` value
 ///
 /// @verbinclude api-simple-all-batch
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,10 +128,10 @@ actions.defineHttp({
 /// Returns a random document of a collection. The call expects a JSON object
 /// as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - `collection`: The identifier or name of the collection to query.
 ///
 /// Returns a JSON object with the document stored in the attribute
-/// @LIT{document} if the collection contains at least one document. If
+/// `document` if the collection contains at least one document. If
 /// the collection is empty, the attrbute contains null.
 ///
 /// @EXAMPLES
@@ -205,28 +205,28 @@ actions.defineHttp({
 /// coming first. If there are near documents of equal distance, documents are
 /// chosen randomly from this set until the limit is reached.
 ///
-/// In order to use the @FN{near} operator, a geo index must be defined for the
+/// In order to use the `near` operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
 /// for the document.  If you have more then one geo-spatial index, you can use
-/// the @LIT{geo} field to select a particular index.
+/// the `geo` field to select a particular index.
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{latitude}: The latitude of the coordinate.
+/// - `latitude`: The latitude of the coordinate.
 ///
-/// - @LIT{longitude}: The longitude of the coordinate.
+/// - `longitude`: The longitude of the coordinate.
 ///
-/// - @LIT{distance}: If given, the attribute key used to store the
+/// - `distance`: If given, the attribute key used to store the
 ///   distance. (optional)
 ///
-/// - @LIT{skip}: The number of documents to skip in the query. (optional)
+/// - `skip`: The number of documents to skip in the query. (optional)
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip} is
-///   applied before the @LIT{limit} restriction. The default is 100. (optional)
+/// - `limit`: The maximal amount of documents to return. The `skip` is
+///   applied before the `limit` restriction. The default is 100. (optional)
 ///
-/// - @LIT{geo}: If given, the identifier of the geo-index to use. (optional)
+/// - `geo`: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
@@ -317,31 +317,31 @@ actions.defineHttp({
 /// @REST{PUT /_api/simple/within}
 ///
 /// This will find all documents with in a given radius around the coordinate
-/// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance.
+/// (`latitude`, `longitude`). The returned list is sorted by distance.
 ///
-/// In order to use the @FN{within} operator, a geo index must be defined for
+/// In order to use the `within` operator, a geo index must be defined for
 /// the collection. This index also defines which attribute holds the
 /// coordinates for the document.  If you have more then one geo-spatial index,
-/// you can use the @LIT{geo} field to select a particular index.
+/// you can use the `geo` field to select a particular index.
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{latitude}: The latitude of the coordinate.
+/// - `latitude`: The latitude of the coordinate.
 ///
-/// - @LIT{longitude}: The longitude of the coordinate.
+/// - `longitude`: The longitude of the coordinate.
 ///
-/// - @LIT{radius}: The maximal radius (in meters).
+/// - `radius`: The maximal radius (in meters).
 ///
-/// - @LIT{distance}: If given, the result attribute key used to store the
+/// - `distance`: If given, the result attribute key used to store the
 ///   distance values (optional). If specified, distances are returned in meters.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - `skip`: The documents to skip in the query. (optional)
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. (optional)
 ///
-/// - @LIT{geo}: If given, the identifier of the geo-index to use. (optional)
+/// - `geo`: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
@@ -432,24 +432,24 @@ actions.defineHttp({
 /// @REST{PUT /_api/simple/fulltext}
 ///
 /// This will find all documents from the collection that match the fulltext
-/// query specified in @FA{query}.
+/// query specified in `query`.
 ///
-/// In order to use the @FN{fulltext} operator, a fulltext index must be defined 
+/// In order to use the `fulltext` operator, a fulltext index must be defined 
 /// for the collection and the specified attribute.
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{attribute}: The attribute that contains the texts.
+/// - `attribute`: The attribute that contains the texts.
 ///
-/// - @LIT{query}: The fulltext query.
+/// - `query`: The fulltext query.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - `skip`: The documents to skip in the query. (optional)
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. (optional)
 ///
-/// - @LIT{index}: If given, the identifier of the fulltext-index to use. (optional)
+/// - `index`: If given, the identifier of the fulltext-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
@@ -524,13 +524,13 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{example}: The example.
+/// - `example`: The example.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - `skip`: The documents to skip in the query. (optional)
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
@@ -610,11 +610,11 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{example}: The example.
+/// - `example`: The example.
 ///
-/// Returns a result containing the document or @LIT{HTTP 404} if no
+/// Returns a result containing the document or `HTTP 404` if no
 /// document matched the example.
 ///
 /// @EXAMPLES
@@ -731,20 +731,20 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to query.
+/// - `collection`: The name of the collection to query.
 ///
-/// - @LIT{attribute}: The attribute path to check.
+/// - `attribute`: The attribute path to check.
 ///
-/// - @LIT{left}: The lower bound.
+/// - `left`: The lower bound.
 ///
-/// - @LIT{right}: The upper bound.
+/// - `right`: The upper bound.
 ///
-/// - @LIT{closed}: If true, use interval including @LIT{left} and @LIT{right},
-///   otherwise exclude @LIT{right}, but include @LIT{left}.
+/// - `closed`: If true, use interval including `left` and `right`,
+///   otherwise exclude `right`, but include `left`.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - `skip`: The documents to skip in the query. (optional)
 ///
-/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+/// - `limit`: The maximal amount of documents to return. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
@@ -822,17 +822,17 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to remove from.
+/// - `collection`: The name of the collection to remove from.
 ///
-/// - @LIT{example}: An example object that all collection objects are compared
+/// - `example`: An example object that all collection objects are compared
 ///   against.
 ///
-/// - @LIT{waitForSync}: if set to true, then all removal operations will 
+/// - `waitForSync`: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - @LIT{limit}: an optional value that determines how many documents to 
-///   delete at most. If @LIT{limit} is specified but is less than the number
+/// - `limit`: an optional value that determines how many documents to 
+///   delete at most. If `limit` is specified but is less than the number
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be deleted.
 ///
@@ -893,25 +893,25 @@ actions.defineHttp({
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object, and replace the entire document body with the new value
-/// specified. Note that document meta-attributes such as @LIT{_id}, @LIT{_key},
-/// @LIT{_from}, @LIT{_to} etc. cannot be replaced. 
+/// specified. Note that document meta-attributes such as `_id`, `_key`,
+/// `_from`, `_to` etc. cannot be replaced. 
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to replace within.
+/// - `collection`: The name of the collection to replace within.
 ///
-/// - @LIT{example}: An example object that all collection objects are compared
+/// - `example`: An example object that all collection objects are compared
 ///   against.
 ///
-/// - @LIT{newValue}: The replacement document that will get inserted in place
+/// - `newValue`: The replacement document that will get inserted in place
 ///   of the "old" documents.
 ///
-/// - @LIT{waitForSync}: if set to true, then all removal operations will 
+/// - `waitForSync`: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - @LIT{limit}: an optional value that determines how many documents to 
-///   replace at most. If @LIT{limit} is specified but is less than the number
+/// - `limit`: an optional value that determines how many documents to 
+///   replace at most. If `limit` is specified but is less than the number
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be replaced.
 ///
@@ -976,31 +976,31 @@ actions.defineHttp({
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object, and partially update the document body with the new value
-/// specified. Note that document meta-attributes such as @LIT{_id}, @LIT{_key},
-/// @LIT{_from}, @LIT{_to} etc. cannot be replaced. 
+/// specified. Note that document meta-attributes such as `_id`, `_key`,
+/// `_from`, `_to` etc. cannot be replaced. 
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The name of the collection to update within.
+/// - `collection`: The name of the collection to update within.
 ///
-/// - @LIT{example}: An example object that all collection objects are compared
+/// - `example`: An example object that all collection objects are compared
 ///   against.
 ///
-/// - @LIT{newValue}: The update value that will get inserted in place
+/// - `newValue`: The update value that will get inserted in place
 ///   of the "old" version of the found documents.
 ///
-/// - @LIT{keepNull}: This parameter can be used to modify the behavior when
-///   handling @LIT{null} values. Normally, @LIT{null} values are stored in the
-///   database. By setting the @FA{keepNull} parameter to @LIT{false}, this 
-///   behavior can be changed so that all attributes in @FA{data} with @LIT{null} 
+/// - `keepNull`: This parameter can be used to modify the behavior when
+///   handling `null` values. Normally, `null` values are stored in the
+///   database. By setting the `keepNull` parameter to `false`, this 
+///   behavior can be changed so that all attributes in `data` with `null` 
 ///   values will be removed from the updated document.
 ///
-/// - @LIT{waitForSync}: if set to true, then all removal operations will 
+/// - `waitForSync`: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - @LIT{limit}: an optional value that determines how many documents to 
-///   update at most. If @LIT{limit} is specified but is less than the number
+/// - `limit`: an optional value that determines how many documents to 
+///   update at most. If `limit` is specified but is less than the number
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be updated.
 ///

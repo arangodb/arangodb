@@ -67,10 +67,10 @@ var API = "_api/structures";
 ///
 /// @RESTHEADER{POST /_api/structure,creates a structured document}
 ///
-/// @REST{POST /_api/structure?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/structure?collection=`collection-identifier`}
 ///
 /// Creates a new document in the collection identified by the
-/// @FA{collection-identifier}.  A JSON representation of the document must be
+/// `collection-identifier`.  A JSON representation of the document must be
 /// passed as the body of the POST request. The document must fullfill the
 /// requirements of the structure definition, see @ref ArangoStructures.
 ///

@@ -98,29 +98,28 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// @RESTHEADER{POST /_api/collection,creates a collection}
 ///
-/// @REST{POST /_api/collection}
-///
+/// @RESTDESCRIPTION
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
 ///
-/// - @LIT{name}: The name of the collection.
+/// - `name`: The name of the collection.
 ///
-/// - @LIT{waitForSync} (optional, default: false): If @LIT{true} then
+/// - `waitForSync` (optional, default: false): If `true` then
 ///   the data is synchronised to disk before returning from a create or
 ///   update of an document.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref
+/// - `journalSize` (optional, default is a @ref
 ///   CommandLineArangod "configuration parameter"): The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
-/// - @LIT{isSystem} (optional, default is @LIT{false}): If @LIT{true}, create a
-///   system collection. In this case @FA{collection-name} should start with
+/// - `isSystem` (optional, default is `false`): If `true`, create a
+///   system collection. In this case `collection-name` should start with
 ///   an underscore. End users should normally create non-system collections
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
 ///
-/// - @LIT{isVolatile} (optional, default is @LIT{false}): If @LIT{true} then the
+/// - `isVolatile` (optional, default is `false`): If `true` then the
 ///   collection data is kept in-memory only and not made persistent. Unloading
 ///   the collection will cause the collection data to be discarded. Stopping
 ///   or re-starting the server will also cause full loss of data in the
@@ -132,25 +131,25 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///   This option should threrefore be used for cache-type collections only, 
 ///   and not for data that cannot be re-created otherwise.
 ///
-/// - @LIT{keyOptions} (optional) additional options for key generation. If
-///   specified, then @LIT{keyOptions} should be a JSON array containing the
+/// - `keyOptions` (optional) additional options for key generation. If
+///   specified, then `keyOptions` should be a JSON array containing the
 ///   following attributes (note: some of them are optional):
-///   - @LIT{type}: specifies the type of the key generator. The currently 
-///     available generators are @LIT{traditional} and @LIT{autoincrement}.
-///   - @LIT{allowUserKeys}: if set to @LIT{true}, then it is allowed to supply
-///     own key values in the @LIT{_key} attribute of a document. If set to 
-///     @LIT{false}, then the key generator will solely be responsible for
-///     generating keys and supplying own key values in the @LIT{_key} attribute
+///   - `type`: specifies the type of the key generator. The currently 
+///     available generators are `traditional` and `autoincrement`.
+///   - `allowUserKeys`: if set to `true`, then it is allowed to supply
+///     own key values in the `_key` attribute of a document. If set to 
+///     `false`, then the key generator will solely be responsible for
+///     generating keys and supplying own key values in the `_key` attribute
 ///     of documents is considered an error.
-///   - @LIT{increment}: increment value for @LIT{autoincrement} key generator.
+///   - `increment`: increment value for `autoincrement` key generator.
 ///     Not used for other key generator types.
-///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
+///   - `offset`: initial offset value for `autoincrement` key generator.
 ///     Not used for other key generator types.
 ///
-/// - @LIT{type} (optional, default is @LIT{2}): the type of the collection to
-///   create. The following values for @FA{type} are valid:
-///   - @LIT{2}: document collection
-///   - @LIT{3}: edges collection
+/// - `type` (optional, default is `2`): the type of the collection to
+///   create. The following values for `type` are valid:
+///   - `2`: document collection
+///   - `3`: edges collection
 ///
 /// @EXAMPLES
 ///
@@ -245,15 +244,18 @@ function post_api_collection (req, res) {
 ///
 /// @RESTHEADER{GET /_api/collection,reads all collections}
 ///
-/// @REST{GET /_api/collection}
+/// @RESTURLPARAMETERS
 ///
-/// Returns an object with an attribute @LIT{collections} containing a 
+/// @RESTURLPARAM{excludeSystem,boolean,optional}
+///
+/// @RESTDESCRIPTION
+/// Returns an object with an attribute `collections` containing a 
 /// list of all collection descriptions. The same information is also
-/// available in the @LIT{names} as hash map with the collection names
+/// available in the `names` as hash map with the collection names
 /// as keys.
 ///
-/// By providing the optional URL parameter @LIT{excludeSystem} with a value of
-/// @LIT{true}, all system collections will be excluded from the response.
+/// By providing the optional URL parameter `excludeSystem` with a value of
+/// `true`, all system collections will be excluded from the response.
 ///
 /// @EXAMPLES
 ///
@@ -296,19 +298,21 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
 ///
-/// @RESTHEADER{GET /_api/collection,reads a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name},reads a collection}
 ///
-/// @REST{GET /_api/collection/@FA{collection-name}}
-//////////////////////////////////////////////////////////
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+/// 
+/// @RESTDESCRIPTION
 /// The result is an object describing the collection with the following
 /// attributes:
 ///
-/// - @LIT{id}: The identifier of the collection.
+/// - `id`: The identifier of the collection.
 ///
-/// - @LIT{name}: The name of the collection.
+/// - `name`: The name of the collection.
 ///
-/// - @LIT{status}: The status of the collection as number.
+/// - `status`: The status of the collection as number.
 ///  - 1: new born collection
 ///  - 2: unloaded
 ///  - 3: loaded
@@ -317,86 +321,51 @@ function get_api_collections (req, res) {
 ///
 /// Every other status indicates a corrupted collection.
 ///
-/// - @LIT{type}: The type of the collection as number.
+/// - `type`: The type of the collection as number.
 ///   - 2: document collection (normal case)
 ///   - 3: edges collection
 ///
-/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is
 /// returned.
 ///
-/// @REST{GET /_api/collection/@FA{collection-name}/properties}
-////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////
 ///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/properties,reads a collection with properties}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
-/// @LIT{waitForSync}, @LIT{journalSize}, and @LIT{isVolatile} properties. 
+/// `waitForSync`, `journalSize`, and `isVolatile` properties. 
 /// This is achieved by forcing a load of the underlying collection.
 ///
-/// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
+/// - `waitForSync`: If `true` then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
-/// - @LIT{journalSize}: The maximal size of a journal / datafile.
+/// - `journalSize`: The maximal size of a journal / datafile.
 ///
-/// - @LIT{isVolatile}: If @LIT{true} then the collection data will be
+/// - `isVolatile`: If `true` then the collection data will be
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
 ///
-/// @REST{GET /_api/collection/@FA{collection-name}/count}
-////////////////////////////////////////////////////////////////
+/// @RESTRETURNCODES
 ///
-/// In addition to the above, the result also contains the number of documents.
-/// Note that this will always load the collection into memory.
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
 ///
-/// - @LIT{count}: The number of documents inside the collection.
-///
-/// @REST{GET /_api/collection/@FA{collection-name}/figures}
-//////////////////////////////////////////////////////////////////
-///
-/// In addition to the above, the result also contains the number of documents
-/// and additional statistical information about the collection.  Note that this
-/// will always load the collection into memory.
-///
-/// - @LIT{count}: The number of documents inside the collection.
-///
-/// - @LIT{figures.alive.count}: The number of living documents.
-///
-/// - @LIT{figures.alive.size}: The total size in bytes used by all
-///   living documents.
-///
-/// - @LIT{figures.dead.count}: The number of dead documents.
-///
-/// - @LIT{figures.dead.size}: The total size in bytes used by all
-///   dead documents.
-///
-/// - @LIT{figures.dead.deletion}: The total number of deletion markers.
-///
-/// - @LIT{figures.datafiles.count}: The number of active datafiles.
-/// - @LIT{figures.datafiles.fileSize}: The total filesize of datafiles.
-///
-/// - @LIT{figures.journals.count}: The number of journal files.
-/// - @LIT{figures.journals.fileSize}: The total filesize of journal files.
-///
-/// - @LIT{figures.shapes.count}: The total number of shapes used in the 
-///   collection (this includes shapes that are not in use anymore) 
-///
-/// - @LIT{figures.attributes.count}: The total number of attributes used 
-///   in the collection (this includes attributes that are not in use anymore) 
-///
-/// - @LIT{journalSize}: The maximal size of the journal in bytes.
-///
-/// Note: the filesizes of shapes and compactor files are not reported.
-///
-/// @REST{GET /_api/collection/@FA{collection-name}/revision}
-/////////////////////////////////////////////////////////////
-///
-/// In addition to the above, the result will also contain the
-/// collection's revision id. The revision id is a server-generated
-/// string that clients can use to check whether data in a collection
-/// has changed since the last revision check.
-///
-/// - @LIT{revision}: The collection revision id as a string.
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
 ///
 /// @EXAMPLES
-/////////////
 ///
 /// Using an identifier:
 ///
@@ -406,13 +375,126 @@ function get_api_collections (req, res) {
 ///
 /// @verbinclude api-collection-get-collection-name
 ///
+////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/count,reads a collection with count}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
+/// In addition to the above, the result also contains the number of documents.
+/// Note that this will always load the collection into memory.
+///
+/// - `count`: The number of documents inside the collection.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
+/// @EXAMPLES
+///
 /// Using an identifier and requesting the number of documents:
 ///
 /// @verbinclude api-collection-get-collection-count
 ///
+////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/figures,reads a collection with stats}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
+/// In addition to the above, the result also contains the number of documents
+/// and additional statistical information about the collection.  Note that this
+/// will always load the collection into memory.
+///
+/// - `count`: The number of documents inside the collection.
+///
+/// - `figures.alive.count`: The number of living documents.
+///
+/// - `figures.alive.size`: The total size in bytes used by all
+///   living documents.
+///
+/// - `figures.dead.count`: The number of dead documents.
+///
+/// - `figures.dead.size`: The total size in bytes used by all
+///   dead documents.
+///
+/// - `figures.dead.deletion`: The total number of deletion markers.
+///
+/// - `figures.datafiles.count`: The number of active datafiles.
+/// - `figures.datafiles.fileSize`: The total filesize of datafiles.
+///
+/// - `figures.journals.count`: The number of journal files.
+/// - `figures.journals.fileSize`: The total filesize of journal files.
+///
+/// - `figures.shapes.count`: The total number of shapes used in the 
+///   collection (this includes shapes that are not in use anymore) 
+///
+/// - `figures.attributes.count`: The total number of attributes used 
+///   in the collection (this includes attributes that are not in use anymore) 
+///
+/// - `journalSize`: The maximal size of the journal in bytes.
+///
+/// Note: the filesizes of shapes and compactor files are not reported.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
+/// @EXAMPLES
+///
 /// Using an identifier and requesting the figures of the collection:
 ///
 /// @verbinclude api-collection-get-collection-figures
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/revision, reads a collection with revision id}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
+/// In addition to the above, the result will also contain the
+/// collection's revision id. The revision id is a server-generated
+/// string that clients can use to check whether data in a collection
+/// has changed since the last revision check.
+///
+/// - `revision`: The collection revision id as a string.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collection (req, res) {
@@ -523,38 +605,47 @@ function get_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../load,loads a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/load,loads a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-name}/load}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Loads a collection into memory. Returns the collection on success.
 ///
 /// The request might optionally contain the following attribute:
 ///
-/// - @LIT{count}: If set, this controls whether the return value should include
-///   the number of documents in the collection. Setting @LIT{count} to 
-///   @LIT{false} may speed up loading a collection. The default value for 
-///   @LIT{count} is @LIT{true}.
+/// - `count`: If set, this controls whether the return value should include
+///   the number of documents in the collection. Setting `count` to 
+///   `false` may speed up loading a collection. The default value for 
+///   `count` is `true`.
 ///
 /// On success an object with the following attributes is returned:
 ///
-/// - @LIT{id}: The identifier of the collection.
+/// - `id`: The identifier of the collection.
 ///
-/// - @LIT{name}: The name of the collection.
+/// - `name`: The name of the collection.
 ///
-/// - @LIT{count}: The number of documents inside the collection. This is only
-///   returned if the @LIT{count} input parameters is set to @LIT{true} or has
+/// - `count`: The number of documents inside the collection. This is only
+///   returned if the `count` input parameters is set to `true` or has
 ///   not been specified.
 ///
-/// - @LIT{status}: The status of the collection as number.
+/// - `status`: The status of the collection as number.
 ///
-/// - @LIT{type}: The collection type. Valid types are:
+/// - `type`: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
-/// 404} is returned.
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE[{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
 ///
 /// @EXAMPLES
 ///
@@ -584,28 +675,36 @@ function put_api_collection_load (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../unload,unloads a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/unload,unloads a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-name}/unload}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
 /// memory, again. On success an object with the following attributes is
 /// returned:
 ///
-/// - @LIT{id}: The identifier of the collection.
+/// - `id`: The identifier of the collection.
 ///
-/// - @LIT{name}: The name of the collection.
+/// - `name`: The name of the collection.
 ///
-/// - @LIT{status}: The status of the collection as number.
+/// - `status`: The status of the collection as number.
 ///
-/// - @LIT{type}: The collection type. Valid types are:
+/// - `type`: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
-/// 404} is returned.
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
 ///
@@ -628,10 +727,13 @@ function put_api_collection_unload (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../truncate,truncates a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/truncate,truncates a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-name}/truncate}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
 /// @EXAMPLES
@@ -655,36 +757,39 @@ function put_api_collection_truncate (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../properties,changes the properties of a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/properties,changes the properties of a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-name}/properties}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
 ///
-/// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
+/// - `waitForSync`: If `true` then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
-/// - @LIT{journalSize}: Size (in bytes) for new journal files that are
+/// - `journalSize`: Size (in bytes) for new journal files that are
 ///   created for the collection.
 ///
 /// If returns an object with the attributes
 ///
-/// - @LIT{id}: The identifier of the collection.
+/// - `id`: The identifier of the collection.
 ///
-/// - @LIT{name}: The name of the collection.
+/// - `name`: The name of the collection.
 ///
-/// - @LIT{waitForSync}: The new value.
+/// - `waitForSync`: The new value.
 ///
-/// - @LIT{journalSize}: The new value.
+/// - `journalSize`: The new value.
 ///
-/// - @LIT{status}: The status of the collection as number.
+/// - `status`: The status of the collection as number.
 ///
-/// - @LIT{type}: The collection type. Valid types are:
+/// - `type`: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// Note: some other collection properties, such as @LIT{type} or @LIT{isVolatile} 
+/// Note: some other collection properties, such as `type` or `isVolatile` 
 /// cannot be changed once the collection is created.
 ///
 /// @EXAMPLES
@@ -714,23 +819,26 @@ function put_api_collection_properties (req, res, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/.../rename,renames a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/rename,renames a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-name}/rename}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
 /// Renames a collection. Expects an object with the attribute(s)
 ///
-/// - @LIT{name}: The new name.
+/// - `name`: The new name.
 ///
 /// If returns an object with the attributes
 ///
-/// - @LIT{id}: The identifier of the collection.
+/// - `id`: The identifier of the collection.
 ///
-/// - @LIT{name}: The new name of the collection.
+/// - `name`: The new name of the collection.
 ///
-/// - @LIT{status}: The status of the collection as number.
+/// - `status`: The status of the collection as number.
 ///
-/// - @LIT{type}: The collection type. Valid types are:
+/// - `type`: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
@@ -812,22 +920,30 @@ function put_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a collection
 ///
-/// @RESTHEADER{DELETE /_api/collection,deletes a collection}
+/// @RESTHEADER{DELETE /_api/collection/{collection-name},deletes a collection}
 ///
-/// @REST{DELETE /_api/collection/@FA{collection-name}}
+/// @RESTURLPARAMETERS
 ///
-/// Deletes a collection identified by @FA{collection-name}.
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
+/// Deletes a collection identified by `collection-name`.
 ///
 /// If the collection was successfully deleted then, an object is returned with
 /// the following attributes:
 ///
-/// - @LIT{error}: @LIT{false}
+/// - `error`: `false`
 ///
-/// - @LIT{id}: The identifier of the deleted collection.
+/// - `id`: The identifier of the deleted collection.
 ///
-/// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
-/// 404} is returned.
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
 ///

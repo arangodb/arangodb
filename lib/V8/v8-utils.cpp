@@ -261,6 +261,7 @@ static void FillDistribution (v8::Handle<v8::Object> list,
                               StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
+  result->Set(TRI_V8_SYMBOL("sum"), v8::Number::New(dist._total));
   result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
 
   v8::Handle<v8::Array> counts = v8::Array::New(dist._counts.size());
@@ -670,10 +671,6 @@ static v8::Handle<v8::Value> JS_SizeFile (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a line from stdin
-///
-/// @FUN{console.getline()}
-///
-/// Reads in a line from the console and returns it as string.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {

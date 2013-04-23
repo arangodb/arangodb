@@ -122,7 +122,6 @@ WIKI = \
 	JSModuleConsole \
 	JSModuleFs \
 	JSModuleGraph \
-	JSModuleInternal \
 	JSModules \
 	NamingConventions \
 	NewFeatures11 \

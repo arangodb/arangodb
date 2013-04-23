@@ -79,7 +79,7 @@ Object.defineProperty(Array.prototype, "intersect", {
 /// @brief shallow copies properties
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Object.prototype, "shallowCopy", {
+Object.defineProperty(Object.prototype, "_shallowCopy", {
   get: function () {
     var that = this;
 
