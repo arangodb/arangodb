@@ -404,7 +404,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/BasicsC/lib_libarango_a-vector.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-voc-errors.$(OBJEXT) \
 	lib/BasicsC/lib_libarango_a-voc-mimetypes.$(OBJEXT) \
-	lib/BasicsC/lib_libarango_a-zip.$(OBJEXT) \
+	lib/BasicsC/lib_libarango_a-tri-zip.$(OBJEXT) \
 	lib/JsonParser/lib_libarango_a-json-parser.$(OBJEXT) \
 	lib/Logger/lib_libarango_a-Logger.$(OBJEXT) \
 	lib/Logger/lib_libarango_a-LoggerData.$(OBJEXT) \
@@ -492,10 +492,10 @@ lib_libarango_mruby_a_OBJECTS = $(am_lib_libarango_mruby_a_OBJECTS)
 lib_libarango_v8_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_v8_a_LIBADD =
 am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
-	lib/V8/V8LineEditor.$(OBJEXT) lib/V8/v8-conv.$(OBJEXT) \
-	lib/V8/v8-execution.$(OBJEXT) lib/V8/v8-globals.$(OBJEXT) \
-	lib/V8/v8-json.$(OBJEXT) lib/V8/v8-shell.$(OBJEXT) \
-	lib/V8/v8-utils.$(OBJEXT) \
+	lib/V8/V8LineEditor.$(OBJEXT) lib/V8/v8-buffer.$(OBJEXT) \
+	lib/V8/v8-conv.$(OBJEXT) lib/V8/v8-execution.$(OBJEXT) \
+	lib/V8/v8-globals.$(OBJEXT) lib/V8/v8-json.$(OBJEXT) \
+	lib/V8/v8-shell.$(OBJEXT) lib/V8/v8-utils.$(OBJEXT) \
 	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
@@ -1260,7 +1260,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
 	lib/BasicsC/voc-mimetypes.c \
-	lib/BasicsC/zip.c \
+	lib/BasicsC/tri-zip.c \
 	lib/JsonParser/json-parser.c \
 	lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp \
@@ -1347,6 +1347,7 @@ lib_libarango_fe_a_SOURCES = \
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
+	lib/V8/v8-buffer.cpp \
 	lib/V8/v8-conv.cpp \
 	lib/V8/v8-execution.cpp \
 	lib/V8/v8-globals.cpp \
@@ -1548,7 +1549,7 @@ SERVER_OPT := \
 	--database.force-sync-properties false \
 	--javascript.action-directory @top_srcdir@/js/actions \
 	--javascript.gc-interval 1 \
-	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
+	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
 	--ruby.action-directory @top_srcdir@/mr/actions \
@@ -1560,7 +1561,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules \
+	--javascript.modules-path @top_srcdir@/js/client/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--no-colors \
 	--quiet
@@ -1603,6 +1604,7 @@ CLIENT_OPT := \
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
@@ -1724,20 +1726,24 @@ DOXYGEN_TOC = \
 ### @brief JavaScript files
 ################################################################################
 DOXYGEN = \
+	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
 	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-foxx.c \
 	Doxygen/js/actions/api-graph.c \
 	Doxygen/js/actions/api-index.c \
 	Doxygen/js/actions/api-query.c \
 	Doxygen/js/actions/api-simple.c \
 	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-transaction.c \
 	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
@@ -1767,6 +1773,7 @@ WIKI = \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
+	ExtendingAql \
 	FirstStepsArangoDB \
 	Glossary \
 	HandlingCollections \
@@ -1774,6 +1781,7 @@ WIKI = \
 	HandlingEdges \
 	HandlingIndexes \
 	Home \
+	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
 	HttpCursor \
@@ -1784,6 +1792,7 @@ WIKI = \
 	HttpQuery \
 	HttpSimple \
 	HttpSystem \
+	HttpTransactions \
 	HttpUser \
 	ImpManual \
 	ImpManualBasics \
@@ -1806,7 +1815,6 @@ WIKI = \
 	JSModuleConsole \
 	JSModuleFs \
 	JSModuleGraph \
-	JSModuleInternal \
 	JSModules \
 	NamingConventions \
 	NewFeatures11 \
@@ -2124,7 +2132,7 @@ lib/BasicsC/lib_libarango_a-voc-errors.$(OBJEXT):  \
 lib/BasicsC/lib_libarango_a-voc-mimetypes.$(OBJEXT):  \
 	lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
-lib/BasicsC/lib_libarango_a-zip.$(OBJEXT):  \
+lib/BasicsC/lib_libarango_a-tri-zip.$(OBJEXT):  \
 	lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/JsonParser/$(am__dirstamp):
@@ -2413,6 +2421,8 @@ lib/V8/$(DEPDIR)/$(am__dirstamp):
 lib/V8/JSLoader.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/V8LineEditor.$(OBJEXT): lib/V8/$(am__dirstamp) \
+	lib/V8/$(DEPDIR)/$(am__dirstamp)
+lib/V8/v8-buffer.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-conv.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
@@ -3305,11 +3315,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-terminal-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-threads-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-strings.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-utf8-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-voc-errors.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-voc-mimetypes.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/ApplicationDispatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/Dispatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/DispatcherQueue.Po@am__quote@
@@ -3371,6 +3381,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-buffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-execution.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-globals.Po@am__quote@
@@ -3859,19 +3870,19 @@ lib/BasicsC/lib_libarango_a-voc-mimetypes.obj: lib/BasicsC/voc-mimetypes.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-voc-mimetypes.obj `if test -f 'lib/BasicsC/voc-mimetypes.c'; then $(CYGPATH_W) 'lib/BasicsC/voc-mimetypes.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/voc-mimetypes.c'; fi`
 
-lib/BasicsC/lib_libarango_a-zip.o: lib/BasicsC/zip.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-zip.o -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Tpo -c -o lib/BasicsC/lib_libarango_a-zip.o `test -f 'lib/BasicsC/zip.c' || echo '$(srcdir)/'`lib/BasicsC/zip.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Tpo lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/zip.c' object='lib/BasicsC/lib_libarango_a-zip.o' libtool=no @AMDEPBACKSLASH@
+lib/BasicsC/lib_libarango_a-tri-zip.o: lib/BasicsC/tri-zip.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-tri-zip.o -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Tpo -c -o lib/BasicsC/lib_libarango_a-tri-zip.o `test -f 'lib/BasicsC/tri-zip.c' || echo '$(srcdir)/'`lib/BasicsC/tri-zip.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Tpo lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/tri-zip.c' object='lib/BasicsC/lib_libarango_a-tri-zip.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-zip.o `test -f 'lib/BasicsC/zip.c' || echo '$(srcdir)/'`lib/BasicsC/zip.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-tri-zip.o `test -f 'lib/BasicsC/tri-zip.c' || echo '$(srcdir)/'`lib/BasicsC/tri-zip.c
 
-lib/BasicsC/lib_libarango_a-zip.obj: lib/BasicsC/zip.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-zip.obj -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Tpo -c -o lib/BasicsC/lib_libarango_a-zip.obj `if test -f 'lib/BasicsC/zip.c'; then $(CYGPATH_W) 'lib/BasicsC/zip.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/zip.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Tpo lib/BasicsC/$(DEPDIR)/lib_libarango_a-zip.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/zip.c' object='lib/BasicsC/lib_libarango_a-zip.obj' libtool=no @AMDEPBACKSLASH@
+lib/BasicsC/lib_libarango_a-tri-zip.obj: lib/BasicsC/tri-zip.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/BasicsC/lib_libarango_a-tri-zip.obj -MD -MP -MF lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Tpo -c -o lib/BasicsC/lib_libarango_a-tri-zip.obj `if test -f 'lib/BasicsC/tri-zip.c'; then $(CYGPATH_W) 'lib/BasicsC/tri-zip.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/tri-zip.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Tpo lib/BasicsC/$(DEPDIR)/lib_libarango_a-tri-zip.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='lib/BasicsC/tri-zip.c' object='lib/BasicsC/lib_libarango_a-tri-zip.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-zip.obj `if test -f 'lib/BasicsC/zip.c'; then $(CYGPATH_W) 'lib/BasicsC/zip.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/zip.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lib/BasicsC/lib_libarango_a-tri-zip.obj `if test -f 'lib/BasicsC/tri-zip.c'; then $(CYGPATH_W) 'lib/BasicsC/tri-zip.c'; else $(CYGPATH_W) '$(srcdir)/lib/BasicsC/tri-zip.c'; fi`
 
 lib/JsonParser/lib_libarango_a-json-parser.o: lib/JsonParser/json-parser.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib/JsonParser/lib_libarango_a-json-parser.o -MD -MP -MF lib/JsonParser/$(DEPDIR)/lib_libarango_a-json-parser.Tpo -c -o lib/JsonParser/lib_libarango_a-json-parser.o `test -f 'lib/JsonParser/json-parser.c' || echo '$(srcdir)/'`lib/JsonParser/json-parser.c
@@ -6995,6 +7006,15 @@ unittests-make:
 	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
+### @brief static codebase tests (a.k.a. Visual Studio cries)
+################################################################################
+
+unittests-codebase-static:
+	@rm -f duplicates
+	@(find lib arangosh arangod arangoirb -regex ".*/.*\.\(c\|h\|cpp\)" -printf "%f\n" | sort | uniq -c | grep -v "^ \+1 \+" > duplicates) || true
+	@if [ "`grep " " duplicates`" != "" ]; then echo ; echo "Duplicate filenames found. These should be fixed to allow compilation with Visual Studio:"; cat duplicates; false; fi
+
+################################################################################
 ### @brief BOOST TESTS
 ################################################################################
 
@@ -7259,6 +7279,8 @@ unittests-arangob:
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 5000 --concurrency 2 --test hash --complexity 1 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 5000 --concurrency 2 --test skiplist --complexity 1 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test aqltrx --complexity 1 || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --concurrency 3 --test counttrx || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test multitrx || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -7347,6 +7369,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
 	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
@@ -7487,34 +7510,37 @@ swagger:
 		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-collection.js  > @srcdir@/html/admin/api-docs/collection
+		< @srcdir@/js/actions/api-collection.js  > @srcdir@/html/admin/api-docs/collection
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-graph.js  > @srcdir@/html/admin/api-docs/graph
+		< @srcdir@/js/actions/api-graph.js  > @srcdir@/html/admin/api-docs/graph
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-user.js  > @srcdir@/html/admin/api-docs/user
+		< @srcdir@/js/actions/api-user.js  > @srcdir@/html/admin/api-docs/user
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-system.js  > @srcdir@/html/admin/api-docs/system
+		< @srcdir@/js/actions/api-system.js  > @srcdir@/html/admin/api-docs/system
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
+		< @srcdir@/js/actions/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-explain.js  > @srcdir@/html/admin/api-docs/explain
+		< @srcdir@/js/actions/api-explain.js  > @srcdir@/html/admin/api-docs/explain
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-index.js  > @srcdir@/html/admin/api-docs/index
+		< @srcdir@/js/actions/api-index.js  > @srcdir@/html/admin/api-docs/index
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-simple.js  > @srcdir@/html/admin/api-docs/simple
+		< @srcdir@/js/actions/api-aqlfunction.js  > @srcdir@/html/admin/api-docs/aqlfunction
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-query.js  > @srcdir@/html/admin/api-docs/query
+		< @srcdir@/js/actions/api-simple.js  > @srcdir@/html/admin/api-docs/simple
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-structure.js  > @srcdir@/html/admin/api-docs/structure
+		< @srcdir@/js/actions/api-query.js  > @srcdir@/html/admin/api-docs/query
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
 
 ################################################################################
 ### @brief generate examples
