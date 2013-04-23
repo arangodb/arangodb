@@ -837,7 +837,7 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   if (routes.hasOwnProperty('exact')) {
     for (k in routes.exact) {
       if (routes.exact.hasOwnProperty(k)) {
-        newUrlParameters = urlParameters.shallowCopy;
+        newUrlParameters = urlParameters._shallowCopy;
 
         cur = path + "/" + k.replace(/([\.\+\*\?\^\$\(\)\[\]])/g, "\\$1");
         result = result.concat(flattenRouting(routes.exact[k],
@@ -852,7 +852,7 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   if (routes.hasOwnProperty('parameters')) {
     for (i = 0;  i < routes.parameters.length;  ++i) {
       parameter = routes.parameters[i];
-      newUrlParameters = urlParameters.shallowCopy;
+      newUrlParameters = urlParameters._shallowCopy;
 
       if (parameter.hasOwnProperty('constraint')) {
         var constraint = parameter.constraint;
@@ -906,7 +906,7 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
       cur = path + "(/[^/]+)*";
       result = result.concat(flattenRouting(routes.prefix,
                              cur,
-                             urlParameters.shallowCopy,
+                             urlParameters._shallowCopy,
                              depth + 1,
                              true));
     }
@@ -1211,7 +1211,7 @@ function reloadRouting () {
   while (i.hasNext()) {
     var n = i.next();
 
-    routes.push(n.shallowCopy);
+    routes.push(n._shallowCopy);
   }
 
   // allow the collection to unload
@@ -1590,7 +1590,7 @@ function resultPermanentRedirect (req, res, destination, headers) {
     + "</a>.</p></body></html>";
 
   if (headers !== undefined) {
-    res.headers = headers.shallowCopy;
+    res.headers = headers._shallowCopy;
   }
   else {
     res.headers = {};
@@ -1621,7 +1621,7 @@ function resultTemporaryRedirect (req, res, destination, headers) {
     + "</a>.</p></body></html>";
 
   if (headers !== undefined) {
-    res.headers = headers.shallowCopy;
+    res.headers = headers._shallowCopy;
   }
   else {
     res.headers = {};

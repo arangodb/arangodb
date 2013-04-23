@@ -6419,13 +6419,19 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (key[0] == '_') {
+  char const* ckey = key.c_str();
+
+  if (ckey[0] == '_' || strchr(ckey, '.') != 0) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
-  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, ckey);
+
+  if (pid == 0) {
+    return scope.Close(v8::Handle<v8::Value>());
+  }
 
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);

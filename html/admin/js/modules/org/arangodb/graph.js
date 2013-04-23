@@ -441,7 +441,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
     params = {};
   }
   else {
-    params = data.shallowCopy || {};
+    params = data._shallowCopy || {};
   }
 
   params._key = id;
@@ -471,7 +471,7 @@ Graph.prototype.addVertex = function (id, data) {
     params = {};
   }
   else {
-    params = data.shallowCopy || {};
+    params = data._shallowCopy || {};
   }
 
   if (id !== undefined) {
