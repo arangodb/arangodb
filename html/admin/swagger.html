@@ -32,9 +32,7 @@
         .icon-btn {
             cursor: pointer;
         }
-        em {
-          color: #550;
-        }
+
         #message-bar {
             min-height: 30px;
             text-align: center;
@@ -43,7 +41,6 @@
 
         .message-success {
             color: #89BF04;
-            font-width: bold;
         }
 
         .message-fail {
@@ -61,7 +58,7 @@
     <script type="text/javascript">
         $(function () {
             window.swaggerUi = new SwaggerUi({
-                discoveryUrl:"/_admin/html/api-docs/api-docs.json",
+                discoveryUrl:"api-docs.json",
                 apiKey: false,
                 dom_id:"swagger-ui-container",
                 supportHeaderParams: true,
