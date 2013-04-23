@@ -63,6 +63,7 @@ def parameters(line):
     # gib alles dazwischen zurck
     l, c, line =line.partition('{')
     line , c , r = line.rpartition('}')
+    line = BackTicks(line, wordboundary = ['{','}'])
     return line
 
 def BackTicks(txt, wordboundary = ['<em>','</em>']):
