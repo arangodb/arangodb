@@ -1,5 +1,73 @@
-v1.3 (XXXX-XX-XX)
------------------
+v1.3.0-alpha2 (XXXX-XX-XX)
+--------------------------
+
+* added more precision for requests statistics figures
+
+* added "sum" attribute for individual statistics results in statistics API
+  at /_admin/statistics
+
+* made "limit" an optional parameter in AQL function NEAR().
+  limit can now be either omitted completely, or set to 0. If so, an internal
+  default value (currently 100) will be applied for the limit.
+
+* issue #481
+
+* added "attributes.count" to output of `collection.figures()`
+  this also affects the REST API /_api/collection/<name>/figures
+
+* added IndexedPropertyGetter for ShapedJson objects
+
+* added API for user-defined AQL functions
+
+* issue #475: A better error message for deleting a non-existent graph
+
+* issue #474: Web interface problems with the JS Shell
+ 
+* added missing documentation for AQL UNION function
+
+* added transaction support. 
+  This provides ACID transactions for ArangoDB. Transactions can be invoked
+  using the `db._executeTransaction()` function, or the `/_api/transaction`
+  REST API.
+
+* switched to semantic versioning (at least for alpha & alpha naming)
+
+* added saveOrReplace() for server-side JS
+
+v1.3.alpha1 (2013-04-05)
+------------------------
+
+* cleanup of Module, Package, ArangoApp and modules "internal", "fs", "console"
+
+* use Error instead of string in throw to allow stack-trace
+
+* issue #454: error while creation of Collection
+
+* make `collection.count()` not recalculate the number of documents on the fly, but
+  use some internal document counters.
+
+* issue #457: invalid string value in web interface
+
+* make datafile id (datafile->_fid) identical to the numeric part of the filename.
+  E.g. the datafile `journal-123456.db` will now have a datafile marker with the same
+  fid (i.e. `123456`) instead of a different value. This change will only affect
+  datafiles that are created with 1.3 and not any older files.
+  The intention behind this change is to make datafile debugging easier.
+
+* consistently discard document attributes with reserved names (system attributes)
+  but without any known meaning, for example `_test`, `_foo`, ...
+
+  Previously, these attributes were saved with the document regularly in some cases,
+  but were discarded in other cases. 
+  Now these attributes are discarded consistently. "Real" system attributes such as
+  `_key`, `_from`, `_to` are not affected and will work as before.
+  
+  Additionally, attributes with an empty name (``) are discarded when documents are
+  saved.
+
+  Though using reserved or empty attribute names in documents was not really and 
+  consistently supported in previous versions of ArangoDB, this change might cause 
+  an incompatibility for clients that rely on this feature.
 
 * added server startup flag `--database.force-sync-properties` to force syncing of
   collection properties on collection creation, deletion and on property update.
@@ -12,55 +80,6 @@ v1.3 (XXXX-XX-XX)
   call the REST APIs with URL parameter `details=true`.
 
 * issue #443: For git-based builds include commit hash in version
-
-* issue #212: auto-increment support
-
-  The feature can be used by creating a collection with the extra `keyOptions`
-  attribute as follows:
-
-      db._create("mycollection", { keyOptions: { type: "autoincrement", offset: 1, increment: 10, allowUserKeys: true } });
-
-  The `type` attribute will make sure the keys will be auto-generated if no 
-  `_key` attribute is specified for a document.
-
-  The `allowUserKeys` attribute determines whether users might still supply own 
-  `_key` values with documents or if this is considered an error.
-
-  The `increment` value determines the actual increment value, whereas the `offset` 
-  value can be used to seed to value sequence with a specific starting value. 
-  This will be useful later in a multi-master setup, when multiple servers can use
-  different auto-increment seed values and thus generate non-conflicting auto-increment values.
-
-  The default values currently are:
-
-  - `allowUserKeys`: `true`
-  - `offset`: `0`
-  - `increment`: `1`
-
-  The only other available key generator type currently is `traditional`. 
-  The `traditional` key generator will auto-generate keys in a fashion as ArangoDB 
-  always did (some increasing integer value, with a more or less unpredictable
-  increment value).
-
-  Note that for the `traditional` key generator there is no the option to disallow 
-  user-supplied keys and give the server the sole responsibility for key generation.
-
-  This also introduces the following errors that API implementors may want to check
-  the return values for:
-
-  - 1222: `document key unexpected`: will be raised when a document is created with
-    a `_key` attribute, but the underlying collection was set up with the key generator
-    attribute `allowUserKeys: false`.
-
-  - 1225: `out of keys`: will be raised when the auto-increment key generator runs
-    out of keys. This may happen when the next key to be generated is 2^64 or higher.
-    In practice, this will only happen if the values for `increment` or `offset` are
-    not set appropriately, or if users are allowed to supply own keys, those keys
-    are near the 2^64 threshold, and later the auto-increment feature kicks in and
-    generates keys that cross that threshold.
-
-    It will not occur in practice with proper configuration and proper usage of the
-    collections.
 
 * adjust startup log output to be more compact, less verbose
 
@@ -109,7 +128,100 @@ v1.3 (XXXX-XX-XX)
   arangob is now always included in the build
 
 
-v1.2.1 (XXXX-XX-XX)
+v1.2.3 (XXXX-XX-XX)
+-------------------
+
+* added optional parameter `edgexamples` for AQL function EDGES() and NEIGHBORS()
+
+* added AQL function NEIGHBORS()
+ 
+* added freebsd support
+
+* fixed firstExample() query with `_id` and `_key` attributes
+
+* issue triAGENS/ArangoDB-PHP#55: AQL optimiser may have mis-optimised duplicate 
+  filter statements with limit
+
+
+v1.2.2 (2013-03-26)
+-------------------
+
+* fixed save of objects with common sub-objects
+
+* issue #459: fulltext internal memory allocation didn't scale well
+  This fix improves loading times for collections with fulltext indexes that have
+  lots of equal words indexed.
+
+* issue #212: auto-increment support
+
+  The feature can be used by creating a collection with the extra `keyOptions`
+  attribute as follows:
+
+      db._create("mycollection", { keyOptions: { type: "autoincrement", offset: 1, increment: 10, allowUserKeys: true } });
+
+  The `type` attribute will make sure the keys will be auto-generated if no 
+  `_key` attribute is specified for a document.
+
+  The `allowUserKeys` attribute determines whether users might still supply own 
+  `_key` values with documents or if this is considered an error.
+
+  The `increment` value determines the actual increment value, whereas the `offset` 
+  value can be used to seed to value sequence with a specific starting value. 
+  This will be useful later in a multi-master setup, when multiple servers can use
+  different auto-increment seed values and thus generate non-conflicting auto-increment values.
+
+  The default values currently are:
+
+  - `allowUserKeys`: `true`
+  - `offset`: `0`
+  - `increment`: `1`
+
+  The only other available key generator type currently is `traditional`. 
+  The `traditional` key generator will auto-generate keys in a fashion as ArangoDB 
+  always did (some increasing integer value, with a more or less unpredictable
+  increment value).
+
+  Note that for the `traditional` key generator there is only the option to disallow 
+  user-supplied keys and give the server the sole responsibility for key generation.
+  This can be achieved by setting the `allowUserKeys` property to `false`.
+
+  This change also introduces the following errors that API implementors may want to check
+  the return values for:
+
+  - 1222: `document key unexpected`: will be raised when a document is created with
+    a `_key` attribute, but the underlying collection was set up with the `keyOptions`
+    attribute `allowUserKeys: false`.
+
+  - 1225: `out of keys`: will be raised when the auto-increment key generator runs
+    out of keys. This may happen when the next key to be generated is 2^64 or higher.
+    In practice, this will only happen if the values for `increment` or `offset` are
+    not set appropriately, or if users are allowed to supply own keys, those keys
+    are near the 2^64 threshold, and later the auto-increment feature kicks in and
+    generates keys that cross that threshold.
+
+    In practice it should not occur with proper configuration and proper usage of the
+    collections.
+
+  This change may also affect the following REST APIs:
+  - POST `/_api/collection`: the server does now accept the optional `keyOptions` 
+    attribute in the second parameter
+  - GET `/_api/collection/properties`: will return the `keyOptions` attribute as part
+    of the collection's properties. The previous optional attribute `createOptions` 
+    is now gone.
+
+* fixed `ArangoStatement.explain()` method with bind variables
+
+* fixed misleading "cursor not found" error message in arangosh that occurred when
+  `count()` was called for client-side cursors
+
+* fixed handling of empty attribute names, which may have crashed the server under
+  certain circumstances before
+
+* fixed usage of invalid pointer in error message output when index description could
+  not be opened
+
+
+v1.2.1 (2013-03-14)
 -------------------
 
 * issue #444: please darken light color in arangosh
@@ -133,8 +245,11 @@ v1.2.1 (XXXX-XX-XX)
 * fixed value truncation for numeric filename parts when renaming datafiles/journals
 
 
-v1.2.beta4 (XXXX-XX-XX)
------------------------
+v1.2.0 (2013-03-01)
+-------------------
+
+* by default statistics are now switch off; in order to enable comment out
+  the "disable-statistics = yes" line in "arangod.conf"
 
 * fixed issue #435: csv parser skips data at buffer border
 
@@ -156,7 +271,7 @@ v1.2.beta4 (XXXX-XX-XX)
   of the value `-2`, and not interpreted as the binary arithmetic operator
 
 
-v1.2.beta3 (XXXX-XX-XX)
+v1.2.beta3 (2013-02-22)
 -----------------------
 
 * issue #427: ArangoDB Importer Manual has no navigation links (previous|home|next)

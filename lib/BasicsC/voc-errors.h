@@ -1,6 +1,6 @@
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_ERRORS_H
-#define TRIAGENS_DURHAM_VOC_BASE_ERRORS_H 1
+#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H
+#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +41,14 @@ extern "C" {
 ///   Will be raised when encountering a corrupt csv line.
 /// - 14: @LIT{file not found}
 ///   Will be raised when a file is not found.
+/// - 15: @LIT{cannot write file}
+///   Will be raised when a file cannot be written.
+/// - 16: @LIT{cannot overwrite file}
+///   Will be raised when an attempt is made to overwrite an existing file.
+/// - 17: @LIT{type error}
+///   Will be raised when a type error is unencountered.
+/// - 18: @LIT{lock timeout}
+///   Will be raised when there's a timeout waiting for a lock.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -156,6 +164,8 @@ extern "C" {
 ///   current user.
 /// - 1225: @LIT{out of keys}
 ///   Will be raised when a key generator runs out of keys.
+/// - 1226: @LIT{missing document key}
+///   Will be raised when a document key is missing.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -184,9 +194,9 @@ extern "C" {
 ///   allowed value.
 /// - 1530: @LIT{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
-/// - 1540: @LIT{usage of unknown function '\%s'}
+/// - 1540: @LIT{usage of unknown function '\%s()'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @LIT{invalid number of arguments for function '\%s'}
+/// - 1541: @LIT{invalid number of arguments for function '\%s()'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
 /// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
@@ -224,23 +234,26 @@ extern "C" {
 /// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
 ///   Will be raised when a fulltext query is performed on a collection without
 ///   a suitable fulltext index.
+/// - 1580: @LIT{invalid user function name}
+///   Will be raised when a user function with an invalid name is registered.
+/// - 1581: @LIT{invalid user function code}
+///   Will be raised when a user function is registered with invalid code.
+/// - 1582: @LIT{user function '\%s()' not found}
+///   Will be raised when a user function is accessed but not found.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @LIT{transaction definition is incomplete}
-///   Will be raised when the transaction definition is incomplete (e.g. lacks
-///   collections to use).
-/// - 1651: @LIT{invalid transaction state}
-///   Will be raised when an operation is requested on a transaction that has
-///   an incompatible state.
-/// - 1652: @LIT{nested transactions detected}
-///   Will be raised when transactions are nested.
-/// - 1653: @LIT{internal transaction error}
+/// - 1650: @LIT{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
-/// - 1654: @LIT{unregistered collection used in transaction}
+/// - 1651: @LIT{nested transactions detected}
+///   Will be raised when transactions are nested.
+/// - 1652: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
+/// - 1653: @LIT{disallowed operation inside transaction}
+///   Will be raised when a disallowed operation is carried out in a
+///   transaction.
 /// - 1700: @LIT{invalid user name}
 ///   Will be raised when an invalid user name is used
 /// - 1701: @LIT{invalid password}
@@ -249,6 +262,16 @@ extern "C" {
 ///   Will be raised when a user name already exists
 /// - 1703: @LIT{user not found}
 ///   Will be raised when a user name is updated that does not exist
+/// - 1750: @LIT{application not found}
+///   Will be raised when an application is not found or not present in the
+///   specified version.
+/// - 1751: @LIT{invalid application name}
+///   Will be raised when an invalid application name is specified.
+/// - 1752: @LIT{invalid mount}
+///   Will be raised when an invalid mount is specified.
+/// - 1753: @LIT{application download failed}
+///   Will be raised when an application download from the central repository
+///   failed.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -540,6 +563,46 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_FILE_NOT_FOUND                                          (14)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 15: ERROR_CANNOT_WRITE_FILE
+///
+/// cannot write file
+///
+/// Will be raised when a file cannot be written.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_WRITE_FILE                                       (15)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 16: ERROR_CANNOT_OVERWRITE_FILE
+///
+/// cannot overwrite file
+///
+/// Will be raised when an attempt is made to overwrite an existing file.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_OVERWRITE_FILE                                   (16)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 17: ERROR_TYPE_ERROR
+///
+/// type error
+///
+/// Will be raised when a type error is unencountered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TYPE_ERROR                                              (17)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 18: ERROR_LOCK_TIMEOUT
+///
+/// lock timeout
+///
+/// Will be raised when there's a timeout waiting for a lock.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCK_TIMEOUT                                            (18)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1054,6 +1117,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_OUT_OF_KEYS                                      (1225)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1226: ERROR_ARANGO_DOCUMENT_KEY_MISSING
+///
+/// missing document key
+///
+/// Will be raised when a document key is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING                             (1226)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -1178,7 +1251,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
 ///
-/// usage of unknown function '%s'
+/// usage of unknown function '%s()'
 ///
 /// Will be raised when an undefined function is called.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1188,7 +1261,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
 ///
-/// invalid number of arguments for function '%s'
+/// invalid number of arguments for function '%s()'
 ///
 /// Will be raised when the number of arguments used in a function call does
 /// not match the expected number of arguments for the function.
@@ -1334,6 +1407,36 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
+///
+/// invalid user function name
+///
+/// Will be raised when a user function with an invalid name is registered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_NAME                             (1580)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1581: ERROR_QUERY_FUNCTION_INVALID_CODE
+///
+/// invalid user function code
+///
+/// Will be raised when a user function is registered with invalid code.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_CODE                             (1581)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1582: ERROR_QUERY_FUNCTION_NOT_FOUND
+///
+/// user function '%s()' not found
+///
+/// Will be raised when a user function is accessed but not found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND                                (1582)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
 ///
 /// cursor not found
@@ -1345,39 +1448,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1650: ERROR_TRANSACTION_INCOMPLETE
-///
-/// transaction definition is incomplete
-///
-/// Will be raised when the transaction definition is incomplete (e.g. lacks
-/// collections to use).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INCOMPLETE                                  (1650)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1651: ERROR_TRANSACTION_INVALID_STATE
-///
-/// invalid transaction state
-///
-/// Will be raised when an operation is requested on a transaction that has an
-/// incompatible state.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1651)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1652: ERROR_TRANSACTION_NESTED
-///
-/// nested transactions detected
-///
-/// Will be raised when transactions are nested.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_NESTED                                      (1652)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1653: ERROR_TRANSACTION_INTERNAL
+/// @brief 1650: ERROR_TRANSACTION_INTERNAL
 ///
 /// internal transaction error
 ///
@@ -1385,10 +1456,20 @@ void TRI_InitialiseErrorMessages (void);
 /// internal error and indicates a bug in ArangoDB.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1653)
+#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1654: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
+/// @brief 1651: ERROR_TRANSACTION_NESTED
+///
+/// nested transactions detected
+///
+/// Will be raised when transactions are nested.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_NESTED                                      (1651)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1652: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
 ///
 /// unregistered collection used in transaction
 ///
@@ -1396,7 +1477,17 @@ void TRI_InitialiseErrorMessages (void);
 /// was not registered at transaction start.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
+#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1652)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1653: ERROR_TRANSACTION_DISALLOWED_OPERATION
+///
+/// disallowed operation inside transaction
+///
+/// Will be raised when a disallowed operation is carried out in a transaction.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1653)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME
@@ -1437,6 +1528,48 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_NOT_FOUND                                          (1703)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1750: ERROR_APPLICATION_NOT_FOUND
+///
+/// application not found
+///
+/// Will be raised when an application is not found or not present in the
+/// specified version.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1751: ERROR_APPLICATION_INVALID_NAME
+///
+/// invalid application name
+///
+/// Will be raised when an invalid application name is specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1751)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1752: ERROR_APPLICATION_INVALID_MOUNT
+///
+/// invalid mount
+///
+/// Will be raised when an invalid mount is specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1752)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1753: ERROR_APPLICATION_DOWNLOAD_FAILED
+///
+/// application download failed
+///
+/// Will be raised when an application download from the central repository
+/// failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

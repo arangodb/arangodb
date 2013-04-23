@@ -28,8 +28,9 @@
 #include "Ahuacatl/ahuacatl-functions.h"
 
 #include "BasicsC/associative.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-collections.h"
@@ -49,7 +50,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define REGISTER_FUNCTION(internalName, externalName, deterministic, group, argPattern, optimiseCallback) \
-  result &= TRI_RegisterFunctionAql(functions, internalName, externalName, deterministic, group, argPattern, optimiseCallback)
+  result &= TRI_RegisterFunctionAql(functions, TRI_AQL_DEFAULT_PREFIX internalName, externalName, deterministic, group, argPattern, optimiseCallback)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shorthand to check an argument and return an error if it is invalid
@@ -57,7 +58,7 @@
 
 #define ARG_CHECK                                                                                                   \
   if (! CheckArgumentType(parameter, &allowed)) {                                                                   \
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, function->_externalName);      \
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, NormalizeName(function));      \
     return false;                                                                                                   \
   }
 
@@ -120,6 +121,24 @@ static param_t InitParam (void) {
   param._regex      = false;
 
   return param;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize function name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* NormalizeName (const TRI_aql_function_t* const function) {
+  const char* pos;
+
+  TRI_ASSERT_MAINTAINER(function != NULL);
+  TRI_ASSERT_MAINTAINER(function->_externalName != NULL);
+
+  pos = strchr(function->_externalName, ':');
+  if (pos == NULL) {
+    return function->_externalName;
+  }
+
+  return (pos + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,7 +661,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("KEEP", "KEEP", true, false, "a,sl|+", NULL);
 
   // geo functions
-  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);
+  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n|nz,s", NULL);
   REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s", NULL);
 
   // fulltext functions
@@ -652,11 +671,13 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
   REGISTER_FUNCTION("TRAVERSAL", "GRAPH_TRAVERSAL", false, false, "h,h,s,s,a", NULL);
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s,a", NULL);
-  REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s", NULL);
+  REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s|l", NULL);
+  REGISTER_FUNCTION("NEIGHBORS", "GRAPH_NEIGHBORS", false, false, "h,h,s,s|l", NULL);
 
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, ".", NULL); // simple non-deterministic wrapper to avoid optimisations at parse time
+  REGISTER_FUNCTION("SLEEP", "SLEEP", false, false, "n", NULL); // sleep function
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, "", NULL);
   REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".|+", NULL);
   REGISTER_FUNCTION("FIRST_LIST", "FIRST_LIST", true, false, ".|+", NULL);
@@ -679,10 +700,11 @@ void TRI_FreeFunctionsAql (TRI_associative_pointer_t* functions) {
 
   for (i = 0; i < functions->_nrAlloc; ++i) {
     TRI_aql_function_t* function = (TRI_aql_function_t*) functions->_table[i];
-    if (!function) {
+    if (function == NULL) {
       continue;
     }
 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_argPattern);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
@@ -706,13 +728,14 @@ TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t*
 
   // normalize the name by upper-casing it
   upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
+
   if (upperName == NULL) {
     return NULL;
   }
 
   function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
-
+  
   return function;
 }
 
@@ -743,21 +766,30 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     return false;
   }
 
-  function->_externalName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
+  function->_externalName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
   if (function->_externalName == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
 
   // normalize name by upper-casing it
-  function->_internalName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, internalName);
+  function->_internalName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, internalName);
   if (function->_internalName == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
+  
+  function->_argPattern = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, argPattern);
+  if (function->_argPattern == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
+    return false;
+  }
+  
 
-  if (TRI_InsertKeyAssociativePointer(functions, externalName, function, false)) {
+  if (TRI_InsertKeyAssociativePointer(functions, function->_externalName, function, false)) {
     // function already registered
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
@@ -767,7 +799,6 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
 
   function->_isDeterministic = isDeterministic;
   function->_isGroup = isGroup;
-  function->_argPattern = argPattern;
   function->optimise = optimise;
 
   // set minArgs and maxArgs
@@ -837,7 +868,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate number of arguments
   if (n < function->_minArgs || n > function->_maxArgs) {
     // invalid number of arguments
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, function->_externalName);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, NormalizeName(function));
     return false;
   }
 

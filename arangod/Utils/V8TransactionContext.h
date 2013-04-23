@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H
 #define TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H 1
 
+#include <v8.h>
+
 #include "V8/v8-globals.h"
 
 namespace triagens {
@@ -54,14 +56,7 @@ namespace triagens {
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8TransactionContext () : _previous(0) {
-          TRI_v8_global_t* v8g;
-
-          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-          if (v8g->_currentTransaction != 0) {
-            _previous = (TRI_transaction_t*) v8g->_currentTransaction;
-          }
+        V8TransactionContext () {  
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,6 +64,58 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~V8TransactionContext () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get parent transaction (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+        static TRI_transaction_t* getParent () {
+          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+          if (v8g->_currentTransaction != 0) {
+            return (TRI_transaction_t*) v8g->_currentTransaction;
+          }
+
+          return 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the transaction is embedded
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool isEmbedded () {
+          return (getParent() != 0);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,28 +134,20 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embedded
+/// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isEmbedded () const {
-          return _previous != 0;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the parent transaction if any
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_t* getParent () const {
-          return _previous;
+        inline TRI_transaction_t* getParentTransaction () const {
+          return getParent();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        int registerTransaction (TRI_transaction_t* const trx) {
-          TRI_v8_global_t* v8g;
-          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        inline int registerTransaction (TRI_transaction_t* const trx) const {
+          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
           v8g->_currentTransaction = trx;
 
           return TRI_ERROR_NO_ERROR;
@@ -118,35 +157,13 @@ namespace triagens {
 /// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        int unregisterTransaction () {
-          TRI_v8_global_t* v8g;
+        inline int unregisterTransaction () const {
+          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
           v8g->_currentTransaction = 0;
 
           return TRI_ERROR_NO_ERROR;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief previous transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_t* _previous;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

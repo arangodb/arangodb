@@ -1,0 +1,17 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/collection
+{ "name" : "users", "keyOptions" : { "type" : "autoincrement", "increment" : 5, "allowUserKeys" : true } }
+
+HTTP/1.1 200 OK
+location: /_api/collection/users
+content-type: application/json; charset=utf-8
+
+{
+  "name" : "users", 
+  "waitForSync" : false,
+  "isVolatile" : false,
+  "isSystem" : false,
+  "status" : 3,
+  "type" : 2,
+  "error" : false,
+  "code": 200
+}

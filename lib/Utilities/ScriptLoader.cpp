@@ -29,7 +29,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "BasicsC/files.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
@@ -151,7 +151,7 @@ string const& ScriptLoader::findScript (string const& name) {
 
     for (size_t i = 0; i < parts.size(); i++) {
       char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
-      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename);
+      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, NULL);
 
       if (result == 0 && (i == parts.size() - 1)) {
         LOGGER_ERROR("cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error());

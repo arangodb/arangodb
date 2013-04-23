@@ -30,8 +30,7 @@
 
 var arangodb = require("org/arangodb");
 
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
-var output = arangodb.output;
+var ArangoError = arangodb.ArangoError;
 
 // forward declaration
 var SimpleQueryArray;
@@ -125,7 +124,7 @@ GeneralArrayCursor.prototype.execute = function () {
 /// @brief print an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralArrayCursor.prototype._PRINT = function () {
+GeneralArrayCursor.prototype._PRINT = function (context) {
   var text;
 
   text = "GeneralArrayCursor([.. " + this._documents.length + " docs ..])";
@@ -138,7 +137,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,7 +622,7 @@ SimpleQueryAll.prototype.clone = function () {
 /// @brief print an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryAll.prototype._PRINT = function () {
+SimpleQueryAll.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryAll(" + this._collection.name() + ")";
@@ -636,7 +635,7 @@ SimpleQueryAll.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -712,7 +711,7 @@ SimpleQueryArray.prototype.execute = function () {
 /// @brief print an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryArray.prototype._PRINT = function () {
+SimpleQueryArray.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryArray(documents)";
@@ -725,7 +724,7 @@ SimpleQueryArray.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -788,7 +787,7 @@ SimpleQueryByExample.prototype.clone = function () {
 /// @brief print a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryByExample.prototype._PRINT = function () {
+SimpleQueryByExample.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryByExample(" + this._collection.name() + ")";
@@ -801,7 +800,7 @@ SimpleQueryByExample.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -871,7 +870,7 @@ SimpleQueryRange.prototype.clone = function () {
 /// @brief prints a range query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryRange.prototype._PRINT = function () {
+SimpleQueryRange.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryRange(" + this._collection.name() + ")";
@@ -884,7 +883,7 @@ SimpleQueryRange.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -930,7 +929,7 @@ function SimpleQueryGeo (collection, index) {
 /// @brief prints a geo index
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryGeo.prototype._PRINT = function () {
+SimpleQueryGeo.prototype._PRINT = function (context) {
   var text;
 
   text = "GeoIndex("
@@ -939,7 +938,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
        + this._index
        + ")";
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1062,7 +1061,7 @@ SimpleQueryNear.prototype.clone = function () {
 /// @brief prints a near query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryNear.prototype._PRINT = function () {
+SimpleQueryNear.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryNear("
@@ -1083,7 +1082,7 @@ SimpleQueryNear.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1214,7 +1213,7 @@ SimpleQueryWithin.prototype.clone = function () {
 /// @brief prints a within query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryWithin.prototype._PRINT = function () {
+SimpleQueryWithin.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryWithin("
@@ -1237,7 +1236,7 @@ SimpleQueryWithin.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1360,7 +1359,7 @@ SimpleQueryFulltext.prototype.clone = function () {
 /// @brief prints a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryFulltext.prototype._PRINT = function () {
+SimpleQueryFulltext.prototype._PRINT = function (context) {
   var text;
 
   text = "SimpleQueryFulltext("
@@ -1379,7 +1378,7 @@ SimpleQueryFulltext.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  output(text);
+  context.output += text;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

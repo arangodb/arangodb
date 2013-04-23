@@ -32,7 +32,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/vector.h"
 
 // #define DEBUG_JSON_SHAPER 1
@@ -44,11 +44,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attribute identifier mapping
@@ -79,18 +74,9 @@ typedef struct array_shaper_s {
 }
 array_shaper_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the attribute path identifier
@@ -175,18 +161,15 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
   ee = (TRI_shape_path_t const*) element;
 
   return TRI_EqualString(k,e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
-  /*
-  return TRI_EqualString2(k,
-                          e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t),
-                          ee->_nameLength - 1);
-  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an attribute path by identifier
+/// @brief looks up a shape path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* name) {
+static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
+                                                    char const* name,
+                                                    bool create) {
   TRI_shape_aid_t* aids;
   TRI_shape_path_t* result;
   size_t count;
@@ -202,7 +185,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
   if (p != NULL) {
-    return ((TRI_shape_path_t const*) p)->_pid;
+    return (TRI_shape_path_t const*) p;
   }
 
   // create a attribute path
@@ -216,7 +199,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
 
   if (p != NULL) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
-    return ((TRI_shape_path_t const*) p)->_pid;
+    return (TRI_shape_path_t const*) p;
   }
 
   // split path into attribute pieces
@@ -226,7 +209,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   if (aids == NULL) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
     LOG_ERROR("out of memory in shaper");
-    return 0;
+    return NULL;
   }
 
   buffer = ptr = TRI_DuplicateString2Z(shaper->_memoryZone, name, len);
@@ -235,7 +218,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
     TRI_UnlockMutex(&shaper->_attributePathLock);
     TRI_Free(shaper->_memoryZone, aids);
     LOG_ERROR("out of memory in shaper");
-    return 0;
+    return NULL;
   }
 
   end = buffer + len + 1;
@@ -246,7 +229,21 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
       *ptr = '\0';
 
       if (ptr != prev) {
-        aids[count++] = shaper->findAttributeName(shaper, prev);
+        if (create) {
+          aids[count++] = shaper->findAttributeByName(shaper, prev);
+        }
+        else {
+          aids[count] = shaper->lookupAttributeByName(shaper, prev);
+
+          if (aids[count] == 0) {
+            TRI_FreeString(shaper->_memoryZone, buffer);
+            TRI_UnlockMutex(&shaper->_attributePathLock);
+            TRI_Free(shaper->_memoryZone, aids);
+            return NULL;
+          }
+
+          ++count;
+        }
       }
 
       prev = ptr + 1;
@@ -263,7 +260,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
     TRI_UnlockMutex(&shaper->_attributePathLock);
     TRI_Free(shaper->_memoryZone, aids);
     LOG_ERROR("out of memory in shaper");
-    return 0;
+    return NULL;
   }
 
   result->_pid = shaper->_nextPid++;
@@ -283,21 +280,32 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
 
   // return pid
   TRI_UnlockMutex(&shaper->_attributePathLock);
-  return result->_pid;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief finds an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
+
+static TRI_shape_pid_t FindAttributePathByName (TRI_shaper_t* shaper, char const* name) {
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true);
+
+  return path == NULL ? 0 : path->_pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an attribute path by identifier
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper, char const* name) {
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false);
+
+  return path == NULL ? 0 : path->_pid;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the attribute name
@@ -343,7 +351,7 @@ static bool EqualKeyAttributeName (TRI_associative_pointer_t* array, void const*
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char const* name) {
+static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* name) {
   array_shaper_t* s;
   void const* p;
 
@@ -392,10 +400,31 @@ static TRI_shape_aid_t FindAttributeNameArrayShaper (TRI_shaper_t* shaper, char 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an attribute identifier by name
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, char const* name) {
+  array_shaper_t* s;
+  void const* p;
+
+  s = (array_shaper_t*) shaper;
+  p = TRI_LookupByKeyAssociativePointer(&s->_attributeNames, name);
+
+  if (p == NULL) {
+    return 0;
+  }
+  else {
+    attribute_2_id_t const* a2i = (attribute_2_id_t const*) p;
+
+    return a2i->_aid;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute name by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const* LookupAttributeIdArrayShaper (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
+static char const* LookupAttributeId (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
   array_shaper_t* s;
 
   s = (array_shaper_t*) shaper;
@@ -411,24 +440,9 @@ static char const* LookupAttributeIdArrayShaper (TRI_shaper_t* shaper, TRI_shape
   return NULL;
 }
 
-static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, TRI_shape_aid_t aid) {
-  // todo: add support for an attribute weight
-  assert(0);
-  return -1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the shapes
@@ -468,7 +482,7 @@ static bool EqualElementShape (TRI_associative_pointer_t* array, void const* lef
 /// @brief finds a shape
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_t const* FindShapeShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
+static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   TRI_shape_t const* l;
   array_shaper_t* s;
   int res;
@@ -518,18 +532,9 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
   return NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a simple, array-based shaper
@@ -571,11 +576,12 @@ TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
   TRI_InitVectorPointer(&shaper->_shapes, zone);
 
   // set the find and lookup functions
-  shaper->base.findAttributeName = FindAttributeNameArrayShaper;
-  shaper->base.lookupAttributeId = LookupAttributeIdArrayShaper;
-  shaper->base.findShape = FindShapeShape;
+  shaper->base.findAttributeByName = FindAttributeByName;
+  shaper->base.lookupAttributeByName = LookupAttributeByName;
+  shaper->base.lookupAttributeId = LookupAttributeId;
+  shaper->base.findShape = FindShape;
   shaper->base.lookupShapeId = LookupShapeId;
-  shaper->base.lookupAttributeWeight = LookupAttributeWeight;
+  shaper->base.lookupAttributeWeight = NULL;
 
   // handle basics
   ok = TRI_InsertBasicTypesShaper(&shaper->base);
@@ -632,10 +638,6 @@ void TRI_FreeArrayShaper (TRI_memory_zone_t* zone, TRI_shaper_t* shaper) {
   TRI_Free(zone, shaper);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            SHAPER
 // -----------------------------------------------------------------------------
@@ -643,11 +645,6 @@ void TRI_FreeArrayShaper (TRI_memory_zone_t* zone, TRI_shaper_t* shaper) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the attribute path
@@ -663,18 +660,9 @@ char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid
   return e + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the shaper
@@ -702,7 +690,8 @@ void TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
   shaper->_nextPid = 1;
 
   shaper->lookupAttributePathByPid = LookupPidAttributePath;
-  shaper->findAttributePathByName = FindNameAttributePath;
+  shaper->findAttributePathByName = FindAttributePathByName;
+  shaper->lookupAttributePathByName = LookupAttributePathByName;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -853,10 +842,6 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

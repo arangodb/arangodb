@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style/bootstrap.min.css" type="text/css"/>
+  <link rel="stylesheet" href="style/graphlayout.css" type="text/css"/>
+    <link rel="stylesheet" type="text/css" href="style/bootstrap.min.css">
+  
+  <script src="../lib/d3.v3.min.js"></script>
+  <script src="../lib/underscore.js"></script>
+  <script src="../lib/jquery-1.8.3.js"></script>
+  <script type="text/javascript" src="../lib/bootstrap.js"></script>
+  <script src="../lib/jquery.livequery.js"></script>
+  <script src="graph/colourMapper.js"></script>
+  <script src="graph/forceLayouter.js"></script>
+  <script src="graph/eventLibrary.js"></script>
+  <script src="graph/eventDispatcher.js"></script>
+  <script src="graph/nodeShaper.js"></script>
+  <script src="graph/edgeShaper.js"></script>
+  <script src="graph/arangoAdapter.js"></script>  
+  
+  <script type="text/javascript" src="ui/modalDialogHelper.js"></script>
+  <script type="text/javascript" src="ui/nodeShaperControls.js"></script>
+  <script type="text/javascript" src="ui/edgeShaperControls.js"></script>
+  <script type="text/javascript" src="ui/uiComponentsHelper.js"></script>
+  <script type="text/javascript" src="ui/eventDispatcherControls.js"></script>
+  <script type="text/javascript" src="ui/graphViewerUI.js"></script>
+  
+  <script src="graphViewer.js"></script>
+  <script>
+  
+  var arangodb = "http://localhost:8529";
+  //var arangodb = "nirvana.org";
+  
+  var createCollection = function(name, type, callback) {
+        if (type !== "Document" && type !== "Edge") {
+          throw "Unsupported type";
+        }
+        var data = {
+          "name": name,
+          "type": type,
+          "journalSize": 1048576
+        };
+        $.ajax({
+          cache: false,
+          type: "POST",
+          url: arangodb + "/_api/collection",
+          data: JSON.stringify(data),
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            callback(data.id);
+          },
+          error: function(data) {
+            throw data.statusText;
+          }
+        });
+      };
+      
+  var insertEdge = function (collectionID, from, to) {
+    $.ajax({
+      cache: false,
+      type: "POST",
+      async: false,
+      url: arangodb + "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
+      data: JSON.stringify({}),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        return data._id;
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  }; 
+  var insertNode = function (collectionID, node) {
+    var id;
+    $.ajax({
+      cache: false,
+      type: "POST",
+      async: false,
+      url: arangodb + "/_api/document?collection=" + collectionID,
+      data: JSON.stringify(node),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        id = data._id;
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+    return id;
+  };
+
+  var setupArangoContent = function() {
+    var nodesCollection = "Classes";
+    var edgesCollection = "Connections";
+        
+    //deleteArangoContent();
+        
+    createCollection(nodesCollection, "Document", function(id) {nodesCollId = id;});
+    createCollection(edgesCollection, "Edge", function(id) {edgesCollId = id;});
+        
+    var c1 = insertNode(nodesCollection, {id: 1, name: "graphViewer", type: "Controller"}),
+    c2 = insertNode(nodesCollection, {id: 2, name: "Shaper", type: "AbstractView"}),
+    c3 = insertNode(nodesCollection, {id: 3, name: "NodeShaper", type: "View"}),
+    c4 = insertNode(nodesCollection, {id: 4, name: "EdgeShaper", type: "View"}),
+    c5 = insertNode(nodesCollection, {id: 5, name: "Adapter", type: "AbstractModel"}),
+    c6 = insertNode(nodesCollection, {id: 6, name: "ArangoAdapter", type: "Model"}),
+    c7 = insertNode(nodesCollection, {id: 7, name: "JSONAdapter", type: "Model"}),
+    c8 = insertNode(nodesCollection, {id: 8, name: "Layouter", type: "AbstractView"}),
+    c9 = insertNode(nodesCollection, {id: 9, name: "forceLayouter", type: "View"}),
+    c10 = insertNode(nodesCollection, {id: 10, name: "eventLibrary", type: "Events"}),
+    
+    
+    c11 = insertNode(nodesCollection, {id: 11, name: "Configuration", type: "JSON"}),
+    c12 = insertNode(nodesCollection, {id: 12, name: "Configuration", type: "JSON"}),
+                                                                                    
+    c13 = insertNode(nodesCollection, {id: 13, name: "Configuration", type: "JSON"}),
+    c14 = insertNode(nodesCollection, {id: 14, name: "Configuration", type: "JSON"}),
+    c15 = insertNode(nodesCollection, {id: 15, name: "Configuration", type: "JSON"}),
+    
+    
+    nsc1 = insertNode(nodesCollection, {id: 16, name: "shape", type: "NodeShaper.shapes"}),
+    nsc2 = insertNode(nodesCollection, {id: 17, name: "label", type: "string||function(node)"}),
+    nsc3 = insertNode(nodesCollection, {id: 18, name: "size", type: "double||function(node)"}),
+    nsc4 = insertNode(nodesCollection, {id: 19, name: "ondrag", type: "function(node)"}),
+    nsc5 = insertNode(nodesCollection, {id: 20, name: "onclick", type: "function(node)"}),
+    nsc6 = insertNode(nodesCollection, {id: 21, name: "onupdate", type: "function(node)"});   
+        
+    insertEdge(edgesCollection, c1, c2);
+    insertEdge(edgesCollection, c1, c5);
+    insertEdge(edgesCollection, c1, c8);
+    insertEdge(edgesCollection, c1, c10);
+    
+    insertEdge(edgesCollection, c2, c3);
+    insertEdge(edgesCollection, c2, c4);
+    
+    insertEdge(edgesCollection, c5, c6);
+    insertEdge(edgesCollection, c5, c7);
+    
+    insertEdge(edgesCollection, c8, c9);
+    
+    insertEdge(edgesCollection, c10, c8);
+    insertEdge(edgesCollection, c10, c5);
+    insertEdge(edgesCollection, c10, c2);
+    
+    insertEdge(edgesCollection, c3, c11);
+    insertEdge(edgesCollection, c4, c12);
+    insertEdge(edgesCollection, c6, c13);
+    insertEdge(edgesCollection, c7, c14);
+    
+    insertEdge(edgesCollection, c9, c15);
+    
+    insertEdge(edgesCollection, c11, nsc1);
+    insertEdge(edgesCollection, c11, nsc2);
+    insertEdge(edgesCollection, c11, nsc3);
+    insertEdge(edgesCollection, c11, nsc4);
+    insertEdge(edgesCollection, c11, nsc5);
+    insertEdge(edgesCollection, c11, nsc6);
+  };
+
+  function createViewer() {
+    var host,
+    ecol,
+    ncol,
+    aaconfig;
+    
+    host = $("#host")[0].value;
+    ecol = $("#edgeCollection")[0].value;
+    ncol = $("#nodeCollection")[0].value;
+           
+    aaconfig = {
+      type: "arango",
+      nodeCollection: ncol,
+      edgeCollection: ecol,
+      host: host
+    };
+
+/*    
+    layouterConfig = {
+      "type": "force",
+      "gravity": 0.01,
+      "distance": 100,
+      "charge": -300
+    };
+*/    
+    
+    $("#creationDialog")[0].style.display = "none";
+    ui = new GraphViewerUI(document.getElementById("content"), aaconfig);
+  }
+
+  var ui;
+  </script>
+  <title>DEMO</title>
+</head>
+<!--<body onload="setupArangoContent()"> -->
+<body>
+  <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+    <fieldset>
+      <legend>Create the Viewer</legend>
+      <fieldset>
+        <legend>Setup Arango Connection</legend>
+        <div class="control-group">
+          <label for="host" class="control-label">Host</label>
+          <div class="controls">
+            <input id="host" type="text" name="host" placeholder="Host" maxlength="75" class="input-xlarge" value="http://localhost:8529">
+          </div>
+        </div>
+        <div class="control-group">
+          <label for="nodeCollection" class="control-label">Node Collection</label>
+          <div class="controls">
+            <input id="nodeCollection" type="text" name="nodeCollection" placeholder="Node Collection" maxlength="75" class="input-xlarge" value="Classes">
+          </div>
+        </div>
+        <div class="control-group">
+          <label for="edgeCollection" class="control-label">Edge Collection</label>
+          <div class="controls">
+            <input id="edgeCollection" type="text" name="edgeCollection" placeholder="Edge Collection" maxlength="75" class="input-xlarge" value="Connections">
+          </div>
+        </div>
+      </fieldset>
+           
+      <div class="control-group">
+        <div class="controls">
+          <button type="submit" class="btn btn-primary" onclick="createViewer()">Create</button>
+        </div>
+      </div>
+    </fieldset>
+  </form>
+  <div id="content" style="width:980px; height:640px" />
+
+</body>
+</html>

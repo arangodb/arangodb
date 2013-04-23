@@ -36,7 +36,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
-#include "Utils/UserTransaction.h"
 #include "Utilities/ResourceHolder.h"
 
 using namespace std;
@@ -244,7 +243,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -259,11 +257,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// `waitForSync` value of `false`.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
-///     var cn = "productsNoWait";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -278,11 +275,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// value of `false`, but using the `waitForSync` URL parameter.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
-///     var cn = "productsNoWait";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn + "&waitForSync=true";
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -299,7 +295,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn + "&createCollection=true";
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -313,10 +308,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// Unknown collection name:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
-///     var cn = "productsUnknown";
+///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -333,7 +327,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ 1: "World" }';
 ///
@@ -380,7 +373,6 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
@@ -389,6 +381,7 @@ bool RestDocumentHandler::createDocument () {
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
@@ -405,7 +398,8 @@ bool RestDocumentHandler::createDocument () {
   const TRI_voc_cid_t cid = trx.cid();
 
   TRI_doc_mptr_t document;
-  res = trx.createDocument(&document, json, waitForSync, true);
+  res = trx.createDocument(&document, json, waitForSync);
+  const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
   // .............................................................................
@@ -420,7 +414,7 @@ bool RestDocumentHandler::createDocument () {
   assert(document._key != 0);
 
   // generate result
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateCreated(cid, document._key, document._rid);
   }
   else {
@@ -463,31 +457,32 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document,reads a document}
+/// @RESTHEADER{GET /_api/document/`document-handle`,reads a document}
 ///
-/// @REST{GET /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Returns the document identified by @FA{document-handle}. The returned
-/// document contains two special attributes: @LIT{_id} containing the document
-/// handle and @LIT{_rev} containing the revision.
+/// @RESTURLPARAM{document-handle,string,required}
 ///
-/// If the document exists, then a @LIT{HTTP 200} is returned and the JSON
-/// representation of the document is the body of the response.
+/// @RESTHEADERPARAMETERS
 ///
-/// If the @FA{document-handle} points to a non-existing document, then a
-/// @LIT{HTTP 404} is returned and the body contains an error document.
-///
+/// @RESTHEADERPARAM{If-None-Match,string}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+/// given etag. Otherwise a `HTTP 304` is returned.
 ///
+/// @RESTHEADERPARAM{If-Match,string}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Returns the document identified by `document-handle`. The returned
+/// document contains two special attributes: `_id` containing the document
+/// handle and `_rev` containing the revision.
 ///
 /// @RESTRETURNCODES
-///
+/// 
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -499,22 +494,57 @@ bool RestDocumentHandler::readDocument () {
 /// same version
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the found
+/// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
 ///
 /// @EXAMPLES
 ///
 /// Use a document handle:
 ///
-/// @verbinclude rest-read-document
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Use a document handle and an etag:
 ///
-/// @verbinclude rest-read-document-if-none-match
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentIfNoneMatch}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+///     var header = "if-none-match: \"" + document._rev + "\"";
+/// 
+///     var response = logCurlRequest('GET', url, "", header);
+/// 
+///     assert(response.code === 304);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-read-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentUnknownHandle}
+///     var url = "/_api/document/products/unknownhandle";
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
@@ -540,7 +570,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   const TRI_voc_cid_t cid = trx.cid();
   TRI_doc_mptr_t document;
 
-  res = trx.read(&document, key, true);
+  res = trx.read(&document, key);
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
   assert(primary != 0);
@@ -602,18 +632,36 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all documents
+/// @brief reads all documents from collection
 ///
-/// @RESTHEADER{GET /_api/document,reads all document}
+/// @RESTHEADER{GET /_api/document,reads all documents from collection}
 ///
-/// @REST{GET /_api/document?collection=@FA{collection-name}}
+/// @RESTQUERYPARAMETERS
 ///
+/// @RESTQUERYPARAM{collection,string,required}
+///
+/// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
-/// by @FA{collection-name}.
+/// by `collection`.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest-read-document-all
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hallo1":"world1"});
+///     db.products.save({"hallo2":"world1"});
+///     db.products.save({"hallo3":"world1"});
+///     var url = "/_api/document/?collection=" + cn;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -681,17 +729,49 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document,reads a document header}
+/// @RESTHEADER{HEAD /_api/document/`document-handle`,reads a document header}
 ///
-/// @REST{HEAD /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Like @FN{GET}, but only returns the header fields and not the body. You
+/// @RESTURLPARAM{document-handle,string,required}
+///
+/// @RESTDESCRIPTION
+/// Like `GET`, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the document was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the document or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the document has
+/// same version
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version
+///
 /// @EXAMPLES
 ///
-/// @verbinclude rest-read-document-head
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentHead}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('HEAD', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
@@ -710,74 +790,77 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document,replaces a document}
+/// @RESTHEADER{PUT /_api/document/`document-handle`,replaces a document}
 ///
-/// @REST{PUT /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Completely updates (i.e. replaces) the document identified by @FA{document-handle}.
-/// If the document exists and can be updated, then a @LIT{HTTP 201} is returned
+/// @RESTURLPARAM{document-handle,string,required}
+/// 
+/// @RESTDESCRIPTION
+/// Completely updates (i.e. replaces) the document identified by `document-handle`.
+/// If the document exists and can be updated, then a `HTTP 201` is returned
 /// and the "ETag" header field contains the new revision of the document.
 ///
 /// If the new document passed in the body of the request contains the
-/// @FA{document-handle} in the attribute @LIT{_id} and the revision in @LIT{_rev},
+/// `document-handle` in the attribute `_id` and the revision in `_rev`,
 /// these attributes will be ignored. Only the URI and the "ETag" header are
 /// relevant in order to avoid confusion when using proxies.
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force
+/// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document replacement operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute @LIT{_id} contains the known
-/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
 /// contains the new document revision.
 ///
-/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a `HTTP 404` is returned and the
 /// body of the response contains an error document.
 ///
 /// There are two ways for specifying the targeted document revision id for
 /// conditional replacements (i.e. replacements that will only be executed if
 /// the revision id found in the database matches the document revision id specified
 /// in the request):
-/// - specifying the target revision in the @LIT{rev} URL parameter
-/// - specifying the target revision in the @LIT{if-match} HTTP header
+/// - specifying the target revision in the `rev` URL parameter
+/// - specifying the target revision in the `if-match` HTTP header
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
-/// described mechanisms must be used (either the @LIT{rev} URL parameter or the
-/// @LIT{if-match} HTTP header).
+/// described mechanisms must be used (either the `rev` URL parameter or the
+/// `if-match` HTTP header).
 /// Regardless which mechanism is used, the parameter needs to contain the target
-/// document revision id as returned in the @LIT{_rev} attribute of a document or
-/// by an HTTP @LIT{etag} header.
+/// document revision id as returned in the `_rev` attribute of a document or
+/// by an HTTP `etag` header.
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you the following request:
-/// @REST{PUT /_api/document/@FA{document-handle}?rev=@FA{etag}}
+/// @REST{PUT /_api/document/`document-handle`?rev=`etag`}
 ///
-/// If a target revision id is provided in the request (e.g. via the @FA{etag} value
-/// in the @LIT{rev} URL parameter above), ArangoDB will check that
+/// If a target revision id is provided in the request (e.g. via the `etag` value
+/// in the `rev` URL parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
 /// revision id provided in the request. If there is a mismatch between the revision
-/// id, then by default a @LIT{HTTP 412} conflict is returned and no replacement is
+/// id, then by default a `HTTP 412` conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the @FA{policy} URL parameter:
+/// The conditional update behavior can be overriden with the `policy` URL parameter:
 ///
-/// @REST{PUT /_api/document/@FA{document-handle}?policy=@FA{policy}}
+/// @REST{PUT /_api/document/`document-handle`?policy=`policy`}
 ///
-/// If @FA{policy} is set to @LIT{error}, then the behavior is as before: replacements
+/// If `policy` is set to `error`, then the behavior is as before: replacements
 /// will fail if the revision id found in the database does not match the target
 /// revision id specified in the request.
 ///
-/// If @FA{policy} is set to @LIT{last}, then the replacement will succeed, even if the
+/// If `policy` is set to `last`, then the replacement will succeed, even if the
 /// revision id found in the database does not match the target revision id specified
-/// in the request. You can use the @LIT{last} @FA{policy} to force replacements.
+/// in the request. You can use the `last` `policy` to force replacements.
 ///
 /// @RESTRETURNCODES
 ///
@@ -797,31 +880,96 @@ bool RestDocumentHandler::checkDocument () {
 /// is returned if collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the found
+/// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
 ///
 /// @EXAMPLES
 ///
 /// Using document handle:
 ///
-/// @verbinclude rest-update-document
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-update-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentUnknownHandle}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Produce a revision conflict:
 ///
-/// @verbinclude rest-update-document-if-match-other
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOther}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
 ///
-/// @verbinclude rest-update-document-if-match-other-last-write
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWrite}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Alternative to header field:
 ///
-/// @verbinclude rest-update-document-rev-other
-////////////////////////////////////////////////////////////////////////////////
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentRevOther}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::replaceDocument () {
   return modifyDocument(false);
@@ -830,47 +978,50 @@ bool RestDocumentHandler::replaceDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document,patches a document}
+/// @RESTHEADER{PATCH /_api/document/`document-handle`,patches a document}
 ///
-/// @REST{PATCH /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Partially updates the document identified by @FA{document-handle}.
+/// @RESTURLPARAM{document-handle,string,required}
+///
+/// @RESTDESCRIPTION
+/// Partially updates the document identified by `document-handle`.
 /// The body of the request must contain a JSON document with the attributes
 /// to patch (the patch document). All attributes from the patch document will
 /// be added to the existing document if they do not yet exist, and overwritten
 /// in the existing document if they do exist there.
 ///
-/// Setting an attribute value to @LIT{null} in the patch document will cause a
-/// value of @LIT{null} be saved for the attribute by default. If the intention
+/// Setting an attribute value to `null` in the patch document will cause a
+/// value of `null` be saved for the attribute by default. If the intention
 /// is to delete existing attributes with the patch command, the URL parameter
-/// @LIT{keepNull} can be used with a value of @LIT{false}.
+/// `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing document that are contained in the patch document with an
-/// attribute value of @LIT{null}.
+/// attribute value of `null`.
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force
+/// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document update operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision. The attribute @LIT{_id} contains the known
-/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// the handle and the revision. The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
 /// contains the new document revision.
 ///
-/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a `HTTP 404` is returned and the
 /// body of the response contains an error document.
 ///
 /// You can conditionally update a document based on a target revision id by
-/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header.
+/// using either the `rev` URL parameter or the `if-match` HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the @FA{policy} parameter. This is the same as when replacing
+/// can use the `policy` parameter. This is the same as when replacing
 /// documents (see replacing documents for details).
 ///
 /// @RESTRETURNCODES
@@ -891,7 +1042,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// is returned if collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the found
+/// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
 ///
 /// @EXAMPLES
@@ -929,6 +1080,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   ResourceHolder holder;
 
   TRI_json_t* json = parseJsonBody();
+
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
@@ -950,6 +1102,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
@@ -983,7 +1136,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     trx.lockWrite();
 
     // do not lock again
-    res = trx.read(&oldDocument, key, false);
+    res = trx.read(&oldDocument, key);
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
@@ -1007,14 +1160,16 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
       if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
         // do not acquire an extra lock
-        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid, false);
+        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
       }
     }
   }
   else {
     // replacing an existing document, using a lock
-    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid, true);
+    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
   }
+
+  const bool wasSynchronous = trx.synchronous();
 
   res = trx.finish(res);
 
@@ -1029,11 +1184,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // generate result
-  if (trx.synchronous()) {
-    generateCreated(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
+  if (wasSynchronous) {
+    generateCreated(cid, (TRI_voc_key_t) key.c_str(), document._rid);
   }
   else {
-    generateAccepted(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), document._rid);
   }
 
   return true;
@@ -1042,37 +1197,40 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document,deletes a document}
+/// @RESTHEADER{DELETE /_api/document/`documenthandle`,deletes a document}
 ///
-/// @REST{DELETE /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Deletes the document identified by @FA{document-handle}. If the document
-/// exists and could be deleted, then a @LIT{HTTP 200} is returned.
+/// @RESTURLPARAM{documenthandle,string,required}
+/// 
+/// @RESTDESCRIPTION
+/// Deletes the document identified by `document-handle`. If the document
+/// exists and could be deleted, then a `HTTP 200` is returned.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute @LIT{_id} contains the known
-/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
 /// contains the known document revision.
 ///
-/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a `HTTP 404` is returned and the
 /// body of the response contains an error document.
 ///
 /// You can conditionally delete a document based on a target revision id by
-/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header.
+/// using either the `rev` URL parameter or the `if-match` HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the @FA{policy} parameter. This is the same as when replacing
+/// can use the `policy` parameter. This is the same as when replacing
 /// documents (see replacing documents for more details).
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force
+/// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document deletion operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1089,7 +1247,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or @LIT{rev} is given and the current
+/// is returned if a "If-Match" header or `rev` is given and the current
 /// document has a different version
 ///
 /// @EXAMPLES
@@ -1151,6 +1309,8 @@ bool RestDocumentHandler::deleteDocument () {
 
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
+  
+  const bool wasSynchronous = trx.synchronous();
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }
@@ -1167,7 +1327,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
   }
   else {

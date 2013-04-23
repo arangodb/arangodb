@@ -29,7 +29,7 @@
 
 #include <fstream>
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"

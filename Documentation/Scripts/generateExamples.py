@@ -216,6 +216,7 @@ for filename in argv:
 
 def generateArangoshOutput():
     print "var internal = require('internal');"
+    print "var fs = require('fs');"
     print "var ArangoshOutput = {};"
     print "internal.startPrettyPrint(true);"
     print "internal.stopColorPrint(true);"
@@ -242,7 +243,7 @@ def generateArangoshOutput():
         print "}());"
 
     for key in ArangoshOutput:
-        print "internal.write('%s/%s.generated', ArangoshOutput['%s']);" % (OutputDir, key, key)
+        print "fs.write('%s/%s.generated', ArangoshOutput['%s']);" % (OutputDir, key, key)
 
 ################################################################################
 ### @brief generate arangosh run
@@ -250,6 +251,7 @@ def generateArangoshOutput():
 
 def generateArangoshRun():
     print "var internal = require('internal');"
+    print "var fs = require('fs');"
     print "var ArangoshRun = {};"
     print "internal.startPrettyPrint(true);"
     print "internal.stopColorPrint(true);"
@@ -267,19 +269,21 @@ def generateArangoshRun():
         value = ArangoshRun[key]
 
         print "(function() {"
+        print "internal.output('RUN STARTING: %s\\n');" % key
         print "var output = '';"
         print "var appender = function(text) { output += text; };"
-        print "var logCurlRequest = require('internal').appendCurlRequest(appender);"
+        print "var logCurlRequestRaw = require('internal').appendCurlRequest(appender);"
+        print "var logCurlRequest = function () { var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments); db._collections(); return r; };"
         print "var logJsonResponse = require('internal').appendJsonResponse(appender);"
-        print "var assert = function(a) { if (! a) internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); };" % ('#' * 80, key, '#' * 80)
-        print "try { %s } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, '#' * 80, key, '#' * 80)
+        print "var assert = function(a) { if (! a) { internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); throw new Error('assertion failed'); } };" % ('#' * 80, key, '#' * 80)
+        print "try { %s internal.output('RUN SUCCEEDED: %s'); } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, key, '#' * 80, key, '#' * 80)
         print "ArangoshRun['%s'] = output;" % key
         if JS_DEBUG:
             print "internal.output('%s', ':\\n', output, '\\n%s\\n');" % (key, '-' * 80)
         print "}());"
 
     for key in ArangoshRun:
-        print "internal.write('%s/%s.generated', ArangoshRun['%s']);" % (OutputDir, key, key)
+        print "fs.write('%s/%s.generated', ArangoshRun['%s']);" % (OutputDir, key, key)
 
 ################################################################################
 ### @brief main

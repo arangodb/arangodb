@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE (tst_basic_elements) {
   BOOST_CHECK_EQUAL(8, sizeof(TRI_shape_size_t));
   BOOST_CHECK_EQUAL(8, sizeof(TRI_voc_cid_t));
   BOOST_CHECK_EQUAL(4, sizeof(TRI_voc_crc_t));
-  BOOST_CHECK_EQUAL(8, sizeof(TRI_voc_eid_t));
+  BOOST_CHECK_EQUAL(8, sizeof(TRI_voc_tid_t));
   BOOST_CHECK_EQUAL(8, sizeof(TRI_voc_rid_t));
   BOOST_CHECK_EQUAL(4, sizeof(TRI_voc_size_t));
   BOOST_CHECK_EQUAL(8, sizeof(TRI_voc_tick_t));
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE (tst_doc_document_key_marker) {
 
   BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_doc_document_key_marker_s, base));
   BOOST_CHECK_EQUAL(24, offsetof(struct TRI_doc_document_key_marker_s, _rid));
-  BOOST_CHECK_EQUAL(32, offsetof(struct TRI_doc_document_key_marker_s, _sid));
+  BOOST_CHECK_EQUAL(32, offsetof(struct TRI_doc_document_key_marker_s, _tid));
   BOOST_CHECK_EQUAL(40, offsetof(struct TRI_doc_document_key_marker_s, _shape));
   BOOST_CHECK_EQUAL(48, offsetof(struct TRI_doc_document_key_marker_s, _offsetKey));
   BOOST_CHECK_EQUAL(50, offsetof(struct TRI_doc_document_key_marker_s, _offsetJson));
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE (tst_doc_edge_key_marker) {
 BOOST_AUTO_TEST_CASE (tst_doc_begin_transaction_marker) {
   size_t s = sizeof(TRI_doc_begin_transaction_marker_t);
 
-  BOOST_CHECK_EQUAL(24 + 8, s); // base + own size
+  BOOST_CHECK_EQUAL(24 + 8 + 8, s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
   BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_doc_begin_transaction_marker_s, base));

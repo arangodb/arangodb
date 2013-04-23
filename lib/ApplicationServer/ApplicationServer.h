@@ -785,8 +785,8 @@ namespace triagens {
 ///
 /// @CMDOPT{\--log.filter @CA{arg}}
 ///
-/// For debug and trace messages, only log those messages occurring in the
-/// file @CA{arg}.
+/// For debug and trace messages, only log those messages originated from the
+/// C source file @CA{arg}. The argument can be used multiple times.
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _logFilter;

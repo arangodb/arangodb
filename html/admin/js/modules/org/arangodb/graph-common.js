@@ -311,7 +311,7 @@ Edge.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
-  return this._properties.shallowCopy;
+  return this._properties._shallowCopy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,23 +331,20 @@ Edge.prototype.properties = function () {
 /// @brief edge printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Edge.prototype._PRINT = function (seen, path, names) {
-  // Ignores the standard arguments
-  seen = path = names = null;
-
-  if (!this._id) {
-    arangodb.output("[deleted Edge]");
+Edge.prototype._PRINT = function (context) {
+  if (!this._properties._id) {
+    context.output += "[deleted Edge]";
   }
   else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      arangodb.output("Edge(\"", this._properties._key, "\")");
+      context.output += "Edge(\"" + this._properties._key + "\")";
     }
     else {
-      arangodb.output("Edge(", this._properties._key, ")");
+      context.output += "Edge(" + this._properties._key + ")";
     }
   }
   else {
-    arangodb.output("Edge(<", this._id, ">)");
+    context.output += "Edge(<" + this._id + ">)";
   }
 };
 
@@ -490,7 +487,7 @@ Vertex.prototype.getPropertyKeys = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
-  return this._properties.shallowCopy;
+  return this._properties._shallowCopy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,23 +507,20 @@ Vertex.prototype.properties = function () {
 /// @brief vertex representation
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype._PRINT = function (seen, path, names) {
-  // Ignores the standard arguments
-  seen = path = names = null;
-
-  if (! this._id) {
-    arangodb.output("[deleted Vertex]");
+Vertex.prototype._PRINT = function (context) {
+  if (! this._properties._id) {
+    context.output += "[deleted Vertex]";
   }
   else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      arangodb.output("Vertex(\"", this._properties._key, "\")");
+      context.output += "Vertex(\"" + this._properties._key + "\")";
     }
     else {
-      arangodb.output("Vertex(", this._properties._key, ")");
+      context.output += "Vertex(" + this._properties._key + ")";
     }
   }
   else {
-    arangodb.output("Vertex(<", this._id, ">)");
+    context.output += "Vertex(<" + this._id + ">)";
   }
 };
 
@@ -578,16 +572,8 @@ Graph.prototype.getOrAddVertex = function (id) {
 /// @brief graph printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._PRINT = function (seen, path, names) {
-  var output;
-
-  // Ignores the standard arguments
-  seen = path = names = null;
-
-  output = "Graph(\"";
-  output += this._properties._key;
-  output += "\")";
-  arangodb.output(output);
+Graph.prototype._PRINT = function (context) {
+  context.output += "Graph(\"" + this._properties._key + "\")";
 };
 
 ////////////////////////////////////////////////////////////////////////////////

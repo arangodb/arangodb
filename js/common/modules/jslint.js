@@ -26,9 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var fs = require("fs");
 var console = require("console");
 
-internal.loadFile("jslint/jslint");
+var JSLINT = require("./jslint/jslint").JSLINT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -47,7 +48,7 @@ function RunTest (path, options) {
   var content;
 
   try {
-    content = internal.read(path);
+    content = fs.read(path);
   }
   catch (err) {
     console.error("cannot load test file '%s'", path);
@@ -70,22 +71,23 @@ function RunTest (path, options) {
 
 function RunCommandLineTests (options) {
   var result = true;
+  var tests = internal.unitTests();
 
-  for (var i = 0;  i < SYS_UNIT_TESTS.length;  ++i) {
-    var file = SYS_UNIT_TESTS[i];
+  for (var i = 0;  i < tests.length;  ++i) {
+    var file = tests[i];
 
     try {
       var testResult = RunTest(file, options);
-      result = result && testResult["passed"];
-      if (!testResult["passed"] && testResult["errors"]) {
-        for (var i = 0; i < testResult["errors"].length; ++i) {
-          var err = testResult["errors"][i];
-          if (!err) {
+      result = result && testResult && testResult.passed;
+      if (testResult && (! testResult.passed && testResult.errors)) {
+        for (var i = 0; i < testResult.errors.length; ++i) {
+          var err = testResult.errors[i];
+          if (! err) {
             continue;
           }
 
-          var position = file + ":" + err["line"] + ", " + err["character"];
-          var reason = err["reason"];
+          var position = file + ":" + err.line + ", " + err.character;
+          var reason = err.reason;
           console.error("jslint: %s : %s", position, reason);
         }
       }
@@ -101,7 +103,7 @@ function RunCommandLineTests (options) {
   }
 
 
-  SYS_UNIT_TESTS_RESULT = result;
+  internal.setUnitTestsResult(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

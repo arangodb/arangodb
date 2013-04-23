@@ -208,6 +208,8 @@ namespace triagens {
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
+      _method = method;
+
       if (_state == DEAD) {
         _connection->resetNumConnectRetries();
       }
@@ -225,9 +227,15 @@ namespace triagens {
       _writeBuffer.appendText(l);
       _writeBuffer.appendText(" HTTP/1.1\r\n");
 
+      string hostname = _connection->getEndpoint()->getHostString();
+      if (hostname.find(':') != string::npos) {
+        hostname = hostname.substr(0, hostname.find(':'));
+      }
+
       _writeBuffer.appendText("Host: ");
-      _writeBuffer.appendText(_connection->getEndpoint()->getHostString());
+      _writeBuffer.appendText(hostname);
       _writeBuffer.appendText("\r\n");
+
       _writeBuffer.appendText("Connection: Keep-Alive\r\n");
       _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
 
@@ -261,9 +269,14 @@ namespace triagens {
         _writeBuffer.appendText("\r\n");
       }
 
-      _writeBuffer.appendText("Content-Length: ");
-      _writeBuffer.appendInteger(bodyLength);
-      _writeBuffer.appendText("\r\n\r\n");
+      if (method != HttpRequest::HTTP_REQUEST_GET) {
+        _writeBuffer.appendText("Content-Length: ");
+        _writeBuffer.appendInteger(bodyLength);
+        _writeBuffer.appendText("\r\n\r\n");
+      }
+      else {
+        _writeBuffer.appendText("\r\n");
+      }
       _writeBuffer.appendText(body, bodyLength);
 
       LOGGER_TRACE("Request: " << _writeBuffer.c_str());
@@ -342,6 +355,13 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readBody () {
+      if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+        // HEAD requests may be responded to without a body...
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+        return true;
+      }
+
       if (_readBuffer.length() >= _result->getContentLength()) {
         _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
         _readBuffer.erase_front(_result->getContentLength());
@@ -403,6 +423,12 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readChunkedBody () {
+      if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+        // HEAD requests may be responded to without a body...
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+        return true;
+      }
 
       if (_readBuffer.length() >= _nextChunkedSize) {
 

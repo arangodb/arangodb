@@ -13,18 +13,24 @@ AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
 dnl ----------------------------------------------------------------------------
-dnl check for MacOS X
+dnl check for MacOS X or FreeBSD
 dnl ----------------------------------------------------------------------------
 
 tr_DARWIN="no"
+tr_FREEBSD="no"
 
 case $target in
   *-apple-darwin*)
     tr_DARWIN="yes"
     ;;
+
+  *-*-freebsd*)
+    tr_FREEBSD="yes"
+    ;;
 esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
+AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl bits
@@ -33,6 +39,10 @@ dnl ----------------------------------------------------------------------------
 tr_BITS=32
 
 case $target_cpu in
+  amd64*)
+    tr_BITS=64
+    ;;
+
   x86_64*)
     tr_BITS=64
     ;;
@@ -41,8 +51,7 @@ esac
 TRI_BITS="$tr_BITS"
 AC_SUBST(TRI_BITS)
 
-CFLAGS="${CFLAGS} -DTRI_BITS=${TRI_BITS}"
-CXXFLAGS="${CXXFLAGS} -DTRI_BITS=${TRI_BITS}"
+CPPFLAGS="${CPPFLAGS} -DTRI_BITS=${TRI_BITS}"
 
 dnl ----------------------------------------------------------------------------
 dnl use automake to generate Makfile.in
@@ -187,26 +196,6 @@ if test "x$tr_ISYSTEM" = "xno";  then
 fi
 
 dnl ----------------------------------------------------------------------------
-dnl checks for linker settings
-dnl ----------------------------------------------------------------------------
-
-case $target in
-  *-apple-darwin*)
-    ABS_STATIC_LIBS="yes"
-    STATIC_LIBS=""
-    DYNAMIC_LIBS=""
-    LIBTOOL_LIBS=""
-    USE_DYLD="yes"
-    ;;
-
-  *)
-    STATIC_LIBS="-Wl,-Bstatic"
-    DYNAMIC_LIBS="-Wl,-Bdynamic"
-    LIBTOOL_LIBS="-Wl,"
-    ;;
-esac
-
-dnl ----------------------------------------------------------------------------
 dnl generate correct include, either -I oder -isystem
 dnl ----------------------------------------------------------------------------
 
@@ -239,181 +228,4 @@ AC_DEFUN([TR_LIBRARY],[
         ;;
     esac
   done
-])
-
-dnl ----------------------------------------------------------------------------
-dnl static enable library
-dnl
-dnl usage: TR_STATIC_ENABLE(static-if-name)
-dnl ----------------------------------------------------------------------------
-
-AC_DEFUN([TR_STATIC_ENABLE],[
-  if test "x$STATIC_LIBS" != x -o "x$ABS_STATIC_LIBS" = xyes;  then
-    AC_ARG_ENABLE(static-$1,
-      AS_HELP_STRING([--enable-static-$1], [using static library '$1' (default: no)]),
-      [tr_static_$1="$enableval"],
-      [tr_static_$1="no"]
-    )
-  else
-    tr_static_$1="no"
-  fi
-])
-
-dnl ----------------------------------------------------------------------------
-dnl find static or shared C library
-dnl
-dnl usage: TR_FIND_C_LIBRARY(static-if-name,
-dnl                          library,
-dnl                          lib environment,
-dnl                          function to check)
-dnl
-dnl returns: tr_library_found
-dnl ----------------------------------------------------------------------------
-
-AC_DEFUN([TR_FIND_C_LIBRARY],[
-  if test "x$ABS_STATIC_LIBS" = xyes -a "x$tr_static_$1" = xyes;  then
-    tr_library_found=no
-
-    AC_MSG_CHECKING([$2])
-    TR_LIBRARY($2)
-
-    if test "x$tr_library" != x;  then
-      $3="$tr_library $$3"
-      AC_MSG_RESULT([$tr_library])
-      tr_library_found=yes
-    else
-      AC_MSG_RESULT([no])
-    fi
-  else
-    tr_library_found=yes
-
-    AC_CHECK_LIB([$2],
-                 [$4],
-                 [$3="-l$2 $$3"],
-                 [tr_library_found=no])
-  fi
-])
-
-dnl ----------------------------------------------------------------------------
-dnl find static or shared C++ library
-dnl
-dnl usage: TR_FIND_CXX_LIBRARY(static-if-name,
-dnl                            library,
-dnl                            lib environment,
-dnl                            include header,
-dnl                            body source code)
-dnl
-dnl returns: tr_library_found
-dnl ----------------------------------------------------------------------------
-
-AC_DEFUN([TR_FIND_CXX_LIBRARY],[
-  if test "x$ABS_STATIC_LIBS" = xyes -a "x$tr_static_$1" = xyes;  then
-    tr_library_found=no
-
-    AC_MSG_CHECKING([$2])
-    TR_LIBRARY($2)
-
-    if test "x$tr_library" != x;  then
-      $3="$tr_library $$3"
-      AC_MSG_RESULT([$tr_library])
-      tr_library_found=yes
-    else
-      AC_MSG_RESULT([no])
-    fi
-  else
-    tr_library_found=yes
-
-    AX_CXX_CHECK_LIB([$2],
-                     [$4],
-                     [$5],
-                     [$3="-l$2 $$3"],
-                     [tr_library_found=no])
-  fi
-])
-
-dnl ----------------------------------------------------------------------------
-dnl find absolute path for libraries
-dnl
-dnl usage: TR_ABSOLUTE_LIBRARIES(lib environment)
-dnl
-dnl returns: tr_libraries_found
-dnl ----------------------------------------------------------------------------
-
-AC_DEFUN([TR_ABSOLUTE_LIBRARIES],
-  [if test "x$tr_static_$1" = xyes -a "x$ABS_STATIC_LIBS" = xyes;  then
-     tr_libraries_found=no
-     tr_missing=""
-     tr_result=""
-     tr_special=""
-
-     for tr_lib in $$2;  do
-       case $tr_lib in
-         -lpthread|-lm|-lrt)
-           tr_special="$tr_special $tr_lib"
-           ;;
-
-	 -l*)
-	   lib=`echo $tr_lib | sed -e 's:^-l::'`
-	   tr_missing="$tr_missing $lib"
-	   ;;
-       esac
-     done
-
-     for tr_path in $$2;  do
-       case $tr_path in
-	 -L*)
-	   path=`echo $tr_path | sed -e 's:^-L::'`
-
-	   tr_still_missing=""
-
-	   for tr_lib in $tr_missing;  do
-	     AC_MSG_CHECKING([for the static library $tr_lib in $path])
-
-	     if test -f "$path/lib$tr_lib.a";  then
-               AC_MSG_RESULT([$path/lib$tr_lib.a])
-	       tr_result="$tr_result $path/lib$tr_lib.a"
-	     else
-               AC_MSG_RESULT()
-	       tr_still_missing="$tr_sill_missing $tr_lib"
-	     fi
-	   done
-
-	   tr_missing="$tr_still_missing"
-	   ;;
-       esac
-     done
-
-     for tr_path in $LDFLAGS;  do
-       case $tr_path in
-	 -L*)
-	   path=`echo $tr_path | sed -e 's:^-L::'`
-
-	   tr_still_missing=""
-
-	   for tr_lib in $tr_missing;  do
-	     AC_MSG_CHECKING([for the static library $tr_lib in $path])
-
-	     if test -f "$path/lib$tr_lib.a";  then
-               AC_MSG_RESULT([$path/lib$tr_lib.a])
-	       tr_result="$tr_result $path/lib$tr_lib.a"
-	     else
-               AC_MSG_RESULT()
-	       tr_still_missing="$tr_sill_missing $tr_lib"
-	     fi
-	   done
-
-	   tr_missing="$tr_still_missing"
-	   ;;
-       esac
-     done
-
-     if test "x$tr_missing" = x;  then
-       tr_libraries_found=yes
-       $2="$tr_result $tr_special"
-     else
-       tr_libraries_found=no
-     fi
-   else
-     tr_libraries_found=yes
-   fi
 ])

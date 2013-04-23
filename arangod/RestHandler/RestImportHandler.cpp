@@ -29,7 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Utilities/ResourceHolder.h"
 #include "VocBase/document-collection.h"
@@ -181,13 +181,13 @@ void RestImportHandler::logDocument (const TRI_json_t* const json) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?type=documents&collection=@FA{collection-name}}
+/// @REST{POST /_api/import?type=documents&collection=`collection-name`}
 ///
-/// Creates documents in the collection identified by @FA{collection-name}.
+/// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request.
 ///
-/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByDocumentsLines () {
@@ -303,7 +303,7 @@ bool RestImportHandler::createByDocumentsLines () {
         int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, values, waitForSync, &edge, false);
+          res = trx.createEdge(&document, values, waitForSync, &edge);
         }
 
         if (edge._fromKey != 0) {
@@ -315,7 +315,7 @@ bool RestImportHandler::createByDocumentsLines () {
       }
       else {
         // do not acquire an extra lock
-        res = trx.createDocument(&document, values, waitForSync, false);
+        res = trx.createDocument(&document, values, waitForSync);
       }
 
 
@@ -353,13 +353,13 @@ bool RestImportHandler::createByDocumentsLines () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?type=array&collection=@FA{collection-name}}
+/// @REST{POST /_api/import?type=array&collection=`collection-name`}
 ///
-/// Creates documents in the collection identified by @FA{collection-name}.
+/// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request.
 ///
-/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByDocumentsList () {
@@ -477,7 +477,7 @@ bool RestImportHandler::createByDocumentsList () {
         int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, values, waitForSync, &edge, false);
+          res = trx.createEdge(&document, values, waitForSync, &edge);
         }
 
         if (edge._fromKey != 0) {
@@ -489,7 +489,7 @@ bool RestImportHandler::createByDocumentsList () {
       }
       else {
         // do not acquire an extra lock
-        res = trx.createDocument(&document, values, waitForSync, false);
+        res = trx.createDocument(&document, values, waitForSync);
       }
 
 
@@ -526,13 +526,13 @@ bool RestImportHandler::createByDocumentsList () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?collection=@FA{collection-name}}
+/// @REST{POST /_api/import?collection=`collection-name`}
 ///
-/// Creates documents in the collection identified by @FA{collection-name}.
+/// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request.
 ///
-/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByKeyValueList () {
@@ -718,7 +718,7 @@ bool RestImportHandler::createByKeyValueList () {
         int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, json, waitForSync, &edge, false);
+          res = trx.createEdge(&document, json, waitForSync, &edge);
         }
 
         if (edge._fromKey != 0) {
@@ -730,7 +730,7 @@ bool RestImportHandler::createByKeyValueList () {
       }
       else {
         // do not acquire an extra lock
-        res = trx.createDocument(&document, json, waitForSync, false);
+        res = trx.createDocument(&document, json, waitForSync);
       }
 
 

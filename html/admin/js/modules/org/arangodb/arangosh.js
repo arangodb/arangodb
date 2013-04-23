@@ -89,19 +89,24 @@ exports.createHelpHeadline = function (text) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // must came after the export of createHelpHeadline
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var arangodb = require("org/arangodb");
+var ArangoError = arangodb.ArangoError;
 
 exports.checkRequestResult = function (requestResult) {
   if (requestResult === undefined) {
     requestResult = {
       "error" : true,
-      "code"  : 0,
-      "errorNum" : 0,
+      "code"  : 500,
+      "errorNum" : arangodb.ERROR_INTERNAL,
       "errorMessage" : "Unknown error. Request result is empty"
     };
   }
 
   if (requestResult.error !== undefined && requestResult.error) {    
+    if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
+      throw new TypeError(requestResult.errorMessage);
+    }
+
     throw new ArangoError(requestResult);
   }
 };

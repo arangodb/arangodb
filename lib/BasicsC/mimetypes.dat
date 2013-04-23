@@ -1,0 +1,18 @@
+################################################################################
+## mimetypes
+################################################################################
+
+"gif","image/gif",false
+"jpg","image/jpg",false
+"png","image/png",false
+"ico","image/x-icon",false
+"css","text/css",true
+"js","text/javascript",true
+"json","application/json",true
+"html","text/html",true
+"htm","text/html",true
+"pdf","application/pdf",false
+"txt","text/plain",true
+"text","text/plain",true
+"xml","application/xml",true
+

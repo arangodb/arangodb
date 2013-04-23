@@ -1,15 +1,15 @@
-unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=productsNoWait&waitForSync=true
+unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products&waitForSync=true
 { "Hello": "World" }
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
-etag: "16990631"
-location: /_api/document/productsNoWait/16990631
+etag: "19743143"
+location: /_api/document/products/19743143
 
 { 
   "error" : false, 
-  "_id" : "productsNoWait/16990631", 
-  "_rev" : "16990631", 
-  "_key" : "16990631" 
+  "_id" : "products/19743143", 
+  "_rev" : "19743143", 
+  "_key" : "19743143" 
 }
 

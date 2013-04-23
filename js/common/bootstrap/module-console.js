@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, sloppy: true */
+/*global require, SYS_GETLINE, SYS_LOG */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -28,9 +28,72 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
+  // cannot use strict here as we are going to delete globals
+
+  var exports = require("console");
+
+  var sprintf = require("internal").sprintf;
+  var inspect = require("internal").inspect;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief group level
+////////////////////////////////////////////////////////////////////////////////
+
+  var groupLevel = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timers
+////////////////////////////////////////////////////////////////////////////////
+
+  var timers = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal logging
+////////////////////////////////////////////////////////////////////////////////
+
+  var log = SYS_LOG;
+  delete SYS_LOG;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal logging with group level
+////////////////////////////////////////////////////////////////////////////////
+
+  function logGroup (level, msg) {
+    'use strict';
+
+    log(level, groupLevel + msg);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -41,21 +104,53 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var internal = require("internal");
-  var console = require("console");
-
-  var sprintf = internal.sprintf;
-  var log = internal.log;
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a line from standard input
+/// @brief assert
+/// 
+/// @FUN{console.assert(@FA{expression}, @FA{format}, @FA{argument1}, ...)}
+///
+/// Tests that an expression is true. If not, logs a message and throws an
+/// exception.
 ////////////////////////////////////////////////////////////////////////////////
 
-  console.getline = internal.getline;
+  exports.assert = function (condition) {
+    'use strict';
+
+    if (condition) {
+      return;
+    }
+
+    var args = Array.prototype.slice.call(arguments, 1);
+    var msg;
+
+    try {
+      msg = sprintf.apply(sprintf, args);
+    }
+    catch (err) {
+      msg = err + ": " + args;
+    }
+
+    log("error", msg);
+
+    require('assert').ok(condition, msg);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs debug message
+/// @brief dir
+///
+/// @FUN{console.dir(@FA{object})}
+///
+/// Logs a static / interactive listing of all properties of the object.
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.dir = function (object) {
+    'use strict';
+
+    log("info", inspect(object));
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug
 ///
 /// @FUN{console.debug(@FA{format}, @FA{argument1}, ...)}
 ///
@@ -70,7 +165,9 @@
 /// - @LIT{\%o} object hyperlink
 ////////////////////////////////////////////////////////////////////////////////
 
-  console.debug = function () {
+  exports.debug = function () {
+    'use strict';
+
     var msg;
 
     try {
@@ -84,7 +181,7 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs error message
+/// @brief error
 ///
 /// @FUN{console.error(@FA{format}, @FA{argument1}, ...)}
 ///
@@ -92,7 +189,9 @@
 /// error message.
 ////////////////////////////////////////////////////////////////////////////////
 
-  console.error = function () {
+  exports.error = function () {
+    'use strict';
+
     var msg;
 
     try {
@@ -106,7 +205,59 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs info message
+/// @brief getline
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GETLINE !== "undefined") {
+    exports.getline = SYS_GETLINE;
+    delete SYS_GETLINE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief group
+///
+/// @FUN{console.group(@FA{format}, @FA{argument1}, ...)}
+///
+/// Formats the arguments according to @FA{format} and logs the result as log
+/// message. Opens a nested block to indent all future messages sent. Call
+/// @FN{groupEnd} to close the block. Representation of block is up to the
+/// platform, it can be an interactive block or just a set of indented sub
+/// messages.
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.group = function () {
+    'use strict';
+
+    var msg;
+
+    try {
+      msg = sprintf.apply(sprintf, arguments);
+    }
+    catch (err) {
+      msg = err + ": " + arguments;
+    }
+
+    logGroup("info", msg);
+
+    groupLevel = groupLevel + "  ";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief groupEnd
+///
+/// @FUN{console.groupEnd()}
+/// 
+/// Closes the most recently opened block created by a call to @FN{group}.
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.groupEnd = function () {
+    'use strict';
+
+    groupLevel = groupLevel.substr(2);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief info
 ///
 /// @FUN{console.info(@FA{format}, @FA{argument1}, ...)}
 ///
@@ -114,7 +265,9 @@
 /// info message.
 ////////////////////////////////////////////////////////////////////////////////
 
-  console.info = function () {
+  exports.info = function () {
+    'use strict';
+
     var msg;
 
     try {
@@ -128,7 +281,7 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs log message
+/// @brief log
 ///
 /// @FUN{console.log(@FA{format}, @FA{argument1}, ...)}
 ///
@@ -136,21 +289,65 @@
 /// log message.
 ////////////////////////////////////////////////////////////////////////////////
 
-  console.log = function () {
-    var msg;
+  exports.log = exports.info;
 
-    try {
-      msg = sprintf.apply(sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time
+///
+/// @FUN{console.time(@FA{name})}
+///
+/// Creates a new timer under the given name. Call @FN{timeEnd} with the same
+/// name to stop the timer and log the time elapsed.
+////////////////////////////////////////////////////////////////////////////////
 
-    log("info", msg);
+  exports.time = function (label) {
+    'use strict';
+
+    timers[label] = Date.now();
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs warn message
+/// @brief timeEnd
+///
+/// @FUN{console.timeEnd(@FA{name})}
+///
+/// Stops a timer created by a call to @FN{time} and logs the time elapsed. 
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.timeEnd = function(label) {
+    'use strict';
+
+    var time = timers[label];
+
+    if (! time) {
+      throw new Error('No such label: ' + label);
+    }
+
+    delete timers[label];
+
+    var duration = Date.now() - time;
+    exports.log('%s: %dms', label, duration);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trace
+/// 
+/// @FUN{console.trace()}
+///
+/// Logs a static stack trace of JavaScript execution at the point where it is
+/// called. 
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.trace = function () {
+    var err = new Error();
+    err.name = 'trace';
+    err.message = sprintf.apply(sprintf, arguments);
+    Error.captureStackTrace(err, arguments.callee);
+    exports.log(err.stack);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief warn
 ///
 /// @FUN{console.warn(@FA{format}, @FA{argument1}, ...)}
 ///
@@ -158,7 +355,9 @@
 /// warn message.
 ////////////////////////////////////////////////////////////////////////////////
 
-  console.warn = function () {
+  exports.warn = function () {
+    'use strict';
+
     var msg;
 
     try {

@@ -1,0 +1,15 @@
+.statGroups {
+  margin-bottom: 10px;
+  border: 1px solid black;
+  background-color: white;
+}
+
+.statSystem th{
+  width: 300px;
+}
+
+.statClient {
+  height: 100px;
+  margin: 10px;
+  border: 1px solid black;
+}

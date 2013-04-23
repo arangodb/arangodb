@@ -27,8 +27,6 @@
 
 #include "v8-vocbase.h"
 
-#include "3rdParty/valgrind/valgrind.h"
-
 #include "build.h"
 
 #include "Logger/Logger.h"
@@ -44,7 +42,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
@@ -53,10 +51,10 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/EmbeddableTransaction.h"
+#include "Utils/ExplicitTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransaction.h"
-#include "Utils/UserTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utilities/ResourceHolder.h"
 #include "V8/v8-conv.h"
@@ -81,6 +79,28 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief macro to make sure we won't continue if we are inside a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+#define PREVENT_EMBEDDED_TRANSACTION(scope)                               \
+  if (V8TransactionContext::isEmbedded()) {                               \
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);  \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -258,22 +278,6 @@ static const TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection type the object is responsible for
-/// - "db" will return TRI_COL_TYPE_DOCUMENT
-/// - "edges" will return TRI_COL_TYPE_EDGE
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
-  v8::Handle<v8::Value> type = obj->Get(TRI_V8_SYMBOL("_type"));
-
-  if (type->IsNumber()) {
-    return (TRI_col_type_e) TRI_ObjectToInt64(type);
-  }
-
-  return TRI_COL_TYPE_DOCUMENT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -326,14 +330,12 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
   }
 
   // string handle
-
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
   char const* s = *str;
 
   if (s == 0) {
     return false;
   }
-
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   regmatch_t matches[3];
@@ -352,6 +354,43 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a document key from a document
+////////////////////////////////////////////////////////////////////////////////
+
+static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
+                               TRI_voc_key_t& key) {
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (arg->IsObject()) {
+    v8::Handle<v8::Object> obj = arg->ToObject();
+
+    if (obj->Has(v8g->_KeyKey)) {
+      v8::Handle<v8::Value> v = obj->Get(v8g->_KeyKey);
+
+      if (v->IsString()) {
+        // string key
+        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+        key = TRI_DuplicateString2(*str, str.length());
+
+        return TRI_ERROR_NO_ERROR;
+      }
+      else {
+        key = 0;
+        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      }
+    }
+    else {
+      key = 0;
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+    }
+  }
+  else {
+    key = 0;
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,11 +493,11 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
 /// @brief converts argument strings to TRI_vector_pointer_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int AttributeNamesFromArguments (v8::Arguments const& argv,
-                                 TRI_vector_pointer_t* result,
-                                 size_t start,
-                                 size_t end,
-                                 string& error) {
+static int AttributeNamesFromArguments (v8::Arguments const& argv,
+                                        TRI_vector_pointer_t* result,
+                                        size_t start,
+                                        size_t end,
+                                        string& error) {
 
   // ...........................................................................
   // convert the arguments into a "C" string and stuff them into a vector
@@ -471,7 +510,7 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
       error = "invalid attribute name";
 
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
 
     TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
@@ -484,12 +523,15 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     }
 
+    TRI_ASSERT_MAINTAINER(cArgument != 0);
+
     // cannot index internal attributes such as _key, _rev, _id, _from, _to...
     if (! ValidateAttributeName(cArgument, false)) {
       error = "invalid attribute name";
 
+      TRI_Free(TRI_CORE_MEM_ZONE, cArgument);
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
 
     TRI_PushBackVectorPointer(result, cArgument);
@@ -509,7 +551,7 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
         error = "duplicate attribute names";
 
         TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-        return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       }
     }
 
@@ -528,6 +570,10 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
                                               bool create,
                                               TRI_idx_type_e type) {
   v8::HandleScope scope;
+  
+  if (create) {
+    PREVENT_EMBEDDED_TRANSACTION(scope);
+  }
 
   // .............................................................................
   // Check that we have a valid collection
@@ -548,7 +594,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   // .............................................................................
@@ -557,7 +603,8 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   if (argv.Length() == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: " + cmd + "(<path>, ...)")));
+    string msg = cmd + "(<path>, ...)";
+    TRI_V8_EXCEPTION_USAGE(scope, msg.c_str());
   }
 
   // .............................................................................
@@ -581,9 +628,9 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     TRI_DestroyVectorPointer(&attributes);
 
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, errorString)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
   }
-
+  
   // .............................................................................
   // Actually create the index here
   // .............................................................................
@@ -632,7 +679,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (idx == 0) {
     ReleaseCollection(collection);
     if (create) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created", true)));
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "index could not be created");
     }
     else {
       return scope.Close(v8::Null());
@@ -647,7 +694,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   if (! json) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
@@ -672,12 +719,15 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <minLength>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "ensureFulltextIndex(<attribute>, <minLength>)");
   }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   string attributeName = TRI_ObjectToString(argv[0]);
+
   if (! ValidateAttributeName(attributeName.c_str(), false)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "invalid index attribute name")));
+    TRI_V8_TYPE_ERROR(scope, "invalid index attribute name");
   }
 
   // 2013-01-17: deactivated substring indexing option because there is no working implementation
@@ -708,7 +758,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   // .............................................................................
@@ -734,8 +784,9 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 
   if (idx == 0) {
     ReleaseCollection(collection);
+
     if (create) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created", true)));
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "index could not be created");
     }
     else {
       return scope.Close(v8::Null());
@@ -750,7 +801,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 
   if (! json) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
@@ -780,9 +831,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   // first and only argument should be a document idenfifier
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: document(<document-handle>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "document(<document-handle>)");
   }
 
   ResourceHolder holder;
@@ -795,8 +844,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   if (useCollection) {
     // called as db.collection.document()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
     if (col == 0) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
     vocbase = col->_vocbase;
@@ -810,8 +860,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+
   if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
@@ -823,13 +874,15 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");;
   }
 
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+
   if (barrier == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   assert(barrier != 0);
@@ -838,7 +891,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
-  res = trx.read(&document, key, true);
+  res = trx.read(&document, key);
 
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
@@ -854,7 +907,11 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
       TRI_FreeBarrier(barrier);
     }
 
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "document not found", true)));
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    }
+
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "document not found");
   }
 
   if (rid != 0 && document._rid != rid) {
@@ -862,7 +919,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
       TRI_FreeBarrier(barrier);
     }
 
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CONFLICT, "revision not found")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_ARANGO_CONFLICT, "revision not found");
   }
 
   return scope.Close(result);
@@ -878,9 +935,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   // check the arguments
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: replace(<document>, <data>, <overwrite>, <waitForSync>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "replace(<document>, <data>, <overwrite>, <waitForSync>)");
   }
 
   const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 3);
@@ -897,8 +952,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   if (useCollection) {
     // called as db.collection.replace()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
     if (col == 0) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
     vocbase = col->_vocbase;
@@ -912,8 +968,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+
   if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
@@ -925,25 +982,25 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
-
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "<data> cannot be converted into JSON shape")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
   TRI_doc_mptr_t document;
-  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision, true);
+  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
 
   res = trx.finish(res);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
   }
 
   assert(document._key);
@@ -951,10 +1008,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -963,15 +1020,20 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 /// @brief saves a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
-                                             TRI_vocbase_col_t* col,
-                                             v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveVocbaseCol (
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    TRI_vocbase_col_t* col,
+    v8::Arguments const& argv,
+    bool replace) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: save(<data>, <waitForSync>)")));
+    if (replace) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>])");
+    }
+    else {
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
+    }
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -980,89 +1042,66 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   // set document key
   TRI_voc_key_t key = 0;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  int res;
 
   if (argv[0]->IsObject()) {
-    v8::Handle<v8::Object> obj = argv[0]->ToObject();
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-      if (v->IsString()) {
-        // string key
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
-        holder.registerString(TRI_CORE_MEM_ZONE, key);
-      }
-      else {
-        return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD)));
-      }
+    res = ExtractDocumentKey(argv[0]->ToObject(), key);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    else if (key != 0) {
+      holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
-
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "<data> cannot be converted into JSON shape")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
   const bool forceSync = ExtractForceSync(argv, 2);
 
   TRI_doc_mptr_t document;
-  int res = trx->createDocument(key, &document, shaped, forceSync, true);
+  res = trx->createDocument(key, &document, shaped, forceSync);
 
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
   }
 
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new edge document
-///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
-///
-/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
-/// must be documents or document references.
-///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
-///
-/// The optional @FA{waitForSync} parameter can be used to force
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
-///
-/// @EXAMPLES
-///
-/// @TINYEXAMPLE{shell_create-edge,create an edge}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
-                                          TRI_vocbase_col_t* col,
-                                          v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveEdgeCol (
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    TRI_vocbase_col_t* col,
+    v8::Arguments const& argv,
+    bool replace) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() < 3 || argv.Length() > 4) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: save(<from>, <to>, <data>, <waitForSync>)")));
+    if (replace) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>])");
+    }
+    else {
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
+    }
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -1070,19 +1109,16 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
   // set document key
   TRI_voc_key_t key = 0;
+  int res;
 
   if (argv[2]->IsObject()) {
-    v8::Handle<v8::Object> obj = argv[2]->ToObject();
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-      if (v->IsString()) {
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
-        holder.registerString(TRI_CORE_MEM_ZONE, key);
-      }
-      else {
-        return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD)));
-      }
+    res = ExtractDocumentKey(argv[2]->ToObject(), key);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    else if (key != 0) {
+      holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
 
@@ -1107,6 +1143,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   if (! err.IsEmpty()) {
     return scope.Close(v8::ThrowException(err));
   }
+
   edge._fromCid = fromCollection->_cid;
 
   // extract to
@@ -1119,33 +1156,33 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   if (! err.IsEmpty()) {
     return scope.Close(v8::ThrowException(err));
   }
+
   edge._toCid = toCollection->_cid;
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
 
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "<data> cannot be converted into JSON shape")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
 
   TRI_doc_mptr_t document;
-  int res = trx->createEdge(key, &document, shaped, forceSync, &edge, true);
+  res = trx->createEdge(key, &document, shaped, forceSync, &edge);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save edge", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save edge");
   }
 
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1160,9 +1197,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   // check the arguments
   if (argv.Length() < 2 || argv.Length() > 5) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: update(<document>, <data>, <overwrite>, <keepnull>, <waitForSync>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, <overwrite>, <keepnull>, <waitForSync>)");
   }
 
   const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 3);
@@ -1182,8 +1217,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   if (useCollection) {
     // called as db.collection.update()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
     if (col == 0) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
     vocbase = col->_vocbase;
@@ -1197,8 +1233,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+
   if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
@@ -1208,17 +1245,18 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   assert(col);
   assert(key);
 
-
   TRI_json_t* json = TRI_ObjectToJson(argv[1]);
+
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "<data> is no valid JSON")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> is no valid JSON");
   }
 
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
   }
 
   // we must use a write-lock that spans both the initial read and the update.
@@ -1226,10 +1264,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   trx.lockWrite();
 
   TRI_doc_mptr_t document;
-  // do not acquire an extra lock
-  res = trx.read(&document, key, false);
+  res = trx.read(&document, key);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1239,20 +1277,20 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
 
   if (! holder.registerJson(primary->_shaper->_memoryZone, old)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
 
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  // do not acquire an extra-lock
-  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision, false);
+  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
   }
 
   assert(document._key);
@@ -1260,10 +1298,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1278,8 +1316,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
   // check the arguments
   if (argv.Length() < 1 || argv.Length() > 3) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                                "usage: remove(<document>, <overwrite>, <waitForSync>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <overwrite>, <waitForSync>)");
   }
 
   const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 2);
@@ -1295,8 +1332,9 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   if (useCollection) {
     // called as db.collection.remove()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
     if (col == 0) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
     vocbase = col->_vocbase;
@@ -1310,8 +1348,9 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+
   if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
@@ -1321,11 +1360,11 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   assert(col);
   assert(key);
 
-
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
   }
 
   res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
@@ -1336,7 +1375,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
       return scope.Close(v8::False());
     }
     else {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
     }
   }
 
@@ -1353,15 +1392,15 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // expecting at least one arguments
   if (argv.Length() < 1 || argv.Length() > 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: _create(<name>, <properties>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
   }
+
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // set default journal size
   TRI_voc_size_t effectiveSize = vocbase->_defaultMaximalSize;
@@ -1374,7 +1413,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "<properties> must be an object")));
+      TRI_V8_TYPE_ERROR(scope, "<properties> must be an object");
     }
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
@@ -1385,9 +1424,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       double s = TRI_ObjectToDouble(p->Get(v8g->JournalSizeKey));
 
       if (s < TRI_JOURNAL_MINIMAL_SIZE) {
-        return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "<properties>.journalSize is too small")));
+        TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize is too small");
       }
 
       // overwrite journal size with user-specified value
@@ -1415,14 +1452,14 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       parameter._isVolatile = TRI_ObjectToBoolean(p->Get(v8g->IsVolatileKey));
 #else
       TRI_FreeCollectionInfoOptions(&parameter);
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "volatile collections are not supported on this platform", true)));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections are not supported on this platform");
 #endif
     }
 
     if (parameter._isVolatile && parameter._waitForSync) {
       // the combination of waitForSync and isVolatile makes no sense
       TRI_FreeCollectionInfoOptions(&parameter);
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "volatile collections do not support the waitForSync option", true)));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
     }
 
   }
@@ -1435,7 +1472,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   TRI_FreeCollectionInfoOptions(&parameter);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot create collection");
   }
 
   return scope.Close(TRI_WrapCollection(collection));
@@ -1445,8 +1482,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 /// @brief ensures that a geo index or constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool constraint) {
+static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool unique) {
   v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -1459,13 +1498,13 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
   bool created;
-  int off = constraint ? 1 : 0;
+  int off = unique ? 1 : 0;
   bool ignoreNull = false;
 
   // .............................................................................
@@ -1477,16 +1516,14 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
     if (*loc == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                "<location> must be an attribute path")));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[1]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1498,16 +1535,14 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
     if (*loc == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                "<location> must be an attribute path")));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<location> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1520,23 +1555,19 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
     if (*lat == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                "<latitude> must be an attribute path")));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<latitude> must be an attribute path");
     }
 
     if (*lon == 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                "<longitude> must be an attribute path")));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<longitude> must be an attribute path");
     }
 
-    if (constraint) {
+    if (unique) {
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, unique, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1546,30 +1577,30 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   else {
     ReleaseCollection(collection);
 
-    if (constraint) {
-      return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                "usage: ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) " \
-                                "or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)")));
+    if (unique) {
+      TRI_V8_EXCEPTION_USAGE(
+        scope, 
+        "ensureGeoConstraint(<latitude>, <longitude>, <ignore-null>) "  \
+        "or ensureGeoConstraint(<location>, [<geojson>], <ignore-null>)");
     }
     else {
-      return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                "usage: ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])")));
+      TRI_V8_EXCEPTION_USAGE(
+        scope,
+        "ensureGeoIndex(<latitude>, <longitude>) or ensureGeoIndex(<location>, [<geojson>])");
     }
   }
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-        TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
   ResourceHolder holder;
   TRI_json_t* json = idx->json(idx, primary);
+
   if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
@@ -1625,8 +1656,9 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, resolver, context);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute query");
   }
 
   // optimise
@@ -1638,7 +1670,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
   // add barriers for all collections used
   if (! TRI_AddBarrierCollectionsAql(context)) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot add barrier", true)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot add barrier");
   }
 
 
@@ -1688,29 +1720,21 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   TRI_json_t* json = TRI_ObjectToJson(result);
 
   if (! json) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-
-    return scope.Close(v8::ThrowException(errorObject));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
   if (! cursorResult) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-
-    return scope.Close(v8::ThrowException(errorObject));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
   if (! cursor) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-
-    return scope.Close(v8::ThrowException(errorObject));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   assert(cursor);
@@ -1740,12 +1764,15 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 /// @brief weak reference callback for general cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakGeneralCursorCallback (v8::Isolate* isolate,
+                                       v8::Persistent<v8::Value> object,
+                                       void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
 
   LOG_TRACE("weak-callback for general cursor called");
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+
   if (! vocbase) {
     return;
   }
@@ -1753,7 +1780,7 @@ static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* p
   TRI_EndUsageDataShadowData(vocbase->_cursors, parameter);
 
   // dispose and clear the persistent handle
-  object.Dispose();
+  object.Dispose(isolate);
   object.Clear();
 }
 
@@ -1765,8 +1792,8 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  TRI_v8_global_t* v8g;
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
 
@@ -1776,7 +1803,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
     return scope.Close(cursorObject);
   }
 
-  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
+  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(cursor));
 
   if (tryCatch.HasCaught()) {
     return scope.Close(v8::Undefined());
@@ -1785,7 +1812,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
   cursorObject->SetInternalField(SLOT_CLASS, persistent);
 
-  persistent.MakeWeak(cursor, WeakGeneralCursorCallback);
+  persistent.MakeWeak(isolate, cursor, WeakGeneralCursorCallback);
 
   return scope.Close(cursorObject);
 }
@@ -1815,77 +1842,188 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 /// @brief executes a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
 static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  if (argv.Length() != 2 || ! argv[0]->IsObject() || ! argv[1]->IsFunction()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "TRANSACTION(<object>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (! vocbase) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
+  // treat the argument as an object from now on
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
 
-  v8::Handle<v8::Array> collections = v8::Handle<v8::Array>::Cast(argv[0]);
-  if (collections.IsEmpty()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
-  }
+  // extract the properties from the object
+  
+  // "lockTimeout"
+  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
 
-  bool isValid = true;
+  if (object->Has(TRI_V8_SYMBOL("lockTimeout"))) {
+    static const string timeoutError = "<lockTimeout> must be a valid numeric value"; 
+    
+    if (! object->Get(TRI_V8_SYMBOL("lockTimeout"))->IsNumber()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
+    }
 
-  vector<string> readCollections;
-  vector<string> writeCollections;
-
-  if (collections->Has(TRI_V8_SYMBOL("read")) && collections->Get(TRI_V8_SYMBOL("read"))->IsArray()) {
-    v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("read")));
-
-    for (uint32_t i = 0 ; i < names->Length(); ++i) {
-      v8::Handle<v8::Value> collection = names->Get(i);
-      if (! collection->IsString()) {
-        isValid = false;
-        break;
-      }
-
-      readCollections.push_back(TRI_ObjectToString(collection));
+    lockTimeout = (double) TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("lockTimeout")));
+    if (lockTimeout < 0.0) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
     }
   }
 
-  if (collections->Has(TRI_V8_SYMBOL("write")) && collections->Get(TRI_V8_SYMBOL("write"))->IsArray()) {
-    v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("write")));
+  // "waitForSync"
+  bool waitForSync = false;
 
-    for (uint32_t i = 0 ; i < names->Length(); ++i) {
-      v8::Handle<v8::Value> collection = names->Get(i);
-      if (! collection->IsString()) {
-        isValid = false;
-        break;
+  if (object->Has(TRI_V8_SYMBOL("waitForSync"))) {
+    if (! object->Get(TRI_V8_SYMBOL("waitForSync"))->IsBoolean()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<waitForSync> must be a boolean value");
+    }
+    
+    waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
+  }
+
+  // "collections"
+  static const string collectionError = "missing/invalid collections definition for transaction";
+
+  if (! object->Has(TRI_V8_SYMBOL("collections")) || ! object->Get(TRI_V8_SYMBOL("collections"))->IsObject()) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, collectionError);
+  }
+  
+  // extract collections
+  v8::Handle<v8::Array> collections = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("collections")));
+
+  if (collections.IsEmpty()) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, collectionError);
+  }
+  
+  bool isValid = true;
+  vector<string> readCollections;
+  vector<string> writeCollections;
+
+  // collections.read
+  if (collections->Has(TRI_V8_SYMBOL("read"))) {
+    if (collections->Get(TRI_V8_SYMBOL("read"))->IsArray()) {
+      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("read")));
+
+      for (uint32_t i = 0 ; i < names->Length(); ++i) {
+        v8::Handle<v8::Value> collection = names->Get(i);
+        if (! collection->IsString()) {
+          isValid = false;
+          break;
+        }
+
+        readCollections.push_back(TRI_ObjectToString(collection));
       }
+    }
+    else if (collections->Get(TRI_V8_SYMBOL("read"))->IsString()) {
+      readCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_SYMBOL("read"))));
+    }
+    else {
+      isValid = false;
+    }
+  }
+  
+  // collections.write
+  if (collections->Has(TRI_V8_SYMBOL("write"))) {
+    if (collections->Get(TRI_V8_SYMBOL("write"))->IsArray()) {
+      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("write")));
 
-      writeCollections.push_back(TRI_ObjectToString(collection));
+      for (uint32_t i = 0 ; i < names->Length(); ++i) {
+        v8::Handle<v8::Value> collection = names->Get(i);
+        if (! collection->IsString()) {
+          isValid = false;
+          break;
+        }
+      
+        writeCollections.push_back(TRI_ObjectToString(collection));
+      }
+    }
+    else if (collections->Get(TRI_V8_SYMBOL("write"))->IsString()) {
+      writeCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_SYMBOL("write"))));
+    }
+    else {
+      isValid = false;
     }
   }
 
   if (! isValid) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+    TRI_V8_EXCEPTION_PARAMETER(scope, collectionError);
   }
+
+  // extract the "action" property
+  static const string actionError = "missing/invalid action definition for transaction";
+
+  if (! object->Has(TRI_V8_SYMBOL("action"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
+  }
+
+  // function parameters
+  v8::Handle<v8::Value> params;
+
+  if (object->Has(TRI_V8_SYMBOL("params"))) {
+    params = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("params")));
+  }
+  else {
+    params = v8::Undefined();
+  }
+  
+  if (params.IsEmpty()) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+  
 
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
 
-  UserTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, readCollections, writeCollections);
+  // callback function
+  v8::Handle<v8::Function> action;
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+  if (object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+    action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
+  }
+  else if (object->Get(TRI_V8_SYMBOL("action"))->IsString()) {
+    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+
+    // Invoke Function constructor to create function with the given body and no arguments
+    string body = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("action"))->ToString());
+    body = "return (" + body + ")(params);";
+    v8::Handle<v8::Value> argv[2] = { v8::String::New("params"), v8::String::New(body.c_str(), body.size()) };
+    v8::Local<v8::Object> function = ctor->NewInstance(2, argv);
+
+    action = v8::Local<v8::Function>::Cast(function);
+  }
+  else {
+    TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
+  }
+  
+  if (action.IsEmpty()) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
 
-  v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(argv[1]);
-  v8::Handle<v8::Value> args;
-  v8::Handle<v8::Value> result = func->Call(current, 0, &args);
+
+  // start actual transaction
+  CollectionNameResolver resolver(vocbase);
+  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
+                                                                        resolver, 
+                                                                        readCollections, 
+                                                                        writeCollections, 
+                                                                        lockTimeout,
+                                                                        waitForSync); 
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  v8::Handle<v8::Value> args = params;
+  v8::Handle<v8::Value> result = action->Call(current, 1, &args);
 
   if (tryCatch.HasCaught()) {
     trx.abort();
@@ -1893,21 +2031,14 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (! TRI_ObjectToBoolean(result)) {
-    trx.abort();
-
-    return scope.Close(v8::False());
-  }
-
   res = trx.commit();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+    TRI_V8_EXCEPTION(scope, res);
   }
-
-  return scope.Close(v8::True());
+  
+  return scope.Close(result);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
@@ -1917,9 +2048,7 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: NORMALIZE_STRING(<string>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "NORMALIZE_STRING(<string>)");
   }
 
   return scope.Close(TRI_normalize_V8_Obj(argv[0]));
@@ -1933,9 +2062,7 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: COMPARE_STRING(<left string>, <right string>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "COMPARE_STRING(<left string>, <right string>)");
   }
 
   v8::String::Value left(argv[0]);
@@ -1961,13 +2088,11 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: RELOAD_AUTH()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "RELOAD_AUTH()");
   }
 
   bool result = TRI_ReloadAuthInfo(vocbase);
@@ -1985,29 +2110,23 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   if (argv.Length() < 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: CREATE_CURSOR(<list>, <do-count>, <batch-size>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_CURSOR(<list>, <do-count>, <batch-size>)");
   }
 
   if (! argv[0]->IsArray()) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "<list> must be a list")));
+    TRI_V8_TYPE_ERROR(scope, "<list> must be a list");
   }
-
+    
   // extract objects
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[0]);
   TRI_json_t* json = TRI_ObjectToJson(array);
 
   if (json == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "cannot convert <list> to JSON")));
+    TRI_V8_TYPE_ERROR(scope, "cannot convert <list> to JSON");
   }
 
   // return number of total records in cursor?
@@ -2046,8 +2165,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   }
 
   if (cursor == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot create cursor")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot create cursor");
   }
 
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
@@ -2062,17 +2180,13 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: dispose()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "dispose()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (! vocbase) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2088,17 +2202,13 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: id()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "id()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2107,8 +2217,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
     return scope.Close(V8StringId(id));
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2119,17 +2228,13 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: count()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "count()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_general_cursor_t* cursor;
@@ -2143,8 +2248,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New(length));
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2155,17 +2259,13 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: count()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "next()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   v8::Handle<v8::Value> value;
@@ -2216,7 +2316,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     }
   }
 
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2227,17 +2327,13 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: persist()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "persist()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   bool result = TRI_PersistDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2246,31 +2342,27 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     return scope.Close(v8::True());
   }
 
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next x rows from the cursor in one go
+/// @brief return all following rows from the cursor in one go
 ///
 /// This function constructs multiple rows at once and should be preferred over
 /// hasNext()...next() when iterating over bigger result sets
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: getRows()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "toArray()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   v8::Handle<v8::Array> rows = v8::Array::New();
@@ -2316,7 +2408,16 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
     }
   }
 
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief alias for toArray()
+/// @deprecated
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv) {
+  return JS_ToArrayGeneralCursor(argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2327,17 +2428,13 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: getBatchSize()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "getBatchSize()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_general_cursor_t* cursor;
@@ -2351,7 +2448,7 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
     return scope.Close(v8::Number::New(max));
   }
 
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2362,17 +2459,13 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: hasCount()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "hasCount()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_general_cursor_t* cursor;
@@ -2386,7 +2479,7 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
     return scope.Close(hasCount ? v8::True() : v8::False());
   }
 
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2398,17 +2491,13 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
   v8::TryCatch tryCatch;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: hasNext()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "hasNext()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_general_cursor_t* cursor;
@@ -2424,7 +2513,7 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
     return scope.Close(hasNext ? v8::True() : v8::False());
   }
 
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2435,17 +2524,13 @@ static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: unuse()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "unuse()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (! vocbase) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_EndUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
@@ -2461,26 +2546,20 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: CURSOR(<cursor-identifier>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "CURSOR(<cursor-identifier>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // get the id
   v8::Handle<v8::Value> idArg = argv[0]->ToString();
 
   if (! idArg->IsString()) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "expecting a string for <cursor-identifier>)")));
+    TRI_V8_TYPE_ERROR(scope, "expecting a string for <cursor-identifier>)");
   }
 
   const string idString = TRI_ObjectToString(idArg);
@@ -2491,7 +2570,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageIdShadowData(vocbase->_cursors, id);
 
   if (cursor == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
   }
 
   return scope.Close(WrapGeneralCursor(cursor));
@@ -2505,26 +2584,20 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: DELETE_CURSOR(<cursor-identifier>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "DELETE_CURSOR(<cursor-identifier>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // get the id
   v8::Handle<v8::Value> idArg = argv[0]->ToString();
 
   if (! idArg->IsString()) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "expecting a string for <cursor-identifier>)")));
+    TRI_V8_TYPE_ERROR(scope, "expecting a string for <cursor-identifier>)");
   }
 
   string idString = TRI_ObjectToString(idArg);
@@ -2558,22 +2631,20 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   const uint32_t argc = argv.Length();
 
   if (argc < 1 || argc > 5) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <batchSize>, <allowDirectReturn>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <batchSize>, <allowDirectReturn>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (! vocbase) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // get the query string
   v8::Handle<v8::Value> queryArg = argv[0];
-  if (!queryArg->IsString()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "expecting string for <querystring>");
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (! queryArg->IsString()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
 
   const string queryString = TRI_ObjectToString(queryArg);
@@ -2610,10 +2681,9 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   AhuacatlGuard context(vocbase, queryString);
-  if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (! context.valid()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> result;
@@ -2644,22 +2714,19 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   const uint32_t argc = argv.Length();
 
   if (argc < 1 || argc > 3) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_EXPLAIN(<querystring>, <bindvalues>, <performoptimisations>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_EXPLAIN(<querystring>, <bindvalues>, <performoptimisations>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (! vocbase) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // get the query string
   v8::Handle<v8::Value> queryArg = argv[0];
   if (!queryArg->IsString()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "expecting string for <querystring>");
-
-    return scope.Close(v8::ThrowException(errorObject));
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
 
   const string queryString = TRI_ObjectToString(queryArg);
@@ -2674,10 +2741,9 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   }
 
   AhuacatlGuard guard(vocbase, queryString);
-  if (! guard.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (! guard.valid()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   TRI_aql_context_t* context = guard.ptr();
@@ -2703,8 +2769,9 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, context);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot explain query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot explain query");
   }
 
   if ((performOptimisations && ! TRI_OptimiseQueryContextAql(context)) ||
@@ -2745,28 +2812,28 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_PARSE(<querystring>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_PARSE(<querystring>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (! vocbase) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // get the query string
   v8::Handle<v8::Value> queryArg = argv[0];
+
   if (!queryArg->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
+
   string queryString = TRI_ObjectToString(queryArg);
 
   AhuacatlGuard context(vocbase, queryString);
-  if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
-    return scope.Close(v8::ThrowException(errorObject));
+  if (! context.valid()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   // parse & validate
@@ -2832,7 +2899,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
     voc_did_t _did;        // this is the tick for a create, but not an update
     TRI_voc_rid_t _rid;    // this is the tick for an create and update
-    TRI_voc_eid_t _sid;
+    TRI_voc_tid_t _sid;
 
     TRI_shape_sid_t _shape;
   }
@@ -2854,14 +2921,14 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
     voc_did_t _did;        // this is the tick for a create, but not an update
     TRI_voc_rid_t _rid;    // this is the tick for an create and update
-    TRI_voc_eid_t _sid;
+    TRI_voc_tid_t _sid;
   }
   doc_deletion_marker_t_deprecated;
 
   ssize_t writeResult;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: upgrade()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "upgrade()");
   }
 
   TRI_vocbase_col_t const* collection;
@@ -2878,7 +2945,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_collection_t* col = &primary->base;
@@ -3028,7 +3095,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_CopyString(keyBody, didBuffer, keySize);
 
             newMarker._rid = oldMarker->_rid;
-            newMarker._sid = oldMarker->_sid;
+            newMarker._tid = 0;
             newMarker._shape = oldMarker->_shape;
             newMarker._offsetKey = newMarkerSize;
             newMarker._offsetJson = newMarkerSize + keyBodySize;
@@ -3088,7 +3155,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_CopyString(keyBody + keySize + toSize, fromDidBuffer, fromSize);
 
             newMarker.base._rid = oldMarker->base._rid;
-            newMarker.base._sid = oldMarker->base._sid;
+            newMarker.base._tid = 0;
             newMarker.base._shape = oldMarker->base._shape;
             newMarker.base._offsetKey = newMarkerSize;
             newMarker.base._offsetJson = newMarkerSize + keyBodySize;
@@ -3137,7 +3204,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_CopyString(keyBody, didBuffer, keySize);
 
             newMarker._rid = oldMarker->_rid;
-            newMarker._sid = oldMarker->_sid;
+            newMarker._tid = 0;
             newMarker._offsetKey = newMarkerSize;
 
             newMarker.base._size = newMarkerSize + keyBodySize;
@@ -3263,11 +3330,11 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: datafileScan(<path>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "datafileScan(<path>)");
   }
 
   string path = TRI_ObjectToString(argv[0]);
@@ -3277,7 +3344,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
       collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
   TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
@@ -3349,14 +3416,15 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot count documents", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot count documents");
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -3364,7 +3432,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
 
-  size_t s = primary->size(primary);
+  const TRI_voc_size_t s = primary->size(primary);
 
   trx.finish(res);
   // READ-LOCK end
@@ -3386,7 +3454,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -3394,7 +3462,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
       collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
   TRI_col_file_structure_t structure = TRI_FileStructureCollectionDirectory(collection->_path);
@@ -3510,14 +3578,15 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    res = TRI_ERROR_INTERNAL;
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
-  else {
-    res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
-  }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+
+  res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot drop collection", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
   }
 
   return scope.Close(v8::Undefined());
@@ -3543,6 +3612,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -3550,21 +3621,21 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-
+  
   CollectionNameResolver resolver(collection->_vocbase);
 
   TRI_primary_collection_t* primary = collection->_collection;
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (argv.Length() != 1) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: dropIndex(<index-handle>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
   }
 
   TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], true, &err);
@@ -3626,6 +3697,8 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
 static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -3638,7 +3711,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
@@ -3650,9 +3723,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
     if (size <= 0) {
       ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(
-        TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                              "<size> must be at least 1")));
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be at least 1");
     }
 
     idx = TRI_EnsureCapConstraintDocumentCollection(document, size, &created);
@@ -3664,23 +3735,21 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   else {
     ReleaseCollection(collection);
-
-    return scope.Close(v8::ThrowException(
-      TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                            "ensureCapConstraint(<size>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>)");
   }
 
   if (idx == 0) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "index could not be created");
   }
 
   ResourceHolder holder;
 
   TRI_json_t* json = idx->json(idx, primary);
+
   if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
@@ -3706,6 +3775,8 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   TRI_index_t* bitarrayIndex = 0;
   bool indexCreated;
   v8::Handle<v8::Value> theIndex;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // .............................................................................
   // Check that we have a valid collection
@@ -3727,7 +3798,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
@@ -3739,7 +3810,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if ( (argv.Length() < 2) || (argv.Length() % 2 != 0) ) {
     LOG_WARNING("bitarray index creation failed -- invalid parameters (require key_1,values_1,...,key_n,values_n)");
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureBitarray(path 1, <list of values 1>, <path 2>, <list of values 2>, ...)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "ensureBitarray(path 1, <list of values 1>, <path 2>, <list of values 2>, ...)");
   }
 
 
@@ -3773,7 +3844,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (! argument->IsString() ) {
         errorString = "invalid parameter -- expected string parameter";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
@@ -3792,11 +3863,10 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (! argument->IsArray() ) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
-
 
       // .........................................................................
       // Attempt to convert the V8 javascript function argument into a TRI_json_t
@@ -3811,7 +3881,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value == 0) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
@@ -3823,7 +3893,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value->_type != TRI_JSON_LIST) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
@@ -3842,12 +3912,10 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
     if (attributes._length != values._length) {
       errorString = "invalid parameter -- expected an array (list)";
-      errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      errorCode   = TRI_ERROR_BAD_PARAMETER;
       ok = false;
     }
   }
-
-
 
   // .............................................................................
   // Actually create the index here
@@ -3856,6 +3924,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if (ok) {
     char* errorStr = 0;
     bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(document, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
+
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
          errorString = "index could not be created from Simple Collection";
@@ -4196,6 +4265,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   bool created = false;
   TRI_index_t* idx;
 
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // .............................................................................
   // Check that we have a valid collection
@@ -4216,7 +4286,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
@@ -4258,7 +4328,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
     TRI_DestroyVectorPointer(&attributes);
 
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, errorString)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
   }
 
   // .............................................................................
@@ -4421,7 +4491,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -4429,8 +4499,9 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   CollectionNameResolver resolver(collection->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch figures");
   }
 
   // READ-LOCK start
@@ -4443,13 +4514,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK end
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch figures");
   }
 
   if (info == NULL) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-
-    return scope.Close(v8::ThrowException(errorObject));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Object> alive = v8::Object::New();
@@ -4483,6 +4552,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> shapes = v8::Object::New();
   result->Set(v8::String::New("shapes"), shapes);
   shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
+  
+  // attributes info
+  v8::Handle<v8::Object> attributes = v8::Object::New();
+  result->Set(v8::String::New("attributes"), attributes);
+  attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -4507,14 +4581,15 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot get indexes", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot get indexes");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
@@ -4530,7 +4605,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   // READ-LOCK end
 
   if (! indexes) {
-    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Array> result = v8::Array::New();
@@ -4587,7 +4662,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   // this copies the name into a new place so we can safely access it later
@@ -4679,7 +4754,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
   if (! TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
     ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
@@ -4696,7 +4771,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
       bool waitForSync = base->_info._waitForSync;
       size_t maximalSize = base->_info._maximalSize;
-      size_t maximumMarkerSize = base->_maximumMarkerSize;
 
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -4711,32 +4785,21 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
         if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
           ReleaseCollection(collection);
-          return scope.Close(v8::ThrowException(
-                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                     "<properties>.journalSize too small")));
-        }
-
-        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
-          ReleaseCollection(collection);
-          return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "<properties>.journalSize too small")));
+          TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize too small");
         }
       }
 
       if (po->Has(v8g->IsVolatileKey)) {
         if (TRI_ObjectToBoolean(po->Get(v8g->IsVolatileKey)) != base->_info._isVolatile) {
           ReleaseCollection(collection);
-          return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "isVolatile option cannot be changed at runtime")));
+          TRI_V8_EXCEPTION_PARAMETER(scope, "isVolatile option cannot be changed at runtime");
         }
       }
 
       if (base->_info._isVolatile && waitForSync) {
         // the combination of waitForSync and isVolatile makes no sense
         ReleaseCollection(collection);
-        return scope.Close(v8::ThrowException(
-                           TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                 "volatile collections do not support the waitForSync option")));
+        TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
       }
 
       // update collection
@@ -4750,7 +4813,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
       if (res != TRI_ERROR_NO_ERROR) {
         ReleaseCollection(collection);
-        return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+        TRI_V8_EXCEPTION(scope, res);
       }
     }
   }
@@ -4766,15 +4829,12 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
     if (keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
     else {
       result->Set(v8g->KeyOptionsKey, v8::Array::New());
     }
     result->Set(v8g->WaitForSyncKey, base->_info._waitForSync ? v8::True() : v8::False());
-
-    if (keyOptions != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-    }
   }
 
   ReleaseCollection(collection);
@@ -4875,25 +4935,27 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: rename(<name>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "rename(<name>)");
   }
 
   string name = TRI_ObjectToString(argv[0]);
 
   if (name.empty()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<name> must be non-empty")));
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<name> must be non-empty");
   }
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot rename collection", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot rename collection");
   }
 
   return scope.Close(v8::Undefined());
@@ -5055,30 +5117,206 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 /// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
 
-
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
   }
 
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, col, argv);
+    result = SaveVocbaseCol(&trx, col, argv, false);
   }
   else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, col, argv);
+    result = SaveEdgeCol(&trx, col, argv, false);
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn SaveEdgeCol
+/// @brief saves a new edge document
+///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
+///
+/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
+/// must be documents or document references.
+///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @EXAMPLES
+///
+/// @TINYEXAMPLE{shell_create-edge,create an edge}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves or replaces a document
+///
+/// @FUN{@FA{collection}.saveOrReplace(@FA{data})}
+///
+/// Creates a new document with in the @FA{collection} from the given @FA{data}
+/// or replaces an existing document. The @FA{data} must be a hash array. It
+/// must not contain attributes starting with `_`, expect the document key
+/// stored in `_key`. If there already exists a document with the given key it
+/// is replaced.
+///
+/// The method returns a document with the attributes `_key`, `_id` and `_rev`.
+/// The attribute `_id` contains the document handle of the newly created or
+/// replaced document; the attribute `_key` contains the document key; the
+/// attribute `_rev` contains the document revision.
+///
+/// @FUN{@FA{collection}.saveOrReplace(@FA{data}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document creation operation to disk even in case that the
+/// `waitForSync` flag had been disabled for the entire collection.  Thus, the
+/// `waitForSync` parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the `waitForSync` parameter to
+/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
+/// then the collection's default `waitForSync` behavior is applied. The
+/// `waitForSync` parameter cannot be used to disable synchronisation for
+/// collections that have a default `waitForSync` value of `true`.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{ShellSaveOrReplace1}
+/// doc = db.saveOrReplace("aardvark", { german: "Erdferkell" });
+/// doc = db.saveOrReplace("aardvark", { german: "Erdferkel" });
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  size_t pos;
+
+  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+    if (argv.Length() < 1) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>]");
+    }
+
+    pos = 0;
+  }
+  else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+    if (argv.Length() < 1) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>]");
+    }
+
+    pos = 2;
+  }
+  else {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
+  }
+
+  ResourceHolder holder;
+
+  TRI_voc_key_t key;
+  int res = ExtractDocumentKey(argv[pos], key);
+
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  else if (key != 0) {
+    holder.registerString(TRI_CORE_MEM_ZONE, key);
+  }
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.begin failed");
+  }
+
+  res = trx.lockWrite();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.lockWrite failed");
+  }
+
+  if (key != 0) {
+    TRI_doc_mptr_t document;
+    res = trx.read(&document, key);
+  }
+  else {
+    res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  v8::Handle<v8::Value> result;
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_primary_collection_t* primary = trx.primaryCollection();
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[pos], primary->_shaper);
+
+    if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
+    }
+
+    const bool forceSync = ExtractForceSync(argv, pos + 1);
+
+    TRI_doc_mptr_t document;
+    TRI_voc_rid_t rid = 0;
+    TRI_voc_rid_t actualRevision = 0;
+    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision);
+
+    res = trx.finish(res);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
+    }
+
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+    v8::Handle<v8::Object> r = v8::Object::New();
+    r->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+    r->Set(v8g->_RevKey, V8RevisionId(document._rid));
+    r->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+    r->Set(v8g->_KeyKey, v8::String::New(document._key));
+
+    result = r;
+  }
+  else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+      result = SaveVocbaseCol(&trx, col, argv, true);
+    }
+    else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+      result = SaveEdgeCol(&trx, col, argv, true);
+    }
+  }
+  else {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.read failed");
   }
 
   return scope.Close(result);
@@ -5096,11 +5334,11 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: setAttribute(<key>, <value>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "setAttribute(<key>, <value>)");
   }
 
   string key = TRI_ObjectToString(argv[0]);
@@ -5131,7 +5369,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "setAttribute failed", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "setAttribute failed");
   }
 
   return scope.Close(v8::Undefined());
@@ -5147,7 +5385,7 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -5181,25 +5419,26 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch revision", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch revision");
   }
 
   // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_rid_t rid = primary->base._info._rid;
+  TRI_voc_tick_t tick = primary->base._info._tick;
 
   trx.finish(res);
   // READ-LOCK end
 
-  return scope.Close(V8RevisionId(rid));
+  return scope.Close(V8RevisionId(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5212,22 +5451,32 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   const bool forceSync = ExtractForceSync(argv, 1);
 
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
-  }
 
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+  
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+  
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
+  }
+  
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+
+  if (barrier == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   res = trx.truncate(forceSync);
   res = trx.finish(res);
 
+  TRI_FreeBarrier(barrier);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate collection");
   }
 
   return scope.Close(v8::Undefined());
@@ -5243,11 +5492,11 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: truncateDatafile(<datafile>, <size>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "truncateDatafile(<datafile>, <size>)");
   }
 
   string path = TRI_ObjectToString(argv[0]);
@@ -5257,7 +5506,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
   int res = TRI_TruncateDatafile(path.c_str(), size);
@@ -5265,7 +5514,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate datafile", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot truncate datafile");
   }
 
   return scope.Close(v8::Undefined());
@@ -5287,7 +5536,7 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -5316,13 +5565,13 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot unload collection", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot unload collection");
   }
 
   return scope.Close(v8::Undefined());
@@ -5338,7 +5587,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   TRI_col_info_t info;
@@ -5350,7 +5599,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   TRI_FreeCollectionInfoOptions(&info);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch collection info");
   }
 
   return scope.Close(v8::Number::New((int) info._version));
@@ -5391,17 +5640,18 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
+  v8::Handle<v8::Object> holder = info.Holder()->ToObject();
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(holder, WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   if (   key == "toString"
@@ -5411,24 +5661,42 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  // get the collection type (document/edge)
-  const TRI_col_type_e collectionType = GetVocBaseCollectionType(info.Holder());
+  if (holder->HasRealNamedProperty(name)) {
+    v8::Handle<v8::Object> value = holder->GetRealNamedProperty(name)->ToObject();
+    TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
-  // look up the value if it exists
-  TRI_vocbase_col_t const* collection;
+    if (collection != 0) {
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_vocbase_col_status_e status = collection->_status;
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      if (status != TRI_VOC_COL_STATUS_DELETED) {
+        return scope.Close(value);
+      }
+      else {
+        holder->Delete(name);
+      }
+    }
+  }
 
-  collection = TRI_FindCollectionByNameOrBearVocBase(vocbase, key.c_str(), (TRI_col_type_t) collectionType);
+  // look up the collection
+  TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, key.c_str());
 
-  // if the key is not present return an empty handle as signal
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot load or create collection")));
+    return scope.Close(v8::Undefined());
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    return scope.Close(v8::ThrowException(v8::String::New("collection is not a document or edge collection")));
+    TRI_V8_TYPE_ERROR(scope, "collection is not a document or edge collection");
   }
 
-  return scope.Close(TRI_WrapCollection(collection));
+  v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
+
+  // TODO: when this line is uncommented, the collection names are cached.
+  // but this causes problems and confusion somewhere else. Need to find the reason!
+  // holder->Set(name, result);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5479,12 +5747,12 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   // expecting one argument
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: _collection(<name>|<identifier>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "_collection(<name>|<identifier>)");
   }
 
   v8::Handle<v8::Value> val = argv[0];
@@ -5527,7 +5795,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
@@ -5589,7 +5857,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_create()"));
   result->Set(j++, v8::String::New("_createDocumentCollection()"));
   result->Set(j++, v8::String::New("_createEdgeCollection()"));
+  result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
+  result->Set(j++, v8::String::New("_drop()"));
+  result->Set(j++, v8::String::New("_query()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
@@ -5664,13 +5935,18 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// With properties:
 ///
 /// @verbinclude shell_create-collection-properties
+///
+/// With a key generator:
+///
+/// @verbinclude shell_create-collection-keygen
+///
+/// With a special key option:
+///
+/// @verbinclude shell_create-collection-keyoptions
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
-  // get the collection type (document/edge)
-  const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
-
-  return CreateVocBase(argv, collectionType);
+  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5960,9 +6236,11 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
 /// @brief weak reference callback for a barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakBarrierCallback (v8::Isolate* isolate,
+                                 v8::Persistent<v8::Value> object,
+                                 void* parameter) {
   TRI_barrier_t* barrier;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
   barrier = (TRI_barrier_t*) parameter;
 
   LOG_TRACE("weak-callback for barrier called");
@@ -5973,7 +6251,7 @@ static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* paramet
 
 
   // dispose and clear the persistent handle
-  persistent.Dispose();
+  persistent.Dispose(isolate);
   persistent.Clear();
 
   // free the barrier
@@ -5981,47 +6259,51 @@ static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* paramet
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects an attribute from the shaped json
+/// @brief selects a named attribute from the shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
-                                               const v8::AccessorInfo& info) {
+static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
+                                                    const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
   // sanity check
   v8::Handle<v8::Object> self = info.Holder();
 
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "corrupted shaped json");
   }
 
   // get shaped json
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted shaped json")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "corrupted shaped json");
   }
 
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
   TRI_primary_collection_t* collection = barrier->_container->_collection;
 
   // convert the JavaScript string to a string
-  string key = TRI_ObjectToString(name);
+  const string key = TRI_ObjectToString(name);
 
-  if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+  if (key.size() == 0) {
+    // we must not throw a v8 exception here because this will cause follow up errors
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
-  if (TRI_IsSystemCollectionName(key.c_str())) {
+  char const* ckey = key.c_str();
+
+  if (ckey[0] == '_' || strchr(ckey, '.') != 0) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
-  TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, ckey);
 
-  // TRI_shape_sid_t sid;
-  // TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
+  if (pid == 0) {
+    return scope.Close(v8::Handle<v8::Value>());
+  }
 
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
@@ -6040,7 +6322,8 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     }
   }
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+    // we must not throw a v8 exception here because this will cause follow up errors
+    return scope.Close(v8::Handle<v8::Value>());
   }
 }
 
@@ -6112,9 +6395,9 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
     }
   }
 
-  result->Set(count++, v8g->DidKey);
-  result->Set(count++, v8g->RevKey);
-  result->Set(count++, v8g->KeyKey);
+  result->Set(count++, v8g->_IdKey);
+  result->Set(count++, v8g->_RevKey);
+  result->Set(count++, v8g->_KeyKey);
 
   return scope.Close(result);
 }
@@ -6174,6 +6457,21 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an indexed attribute from the shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t index,
+                                                      const v8::AccessorInfo& info) {
+  v8::HandleScope scope;
+
+  char* str = TRI_StringUInt32(index);
+  v8::Local<v8::String> strVal = v8::String::New(str);
+  TRI_Free(TRI_CORE_MEM_ZONE, str);
+
+  return scope.Close(MapGetNamedShapedJson(strVal, info));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6203,13 +6501,13 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
+    v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
 
     if (! ParseDocumentHandle(didVal, collectionName, key)) {
       return false;
     }
 
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey), true);
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
 
     if (rid == 0) {
       return false;
@@ -6321,7 +6619,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IidKey);
+    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
@@ -6355,8 +6653,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
-                                        TRI_col_type_e type) {
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
   v8::HandleScope scope;
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -6365,7 +6662,6 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
                                             const_cast<TRI_vocbase_t*>(database));
 
   result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
-  result->Set(TRI_V8_SYMBOL("_type"), v8::Integer::New((int) type), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6382,7 +6678,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(v8g->DidKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6396,8 +6692,14 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
                                           TRI_doc_mptr_t const* document,
                                           TRI_barrier_t* barrier) {
   v8::HandleScope scope;
+  
+  TRI_ASSERT_MAINTAINER(document != 0);
+  TRI_ASSERT_MAINTAINER(document->_key != 0);
+  TRI_ASSERT_MAINTAINER(collection != 0);
+  TRI_ASSERT_MAINTAINER(barrier != 0);
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
@@ -6415,11 +6717,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
   if (i == v8g->JSBarriers.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(barrier));
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
     result->SetInternalField(SLOT_BARRIER, persistent);
 
     v8g->JSBarriers[barrier] = persistent;
-    persistent.MakeWeak(barrier, WeakBarrierCallback);
+    persistent.MakeWeak(isolate, barrier, WeakBarrierCallback);
   }
   else {
     result->SetInternalField(SLOT_BARRIER, i->second);
@@ -6428,17 +6730,17 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
-  result->Set(v8g->RevKey, V8RevisionId(rid), v8::ReadOnly);
-  result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
+  result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
+  result->Set(v8g->_KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
 
-    result->Set(v8g->FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    result->Set(v8g->_FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
   }
 
   // and return
@@ -6457,23 +6759,16 @@ const int32_t TRI_GetVocBaseColType () {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
-                                      TRI_vocbase_t* vocbase,
-                                      const size_t threadNumber) {
+void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+                          TRI_vocbase_t* vocbase,
+                          const size_t threadNumber) {
   v8::HandleScope scope;
-
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::Template> pt;
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  // set the default database
   v8g->_vocbase = vocbase;
 
   // create the regular expressions
@@ -6503,44 +6798,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
 
-
-  // .............................................................................
-  // keys
-  // .............................................................................
-
-  v8g->IsSystemKey       = v8::Persistent<v8::String>::New(v8::String::New("isSystem"));
-  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(v8::String::New("isVolatile"));
-  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  v8g->KeyOptionsKey     = v8::Persistent<v8::String>::New(v8::String::New("keyOptions"));
-  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
-
-  if (v8g->DidKey.IsEmpty()) {
-    v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
-  }
-
-  if (v8g->KeyKey.IsEmpty()) {
-    v8g->KeyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_key"));
-  }
-
-  if (v8g->FromKey.IsEmpty()) {
-    v8g->FromKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_from"));
-  }
-
-  if (v8g->IidKey.IsEmpty()) {
-    v8g->IidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("id"));
-  }
-
-  if (v8g->OldRevKey.IsEmpty()) {
-    v8g->OldRevKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_oldRev"));
-  }
-
-  if (v8g->RevKey.IsEmpty()) {
-    v8g->RevKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_rev"));
-  }
-
-  if (v8g->ToKey.IsEmpty()) {
-    v8g->ToKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_to"));
-  }
+  v8::Handle<v8::ObjectTemplate> rt;
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::Template> pt;
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -6567,9 +6827,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
   TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
 
-  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
-
 
   // .............................................................................
   // generate the TRI_shaped_json_t template
@@ -6581,17 +6840,26 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
-  rt->SetNamedPropertyHandler(MapGetShapedJson,         // NamedPropertyGetter,
+  // accessor for named properties (e.g. doc.abcdef)
+  rt->SetNamedPropertyHandler(MapGetNamedShapedJson,    // NamedPropertyGetter,
                               0,                        // NamedPropertySetter setter = 0
                               PropertyQueryShapedJson,  // NamedPropertyQuery,
                               0,                        // NamedPropertyDeleter deleter = 0,
                               KeysOfShapedJson          // NamedPropertyEnumerator,
                                                         // Handle<Value> data = Handle<Value>());
                               );
+  
+  // accessor for indexed properties (e.g. doc[1])
+  rt->SetIndexedPropertyHandler(MapGetIndexedShapedJson,  // IndexedPropertyGetter,
+                                0,                        // IndexedPropertySetter setter = 0
+                                0,                        // IndexedPropertyQuery,
+                                0,                        // IndexedPropertyDeleter deleter = 0,
+                                0                         // IndexedPropertyEnumerator,
+                                                          // Handle<Value> data = Handle<Value>());
+                              );
 
-  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ShapedJson", ft->GetFunction());
-
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -6644,23 +6912,11 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
+  TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
-  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCollection", ft->GetFunction());
-
-
-  // .............................................................................
-  // generate the general error template
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(TRI_V8_SYMBOL("ArangoError"));
-
-  rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ft->GetFunction());
-
 
   // .............................................................................
   // generate the general cursor template
@@ -6669,21 +6925,22 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   ft = v8::FunctionTemplate::New();
   ft->SetClassName(TRI_V8_SYMBOL("ArangoCursor"));
 
-  pt = ft->PrototypeTemplate();
-  TRI_AddProtoMethodVocbase(pt, "count", JS_CountGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "dispose", JS_DisposeGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "getRows", JS_GetRowsGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "hasCount", JS_HasCountGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "hasNext", JS_HasNextGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "id", JS_IdGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "next", JS_NextGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "persist", JS_PersistGeneralCursor);
-  TRI_AddProtoMethodVocbase(pt, "unuse", JS_UnuseGeneralCursor);
-
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  TRI_AddMethodVocbase(rt, "count", JS_CountGeneralCursor);
+  TRI_AddMethodVocbase(rt, "dispose", JS_DisposeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getRows", JS_GetRowsGeneralCursor);
+  TRI_AddMethodVocbase(rt, "hasCount", JS_HasCountGeneralCursor);
+  TRI_AddMethodVocbase(rt, "hasNext", JS_HasNextGeneralCursor);
+  TRI_AddMethodVocbase(rt, "id", JS_IdGeneralCursor);
+  TRI_AddMethodVocbase(rt, "next", JS_NextGeneralCursor);
+  TRI_AddMethodVocbase(rt, "persist", JS_PersistGeneralCursor);
+  TRI_AddMethodVocbase(rt, "toArray", JS_ToArrayGeneralCursor);
+  TRI_AddMethodVocbase(rt, "unuse", JS_UnuseGeneralCursor);
+
+  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCursor", ft->GetFunction());
 
   // .............................................................................
@@ -6702,31 +6959,16 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
 
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
-#if 0
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
-#endif
 
   // .............................................................................
   // create global variables
   // .............................................................................
-
-  context->Global()->Set(TRI_V8_SYMBOL("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
-
-  // .............................................................................
-  // create the global variables
-  // .............................................................................
-
-  context->Global()->Set(TRI_V8_SYMBOL("db"),
-                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);
-  context->Global()->Set(v8::String::New("VALGRIND"), (RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False()), v8::ReadOnly);
+  
+  TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
-
-  return v8g;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

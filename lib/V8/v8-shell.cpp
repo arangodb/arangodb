@@ -32,11 +32,12 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/shell-colors.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "ShapedJson/shaped-json.h"
 
 #include <fstream>
 
+#include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
@@ -52,11 +53,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,7 +66,7 @@ static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
   (*array)->Set(column, v8::String::New(field));
@@ -80,7 +76,7 @@ static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t r
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
   (*array)->Set(column, v8::String::New(field));
@@ -92,18 +88,9 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
   (*cb)->Call(*cb, 2, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      JS functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a CSV file
@@ -133,14 +120,14 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: processCsvFile(<filename>, <callback>[, <options>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "processCsvFile(<filename>, <callback>[, <options>])");
   }
 
   // extract the filename
   TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF8 filename");
   }
 
   // extract the callback
@@ -161,7 +148,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
       separator = TRI_ObjectToString(options->Get(separatorKey));
 
       if (separator.size() != 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be exactly one character")));
+        TRI_V8_TYPE_ERROR(scope, "<options>.separator must be exactly one character");
       }
     }
 
@@ -170,7 +157,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
       quote = TRI_ObjectToString(options->Get(quoteKey));
 
       if (quote.length() > 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
+        TRI_V8_TYPE_ERROR(scope, "<options>.quote must be at most one character");
       }
     }
   }
@@ -179,7 +166,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   int fd = TRI_OPEN(*filename, O_RDONLY);
 
   if (fd < 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+    TRI_V8_EXCEPTION_SYS(scope, "cannot open file");
   }
 
   TRI_csv_parser_t parser;
@@ -212,7 +199,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
-      return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+      TRI_V8_EXCEPTION_SYS(scope, "cannot read file");
     }
     else if (n == 0) {
       TRI_DestroyCsvParser(&parser);
@@ -247,14 +234,14 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: processJsonFile(<filename>, <callback>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "processJsonFile(<filename>, <callback>)");
   }
 
   // extract the filename
   TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF8 filename");
   }
 
   // extract the callback
@@ -272,8 +259,8 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 
       getline(file, line);
 
-      char const* ptr = line.c_str();
-      char const* end = ptr + line.length();
+      const char* ptr = line.c_str();
+      const char* end = ptr + line.length();
 
       while (ptr < end && (*ptr == ' ' || *ptr == '\t' || *ptr == '\r')) {
         ++ptr;
@@ -287,9 +274,10 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
       v8::Handle<v8::Value> object = TRI_FromJsonString(line.c_str(), &error);
 
       if (object->IsUndefined()) {
-        v8::Handle<v8::String> msg = v8::String::New(error);
+        string msg = error;
         TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-        return scope.Close(v8::ThrowException(msg));
+
+        TRI_V8_SYNTAX_ERROR(scope, msg.c_str());
       }
 
       v8::Handle<v8::Number> r = v8::Number::New(row);
@@ -302,15 +290,11 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
     file.close();
   }
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot open file")));
+    TRI_V8_EXCEPTION_SYS(scope, "cannot open file");
   }
 
   return scope.Close(v8::Undefined());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL
@@ -319,11 +303,6 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 shell functions inside the global variable
@@ -339,90 +318,94 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_CSV_FILE", JS_ProcessCsvFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_JSON_FILE", JS_ProcessJsonFile);
 
+  // .............................................................................
+  // create the global variables
+  // .............................................................................
+
   v8::Handle<v8::Object> colors = v8::Object::New();
 
-  colors->Set(v8::String::New("COLOR_RED"),
-              v8::String::New(TRI_SHELL_COLOR_RED),
+  colors->Set(TRI_V8_STRING("COLOR_RED"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_RED),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_RED"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_RED),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_RED"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_RED),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_GREEN"),
-              v8::String::New(TRI_SHELL_COLOR_GREEN),
+  colors->Set(TRI_V8_STRING("COLOR_GREEN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_GREEN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_GREEN"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_GREEN),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_GREEN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_GREEN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BLUE"),
-              v8::String::New(TRI_SHELL_COLOR_BLUE),
+  colors->Set(TRI_V8_STRING("COLOR_BLUE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BLUE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_BLUE"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_BLUE),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_BLUE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLUE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_YELLOW"),
-              v8::String::New(TRI_SHELL_COLOR_YELLOW),
+  colors->Set(TRI_V8_STRING("COLOR_YELLOW"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_YELLOW),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_YELLOW"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_YELLOW),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_YELLOW"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_YELLOW),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_WHITE"),
-              v8::String::New(TRI_SHELL_COLOR_WHITE),
+  colors->Set(TRI_V8_STRING("COLOR_WHITE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_WHITE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_WHITE"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_WHITE),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_WHITE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_WHITE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_CYAN"),
-              v8::String::New(TRI_SHELL_COLOR_CYAN),
+  colors->Set(TRI_V8_STRING("COLOR_CYAN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_CYAN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_CYAN"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_CYAN),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_CYAN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_CYAN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_MAGENTA"),
-              v8::String::New(TRI_SHELL_COLOR_MAGENTA),
+  colors->Set(TRI_V8_STRING("COLOR_MAGENTA"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_MAGENTA),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_MAGENTA"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_MAGENTA),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_MAGENTA"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BLACK"),
-              v8::String::New(TRI_SHELL_COLOR_BLACK),
+  colors->Set(TRI_V8_STRING("COLOR_BLACK"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BLACK),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_BLACK"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_BLACK),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_BLACK"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLACK),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BLINK"),
-              v8::String::New(TRI_SHELL_COLOR_BLINK),
+  colors->Set(TRI_V8_STRING("COLOR_BLINK"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BLINK),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BRIGHT"),
-              v8::String::New(TRI_SHELL_COLOR_BRIGHT),
+  colors->Set(TRI_V8_STRING("COLOR_BRIGHT"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BRIGHT),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_RESET"),
-              v8::String::New(TRI_SHELL_COLOR_RESET),
+  colors->Set(TRI_V8_STRING("COLOR_RESET"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_RESET),
               v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("COLORS"), colors, v8::ReadOnly);
+  TRI_AddGlobalVariableVocbase(context, "COLORS", colors);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

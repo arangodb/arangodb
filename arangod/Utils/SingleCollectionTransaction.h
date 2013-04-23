@@ -30,16 +30,16 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/voc-errors.h"
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+#include "Utils/Transaction.h"
+
 #include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-#include "BasicsC/voc-errors.h"
-
-#include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
-
-#include "Utils/Transaction.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace arango {
@@ -71,13 +71,14 @@ namespace triagens {
 
         SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
                                      const triagens::arango::CollectionNameResolver& resolver,
-                                     const TRI_transaction_cid_t cid,
+                                     const TRI_voc_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
           Transaction<T>(vocbase, resolver),
-          _cid(cid) {
+          _cid(cid),
+          _accessType(accessType) {
 
           // add the (sole) collection
-          this->addCollection(cid, accessType);
+          this->addCollection(cid, _accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,17 +104,30 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_transaction_collection_t* trxCollection () {
+          TRI_ASSERT_MAINTAINER(_cid > 0);
+
+          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
+
+          TRI_ASSERT_MAINTAINER(trxCollection != 0);
+          return trxCollection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_primary_collection_t* primaryCollection () {
-          assert(this->_cid > 0);
+          TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
-          TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->_trx, this->_cid, TRI_TRANSACTION_READ);
-
-          assert(collection != 0);
-          assert(collection->_collection != 0);
-          return collection->_collection;
+          TRI_ASSERT_MAINTAINER(trxCollection != 0);
+          TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
+          TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
+          
+          return trxCollection->_collection->_collection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,15 +135,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_voc_cid_t cid () const {
-          return this->_cid;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection's barrier list
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_barrier_list_t* barrierList () {
-          return &primaryCollection()->_barrierList;
+          return _cid;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,9 +143,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int lockRead () {
-          TRI_primary_collection_t* primary = primaryCollection();
-
-          return this->lockExplicit(primary, TRI_TRANSACTION_READ);
+          return this->lock(this->trxCollection(), TRI_TRANSACTION_READ);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,29 +151,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int lockWrite () {
-          TRI_primary_collection_t* primary = primaryCollection();
-
-          return this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read any (random) document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
-          TRI_primary_collection_t* const primary = primaryCollection();
-
-          return this->readCollectionAny(primary, mptr, barrier);
+        inline int readRandom (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
+          return this->readAny(this->trxCollection(), mptr, barrier);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (TRI_doc_mptr_t* mptr, const string& key, const bool lock) {
-          TRI_primary_collection_t* const primary = primaryCollection();
-
-          return this->readCollectionDocument(primary, mptr, key, lock);
+        inline int read (TRI_doc_mptr_t* mptr, const string& key) {
+          return this->readSingle(this->trxCollection(), mptr, key);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,9 +175,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (vector<string>& ids) {
-          TRI_primary_collection_t* primary = primaryCollection();
-
-          return this->readCollectionDocuments(primary, ids);
+          return this->readAll(this->trxCollection(), ids);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,9 +187,8 @@ namespace triagens {
                   TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
                   uint32_t* total) {
-          TRI_primary_collection_t* primary = primaryCollection();
 
-          return this->readCollectionPointers(primary, docs, barrier, skip, limit, total);
+          return this->readSlice(this->trxCollection(), docs, barrier, skip, limit, total);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +206,17 @@ namespace triagens {
 
       private:
 
-        TRI_transaction_cid_t _cid;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_cid_t _cid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection access type
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_type_e _accessType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

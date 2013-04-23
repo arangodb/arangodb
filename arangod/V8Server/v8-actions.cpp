@@ -32,6 +32,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -39,7 +41,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
-#include "3rdParty/V8/include/v8.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -114,10 +115,10 @@ class v8_action_t : public TRI_action_t {
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(isolate);
 
       if (i != _callbacks.end()) {
-        i->second.Dispose();
+        i->second.Dispose(isolate);
       }
 
-      _callbacks[isolate] = v8::Persistent<v8::Function>::New(callback);
+      _callbacks[isolate] = v8::Persistent<v8::Function>::New(isolate, callback);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +126,7 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext();
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(false);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
@@ -270,6 +271,60 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add cookie
+////////////////////////////////////////////////////////////////////////////////
+
+static void addCookie (TRI_v8_global_t* v8g, HttpResponse* response, v8::Handle<v8::Object> data) {
+  
+  string name;
+  string value;
+  int lifeTimeSeconds = 0;
+  string path = "/";
+  string domain = "";
+  bool secure = false;
+  bool httpOnly = false;
+  
+  if (data->Has(v8g->NameKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->NameKey);
+    name = TRI_ObjectToString(v);    
+  }
+  else {
+    // something is wrong here
+    return;
+  }
+  if (data->Has(v8g->ValueKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->ValueKey);
+    value = TRI_ObjectToString(v);    
+  }
+  else {
+    // something is wrong here
+    return;
+  }
+  if (data->Has(v8g->LifeTimeKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->LifeTimeKey);
+    lifeTimeSeconds = TRI_ObjectToInt64(v);
+  }  
+  if (data->Has(v8g->PathKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->PathKey);
+    path = TRI_ObjectToString(v);    
+  }
+  if (data->Has(v8g->DomainKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->DomainKey);
+    domain = TRI_ObjectToString(v);    
+  }
+  if (data->Has(v8g->SecureKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->SecureKey);
+    secure = TRI_ObjectToBoolean(v);    
+  }
+  if (data->Has(v8g->HttpOnlyKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->HttpOnlyKey);
+    httpOnly = TRI_ObjectToBoolean(v);    
+  }
+
+  response->setCookie(name, value, lifeTimeSeconds, path, domain, secure, httpOnly);    
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -308,6 +363,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   //          "accept-encoding" : "gzip, deflate",
   //          "accept-language" : "de-de,en-us;q=0.7,en;q=0.3",
   //          "user-agent" : "Mozilla/5.0"
+  //        },
+  //
+  //        "cookies" : {
+  //          "ARANGODB_SESSION_ID" : "0cwuzusd23nw3qiwui84uwqwqw23e"
   //        },
   //
   //        "requestType" : "GET",
@@ -488,6 +547,18 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   req->Set(v8g->ParametersKey, valuesObject);
 
+  // copy cookies
+  v8::Handle<v8::Object> cookiesObject = v8::Object::New();
+
+  map<string, string> const& cookies = request->cookieValues();
+  iter = cookies.begin();
+
+  for (; iter != cookies.end(); ++iter) {
+    cookiesObject->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
+  }
+
+  req->Set(v8g->CookiesKey, cookiesObject);
+  
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
@@ -517,6 +588,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       response->setContentType(TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
     }
 
+    // .............................................................................
+    // body
+    // .............................................................................
+
     if (res->Has(v8g->BodyKey)) {
       // check if we should apply result transformations
       // transformations turn the result from one type into another
@@ -524,10 +599,11 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       // putting a list of transformations into the res.transformations
       // array, e.g. res.transformations = [ "base64encode" ]
       v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
+
       if (val->IsArray()) {
         string out(TRI_ObjectToString(res->Get(v8g->BodyKey)));
-
         v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+
         for (uint32_t i = 0; i < transformations->Length(); i++) {
           v8::Handle<v8::Value> transformator = transformations->Get(v8::Integer::New(i));
           string name = TRI_ObjectToString(transformator);
@@ -554,6 +630,31 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       }
     }
 
+    // .............................................................................
+    // body from file
+    // .............................................................................
+
+    else if (res->Has(v8g->BodyFromFileKey)) {
+      TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(v8g->BodyFromFileKey));
+      size_t length;
+      char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
+
+      if (content != 0) {
+        response->body().appendText(content, length);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+      }
+      else {
+        string msg = string("cannot read file '") + *filename + "': " + TRI_last_error();
+
+        response->body().appendText(msg.c_str());
+        response->setResponseCode(HttpResponse::SERVER_ERROR);
+      }
+    }
+
+    // .............................................................................
+    // headers
+    // .............................................................................
+
     if (res->Has(v8g->HeadersKey)) {
       v8::Handle<v8::Value> val = res->Get(v8g->HeadersKey);
       v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
@@ -568,6 +669,30 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       }
     }
 
+    // .............................................................................
+    // cookies
+    // .............................................................................
+
+    if (res->Has(v8g->CookiesKey)) {
+      v8::Handle<v8::Value> val = res->Get(v8g->CookiesKey);
+      v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
+
+      if (v8Cookies->IsArray()) {
+        v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
+        
+        for (uint32_t i = 0; i < v8Array->Length(); i++) {
+          v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
+          if (v8Cookie->IsObject()) {
+            addCookie(v8g, response, v8Cookie.As<v8::Object>());
+          }
+        }
+      }
+      else if (v8Cookies->IsObject()) {
+        // one cookie
+        addCookie(v8g, response, v8Cookies);               
+      }
+    }
+    
     return response;
   }
 }
@@ -601,21 +726,21 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>, <contexts>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "defineAction(<name>, <callback>, <parameter>, <contexts>)");
   }
 
   // extract the action name
   TRI_Utf8ValueNFC utf8name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*utf8name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
+    TRI_V8_TYPE_ERROR(scope, "<name> must be an UTF-8 string");
   }
 
   string name = *utf8name;
 
   // extract the action callback
   if (! argv[1]->IsFunction()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
+    TRI_V8_TYPE_ERROR(scope, "<callback> must be a function");
   }
 
   v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
@@ -634,7 +759,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   set<string> contexts;
 
   if (! argv[3]->IsArray()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<contexts> must be a list of contexts")));
+    TRI_V8_TYPE_ERROR(scope, "<contexts> must be a list of contexts");
   }
 
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[3]);
@@ -682,14 +807,14 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION(<function-definition>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "executeGlobalContextFunction(<function-definition>)");
   }
 
   // extract the action name
   v8::String::Utf8Value utf8def(argv[0]);
 
   if (*utf8def == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<defition> must be a UTF8 function definition")));
+    TRI_V8_TYPE_ERROR(scope, "<defition> must be a UTF-8 function definition");
   }
 
   string def = *utf8def;
@@ -720,13 +845,11 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicationV8) {
   v8::HandleScope scope;
 
+  GlobalV8Dealer = applicationV8;
+
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
-
-  assert(v8g != 0);
-
-  GlobalV8Dealer = applicationV8;
+  /* TRI_v8_global_t* v8g = */ TRI_CreateV8Globals(isolate);
 
   // .............................................................................
   // create the global functions
@@ -734,32 +857,6 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
-
-  // .............................................................................
-  // keys
-  // .............................................................................
-
-  v8g->BodyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("body"));
-  v8g->ContentTypeKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("contentType"));
-  v8g->HeadersKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("headers"));
-  v8g->ParametersKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("parameters"));
-  v8g->PathKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("path"));
-  v8g->PrefixKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("prefix"));
-  v8g->RequestBodyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("requestBody"));
-  v8g->RequestTypeKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("requestType"));
-  v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("responseCode"));
-  v8g->SuffixKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("suffix"));
-  v8g->TransformationsKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("transformations"));
-  v8g->UrlKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("url"));
-  v8g->UserKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("user"));
-
-  v8g->DeleteConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("DELETE"));
-  v8g->GetConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("GET"));
-  v8g->HeadConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("HEAD"));
-  v8g->OptionsConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("OPTIONS"));
-  v8g->PatchConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("PATCH"));
-  v8g->PostConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("POST"));
-  v8g->PutConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("PUT"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

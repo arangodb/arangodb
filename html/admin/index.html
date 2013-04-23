@@ -1,528 +1,200 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ArangoDB web interface -->
 
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-    <title>ArangoDB - WebAdmin</title>
-    <style type="text/css" title="screen"> 
-      @import "css/layout.css";
-      @import "css/jquery.snippet.css";
-      @import "css/jquery.qtip.css";
-      @import "css/jquery-ui-1.8.19.custom.css";
-      @import "css/jquery.dataTables_themeroller.css";  
-    </style>
-      <script type="text/javascript" src="js/jquery-1.7.2.js"></script>
-      <script type="text/javascript" src="js/jquery.snippet.js"></script>
-      <script type="text/javascript" src="js/jquery.qtip.js"></script>
-      <script type="text/javascript" src="js/jquery.flot.js"></script>
-      <script type="text/javascript" src="js/jquery.flot.stack.js"></script>
-      <script type="text/javascript" src="js/jquery.flot.resize.js"></script>
-      <script type="text/javascript" src="js/jquery.flot.crosshair.js"></script>
-      <script type="text/javascript" src="js/json2.js"></script>
-      <script type="text/javascript" src="js/jquery.sha256.js"></script>
-      <script type="text/javascript" src="js/jquery.layout-latest.js"></script>
-      <script type="text/javascript" src="js/jquery.address-1.4.js"></script>
-      <script type="text/javascript" src="js/jquery.dataTables.js"></script>
-      <script type="text/javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
-      <script type="text/javascript" src="js/jquery.autogrow.js"></script>
-      <script type="text/javascript" src="js/jquery.jeditable.js"></script>
-      <script type="text/javascript" src="js/jquery.jeditable.autogrow.js"></script>
-      <script type="text/javascript" src="js/master.js"></script>
-      <script type="text/javascript" src="js/arangodb/monkeypatches.js"></script>
-      <script type="text/javascript" src="js/arangodb/browser.js"></script>
-      <script type="text/javascript" src="js/arangodb/module-internal-common.js"></script>
-      <script type="text/javascript" src="js/arangodb/module-internal-client.js"></script>
-      <script type="text/javascript" src="js/arangodb/errors.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb-common.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-collection-common.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-collection.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-database.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-error-common.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-error.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-query-cursor.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-statement-common.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arango-statement.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arangosh.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/arangosh.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/graph-common.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/graph.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/graph/traversal.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/simple-query-common.js"></script>
-      <script type="text/javascript" src="js/modules/org/arangodb/simple-query.js"></script>
-      <script type="text/javascript" src="js/arangodb/client.js"></script>
-    <style>
-      a:link {color: #797979; text-decoration: none;}  
-      a:visited {color: #797979; text-decoration: none;}
-    </style>
+    <meta charset="utf-8">
+    <title>ArangoDB Web Interface</title>
+    <meta name="description" content="ArangoDB Admin Web Interface">
+    <meta name="author" content="Heiko Kernbach">
+    
+    <link href='http://fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'/>
+    <link href='css/swagger/hightlight.default.css' media='screen' rel='stylesheet' type='text/css'/>
+    <link href='css/swagger/screen.css' media='screen' rel='stylesheet' type='text/css'/>
 
-  </head>
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/jquery-ui-1.9.2.custom.css" rel="stylesheet">
+    <link href="css/layout.css" rel="stylesheet">
+    <link href="css/jquery.dataTables.css" rel="stylesheet">
+    <link href="css/nv.d3.css" rel="stylesheet">
+    <link href="css/navigationView.css" rel="stylesheet">
+    <link href="css/footerView.css" rel="stylesheet">
+    <link href="css/shellView.css" rel="stylesheet">
+    <link href="css/queryView.css" rel="stylesheet">
+    <link href="css/dashboardView.css" rel="stylesheet">
+    <link href="css/logsView.css" rel="stylesheet">
+    <link href="css/collectionsView.css" rel="stylesheet">
+    <link href="css/collectionsItemView.css" rel="stylesheet">
+    <link href="css/collectionView.css" rel="stylesheet">
+    <link href="css/documentsView.css" rel="stylesheet">
+    <link href="css/documentView.css" rel="stylesheet">
+    <link href="css/documentSourceView.css" rel="stylesheet">
+    <link href="css/swaggerView.css" rel="stylesheet">
+    <link href="css/foxxView.css" rel="stylesheet">
+    <link href="css/graphView.css" rel="stylesheet">
+    
+    <link href="css/jquery.snippet.css" rel="stylesheet">
+    <link href="css/jquery.gritter.css" rel="stylesheet">
+    <link href="css/modal.css" rel="stylesheet">
+    <link href="css/ansi.css" rel="stylesheet">
+    
+    
+    
+    <link rel="stylesheet" href="js/graphViewer/style/graphlayout.css" type="text/css"/>
 
-  <body>
-  <div id="header" class="ui-layout-north">
-    <div id="menue" class="ui-layout-north">
 
-      <div id="menue-left">
-        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png" alt="ArangoDB Logo" border="0" /></a>
-      </div>
+</head>
 
-      <div id="menue-right">
-        <button class="minimal" id="Collections">Collections</button>
-        <button class="minimal" id="Query">Query</button>
-        <button class="minimal" id="AvocSH">Shell</button>
-        <button class="minimal" id="Logs">Logs</button>
-        <button class="minimal" id="Status">Statistics</button>
-        <a href="https://www.arangodb.org/manuals/current" target="_blank">
-        <img class="externalLink" src="../html/media/icons/expand16icon.png" alt="External Link Icon"></img>
-        <button class="minimal" id="Documentation">Documentation</button></a>
-      </div>
+<body>
 
-    </div>
-    <div id="brotkruemelnavi" class="ui-layout-south">
-      <a id="nav1" class="nonhighlighted"></a>
-      <a id="nav2" class="nonhighlighted"></a>
-      <a id="nav3" class="nonhighlighted"></a>
-      <a id="nav4" class="nonhighlighted"></a>
-    </div>
+
+  <div class="container">
+  <div class="header">
   </div>
+
+    <div class="row">
+      <div id="content" class="span12>"></div>
+    </div>
+
+    <div id="modalPlaceholder">
+    </div>
+
+  </div>
+
+  <footer class="footer">
+  </footer>
+
+  <!-- libs -->
+  <script src="js/lib/jquery-1.8.3.js"></script>
+  <script src="js/lib/jquery-ui-1.9.2.custom.js"></script>
+  <script src="js/lib/jquery.dataTables.js"></script>
+  <script src="js/lib/jquery.autogrow.js"></script>
+  <script src="js/lib/jquery.jeditable.js"></script>
+  <script src="js/lib/jquery.jeditable.autogrow.js"></script>  
+  <script src="js/lib/jquery.snippet.js"></script>
+  <script src="js/lib/jquery.gritter.js"></script>
+  <script src='js/lib/jquery.slideto.min.js' type='text/javascript'></script>
+  <script src='js/lib/jquery.wiggle.min.js' type='text/javascript'></script>
+  <script src='js/lib/jquery.ba-bbq.min.js' type='text/javascript'></script>
   
-  <div id="centerView" class="ui-layout-center" class="ui-layout-content">
-    <div id="dialog-deleteCollection" title="Really delete collection?" style="display:none;">
-      <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
-      The collection will be permanently deleted and cannot be recovered.</p>
-    </div>
-
-    <div id="collectionsView">
-      <button class="toolbar enabled" id="createCollection">
-        <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
-        <a>New Collection</a>
-      </button>
-      <button class="toolbar enabled" id="refreshCollections">
-        <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
-        <a>Refresh</a>
-      </button>
-      <table cellpadding="0" cellspacing="0" border="0" class="display" id="collectionsTableID" width="100%">
-        <thead>
-          <tr>
-            <th></th>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>WaitForSync</th>
-            <th>Datafile Sizes</th>
-            <th>Number of Documents</th>
-          </tr>
-        </thead>
-      </table>       
-    </div>
-
-    <div id="subCenterView">
-
-      <div id="createCollectionView" style="display: none">
-        <button class="minimal enabled" id="saveNewCollection">
-          <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
-          <a>Save Collection</a>
-        </button>
-        <button class="minimal enabled" id="cancelNewCollection">
-          <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
-          <a>Cancel</a>
-        </button>
-        <br />
-        <table cellpadding="3" cellspacing="0" border="0">
-          <tr><td>Name:</td>
-          <td>
-            <input type="text" class="smallInput" id="createCollName" />
-          </td>
-          <td class="longTD">New collection name.</td>
-        </tr>
-        <tr><td>journalSize:</td>
-        <td>
-          <input type="text" onkeypress='validate(event)' class="smallInput" id="createCollSize" />
-        </td>
-        <td class="longTD">
-          (MB) The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
-        </td></tr>
-          <tr><td>waitForSync:</td><td>
-            <form action="#" id="waitForSyncForm">
-              <input type="radio" name="waitForSync" value="true" />yes
-              <input type="radio" name="waitForSync" value="false" checked />no
-            </form>
-          </td>
-          <td class="longTD">If true then the data is synchronised to disk before returning from a create or update of an document.
-          </td>
-          </tr>
-          <tr><td>Type:</td><td>
-            <form action="#" id="typeForm">
-              <input type="radio" name="type" value="2" checked />document
-              <input type="radio" name="type" value="3" />edge
-            </form>
-          </td> 
-          <td class="longTD">The type of the collection to create.
-          </td>
-        </table>
-
-      </div>
-
-      <div id="editCollectionView" style="display: none">
-        <button class="minimal enabled" id="saveEditedCollection">
-          <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
-          <a>Save Collection</a>
-        </button>
-        <br />
-          <table cellpadding="3" cellspacing="0" border="0">
-            <tr> 
-              <td class="first" align="left">Name:</td>
-              <td class="longTD"><input id="editCollectionName" type="text" placeholder="unknown" name="username"></td>
-            </tr>
-            <tr>
-              <td class="first" align="left">journalSize:</td>
-              <td>
-                <input type="text" onkeypress='validate(event)' class="smallInput" id="editCollectionJournalSize" />
-              </td>
-            </tr>
-            <tr>
-              <td>waitForSync:</td>
-              <td>
-                <form action="#" id="waitForSyncForm">
-                  <input type="radio" name="editWaitForSync" value="true" />yes
-                  <input type="radio" name="editWaitForSync" value="false" />no
-                </form>
-              </td>
-            </tr>
-            <tr> 
-              <td class="first" align="left">ID:</td>
-              <td id="editCollectionID">unknown</td>
-            </tr>
-            <tr> 
-              <td class="first" align="left">Status:</td>
-              <td id="editCollectionStatus">unknown</td>
-            </tr>
-            <tr> 
-              <td class="first" align="left">Type:</td>
-              <td id="editCollectionType">-</td>
-            </tr>
-          </table>
-      </div>
-
-      <div id="documentsView" style="display: none">
-        <button class="minimal enabled" id="addDocumentButton">
-          <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
-          <a>Add Document</a>
-        </button>
-
-        <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%" style="table-layout:fixed">
-          <thead>
-            <tr>
-              <th></th>
-              <th>_id</th>
-              <th>_key</th>
-              <th>_rev</th>
-              <th>Content</th>
-            </tr>
-          </thead>
-        </table>
-
-        <div id="documentsToolbar">
-
-          <div class="floatLeft">
-            <a id="documents_status">Showing</a>
-          </div>
-
-          <div class="floatRight">
-            <form id="docPageForm">
-              Jump to: <input type="text" id="docPageInput" placeholder="Page" />
-              <button id="submitDocPageInput">Ok</button>
-            </form>
-            <button class="enabled" id="documents_first"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-            <button class="enabled" id="documents_prev"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-            <button class="enabled" id="documents_next"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-            <button class="enabled" id="documents_last"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-          </div>
-        </div>
-
-      </div>
-
-      <div id="documentEditView" style="display: none">
-        <button class="minimal enabled" id="saveEditedDocButton">
-            <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
-            <a>Save Document</a>
-          </button>
-        <button class="minimal enabled" id="addEditedDocRowButton">
-            <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
-            <a>Add row</a>
-          </button>
-        <button class="minimal enabled" id="toggleEditedDocButton">
-            <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
-            <a id="toggleEditedDocButtonText">Edit Source</a>
-          </button>
-          <button class="minimal enabled" id="cancelEditedDocument">
-            <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
-            <a>Cancel</a>
-          </button>
-          <button class="minimal enabled" id="undoEditedDocument">
-            <img src="/_admin/html/media/icons/undo_icon16.png" width="16" height="16">
-            <a>Reload</a>
-          </button>
-        <div id="documentEditTableView">
-          <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentEditTableID" width="100%" style="table-layout:fixed">
-            <thead>
-              <tr>
-                <th></th>
-                <th>Key</th>
-                <th>Value</th>
-                <th>type</th>
-              </tr>
-            </thead>
-          </table>
-        </div>
-
-        <div id="documentEditSourceView" style="display: none">
-          <textarea id="documentEditSourceBox" class="editBox"></textarea>
-        </div>
- 
-      </div>
-
-      <div id="newDocumentView" style="display: none">
-
-        <div id="newDocumentTableView">
-          <button class="minimal enabled" id="saveNewDocButton">
-            <img src="/_admin/html/media/icons/save_icon16.png" width="16" height="16">
-            <a>Save Document</a>
-          </button>
-          <button class="minimal enabled" id="addNewDocButton">
-            <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
-            <a>Add row</a>
-          </button>
-          <button class="minimal enabled" id="toggleNewDocButton">
-            <img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16">
-            <a id="toggleNewDocButtonText">Edit Source</a>
-          </button>
-          <button class="minimal enabled" id="cancelNewDocument">
-            <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
-            <a>Cancel</a>
-          </button>
-          <div id="NewDocumentTableView">
-            <table cellpadding="0" cellspacing="0" border="0" class="display" id="NewDocumentTableID" width="100%">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Key</th>
-                  <th>Value</th>
-                  <th>type</th>
-                </tr> 
-              </thead>
-            </table>
-          </div>
-        </div>
-
-        <div id="NewDocumentSourceView" style="display:none">
-          <textarea id="NewDocumentSourceBox" class="editBox"></textarea>
-        </div>
-
-      </div>
-
-      <div id="logView" style="display: none">
-        
-        <div id="tabs">
-          <ul>
-            <li><a class="hoverClass" id="logAllTab" href="#All">All</a><li>
-            <li><a class="hoverClass" id="logCritTab" href="#Critical">Critical</a><li>
-            <li><a class="hoverClass" id="logWarnTab" href=#Warning">Warning</a><li>
-            <li><a class="hoverClass" id="logInfoTab" href="#Info">Info</a><li>
-            <li><a class="hoverClass" id="logDebuTab" href="#Debug">Debug</a><li>
-          </ul>
-        
-          <div id="All">
-            <table cellpadding="0" cellspacing="0" border="0" class="display" id="logTableID" width="100%">
-              <thead>
-                <tr>
-                  <th>Loglevel</th>
-                  <th>Info</th>
-                </tr> 
-              </thead>
-            </table>
-            <div id="logToolbar">
-             <div id="logToolbarAll">
-             <button class="enabled" id="logTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-             <button class="enabled" id="logTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-             <button class="enabled" id="logTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-             <button class="enabled" id="logTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-             </div>
-            <a id="logTableID_status">Showing</a>
-            </div>
-          </div>
-
-          <div id="Critical">
-            <table cellpadding="0" cellspacing="0" border="0" class="display" id="critLogTableID" width="100%">
-              <thead>
-                <tr>
-                  <th>Loglevel</th>
-                  <th>Info</th>
-                </tr> 
-              </thead>
-            </table>
-            <div id="logToolbar">
-             <div id="logToolbarCrit">
-              <button class="enabled" id="critLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button class="enabled" id="critLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button class="enabled" id="critLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button class="enabled" id="critLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-             </div>
-             <a id="critLogTableID_status">Showing</a>
-            </div>
-          </div>
-        
-          <div id="Warning">
-            <table cellpadding="0" cellspacing="0" border="0" class="display" id="warnLogTableID" width="100%">
-              <thead>
-                <tr>
-                  <th>Loglevel</th>
-                  <th>Info</th>
-                </tr> 
-              </thead>
-            </table>
-            <div id="logToolbar">
-             <div id="logToolbarWarn">
-              <button class="enabled" id="warnLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button class="enabled" id="warnLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button class="enabled" id="warnLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button class="enabled" id="warnLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-              </div>
-              <a id="warnLogTableID_status">Showing</a>
-            </div>
-          </div>
-
-          <div id="Info">
-            <table cellpadding="0" cellspacing="0" border="0" class="display" id="infoLogTableID" width="100%">
-              <thead>
-                <tr>
-                  <th>Loglevel</th>
-                  <th>Info</th>
-                </tr> 
-              </thead>
-            </table>
-            <div id="logToolbar">
-             <div id="logToolbarInfo">
-              <button class="enabled" id="infoLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button class="enabled" id="infoLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button class="enabled" id="infoLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button class="enabled" id="infoLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-              </div>
-              <a id="infoLogTableID_status">Showing</a>
-            </div> 
-          </div>
-
-          <div id="Debug">
-            <table cellpadding="0" cellspacing="0" border="0" class="display" id="debugLogTableID" width="100%">
-              <thead>
-                <tr>
-                  <th>Loglevel</th>
-                  <th>Info</th>
-                </tr> 
-              </thead>
-            </table>
-            <div id="logToolbar">
-             <div id="logToolbarDebu">
-              <button class="enabled" id="debugLogTableID_first"><img src="/_admin/html/media/icons/rnd_br_first_icon16.png"></button>
-              <button class="enabled" id="debugLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
-              <button class="enabled" id="debugLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
-              <button class="enabled" id="debugLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-              </div>
-              <a id="debugLogTableID_status">Showing</a>
-            </div>
-          </div>
-          
-        </div>
- 
-      </div>
- 
-      <div id="statusView" style="display: none">
-        <div id="statisticRadioDiv" class="radioFormat">
-          <div class="ItemActionButtons">
-            <div id="divSaveButton" class="buttonset" style="float: left; font-size:0.6em; ">
-              <input id="btnAddNewStat" class="button" value="Add..." onclick="ItemActionButtons.onSaveExtraClick.apply(this)" type="button" />
-              <ul class="SaveExtraOptions ui-corner-bottom" id="btnSaveExtraOptions">
-                <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowConnectionsStats.apply(this)"id="addconnectionsLiBtn">Connections</li>
-                <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowRequestsStats.apply(this)"id="addrequestsLiBtn">Requests</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div id="graphBox"> 
-        </div>
-      </div>
-
-      <div id="avocshView" style="display: none">
-        <div id="avocshWindow">
-        </div>
-        <form>
-          <input type="text" class="editBox" id="avocshContent" /><button class="minimal" id="submitAvoc">Ok</button>
-        </form>
-          <button class="minimal" id="refreshShell">Refresh</button>
-            <form action="#" id="formatshellJSONyesno" style="font-size:0.8em;">
-              Format JSON? 
-              <input type="radio" name="formatshellJSONyesno" value="true" checked />yes
-              <input type="radio" name="formatshellJSONyesno" value="false" />no
-            </form>
-          <a href="https://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br />
-      </div>
-
-      <div id="queryView" style="display: none"> 
-        <div class="queryDiv">
-          <a>Output</a>
-        </div>
-        <div id="queryOutput">
-          <a style="padding-left:10px"></a>
-        </div>
-        <div class="queryDiv">
-          <a>Input</a>
-        </div>
-        <form id="queryForm" method="post" onsubmit="return false">
-          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br />
-          <button class="minimal" id="submitQuery">Execute</button>
-          <a style="font-size:0.8em;" id="aqlinfo" href="https://www.arangodb.org/manuals/current/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
-        <br />
-        </form>   
-        <form action="#" id="formatJSONyesno" style="font-size:0.8em;">
-          Format JSON? 
-          <input type="radio" name="formatJSONyesno" value="true" checked />yes
-          <input type="radio" name="formatJSONyesno" value="false" />no
-        </form>
-      </div>
+  <script src='js/lib/handlebars-1.0.rc.1.js' type='text/javascript'></script>
+  
+  <script src="js/lib/underscore.js"></script>
+  
+  <script src="js/lib/backbone-1.0.0.js"></script>
+  
+  <script src="js/lib/d3.v3.js"></script>
+  <script src="js/lib/nv.d3.js"></script>  
+  
+  <script src="js/lib/ColVis.js"></script>
+  <script src="js/lib/ejs_fulljslint.js"></script>
+  <script src="js/lib/ejs_0.9_alpha_1_production.js"></script>
+  <script src="js/lib/bootstrap.js"></script>
+  <script src="js/lib/bootstrap-pagination.js"></script>
+  <script src="src/ace.js"></script>
+  <script src="js/lib/jqconsole.min.js"></script>
+  <script src="js/lib/splitter.js"></script>
+  
+  <script src='js/lib/swagger.js' type='text/javascript'></script>
+  <script src='js/lib/swagger-ui.js' type='text/javascript'></script>
+  <script src='js/lib/highlight.7.3.pack.js' type='text/javascript'></script>
+  
+  <!-- graphViewer -->
+  <script src="js/graphViewer/graph/colourMapper.js"></script>
+  <script src="js/graphViewer/graph/forceLayouter.js"></script>
+  <script src="js/graphViewer/graph/eventLibrary.js"></script>
+  <script src="js/graphViewer/graph/eventDispatcher.js"></script>
+  <script src="js/graphViewer/graph/nodeShaper.js"></script>
+  <script src="js/graphViewer/graph/edgeShaper.js"></script>
+  <script src="js/graphViewer/graph/arangoAdapter.js"></script>  
+  
+  <script type="text/javascript" src="js/graphViewer/ui/modalDialogHelper.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/nodeShaperControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/edgeShaperControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/arangoAdapterControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/layouterControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/uiComponentsHelper.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/eventDispatcherControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/graphViewerUI.js"></script>
+  
+  <script src="js/graphViewer/graphViewer.js"></script>
 
 
-    </div> 
-  </div> 
+  <!-- arango -->
+  <script src="js/arango/arango.js"></script>
 
-  <div id="footerSlideContainer" class="ui-layout-south" class="footer-ui">
-    <div id="footerSlideButton"></div>
-    <div id="footerSlideContent"> 
-      <div id="footerSlideText">
+  <!-- arangodb js files --> 
+  <script src="js/shell/browser.js"></script>
 
-        <div id="footerLeft" style="visibility:hidden"> 
-          <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
-          <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
-          <form class="login-form" id="loginWindow" action="#">
-          <input type="text" name="username" id="usernameField" placeholder="username"> 
-          <input type="password" name="password" id="passwordField" placeholder="password">
-          <button class="minimal enabled" value="log in" id="loginButton">Login</button>
-          </form>
-            
-        </div>
-           
-        <div id="footerCenter">
-          ArangoDB<br />
-          <div id="footerCenterContent">
-            <a> Stay in touch: </a><a href="https://twitter.com/arangodb" target="_blank"><img src="/_admin/html/media/icons/twitter.png" width="32" height="32"></a><a href="https://github.com/triAGENS/ArangoDB" target="_blank"><img src="/_admin/html/media/icons/git.png" width="32" height="32"></a><a href="https://www.arangodb.org" target="_blank"><img src="/_admin/html/media/icons/arangodb32.png" width="32" height="32"></a><a href="https://groups.google.com/group/arangodb" target="_blank"><img src="/_admin/html/media/icons/google.png" width="32" height="32"></a>
-          </div>
-        </div>
+  <script src="js/modules/org/arangodb/arango-collection-common.js"></script>
+  <script src="js/modules/org/arangodb/arango-collection.js"></script>
+  <script src="js/modules/org/arangodb/arango-database.js"></script>
+  <script src="js/modules/org/arangodb/arango-error-common.js"></script>
+  <script src="js/modules/org/arangodb/arango-error.js"></script>
+  <script src="js/modules/org/arangodb/arango-query-cursor.js"></script>
+  <script src="js/modules/org/arangodb/arango-statement-common.js"></script>
+  <script src="js/modules/org/arangodb/arango-statement.js"></script>
+  <script src="js/modules/org/arangodb/arangosh.js"></script>
+  <script src="js/modules/org/arangodb/graph-common.js"></script>
+  <script src="js/modules/org/arangodb/graph.js"></script>
+  <script src="js/modules/org/arangodb/mimetypes.js"></script>
+  <script src="js/modules/org/arangodb/simple-query-common.js"></script>
+  <script src="js/modules/org/arangodb/simple-query.js"></script>
+  <script src="js/modules/org/arangodb/graph/traversal.js"></script>
+  <script src="js/modules/org/arangodb-common.js"></script>
+  <script src="js/modules/org/arangodb.js"></script>
 
-        <div id="footerRight">
-        </div>
+  <script src="js/bootstrap/errors.js"></script>
+  <script src="js/bootstrap/monkeypatches.js"></script>
+  <script src="js/bootstrap/module-internal.js"></script>
+  <script src="js/client/bootstrap/module-internal.js"></script>
 
-      </div>
-    </div>
-  </div> 
+  <script src="js/client/client.js"></script>
 
-  </body>
+  <!-- models -->
+  <script src="js/models/arangoCollection.js"></script>
+  <script src="js/models/arangoDocument.js"></script>
+  <script src="js/models/arangoLog.js"></script>
+  <script src="js/models/arangoStatistics.js"></script>
+  <script src="js/models/arangoStatisticsDescription.js"></script>
+  <script src="js/models/foxx.js"></script>
+
+  <!-- collections -->
+  <script src="js/collections/arangoCollections.js"></script>
+  <script src="js/collections/arangoDocuments.js"></script>
+  <script src="js/collections/arangoDocument.js"></script>
+  <script src="js/collections/arangoLogs.js"></script>
+  <script src="js/collections/arangoStatisticsCollection.js"></script>
+  <script src="js/collections/arangoStatisticsDescriptionCollection.js"></script>
+  <script src="js/collections/foxxCollection.js"></script>
+
+  <!-- views -->
+  <script src="js/views/navigationView.js"></script>
+  <script src="js/views/footerView.js"></script>
+  <script src="js/views/queryView.js"></script>
+  <script src="js/views/shellView.js"></script>
+  <script src="js/views/aboutView.js"></script>
+  <script src="js/views/dashboardView.js"></script>
+  <script src="js/views/collectionsView.js"></script>
+  <script src="js/views/collectionView.js"></script>
+  <script src="js/views/newCollectionView.js"></script>
+  <script src="js/views/collectionsItemView.js"></script>
+  <script src="js/views/documentsView.js"></script>
+  <script src="js/views/documentView.js"></script>
+  <script src="js/views/documentSourceView.js"></script>
+  <script src="js/views/logsView.js"></script>
+  <script src="js/views/foxxActiveView.js"></script>
+  <script src="js/views/foxxActiveListView.js"></script>
+  <script src="js/views/foxxInstalledView.js"></script>
+  <script src="js/views/foxxInstalledListView.js"></script>
+  <script src="js/views/foxxEditView.js"></script>
+  <script src="js/views/foxxMountView.js"></script>
+  <script src="js/views/appDocumentationView.js"></script>
+  <script src="js/views/graphView.js"></script>
+
+  <!-- router -->
+  <script src="js/routers/router.js"></script>
+
+</body>
+
 </html>

@@ -27,7 +27,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

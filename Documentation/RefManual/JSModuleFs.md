@@ -18,12 +18,28 @@ The implementation follows the CommonJS specification
 @copydetails JS_IsDirectory
 
 @CLEARPAGE
+@anchor JSModuleFsIsFile
+@copydetails JS_IsFile
+
+@CLEARPAGE
+@anchor JSModuleFsList
+@copydetails JS_List
+
+@CLEARPAGE
 @anchor JSModuleFsListTree
 @copydetails JS_ListTree
 
 @CLEARPAGE
 @anchor JSModuleFsMove
 @copydetails JS_Move
+
+@CLEARPAGE
+@anchor JSModuleFsRead
+@copydetails JS_Read
+
+@CLEARPAGE
+@anchor JSModuleFsRead64
+@copydetails JS_Read64
 
 @CLEARPAGE
 @anchor JSModuleFsRemove

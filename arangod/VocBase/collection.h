@@ -110,7 +110,7 @@ struct TRI_json_s;
 /// @brief collection version
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_VERSION         (3)
+#define TRI_COL_VERSION         (4)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection meta info filename
@@ -206,7 +206,7 @@ typedef struct TRI_col_header_marker_s {
   char _padding_col_header_marker[4];
 #endif
 
-  TRI_voc_cid_t _cid;                   //  8 bytes
+  TRI_voc_cid_t  _cid;                   //  8 bytes
 }
 TRI_col_header_marker_t;
 
@@ -218,7 +218,7 @@ typedef struct TRI_col_info_s {
   TRI_col_version_t  _version;         // collection version
   TRI_col_type_e     _type;            // collection type
   TRI_voc_cid_t      _cid;             // collection identifier
-  TRI_voc_rid_t      _rid;             // last revision id
+  TRI_voc_tick_t     _tick;            // last revision id
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
@@ -243,8 +243,6 @@ typedef struct TRI_collection_s {
 
   TRI_col_state_e _state;            // state of the collection
   int _lastError;                    // last (critical) error
-
-  TRI_voc_size_t _maximumMarkerSize; // largest marker
 
   char* _directory;                  // directory of the collection
 
@@ -426,11 +424,23 @@ TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const*);
 void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over markers in collection journals
+/// @brief upgrade a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateJournalsCollection (const char* const,
-                                    bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool));
+int TRI_UpgradeCollection (TRI_vocbase_t*,
+                           const char* const,
+                           TRI_col_info_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over the markers in the collection's journals 
+///
+/// this function is called on server startup for all collections. we do this
+/// to get the last tick used in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IterateTicksCollection (const char* const,
+                                 bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                 void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name

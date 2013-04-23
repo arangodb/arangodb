@@ -40,18 +40,20 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
 #include "BasicsC/random.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
+
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/general-cursor.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/server-id.h"
 #include "VocBase/shadow-data.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/synchroniser.h"
-#include "VocBase/general-cursor.h"
+#include "VocBase/transaction.h"
 
 #include "VocBase/index-garbage-collector.h"
 
@@ -103,7 +105,7 @@ static TRI_spin_t TickLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the auth info
+/// @brief hashes the auth info
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyAuthInfo (TRI_associative_pointer_t* array, void const* key) {
@@ -113,7 +115,7 @@ static uint64_t HashKeyAuthInfo (TRI_associative_pointer_t* array, void const* k
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the auth info
+/// @brief hashes the auth info
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, void const* element) {
@@ -134,7 +136,7 @@ static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array, void const* key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection id
+/// @brief hashes the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
@@ -144,7 +146,7 @@ static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection id
+/// @brief hashes the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementCid (TRI_associative_pointer_t* array, void const* element) {
@@ -165,7 +167,7 @@ static bool EqualKeyCid (TRI_associative_pointer_t* array, void const* key, void
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection name
+/// @brief hashes the collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyCollectionName (TRI_associative_pointer_t* array, void const* key) {
@@ -175,7 +177,7 @@ static uint64_t HashKeyCollectionName (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection name
+/// @brief hashes the collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementCollectionName (TRI_associative_pointer_t* array, void const* element) {
@@ -214,6 +216,116 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a JSON array with collection meta data 
+///
+/// this function is called when a collection is created or dropped
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* CreateJsonCollectionInfo (TRI_vocbase_col_t const* collection,
+                                             const char* situation) {
+  TRI_json_t* json;
+  TRI_json_t* details;
+  char* cidString;
+
+  details = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_TypeNameCollection(collection->_type)));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, collection->_name));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "action", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, situation));
+
+  cidString = TRI_StringUInt64((uint64_t) collection->_cid);
+
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "collection"));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "details", details);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, cidString);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the id of a collection into the "_ids" collection 
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertIdCallback (TRI_transaction_collection_t* trxCollection,
+                             void* data) {
+  TRI_shaped_json_t* shaped;
+  TRI_primary_collection_t* primary;
+  TRI_json_t* json;
+  TRI_doc_mptr_t mptr;
+  int res;
+
+  primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
+  json = data;
+
+  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+
+  if (shaped == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = primary->insert(trxCollection, NULL, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, NULL, false, false);
+  TRI_FreeShapedJson(primary->_shaper, shaped);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save collection info on create or drop
+///
+/// the info will be stored permanently in the "_ids" collection, so we can
+/// later reconstruct ids of collections that are/were dropped
+////////////////////////////////////////////////////////////////////////////////
+
+static bool WriteCollectionInfo (TRI_vocbase_t* vocbase,
+                                 TRI_vocbase_col_t const* collection,
+                                 const char* situation) {
+  TRI_json_t* json;
+  int res;
+
+  if (collection == NULL) {
+    return false;
+  }
+
+  json = CreateJsonCollectionInfo(collection, situation);
+
+  if (json == NULL) {
+    return false;
+  }
+
+  res = TRI_ExecuteSingleOperationTransaction(vocbase,  
+                                              "_ids", 
+                                              TRI_TRANSACTION_WRITE, 
+                                              InsertIdCallback, 
+                                              json);
+  
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return (res == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current tick value, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t GetTick (void) {
+  return (ServerIdentifier | (CurrentTick << 16));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the tick counter, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void UpdateTick (TRI_voc_tick_t tick) {
+  TRI_voc_tick_t s = tick >> 16;
+
+  if (CurrentTick < s) {
+    CurrentTick = s;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free the memory associated with a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -230,10 +342,14 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  WriteCollectionInfo(vocbase, collection, "drop");
+
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
+
+  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -246,12 +362,16 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
 static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection;
+  TRI_vocbase_t* vocbase;
+  TRI_voc_cid_t cid;
   TRI_document_collection_t* document;
   int res;
 
   collection = data;
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  cid = collection->_cid;
+  vocbase = collection->_vocbase;
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -295,6 +415,10 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
 
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
   collection->_collection = NULL;
+  
+  if (cid > 0) {
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
+  }
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return true;
@@ -604,6 +728,23 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief this iterator is called on startup for journal and compactor file
+/// of a collection
+/// it will check the ticks of all markers and update the internal tick 
+/// counter accordingly. this is done so we'll not re-assign an already used
+/// tick value
+////////////////////////////////////////////////////////////////////////////////
+
+static bool StartupTickIterator (TRI_df_marker_t const* marker, 
+                                 void* data, 
+                                 TRI_datafile_t* datafile, 
+                                 bool journal) {
+  UpdateTick(marker->_tick);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief scans a directory and loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -659,7 +800,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
       res = TRI_LoadCollectionInfo(file, &info, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UpdateTickVocBase(info._cid);
+        UpdateTick(info._cid);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -715,7 +856,26 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         if (TRI_IS_DOCUMENT_COLLECTION(type)) {
           TRI_vocbase_col_t* c;
 
+          if (info._version < TRI_COL_VERSION) {
+            LOG_INFO("upgrading collection '%s'", info._name);
+
+            res = TRI_UpgradeCollection(vocbase, file, &info);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              LOG_ERROR("upgrading collection '%s' failed.", info._name);
+            
+              TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+              regfree(&re);
+              TRI_DestroyVectorString(&files);
+              TRI_FreeCollectionInfoOptions(&info);
+ 
+              return TRI_set_errno(res);
+            }
+          } 
+
           c = AddCollection(vocbase, type, info._name, info._cid, file);
+          
+          TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
 
           if (c == NULL) {
             LOG_ERROR("failed to add document collection from '%s'", file);
@@ -749,153 +909,6 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
   TRI_DestroyVectorString(&files);
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bears a new collection or returns an existing one by name
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
-                                                 char const* name,
-                                                 TRI_col_type_e type) {
-  TRI_vocbase_col_t* found;
-  TRI_vocbase_col_t* collection;
-
-  // check that the name does not contain any strange characters
-  if (! TRI_IsAllowedCollectionName(false, name)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
-
-  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
-
-  // .............................................................................
-  // check if we have an existing name
-  // .............................................................................
-
-  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
-
-  if (found != NULL) {
-    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-    return found;
-  }
-
-  // .............................................................................
-  // create a new one
-  // .............................................................................
-
-  // create a new collection
-  collection = AddCollection(vocbase, type, name, TRI_NewTickVocBase(), NULL);
-
-  if (collection == NULL) {
-    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-    return NULL;
-  }
-
-  collection->_status = TRI_VOC_COL_STATUS_NEW_BORN;
-
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-  return collection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief manifests a new born (document) collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
-  TRI_col_type_e type;
-
-  TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
-
-  // cannot manifest a corrupted collection
-  if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-  }
-
-  // cannot manifest a deleted collection
-  if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  // loaded, unloaded, or unloading are manifested
-  if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (collection->_status != TRI_VOC_COL_STATUS_NEW_BORN) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
-  }
-
-  // .............................................................................
-  // manifest the collection
-  // .............................................................................
-
-  type = (TRI_col_type_e) collection->_type;
-
-  if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-    TRI_document_collection_t* document;
-    TRI_col_info_t parameter;
-
-    TRI_InitCollectionInfo(vocbase, &parameter, collection->_name, type, vocbase->_defaultMaximalSize, 0);
-
-    document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
-
-    if (document == NULL) {
-      collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
-
-      TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-      return TRI_errno();
-    }
-
-    collection->_status = TRI_VOC_COL_STATUS_LOADED;
-    collection->_collection = &document->base;
-    TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path));
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_ERROR_NO_ERROR;
-  }
-  else {
-    collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
-
-    LOG_ERROR("unknown collection type '%d' in collection '%s'", (int) type, collection->_name);
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a collection by name or creates it
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase,
-                                                       char const* name,
-                                                       TRI_col_type_e type) {
-  TRI_vocbase_col_t* found;
-
-  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
-  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-  if (found != NULL) {
-    return found;
-  }
-
-  return BearCollectionVocBase(vocbase, name, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -976,21 +989,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-  }
-
-  // new born, manifest collection, release the WRITE lock and try again
-  if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
-    int res;
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-    res = ManifestCollectionVocBase(vocbase, collection);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    return LoadCollectionVocBase(vocbase, collection);
   }
 
   // unloaded, load collection
@@ -1125,14 +1123,8 @@ TRI_voc_tick_t TRI_NewTickVocBase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UpdateTickVocBase (TRI_voc_tick_t tick) {
-  TRI_voc_tick_t s = tick >> 16;
-
   TRI_LockSpin(&TickLock);
-
-  if (CurrentTick < s) {
-    CurrentTick = s;
-  }
-
+  UpdateTick(tick);
   TRI_UnlockSpin(&TickLock);
 }
 
@@ -1256,7 +1248,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
                              EqualKeyCollectionName,
                              NULL);
 
-  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase, 1);
+  // transactions
+  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase);
 
   TRI_InitAssociativePointer(&vocbase->_authInfo,
                              TRI_CORE_MEM_ZONE,
@@ -1270,7 +1263,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
-
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
@@ -1278,17 +1270,19 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // .............................................................................
 
   // defaults
-  vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
-  vocbase->_defaultWaitForSync = false; // default sync behavior for new collections
-  vocbase->_forceSyncShapes    = true;  // force sync of shape data to disk
-  vocbase->_removeOnCompacted  = true;
-  vocbase->_removeOnDrop       = true;
-
+  vocbase->_defaultMaximalSize     = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
+  vocbase->_defaultWaitForSync     = false; // default sync behavior for new collections
+  vocbase->_forceSyncShapes        = true;  // force sync of shape data to disk
+  vocbase->_removeOnCompacted      = true;
+  vocbase->_removeOnDrop           = true;
+ 
   if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
     LOG_FATAL_AND_EXIT("reading/creating server id failed");
   }
 
   // scan the database path for collections
+  // this will create the list of collections and their datafiles, and will also
+  // determine the last tick values used
   res = ScanPath(vocbase, vocbase->_path);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1305,6 +1299,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
     return NULL;
   }
+
+  LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());  
 
 
   // .............................................................................
@@ -1341,15 +1337,23 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
+  TRI_vector_pointer_t collections;
   size_t i;
+  
+  TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // starts unloading of collections
-  for (i = 0;  i < vocbase->_collections._length;  ++i) {
+  for (i = 0;  i < collections._length;  ++i) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
     TRI_UnloadCollectionVocBase(vocbase, collection);
   }
+
+  TRI_DestroyVectorPointer(&collections);
 
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
@@ -1370,6 +1374,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_deadCollections._buffer[i];
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, collection->_cid);
     FreeCollection(vocbase, collection);
   }
 
@@ -1378,6 +1383,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, collection->_cid);
     FreeCollection(vocbase, collection);
   }
 
@@ -1519,10 +1525,34 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_
 /// @brief finds a collection by name, optionally creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t* vocbase,
-                                                          char const* name,
-                                                          const TRI_col_type_t type) {
-  return FindCollectionByNameVocBase(vocbase, name, (TRI_col_type_e) type);
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocbase,
+                                                            char const* name,
+                                                            const TRI_col_type_t type) {
+  TRI_vocbase_col_t* found;
+
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  if (found != NULL) {
+    return found;
+  }
+  else {
+    // collection not found. now create it
+    TRI_vocbase_col_t* collection;
+    TRI_col_info_t parameter;
+
+    TRI_InitCollectionInfo(vocbase, 
+                           &parameter, 
+                           name, 
+                           (TRI_col_type_e) type, 
+                           (TRI_voc_size_t) vocbase->_defaultMaximalSize, 
+                           NULL);
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
+    TRI_FreeCollectionInfoOptions(&parameter);
+
+    return collection;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1621,6 +1651,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_CopyString(collection->_path, primary->base._directory, sizeof(collection->_path));
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
   return collection;
 }
 
@@ -1645,12 +1676,6 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
   // a unloading collection is treated as unloaded
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // a new born collection is treated as unloaded
-  if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1702,19 +1727,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   // .............................................................................
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
-    UnregisterCollection(vocbase, collection);
-
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // .............................................................................
-  // new born collection, no datafile/parameter file exists
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
-    collection->_status = TRI_VOC_COL_STATUS_DELETED;
-
     UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1876,14 +1888,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-  }
-
-  // .............................................................................
-  // new born collection, no datafile/parameter file exists
-  // .............................................................................
-
-  if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
-    // do nothing
   }
 
   // .............................................................................

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -54,7 +54,7 @@ var ArangoDatabase = exports.ArangoDatabase;
 
 // must called after export
 var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = require("org/arangodb").ArangoError;
 var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,8 +74,8 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._PRINT = function(seen, path, names, level) {
-  internal.output(this.toString());
+ArangoDatabase.prototype._PRINT = function(context) {
+  context.output += this.toString();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +113,58 @@ ArangoDatabase.prototype._createStatement = function (data) {
 
 ArangoDatabase.prototype._query = function (data) {  
   return new ArangoStatement(this, { query: data }).execute();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      transactions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a transaction
+///
+/// @FUN{db._executeTransaction(@FA{object})}
+///
+/// Executes a server-side transaction, as specified by @FA{object}.
+///
+/// @FA{object} must have the following attributes:
+/// - @LIT{collections}: a sub-object that defines which collections will be 
+///   used in the transaction. @LIT{collections} can have these attributes:
+///   - @LIT{read}: a single collection or a list of collections that will be
+///     used in the transaction in read-only mode
+///   - @LIT{write}: a single collection or a list of collections that will be
+///     used in the transaction in write or read mode. 
+/// - @LIT{action}: a Javascript function or a string with Javascript code
+///   containing all the instructions to be executed inside the transaction.
+///   If the code runs through successfully, the transaction will be committed
+///   at the end. If the code throws an exception, the transaction will be 
+///   rolled back and all database operations will be rolled back.
+///
+/// Additionally, @FA{object} can have the following optional attributes:
+/// - @LIT{waitForSync}: boolean flag indicating whether the transaction
+///   is forced to be synchronous.
+/// - @LIT{lockTimeout}: a numeric value that can be used to set a timeout for 
+///   waiting on collection locks. If not specified, a default value will be 
+///   used. Setting @LIT{lockTimeout} to @LIT{0} will make ArangoDB not time 
+///   out waiting for a lock.
+/// - @LIT{params}: optional arguments passed to the function specified in 
+///   @LIT{action}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_transaction
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._executeTransaction = function (data) {  
+  return TRANSACTION(data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

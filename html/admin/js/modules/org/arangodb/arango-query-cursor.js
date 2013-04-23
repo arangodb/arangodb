@@ -169,7 +169,7 @@ ArangoQueryCursor.prototype.hasNext = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.next = function () {
-  if (!this._hasNext) {
+  if (! this._hasNext) {
     throw "No more results";
   }
 
@@ -237,10 +237,6 @@ ArangoQueryCursor.prototype.dispose = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.count = function () {
-  if (! this.data.id) {
-    throw "cursor has been disposed";
-  }
-
   return this.data.count;
 };
 

@@ -116,7 +116,8 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 
     if (ptr->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK ||
         ptr->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK ||
-        ptr->_type == TRI_BARRIER_DATAFILE_CALLBACK ||
+        ptr->_type == TRI_BARRIER_DATAFILE_DROP_CALLBACK ||
+        ptr->_type == TRI_BARRIER_DATAFILE_RENAME_CALLBACK ||
         ptr->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
 
       // free data still allocated in barrier elements
@@ -208,19 +209,49 @@ TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container) {
 /// @brief creates a new datafile deletion barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
-                                          TRI_datafile_t* datafile,
-                                          void (*callback) (struct TRI_datafile_s*, void*),
-                                          void* data) {
-  TRI_barrier_datafile_cb_t* element;
+TRI_barrier_t* TRI_CreateBarrierDropDatafile (TRI_barrier_list_t* container,
+                                              TRI_datafile_t* datafile,
+                                              void (*callback) (struct TRI_datafile_s*, void*),
+                                              void* data) {
+  TRI_barrier_datafile_drop_cb_t* element;
 
-  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_cb_t), false);
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_drop_cb_t), false);
 
   if (!element) {
     return NULL;
   }
 
-  element->base._type = TRI_BARRIER_DATAFILE_CALLBACK;
+  element->base._type = TRI_BARRIER_DATAFILE_DROP_CALLBACK;
+
+  element->_datafile = datafile;
+  element->_data = data;
+
+  element->callback = callback;
+
+  LinkBarrierElement(&element->base, container);
+
+  return &element->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new datafile rename barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
+                                                TRI_datafile_t* datafile,
+                                                void (*callback) (struct TRI_datafile_s*, void*),
+                                                void* data) {
+  TRI_barrier_datafile_rename_cb_t* element;
+
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_rename_cb_t), false);
+
+  if (element == NULL) {
+    TRI_Free(TRI_CORE_MEM_ZONE, data);
+
+    return NULL;
+  }
+
+  element->base._type = TRI_BARRIER_DATAFILE_RENAME_CALLBACK;
 
   element->_datafile = datafile;
   element->_data = data;

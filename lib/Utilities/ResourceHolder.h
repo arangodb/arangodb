@@ -29,7 +29,7 @@
 #define TRIAGENS_UTILITIES_RESOURCE_HOLDER_H 1
 
 #include "BasicsC/json.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "ShapedJson/json-shaper.h"
 #include "VocBase/barrier.h"
 

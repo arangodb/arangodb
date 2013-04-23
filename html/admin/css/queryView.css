@@ -1,0 +1,80 @@
+.ui-resizable-s {
+  bottom: 0;
+  height: 10px;
+  background-color: #686766 !important;
+  cursor: ns-resize;
+}
+
+#queryOutput .ace_cursor-layer {
+  display:none;
+}
+
+#editorLabel {
+  margin-top: 20px;
+  padding-left: 45px;
+}
+
+#outputLabel {
+  padding-left: 35px;
+}
+
+#editor {
+  min-width: 100px;
+}
+
+#editorLabel, #outputLabel {
+  background-color: #F0F0F0;
+  border-left: 1px solid #A0A0A0;
+  border-right: 1px solid #A0A0A0;
+  border-top: 1px solid #A0A0A0;
+  width: 80px;
+  border-radius: 3px 3px 0 0;
+}
+
+#aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
+  background:none;
+}
+
+#aqlEditor {
+  width: 898px;
+  height: 200px;
+  min-height: 100px;
+  border: 1px solid #C0C0C0;
+  margin-bottom: 20px;
+}
+
+#queryDiv {
+  margin-top: 10px;
+  background-color: rgba(0,0,0,0.05);
+}
+
+#submitQueryButton {
+  float: right;
+}
+
+.querynavbar {
+  width: 940px !important;
+  background-color: #FAFAFA;
+  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2);
+  background-repeat: repeat-x;
+  margin-bottom: 20px;
+}
+
+.querynavbar h3 {
+  padding-top: 5px;
+}
+
+#queryOutput {
+  width: 898px;
+  background-color: white;
+  height: 200px;
+  min-height: 100px;
+  overflow-y: hidden;
+  border: 1px solid #c0c0c0;
+}
+
+.preQuery {
+  border: 0;
+  border-radius: 0;
+  background-color: white !important;
+}

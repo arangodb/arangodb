@@ -28,7 +28,7 @@
 
 #include "HttpResponse.h"
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
@@ -51,7 +51,6 @@ using namespace std;
 
 string HttpResponse::responseString (HttpResponseCode code) {
   switch (code) {
-
     //  Success 2xx
     case OK:                   return "200 OK";
     case CREATED:              return "201 Created";
@@ -77,6 +76,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case LENGTH_REQUIRED:      return "411 Length Required";
     case PRECONDITION_FAILED:  return "412 Precondition Failed";
     case ENTITY_TOO_LARGE:     return "413 Request Entity Too Large";
+    case I_AM_A_TEAPOT:        return "418 I'm a teapot";
     case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
     case HEADER_TOO_LARGE:     return "431 Request Header Fields Too Large";
 
@@ -120,6 +120,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
     case 405: return METHOD_NOT_ALLOWED;
     case 409: return CONFLICT;
     case 412: return PRECONDITION_FAILED;
+    case 418: return I_AM_A_TEAPOT;
     case 422: return UNPROCESSABLE_ENTITY;
 
     case 500: return SERVER_ERROR;
@@ -179,7 +180,7 @@ HttpResponse::HttpResponse (HttpResponseCode code)
     _bodySize(0),
     _freeables() {
 
-  _headers.insert("server", 6, "triagens GmbH High-Performance HTTP Server");
+  _headers.insert("server", 6, "ArangoDB");
   _headers.insert("connection", 10, "Keep-Alive");
   _headers.insert("content-type", 12, "text/plain; charset=utf-8");
 }
@@ -213,6 +214,14 @@ HttpResponse::~HttpResponse () {
 
 HttpResponse::HttpResponseCode HttpResponse::responseCode () const {
   return _code;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the response code
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::setResponseCode (HttpResponseCode code) {
+  _code = code;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,6 +496,70 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a cookie
+////////////////////////////////////////////////////////////////////////////////
+void HttpResponse::setCookie (string const& name, string const& value, 
+        int lifeTimeSeconds, string const& path, string const& domain,
+        bool secure, bool httpOnly) {
+          
+  triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  
+  string tmp = StringUtils::trim(name);
+  buffer->appendText(tmp.c_str(), tmp.length());
+  buffer->appendChar('=');
+  
+  tmp = StringUtils::urlEncode(value);
+  buffer->appendText(tmp.c_str(), tmp.length());
+  
+  if (lifeTimeSeconds != 0) {
+    time_t rawtime;
+    struct tm * timeinfo;
+    char buffer2 [80];
+
+    time(&rawtime);    
+    if (lifeTimeSeconds > 0) {
+      rawtime += lifeTimeSeconds;      
+    }
+    else {
+      rawtime = 1;
+    }
+
+    if (rawtime > 0) {
+      timeinfo = gmtime(&rawtime);
+      strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
+      buffer->appendText("; expires=");
+      buffer->appendText(buffer2);
+    }
+  }
+  
+  if (path != "") {
+    buffer->appendText("; path=");
+    buffer->appendText(path);
+  }
+
+  if (domain != "") {
+    buffer->appendText("; domain=");
+    buffer->appendText(domain);
+  }
+  
+
+  if (secure) {
+    buffer->appendText("; secure");
+  }
+
+  if (httpOnly) {
+    buffer->appendText("; HttpOnly");
+  }
+  
+  char const* l = StringUtils::duplicate(buffer->c_str());
+  buffer->clear();
+  free(buffer);
+  _cookies.push_back(l);
+  
+  _freeables.push_back(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -551,6 +624,13 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     output->appendText("\r\n", 2);
   }
 
+  for (vector<char const*>::iterator iter = _cookies.begin(); 
+          iter != _cookies.end(); ++iter) {
+    output->appendText("Set-Cookie: ", 12);
+    output->appendText(*iter);
+    output->appendText("\r\n", 2);    
+  }
+  
   if (seenTransferEncoding && transferEncoding == "chunked") {
     output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
   }

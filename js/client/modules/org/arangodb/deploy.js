@@ -28,9 +28,13 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var fs = require("fs");
 var internal = require("internal");
+
+var fs = require("fs");
+
+var arangodb = require("org/arangodb");
+
+var guessContentType = arangodb.guessContentType;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         ArangoApp
@@ -67,40 +71,6 @@ function ArangoApp (routing, description) {
 /// @addtogroup ArangoDeployment
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief guesses the content type
-////////////////////////////////////////////////////////////////////////////////
-
-function guessContentType (filename, content) {
-  var re = /.*\.([^\.]*)$/;
-  var match = re.exec(filename);
-  var extension;
-
-  if (match === null) {
-    return "text/plain; charset=utf-8";
-  }
-
-  extension = match[1];
-
-  if (extension === "html") {
-    return "text/html; charset=utf-8";
-  }
-
-  if (extension === "xml") {
-    return "application/xml; charset=utf-8";
-  }
-
-  if (extension === "json") {
-    return "application/json; charset=utf-8";
-  }
-
-  if (extension === "js") {
-    return "application/x-javascript; charset=utf-8";
-  }
-
-  return "text/plain; charset=utf-8";
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes a path
@@ -141,8 +111,8 @@ ArangoApp.prototype.updateRoute = function (route) {
 /// @brief prints an application
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype._PRINT = function (route) {
-  internal.output('[ArangoApp "', this._name, '" at "', this._description.urlPrefix, '"]');
+ArangoApp.prototype._PRINT = function (context) {
+  context.output += '[ArangoApp "' + this._name + '" at "' + this._description.urlPrefix + '"]';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -416,7 +386,7 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       continue;
     }
 
-    content = internal.read(file);
+    content = fs.read(file);
 
     if (content === null) {
       continue;
@@ -431,7 +401,7 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       filename = files[i];
     }
 
-    contentType = guessContentType(file, content);
+    contentType = guessContentType(file);
 
     collection.save({
       application: this._name,
@@ -442,7 +412,7 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       filename: filename
     });
 
-    internal.print("imported '" + subpath + "' of type '" + contentType + "'");
+    arangodb.print("imported '" + subpath + "' of type '" + contentType + "'");
   }
 
   return this;
@@ -515,15 +485,15 @@ exports.uploadModules = function (prefix, path) {
     mpath = re.exec(files[i]);
 
     if (mpath === null) {
-      internal.print("skipping file '" + files[i] + "' of unknown type, expecting .js");
+      arangodb.print("skipping file '" + files[i] + "' of unknown type, expecting .js");
       continue;
     }
     
     mpath = prefix + "/" + mpath[1];
 
-    internal.defineModule(mpath, file);
+    arangodb.defineModule(mpath, file);
 
-    internal.print("imported '" + mpath + "'");
+    arangodb.print("imported '" + mpath + "'");
   }
 
   internal.flushServerModules();

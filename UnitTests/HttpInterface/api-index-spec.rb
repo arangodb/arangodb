@@ -178,6 +178,7 @@ describe ArangoDB do
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+        doc.parsed_response['unique'].should eq(false)
 
         doc = ArangoDB.log_post("#{prefix}-create-old-geo", cmd, :body => body)
         
@@ -190,6 +191,7 @@ describe ArangoDB do
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
         doc.parsed_response['isNewlyCreated'].should eq(false)
+        doc.parsed_response['unique'].should eq(false)
       end
 
       it "creating geo index with location" do
@@ -206,6 +208,7 @@ describe ArangoDB do
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "b" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+        doc.parsed_response['unique'].should eq(false)
       end
 
       it "creating geo index with location and geo-json = true" do
@@ -222,6 +225,7 @@ describe ArangoDB do
         doc.parsed_response['geoJson'].should eq(true)
         doc.parsed_response['fields'].should eq([ "c" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+        doc.parsed_response['unique'].should eq(false)
       end
 
       it "creating geo index with location and geo-json = false" do
@@ -238,6 +242,7 @@ describe ArangoDB do
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "d" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+        doc.parsed_response['unique'].should eq(false)
       end
 
       it "creating geo index with latitude and longitude" do
@@ -252,6 +257,40 @@ describe ArangoDB do
         doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo2")
         doc.parsed_response['fields'].should eq([ "e", "f" ])
+        doc.parsed_response['isNewlyCreated'].should eq(true)
+        doc.parsed_response['unique'].should eq(false)
+      end
+
+      it "creating geo index with constraint" do
+        cmd = api + "?collection=#{@cn}"
+        body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\" ], \"geoJson\" : true, \"constraint\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-create-geo-location-geo-json-constraint", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['geoJson'].should eq(true)
+        doc.parsed_response['fields'].should eq([ "c" ])
+        doc.parsed_response['unique'].should eq(true)
+        doc.parsed_response['isNewlyCreated'].should eq(true)
+      end
+      
+      it "creating geo index with constraint" do
+        cmd = api + "?collection=#{@cn}"
+        body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\", \"d\" ], \"geoJson\" : false, \"unique\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-create-geo-location-constraint", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['type'].should eq("geo2")
+        doc.parsed_response['fields'].should eq([ "c", "d" ])
+        doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['isNewlyCreated'].should eq(true)
       end
     end
@@ -314,7 +353,7 @@ describe ArangoDB do
     end
 
 ################################################################################
-## creating an unique constraint
+## creating a unique constraint
 ################################################################################
 
     context "creating unique constraints:" do
@@ -744,7 +783,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns all index for an collection identifier" do
+      it "returns all index for a collection identifier" do
         cmd = api + "?collection=#{@cn}"
         doc = ArangoDB.log_get("#{prefix}-all-indexes", cmd)
 
@@ -762,7 +801,7 @@ describe ArangoDB do
         end
       end
 
-      it "returns all index for an collection name" do
+      it "returns all index for a collection name" do
         cmd = api + "?collection=#{@cn}"
         doc = ArangoDB.log_get("#{prefix}-all-indexes-name", cmd)
 
@@ -796,7 +835,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns primary index for an collection identifier" do
+      it "returns primary index for a collection identifier" do
         cmd = api + "/#{@cn}/0"
         doc = ArangoDB.log_get("#{prefix}-primary-index", cmd)
 
@@ -808,7 +847,7 @@ describe ArangoDB do
         doc.parsed_response['type'].should eq("primary")
       end
 
-      it "returns primary index for an collection name" do
+      it "returns primary index for a collection name" do
         cmd = api + "/#{@cn}/0"
         doc = ArangoDB.log_get("#{prefix}-primary-index-name", cmd)
 
