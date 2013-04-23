@@ -336,6 +336,9 @@ extern "C" {
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
 ///   the skiplist index.
+/// - 3304: @LIT{skiplist index insertion warning - CAS failure while attempting to insert document}
+///   Will be raised when an attempt to insert a document into a skiplist index
+///   fails due to repeated CAS failures/clashes.
 /// - 3311: @LIT{skiplist index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a skiplist index
 ///   fails when document can not be located within that index.
@@ -1800,6 +1803,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING        (3302)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3304: WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE
+///
+/// skiplist index insertion warning - CAS failure while attempting to insert
+/// document
+///
+/// Will be raised when an attempt to insert a document into a skiplist index
+/// fails due to repeated CAS failures/clashes.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE              (3304)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3311: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING
