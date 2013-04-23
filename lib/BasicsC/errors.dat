@@ -228,6 +228,7 @@ WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING,3211,"hash index remove failure - 
 
 WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING,3300,"skiplist index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a skiplist index is caused by in the document not having one or more attributes which are required by the skiplist index."
 WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING,3302,"skiplist index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the skiplist index."
+WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE,3304,"skiplist index insertion warning - CAS failure while attempting to insert document","Will be raised when an attempt to insert a document into a skiplist index fails due to repeated CAS failures/clashes."
 WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING,3311,"skiplist index remove failure - item missing in index","Will be raised when an attempt to remove a document from a skiplist index fails when document can not be located within that index."
 
 WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING,3400,"bitarray index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a bitarray index is caused by in the document not having one or more attributes which are required by the bitarray index."
