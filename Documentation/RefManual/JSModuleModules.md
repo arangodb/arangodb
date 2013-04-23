@@ -71,6 +71,11 @@ Node Packages{#JSModulesNPM}
 
 The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
 
+- <a href="http://underscorejs.org/">"underscore"</a> is a utility-belt library
+  for JavaScript that provides a lot of the functional programming support that 
+  you would expect in Prototype.js (or Ruby), but without extending any of the
+  built-in JavaScript objects.
+
 - <a href="http://coffeescript.org/">"coffee-script"</a> implements a
   coffee-script to JavaScript compiler. ArangoDB supports the `compile` 
   function of the package, but not the `eval` functions.
