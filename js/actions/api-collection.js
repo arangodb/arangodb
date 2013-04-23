@@ -361,7 +361,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is missing, then a `HTTP 400` is
 /// returned.
 ///
-/// @RESTRETURNCODE[{404}
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
@@ -397,7 +397,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is missing, then a `HTTP 400` is
 /// returned.
 ///
-/// @RESTRETURNCODE[{404}
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
@@ -458,7 +458,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is missing, then a `HTTP 400` is
 /// returned.
 ///
-/// @RESTRETURNCODE[{404}
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
@@ -491,7 +491,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is missing, then a `HTTP 400` is
 /// returned.
 ///
-/// @RESTRETURNCODE[{404}
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
@@ -643,7 +643,7 @@ function get_api_collection (req, res) {
 /// If the `collection-name` is missing, then a `HTTP 400` is
 /// returned.
 ///
-/// @RESTRETURNCODE[{404}
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
