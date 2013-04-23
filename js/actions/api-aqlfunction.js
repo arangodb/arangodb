@@ -47,16 +47,16 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 ///
 /// Returns all registered AQL user functions.
 ///
-/// @REST{GET /_api/aqlfunction?namespace=@FA{namespace}}
+/// @REST{GET /_api/aqlfunction?namespace=`namespace`}
 ///
-/// Returns all registered AQL user functions from namespace @FA{namespace}.
+/// Returns all registered AQL user functions from namespace `namespace`.
 ///
 /// The call will return a JSON list with all user functions found. Each user
 /// function will at least have the following attributes:
 ///
-/// - @LIT{name}: The fully qualified name of the user function
+/// - `name`: The fully qualified name of the user function
 ///
-/// - @LIT{code}: A string representation of the function body
+/// - `code`: A string representation of the function body
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_api_aqlfunction (req, res) {
@@ -84,34 +84,34 @@ function GET_api_aqlfunction (req, res) {
 /// The following data need to be passed in a JSON representation in the body of
 /// the POST request:
 ///
-/// - @LIT{name}: the fully qualified name of the user functions.
+/// - `name`: the fully qualified name of the user functions.
 ///
-/// - @LIT{code}: a string representation of the function body.
+/// - `code`: a string representation of the function body.
 ///
 /// If the function can be registered by the server, the server will respond with 
-/// @LIT{HTTP 201}. If the function already existed and was replaced by the
-/// call, the server will respond with @LIT{HTTP 200}.
+/// `HTTP 201`. If the function already existed and was replaced by the
+/// call, the server will respond with `HTTP 200`.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with @LIT{HTTP 400}.
+/// request, the server will respond with `HTTP 400`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ///
 /// @EXAMPLES
 ///
@@ -135,36 +135,36 @@ function POST_api_aqlfunction (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/aqlfunction,remove an existing AQL user function}
 ///
-/// @REST{DELETE /_api/aqlfunction/@FA{name}}
+/// @REST{DELETE /_api/aqlfunction/`name`}
 ///
-/// Removes an existing AQL user function, identified by @FA{name}. 
-/// The function name provided in @FA{name} must be fully qualified, including
+/// Removes an existing AQL user function, identified by `name`. 
+/// The function name provided in `name` must be fully qualified, including
 /// any namespaces.
 ///
 /// If the function can be removed by the server, the server will respond with 
-/// @LIT{HTTP 200}. 
+/// `HTTP 200`. 
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{false}
+/// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with @LIT{HTTP 400}. If the specified user
-/// does not exist, the server will respond with @LIT{HTTP 404}.
+/// request, the server will respond with `HTTP 400`. If the specified user
+/// does not exist, the server will respond with `HTTP 404`.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - @LIT{error}: boolean flag to indicate that an error occurred (@LIT{true} in this case)
+/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
 ///
-/// - @LIT{code}: the HTTP status code
+/// - `code`: the HTTP status code
 ///
-/// - @LIT{errorNum}: the server error number
+/// - `errorNum`: the server error number
 ///
-/// - @LIT{errorMessage}: a descriptive error message
+/// - `errorMessage`: a descriptive error message
 ////////////////////////////////////////////////////////////////////////////////
 
 function DELETE_api_aqlfunction (req, res) {
