@@ -1197,11 +1197,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/`documenthandle`,deletes a document}
+/// @RESTHEADER{DELETE /_api/document/`document-handle`,deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{documenthandle,string,required}
+/// @RESTURLPARAM{document-handle,string,required}
 /// 
 /// @RESTDESCRIPTION
 /// Deletes the document identified by `document-handle`. If the document
