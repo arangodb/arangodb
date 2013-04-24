@@ -61,7 +61,7 @@ var shellView = Backbone.View.extend({
     var internal = require("internal");
     var arangodb = require("org/arangodb");
     var client = require("org/arangodb/arangosh");
-    var header = 'Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.\n';
+    var header = 'Welcome to arangosh Copyright (c) 2013 triAGENS GmbH.\n';
     window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "...>");
     this.executeJs(internal.print(client.HELP));
     // Abort prompt on Ctrl+Z.
