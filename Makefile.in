@@ -1194,13 +1194,14 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	-print) $(shell find @srcdir@/js/common -name "*.js" -print) \
 	$(shell find @srcdir@/js/server -name "*.js" -print) $(shell \
 	find @srcdir@/js/client -name "*.js" -print) $(shell find \
-	@srcdir@/html -name "*.css" -print) $(shell find @srcdir@/html \
-	-name "*.gif" -print) $(shell find @srcdir@/html -name \
-	"*.html" -print) $(shell find @srcdir@/html -name "*.ico" \
-	-print) $(shell find @srcdir@/html -name "*.js" -print) \
-	$(shell find @srcdir@/html -name "*.ejs" -print) $(shell find \
-	@srcdir@/html -name "*.png" -print) $(shell find \
-	@srcdir@/js/apps -type f -print) $(am__append_7)
+	@srcdir@/js/node -type f -print) $(shell find @srcdir@/js/npm \
+	-type f -print) $(shell find @srcdir@/html -name "*.css" \
+	-print) $(shell find @srcdir@/html -name "*.gif" -print) \
+	$(shell find @srcdir@/html -name "*.html" -print) $(shell find \
+	@srcdir@/html -name "*.ico" -print) $(shell find @srcdir@/html \
+	-name "*.js" -print) $(shell find @srcdir@/html -name "*.ejs" \
+	-print) $(shell find @srcdir@/html -name "*.png" -print) \
+	$(shell find @srcdir@/js/apps -type f -print) $(am__append_7)
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
@@ -1550,7 +1551,7 @@ SERVER_OPT := \
 	--javascript.action-directory @top_srcdir@/js/actions \
 	--javascript.gc-interval 1 \
 	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
-	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
+	--javascript.package-path @top_srcdir@/js/npm\;@top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
 	--ruby.action-directory @top_srcdir@/mr/actions \
 	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
@@ -1819,6 +1820,7 @@ WIKI = \
 	NamingConventions \
 	NewFeatures11 \
 	NewFeatures12 \
+	NewFeatures13 \
 	RefManual \
 	RefManualArangoErrors \
 	RestDocument \
@@ -1827,6 +1829,7 @@ WIKI = \
 	Transactions \
 	Upgrading11 \
 	Upgrading12 \
+	Upgrading13 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \

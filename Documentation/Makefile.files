@@ -126,6 +126,7 @@ WIKI = \
 	NamingConventions \
 	NewFeatures11 \
 	NewFeatures12 \
+	NewFeatures13 \
 	RefManual \
 	RefManualArangoErrors \
 	RestDocument \
@@ -134,6 +135,7 @@ WIKI = \
 	Transactions \
 	Upgrading11 \
 	Upgrading12 \
+	Upgrading13 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -341,7 +343,6 @@ swagger:
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
-	
 
 ################################################################################
 ### @brief generate examples
