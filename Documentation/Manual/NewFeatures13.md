@@ -14,8 +14,8 @@ that are not listed here.
 Changes to the Datafile Structure{#NewFeatures13Datafile}
 ---------------------------------------------------------
 
-As the datafile structure has changed, please read the upgrade manual
-carefully.
+As the datafile structure has changed, please read the 
+@ref Upgrading13 "upgrade manual" carefully.
 
 Rapid API Development with FOXX{#NewFeatures13Foxx}
 ---------------------------------------------------
