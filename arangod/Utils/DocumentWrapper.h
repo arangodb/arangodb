@@ -49,7 +49,11 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+      private:
 
+        DocumentWrapper (const DocumentWrapper&);
+        DocumentWrapper& operator= (const DocumentWrapper&);
+        
       public:
 
         DocumentWrapper (TRI_doc_mptr_t const* document, TRI_primary_collection_t* primary) {
