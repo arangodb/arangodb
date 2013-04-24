@@ -38,15 +38,10 @@
 
   describe('Edge Shaper', function() {
     
-    var svg, defaultPosition;
+    var svg;
     
     beforeEach(function () {
       svg = document.createElement("svg");
-      defaultPosition = {
-        x: 1,
-        y: 1,
-        z: 1
-      };
       document.body.appendChild(svg);
     });
 
@@ -56,21 +51,16 @@
     
     
     it('should be able to draw an edge', function () {
-      var source = {
-        "_id": 1,
-        position: defaultPosition
-      },
-      target = {
-        "_id": 2,
-        position: defaultPosition
-      },
-      edges = [
-        {
-          "source": source,
-          "target": target
-        }
-      ],
-      shaper = new EdgeShaper(d3.select("svg"));
+      var nodes = helper.createSimpleNodes([1, 2]),
+        source = nodes[0],
+        target = nodes[1],
+        edges = [
+          {
+            "source": source,
+            "target": target
+          }
+        ],
+        shaper = new EdgeShaper(d3.select("svg"));
       shaper.drawEdges(edges);
       expect($("svg .link line").length).toEqual(1);
       expect($("svg .link line")[0]).toBeDefined();
@@ -78,38 +68,23 @@
     });
 
     it('should be able to draw many edges', function () {
-      var one = {
-        "_id": 1,
-        position: defaultPosition
-      },
-      two = {
-        "_id": 2,
-        position: defaultPosition
-      },
-      three = {
-        "_id": 3,
-        position: defaultPosition
-      },
-      four = {
-        "_id": 4,
-        position: defaultPosition
-      },
+      var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
       edges = [
         {
-          "source": one,
-          "target": two
+          "source": nodes[0],
+          "target": nodes[1]
         },
         {
-          "source": two,
-          "target": three
+          "source": nodes[1],
+          "target": nodes[2]
         },
         {
-          "source": three,
-          "target": four
+          "source": nodes[2],
+          "target": nodes[3]
         },
         {
-          "source": four,
-          "target": one
+          "source": nodes[3],
+          "target": nodes[0]
         }
       ],
       shaper = new EdgeShaper(d3.select("svg"));
@@ -118,38 +93,23 @@
     });
     
     it('should be able to add an event', function () {
-      var one = {
-        "_id": 1,
-        position: defaultPosition
-      },
-      two = {
-        "_id": 2,
-        position: defaultPosition
-      },
-      three = {
-        "_id": 3,
-        position: defaultPosition
-      },
-      four = {
-        "_id": 4,
-        position: defaultPosition
-      },
+      var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
       edges = [
         {
-          "source": one,
-          "target": two
+          "source": nodes[0],
+          "target": nodes[1]
         },
         {
-          "source": two,
-          "target": three
+          "source": nodes[1],
+          "target": nodes[2]
         },
         {
-          "source": three,
-          "target": four
+          "source": nodes[2],
+          "target": nodes[3]
         },
         {
-          "source": four,
-          "target": one
+          "source": nodes[3],
+          "target": nodes[0]
         }
       ],
       clicked = [],
@@ -173,38 +133,23 @@
     });
     
     it('should be able to unbind all events', function() {
-      var one = {
-        "_id": 1,
-        position: defaultPosition
-      },
-      two = {
-        "_id": 2,
-        position: defaultPosition
-      },
-      three = {
-        "_id": 3,
-        position: defaultPosition
-      },
-      four = {
-        "_id": 4,
-        position: defaultPosition
-      },
+      var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
       edges = [
         {
-          "source": one,
-          "target": two
+          "source": nodes[0],
+          "target": nodes[1]
         },
         {
-          "source": two,
-          "target": three
+          "source": nodes[1],
+          "target": nodes[2]
         },
         {
-          "source": three,
-          "target": four
+          "source": nodes[2],
+          "target": nodes[3]
         },
         {
-          "source": four,
-          "target": one
+          "source": nodes[3],
+          "target": nodes[0]
         }
       ],
       clicked = [],
@@ -234,18 +179,11 @@
     });
     
     it('should be able to add an arrow on target side', function() {
-      var one = {
-        "_id": 1,
-        position: defaultPosition
-      },
-      two = {
-        "_id": 2,
-        position: defaultPosition
-      },
+      var nodes = helper.createSimpleNodes([1, 2]),
       edges = [
         {
-          "source": one,
-          "target": two
+          "source": nodes[0],
+          "target": nodes[1]
         }
       ],
       shaper = new EdgeShaper(d3.select("svg"), {
@@ -339,15 +277,7 @@
     describe('testing for colours', function() {
       
       it('should have a default colouring of no colour flag is given', function() {
-        var nodes = [
-          {
-            _id: 1,
-            position: defaultPosition
-          }, {
-            _id: 2,
-            position: defaultPosition
-          }
-        ],
+        var nodes = helper.createSimpleNodes([1, 2]),
         edges = [{
           source: nodes[0],
           target: nodes[1]
@@ -363,20 +293,13 @@
       });
       
       it('should be able to use the same colour for all edges', function() {
-        var s = {
-          _id: 1,
-          position: defaultPosition
-        },
-        t = {
-          _id: 2,
-          position: defaultPosition
-        },
+        var nodes = helper.createSimpleNodes([1, 2]),
         edges = [{
-          source: s,
-          target: t
+          source: nodes[0],
+          target: nodes[1]
         },{
-          source: t,
-          target: s
+          source: nodes[1],
+          target: nodes[0]
         }],
         shaper = new EdgeShaper(d3.select("svg"),
           {
@@ -393,22 +316,11 @@
       });
       
       it('should be able to use a colour based on attribute value', function() {
-        var n1 = {
-          _id: 1,
-          position: defaultPosition
-        },
-        n2 = {
-          _id: 2,
-          position: defaultPosition
-        },
-        n3 = {
-          _id: 3,
-          position: defaultPosition
-        },
-        n4 = {
-          _id: 4,
-          position: defaultPosition
-        },
+        var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
+        n1 = nodes[0],
+        n2 = nodes[1],
+        n3 = nodes[2],
+        n4 = nodes[3],
         edges = [{
           source: n1,
           target: n2,
@@ -464,17 +376,10 @@
       });
       
       it('should be able to use a gradient colour', function() {
-        var s = {
-          _id: 1,
-          position: defaultPosition
-        },
-        t = {
-          _id: 2,
-          position: defaultPosition
-        },
+        var nodes = helper.createSimpleNodes([1, 2]),
         edges = [{
-          source: s,
-          target: t
+          source: nodes[0],
+          target: nodes[1]
         }],
         shaper = new EdgeShaper(d3.select("svg"),
           {
@@ -517,20 +422,13 @@
       var shaper;
       
       beforeEach(function() {
-        var one = {
-          "_id": 1,
-          position: defaultPosition
-        },
-        two = {
-          "_id": 2,
-          position: defaultPosition
-        },
-        edges = [
-          {
-            "source": one,
-            "target": two
-          }
-        ];
+        var nodes = helper.createSimpleNodes([1, 2]),
+          edges = [
+            {
+              "source": nodes[0],
+              "target": nodes[1]
+            }
+          ];
         shaper = new EdgeShaper(d3.select("svg"), {
           shape: {
             type: EdgeShaper.shapes.ARROW
@@ -576,24 +474,7 @@
       shaper;
       
       beforeEach(function() {
-        nodes = [
-          {
-            _id: 1,
-            position: defaultPosition
-          }, 
-          {
-            _id: 2,
-            position: defaultPosition
-          }, 
-          {
-            _id: 3,
-            position: defaultPosition
-          }, 
-          {
-            _id: 4,
-            position: defaultPosition
-          }
-        ];
+        nodes = helper.createSimpleNodes([1, 2, 3, 4]);
         edges = [
           {_id: 1, source: nodes[0], target: nodes[1]},
           {_id: 2, source: nodes[1], target: nodes[2]},
@@ -671,21 +552,7 @@
       });
       
       it('should display the correct label', function() {
-        var nodes = [
-          {
-            "_id": 1,
-            position: defaultPosition
-          }, {
-            "_id": 2,
-            position: defaultPosition
-          }, {
-            "_id": 3,
-            position: defaultPosition
-          }, {
-            "_id": 4,
-            position: defaultPosition
-          }  
-        ],
+        var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
         edges = [
           {
             "source": nodes[0],
@@ -758,21 +625,7 @@
       });
       
       it('should ignore other attributes', function() {
-        var nodes = [
-          {
-            "_id": 1,
-            position: defaultPosition
-          }, {
-            "_id": 2,
-            position: defaultPosition
-          }, {
-            "_id": 3,
-            position: defaultPosition
-          }, {
-            "_id": 4,
-            position: defaultPosition
-          }
-        ],
+        var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
         edges = [
           {
             "source": nodes[0],
@@ -812,15 +665,7 @@
       });
       
       it('should be able to switch to another label', function() {
-        var nodes = [
-          {
-            "_id": 1,
-            position: defaultPosition
-          }, {
-            "_id": 2,
-            position: defaultPosition
-          }
-        ],
+        var nodes = helper.createSimpleNodes([1, 2]),
         edges = [
           {
             "source": nodes[0],
@@ -868,21 +713,7 @@
       });
       
       it('should display the correct label', function() {
-        var nodes = [
-          {
-            "_id": 1,
-            position: defaultPosition
-          }, {
-            "_id": 2,
-            position: defaultPosition
-          }, {
-            "_id": 3,
-            position: defaultPosition
-          }, {
-            "_id": 4,
-            position: defaultPosition
-          }
-        ],
+        var nodes = helper.createSimpleNodes([1, 2, 3, 4]),
         edges = [
           {
             "source": nodes[0],
@@ -918,21 +749,7 @@
 
       beforeEach(function () {
         shaper = new EdgeShaper(d3.select("svg"));
-        nodes = [
-          {
-            "_id": 1,
-            position: defaultPosition
-          }, {
-            "_id": 2,
-            position: defaultPosition
-          }, {
-            "_id": 3,
-            position: defaultPosition
-          }, {
-            "_id": 4,
-            position: defaultPosition
-          }
-        ];
+        nodes = helper.createSimpleNodes([1, 2, 3, 4]);
         edges = [
           {
             "source": nodes[0],
@@ -1022,14 +839,9 @@
           .append("svg")
           .append("g"),
         shaper = new EdgeShaper(internalObject),
-        source = {
-          "_id": 1,
-          position: defaultPosition
-        },
-        target = {
-          "_id": 2,
-          position: defaultPosition
-        },
+        nodes = helper.createSimpleNodes([1, 2]),
+        source = nodes[0],
+        target = nodes[1],
         edges = [
           {
             "source": source,
