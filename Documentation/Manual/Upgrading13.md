@@ -17,6 +17,6 @@ Existing users of ArangoDB 1.2 should read the list carefully and make sure they
 have undertaken all necessary steps and precautions before upgrading from
 ArangoDB 1.2 to ArangoDB 1.3. Please also check @ref Upgrading13Troubleshooting.
 
-Troubleshooting{#Upgrading12Troubleshooting}
+Troubleshooting{#Upgrading13Troubleshooting}
 ============================================
 
