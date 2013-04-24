@@ -601,7 +601,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    p->_aid = shaper->findAttributeName(shaper, *keyStr);
+    p->_aid = shaper->findAttributeByName(shaper, *keyStr);
 
     // convert value
     if (p->_aid == 0) {

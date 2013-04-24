@@ -11,6 +11,7 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{HandlingEdges}
 @CHAPTER_REF{SimpleQueries}
 @CHAPTER_REF{Aql}
+@CHAPTER_REF{ExtendingAql}
 @CHAPTER_REF{AqlExamples}
 @CHAPTER_REF{UserManualActions}
 @CHAPTER_REF{Transactions}

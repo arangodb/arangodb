@@ -590,7 +590,7 @@ exports.installApp = function (appId, mount, options) {
   }
   catch (err) {
     if (doc !== undefined) {
-      desc = aal.document(doc._key).shallowCopy;
+      desc = aal.document(doc._key)._shallowCopy;
 
       desc.error = String(err);
       desc.active = false;
@@ -601,7 +601,7 @@ exports.installApp = function (appId, mount, options) {
     throw err;
   }
 
-  desc = aal.document(doc).shallowCopy;
+  desc = aal.document(doc)._shallowCopy;
   desc.active = true;
   doc = aal.replace(doc, desc);
 
@@ -671,7 +671,7 @@ exports.installDevApp = function (name, mount, options) {
     throw err;
   }
 
-  desc = aal.document(doc).shallowCopy;
+  desc = aal.document(doc)._shallowCopy;
   desc.active = true;
   doc = aal.replace(doc, desc);
 

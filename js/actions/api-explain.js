@@ -56,19 +56,19 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// on many different factors, the execution plan normally can give some good hint
 /// on the amount of work the server needs to do in order to actually run the query. 
 ///
-/// The query string needs to be passed in the attribute @LIT{query} of a JSON
+/// The query string needs to be passed in the attribute `query` of a JSON
 /// object as the body of the POST request. If the query references any bind 
-/// variables, these must also be passed in the attribute @LIT{bindVars}.
+/// variables, these must also be passed in the attribute `bindVars`.
 ///
-/// If the query is valid, the server will respond with @LIT{HTTP 200} and
-/// return a list of the individual query execution steps in the @LIT{"plan"}
+/// If the query is valid, the server will respond with `HTTP 200` and
+/// return a list of the individual query execution steps in the `"plan"`
 /// attribute of the response.
 ///
-/// The server will respond with @LIT{HTTP 400} in case of a malformed request,
+/// The server will respond with `HTTP 400` in case of a malformed request,
 /// or if the query contains a parse error. The body of the response will
 /// contain the error details embedded in a JSON object.
 /// Omitting bind variables if the query references any will result also result
-/// in an @LIT{HTTP 400} error.
+/// in an `HTTP 400` error.
 ///
 /// @EXAMPLES
 ///
@@ -80,9 +80,9 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///
 /// @verbinclude api-explain-invalid
 ///
-/// The data returned in the @LIT{plan} attribute of the result contains one
-/// element per AQL top-level statement (i.e. @LIT{FOR}, @LIT{RETURN}, 
-/// @LIT{FILTER} etc.). If the query optimiser removed some unnecessary statements,
+/// The data returned in the `plan` attribute of the result contains one
+/// element per AQL top-level statement (i.e. `FOR`, `RETURN`, 
+/// `FILTER` etc.). If the query optimiser removed some unnecessary statements,
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
 /// The following example shows a query with a non-sensible filter condition that
@@ -93,28 +93,28 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// The top-level statements will appear in the result in the same order in which
 /// they have been used in the original query. Each result element has at most the 
 /// following attributes:
-/// - @LIT{id}: the row number of the top-level statement, starting at 1
-/// - @LIT{type}: the type of the top-level statement (e.g. @LIT{for}, @LIT{return} ...)
-/// - @LIT{loopLevel}: the nesting level of the top-level statement, starting at 1
+/// - `id`: the row number of the top-level statement, starting at 1
+/// - `type`: the type of the top-level statement (e.g. `for`, `return` ...)
+/// - `loopLevel`: the nesting level of the top-level statement, starting at 1
 /// Depending on the type of top-level statement, there might be other attributes
 /// providing additional information, for example, if and which indexed will be
 /// used.
-/// Many top-level statements will provide an @LIT{expression} attribute that
-/// contains data about the expression they operate on. This is true for @LIT{FOR},
-/// @LIT{FILTER}, @LIT{SORT}, @LIT{COLLECT}, and @LIT{RETURN} statements. The 
-/// @LIT{expression} attribute has the following sub-attributes:
-/// - @LIT{type}: the type of the expression. Some possible values are:
-///   - @LIT{collection}: an iteration over documents from a collection. The 
-///     @LIT{value} attribute will then contain the collection name. The @LIT{extra}
+/// Many top-level statements will provide an `expression` attribute that
+/// contains data about the expression they operate on. This is true for `FOR`,
+/// `FILTER`, `SORT`, `COLLECT`, and `RETURN` statements. The 
+/// `expression` attribute has the following sub-attributes:
+/// - `type`: the type of the expression. Some possible values are:
+///   - `collection`: an iteration over documents from a collection. The 
+///     `value` attribute will then contain the collection name. The `extra`
 ///     attribute will contain information about if and which index is used when
 ///     accessing the documents from the collection. If no index is used, the 
-///     @LIT{accessType} sub-attribute of the @LIT{extra} attribute will have the
-///     value @LIT{all}, otherwise it will be @LIT{index}.
-///   - @LIT{list}: a list of dynamic values. The @LIT{value} attribute will contain the
+///     `accessType` sub-attribute of the `extra` attribute will have the
+///     value `all`, otherwise it will be `index`.
+///   - `list`: a list of dynamic values. The `value` attribute will contain the
 ///     list elements.
-///   - @LIT{const list}: a list of constant values. The @LIT{value} attribute will contain the
+///   - `const list`: a list of constant values. The `value` attribute will contain the
 ///     list elements.
-///   - @LIT{reference}: a reference to another variable. The @LIT{value} attribute
+///   - `reference`: a reference to another variable. The `value` attribute
 ///     will contain the name of the variable that is referenced.
 ///
 /// Please note that the structure of the explain result data might change in future

@@ -27,9 +27,7 @@ var queryView = Backbone.View.extend({
     editor.getSession().setMode("ace/mode/aql");
     editor2.getSession().setMode("ace/mode/json");
     editor.setTheme("ace/theme/merbivore_soft");
-    editor.resize();
     editor2.setValue('');
-    editor2.resize();
 
     $('#queryOutput').resizable({
       handles: "s",
@@ -42,7 +40,7 @@ var queryView = Backbone.View.extend({
     $('#aqlEditor').resizable({
       handles: "s",
       ghost: true,
-      helper: "resizable-helper",
+      //helper: "resizable-helper",
       stop: function () {
         var editor = ace.edit("aqlEditor");
         editor.resize();
@@ -58,6 +56,14 @@ var queryView = Backbone.View.extend({
       editor.setValue(queryContent);
       editor2.setValue(queryOutput);
     }
+
+    var windowHeight = $(window).height() - 250;
+    $('#queryOutput').height(windowHeight/2);
+    $('#aqlEditor').height(windowHeight/2);
+
+    editor.resize();
+    editor2.resize();
+
     return this;
   },
   submitQuery: function() {
@@ -84,7 +90,7 @@ var queryView = Backbone.View.extend({
         try {
           var temp = JSON.parse(data.responseText);
           editor2.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-        
+
           if(typeof(Storage) !== "undefined") {
             localStorage.setItem("queryContent", editor.getValue());
             localStorage.setItem("queryOutput", editor2.getValue());
@@ -95,6 +101,7 @@ var queryView = Backbone.View.extend({
         }
       }
     });
+    editor2.resize();
 
   },
   FormatJSON: function(oData, sIndent) {

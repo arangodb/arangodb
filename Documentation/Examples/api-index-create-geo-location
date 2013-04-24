@@ -1,4 +1,4 @@
-> curl --data @- -X POST --dump - http://localhost:8529/_api/index?collection=95560976
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index?collection=demo
 { "type" : "geo", "fields" : [ "b" ] }
 
 HTTP/1.1 201 Created
@@ -10,8 +10,9 @@ content-type: application/json
   "fields": [
     "b"
   ],
-  "id": "95560976/162222265",
+  "id": "demo/162222265",
   "type": "geo1",
+  "unique" : false,
   "constraint" : false,
   "isNewlyCreated": true,
   "error": false

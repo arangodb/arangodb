@@ -42,6 +42,10 @@
       "description": "Interface for SimpleQueries"
     },
     {
+      "path": "/aqlfunction",
+      "description": "Interface for AQL functions"
+    },
+    {
       "path": "/query",
       "description": "Interface for Queries"
     },

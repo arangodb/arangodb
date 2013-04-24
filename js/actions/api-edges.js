@@ -40,20 +40,20 @@ var API = "/_api/edges";
 ///
 /// @RESTHEADER{GET /_api/edges,reads in- or outbound edges}
 ///
-/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=any}
+/// @REST{GET /_api/edges/`collection-identifier`?vertex=`vertex-handle`&direction=any}
 ///
 /// Returns the list of edges starting or ending in the vertex identified by
-/// @FA{vertex-handle}.
+/// `vertex-handle`.
 ///
-/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=in}
+/// @REST{GET /_api/edges/`collection-identifier`?vertex=`vertex-handle`&direction=in}
 ///
 /// Returns the list of edges ending in the vertex identified by
-/// @FA{vertex-handle}.
+/// `vertex-handle`.
 ///
-/// @REST{GET /_api/edges/@FA{collection-identifier}?vertex=@FA{vertex-handle}&direction=out}
+/// @REST{GET /_api/edges/`collection-identifier`?vertex=`vertex-handle`&direction=out}
 ///
 /// Returns the list of edges starting in the vertex identified by
-/// @FA{vertex-handle}.
+/// `vertex-handle`.
 ///
 /// @EXAMPLES
 ///

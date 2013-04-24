@@ -208,7 +208,7 @@ Edge.prototype.getPeerVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var shallow = this._properties.shallowCopy;
+  var shallow = this._properties._shallowCopy;
   var id;
 
   // Could potentially change the weight of edges
@@ -408,7 +408,7 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var shallow = this._properties.shallowCopy;
+  var shallow = this._properties._shallowCopy;
   var id;
 
   shallow[name] = value;
@@ -691,7 +691,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
     shallow = {};
   }
   else {
-    shallow = data.shallowCopy || {};
+    shallow = data._shallowCopy || {};
   }
 
   if (id !== undefined && id !== null) {
@@ -738,7 +738,7 @@ Graph.prototype.addVertex = function (id, data, waitForSync) {
     shallow = {};
   }
   else {
-    shallow = data.shallowCopy || {};
+    shallow = data._shallowCopy || {};
   }
 
   if (id !== undefined && id !== null) {

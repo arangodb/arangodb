@@ -242,7 +242,7 @@ actions.defineHttp({
 ///
 /// @REST{GET /_admin/time}
 ///
-/// The call returns an object with the attribute @LIT{time}. This contains the
+/// The call returns an object with the attribute `time`. This contains the
 /// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -266,11 +266,11 @@ actions.defineHttp({
 ///
 /// The call returns an object with the following attributes:
 ///
-/// - @LIT{headers}: a list of HTTP headers received
+/// - `headers`: a list of HTTP headers received
 ///
-/// - @LIT{requestType}: the HTTP request method (e.g. GET)
+/// - `requestType`: the HTTP request method (e.g. GET)
 ///
-/// - @LIT{parameters}: list of URL parameters received
+/// - `parameters`: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -300,12 +300,13 @@ actions.defineHttp({
 /// stored in the attribute of the same name.
 ///
 /// In case of a distribution, the returned object contains the total count in
-/// `count` and the distribution list in `counts`.
+/// `count` and the distribution list in `counts`. The sum (or total) of the
+/// individual values is returned in `sum`.
 /// 
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// Statistics was returned successfully.
+/// Statistics were returned successfully.
 /// 
 /// @EXAMPLES
 /// 
