@@ -38,10 +38,15 @@
 
   describe('Edge Shaper', function() {
     
-    var svg;
+    var svg, defaultPosition;
     
     beforeEach(function () {
       svg = document.createElement("svg");
+      defaultPosition = {
+        x: 1,
+        y: 1,
+        z: 1
+      };
       document.body.appendChild(svg);
     });
 
@@ -52,10 +57,12 @@
     
     it('should be able to draw an edge', function () {
       var source = {
-        "_id": 1
+        "_id": 1,
+        position: defaultPosition
       },
       target = {
-        "_id": 2
+        "_id": 2,
+        position: defaultPosition
       },
       edges = [
         {
@@ -72,16 +79,20 @@
 
     it('should be able to draw many edges', function () {
       var one = {
-        "_id": 1
+        "_id": 1,
+        position: defaultPosition
       },
       two = {
-        "_id": 2
+        "_id": 2,
+        position: defaultPosition
       },
       three = {
-        "_id": 3
+        "_id": 3,
+        position: defaultPosition
       },
       four = {
-        "_id": 4
+        "_id": 4,
+        position: defaultPosition
       },
       edges = [
         {
@@ -108,16 +119,20 @@
     
     it('should be able to add an event', function () {
       var one = {
-        "_id": 1
+        "_id": 1,
+        position: defaultPosition
       },
       two = {
-        "_id": 2
+        "_id": 2,
+        position: defaultPosition
       },
       three = {
-        "_id": 3
+        "_id": 3,
+        position: defaultPosition
       },
       four = {
-        "_id": 4
+        "_id": 4,
+        position: defaultPosition
       },
       edges = [
         {
@@ -159,16 +174,20 @@
     
     it('should be able to unbind all events', function() {
       var one = {
-        "_id": 1
+        "_id": 1,
+        position: defaultPosition
       },
       two = {
-        "_id": 2
+        "_id": 2,
+        position: defaultPosition
       },
       three = {
-        "_id": 3
+        "_id": 3,
+        position: defaultPosition
       },
       four = {
-        "_id": 4
+        "_id": 4,
+        position: defaultPosition
       },
       edges = [
         {
@@ -216,10 +235,12 @@
     
     it('should be able to add an arrow on target side', function() {
       var one = {
-        "_id": 1
+        "_id": 1,
+        position: defaultPosition
       },
       two = {
-        "_id": 2
+        "_id": 2,
+        position: defaultPosition
       },
       edges = [
         {
@@ -244,28 +265,38 @@
     it('should position the edges correctly', function() {
       var center = {
         _id: 1,
-        x: 20,
-        y: 20
+        position: {
+          x: 20,
+          y: 20
+        }
       },
       NE = {
         _id: 2,
-        x: 30,
-        y: 10
+        position: {
+          x: 30,
+          y: 10
+        }
       },
       SE = {
         _id: 3,
-        x: 40,
-        y: 30
+        position: {
+          x: 40,
+          y: 30
+        }
       },
       SW = {
         _id: 4,
-        x: 10,
-        y: 40
+        position: {
+          x: 10,
+          y: 40
+        }
       },
       NW = {
         _id: 5,
-        x: 0,
-        y: 0
+        position: {
+          x: 0,
+          y: 0
+        }
       },
       edges = [
         {
@@ -308,7 +339,15 @@
     describe('testing for colours', function() {
       
       it('should have a default colouring of no colour flag is given', function() {
-        var nodes = [{_id: 1}, {_id: 2}],
+        var nodes = [
+          {
+            _id: 1,
+            position: defaultPosition
+          }, {
+            _id: 2,
+            position: defaultPosition
+          }
+        ],
         edges = [{
           source: nodes[0],
           target: nodes[1]
@@ -324,8 +363,14 @@
       });
       
       it('should be able to use the same colour for all edges', function() {
-        var s = {_id: 1},
-        t = {_id: 2},
+        var s = {
+          _id: 1,
+          position: defaultPosition
+        },
+        t = {
+          _id: 2,
+          position: defaultPosition
+        },
         edges = [{
           source: s,
           target: t
@@ -348,10 +393,22 @@
       });
       
       it('should be able to use a colour based on attribute value', function() {
-        var n1 = {_id: 1},
-        n2 = {_id: 2},
-        n3 = {_id: 3},
-        n4 = {_id: 4},
+        var n1 = {
+          _id: 1,
+          position: defaultPosition
+        },
+        n2 = {
+          _id: 2,
+          position: defaultPosition
+        },
+        n3 = {
+          _id: 3,
+          position: defaultPosition
+        },
+        n4 = {
+          _id: 4,
+          position: defaultPosition
+        },
         edges = [{
           source: n1,
           target: n2,
@@ -407,8 +464,14 @@
       });
       
       it('should be able to use a gradient colour', function() {
-        var s = {_id: 1},
-        t = {_id: 2},
+        var s = {
+          _id: 1,
+          position: defaultPosition
+        },
+        t = {
+          _id: 2,
+          position: defaultPosition
+        },
         edges = [{
           source: s,
           target: t
@@ -455,10 +518,12 @@
       
       beforeEach(function() {
         var one = {
-          "_id": 1
+          "_id": 1,
+          position: defaultPosition
         },
         two = {
-          "_id": 2
+          "_id": 2,
+          position: defaultPosition
         },
         edges = [
           {
@@ -511,7 +576,24 @@
       shaper;
       
       beforeEach(function() {
-        nodes = [{_id: 1}, {_id: 2}, {_id: 3}, {_id: 4}];
+        nodes = [
+          {
+            _id: 1,
+            position: defaultPosition
+          }, 
+          {
+            _id: 2,
+            position: defaultPosition
+          }, 
+          {
+            _id: 3,
+            position: defaultPosition
+          }, 
+          {
+            _id: 4,
+            position: defaultPosition
+          }
+        ];
         edges = [
           {_id: 1, source: nodes[0], target: nodes[1]},
           {_id: 2, source: nodes[1], target: nodes[2]},
@@ -589,7 +671,21 @@
       });
       
       it('should display the correct label', function() {
-        var nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}],
+        var nodes = [
+          {
+            "_id": 1,
+            position: defaultPosition
+          }, {
+            "_id": 2,
+            position: defaultPosition
+          }, {
+            "_id": 3,
+            position: defaultPosition
+          }, {
+            "_id": 4,
+            position: defaultPosition
+          }  
+        ],
         edges = [
           {
             "source": nodes[0],
@@ -634,13 +730,17 @@
         var nodes = [
           {
             _id: 1,
-            x: 20,
-            y: 20
+            position: {
+              x: 20,
+              y: 20
+            }
           },
           {
             _id: 2,
-            x: 100,
-            y: 20
+            position: {
+              x: 100,
+              y: 20
+            }
           }
         ],
         edges = [
@@ -658,7 +758,21 @@
       });
       
       it('should ignore other attributes', function() {
-        var nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}],
+        var nodes = [
+          {
+            "_id": 1,
+            position: defaultPosition
+          }, {
+            "_id": 2,
+            position: defaultPosition
+          }, {
+            "_id": 3,
+            position: defaultPosition
+          }, {
+            "_id": 4,
+            position: defaultPosition
+          }
+        ],
         edges = [
           {
             "source": nodes[0],
@@ -698,7 +812,15 @@
       });
       
       it('should be able to switch to another label', function() {
-        var nodes = [{"_id": 1}, {"_id": 2}],
+        var nodes = [
+          {
+            "_id": 1,
+            position: defaultPosition
+          }, {
+            "_id": 2,
+            position: defaultPosition
+          }
+        ],
         edges = [
           {
             "source": nodes[0],
@@ -746,7 +868,21 @@
       });
       
       it('should display the correct label', function() {
-        var nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}],
+        var nodes = [
+          {
+            "_id": 1,
+            position: defaultPosition
+          }, {
+            "_id": 2,
+            position: defaultPosition
+          }, {
+            "_id": 3,
+            position: defaultPosition
+          }, {
+            "_id": 4,
+            position: defaultPosition
+          }
+        ],
         edges = [
           {
             "source": nodes[0],
@@ -782,7 +918,21 @@
 
       beforeEach(function () {
         shaper = new EdgeShaper(d3.select("svg"));
-        nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}];
+        nodes = [
+          {
+            "_id": 1,
+            position: defaultPosition
+          }, {
+            "_id": 2,
+            position: defaultPosition
+          }, {
+            "_id": 3,
+            position: defaultPosition
+          }, {
+            "_id": 4,
+            position: defaultPosition
+          }
+        ];
         edges = [
           {
             "source": nodes[0],
@@ -873,10 +1023,12 @@
           .append("g"),
         shaper = new EdgeShaper(internalObject),
         source = {
-          "_id": 1
+          "_id": 1,
+          position: defaultPosition
         },
         target = {
-          "_id": 2
+          "_id": 2,
+          position: defaultPosition
         },
         edges = [
           {

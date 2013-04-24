@@ -107,14 +107,14 @@ function EdgeShaper(parent, flags, idfunc) {
     addPosition = function (line, g) {
       g.attr("transform", function(d) {
         return "translate("
-          + d.source.x + ", "
-          + d.source.y + ")"
+          + d.source.position.x + ", "
+          + d.source.position.y + ")"
           + "rotate("
-          + getCorner(d.source, d.target)
+          + getCorner(d.source.position, d.target.position)
           + ")";
       });
       line.attr("x2", function(d) {
-        return getDistance(d.source, d.target);
+        return getDistance(d.source.position, d.target.position);
       });
     },
     
@@ -206,7 +206,7 @@ function EdgeShaper(parent, flags, idfunc) {
         edges.select("text")
           .attr("transform", function(d) {
             return "translate("
-              + getDistance(d.source, d.target) / 2
+              + getDistance(d.source.position, d.target.position) / 2
               + ", -3)";
           });
       };
