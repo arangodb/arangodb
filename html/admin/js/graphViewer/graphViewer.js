@@ -122,8 +122,8 @@ function GraphViewer(svg, width, height,
     
   self.start = function() {
     self.layouter.stop();
-    self.edgeShaper.drawEdges(edges);
     self.nodeShaper.drawNodes(nodes);
+    self.edgeShaper.drawEdges(edges);
     self.layouter.start();
   };
   

@@ -138,6 +138,7 @@ function NodeShaper(parent, flags, idfunc) {
     
     updateNodes = function () {
       var nodes = self.parent.selectAll(".node");
+      addDistortion();
       nodes.attr("transform", function(d) {
         return "translate(" + d.position.x + "," + d.position.y + ")"; 
       });
