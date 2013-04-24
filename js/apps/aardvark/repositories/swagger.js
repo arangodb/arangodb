@@ -33,7 +33,11 @@
   
   // Define the Repository
   var Foxx = require("org/arangodb/foxx"),
-  db = require("internal").db;
+    db = require("internal").db,
+    _routing = db._collection("_routing"),
+    _aal = db._collection("_aal"),
+    _ = require("underscore"),
+    foxx_manager = require("org/arangodb/foxx-manager");
   
   
   // Define the functionality to receive the documentation.
@@ -44,8 +48,7 @@
     list: function(basePath) {
       var result = {},
       apis = [],
-      routes = db._collection("_routing"),
-      res = db._collection("_aal").byExample({"type": "mount"});
+      res = _aal.byExample({"type": "mount"});
       result.swaggerVersion = "1.1";
       result.basePath = basePath;
       result.apis = apis;
@@ -64,7 +67,7 @@
     
     listOne: function(basePath, key) {
       var result = {},
-      res = db._collection("_aal").document(key);
+      res = _aal.document(key);
       result.swaggerVersion = "1.1";
       result.basePath = basePath;
       result.apis = [
@@ -75,7 +78,6 @@
     
     // Get details of one specific installed foxx. 
     show: function(appname) {
-      require("console").log(appname);
       var result = {},
       apis = [],
       pathes,
@@ -84,9 +86,19 @@
       url,
       api,
       ops,
-      routes = db._collection("_routing"),
-      key = db._collection("_aal").firstExample({"mount": appname})._key,
-      app = routes.firstExample({"foxxMount": key});
+      foxxApp = _aal.firstExample({"mount": appname}),
+      app;
+      if (!foxxApp.development) {
+        app = _routing.firstExample({"foxxMount": foxxApp._key});
+      } else {
+        _.each(foxx_manager.developmentRoutes(), function(r) {
+          var ac = r.appContext;
+          if (ac.appId === foxxApp.app && ac.mount === foxxApp.mount) {
+            app = r;
+            return;
+          }
+        });
+      }
       result.swaggerVersion = "1.1";
       result.basePath = app.urlPrefix;
       result.apis = apis;

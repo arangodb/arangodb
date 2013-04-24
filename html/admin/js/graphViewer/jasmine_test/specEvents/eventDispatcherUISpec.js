@@ -96,7 +96,7 @@
           nodes: nodes,
           startCallback: function() {},
           loadNode: this.loadNode,
-          reshapeNode: function() {}
+          reshapeNodes: function() {}
         },
       
         dragConfig = {
@@ -208,7 +208,7 @@
           }
         });
         
-        helper.simulateMouseEvent("drag", "1");
+        helper.simulateDragEvent("1");
         
         expect(layouter.drag).toHaveBeenCalled();
       });
