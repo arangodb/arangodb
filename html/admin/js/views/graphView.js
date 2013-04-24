@@ -13,24 +13,21 @@ window.graphView = Backbone.View.extend({
   },
 
   createViewer: function() {
-    var host,
-    ecol,
+    var ecol,
     ncol,
     aaconfig;
     
-    host = $("#host")[0].value;
     ecol = $("#edgeCollection")[0].value;
     ncol = $("#nodeCollection")[0].value;
            
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
-      edgeCollection: ecol,
-      host: host
+      edgeCollection: ecol
     };
 
     $("#creationDialog").remove();
-    ui = new GraphViewerUI(document.getElementById("content"), aaconfig);
+    ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 770);
   },
 
 

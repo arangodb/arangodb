@@ -1,5 +1,0 @@
-exports.func1 = function() {
-  print("1");
-};
-
-exports.const1 = 1;

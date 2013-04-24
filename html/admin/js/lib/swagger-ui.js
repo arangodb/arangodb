@@ -381,11 +381,8 @@ function program1(depth0,data) {
     + "\n        ";
   return buffer;
   }
-  
-  buffer += "\n<div class='container' id='resources_container'>\n    <ul id='resources'>\n    </ul>";
-  return buffer;
-  /* Old Version from swagger.
-  buffer += "\n\n    <div class=\"footer\">\n        <br>\n        <br>\n        <h4 style=\"color: #999\">[ <span style=\"font-variant: small-caps\">base url</span>: ";
+
+  buffer += "\n<div class='container' id='resources_container'>\n    <ul id='resources'>\n    </ul>\n\n    <div class=\"footer\">\n        <br>\n        <br>\n        <h4 style=\"color: #999\">[ <span style=\"font-variant: small-caps\">base url</span>: ";
   if (stack1 = helpers.basePath) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
   else { stack1 = depth0.basePath; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
   buffer += escapeExpression(stack1)
@@ -394,7 +391,6 @@ function program1(depth0,data) {
   if(stack1 || stack1 === 0) { buffer += stack1; }
   buffer += "]</h4>\n    </div>\n</div>\n";
   return buffer;
-  */
   });
 })();
 
@@ -606,7 +602,7 @@ function program1(depth0,data) {
 function program3(depth0,data) {
   
   var buffer = "", stack1;
-  buffer += "\n                        <h4>Examples <a href='#' class='hider'>hide</a></h4>\n                    <div class='examples_text'>\n                      <p>";
+  buffer += "\n                        <h4>Examples <a href='#' class='hider'>show</a></h4>\n                    <div class='examples_text' style='display:none'>\n                      <p>";
   if (stack1 = helpers.examples) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
   else { stack1 = depth0.examples; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
   if(stack1 || stack1 === 0) { buffer += stack1; }
@@ -641,7 +637,7 @@ function program11(depth0,data) {
 function program13(depth0,data) {
   
   
-  return "\n                    <div class='sandbox_header'>\n                        <input class='submit' name='commit' type='button' value='Try it out!' />\n                        <a href='#' class='response_hider' style='display:none'>Hide Response</a>\n                        <img alt='Throbber' class='response_throbber' src='img/swagger/throbber.gif' style='display:none' />\n                    </div>\n                    ";
+  return "\n                    <div class='sandbox_header'>\n                        <input class='submit' name='commit' type='button' value='Try it out!' />\n                        <a href='#' class='response_hider' style='display:none'>Hide Response</a>\n                        <img alt='Throbber' class='response_throbber' src='images/throbber.gif' style='display:none' />\n                    </div>\n                    ";
   }
 
   buffer += "\n    <ul class='operations' >\n      <li class='";

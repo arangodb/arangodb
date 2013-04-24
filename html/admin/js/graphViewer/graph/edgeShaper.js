@@ -47,7 +47,7 @@ function EdgeShaper(parent, flags, idfunc) {
   "use strict";
   
   var self = this,
-    
+    edges = [],
     toplevelSVG,
     
     idFunction = function(d) {
@@ -63,7 +63,6 @@ function EdgeShaper(parent, flags, idfunc) {
     addLabel = noop,
     addColor = noop,
     
-    
     unbindEvents = function() {
      events = {
        click: noop,
@@ -73,6 +72,20 @@ function EdgeShaper(parent, flags, idfunc) {
        mousemove: noop
      };
      addUpdate = noop;
+    },
+    
+    
+    getCorner = function(s, t) {
+      return Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
+    },
+    
+    getDistance = function(s, t) {
+      return Math.sqrt(
+        (t.y - s.y)
+        * (t.y - s.y)
+        + (t.x - s.x)
+        * (t.x - s.x)
+      );
     },
     
     addEvents = function (line, g) {
@@ -91,81 +104,54 @@ function EdgeShaper(parent, flags, idfunc) {
       }
     },
     
+    addPosition = function (line, g) {
+      g.attr("transform", function(d) {
+        return "translate("
+          + d.source.position.x + ", "
+          + d.source.position.y + ")"
+          + "rotate("
+          + getCorner(d.source.position, d.target.position)
+          + ")";
+      });
+      line.attr("x2", function(d) {
+        return getDistance(d.source.position, d.target.position);
+      });
+    },
+    
     addQue = function (line, g) {
       addShape(line, g);
       addLabel(line, g);
       addColor(line, g);
       addEvents(line, g);
+      addPosition(line, g);
     },
     
-    shapeEdges = function (edges) {
-      if (edges !== undefined) {
-        var data, g, line;
-        data = self.parent
+    shapeEdges = function (newEdges) {
+      if (newEdges !== undefined) {
+        edges = newEdges;
+      }
+      var line,
+        g = self.parent
           .selectAll(".link")
           .data(edges, idFunction);
-        g = data
-          .enter()
-          .append("g")
-          .attr("class", "link") // link is CSS class that might be edited
-          .attr("id", idFunction);
-        line = g.append("line");
-        addQue(line, g);
-        
-        data.exit().remove();
-        return g;
-      }
-    },
-    
-    reshapeEdges = function () {
-      var g, line;
-      $(".link").empty();
-      g = self.parent
-        .selectAll(".link");
+      // Append the group and class to all new    
+      g.enter()
+        .append("g")
+        .attr("class", "link") // link is CSS class that might be edited
+        .attr("id", idFunction);
+      // Remove all old
+      g.exit().remove();
+      // Remove all elements that are still included.
+      g.selectAll("* > *").remove();
       line = g.append("line");
-      addQue(line, g);
-    },
-    
-    reshapeEdge = function (edge) {
-      $("#" + edge._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
-      var g = self.parent
-        .selectAll(".link")
-        .filter(function (e) {
-          return e._id === edge._id;
-        }),
-      line = g.append("line");
-      addQue(line, g);
-    },
-    
-    getCorner = function(s, t) {
-      return Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
-    },
-    
-    getDistance = function(s, t) {
-      return Math.sqrt(
-        (t.y - s.y)
-        * (t.y - s.y)
-        + (t.x - s.x)
-        * (t.x - s.x)
-      );
+      addQue(line, g);     
     },
     
     updateEdges = function () {
-      var edges = self.parent.selectAll(".link")
-        // Set source x coordinate for edge.
-        .attr("transform", function(d) {
-          return "translate("
-            + d.source.x + ", "
-            + d.source.y + ")"
-            + "rotate("
-            + getCorner(d.source, d.target)
-            + ")";
-        });
-      edges.select("line")
-          .attr("x2", function(d) {
-            return getDistance(d.source, d.target);
-          });
-      addUpdate(edges);
+      var g = self.parent.selectAll(".link"),
+        line = g.select("line");
+      addPosition(line, g);
+      addUpdate(g);
     },
     
     parseShapeFlag = function (shape) {
@@ -204,14 +190,12 @@ function EdgeShaper(parent, flags, idfunc) {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black")
             .text(function(d) { 
               // Which value should be used as label
               return d._data[label] !== undefined ? d._data[label] : "";
@@ -222,7 +206,7 @@ function EdgeShaper(parent, flags, idfunc) {
         edges.select("text")
           .attr("transform", function(d) {
             return "translate("
-              + getDistance(d.source, d.target) / 2
+              + getDistance(d.source.position, d.target.position) / 2
               + ", -3)";
           });
       };
@@ -337,26 +321,21 @@ function EdgeShaper(parent, flags, idfunc) {
   
   self.changeTo = function(config) {
     parseConfig(config);
-    reshapeEdges();
+    shapeEdges();
     updateEdges();
   };
   
   self.drawEdges = function (edges) {
-    var res = shapeEdges(edges);
+    shapeEdges(edges);
     updateEdges();
-    return res;
   };
   
   self.updateEdges = function () {
     updateEdges();
   };
   
-  self.reshapeEdge = function(edge) {
-    reshapeEdge(edge);
-  };
-  
   self.reshapeEdges = function() {
-    reshapeEdges();
+    shapeEdges();
   }; 
 }
 

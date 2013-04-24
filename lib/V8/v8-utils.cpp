@@ -47,8 +47,8 @@
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
+#include "BasicsC/tri-zip.h"
 #include "BasicsC/utf8-helper.h"
-#include "BasicsC/zip.h"
 #include "Basics/FileUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
@@ -671,10 +671,6 @@ static v8::Handle<v8::Value> JS_SizeFile (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a line from stdin
-///
-/// @FUN{console.getline()}
-///
-/// Reads in a line from the console and returns it as string.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
