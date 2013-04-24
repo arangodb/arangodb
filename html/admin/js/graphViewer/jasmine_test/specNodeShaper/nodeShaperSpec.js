@@ -117,6 +117,20 @@
       expect(clicked[2]).toBeUndefined();
     });
 
+    it('should display circles by default', function() {
+      var node = [{_id: 1}],
+        shaper = new NodeShaper(d3.select("svg"));
+      shaper.drawNodes(node);
+      expect($("svg .node")[0]).toBeDefined();
+      expect($("svg .node").length).toEqual(1);
+      expect($("svg #1")[0]).toBeDefined();
+      expect($("svg circle")[0]).toBeDefined();
+      expect($("svg circle").length).toEqual(1);
+      expect($("svg .node circle")[0]).toBeDefined();
+      expect($("svg .node circle").length).toEqual(1);
+      expect($("svg #1 circle")[0].attributes.r.value).toEqual("8");
+    });
+
     describe('testing for colours', function() {
       
       it('should have a default colouring of no colour flag is given', function() {
@@ -151,17 +165,26 @@
       
       it('should be able to use a colour based on attribute value', function() {
         var nodes = [
-          {_id: 1,
-            label: "lbl1"
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
           }, {
             _id: 2,
-            label: "lbl2"
+            _data: {
+              label: "lbl2"
+            }
           }, {
             _id: 3,
-            label: "lbl3"
+            _data: {
+              label: "lbl3"
+            }
           }, {
             _id: 4,
-            label: "lbl1"
+            _data: {
+              label: "lbl1"
+            }
           }],
         shaper = new NodeShaper(d3.select("svg"),
         {
@@ -170,23 +193,39 @@
             key: "label"
           }
         }),
-        c1, c2, c3, c4;
+        c1f, c2f, c3f, c4f,
+        c1s, c2s, c3s, c4s;
         shaper.drawNodes(nodes);
         
-        c1 = $("#1").attr("fill");
-        c2 = $("#2").attr("fill");
-        c3 = $("#3").attr("fill");
-        c4 = $("#4").attr("fill");
+        c1f = $("#1").attr("fill");
+        c2f = $("#2").attr("fill");
+        c3f = $("#3").attr("fill");
+        c4f = $("#4").attr("fill");
         
-        expect(c1).toBeDefined();
-        expect(c2).toBeDefined();
-        expect(c3).toBeDefined();
-        expect(c4).toBeDefined();
+        c1s = $("#1").attr("stroke");
+        c2s = $("#2").attr("stroke");
+        c3s = $("#3").attr("stroke");
+        c4s = $("#4").attr("stroke");
         
-        expect(c1).toEqual(c4);
-        expect(c1).not.toEqual(c2);
-        expect(c1).not.toEqual(c3);
-        expect(c2).not.toEqual(c3);
+        expect(c1f).toBeDefined();
+        expect(c2f).toBeDefined();
+        expect(c3f).toBeDefined();
+        expect(c4f).toBeDefined();
+        
+        expect(c1f).toEqual(c4f);
+        expect(c1f).not.toEqual(c2f);
+        expect(c1f).not.toEqual(c3f);
+        expect(c2f).not.toEqual(c3f);
+        
+        expect(c1s).toBeDefined();
+        expect(c2s).toBeDefined();
+        expect(c3s).toBeDefined();
+        expect(c4s).toBeDefined();
+        
+        expect(c1s).toEqual(c4s);
+        expect(c1s).not.toEqual(c2s);
+        expect(c1s).not.toEqual(c3s);
+        expect(c2s).not.toEqual(c3s);
       });
       
       it('should be able to use colours based on _expanded attribute', function() {
@@ -208,20 +247,33 @@
             collapsed: "#654321"
           }
         }),
-        c1, c2, c3;
+        c1s, c2s, c3s,
+        c1f, c2f, c3f;
         shaper.drawNodes(nodes);
         
-        c1 = $("#1").attr("fill");
-        c2 = $("#2").attr("fill");
-        c3 = $("#3").attr("fill");
+        c1f = $("#1").attr("fill");
+        c2f = $("#2").attr("fill");
+        c3f = $("#3").attr("fill");
         
-        expect(c1).toBeDefined();
-        expect(c2).toBeDefined();
-        expect(c3).toBeDefined();
+        c1s = $("#1").attr("stroke");
+        c2s = $("#2").attr("stroke");
+        c3s = $("#3").attr("stroke");
         
-        expect(c1).toEqual("#123456");
-        expect(c2).toEqual("#654321");
-        expect(c3).toEqual("#654321");
+        expect(c1f).toBeDefined();
+        expect(c2f).toBeDefined();
+        expect(c3f).toBeDefined();
+        
+        expect(c1f).toEqual("#123456");
+        expect(c2f).toEqual("#654321");
+        expect(c3f).toEqual("#654321");
+        
+        expect(c1s).toBeDefined();
+        expect(c2s).toBeDefined();
+        expect(c3s).toBeDefined();
+        
+        expect(c1s).toEqual("#123456");
+        expect(c2s).toEqual("#654321");
+        expect(c3s).toEqual("#654321");
       });
       
     });
@@ -258,10 +310,10 @@
       });
       
       it('should be able to change display formats', function() {
-        expect($("svg circle").length).toEqual(0);
-        expect($("svg rect").length).toEqual(0);
-        shaper.changeTo({shape: {type: NodeShaper.shapes.CIRCLE, radius: 12}});
         expect($("svg circle").length).toEqual(3);
+        expect($("svg rect").length).toEqual(0);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.NONE}});
+        expect($("svg circle").length).toEqual(0);
         expect($("svg rect").length).toEqual(0);
         shaper.changeTo({shape: {type: NodeShaper.shapes.RECT, width: 12, height: 5}});
         expect($("svg circle").length).toEqual(0);
@@ -303,6 +355,59 @@
         expect(clicked[3]).toBeUndefined();
       });
       
+      it('should be able to reset bound events', function() {
+        shaper.changeTo({
+          actions: {
+            click: click
+          }
+        });
+        shaper.drawNodes(nodes);
+        
+        helper.simulateMouseEvent("click", "1");
+        
+        shaper.changeTo({actions: {
+          reset: true
+        }});
+        
+        helper.simulateMouseEvent("click", "2");
+        
+        expect(clicked[1]).toBeTruthy();
+        expect(clicked[2]).toBeUndefined();
+        expect(clicked[3]).toBeUndefined();
+      });
+      
+      it('should be able to reset the drag event', function() {
+        var dragged = 0,
+          dragTest = function() {
+            this.on("mousedown.drag", function() {
+              dragged++;
+            }).on("touchstart.drag", function() {
+              dragged++;
+            });
+          };
+        
+        shaper.changeTo({
+          actions: {
+            drag: dragTest
+          }
+        });
+        shaper.drawNodes(nodes);
+
+        helper.simulateDragEvent("1");
+        
+        expect(dragged).toEqual(1);
+        
+        shaper.changeTo({actions: {
+          reset: true
+        }});
+        
+        helper.simulateDragEvent("1");
+        helper.simulateDragEvent("2");
+        helper.simulateDragEvent("3");
+        
+        expect(dragged).toEqual(1);
+      });
+      
       it('should display each node exactly once if an event is added', function() {
         shaper.changeTo({actions: {
           click: function() {return 0;}
@@ -318,27 +423,6 @@
         expect($("svg .node").length).toEqual(3);
       });
       
-      it('should be able to reshape a single node only', function() {
-        shaper.changeTo({label: "label"});
-        nodes[0]._data.label = "false";
-        nodes[1]._data.label = "true";
-        nodes[2]._data.label = "false_again";
-        expect($("#1 text").length).toEqual(1);
-        expect($("#2 text").length).toEqual(1);
-        expect($("#3 text").length).toEqual(1);
-        expect($("#1 text")[0].textContent).toEqual("");
-        expect($("#2 text")[0].textContent).toEqual("");
-        expect($("#3 text")[0].textContent).toEqual("");
-        
-        shaper.reshapeNode(nodes[1]);
-        expect($("#1 text").length).toEqual(1);
-        expect($("#3 text").length).toEqual(1);
-        expect($("#1 text")[0].textContent).toEqual("");
-        expect($("#3 text")[0].textContent).toEqual("");
-        
-        expect($("#2 text").length).toEqual(1);
-        expect($("#2 text")[0].textContent).toEqual("true");        
-      });
     });
 
     describe('configured for circle', function () {
@@ -560,8 +644,6 @@
         expect($("svg .node text")[0]).toBeDefined();
         expect($("svg .node text").length).toEqual(1);
         expect($("svg .node text")[0].textContent).toEqual("MyLabel");
-        expect($("svg .node text").attr("stroke")).toEqual("black");
-        expect($("svg .node text").attr("fill")).toEqual("black");
       });
 
       it('should ignore other attributes', function () {
@@ -798,6 +880,87 @@
         expect($("svg .node text")[0].textContent).toEqual("correct");
       });
 
+    });
+
+    describe('testing for positioning', function() {
+      
+      var nodes, shaper;
+      
+      beforeEach(function() {
+        nodes = [{
+          _id: 1,
+          x: 10,
+          y: 10
+        }];
+        shaper = new NodeShaper(d3.select("svg"));
+        shaper.drawNodes(nodes);
+      });
+      
+      it('should be able to add a distortion for the node positions', function() {
+        expect(nodes[0].position).toEqual({
+          x: 10,
+          y: 10,
+          z: 1
+        });
+        
+        var distortion = function (node) {
+            return {
+              x: node.x + 42,
+              y: node.y -5,
+              z: 10
+            };
+          },
+          n = $("#1");
+        expect(n.attr("transform")).toEqual("translate(10,10)");
+        
+        shaper.changeTo({
+          distortion: distortion
+        });
+        expect(nodes[0].position).toEqual({
+          x: 52,
+          y: 5,
+          z: 10
+        });
+        expect(n.attr("transform")).toEqual("translate(52,5)");
+      });
+      
+      it('should be able to revoke a distortion for the node positions', function() {
+        expect(nodes[0].position).toEqual({
+          x: 10,
+          y: 10,
+          z: 1
+        });
+        
+        var distortion = function (node) {
+            return {
+              x: node.x + 42,
+              y: node.y -5,
+              z: 10
+            };
+          },
+          n = $("#1");
+        expect(n.attr("transform")).toEqual("translate(10,10)");
+        
+        shaper.changeTo({
+          distortion: distortion
+        });
+        expect(nodes[0].position).toEqual({
+          x: 52,
+          y: 5,
+          z: 10
+        });
+        expect(n.attr("transform")).toEqual("translate(52,5)");
+        
+        shaper.changeTo({
+          distortion: "reset"
+        });
+        expect(nodes[0].position).toEqual({
+          x: 10,
+          y: 10,
+          z: 1
+        });
+        expect(n.attr("transform")).toEqual("translate(10,10)");
+      });
     });
 
   });

@@ -104,7 +104,13 @@
           "newNodes",
           "newEdges"
         );
-      });      
+        
+      });
+      
+      waitsFor(function() {
+        return $("#control_collections_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+          
     });
     
     it('should be able to add all controls to the list', function() {

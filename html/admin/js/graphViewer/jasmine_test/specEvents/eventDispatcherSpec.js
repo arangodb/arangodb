@@ -82,7 +82,7 @@
         nodes: nodes,
         startCallback: function() {},
         loadNode: this.loadNode,
-        reshapeNode: function() {}
+        reshapeNodes: function() {}
       };
       
       dragConfig = {
@@ -404,7 +404,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "drag", callback);
-          helper.simulateMouseEvent("drag", "1");
+          helper.simulateDragEvent("1");
         });
         
         waitsFor(function() {
@@ -453,8 +453,7 @@
           nodeShaper.drawNodes(nodes);
           
           dispatcher.bind("nodes", "drag", dispatcher.events.DRAG);
-          helper.simulateMouseEvent("drag", "1");
-          window.meierei = layouter.drag;
+          helper.simulateDragEvent("1");
         });
         
         waitsFor(function() {
