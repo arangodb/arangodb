@@ -22,13 +22,16 @@ for various languages including the Big-P (PHP, Python, Perl) and Ruby.
 Please contact @S_EXTREF_S{http://www.arangodb.org/connect,us} if you have any
 questions.
 
-Upgrading to ArangoDB 1.2 {#ArangoDBUpgrading12}
+Upgrading to ArangoDB 1.3 {#ArangoDBUpgrading13}
 ================================================
+
+- @BOOK_REF{NewFeatures13}
+- @BOOK_REF{Upgrading13}
+
+Older Releases:
 
 - @BOOK_REF{NewFeatures12}
 - @BOOK_REF{Upgrading12}
-
-Older Releases:
 
 - @BOOK_REF{NewFeatures11}
 - @BOOK_REF{Upgrading11}
@@ -45,7 +48,7 @@ ArangoDB's User Manuals {#ArangoDBUserManual}
 - also see the @ref Glossary
 
 @ifnot XML 
-- @EXTREF{arangodb_1.2_shell_reference_card.pdf,Cheat Sheet} 
+- @EXTREF{arangodb_1.3_shell_reference_card.pdf,Cheat Sheet} 
 @endif
 
 ArangoDB's Administrator Manuals {#ArangoDBAdminManual}
