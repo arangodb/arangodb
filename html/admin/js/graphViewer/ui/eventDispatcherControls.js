@@ -154,10 +154,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       idprefix = prefix + "_",
       callback = function() {
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
-          nodeShaper.reshapeNodes();
+          
         })});
         rebindEdges({click: dispatcher.events.DELETEEDGE(function() {
-          edgeShaper.reshapeEdges();
+          
         })});
       };
     createIcon("trash", "delete", callback);
@@ -170,8 +170,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         
         rebindNodes({
           mousedown: dispatcher.events.STARTCREATEEDGE(),
-          mouseup: dispatcher.events.FINISHCREATEEDGE(function(){
-            edgeShaper.reshapeEdges();
+          mouseup: dispatcher.events.FINISHCREATEEDGE(function(edge){
           })
         });
         rebindEdges();

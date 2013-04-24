@@ -38,10 +38,17 @@
 
   describe('Event Library', function () {
 
-    var eventLib;
+    var eventLib,
+      nodeShaperDummy = {},
+      edgeShaperDummy = {};
     
     beforeEach(function() {
       eventLib = new EventLibrary();
+      nodeShaperDummy.reshapeNodes = function() {};
+      edgeShaperDummy.reshapeEdges = function() {};
+      
+      spyOn(nodeShaperDummy, "reshapeNodes");
+      spyOn(edgeShaperDummy, "reshapeEdges");
     });
 
     describe('Expand', function() {
@@ -51,15 +58,13 @@
       nodes,
       edges,
       loadedNodes,
-      reshapedNodes,
       started,
       loadNodeCallback = function(node) {
         loaded++;
         loadedNodes.push(node);
       },
-      reshapeNodeCallback = function(node) {
+      reshapeNodesCallback = function() {
         reshaped++;
-        reshapedNodes.push(node);
       },
       startCallback = function() {
         started++;
@@ -75,13 +80,12 @@
         nodes = [];
         edges = [];
         loadedNodes = [];
-        reshapedNodes = [];
         config = {
           edges: edges,
           nodes: nodes,
           startCallback: startCallback,
           loadNode: loadNodeCallback,
-          reshapeNode: reshapeNodeCallback
+          reshapeNodes: reshapeNodesCallback
         };
       });
       
@@ -99,8 +103,6 @@
         expect(started).toEqual(1);
         expect(reshaped).toEqual(1);
         expect(loaded).toEqual(1);
-        expect(reshapedNodes.length).toEqual(1);
-        expect(reshapedNodes[0]).toEqual(node);
         expect(loadedNodes.length).toEqual(1);
         expect(loadedNodes[0]).toEqual(node._id);
         
@@ -121,8 +123,6 @@
         expect(started).toEqual(1);
         expect(reshaped).toEqual(1);
         expect(loaded).toEqual(0);
-        expect(reshapedNodes.length).toEqual(1);
-        expect(reshapedNodes[0]).toEqual(node);
       });
       
       it('should collapse a tree', function() {
@@ -158,8 +158,6 @@
         expect(loaded).toEqual(0);
         expect(nodes.length).toEqual(1);
         expect(edges.length).toEqual(0);
-        expect(reshapedNodes.length).toEqual(1);
-        expect(reshapedNodes[0]).toEqual(root);
       });
       
       it('should not remove referenced nodes on collapsing ', function() {
@@ -202,8 +200,6 @@
         expect(loaded).toEqual(0);
         expect(nodes.length).toEqual(3);
         expect(edges.length).toEqual(1);
-        expect(reshapedNodes.length).toEqual(1);
-        expect(reshapedNodes[0]).toEqual(root);
         
         expect(root._outboundCounter).toEqual(0);
         expect(c1._inboundCounter).toEqual(1);
@@ -264,7 +260,7 @@
             function() {
               eventLib.Expand(testConfig);
             }
-          ).toThrow("A callback to reshape a node has to be defined");
+          ).toThrow("A callback to reshape nodes has to be defined");
         });
         
       });
@@ -332,10 +328,8 @@
       it('should create an event to add a node', function() {
                 
         var adapterDummy = {},
-        nodeShaperDummy = {},
         nodes = [],
         created = null,
-        reshaped = null,
         called = false,
         callbackCheck = function() {
           called = true;
@@ -353,10 +347,6 @@
           callback(created);
         };
         
-        nodeShaperDummy.drawNodes = function(nodes) {
-          reshaped = nodes;
-        };
-        
         runs(function() {
           testee = eventLib.InsertNode(nodeEditorConfig);
           testee(callbackCheck);
@@ -368,7 +358,7 @@
         
         runs(function() {
           expect(created).toBeDefined();
-          expect(reshaped[0]).toEqual(created);
+          expect(nodeShaperDummy.reshapeNodes).toHaveBeenCalled();
         });
         
       });
@@ -379,11 +369,9 @@
       
       it('should create an event to patch a node', function() {
         var adapterDummy = {},
-        nodeShaperDummy = {},
         patched = {id: "1"},
         data = {hello: "world"},
         nodes = [patched],
-        reshaped = null,
         called = false,
         callbackCheck = function() {
           called = true;
@@ -400,10 +388,7 @@
           $.extend(patched, patchData);
           callback();
         };
-        
-        nodeShaperDummy.drawNodes = function(nodes) {
-          reshaped = nodes;
-        };
+
         
         runs(function() {
           testee = eventLib.PatchNode(nodeEditorConfig);
@@ -416,7 +401,7 @@
         
         runs(function() {
           expect(patched).toBeDefined();
-          expect(reshaped[0]).toEqual(patched);
+          expect(nodeShaperDummy.reshapeNodes).toHaveBeenCalled();
           expect(patched.id).toEqual("1");
           expect(patched.hello).toEqual("world");
         });
@@ -428,11 +413,9 @@
       
       it('should create an event to delete a node', function() {
         var adapterDummy = {},
-        nodeShaperDummy = {},
         toDel = {id: "2"},
         nodes = [toDel],
         deleted = null,
-        reshaped = null,
         called = false,
         callbackCheck = function() {
           called = true;
@@ -450,9 +433,6 @@
           callback();
         };
         
-        nodeShaperDummy.drawNodes = function(nodes) {
-          reshaped = nodes;
-        };
         
         runs(function() {
           testee = eventLib.DeleteNode(nodeEditorConfig);
@@ -465,6 +445,7 @@
         
         runs(function() {
           expect(deleted).toEqual(toDel);
+          expect(nodeShaperDummy.reshapeNodes).toHaveBeenCalled();
         });
         
       });
@@ -476,9 +457,7 @@
       
       it('should create an event to add an edge', function() {
         var adapterDummy = {},
-        edgeShaperDummy = {},
         edges = [],
-        reshaped = null,
         called = false,
         created = null,
         source = {_id: 1},
@@ -499,10 +478,6 @@
           callback(created);
         };
         
-        edgeShaperDummy.drawEdges = function(edges) {
-          reshaped = edges;
-        };
-        
         runs(function() {
           testee = eventLib.InsertEdge(edgeEditorConfig);
           testee(source, target, callbackCheck);
@@ -514,7 +489,7 @@
         
         runs(function() {
           expect(created).toBeDefined();
-          expect(reshaped[0]).toEqual(created);
+          expect(edgeShaperDummy.reshapeEdges).toHaveBeenCalled();
           expect(created.source).toEqual(source);
           expect(created.target).toEqual(target);
         });
@@ -527,13 +502,11 @@
       
       it('should create an event to patch an edge', function() {
         var adapterDummy = {},
-        edgeShaperDummy = {},
         source = {_id: 1},
         target = {_id: 2},
         patched = {source: source, target: target},
         data = {hello: "world"},
         edges = [patched],
-        reshaped = null,
         called = false,
         callbackCheck = function() {
           called = true;
@@ -551,10 +524,6 @@
           callback();
         };
         
-        edgeShaperDummy.drawEdges = function(edges) {
-          reshaped = edges;
-        };
-        
         runs(function() {
           testee = eventLib.PatchEdge(edgeEditorConfig);
           testee(patched, data, callbackCheck);
@@ -566,7 +535,7 @@
         
         runs(function() {
           expect(patched).toBeDefined();
-          expect(reshaped[0]).toEqual(patched);
+          expect(edgeShaperDummy.reshapeEdges).toHaveBeenCalled();
           expect(patched.source).toEqual(source);
           expect(patched.target).toEqual(target);
           expect(patched.hello).toEqual("world");
@@ -580,13 +549,11 @@
       
       it('should create an event to delete an edge', function() {
         var adapterDummy = {},
-        edgeShaperDummy = {},
         source = {_id: 1},
         target = {_id: 2},
         toDel = {source: source, target: target},
         edges = [toDel],
         deleted = null,
-        reshaped = null,
         called = false,
         callbackCheck = function() {
           called = true;
@@ -603,10 +570,7 @@
           edges.pop();
           callback();
         };
-        
-        edgeShaperDummy.drawEdges = function(edges) {
-          reshaped = edges;
-        };
+
         
         runs(function() {
           testee = eventLib.DeleteEdge(edgeEditorConfig);
@@ -619,6 +583,7 @@
         
         runs(function() {
           expect(deleted).toEqual(toDel);
+          expect(edgeShaperDummy.reshapeEdges).toHaveBeenCalled();
         });
         
       });
