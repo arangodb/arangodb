@@ -361,7 +361,7 @@ static void fullSetAttributeWeight (voc_shaper_t* shaper) {
 /// @brief finds an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name) {
+static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* name) {
   TRI_df_attribute_marker_t* marker;
   TRI_df_marker_t* result;
   TRI_df_attribute_marker_t* markerResult;
@@ -382,7 +382,6 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   if (p != NULL) {
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
   }
-
 
   // create a new attribute name
   n = strlen(name) + 1;
@@ -422,7 +421,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
  
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
-  
+ 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -475,7 +474,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   }
 
   else {
-    LOG_WARNING("FindAttributeName could not allocate memory, attribute is NOT weighted");
+    LOG_WARNING("FindAttributeByName could not allocate memory, attribute is NOT weighted");
   }
 
   // ...........................................................................
@@ -485,6 +484,25 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   TRI_UnlockMutex(&s->_attributeLock);
 
   return aid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an attribute identifier by name
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, char const* name) {
+  voc_shaper_t* s;
+  void const* p;
+
+  s = (voc_shaper_t*) shaper;
+  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+
+  if (p != NULL) {
+    return ((TRI_df_attribute_marker_t const*) p)->_aid;
+  }
+  else {
+    return 0;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,7 +675,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
-  
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
@@ -817,6 +835,20 @@ static size_t NumShapes (TRI_shaper_t* shaper) {
 
   s = (voc_shaper_t*) shaper;
   n = (size_t) TRI_GetLengthAssociativeSynced(&s->_shapeIds);
+
+  return n;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of attributes
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t NumAttributes (TRI_shaper_t* shaper) {
+  voc_shaper_t* s;
+  size_t n;
+
+  s = (voc_shaper_t*) shaper;
+  n = (size_t) TRI_GetLengthAssociativeSynced(&s->_attributeNames);
 
   return n;
 }
@@ -1020,11 +1052,13 @@ static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collection) {
-  shaper->base.findAttributeName = FindAttributeName;
+  shaper->base.findAttributeByName = FindAttributeByName;
+  shaper->base.lookupAttributeByName = LookupAttributeByName;
   shaper->base.lookupAttributeId = LookupAttributeId;
   shaper->base.findShape = FindShape;
   shaper->base.lookupShapeId = LookupShapeId;
   shaper->base.numShapes = NumShapes;
+  shaper->base.numAttributes = NumAttributes;
 
   TRI_InitAssociativeSynced(&shaper->_attributeNames,
                             TRI_UNKNOWN_MEM_ZONE,

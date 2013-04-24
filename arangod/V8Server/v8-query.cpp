@@ -1746,10 +1746,17 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (barrier != 0) {
+      TRI_FreeBarrier(barrier);
+    }
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");
   }
 
   if (document._data == 0 || document._key == 0) {
+    if (barrier != 0) {
+      TRI_FreeBarrier(barrier);
+    }
+
     return scope.Close(v8::Null());
   }
 

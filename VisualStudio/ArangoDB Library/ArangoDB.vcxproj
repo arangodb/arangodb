@@ -81,7 +81,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=2048;WIN32;_DEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -100,7 +100,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=2048;WIN32;_DEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -119,7 +119,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=2048;WIN32;NDEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -137,7 +137,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=2048;WIN32;NDEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -175,21 +175,24 @@
     <ClInclude Include="..\..\lib\BasicsC\memory.h" />
     <ClInclude Include="..\..\lib\BasicsC\mersenne.h" />
     <ClInclude Include="..\..\lib\BasicsC\messages.h" />
+    <ClInclude Include="..\..\lib\BasicsC\mimetypes.h" />
     <ClInclude Include="..\..\lib\BasicsC\operating-system.h" />
     <ClInclude Include="..\..\lib\BasicsC\process-utils.h" />
     <ClInclude Include="..\..\lib\BasicsC\random.h" />
     <ClInclude Include="..\..\lib\BasicsC\socket-utils.h" />
     <ClInclude Include="..\..\lib\BasicsC\string-buffer.h" />
-    <ClInclude Include="..\..\lib\BasicsC\strings.h" />
     <ClInclude Include="..\..\lib\BasicsC\structures.h" />
     <ClInclude Include="..\..\lib\BasicsC\system-compiler.h" />
     <ClInclude Include="..\..\lib\BasicsC\system-functions.h" />
     <ClInclude Include="..\..\lib\BasicsC\terminal-utils.h" />
     <ClInclude Include="..\..\lib\BasicsC\threads-win32.h" />
     <ClInclude Include="..\..\lib\BasicsC\threads.h" />
+    <ClInclude Include="..\..\lib\BasicsC\tri-strings.h" />
+    <ClInclude Include="..\..\lib\BasicsC\tri-zip.h" />
     <ClInclude Include="..\..\lib\BasicsC\utf8-helper.h" />
     <ClInclude Include="..\..\lib\BasicsC\vector.h" />
     <ClInclude Include="..\..\lib\BasicsC\voc-errors.h" />
+    <ClInclude Include="..\..\lib\BasicsC\voc-mimetypes.h" />
     <ClInclude Include="..\..\lib\BasicsC\win-utils.h" />
     <ClInclude Include="..\..\lib\Basics\AssociativeArray.h" />
     <ClInclude Include="..\..\lib\Basics\Common.h" />
@@ -251,6 +254,11 @@
     <ClInclude Include="..\..\lib\Statistics\StatisticsAgent.h" />
     <ClInclude Include="..\..\lib\Utilities\LineEditor.h" />
     <ClInclude Include="..\..\lib\Utilities\ScriptLoader.h" />
+    <ClInclude Include="..\..\lib\Zip\crypt.h" />
+    <ClInclude Include="..\..\lib\Zip\ioapi.h" />
+    <ClInclude Include="..\..\lib\Zip\iowin32.h" />
+    <ClInclude Include="..\..\lib\Zip\unzip.h" />
+    <ClInclude Include="..\..\lib\Zip\zip.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\3rdParty\VisualStudio\mygetopt\mygetopt.c" />
@@ -271,19 +279,22 @@
     <ClCompile Include="..\..\lib\BasicsC\memory-map-win32.c" />
     <ClCompile Include="..\..\lib\BasicsC\memory.c" />
     <ClCompile Include="..\..\lib\BasicsC\mersenne.c" />
+    <ClCompile Include="..\..\lib\BasicsC\mimetypes.c" />
     <ClCompile Include="..\..\lib\BasicsC\process-utils.c" />
     <ClCompile Include="..\..\lib\BasicsC\random.c" />
     <ClCompile Include="..\..\lib\BasicsC\socket-utils.c" />
     <ClCompile Include="..\..\lib\BasicsC\string-buffer.c" />
-    <ClCompile Include="..\..\lib\BasicsC\strings.c" />
     <ClCompile Include="..\..\lib\BasicsC\structures.c" />
     <ClCompile Include="..\..\lib\BasicsC\system-functions.c" />
     <ClCompile Include="..\..\lib\BasicsC\terminal-utils-win32.c" />
     <ClCompile Include="..\..\lib\BasicsC\terminal-utils.c" />
     <ClCompile Include="..\..\lib\BasicsC\threads-win32.c" />
+    <ClCompile Include="..\..\lib\BasicsC\tri-strings.c" />
+    <ClCompile Include="..\..\lib\BasicsC\tri-zip.c" />
     <ClCompile Include="..\..\lib\BasicsC\utf8-helper.c" />
     <ClCompile Include="..\..\lib\BasicsC\vector.c" />
     <ClCompile Include="..\..\lib\BasicsC\voc-errors.c" />
+    <ClCompile Include="..\..\lib\BasicsC\voc-mimetypes.c" />
     <ClCompile Include="..\..\lib\BasicsC\win-utils.c" />
     <ClCompile Include="..\..\lib\Basics\ConditionLocker.cpp" />
     <ClCompile Include="..\..\lib\Basics\ConditionVariable.cpp" />
@@ -333,6 +344,10 @@
     <ClCompile Include="..\..\lib\Statistics\statistics.cpp" />
     <ClCompile Include="..\..\lib\Utilities\LineEditor.cpp" />
     <ClCompile Include="..\..\lib\Utilities\ScriptLoader.cpp" />
+    <ClCompile Include="..\..\lib\Zip\ioapi.c" />
+    <ClCompile Include="..\..\lib\Zip\iowin32.c" />
+    <ClCompile Include="..\..\lib\Zip\unzip.c" />
+    <ClCompile Include="..\..\lib\Zip\zip.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

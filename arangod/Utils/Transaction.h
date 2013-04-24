@@ -414,6 +414,7 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
           if (*barrier == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
@@ -542,7 +543,9 @@ namespace triagens {
           }
 
           *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
           if (*barrier == 0) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -764,6 +767,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a collection
+/// the caller must make sure a barrier is held
 ////////////////////////////////////////////////////////////////////////////////
 
         int removeAll (TRI_transaction_collection_t* const trxCollection,
@@ -771,25 +775,25 @@ namespace triagens {
 
           vector<string> ids;
           
-          int res = readAll(trxCollection, ids);
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          
+          // WRITE-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
+          
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+          
+          res = readAll(trxCollection, ids);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
             return res;
           }
 
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, TRI_DOC_UPDATE_LAST_WRITE, 0, NULL);
-
-          size_t n = ids.size();
-
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
-
-          // WRITE-LOCK START
-          res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
+          const size_t n = ids.size();
 
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];

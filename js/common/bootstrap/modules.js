@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true */
-/*global require, module: true, PACKAGE_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH */
+/*global require, module: true, PACKAGE_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
+  EXPORTS_SLOW_BUFFER */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -58,25 +59,6 @@ module = null;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
-///
-/// @FUN{require(@FA{path})}
-///
-/// @FN{require} checks if the file specified by @FA{path} has already been
-/// loaded.  If not, the content of the file is executed in a new
-/// context. Within the context you can use the global variable @LIT{exports}
-/// in order to export variables and functions. This variable is returned by
-/// @FN{require}.
-///
-/// Assume that your module file is @LIT{test1.js} and contains
-///
-/// @verbinclude modules-require-1
-///
-/// Then you can use @FN{require} to load the file and access the exports.
-///
-/// @verbinclude modules-require-2
-///
-/// @FN{require} follows the specification
-/// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {
@@ -191,10 +173,14 @@ function require (path) {
 
   var GlobalPackage = new Package("/", {name: "ArangoDB"}, undefined, packagePath);
 
-  Package.prototype.defineSystemModule = function (path) {
+  Package.prototype.defineSystemModule = function (path, exports) {
     'use strict';
 
     var module = this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+
+    if (exports !== undefined) {
+      module.exports = exports;
+    }
 
     return module;
   };
@@ -292,6 +278,15 @@ function require (path) {
   GlobalPackage.defineSystemModule("/internal");
   var internal = GlobalPackage.module("/internal").exports;
 
+  var key;
+
+  for (key in EXPORTS_SLOW_BUFFER) {
+    if (EXPORTS_SLOW_BUFFER.hasOwnProperty(key)) {
+      internal[key] = EXPORTS_SLOW_BUFFER[key];
+    }
+  }
+
+  delete EXPORTS_SLOW_BUFFER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "fs"
@@ -1096,7 +1091,11 @@ function require (path) {
       if (fs.exists(n)) {
         try {
           var desc = JSON.parse(fs.read(n));
-          var mainfile = m + module.normalizeModuleName("", desc.main) + ".js";
+          var mainfile = m + module.normalizeModuleName("", desc.main);
+
+          if (mainfile.length < 3 || mainfile.substr(mainfile.length - 3) != ".js") {
+            mainfile += ".js";
+          }
 
           if (fs.exists(mainfile)) {
             var content = fs.read(mainfile);

@@ -75,19 +75,19 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ///
 /// @RESTHEADER{POST /_api/edge,creates an edge}
 ///
-/// @REST{POST /_api/edge?collection=@FA{collection-name}&from=@FA{from-handle}&to=@FA{to-handle}}
+/// @REST{POST /_api/edge?collection=`collection-name`&from=`from-handle`&to=`to-handle`}
 ///
-/// Creates a new edge in the collection identified by @FA{collection-name}.
+/// Creates a new edge in the collection identified by `collection-name`.
 /// A JSON representation of the edge document must be passed as the body of
 /// the POST request. This JSON object may contain the edge's document key in
-/// the @LIT{_key} attribute if needed.
-/// The document handle of the start point must be passed in @FA{from-handle}.
-/// The document handle of the end point must be passed in @FA{to-handle}.
+/// the `_key` attribute if needed.
+/// The document handle of the start point must be passed in `from-handle`.
+/// The document handle of the end point must be passed in `to-handle`.
 ///
-/// @LIT{from-handle} and @LIT{to-handle} are immutable once the edge has been
+/// `from-handle` and `to-handle` are immutable once the edge has been
 /// created.
 ///
-/// In all other respects the method works like @LIT{POST /document}, see
+/// In all other respects the method works like `POST /document`, see
 /// @ref RestDocument for details.
 ///
 /// @EXAMPLES

@@ -56,6 +56,12 @@
     <Filter Include="RestHeader">
       <UniqueIdentifier>{61bb5eec-939f-46c6-bf8e-aed922fa0297}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ZipSource">
+      <UniqueIdentifier>{93be03e5-32e8-4dd2-aa66-cd0a9513b187}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ZipHeader">
+      <UniqueIdentifier>{dca93a2d-3010-40c2-ad26-8f4b078ac18b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\lib\BasicsC\associative.h">
@@ -122,9 +128,6 @@
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\BasicsC\string-buffer.h">
-      <Filter>BasicsCHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\BasicsC\strings.h">
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\BasicsC\structures.h">
@@ -361,6 +364,33 @@
     <ClInclude Include="..\..\lib\Rest\Version.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\tri-strings.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\voc-mimetypes.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\crypt.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\ioapi.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\iowin32.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\unzip.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\zip.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\tri-zip.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\mimetypes.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">
@@ -415,9 +445,6 @@
       <Filter>BasicsCSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\string-buffer.c">
-      <Filter>BasicsCSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\BasicsC\strings.c">
       <Filter>BasicsCSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\structures.c">
@@ -602,6 +629,30 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\Rest\Version.cpp">
       <Filter>RestSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\tri-strings.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\voc-mimetypes.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\ioapi.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\iowin32.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\unzip.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\zip.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\tri-zip.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\mimetypes.c">
+      <Filter>BasicsCSource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -71,26 +71,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod32d</TargetName>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>c:\local2\arango-triagens\1.3\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod64d</TargetName>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>c:\local2\arango-triagens\1.3\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod32</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Release;$(SSolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>c:\local2\arango-triagens\1.3\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod64</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Release;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>c:\local2\arango-triagens\1.3\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -112,8 +112,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;common_icu32d.lib;i18n_icu32d.lib;icudt50_32.lib;io_icu32d.lib;layout_icu32d.lib;layoutex_icu32d.lib;stubdata_icu32d.lib;toolutil_icu32d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;common_icu32d.lib;i18n_icu32d.lib;icudt50_32.lib;io_icu32d.lib;layout_icu32d.lib;layoutex_icu32d.lib;stubdata_icu32d.lib;toolutil_icu32d.lib;zlibstat_MTd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
     </Link>
@@ -125,7 +125,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;_WIN64;FD_SETSIZE=2048;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -136,8 +136,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;common_icu64d.lib;i18n_icu64d.lib;icudt50_64.lib;io_icu64d.lib;layout_icu64d.lib;layoutex_icu64d.lib;stubdata_icu64d.lib;toolutil_icu64d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;common_icu64d.lib;i18n_icu64d.lib;icudt50_64.lib;io_icu64d.lib;layout_icu64d.lib;layoutex_icu64d.lib;stubdata_icu64d.lib;toolutil_icu64d.lib;zlibstat_MTd;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
     </Link>
@@ -151,7 +151,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;FD_SETSIZE=2048;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>Default</CompileAs>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -167,8 +167,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;common_icu32.lib;i18n_icu32.lib;icudt50_32.lib;io_icu32.lib;layout_icu32.lib;layoutex_icu32.lib;stubdata_icu32.lib;toolutil_icu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;common_icu32.lib;i18n_icu32.lib;icudt50_32.lib;io_icu32.lib;layout_icu32.lib;layoutex_icu32.lib;stubdata_icu32.lib;toolutil_icu32.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Release;$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
@@ -181,7 +181,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;_WIN64;FD_SETSIZE=2048;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>Default</CompileAs>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
@@ -196,8 +196,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;common_icu64.lib;i18n_icu64.lib;icudt50_64.lib;io_icu64.lib;layout_icu64.lib;layoutex_icu64.lib;stubdata_icu64.lib;toolutil_icu64.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;common_icu64.lib;i18n_icu64.lib;icudt50_64.lib;io_icu64.lib;layout_icu64.lib;layoutex_icu64.lib;stubdata_icu64.lib;toolutil_icu64.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Release;$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
@@ -251,6 +251,7 @@
     <ClCompile Include="..\..\arangod\RestHandler\RestDocumentHandler.cpp" />
     <ClCompile Include="..\..\arangod\RestHandler\RestEdgeHandler.cpp" />
     <ClCompile Include="..\..\arangod\RestHandler\RestImportHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RestUploadHandler.cpp" />
     <ClCompile Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.cpp" />
     <ClCompile Include="..\..\arangod\RestServer\arango.cpp" />
     <ClCompile Include="..\..\arangod\RestServer\ArangoServer.cpp" />
@@ -274,12 +275,14 @@
     <ClCompile Include="..\..\arangod\VocBase\headers.c" />
     <ClCompile Include="..\..\arangod\VocBase\index.c" />
     <ClCompile Include="..\..\arangod\VocBase\key-generator.c" />
+    <ClCompile Include="..\..\arangod\VocBase\marker.c" />
     <ClCompile Include="..\..\arangod\VocBase\primary-collection.c" />
     <ClCompile Include="..\..\arangod\VocBase\server-id.c" />
     <ClCompile Include="..\..\arangod\VocBase\shadow-data.c" />
     <ClCompile Include="..\..\arangod\VocBase\shape-collection.c" />
     <ClCompile Include="..\..\arangod\VocBase\synchroniser.c" />
     <ClCompile Include="..\..\arangod\VocBase\transaction.c" />
+    <ClCompile Include="..\..\arangod\VocBase\update-policy.c" />
     <ClCompile Include="..\..\arangod\VocBase\voc-shaper.c" />
     <ClCompile Include="..\..\arangod\VocBase\vocbase.c" />
   </ItemGroup>
@@ -331,6 +334,7 @@
     <ClInclude Include="..\..\arangod\RestHandler\RestDocumentHandler.h" />
     <ClInclude Include="..\..\arangod\RestHandler\RestEdgeHandler.h" />
     <ClInclude Include="..\..\arangod\RestHandler\RestImportHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RestUploadHandler.h" />
     <ClInclude Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.h" />
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h" />
     <ClInclude Include="..\..\arangod\SkipListsEx\compareEx.h" />
@@ -367,12 +371,14 @@
     <ClInclude Include="..\..\arangod\VocBase\headers.h" />
     <ClInclude Include="..\..\arangod\VocBase\index.h" />
     <ClInclude Include="..\..\arangod\VocBase\key-generator.h" />
+    <ClInclude Include="..\..\arangod\VocBase\marker.h" />
     <ClInclude Include="..\..\arangod\VocBase\primary-collection.h" />
     <ClInclude Include="..\..\arangod\VocBase\server-id.h" />
     <ClInclude Include="..\..\arangod\VocBase\shadow-data.h" />
     <ClInclude Include="..\..\arangod\VocBase\shape-collection.h" />
     <ClInclude Include="..\..\arangod\VocBase\synchroniser.h" />
     <ClInclude Include="..\..\arangod\VocBase\transaction.h" />
+    <ClInclude Include="..\..\arangod\VocBase\update-policy.h" />
     <ClInclude Include="..\..\arangod\VocBase\voc-shaper.h" />
     <ClInclude Include="..\..\arangod\VocBase\vocbase.h" />
   </ItemGroup>

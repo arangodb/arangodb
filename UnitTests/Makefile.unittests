@@ -80,7 +80,7 @@ SERVER_OPT := \
 	--database.force-sync-properties false \
 	--javascript.action-directory @top_srcdir@/js/actions \
 	--javascript.gc-interval 1 \
-	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
+	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
 	--ruby.action-directory @top_srcdir@/mr/actions \
@@ -92,7 +92,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules \
+	--javascript.modules-path @top_srcdir@/js/client/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--no-colors \
 	--quiet
@@ -133,6 +133,15 @@ start-server:
 
 unittests-make:
 	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
+
+################################################################################
+### @brief static codebase tests (a.k.a. Visual Studio cries)
+################################################################################
+
+unittests-codebase-static:
+	@rm -f duplicates
+	@(find lib arangosh arangod arangoirb -regex ".*/.*\.\(c\|h\|cpp\)" -printf "%f\n" | sort | uniq -c | grep -v "^ \+1 \+" > duplicates) || true
+	@if [ "`grep " " duplicates`" != "" ]; then echo ; echo "Duplicate filenames found. These should be fixed to allow compilation with Visual Studio:"; cat duplicates; false; fi
 
 ################################################################################
 ### @brief BOOST TESTS

@@ -779,7 +779,7 @@ AQL supports functions to allow more complex computations. Functions can be
 called at any query position where an expression is allowed. The general
 function call syntax is:
 
-    FUNCTIONAME(arguments)
+    FUNCTIONNAME(arguments)
 
 where `FUNCTIONNAME` is the name of the function to be called, and `arguments`
 is a comma-separated list of function arguments. If a function does not need any
@@ -793,7 +793,30 @@ Some example function calls:
     LENGTH(friends)
     COLLECTIONS()
 
-Function names are not case-sensitive.
+In contrast to collection and variable names, function names are case-insensitive, 
+i.e. `LENGTH(foo)` and `length(foo)` are equivalent.
+
+@subsubsection AqlFunctionsExtending Extending AQL
+ 
+Since ArangoDB 1.3, it is possible to extend AQL with user-defined functions. 
+These functions need to be written in Javascript, and be registered before usage
+in a query.
+
+Please refer to @ref ExtendingAql for more details on this.
+
+By default, any function used in an AQL query will be sought in the built-in 
+function namespace `_aql`. This is the default namespace that contains all AQL
+functions that are shipped with ArangoDB. 
+To refer to a user-defined AQL function, the function name must be fully qualified
+to also include the user-defined namespace. The `:` symbol is used as the namespace
+separator:
+
+    MYGROUP:MYFUNC()
+
+    MYFUNCTIONS.MATH.RANDOM()
+    
+As all AQL function names, user function names are also case-insensitive.
+
 
 @subsubsection AqlFunctionsCasting Type cast functions
 
@@ -1116,13 +1139,15 @@ AQL offers the following functions to filter data based on geo indexes:
 
 - @FN{NEAR(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{limit}\, @FA{distancename})}: 
   returns at most @FA{limit} documents from collection @FA{collection} that are near
-  @FA{latitude} and @FA{longitude}. The result contains at @FA{limit} documents, returned in
+  @FA{latitude} and @FA{longitude}. The result contains at most @FA{limit} documents, returned in
   any order. If more than @FA{limit} documents qualify, it is undefined which of the qualifying
   documents are returned. Optionally, the distances between the specified coordinate
   (@FA{latitude} and @FA{longitude}) and the document coordinates can be returned as well.
   To make use of that, an attribute name for the distance result has to be specified in
   the @FA{distancename} argument. The result documents will contain the distance value in
   an attribute of that name.
+  @FA{limit} is an optional parameter since ArangoDB 1.3. If it is not specified or null, a limit
+  value of 100 will be applied.
 
 - @FN{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
   returns all documents from collection @FA{collection} that are within a radius of

@@ -181,13 +181,13 @@ void RestImportHandler::logDocument (const TRI_json_t* const json) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?type=documents&collection=@FA{collection-name}}
+/// @REST{POST /_api/import?type=documents&collection=`collection-name`}
 ///
-/// Creates documents in the collection identified by @FA{collection-name}.
+/// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request.
 ///
-/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByDocumentsLines () {
@@ -353,13 +353,13 @@ bool RestImportHandler::createByDocumentsLines () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?type=array&collection=@FA{collection-name}}
+/// @REST{POST /_api/import?type=array&collection=`collection-name`}
 ///
-/// Creates documents in the collection identified by @FA{collection-name}.
+/// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request.
 ///
-/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByDocumentsList () {
@@ -526,13 +526,13 @@ bool RestImportHandler::createByDocumentsList () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?collection=@FA{collection-name}}
+/// @REST{POST /_api/import?collection=`collection-name`}
 ///
-/// Creates documents in the collection identified by @FA{collection-name}.
+/// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request.
 ///
-/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByKeyValueList () {
