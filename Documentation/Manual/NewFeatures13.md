@@ -34,6 +34,9 @@ explains how to use Foxx.
 Transactions{#NewFeatures13Transactions}
 ----------------------------------------
 
+New Administration Interface{#NewFeatures13Admin}
+-------------------------------------------------
+
 Node Modules and Packages{#NewFeatures13Node}
 ---------------------------------------------
 
