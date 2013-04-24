@@ -6,8 +6,7 @@ ArangoDB's Reference Manual (@VERSION) {#RefManual}
 @CHAPTER_REF{JSModules}
 @CHAPTER_REF{JSModuleConsole}
 @CHAPTER_REF{JSModuleFs}
-@CHAPTER_REF{jsUnity}
 @CHAPTER_REF{JSModuleGraph}
 @CHAPTER_REF{JSModuleActions}
-@CHAPTER_REF{JSModuleInternal}
+@CHAPTER_REF{jsUnity}
 @CHAPTER_REF{RefManualArangoErrors}

@@ -428,23 +428,21 @@ namespace triagens {
 /// Specifies the name of the configuration file to use.
 ///
 /// If this command is not passed to the server, then by default, the server
-/// will attempt to first locate a file named @LIT{~/SERVER/SERVER.conf} in the
-/// user's home directory, where @CA{SERVER} is the name of the corresponding
-/// server.
+/// will attempt to first locate a file named @LIT{~/.arango/arangod.conf} in the
+/// user's home directory.
 ///
 /// If no such file is found, the server will proceed to look for a file
-/// @LIT{/etc/SERVER.conf} in the system configuration directory. The default
-/// installation specifies the system configuration directory as
-/// /etc. Therefore, in case that no configuration file is found in the user's
-/// home directory, the server will proceed to look for a file named
-/// @LIT{/etc/SERVER.conf}.
+/// @LIT{arangod.conf} in the system configuration directory. The system 
+/// configuration directory is platform-specific, and may be changed when
+/// compiling ArangoDB yourself. It may default to @LIT{/etc} or 
+/// @LIT{/usr/local/etc}.
 ///
 /// Only command line options with a value should be set within the
 /// configuration file. Command line options which act as flags should be
 /// entered on the command line when starting the server.
 ///
-/// White space is ignored. Each option is specified on a separate line in the
-/// form
+/// Whitespace in the configuration file is ignored. Each option is specified on 
+/// a separate line in the form
 ///
 /// @verbinclude conf1
 ///

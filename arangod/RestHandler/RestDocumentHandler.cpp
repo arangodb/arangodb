@@ -796,6 +796,16 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 /// 
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// 
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// 
 /// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by `document-handle`.
 /// If the document exists and can be updated, then a `HTTP 201` is returned
@@ -829,7 +839,7 @@ bool RestDocumentHandler::checkDocument () {
 /// conditional replacements (i.e. replacements that will only be executed if
 /// the revision id found in the database matches the document revision id specified
 /// in the request):
-/// - specifying the target revision in the `rev` URL parameter
+/// - specifying the target revision in the `rev` URL query parameter
 /// - specifying the target revision in the `if-match` HTTP header
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
@@ -844,13 +854,13 @@ bool RestDocumentHandler::checkDocument () {
 /// @REST{PUT /_api/document/`document-handle`?rev=`etag`}
 ///
 /// If a target revision id is provided in the request (e.g. via the `etag` value
-/// in the `rev` URL parameter above), ArangoDB will check that
+/// in the `rev` URL query parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
 /// revision id provided in the request. If there is a mismatch between the revision
 /// id, then by default a `HTTP 412` conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the `policy` URL parameter:
+/// The conditional update behavior can be overriden with the `policy` URL query parameter:
 ///
 /// @REST{PUT /_api/document/`document-handle`?policy=`policy`}
 ///
@@ -984,6 +994,18 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 ///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{keepNull,string,required}
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// 
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// 
 /// @RESTDESCRIPTION
 /// Partially updates the document identified by `document-handle`.
 /// The body of the request must contain a JSON document with the attributes
@@ -993,7 +1015,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// Setting an attribute value to `null` in the patch document will cause a
 /// value of `null` be saved for the attribute by default. If the intention
-/// is to delete existing attributes with the patch command, the URL parameter
+/// is to delete existing attributes with the patch command, the URL query parameter
 /// `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing document that are contained in the patch document with an
@@ -1197,11 +1219,21 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/`documenthandle`,deletes a document}
+/// @RESTHEADER{DELETE /_api/document/`document-handle`,deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{documenthandle,string,required}
+/// @RESTURLPARAM{document-handle,string,required}
+/// 
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// 
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// 
 /// @RESTDESCRIPTION
 /// Deletes the document identified by `document-handle`. If the document

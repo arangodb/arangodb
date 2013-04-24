@@ -35,7 +35,7 @@
 //    nodes,
 //    startCallback,
 //    loadNode,
-//    reshapeNode
+//    reshapeNodes
 //  }
 //  
 //  nodeEditor: {
@@ -70,8 +70,8 @@ function EventLibrary() {
     if (config.loadNode === undefined) {
       throw "A callback to load a node has to be defined";
     }
-    if (config.reshapeNode === undefined) {
-      throw "A callback to reshape a node has to be defined";
+    if (config.reshapeNodes === undefined) {
+      throw "A callback to reshape nodes has to be defined";
     }
     return true;
   };
@@ -82,7 +82,7 @@ function EventLibrary() {
     nodes = config.nodes,
     startCallback = config.startCallback,
     loadNode = config.loadNode,
-    reshapeNode = config.reshapeNode,
+    reshapeNodes = config.reshapeNodes,
     removeNode = function (node) {
       var i;
       for ( i = 0; i < nodes.length; i++ ) {
@@ -136,7 +136,7 @@ function EventLibrary() {
       } else {
         collapseNode(n);
       }
-      reshapeNode(n);
+      reshapeNodes();
       startCallback();
     };
   };
@@ -156,11 +156,7 @@ function EventLibrary() {
     return config.layouter.drag;
   };
   
-  
   this.checkNodeEditorConfig = function (config) {
-    if (config.nodes === undefined) {
-      throw "Nodes have to be defined";
-    }
     if (config.adapter === undefined) {
       throw "An adapter has to be defined";
     }
@@ -171,9 +167,6 @@ function EventLibrary() {
   };
   
   this.checkEdgeEditorConfig = function (config) {
-    if (config.edges === undefined) {
-      throw "Nodes have to be defined";
-    }
     if (config.adapter === undefined) {
       throw "An adapter has to be defined";
     }
@@ -185,13 +178,12 @@ function EventLibrary() {
   
   this.InsertNode = function (config) {
     self.checkNodeEditorConfig(config);
-    var nodes = config.nodes,
-    adapter = config.adapter,
+    var adapter = config.adapter,
     nodeShaper = config.shaper;
     
     return function(callback) {
       adapter.createNode({}, function(newNode) {
-        nodeShaper.drawNodes(nodes);
+        nodeShaper.reshapeNodes();
         callback(newNode);
       });
     };
@@ -199,13 +191,12 @@ function EventLibrary() {
   
   this.PatchNode = function (config) {
     self.checkNodeEditorConfig(config);
-    var nodes = config.nodes,
-    adapter = config.adapter,
+    var adapter = config.adapter,
     nodeShaper = config.shaper;
     
     return function(nodeToPatch, patchData, callback) {
       adapter.patchNode(nodeToPatch, patchData, function(patchedNode) {
-        nodeShaper.drawNodes(nodes);
+        nodeShaper.reshapeNodes();
         callback(patchedNode);
       });
     };
@@ -213,13 +204,12 @@ function EventLibrary() {
   
   this.DeleteNode = function (config) {
     self.checkNodeEditorConfig(config);
-    var nodes = config.nodes,
-    adapter = config.adapter,
+    var adapter = config.adapter,
     nodeShaper = config.shaper;
     
     return function(nodeToDelete, callback) {
       adapter.deleteNode(nodeToDelete, function() {
-        nodeShaper.drawNodes(nodes);
+        nodeShaper.reshapeNodes();
         callback();
       });
     };
@@ -227,12 +217,11 @@ function EventLibrary() {
   
   this.InsertEdge = function (config) {
     self.checkEdgeEditorConfig(config);
-    var edges = config.edges,
-    adapter = config.adapter,
+    var adapter = config.adapter,
     edgeShaper = config.shaper;
     return function(source, target, callback) {
       adapter.createEdge({source: source, target: target}, function(newEdge) {
-        edgeShaper.drawEdges(edges);
+        edgeShaper.reshapeEdges();
         callback(newEdge);
       });
     };
@@ -240,12 +229,11 @@ function EventLibrary() {
   
   this.PatchEdge = function (config) {
     self.checkEdgeEditorConfig(config);
-    var edges = config.edges,
-    adapter = config.adapter,
+    var adapter = config.adapter,
     edgeShaper = config.shaper;
     return function(edgeToPatch, patchData, callback) {
       adapter.patchEdge(edgeToPatch, patchData, function(patchedEdge) {
-        edgeShaper.drawEdges(edges);
+        edgeShaper.reshapeEdges();
         callback(patchedEdge);
       });
     };
@@ -253,11 +241,13 @@ function EventLibrary() {
   
   this.DeleteEdge = function (config) {
     self.checkEdgeEditorConfig(config);
-    var edges = config.edges,
-    adapter = config.adapter,
+    var adapter = config.adapter,
     edgeShaper = config.shaper;
     return function(edgeToDelete, callback) {
-      adapter.deleteEdge(edgeToDelete, callback);
+      adapter.deleteEdge(edgeToDelete, function() {
+        edgeShaper.reshapeEdges();
+        callback();
+      });
     };
   };
   
