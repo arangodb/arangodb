@@ -1,8 +1,7 @@
-text {
-  font: 10px sans-serif;
+svg#graphViewer text {
+  font: 11px Arial;
   pointer-events: none;
-  stroke: #fff;
-  stroke-width: 1px;
+  stroke: #000;
 }
 
 capitalize {

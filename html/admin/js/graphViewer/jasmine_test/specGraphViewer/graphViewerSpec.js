@@ -38,7 +38,7 @@
 describe("Graph Viewer", function() {
   "use strict";
   var viewer,
-  waittime = 100,
+  waittime = 200,
   svg,
   docSVG;
   
@@ -54,12 +54,6 @@ describe("Graph Viewer", function() {
   });
   
   describe('set up process', function() {
-    
-    var adapterConfig;
-    
-    beforeEach(function() {
-      adapterConfig = {type: "json", path: "../test_data/"};
-    });
     
     it('should throw an error if the svg is not given or incorrect', function() {
       expect(
@@ -109,6 +103,7 @@ describe("Graph Viewer", function() {
     });
     
     it('should not throw an error if everything is given', function() {
+      var adapterConfig = {type: "json", path: "../test_data/"};
       expect(
         function() {
           var t = new GraphViewer(svg, 10, 10, adapterConfig);
@@ -116,125 +111,127 @@ describe("Graph Viewer", function() {
       ).not.toThrow();
     });
     
-    describe('GraphViewer set up correctly', function() {
-      
-      var viewer;
-      
-      beforeEach(function() {
-        viewer = new GraphViewer(svg, 10, 10, adapterConfig);
-      });
-      
-      it('should offer the nodeShaper', function() {
-        expect(viewer.nodeShaper).toBeDefined();
-      });
-      
-      it('should offer the edgeShaper', function() {
-        expect(viewer.edgeShaper).toBeDefined();
-      });
-      
-      it('should offer the startFunction', function() {
-        expect(viewer.start).toBeDefined();
-      });
-      
-      it('should offer the adapter', function() {
-        expect(viewer.adapter).toBeDefined();
-      });
-      
-      it('should offer the layouter', function() {
-        expect(viewer.layouter).toBeDefined();
-      });
-      
-      it('should offer the complete config for the event dispatcher', function() {
-        expect(viewer.dispatcherConfig).toBeDefined();
-        expect(viewer.dispatcherConfig).toEqual({
-          expand: {
-            edges: [],
-            nodes: [],
-            startCallback: jasmine.any(Function),
-            loadNode: jasmine.any(Function),
-            reshapeNode: jasmine.any(Function)
-          },
-          drag: {
-            layouter: jasmine.any(Object)
-          },
-          nodeEditor: {
-            nodes: [],
-            adapter: jasmine.any(Object)
-          },
-          edgeEditor: {
-            edges: [],
-            adapter: jasmine.any(Object)
-          }
-        });
-        expect(viewer.dispatcherConfig.expand).toEqual({
+    
+    
+  });
+  
+  describe('GraphViewer set up correctly', function() {
+    
+    var viewer, adapterConfig;
+    
+    beforeEach(function() {
+      adapterConfig = {type: "json", path: "../test_data/"};
+      viewer = new GraphViewer(svg, 10, 10, adapterConfig);
+    });
+    
+    it('should offer the nodeShaper', function() {
+      expect(viewer.nodeShaper).toBeDefined();
+    });
+    
+    it('should offer the edgeShaper', function() {
+      expect(viewer.edgeShaper).toBeDefined();
+    });
+    
+    it('should offer the startFunction', function() {
+      expect(viewer.start).toBeDefined();
+    });
+    
+    it('should offer the adapter', function() {
+      expect(viewer.adapter).toBeDefined();
+    });
+    
+    it('should offer the layouter', function() {
+      expect(viewer.layouter).toBeDefined();
+    });
+    
+    it('should offer the complete config for the event dispatcher', function() {
+      expect(viewer.dispatcherConfig).toBeDefined();
+      expect(viewer.dispatcherConfig).toEqual({
+        expand: {
           edges: [],
           nodes: [],
           startCallback: jasmine.any(Function),
           loadNode: jasmine.any(Function),
-          reshapeNode: jasmine.any(Function)
-        });
-        expect(viewer.dispatcherConfig.drag).toEqual({
+          reshapeNodes: jasmine.any(Function)
+        },
+        drag: {
           layouter: jasmine.any(Object)
-        });
-        expect(viewer.dispatcherConfig.nodeEditor).toEqual({
+        },
+        nodeEditor: {
           nodes: [],
           adapter: jasmine.any(Object)
-        });
-        expect(viewer.dispatcherConfig.edgeEditor).toEqual({
+        },
+        edgeEditor: {
           edges: [],
           adapter: jasmine.any(Object)
-        });
-        
-        
+        }
+      });
+      expect(viewer.dispatcherConfig.expand).toEqual({
+        edges: [],
+        nodes: [],
+        startCallback: jasmine.any(Function),
+        loadNode: jasmine.any(Function),
+        reshapeNodes: jasmine.any(Function)
+      });
+      expect(viewer.dispatcherConfig.drag).toEqual({
+        layouter: jasmine.any(Object)
+      });
+      expect(viewer.dispatcherConfig.nodeEditor).toEqual({
+        nodes: [],
+        adapter: jasmine.any(Object)
+      });
+      expect(viewer.dispatcherConfig.edgeEditor).toEqual({
+        edges: [],
+        adapter: jasmine.any(Object)
       });
       
-      it('should offer to load a new graph', function() {
-        expect(viewer.loadGraph).toBeDefined();
-      });
-      
-      it('should offer to load a new graph by attribute value', function() {
-        expect(viewer.loadGraphWithAttributeValue).toBeDefined();
-      });
-      
-      
-      it("should be able to load a root node", function() {
-        runs (function() {
-          this.addMatchers({
-            toBeDisplayed: function() {
-              var nodes = this.actual,
-              nonDisplayed = [];
-              this.message = function(){
-                var msg = "Nodes: [";
-                _.each(nonDisplayed, function(n) {
-                  msg += n + " ";
-                });
-                msg += "] are not displayed.";
-                return msg;
-              };
-              _.each(nodes, function(n) {
-                if ($("svg #" + n)[0] === undefined) {
-                  nonDisplayed.push(n);
-                }
-              });
-              return nonDisplayed.length === 0;
-            }
-          });
-          
-          viewer.loadGraph(0);
-        });
-    
-        // Give it a second to load
-        // Unfortunately there is no handle to check for changes
-        waits(waittime);
-    
-        runs (function() {
-          expect([0, 1, 2, 3, 4]).toBeDisplayed();
-        });
-      });
       
     });
     
-  });
+    it('should offer to load a new graph', function() {
+      expect(viewer.loadGraph).toBeDefined();
+    });
+    
+    it('should offer to load a new graph by attribute value', function() {
+      expect(viewer.loadGraphWithAttributeValue).toBeDefined();
+    });
+    
+    
+    it("should be able to load a root node", function() {
+      runs (function() {
+        this.addMatchers({
+          toBeDisplayed: function() {
+            var nodes = this.actual,
+            nonDisplayed = [];
+            this.message = function(){
+              var msg = "Nodes: [";
+              _.each(nonDisplayed, function(n) {
+                msg += n + " ";
+              });
+              msg += "] are not displayed.";
+              return msg;
+            };
+            _.each(nodes, function(n) {
+              if ($("svg #" + n)[0] === undefined) {
+                nonDisplayed.push(n);
+              }
+            });
+            return nonDisplayed.length === 0;
+          }
+        });
+        
+        viewer.loadGraph(0);
+      });
   
+      // Give it a second to load
+      // Unfortunately there is no handle to check for changes
+      waits(waittime);
+  
+      runs (function() {
+        expect([0, 1, 2, 3, 4]).toBeDisplayed();
+      });
+    });
+    
+  });
 
 });

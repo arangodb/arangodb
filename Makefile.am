@@ -223,6 +223,8 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/common -name "*.js" -print) \
 	$(shell find @srcdir@/js/server -name "*.js" -print) \
 	$(shell find @srcdir@/js/client -name "*.js" -print) \
+	$(shell find @srcdir@/js/node -type f -print) \
+	$(shell find @srcdir@/js/npm -type f -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \

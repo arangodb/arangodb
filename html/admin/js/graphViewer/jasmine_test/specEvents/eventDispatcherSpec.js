@@ -52,7 +52,7 @@
       nodeEditorConfig,
       edgeEditorConfig,
       svg,
-    
+      defaultPosition,
     
       bindSpies = function() {
         spyOn(layouter, "drag");
@@ -77,12 +77,18 @@
       this.loadNode = function() {};
       spyOn(this, "loadNode");
       
+      defaultPosition = {
+        x: 1,
+        y: 1,
+        z: 1
+      };
+      
       expandConfig = {
         edges: edges,
         nodes: nodes,
         startCallback: function() {},
         loadNode: this.loadNode,
-        reshapeNode: function() {}
+        reshapeNodes: function() {}
       };
       
       dragConfig = {
@@ -213,8 +219,8 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}, {_id:2}],
-          callback = function() {
+          nodes = helper.createSimpleNodes([1, 2]);
+          var callback = function() {
             called++;
           };
           called = 0;
@@ -240,16 +246,17 @@
         
         
         runs(function() {
-          var n1 = {_id: 1},
-          n2 = {_id: 2},
-          n3 = {_id: 3},
-          edges = [
-            {source: n1, target: n2},
-            {source: n2, target: n3}
-          ],
-          callback = function() {
-            called++;
-          };
+          nodes = helper.createSimpleNodes([1, 2, 3]);
+          var n1 = nodes[0],
+            n2 = nodes[1],
+            n3 = nodes[2],
+            edges = [
+              {source: n1, target: n2},
+              {source: n2, target: n3}
+            ],
+            callback = function() {
+              called++;
+            };
           called = 0;
           edgeShaper.drawEdges(edges);
           dispatcher.bind("edges", "click", callback);
@@ -276,7 +283,7 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}],
+          var nodes = helper.createSimpleNodes([1]),
           callback = function() {
             called = true;
           };
@@ -300,7 +307,7 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}],
+          var nodes = helper.createSimpleNodes([1]),
           callback = function() {
             called = true;
           };
@@ -324,7 +331,7 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}],
+          var nodes = helper.createSimpleNodes([1]),
           callback = function() {
             called = true;
           };
@@ -348,7 +355,7 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}],
+          var nodes = helper.createSimpleNodes([1]),
           callback = function() {
             called = true;
           };
@@ -373,7 +380,7 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}],
+          var nodes = helper.createSimpleNodes([1]),
           callback = function() {
             called = true;
           };
@@ -397,14 +404,14 @@
         var called;
         
         runs(function() {
-          var nodes = [{_id: 1}],
-          callback = function() {
+          nodes = helper.createSimpleNodes([1]);
+          var callback = function() {
             called = true;
           };
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "drag", callback);
-          helper.simulateMouseEvent("drag", "1");
+          helper.simulateDragEvent("1");
         });
         
         waitsFor(function() {
@@ -423,7 +430,7 @@
       
       it('should be able to bind the expand event', function() {
         runs(function() {
-          nodes = [{_id: 1}];
+          nodes = helper.createSimpleNodes([1]);
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", dispatcher.events.EXPAND);
           helper.simulateMouseEvent("click", "1");
@@ -449,12 +456,11 @@
       
       it('should be able to bind the drag event', function() {
         runs(function() {
-          nodes = [{_id: 1}];
+          nodes = helper.createSimpleNodes([1]);
           nodeShaper.drawNodes(nodes);
           
           dispatcher.bind("nodes", "drag", dispatcher.events.DRAG);
-          helper.simulateMouseEvent("drag", "1");
-          window.meierei = layouter.drag;
+          helper.simulateDragEvent("1");
         });
         
         waitsFor(function() {
@@ -491,7 +497,7 @@
       it('should be able to bind the patch node event', function() {
         
         runs(function() {
-          nodes = [{_id: 1}];          
+          nodes = helper.createSimpleNodes([1]);          
           dispatcher.bind($("svg"), "click", dispatcher.events.PATCHNODE(
             nodes[0],
             function() {
@@ -522,7 +528,7 @@
       
       it('should be able to bind the delete node event', function() {
         runs(function() {
-          nodes = [{_id: 1}];
+          nodes = helper.createSimpleNodes([1]);
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", dispatcher.events.DELETENODE(
             function(node) {
@@ -546,7 +552,7 @@
       });
       
       it('should be able to bind the events to create an edge', function() {
-        nodes = [{_id: 1}, {_id: 2}, {_id: 3}];
+        nodes = helper.createSimpleNodes([1, 2, 3]);
         edges = [{source: nodes[0], target: nodes[2]}];
         nodeShaper.drawNodes(nodes);
         edgeShaper.drawEdges(edges);
@@ -603,11 +609,7 @@
       it('should be able to bind the patch edge event', function() {
         
         runs(function() {
-          nodes = [{
-            _id: 1
-          },{
-            _id: 2
-          }];
+          nodes = helper.createSimpleNodes([1, 2]);
           edges = [{source: nodes[0], target: nodes[1]}];       
           dispatcher.bind($("svg"), "click", dispatcher.events.PATCHEDGE(
             edges[0],
@@ -639,11 +641,7 @@
       
       it('should be able to bind the delete edge event', function() {
         runs(function() {
-          nodes = [{
-            _id: 1
-          },{
-            _id: 2
-          }];
+          nodes = helper.createSimpleNodes([1, 2]);
           edges = [{source: nodes[0], target: nodes[1]}]; 
           edgeShaper.drawEdges(edges);
           dispatcher.bind("edges", "click", dispatcher.events.DELETEEDGE(
@@ -700,7 +698,7 @@
       });
       
       it('should be able to overwrite the event of all nodes', function() {
-        var nodes = [{_id: 1}],
+        var nodes = helper.createSimpleNodes([1]),
         falseCalled = false,
         called = false,
         falseCallback = function() {
@@ -729,20 +727,20 @@
       });
       
       it('should be able to overwrite the event of all edges', function() {
-        
-        var n1 = {_id: 1},
-        n2 = {_id: 2},
-        edges = [
-          {source: n1, target: n2}
-        ],
-        falseCalled = false,
-        called = false,
-        falseCallback = function() { 
-          falseCalled = true;
-        },
-        callback = function() {
-          called = true;
-        };
+        nodes = helper.createSimpleNodes([1, 2]);
+        var n1 = nodes[0],
+          n2 = nodes[1],
+          edges = [
+            {source: n1, target: n2}
+          ],
+          falseCalled = false,
+          called = false,
+          falseCallback = function() { 
+            falseCalled = true;
+          },
+          callback = function() {
+            called = true;
+          };
         
         runs(function() {
           edgeShaper.drawEdges(edges);
@@ -770,7 +768,7 @@
         var falseCalls, called;
         
         runs(function() {
-          var nodes = [{_id: 1}, {_id:2}],
+          var nodes = helper.createSimpleNodes([1, 2]),
             callback = function() {
               called++;
             },
@@ -807,9 +805,10 @@
         var falseCalls, called;
         
         runs(function() {
-          var n1 = {_id: 1},
-            n2 = {_id: 2},
-            n3 = {_id: 3},
+          nodes = helper.createSimpleNodes([1, 2, 3]);
+          var n1 = nodes[0],
+            n2 = nodes[1],
+            n3 = nodes[2],
             edges = [
               {source: n1, target: n2},
               {source: n2, target: n3}
