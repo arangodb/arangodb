@@ -41,22 +41,70 @@ var dashboardView = Backbone.View.extend({
       }
     });
 
+    this.renderCharts();
     return this;
   },
+  renderCharts: function () {
+    var self = this;
+    nv.addGraph(function() {
+      var chart = nv.models.lineWithFocusChart();
+
+      chart.xAxis
+        .axisLabel('Time (ms)')
+        .tickFormat(d3.format(',r'));
+      chart.yAxis
+        .axisLabel('Voltage (v)')
+        .tickFormat(d3.format('.02f'));
+
+      d3.select("#httpConnectionsChart svg")
+      .datum(self.sinAndCos())
+      .transition().duration(500)
+      .call(chart)
+
+      nv.utils.windowResize(function() { d3.select('#httpConnectionsChart svg').call(chart) });
+
+      return chart;
+    });
+  },
+
+    sinAndCos: function () {
+      var sin = [],
+    cos = [];
+
+    for (var i = 0; i < 100; i++) {
+      sin.push({x: i, y: Math.sin(i/10)});
+      cos.push({x: i, y: .5 * Math.cos(i/10)});
+    }
+
+    return [
+      {
+      values: sin,
+      key: 'Sine Wave',
+      color: '#ff7f0e'
+    },
+    {
+      values: cos,
+      key: 'Cosine Wave',
+      color: '#2ca02c'
+    }
+    ];
+  },
+
   renderClient: function (identifier, name, desc, type, units) {
     $('#client').append(
       '<div class="statClient" id="'+identifier+'">' +
         '<h5>' + name + '</h5>' +
+        '<div class="statChart" id="'+identifier+'Chart"><svg class="svgClass"/></div>' +
       '</div>'
     );
   },
   renderSystem: function (identifier, name, desc, type, units) {
     $('#system').append(
       '<div class="statSystem" id="'+identifier+'">' +
-        '<table><tr>' +
-          '<th>'+ name +'</th>' +
-          '<th class="updateValue">'+ 'counting...' +'</th>' +
-        '</tr></table>' +
+      '<table><tr>' +
+      '<th>'+ name +'</th>' +
+      '<th class="updateValue">'+ 'counting...' +'</th>' +
+      '</tr></table>' +
       '</div>'
     );
   },
