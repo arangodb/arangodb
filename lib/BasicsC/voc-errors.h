@@ -332,11 +332,11 @@ extern "C" {
 /// - 3111: @LIT{priority queue remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a priority queue
 ///   index fails when document can not be located within the index.
-/// - 3312: @LIT{(non-unique) hash index insert failure - document duplicated in index}
+/// - 3112: @LIT{(non-unique) hash index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   hash index fails due to the fact that document is duplicated within that
 ///   index.
-/// - 3313: @LIT{(non-unique) skiplist index insert failure - document duplicated in index}
+/// - 3113: @LIT{(non-unique) skiplist index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   skiplist index fails due to the fact that document is duplicated within
 ///   that index.
@@ -1859,7 +1859,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING                     (3111)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3312: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
+/// @brief 3112: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
 ///
 /// (non-unique) hash index insert failure - document duplicated in index
 ///
@@ -1867,10 +1867,10 @@ void TRI_InitialiseErrorMessages (void);
 /// index fails due to the fact that document is duplicated within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED                (3312)
+#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED                (3112)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3313: ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED
+/// @brief 3113: ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED
 ///
 /// (non-unique) skiplist index insert failure - document duplicated in index
 ///
@@ -1879,7 +1879,7 @@ void TRI_InitialiseErrorMessages (void);
 /// that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED            (3313)
+#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED            (3113)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3200: WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING
