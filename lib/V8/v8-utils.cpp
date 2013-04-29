@@ -48,7 +48,7 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
-#include "BasicsC/zip.h"
+#include "BasicsC/tri-zip.h"
 #include "Basics/FileUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"

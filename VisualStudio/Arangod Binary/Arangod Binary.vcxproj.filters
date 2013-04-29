@@ -336,6 +336,18 @@
     <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c">
       <Filter>GeoIndex Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\index-garbage-collector.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\marker.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\update-policy.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestUploadHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h">
@@ -610,6 +622,18 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h">
       <Filter>GeoIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\index-garbage-collector.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\marker.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\update-policy.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\RestHandler\RestUploadHandler.h">
+      <Filter>RestHandler Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

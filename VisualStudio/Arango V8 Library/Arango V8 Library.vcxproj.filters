@@ -10,6 +10,12 @@
     <Filter Include="V8 Header">
       <UniqueIdentifier>{96aaec03-439d-49b0-a2a8-4413b23226dd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SimpleHttpClient Source">
+      <UniqueIdentifier>{e3839bb0-7128-49e6-8202-6d5347187ffb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleHttpClient Header">
+      <UniqueIdentifier>{988cb65f-d9cb-4c77-b753-9c637a4eca41}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\V8\JSLoader.cpp">
@@ -36,6 +42,27 @@
     <ClCompile Include="..\..\lib\V8\v8-globals.cpp">
       <Filter>V8 Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-buffer.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\SimpleHttpClient\ClientConnection.cpp">
+      <Filter>SimpleHttpClient Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\SimpleHttpClient\GeneralClientConnection.cpp">
+      <Filter>SimpleHttpClient Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleClient.cpp">
+      <Filter>SimpleHttpClient Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleHttpClient.cpp">
+      <Filter>SimpleHttpClient Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleHttpResult.cpp">
+      <Filter>SimpleHttpClient Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\SimpleHttpClient\SslClientConnection.cpp">
+      <Filter>SimpleHttpClient Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\lib\V8\JSLoader.h">
@@ -61,6 +88,27 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\V8\v8-utils.h">
       <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-buffer.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\SimpleHttpClient\ClientConnection.h">
+      <Filter>SimpleHttpClient Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\SimpleHttpClient\GeneralClientConnection.h">
+      <Filter>SimpleHttpClient Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleClient.h">
+      <Filter>SimpleHttpClient Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleHttpClient.h">
+      <Filter>SimpleHttpClient Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleHttpResult.h">
+      <Filter>SimpleHttpClient Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\SimpleHttpClient\SslClientConnection.h">
+      <Filter>SimpleHttpClient Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

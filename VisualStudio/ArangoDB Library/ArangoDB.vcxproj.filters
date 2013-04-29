@@ -56,6 +56,12 @@
     <Filter Include="RestHeader">
       <UniqueIdentifier>{61bb5eec-939f-46c6-bf8e-aed922fa0297}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ZipHeader">
+      <UniqueIdentifier>{abf44e06-5cb6-4382-8b4a-97dfce728dd8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ZipSource">
+      <UniqueIdentifier>{d757b218-fa98-41d3-bed8-c550d2903e66}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\lib\BasicsC\associative.h">
@@ -361,6 +367,24 @@
     <ClInclude Include="..\..\lib\Rest\Version.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\skip-list.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\ioapi.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\iowin32.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\unzip.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Zip\zip.h">
+      <Filter>ZipHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\tri-zip.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">
@@ -415,9 +439,6 @@
       <Filter>BasicsCSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\string-buffer.c">
-      <Filter>BasicsCSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\BasicsC\strings.c">
       <Filter>BasicsCSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\structures.c">
@@ -602,6 +623,33 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\Rest\Version.cpp">
       <Filter>RestSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\skip-list.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\ioapi.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\iowin32.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\unzip.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Zip\zip.c">
+      <Filter>ZipSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\tri-strings.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\mimetypes.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\voc-mimetypes.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\tri-zip.c">
+      <Filter>BasicsCSource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -68,7 +68,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
 	lib/BasicsC/voc-mimetypes.c \
-	lib/BasicsC/zip.c \
+	lib/BasicsC/tri-zip.c \
 	lib/JsonParser/json-parser.c \
 	lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp \

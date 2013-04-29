@@ -365,6 +365,9 @@ extern "C" {
 /// - 3311: @LIT{skiplist index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a skiplist index
 ///   fails when document can not be located within that index.
+/// - 3313: @LIT{skiplist index remove warning - CAS failure while attempting to remove document}
+///   Will be raised when an attempt to remove a document into a skiplist index
+///   fails due to repeated CAS failures/clashes.
 /// - 3400: @LIT{bitarray index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   is caused by in the document not having one or more attributes which are
@@ -1959,6 +1962,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING             (3311)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3313: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE
+///
+/// skiplist index remove warning - CAS failure while attempting to remove
+/// document
+///
+/// Will be raised when an attempt to remove a document into a skiplist index
+/// fails due to repeated CAS failures/clashes.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE              (3313)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3400: WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING
