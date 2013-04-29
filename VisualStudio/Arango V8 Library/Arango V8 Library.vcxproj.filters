@@ -10,11 +10,11 @@
     <Filter Include="V8 Header">
       <UniqueIdentifier>{96aaec03-439d-49b0-a2a8-4413b23226dd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="SimpleHttpClient Header">
-      <UniqueIdentifier>{394dea9b-c900-46c9-8599-aa75674f6862}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SimpleHttpClient Source">
-      <UniqueIdentifier>{8990f2d7-1713-40d2-8580-e80819219086}</UniqueIdentifier>
+      <UniqueIdentifier>{e3839bb0-7128-49e6-8202-6d5347187ffb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleHttpClient Header">
+      <UniqueIdentifier>{988cb65f-d9cb-4c77-b753-9c637a4eca41}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -40,6 +40,9 @@
       <Filter>V8 Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\V8\v8-globals.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-buffer.cpp">
       <Filter>V8 Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\SimpleHttpClient\ClientConnection.cpp">
@@ -84,6 +87,9 @@
       <Filter>V8 Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\V8\v8-utils.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-buffer.h">
       <Filter>V8 Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\SimpleHttpClient\ClientConnection.h">
