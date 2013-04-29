@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "zip.h"
+#include "tri-zip.h"
 
 #include "BasicsC/files.h"
 #include "BasicsC/tri-strings.h"
@@ -34,7 +34,7 @@
 
 #ifdef _WIN32
 #define USEWIN32IOAPI
-#include "iowin32.h"
+#include "Zip/iowin32.h"
 #endif
 
 // -----------------------------------------------------------------------------

@@ -2067,6 +2067,11 @@ int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+int TRI_GetGlobalTransactionFigures (TRI_transaction_global_stats_t* stats) {
+  int result = TRI_ERROR_NO_ERROR;
+  return result;
+} 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
