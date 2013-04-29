@@ -55,6 +55,8 @@
 #include "VocBase/synchroniser.h"
 #include "VocBase/transaction.h"
 
+#include "VocBase/index-garbage-collector.h"
+
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 
@@ -1323,6 +1325,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
+  TRI_InitThread(&(vocbase->_indexGC));
+  TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
+  
   // we are done
   return vocbase;
 }
@@ -1353,6 +1358,9 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
+  // wait for the index garbage collector to finish what ever it is doing
+  TRI_JoinThread(&vocbase->_indexGC);
+  
   // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);

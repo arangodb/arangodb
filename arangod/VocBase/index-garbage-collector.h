@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief zip file functions
+/// @brief index garbage collector
 ///
 /// @file
 ///
@@ -21,51 +21,52 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Anonymous
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_TRI_ZIP_H
-#define TRIAGENS_BASICS_C_TRI_ZIP_H 1
 
-#ifdef _WIN32
- #include "BasicsC/win-utils.h"
-#endif
+#ifndef TRIAGENS_VOC_BASE_INDEX_GARBAGE_COLLECTOR_H
+#define TRIAGENS_VOC_BASE_INDEX_GARBAGE_COLLECTOR_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/vector.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+struct TRI_index_s;
+struct TRI_transaction_context_s;
+
+typedef struct TRI_index_gc_s {
+  struct TRI_index_s* _index; // index which requires rubbish collection
+  uint8_t _passes;            // the number of passes to complete the rubbish collection
+  uint8_t _lastPass;          // the last pass performed (_lastPass = 0, implies no passes performed)
+  uint64_t _transID;          // the transaction id which must have completed before the current pass can come into effect
+  void* _data;                // storage of data which may be required by the index
+  int (*_collectGarbage) (struct TRI_index_gc_s*); // callback which actually does the work (defined where the index is defined)
+} TRI_index_gc_t;
+
+
+int TRI_AddToIndexGC (TRI_index_gc_t*); // adds an item to the rubbish collection linked list
+
+void TRI_IndexGCVocBase (void*); // essentially a loop called by the thread and runs 'forever'
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief zips a file
+/// @brief index garbage collector event loop
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile (const char* filename, 
-                 const char* chdir,
-                 TRI_vector_string_t const*,
-                 const char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unzips a file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UnzipFile (const char*, 
-                   const char*, 
-                   const bool, 
-                   const bool, 
-                   const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
