@@ -9,33 +9,7 @@
     <meta name="author" content="Heiko Kernbach">
     
     <link href='http://fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'/>
-    <link href='css/swagger/hightlight.default.css' media='screen' rel='stylesheet' type='text/css'/>
-    <link href='css/swagger/screen.css' media='screen' rel='stylesheet' type='text/css'/>
-
-    <link href="css/bootstrap.css" rel="stylesheet">
-    <link href="css/jquery-ui-1.9.2.custom.css" rel="stylesheet">
-    <link href="css/layout.css" rel="stylesheet">
-    <link href="css/jquery.dataTables.css" rel="stylesheet">
-    <link href="css/nv.d3.css" rel="stylesheet">
-    <link href="css/navigationView.css" rel="stylesheet">
-    <link href="css/footerView.css" rel="stylesheet">
-    <link href="css/shellView.css" rel="stylesheet">
-    <link href="css/queryView.css" rel="stylesheet">
-    <link href="css/dashboardView.css" rel="stylesheet">
-    <link href="css/logsView.css" rel="stylesheet">
-    <link href="css/collectionsView.css" rel="stylesheet">
-    <link href="css/collectionsItemView.css" rel="stylesheet">
-    <link href="css/collectionView.css" rel="stylesheet">
-    <link href="css/documentsView.css" rel="stylesheet">
-    <link href="css/documentView.css" rel="stylesheet">
-    <link href="css/documentSourceView.css" rel="stylesheet">
-    <link href="css/swaggerView.css" rel="stylesheet">
-    <link href="css/foxxView.css" rel="stylesheet">
-    
-    <link href="css/jquery.snippet.css" rel="stylesheet">
-    <link href="css/jquery.gritter.css" rel="stylesheet">
-    <link href="css/modal.css" rel="stylesheet">
-    <link href="css/ansi.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
     
 
 
@@ -61,109 +35,9 @@
   </footer>
 
   <!-- libs -->
-  <script src="js/lib/jquery-1.8.3.js"></script>
-  <script src="js/lib/jquery-ui-1.9.2.custom.js"></script>
-  <script src="js/lib/jquery.dataTables.js"></script>
-  <script src="js/lib/jquery.autogrow.js"></script>
-  <script src="js/lib/jquery.jeditable.js"></script>
-  <script src="js/lib/jquery.jeditable.autogrow.js"></script>  
-  <script src="js/lib/jquery.snippet.js"></script>
-  <script src="js/lib/jquery.gritter.js"></script>
-  <script src='js/lib/jquery.slideto.min.js' type='text/javascript'></script>
-  <script src='js/lib/jquery.wiggle.min.js' type='text/javascript'></script>
-  <script src='js/lib/jquery.ba-bbq.min.js' type='text/javascript'></script>
-  
-  <script src='js/lib/handlebars-1.0.rc.1.js' type='text/javascript'></script>
-  
-  <script src="js/lib/underscore.js"></script>
-  
-  <script src="js/lib/backbone-1.0.0.js"></script>
-  
-  <script src="js/lib/d3.v3.js"></script>
-  <script src="js/lib/nv.d3.js"></script>
-  
-  
-  <script src="js/lib/ColVis.js"></script>
-  <script src="js/lib/ejs_fulljslint.js"></script>
-  <script src="js/lib/ejs_0.9_alpha_1_production.js"></script>
-  <script src="js/lib/bootstrap.js"></script>
-  <script src="js/lib/bootstrap-pagination.js"></script>
-  <script src="src/ace.js"></script>
-  <script src="js/lib/jqconsole.min.js"></script>
-  <script src="js/lib/splitter.js"></script>
-  
-  <script src='js/lib/swagger.js' type='text/javascript'></script>
-  <script src='js/lib/swagger-ui.js' type='text/javascript'></script>
-  <script src='js/lib/highlight.7.3.pack.js' type='text/javascript'></script>
-  
-
-  <!-- arango -->
-  <script src="js/arango/arango.js"></script>
-
-  <!-- arangodb js files --> 
-  <script src="js/shell/browser.js"></script>
-
-  <script src="js/modules/org/arangodb/arango-collection-common.js"></script>
-  <script src="js/modules/org/arangodb/arango-collection.js"></script>
-  <script src="js/modules/org/arangodb/arango-database.js"></script>
-  <script src="js/modules/org/arangodb/arango-query-cursor.js"></script>
-  <script src="js/modules/org/arangodb/arango-statement-common.js"></script>
-  <script src="js/modules/org/arangodb/arango-statement.js"></script>
-  <script src="js/modules/org/arangodb/arangosh.js"></script>
-  <script src="js/modules/org/arangodb/graph-common.js"></script>
-  <script src="js/modules/org/arangodb/graph.js"></script>
-  <script src="js/modules/org/arangodb/mimetypes.js"></script>
-  <script src="js/modules/org/arangodb/simple-query-common.js"></script>
-  <script src="js/modules/org/arangodb/simple-query.js"></script>
-  <script src="js/modules/org/arangodb/graph/traversal.js"></script>
-  <script src="js/modules/org/arangodb-common.js"></script>
-  <script src="js/modules/org/arangodb.js"></script>
-
-  <script src="js/bootstrap/errors.js"></script>
-  <script src="js/bootstrap/monkeypatches.js"></script>
-  <script src="js/bootstrap/module-internal.js"></script>
-  <script src="js/client/bootstrap/module-internal.js"></script>
-
-  <script src="js/shell/print.js"></script>
-  <script src="js/client/client.js"></script>
-
-  <!-- models -->
-  <script src="js/models/arangoCollection.js"></script>
-  <script src="js/models/arangoDocument.js"></script>
-  <script src="js/models/arangoLog.js"></script>
-  <script src="js/models/foxx.js"></script>
-
-  <!-- collections -->
-  <script src="js/collections/arangoCollections.js"></script>
-  <script src="js/collections/arangoDocuments.js"></script>
-  <script src="js/collections/arangoDocument.js"></script>
-  <script src="js/collections/arangoLogs.js"></script>
-  <script src="js/collections/foxxCollection.js"></script>
-
-  <!-- views -->
-  <script src="js/views/navigationView.js"></script>
-  <script src="js/views/footerView.js"></script>
-  <script src="js/views/queryView.js"></script>
-  <script src="js/views/shellView.js"></script>
-  <script src="js/views/aboutView.js"></script>
-  <script src="js/views/dashboardView.js"></script>
-  <script src="js/views/collectionsView.js"></script>
-  <script src="js/views/collectionView.js"></script>
-  <script src="js/views/newCollectionView.js"></script>
-  <script src="js/views/collectionsItemView.js"></script>
-  <script src="js/views/documentsView.js"></script>
-  <script src="js/views/documentView.js"></script>
-  <script src="js/views/documentSourceView.js"></script>
-  <script src="js/views/logsView.js"></script>
-  <script src="js/views/foxxActiveView.js"></script>
-  <script src="js/views/foxxActiveListView.js"></script>
-  <script src="js/views/foxxInstalledView.js"></script>
-  <script src="js/views/foxxInstalledListView.js"></script>
-  <script src="js/views/foxxEditView.js"></script>
-  <script src="js/views/appDocumentationView.js"></script>
-
-  <!-- router -->
-  <script src="js/routers/router.js"></script>
+  <script src="app.js"></script>
+  <script src="ace.js"></script>
+  <script src="second.js"></script>
 
 </body>
 

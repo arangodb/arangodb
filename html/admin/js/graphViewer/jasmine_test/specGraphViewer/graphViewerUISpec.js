@@ -283,7 +283,7 @@
     
     describe('checking to load a graph', function() {
       
-      var waittime = 100;
+      var waittime = 200;
       
       beforeEach(function() {
         this.addMatchers({
@@ -339,7 +339,6 @@
       });
       
     });
-    
     
     describe('set up with jsonAdapter and click Expand rest default', function() {
       // This waittime is rather optimistic, on a slow machine this has to be increased
@@ -414,8 +413,6 @@
         waits(waittime);
       
       });
-    
-      
     
       it("should be able to expand a node", function() {
   

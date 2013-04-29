@@ -97,14 +97,12 @@ function GraphViewer(svg, width, height,
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
+    adapterConfig.width = width;
+    adapterConfig.height = height;
       self.adapter = new ArangoAdapter(
-        adapterConfig.host,
         nodes,
         edges,
-        adapterConfig.nodeCollection,
-        adapterConfig.edgeCollection,
-        width,
-        height
+        adapterConfig
       );
       break;
     case "json":
@@ -124,8 +122,8 @@ function GraphViewer(svg, width, height,
     
   self.start = function() {
     self.layouter.stop();
-    self.edgeShaper.drawEdges(edges);
     self.nodeShaper.drawNodes(nodes);
+    self.edgeShaper.drawEdges(edges);
     self.layouter.start();
   };
   
@@ -159,7 +157,7 @@ function GraphViewer(svg, width, height,
       nodes: nodes,
       startCallback: self.start,
       loadNode: self.adapter.loadNodeFromTreeById,
-      reshapeNode: self.nodeShaper.reshapeNode
+      reshapeNodes: self.nodeShaper.reshapeNodes
     },
     drag: {
       layouter: self.layouter
