@@ -55,6 +55,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/mimetypes.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
+	lib/BasicsC/skip-list.c \
 	lib/BasicsC/socket-utils.c \
 	lib/BasicsC/string-buffer.c \
 	lib/BasicsC/tri-strings.c \

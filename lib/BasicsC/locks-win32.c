@@ -903,41 +903,67 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 
 // -----------------------------------------------------------------------------
 // COMPARE & SWAP operations below for windows
+// Note that for the MAC OS we use the 'barrier' functions which ensure that
+// read/write operations on the scalars are executed in order. According to the
+// available documentation, the GCC variants of these COMPARE & SWAP operations
+// are implemented with a memory barrier. The MS Windows variants of these 
+// operations (according to the documentation on MS site) also provide a full
+// memory barrier.
 // -----------------------------------------------------------------------------
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief atomically compares and swaps 32bit integers
+/// @brief atomically compares and swaps 32bit integers with full memory barrier
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CompareAndSwapIntegerInt32 (volatile int32_t* theValue, int32_t oldValue, int32_t newValue) {
   return ( (int32_t)( InterlockedCompareExchange((volatile LONG*)(theValue), (LONG)(newValue), (LONG)(oldValue) ) ) == oldValue );
 }
 
+bool TRI_CompareIntegerInt32 (volatile int32_t* theValue, int32_t oldValue) {
+  return ( (int32_t)( InterlockedCompareExchange((volatile LONG*)(theValue), (LONG)(oldValue), (LONG)(oldValue) ) ) == oldValue );
+}
+
 bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue) {
   return ( (uint32_t)(InterlockedCompareExchange((volatile LONG*)(theValue), (LONG)(newValue), (LONG)(oldValue) ) ) == oldValue );
 }
 
+bool TRI_CompareIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue) {
+  return ( (uint32_t)(InterlockedCompareExchange((volatile LONG*)(theValue), (LONG)(oldValue), (LONG)(oldValue) ) ) == oldValue );
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief atomically compares and swaps 64bit integers
+/// @brief atomically compares and swaps 64bit integers with full memory barrier
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CompareAndSwapIntegerInt64 (volatile int64_t* theValue, int64_t oldValue, int64_t newValue) {
   return ( (int64_t)(InterlockedCompareExchange64((volatile LONGLONG*)(theValue), (LONGLONG)(newValue), (LONGLONG)(oldValue) ) ) == oldValue );
 }
 
+bool TRI_CompareIntegerInt64 (volatile int64_t* theValue, int64_t oldValue) {
+  return ( (int64_t)(InterlockedCompareExchange64((volatile LONGLONG*)(theValue), (LONGLONG)(oldValue), (LONGLONG)(oldValue) ) ) == oldValue );
+}
+
 bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue) {
   return ( (uint64_t)(InterlockedCompareExchange64((volatile LONGLONG*)(theValue), (LONGLONG)(newValue), (LONGLONG)(oldValue) ) ) == oldValue );
 }
 
+bool TRI_CompareIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue) {
+  return ( (uint64_t)(InterlockedCompareExchange64((volatile LONGLONG*)(theValue), (LONGLONG)(oldValue), (LONGLONG)(oldValue) ) ) == oldValue );
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief atomically compares and swaps pointers
+/// @brief atomically compares and swaps pointers with full memory barrier
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue) {
   return ( InterlockedCompareExchangePointer(theValue, newValue, oldValue) == oldValue );
+}
+
+bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
+  return ( InterlockedCompareExchangePointer(theValue, oldValue, oldValue) == oldValue );
 }
 
 

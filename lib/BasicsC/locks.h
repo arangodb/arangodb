@@ -407,9 +407,11 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 // returned), otherwise no operation is performed (false is returned).
 // .............................................................................
 
-bool TRI_CompareAndSwapIntegerInt32  (volatile int32_t* theValue, int32_t oldValue, int32_t newValue);
+bool TRI_CompareAndSwapIntegerInt32 (volatile int32_t* theValue, int32_t oldValue, int32_t newValue);
+bool TRI_CompareIntegerInt32 (volatile int32_t* theValue, int32_t oldValue);
 
 bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue);
+bool TRI_CompareIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,9 +426,11 @@ bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldV
 // simply the 64bit equivalent of the function above.
 // .............................................................................
 
-bool TRI_CompareAndSwapIntegerInt64  (volatile int64_t* theValue, int64_t oldValue, int64_t newValue);
+bool TRI_CompareAndSwapIntegerInt64 (volatile int64_t* theValue, int64_t oldValue, int64_t newValue);
+bool TRI_CompareIntegerInt64 (volatile int64_t* theValue, int64_t oldValue);
 
 bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue);
+bool TRI_CompareIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,6 +446,7 @@ bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldV
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue);
+bool TRI_ComparePointer(void* volatile* theValue, void* oldValue);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
