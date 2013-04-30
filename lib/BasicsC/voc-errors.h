@@ -332,11 +332,11 @@ extern "C" {
 /// - 3111: @LIT{priority queue remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a priority queue
 ///   index fails when document can not be located within the index.
-/// - 3312: @LIT{(non-unique) hash index insert failure - document duplicated in index}
+/// - 3112: @LIT{(non-unique) hash index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   hash index fails due to the fact that document is duplicated within that
 ///   index.
-/// - 3313: @LIT{(non-unique) skiplist index insert failure - document duplicated in index}
+/// - 3113: @LIT{(non-unique) skiplist index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   skiplist index fails due to the fact that document is duplicated within
 ///   that index.
@@ -359,9 +359,15 @@ extern "C" {
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
 ///   the skiplist index.
+/// - 3304: @LIT{skiplist index insertion warning - CAS failure while attempting to insert document}
+///   Will be raised when an attempt to insert a document into a skiplist index
+///   fails due to repeated CAS failures/clashes.
 /// - 3311: @LIT{skiplist index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a skiplist index
 ///   fails when document can not be located within that index.
+/// - 3313: @LIT{skiplist index remove warning - CAS failure while attempting to remove document}
+///   Will be raised when an attempt to remove a document into a skiplist index
+///   fails due to repeated CAS failures/clashes.
 /// - 3400: @LIT{bitarray index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   is caused by in the document not having one or more attributes which are
@@ -1853,7 +1859,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING                     (3111)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3312: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
+/// @brief 3112: ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED
 ///
 /// (non-unique) hash index insert failure - document duplicated in index
 ///
@@ -1861,10 +1867,10 @@ void TRI_InitialiseErrorMessages (void);
 /// index fails due to the fact that document is duplicated within that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED                (3312)
+#define TRI_ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED                (3112)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3313: ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED
+/// @brief 3113: ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED
 ///
 /// (non-unique) skiplist index insert failure - document duplicated in index
 ///
@@ -1873,7 +1879,7 @@ void TRI_InitialiseErrorMessages (void);
 /// that index.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED            (3313)
+#define TRI_ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED            (3113)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3200: WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING
@@ -1935,6 +1941,18 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING        (3302)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 3304: WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE
+///
+/// skiplist index insertion warning - CAS failure while attempting to insert
+/// document
+///
+/// Will be raised when an attempt to insert a document into a skiplist index
+/// fails due to repeated CAS failures/clashes.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE              (3304)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 3311: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING
 ///
 /// skiplist index remove failure - item missing in index
@@ -1944,6 +1962,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING             (3311)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3313: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE
+///
+/// skiplist index remove warning - CAS failure while attempting to remove
+/// document
+///
+/// Will be raised when an attempt to remove a document into a skiplist index
+/// fails due to repeated CAS failures/clashes.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE              (3313)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3400: WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING

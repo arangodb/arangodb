@@ -172,6 +172,18 @@ typedef struct TRI_transaction_context_s {
 }
 TRI_transaction_context_t;
 
+
+
+typedef struct TRI_transaction_global_stats_s {
+  TRI_voc_tid_t  _lastStartedReader;
+  TRI_voc_tid_t  _lastFinishedReader;
+
+  TRI_voc_tid_t  _lastStartedWriter;
+  TRI_voc_tid_t  _lastAbortedWriter;
+  TRI_voc_tid_t  _lastFinishedWriter;
+}
+TRI_transaction_global_stats_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the stats for a global instance of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -614,6 +626,13 @@ int TRI_CreateMarkerAbortTransaction (TRI_transaction_t*,
 int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t*,
                                         struct TRI_doc_prepare_transaction_marker_s**);
 
+                                        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns one or more figures associated with transactions
+////////////////////////////////////////////////////////////////////////////////
+                          
+int TRI_GetGlobalTransactionFigures (TRI_transaction_global_stats_t*); 
+                          
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

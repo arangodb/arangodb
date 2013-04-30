@@ -89,6 +89,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/general-cursor.c \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \
+	arangod/VocBase/index-garbage-collector.c \
 	arangod/VocBase/key-generator.c \
 	arangod/VocBase/marker.c \
 	arangod/VocBase/primary-collection.c \
