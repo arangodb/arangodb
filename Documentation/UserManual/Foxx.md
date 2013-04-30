@@ -14,9 +14,9 @@ So given you want to build an application that sends a plain-text response "Work
 
 First, create a directory `my_app` and save a file called `app.js` in this directory. Write the following content to this file:
 
-    Foxx = require("org/arangodb/foxx");
+    var Foxx = require("org/arangodb/foxx");
 
-    app = new Foxx.Application();
+    var app = new Foxx.Application();
 
     app.get("/wiese", function(req, res) {
       res.set("Content-Type", "text/plain");
@@ -28,16 +28,26 @@ First, create a directory `my_app` and save a file called `app.js` in this direc
 This is your application. Now we need to mount it to the path `/my`. In order to achieve that, we create a file called `manifest.json` in our `my_app` directory with the following content:
 
     {
+      "name": "my_app",
+      "version": "0.0.1",
       "apps": {
-        "/my": "app.js"
+        "/": "app.js"
       }
     }
+
+You **must** specify a name and a version number for your application, otherwise it won't be loaded into ArangoDB.
 
 Now your application is done. Start ArangoDB as follows:
 
     arangod --javascript.dev-app-path my_app /tmp/fancy_db
 
-Now point your browser to `/my/wiese` and you should see "Worked!". After this short overview, let's get into the details.
+To include it to the list of apps running on your ArangoDB instance, start the ArangoDB shell and add your new application:
+
+    $ ./bin/arango
+    arangosh> aal = require('org/arangodb/aal');
+    arangosh> aal.installDevApp('my_app', '/my');
+
+Now point your browser to `http://localhost:8529/my/wiese` and you should see "Worked!". After this short overview, let's get into the details.
 
 ## Details on Foxx.Application
 
