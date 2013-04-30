@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global beforeEach, afterEach, Jasmine */
+/*global beforeEach, afterEach, jasmine */
 /*global describe, it, expect */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
@@ -87,32 +87,32 @@
     describe('the interface', function() {
       it('should offer a function to get the current font-size', function() {
         expect(manager.getFontSize).toBeDefined();
-        expect(manager.getFontSize).toEqual(Jasmine.any(Function));
+        expect(manager.getFontSize).toEqual(jasmine.any(Function));
       });
     
       it('should offer a function to get the current node-radius', function() {
         expect(manager.getRadius).toBeDefined();
-        expect(manager.getRadius).toEqual(Jasmine.any(Function));
+        expect(manager.getRadius).toEqual(jasmine.any(Function));
       });
     
       it('should offer a function to get the node limit', function() {
         expect(manager.getNodeLimit).toBeDefined();
-        expect(manager.getNodeLimit).toEqual(Jasmine.any(Function));
+        expect(manager.getNodeLimit).toEqual(jasmine.any(Function));
       });
     
       it('should offer a function to get the distortion', function() {
         expect(manager.getDistortion).toBeDefined();
-        expect(manager.getDistortion).toEqual(Jasmine.any(Function));
+        expect(manager.getDistortion).toEqual(jasmine.any(Function));
       });
     
       it('should offer a function for zoom-in', function() {
         expect(manager.zoomIn).toBeDefined();
-        expect(manager.zoomIn).toEqual(Jasmine.any(Function));
+        expect(manager.zoomIn).toEqual(jasmine.any(Function));
       });
     
       it('should offer a function for zoom-out', function() {
         expect(manager.zoomOut).toBeDefined();
-        expect(manager.zoomOut).toEqual(Jasmine.any(Function));
+        expect(manager.zoomOut).toEqual(jasmine.any(Function));
       });
     });
     
@@ -178,18 +178,19 @@
           manager.zoomOut();
           expect(manager.getFontSize()).toBeLessThan(oldFS);
           expect(manager.getRadius()).toBeLessThan(oldR);
-          expect(manager.getNodeLimit()).toBeGreaterThan(oldNL);
+          expect(manager.getNodeLimit()).not.toBeLessThan(oldNL);
           expect(manager.getDistortion()).toBeGreaterThan(oldD);
           loopCounter++;
           if (loopCounter === 1000) {
             this.fail(new Error('The minimal font-size should have been reached'));
+            break;
           }
         }
         if (manager.getFontSize() === null) {
           manager.zoomIn();
         }
         expect(manager.getFontSize()).toBeCloseTo(fontMin, 6);
-        expect(manager.getRadius()).toBeCloseTo((radMax-radMin) / 2, 6);
+        expect(manager.getRadius()).toBeCloseTo((radMax-radMin) / 2 + radMin, 6);
         expect(manager.getNodeLimit()).toBeCloseTo(nodeMinLabel, 6);
         //expect(manager.getDistortion()).toBeCloseTo(0, 6);
       });
@@ -203,6 +204,7 @@
             loopCounter++;
             if (loopCounter === 1000) {
               this.fail(new Error('The minimal font-size should have been reached'));
+              break;
             }
           }
           if (manager.getFontSize() === null) {
@@ -224,11 +226,12 @@
             manager.zoomIn();
             expect(manager.getFontSize()).toBeGreaterThan(oldFS);
             expect(manager.getRadius()).toBeGreaterThan(oldR);
-            expect(manager.getNodeLimit()).toBeLessThan(oldNL);
+            expect(manager.getNodeLimit()).not.toBeGreaterThan(oldNL);
             expect(manager.getDistortion()).toBeLessThan(oldD);
             loopCounter++;
             if (loopCounter === 1000) {
               this.fail(new Error('The maximal font-size should have been reached'));
+              break;
             }
           }
           expect(manager.getFontSize()).toEqual(fontMax);
@@ -244,7 +247,7 @@
         
         it('should significantly increase the node limit if further zoomed out', function() {
           manager.zoomOut();
-          expect(manager.getNodeLimit()).toEqual(nodeMaxNoLabel);
+          expect(manager.getNodeLimit()).toBeGreaterThan(nodeMaxNoLabel);
         });
         
         it('should be able to zoom-out until minimal node radius is reached', function() {
@@ -252,18 +255,19 @@
             oldNL,
             oldD,
             loopCounter = 0;
-          while (manager.getRadius > radMin) {
+          while (manager.getRadius() > radMin) {
             oldR = manager.getRadius();
             oldNL = manager.getNodeLimit();
             oldD = manager.getDistortion();
             manager.zoomOut();
             expect(manager.getFontSize()).toEqual(null);
             expect(manager.getRadius()).toBeLessThan(oldR);
-            expect(manager.getNodeLimit()).toBeGreaterThan(oldNL);
+            expect(manager.getNodeLimit()).not.toBeLessThan(oldNL);
             expect(manager.getDistortion()).toBeGreaterThan(oldD);
             loopCounter++;
             if (loopCounter === 1000) {
               this.fail(new Error('The minimal font-size should have been reached'));
+              break;
             }
           }
           expect(manager.getRadius()).toEqual(radMin);
@@ -277,11 +281,12 @@
         
         beforeEach(function() {
           var loopCounter = 0;
-          while (manager.getRadius > radMin) {
+          while (manager.getRadius() > radMin) {
             manager.zoomOut();
             loopCounter++;
             if (loopCounter === 2000) {
               this.fail(new Error('The minimal zoom level should have been reached'));
+              break;
             }
           }
         });
@@ -295,30 +300,32 @@
           expect(manager.getNodeLimit()).toEqual(oldNL);
           expect(manager.getDistortion()).toEqual(oldD);
         });
-      });
-      
-      it('should be able to zoom-in again', function() {
-        var oldR,
-          oldNL,
-          oldD,
-          loopCounter = 0;
-        while (manager.getFontSize() === null) {
-          oldR = manager.getRadius();
-          oldNL = manager.getNodeLimit();
-          oldD = manager.getDistortion();
-          manager.zoomIn();
-          expect(manager.getRadius()).toBeGreaterThan(oldR);
-          expect(manager.getNodeLimit()).toBeLessThan(oldNL);
-          expect(manager.getDistortion()).toBeLessThan(oldD);
-          loopCounter++;
-          if (loopCounter === 1000) {
-            this.fail(new Error('The minimal font-size should have been reached'));
+        
+        it('should be able to zoom-in again', function() {
+          var oldR,
+            oldNL,
+            oldD,
+            loopCounter = 0;
+          while (manager.getFontSize() === null) {
+            oldR = manager.getRadius();
+            oldNL = manager.getNodeLimit();
+            oldD = manager.getDistortion();
+            manager.zoomIn();
+            expect(manager.getRadius()).toBeGreaterThan(oldR);
+            expect(manager.getNodeLimit()).not.toBeGreaterThan(oldNL);
+            expect(manager.getDistortion()).toBeLessThan(oldD);
+            loopCounter++;
+            if (loopCounter === 1000) {
+              this.fail(new Error('The minimal font-size should have been reached'));
+              break;
+            }
           }
-        }
-        expect(manager.getFontSize()).toBeCloseTo(fontMin, 6);
-        expect(manager.getRadius()).toBeCloseTo((radMax-radMin) / 2, 6);
-        expect(manager.getNodeLimit()).toBeCloseTo(nodeMinLabel, 6);
-        //expect(manager.getDistortion()).toBeCloseTo(0, 6);
+          expect(manager.getFontSize()).toBeCloseTo(fontMin, 6);
+          expect(manager.getRadius()).toBeCloseTo((radMax-radMin) / 2 + radMin, 6);
+          expect(manager.getNodeLimit()).toBeCloseTo(nodeMinLabel, 6);
+          //expect(manager.getDistortion()).toBeCloseTo(0, 6);
+        });
+        
       });
     });
   });
