@@ -84,3 +84,6 @@ nbproject/
 html/admin/api-docs/
 !html/admin/api-docs/api-docs.json
 test.cpp.txt
+
+js/apps/*
+!js/apps/aardvark
