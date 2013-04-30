@@ -135,7 +135,7 @@ class StateMachine:
 class Regexen:
     def __init__(self):
         self.brief = re.compile('.*@brief')
-        self.RESTHEADER = re.compile('.*@RESTHEADER')
+        self.RESTHEADER = re.compile('.*@RESTHEADER{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
         self.RESTQUERYPARAMETERS = re.compile('.*@RESTQUERYPARAMETERS')
         self.RESTHEADERPARAMETERS = re.compile('.*@RESTHEADERPARAMETERS')
@@ -161,8 +161,11 @@ def resturlparameters(cargo, r=Regexen()):
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
         elif r.RESTURLPARAM.match(line):             return resturlparam, (fp, line)
+        elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
+        elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
+        elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
-        else:																				 continue
+        else:										 continue
 
 def resturlparam(cargo, r=Regexen()):
     fp, last = cargo
@@ -192,9 +195,12 @@ def restqueryparameters(cargo, r=Regexen()):
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
-        elif r.RESTQUERYPARAM.match(line):           return restqueryparam, (fp, line)
+        elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
+        elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
+        elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
-        else:																				 continue
+        elif r.RESTQUERYPARAM.match(line):           return restqueryparam, (fp, line)
+        else:										 continue
 
 def restheaderparameters(cargo, r=Regexen()):
     fp, last = cargo
@@ -203,8 +209,11 @@ def restheaderparameters(cargo, r=Regexen()):
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
         elif r.RESTHEADERPARAM.match(line):          return restheaderparam, (fp, line)
+        elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
+        elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
+        elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
-        else:																				 continue
+        else:										 continue
 
 def restheaderparam(cargo, r=Regexen()):
     # TODO
@@ -213,35 +222,41 @@ def restheaderparam(cargo, r=Regexen()):
     para = {}
     para['paramType'] = 'header'
     para['dataType'] = parametersList[1].capitalize()
-    if parametersList[2] == 'required':
-        para['required'] = 'true'
-    else:
-        para['required'] = 'false'
     para['name'] = parametersList[0]
     para['description']=''
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
-        elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
-        elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
-        elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
         elif r.EMPTY_COMMENT.match(line):
             operation['parameters'].append(para)
-            return restqueryparameters, (fp, line)
+            return restheaderparameters, (fp, line)
         else:
             para['description'] += Typography(line[4:-1]) + ' '
 
 def restbodyparam(cargo, r=Regexen()):
-    # TODO see POST processing in comment till PUT
     fp, last = cargo
+    parametersList = parameters(last).split(',')
+    para = {}
+    para['paramType'] = 'body'
+    para['dataType'] = parametersList[1].capitalize()
+    if parametersList[2] == 'required':
+        para['required'] = 'true'
+    para['name'] = parametersList[0]
+    para['description']=''
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
-        elif r.RESTQUERYPARAM.match(line):           return restqueryparam, (fp, line)
+        elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
+        elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
+        elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
-        else:																				 continue
+        elif r.EMPTY_COMMENT.match(line):
+            operation['parameters'].append(para)
+            return comment, (fp, line)
+        else:
+            para['description'] += Typography(line[4:-1]) + ' '
 
 def restqueryparam(cargo, r=Regexen()):
     fp, last = cargo
@@ -250,9 +265,7 @@ def restqueryparam(cargo, r=Regexen()):
     para['paramType'] = 'query'
     para['dataType'] = parametersList[1].capitalize()
     if parametersList[2] == 'required':
-        para['required'] = 'true'
-    else:
-        para['required'] = 'false'
+        para['required'] = 'True'
     para['name'] = parametersList[0]
     para['description']=''
     while 1:
@@ -373,14 +386,6 @@ def comment(cargo, r=Regexen()):
             _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [],
                 'summary': None, 'notes': '', 'examples': '', 'errorResponses':[]}
             _operation['httpMethod'] = method
-            if method == 'POST' or method == 'PUT' or method == 'PATCH':
-                parameter = {}
-                parameter['paramType'] = 'body'
-                parameter['name'] = 'body'
-                parameter['description'] = 'A valid json document for your data, for instance {"hello": "world"}.'
-                parameter['dataType'] = 'String'
-                parameter['required'] = 'false'
-                _operation['parameters'] = [parameter]
             summaryList = summary.split()
             _operation['nickname'] = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
             _operation['summary'] = summary
@@ -389,6 +394,7 @@ def comment(cargo, r=Regexen()):
             operation = _operation
         elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
         elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
+        elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
         elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
         elif len(line) >= 4 and line[:4] == "////":  continue
