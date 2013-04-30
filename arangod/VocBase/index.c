@@ -1455,6 +1455,42 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_ope
   return iteratorResult;
 }
 
+/*
+TRI_skiplistEx_iterator_t* TRI_LookupSkiplistExIndex(TRI_index_t* idx, TRI_index_operator_t* slOperator) {
+  TRI_skiplistEx_index_t*    skiplistExIndex;
+  TRI_skiplistEx_iterator_t* iteratorResult;
+  int                        errorResult;
+
+  skiplistExIndex = (TRI_skiplistEx_index_t*)(idx);
+
+  // .........................................................................
+  // fill the relation operators which may be embedded in the slOperator with
+  // additional information. Recall the slOperator is what information was
+  // received from a user for query the skiplist.
+  // .........................................................................
+
+  errorResult = FillLookupSLOperator(slOperator, skiplistExIndex->base._collection);
+  if (errorResult != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
+  if (skiplistExIndex->base._unique) {
+    iteratorResult = SkiplistExIndex_find(skiplistExIndex->_skiplistExIndex, &skiplistExIndex->_paths, slOperator);
+  }
+  else {
+    iteratorResult = MultiSkiplistExIndex_find(skiplistExIndex->_skiplistExIndex, &skiplistExIndex->_paths, slOperator);
+  }
+
+  // .........................................................................
+  // we must deallocate any memory we allocated in FillLookupSLOperator
+  // .........................................................................
+
+  TRI_FreeIndexOperator(slOperator);
+
+  return iteratorResult;
+}
+*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for skiplist methods
 ////////////////////////////////////////////////////////////////////////////////

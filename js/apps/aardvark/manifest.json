@@ -12,31 +12,13 @@
         "index.html"
       ]
     },
-
-    "app.js": {
+    "ace.js": {
       "files": [
-        "../../../html/admin/js/lib/jquery-1.8.3.js",
-        "../../../html/admin/js/lib/jquery-ui-1.9.2.custom.js",
-        "../../../html/admin/js/lib/jquery.dataTables.js",
-        "../../../html/admin/js/lib/jquery.autogrow.js",
-        "../../../html/admin/js/lib/jquery.jeditable.js",
-        "../../../html/admin/js/lib/jquery.jeditable.autogrow.js",
-        "../../../html/admin/js/lib/jquery.snippet.js",
-        "../../../html/admin/js/lib/jquery.gritter.js",
-        "../../../html/admin/js/lib/jquery.slideto.min.js",
-        "../../../html/admin/js/lib/jquery.wiggle.min.js",
-        "../../../html/admin/js/lib/jquery.ba-bbq.min.js",
-        "../../../html/admin/js/lib/handlebars-1.0.rc.1.js",
-        "../../../html/admin/js/lib/underscore.js",
-        "../../../html/admin/js/lib/backbone-1.0.0.js",
-        "../../../html/admin/js/lib/d3.v3.js",
-        "../../../html/admin/js/lib/nv.d3.js",
-        "../../../html/admin/js/lib/ColVis.js",
-        "../../../html/admin/js/lib/ejs_fulljslint.js",
-        "../../../html/admin/js/lib/ejs_0.9_alpha_1_production.js",
-        "../../../html/admin/js/lib/bootstrap.js",
-        "../../../html/admin/js/lib/bootstrap-pagination.js",
-        "../../../html/admin/src/ace.js",
+        "../../../html/admin/src/ace.js"
+      ]
+    },
+    "second.js": {
+      "files": [
         "../../../html/admin/js/lib/jqconsole.min.js",
         "../../../html/admin/js/lib/splitter.js",
         "../../../html/admin/js/lib/swagger.js",
@@ -70,6 +52,31 @@
         "../../../html/admin/js/collections/**",
         "../../../html/admin/js/views/**",
         "../../../html/admin/js/routers/**"
+      ]
+    },
+    "app.js": {
+      "files": [
+        "../../../html/admin/js/lib/jquery-1.8.3.js",
+        "../../../html/admin/js/lib/jquery-ui-1.9.2.custom.js",
+        "../../../html/admin/js/lib/jquery.dataTables.js",
+        "../../../html/admin/js/lib/jquery.autogrow.js",
+        "../../../html/admin/js/lib/jquery.jeditable.js",
+        "../../../html/admin/js/lib/jquery.jeditable.autogrow.js",
+        "../../../html/admin/js/lib/jquery.snippet.js",
+        "../../../html/admin/js/lib/jquery.gritter.js",
+        "../../../html/admin/js/lib/jquery.slideto.min.js",
+        "../../../html/admin/js/lib/jquery.wiggle.min.js",
+        "../../../html/admin/js/lib/jquery.ba-bbq.min.js",
+        "../../../html/admin/js/lib/handlebars-1.0.rc.1.js",
+        "../../../html/admin/js/lib/underscore.js",
+        "../../../html/admin/js/lib/backbone-1.0.0.js",
+        "../../../html/admin/js/lib/d3.v3.js",
+        "../../../html/admin/js/lib/nv.d3.js",
+        "../../../html/admin/js/lib/ColVis.js",
+        "../../../html/admin/js/lib/ejs_fulljslint.js",
+        "../../../html/admin/js/lib/ejs_0.9_alpha_1_production.js",
+        "../../../html/admin/js/lib/bootstrap.js",
+        "../../../html/admin/js/lib/bootstrap-pagination.js"
       ]
     },
 
@@ -106,7 +113,8 @@
 
   "files": {
     "/img" : "../../../html/admin/img",
-    "/js/templates" : "../../../html/admin/js/templates"
+    "/js/templates" : "../../../html/admin/js/templates",
+    "/" : "../../../html/admin/src"
   },
   
   "lib": "."

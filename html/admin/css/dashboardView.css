@@ -9,7 +9,23 @@
 }
 
 .statClient {
-  height: 100px;
+  height: 200px;
+  width: 915px;
   margin: 10px;
   border: 1px solid black;
 }
+
+.statChart {
+
+}
+
+.nv-axisMaxMin > text {
+  font: 10px sans-serif;
+}
+
+.svgClass {
+  height: 150px;
+  width: 100%;
+}
+
+

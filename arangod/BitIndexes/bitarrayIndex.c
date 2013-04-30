@@ -933,7 +933,7 @@ static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_j
 
     if (listEntry->_type != TRI_JSON_LIST) {
       if (isEqualJson(value, listEntry)) {
-        tempMask = tempMask | (1 << i);
+        tempMask = tempMask | ((uint64_t)(1) << i);
       }
       continue; // there may be further matches!
     }
@@ -948,7 +948,7 @@ static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_j
     // ...........................................................................
 
     if (listEntry->_value._objects._length == 0) { // special case determine what the bit position of other is
-      other = (1 << i);
+      other = ((uint64_t)(1) << i);
       continue; // there may be further matches!
     }
 
@@ -957,7 +957,7 @@ static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_j
       TRI_json_t* subListEntry;
       subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), k));
       if (isEqualJson(value, subListEntry)) {
-        tempMask = tempMask | (1 << i);
+        tempMask = tempMask | ((uint64_t)(1) << i);
         break;
       }
     }
