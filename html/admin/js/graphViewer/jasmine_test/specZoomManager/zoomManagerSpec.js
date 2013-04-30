@@ -266,12 +266,8 @@
               this.fail(new Error('The minimal font-size should have been reached'));
             }
           }
-          if (manager.getFontSize() === null) {
-            manager.zoomIn();
-          }
-          expect(manager.getFontSize()).toBeCloseTo(fontMin, 6);
-          expect(manager.getRadius()).toBeCloseTo((radMax-radMin) / 2, 6);
-          expect(manager.getNodeLimit()).toBeCloseTo(nodeMinLabel, 6);
+          expect(manager.getRadius()).toEqual(radMin);
+          expect(manager.getNodeLimit()).toEqual(nodeMin);
           //expect(manager.getDistortion()).toBeCloseTo(0, 6);
         });
         
@@ -290,10 +286,41 @@
           }
         });
         
+        it('should not be able to further zoom out', function() {
+          var oldR = manager.getRadius(),
+            oldNL = manager.getNodeLimit(),
+            oldD = manager.getDistortion();
+          manager.zoomOut();
+          expect(manager.getRadius()).toEqual(oldR);
+          expect(manager.getNodeLimit()).toEqual(oldNL);
+          expect(manager.getDistortion()).toEqual(oldD);
+        });
       });
       
+      it('should be able to zoom-in again', function() {
+        var oldR,
+          oldNL,
+          oldD,
+          loopCounter = 0;
+        while (manager.getFontSize() === null) {
+          oldR = manager.getRadius();
+          oldNL = manager.getNodeLimit();
+          oldD = manager.getDistortion();
+          manager.zoomIn();
+          expect(manager.getRadius()).toBeGreaterThan(oldR);
+          expect(manager.getNodeLimit()).toBeLessThan(oldNL);
+          expect(manager.getDistortion()).toBeLessThan(oldD);
+          loopCounter++;
+          if (loopCounter === 1000) {
+            this.fail(new Error('The minimal font-size should have been reached'));
+          }
+        }
+        expect(manager.getFontSize()).toBeCloseTo(fontMin, 6);
+        expect(manager.getRadius()).toBeCloseTo((radMax-radMin) / 2, 6);
+        expect(manager.getNodeLimit()).toBeCloseTo(nodeMinLabel, 6);
+        //expect(manager.getDistortion()).toBeCloseTo(0, 6);
+      });
     });
-    
   });
 
   describe('testing user-defined values', function() {
