@@ -231,10 +231,6 @@ function executeAppScript (app, name, mount, prefix) {
       }
     };
 
-    context.appCollectionName = function (name) {
-      return name;
-    };
-
     app.loadAppScript(app.createAppModule(), desc[name], appContext, context);
   }
 }

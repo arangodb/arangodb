@@ -210,8 +210,8 @@ fi
 
 echo
 echo "########################################################"
-echo "arangodb_version: $arangodb_version"
 echo "arangodb_release: $arangodb_release"
+echo "arangodb_version: $arangodb_version"
 echo "hudson_base: $hudson_base"
 echo "rusr: $rusr"
 echo "rgrp: $rgrp"
@@ -239,11 +239,7 @@ echo "Call mkepmlist to create a sublist"
 
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man1 ${sfolder_name}/Doxygen/man/man1/*.1 >> ${SUBLIST}
   mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man8 ${sfolder_name}/Doxygen/man/man8/*.8 >> ${SUBLIST}
-
-  for dir in `find js -type d`; do
-    # echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
-    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
-  done
+  mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/js ${sfolder_name}/js >> ${SUBLIST}
 
   for dir in . css css/images media media/icons media/images js js/modules; do
     for typ in css html js png gif ico;  do
@@ -481,7 +477,7 @@ if [ "x$answer" == "x$expect" ]; then
   echo "ok: $answer"
 else
   echo "error: $answer != $expect"
-  sudo tail -50 /var/log/rangodb/arangod.log
+  sudo tail -50 /var/log/arangodb/arangod.log
 fi
 echo "########################################################"
 echo 
