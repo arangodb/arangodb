@@ -38,21 +38,23 @@ var API = "/_api/edges";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges
 ///
-/// @RESTHEADER{GET /_api/edges,reads in- or outbound edges}
+/// @RESTHEADER{GET /_api/edges/{collection-id},reads in- or outbound edges}
 ///
-/// @REST{GET /_api/edges/`collection-identifier`?vertex=`vertex-handle`&direction=any}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{collection-id,string,required}
+/// The id of the collection.
+//
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{vertex,string,required}
+/// The id of the start vertex.
+///
+/// @RESTQUERYPARAM{direction,string,required}
+/// Selects `any`, `in` or `out` direction for edges.
+///
+/// @RESTDESCRIPTION
 /// Returns the list of edges starting or ending in the vertex identified by
-/// `vertex-handle`.
-///
-/// @REST{GET /_api/edges/`collection-identifier`?vertex=`vertex-handle`&direction=in}
-///
-/// Returns the list of edges ending in the vertex identified by
-/// `vertex-handle`.
-///
-/// @REST{GET /_api/edges/`collection-identifier`?vertex=`vertex-handle`&direction=out}
-///
-/// Returns the list of edges starting in the vertex identified by
 /// `vertex-handle`.
 ///
 /// @EXAMPLES
