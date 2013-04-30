@@ -216,7 +216,6 @@ def restheaderparameters(cargo, r=Regexen()):
         else:										 continue
 
 def restheaderparam(cargo, r=Regexen()):
-    # TODO
     fp, last = cargo
     parametersList = parameters(last).split(',')
     para = {}
