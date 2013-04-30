@@ -46,7 +46,7 @@
     });
 
     afterEach(function () {
-      //document.body.removeChild(svg);
+      document.body.removeChild(svg);
     });
     
     
