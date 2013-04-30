@@ -217,7 +217,7 @@
         expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
       });
       
-      
+      /*
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -230,7 +230,8 @@
         expect($(menuSelector +  " #control_attributecolour").length).toEqual(1);
         expect($(menuSelector +  " #control_expandcolour").length).toEqual(1);
       });
-      
+      */
+      /*
       it('should contain a menu for the edge shapes', function() {
         var menuSelector = "#contentDiv #menubar #edgeshapermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -242,14 +243,14 @@
         expect($(menuSelector + " #control_attributecolour").length).toEqual(1);
         expect($(menuSelector + " #control_gradientcolour").length).toEqual(1);
       });
-      
+      */
       it('should contain a menu for the adapter', function() {
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
-      
+      /*
       it('should contain a menu for the layouter', function() {
         var menuSelector = "#contentDiv #menubar #layoutermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -258,7 +259,7 @@
         expect($(menuSelector + " #control_distance").length).toEqual(1);
         expect($(menuSelector + " #control_charge").length).toEqual(1);
       });
-      
+      */
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
