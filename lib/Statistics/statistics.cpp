@@ -165,7 +165,7 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                            private connection statistics ariables
+// --SECTION--                           private connection statistics variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +190,7 @@ static TRI_statistics_list_t ConnectionFreeList;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                               public connection statistics functions
+// --SECTION--                            public connection statistics functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,6 +301,21 @@ static void FillStatisticsList (TRI_statistics_list_t* list, size_t element, siz
     list->_last->_next = entry;
     list->_last = entry;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a linked list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyStatisticsList (TRI_statistics_list_t* list) {
+  TRI_statistics_entry_t* entry = list->_first;
+  while (entry != NULL) {
+    TRI_statistics_entry_t* next = entry->_next;
+    TRI_Free(TRI_CORE_MEM_ZONE, entry);
+    entry = next;
+  }
+
+  list->_first = list->_last = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -474,6 +489,24 @@ void TRI_InitialiseStatistics () {
 
   STATISTICS_INIT(&ConnectionListLock);
 
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut down statistics
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownStatistics (void) {
+#if TRI_ENABLE_FIGURES
+  delete ConnectionTimeDistribution;
+  delete TotalTimeDistribution;
+  delete RequestTimeDistribution;
+  delete QueueTimeDistribution;
+  delete BytesSentDistribution;
+  delete BytesReceivedDistribution;
+
+  TRI_DestroyStatisticsList(&RequestFreeList);
+  TRI_DestroyStatisticsList(&ConnectionFreeList);
 #endif
 }
 

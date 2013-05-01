@@ -152,6 +152,7 @@ namespace triagens {
 #endif
 
       TRI_ShutdownUrl();
+      TRI_ShutdownStatistics();
 
       TRIAGENS_BASICS_SHUTDOWN;
     }
