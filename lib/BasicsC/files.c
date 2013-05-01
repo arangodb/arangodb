@@ -1069,13 +1069,13 @@ int TRI_VerifyLockFile (char const* filename) {
   n = TRI_READ(fd, buffer, sizeof(buffer));
   TRI_CLOSE(fd);
 
-  // file empty
-  if (n == 0) {
+  // file empty or pid too long
+  if (n == 0 || n == sizeof(buf)) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
-  // not really necessary, but this shuts up valgrind
-  memset(buffer, 0, sizeof(buffer));
+  // NUL-terminate buffer
+  buffer[n] = '\0';
 
   fc = TRI_UInt32String(buffer);
   res = TRI_errno();
@@ -1146,13 +1146,13 @@ int TRI_VerifyLockFile (char const* filename) {
   n = TRI_READ(fd, buffer, sizeof(buffer));
   TRI_CLOSE(fd);
 
-  // file empty
-  if (n == 0) {
+  // file empty or pid too long
+  if (n == 0 || n == sizeof(buffer)) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
-  // not really necessary, but this shuts up valgrind
-  memset(buffer, 0, sizeof(buffer));
+  // NUL-terminate buffer
+  buffer[n] = '\0';
 
   fc = TRI_UInt32String(buffer);
   res = TRI_errno();
