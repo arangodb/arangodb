@@ -1,6 +1,10 @@
 v1.3.0-alpha2 (XXXX-XX-XX)
 --------------------------
 
+* issue #498: fixed reload of authentication info when using 
+  `require("org/arangodb/users").reload()`
+
+
 * added more precision for requests statistics figures
 
 * added "sum" attribute for individual statistics results in statistics API
