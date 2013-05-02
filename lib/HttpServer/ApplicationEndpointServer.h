@@ -86,7 +86,8 @@ namespace triagens {
                                    ApplicationScheduler*,
                                    ApplicationDispatcher*,
                                    std::string const&,
-                                   HttpHandlerFactory::auth_fptr);
+                                   HttpHandlerFactory::auth_fptr,
+                                   HttpHandlerFactory::flush_fptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -251,6 +252,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpHandlerFactory::auth_fptr _checkAuthentication;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief authentication cache flush callback function
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpHandlerFactory::flush_fptr _flushAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the handler factory
