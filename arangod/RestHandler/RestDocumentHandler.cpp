@@ -529,7 +529,7 @@ bool RestDocumentHandler::readDocument () {
 /// 
 ///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
-///     var header = "if-none-match: \"" + document._rev + "\"";
+///     var header = "If-None-Match: \"" + document._rev + "\"";
 /// 
 ///     var response = logCurlRequest('GET', url, "", header);
 /// 
@@ -763,7 +763,7 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally delete a document based on a target revision id by
+/// You can conditionally get a document based on a target revision id by
 /// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
@@ -830,16 +830,23 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{rev,string,optional}
-/// 
-/// @RESTQUERYPARAM{policy,string,optional}
-/// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally replace a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for more details).
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally replace a document based on a target revision id by
+/// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by `document-handle`.
@@ -1033,18 +1040,29 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{keepNull,string,required}
+/// @RESTQUERYPARAM{keepNull,string,optional}
+/// If the intention is to delete existing attributes with the patch command, 
+/// the URL query parameter `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document with an
+/// attribute value of `null`.
 ///
-/// @RESTQUERYPARAM{rev,string,optional}
-/// 
-/// @RESTQUERYPARAM{policy,string,optional}
-/// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally patch a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
 /// Partially updates the document identified by `document-handle`.
@@ -1054,12 +1072,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// in the existing document if they do exist there.
 ///
 /// Setting an attribute value to `null` in the patch document will cause a
-/// value of `null` be saved for the attribute by default. If the intention
-/// is to delete existing attributes with the patch command, the URL query parameter
-/// `keepNull` can be used with a value of `false`.
-/// This will modify the behavior of the patch command to remove any attributes
-/// from the existing document that are contained in the patch document with an
-/// attribute value of `null`.
+/// value of `null` be saved for the attribute by default. 
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document update operation to disk even in case
