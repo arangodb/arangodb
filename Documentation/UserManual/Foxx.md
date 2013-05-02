@@ -39,11 +39,11 @@ You **must** specify a name and a version number for your application, otherwise
 
 Now your application is done. Start ArangoDB as follows:
 
-    arangod --javascript.dev-app-path my_app /tmp/fancy_db
+    $ arangod --javascript.dev-app-path my_app /tmp/fancy_db
 
 To include it to the list of apps running on your ArangoDB instance, start the ArangoDB shell and add your new application:
 
-    $ ./bin/arango
+    $ arangosh
     arangosh> aal = require('org/arangodb/aal');
     arangosh> aal.installDevApp('my_app', '/my');
 
