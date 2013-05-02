@@ -1,0 +1,6 @@
+<% var sel = this.data.selected; %>
+<ul class="nav nav-tabs">
+  <% this.data.collection.each(function(i) { %>
+    <li id=<%=i.get("name")%> <%=sel === i.get("name")?"class=\"active\"":""%>><a><%=i.get("name")%></a></li>
+  <% });%>
+</ul>
