@@ -171,7 +171,7 @@ function NodeShaper(parent, flags, idfunc) {
           addShape = noop;
           break;
         case NodeShaper.shapes.CIRCLE:
-          radius = shape.radius || 8;
+          radius = shape.radius || 25;
           addShape = function (node) {
             node.append("circle") // Display nodes as circles
               .attr("r", radius); // Set radius

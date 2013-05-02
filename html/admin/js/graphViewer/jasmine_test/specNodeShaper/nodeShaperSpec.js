@@ -128,7 +128,7 @@
       expect($("svg circle").length).toEqual(1);
       expect($("svg .node circle")[0]).toBeDefined();
       expect($("svg .node circle").length).toEqual(1);
-      expect($("svg #1 circle")[0].attributes.r.value).toEqual("8");
+      expect($("svg #1 circle")[0].attributes.r.value).toEqual("25");
     });
 
     describe('testing for colours', function() {
