@@ -1260,6 +1260,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
   TRI_InitReadWriteLock(&vocbase->_lock);
+  vocbase->_authInfoFlush = true;
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);

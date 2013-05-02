@@ -309,6 +309,7 @@ typedef struct TRI_vocbase_s {
 
   TRI_associative_pointer_t _authInfo;
   TRI_read_write_lock_t     _authInfoLock;
+  bool                      _authInfoFlush;
 
   struct TRI_transaction_context_s* _transactionContext;
 
