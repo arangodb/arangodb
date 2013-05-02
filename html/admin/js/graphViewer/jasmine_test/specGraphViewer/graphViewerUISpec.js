@@ -324,6 +324,24 @@
         
       });
       
+      it('should load the graph on pressing enter', function() {
+        
+        runs(function() {
+          $("#contentDiv #menubar #value").attr("value", "0");
+          var e = jQuery.Event("keypress");
+          e.which = 13;
+          e.keyCode = 13;
+          $("body").trigger(e);
+        });
+        
+        waits(waittime);
+        
+        runs(function() {
+          expect([0, 1, 2, 3, 4]).toBeDisplayed();
+        });
+        
+      });
+      
       it('should load the graph by attribute and value', function() {
         
         runs(function() {
