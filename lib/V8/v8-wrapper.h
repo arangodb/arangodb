@@ -109,9 +109,6 @@ class V8Wrapper {
 
         _handle.ClearWeak(_isolate);
         _handle->SetInternalField(0, v8::Undefined());
-
-        // TODO causes this warning on compilation: 
-        // ‘void v8::Persistent<T>::Dispose() [with T = v8::Object]’ is deprecated (declared at ./3rdParty/V8/include/v8.h:4406) [-Wdeprecated-declarations]
         _handle.Dispose(_isolate);
 
         _handle.Clear();
