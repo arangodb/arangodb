@@ -223,7 +223,6 @@ function CollectionDocumentSuite () {
       [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
         try {
           collection.save(doc);
-          require("internal").print(doc);
           fail();
         }
         catch (err) {
