@@ -49,6 +49,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum size of dead data (in bytes) in a datafile that will make
+/// the datafile eligible for compaction at all.
+///
+/// Any datafile with less dead data than the threshold will not become a 
+/// candidate for compaction.
+////////////////////////////////////////////////////////////////////////////////
+
+#define COMPACTOR_DEAD_SIZE_THRESHOLD (1024 * 128)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief percentage of dead documents in a datafile that will trigger the
+/// compaction
+///
+/// for example, if the collection contains 800 bytes of alive and 400 bytes of
+/// dead documents, the share of the dead documents is 400 / (400 + 800) = 33 %. 
+/// if this value if higher than the threshold, the datafile will be compacted
+////////////////////////////////////////////////////////////////////////////////
+
+#define COMPACTOR_DEAD_SIZE_SHARE (0.1)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compactify interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -431,8 +452,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     if (found != NULL) {
       found2 = CONST_CAST(found);
-      // the fid won't change
-      TRI_ASSERT_MAINTAINER(found2->_fid == context->_dfi._fid);
+      found2->_fid  = context->_dfi._fid;
       found2->_data = result;
 
       // let _key point to the new key position
@@ -662,22 +682,38 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
     TRI_doc_datafile_info_t* dfi;
+    double share;
 
     df = primary->base._datafiles._buffer[i];
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, df->_fid);
-
-    if (dfi->_numberDead > 0) {
-      // only use those datafiles that contain dead objects
-      TRI_PushBackVector(&vector, dfi);
-
-      // we stop at the first datafile.
-      // this is better than going over all datafiles in a collection in one go
-      // because the compactor is single-threaded, and collecting all datafiles
-      // might take a long time (it might even be that there is a request to
-      // delete the collection in the middle of compaction, but the compactor
-      // will not pick this up as it is read-locking the collection status)
-      break;
+    
+    if (dfi->_numberDead == 0 || dfi->_sizeDead < COMPACTOR_DEAD_SIZE_THRESHOLD) {
+      continue;
     }
+
+    share = (double) dfi->_sizeDead / ((double) dfi->_sizeDead + (double) dfi->_sizeAlive);
+
+    if (share < COMPACTOR_DEAD_SIZE_SHARE) {
+      continue;
+    }
+    
+    LOG_TRACE("found datafile eligible for compaction. fid: %llu, numberDead: %llu, numberAlive: %llu, sizeDead: %llu, sizeAlive: %llu",
+              (unsigned long long) df->_fid,
+              (unsigned long long) dfi->_numberDead,
+              (unsigned long long) dfi->_numberAlive,
+              (unsigned long long) dfi->_sizeDead,
+              (unsigned long long) dfi->_sizeAlive);
+
+    // only use those datafiles that contain dead objects
+    TRI_PushBackVector(&vector, dfi);
+
+    // we stop at the first datafile.
+    // this is better than going over all datafiles in a collection in one go
+    // because the compactor is single-threaded, and collecting all datafiles
+    // might take a long time (it might even be that there is a request to
+    // delete the collection in the middle of compaction, but the compactor
+    // will not pick this up as it is read-locking the collection status)
+    break;
   }
 
   // can now continue without the lock

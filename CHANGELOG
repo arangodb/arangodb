@@ -1,6 +1,9 @@
 v1.3.0-alpha2 (XXXX-XX-XX)
 --------------------------
 
+* changed compaction to only compact datafiles with more at least 10% of dead
+  documents (byte size-wise)
+
 * issue #498: fixed reload of authentication info when using 
   `require("org/arangodb/users").reload()`
 
