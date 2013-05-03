@@ -62,6 +62,7 @@ var dashboardView = Backbone.View.extend({
   renderCharts: function () {
     var self = this;
     this.generateClientData();
+    var label;
 
     $.each(self.clients, function(key, client) {
       var client = client;
@@ -71,8 +72,14 @@ var dashboardView = Backbone.View.extend({
         chart.xAxis
         .axisLabel('Time')
 
+        $.each(self.options.description.models[0].attributes.figures, function(k,v) {
+          if (v.identifier === client) {
+            label = v.units;
+          }
+        });
+
         chart.yAxis
-        .axisLabel('Values')
+        .axisLabel(label)
 
         d3.select("#"+client+"Chart svg")
         .datum(self.generateD3Input(self.convertedData[client], client, "#8AA051"))
@@ -93,16 +100,21 @@ var dashboardView = Backbone.View.extend({
     var self = this;
     this.generateClientData();
 
+    var label;
+
     $.each(self.clients, function(key, client) {
       var client = client;
-
       var chart = nv.models.lineChart();
 
       chart.xAxis
       .axisLabel("Time (ms)")
-
+      $.each(self.options.description.models[0].attributes.figures, function(k,v) {
+        if (v.identifier === client) {
+          label = v.units;
+        }
+      });
       chart.yAxis
-      .axisLabel("Values");
+      .axisLabel(label)
 
       d3.select("#"+client+"Chart svg")
       .datum(self.generateD3Input(self.convertedData[client], client, "#8AA051"))
@@ -129,35 +141,36 @@ var dashboardView = Backbone.View.extend({
 
   generateClientData: function () {
     var self = this;
-    var x = []; //Value
-    var y = []; //Time
+    var x = []; //Time
+    var y = []; //Value
     var tempName;
     var tempArray = [];
     $.each(this.collection.models[0].attributes.client, function(key, val) {
       tempName = key;
-      if (val.sum === undefined) {
+      if (self.convertedData[tempName] === undefined) {
+        self.convertedData[tempName] = [];
       }
-      else {
-        if (self.convertedData[tempName] === undefined) {
-          self.convertedData[tempName] = [];
-        }
-        if (self.convertedData[tempName].length === 0) {
-          self.oldSum[tempName] = val.sum;
-          tempArray = self.convertedData[tempName];
-          var timeStamp = Math.round(+new Date()/1000);
-          tempArray.push({x:timeStamp, y:0});
-        }
-        if (self.convertedData[tempName].length !== 0)  {
-          tempArray = self.convertedData[tempName];
-          var calculatedSum = val.sum - self.oldSum[tempName];
-          var timeStamp = Math.round(+new Date()/1000);
-
-
-          self.oldSum[tempName] = val.sum;
-          tempArray.push({x:timeStamp, y:calculatedSum});
-        }
-
+      if (self.convertedData[tempName].length === 0) {
+        self.oldSum[tempName] = val.sum;
+        tempArray = self.convertedData[tempName];
+        var timeStamp = Math.round(+new Date()/1000);
+        tempArray.push({x:timeStamp, y:0});
       }
+      if (self.convertedData[tempName].length !== 0)  {
+        tempArray = self.convertedData[tempName];
+
+        var timeStamp = Math.round(+new Date()/1000);
+
+        if (val.sum === undefined) {
+          tempArray.push({x:timeStamp, y:val});
+          return;
+        }
+
+        var calculatedSum = val.sum - self.oldSum[tempName];
+        self.oldSum[tempName] = val.sum;
+        tempArray.push({x:timeStamp, y:calculatedSum});
+      }
+
     });
   },
 
@@ -167,10 +180,10 @@ var dashboardView = Backbone.View.extend({
     }
     return [
       {
-        values: values,
-        key: key,
-        color: color
-      }
+      values: values,
+      key: key,
+      color: color
+    }
     ]
   },
 
