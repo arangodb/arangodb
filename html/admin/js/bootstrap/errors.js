@@ -85,6 +85,7 @@
     "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "database directory not writable" }, 
     "ERROR_ARANGO_OUT_OF_KEYS"     : { "code" : 1225, "message" : "out of keys" }, 
     "ERROR_ARANGO_DOCUMENT_KEY_MISSING" : { "code" : 1226, "message" : "missing document key" }, 
+    "ERROR_ARANGO_DOCUMENT_TYPE_INVALID" : { "code" : 1227, "message" : "invalid document type" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 

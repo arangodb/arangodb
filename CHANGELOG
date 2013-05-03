@@ -5,6 +5,16 @@ v1.3.0-rc1 (2013-04-24)
 
 * added node modules and npm packages
 
+* changed compaction to only compact datafiles with more at least 10% of dead
+  documents (byte size-wise)
+
+* issue #498: fixed reload of authentication info when using 
+  `require("org/arangodb/users").reload()`
+
+* issue #495: Passing an empty array to create a document results in a 
+  "phantom" document
+
+
 v1.3.0-alpha2 (2013-04-12)
 --------------------------
 

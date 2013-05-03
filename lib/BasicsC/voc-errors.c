@@ -81,6 +81,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "database directory not writable");
   REG_ERROR(ERROR_ARANGO_OUT_OF_KEYS, "out of keys");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_MISSING, "missing document key");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "invalid document type");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");

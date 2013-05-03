@@ -373,6 +373,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    return false;
+  }
+
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
@@ -1082,6 +1087,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_json_t* json = parseJsonBody();
 
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+    return false;
+  }
+  
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
