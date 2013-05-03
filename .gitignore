@@ -5,6 +5,7 @@ mr-*.h
 *.o
 *.a
 *~
+*.pyc
 
 .libev-build-64
 .v8-build-64

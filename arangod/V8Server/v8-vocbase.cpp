@@ -363,8 +363,9 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
 static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
                                TRI_voc_key_t& key) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  key = 0;
 
-  if (arg->IsObject()) {
+  if (arg->IsObject() && ! arg->IsArray()) {
     v8::Handle<v8::Object> obj = arg->ToObject();
 
     if (obj->Has(v8g->_KeyKey)) {
@@ -378,18 +379,16 @@ static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
         return TRI_ERROR_NO_ERROR;
       }
       else {
-        key = 0;
         return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
       }
     }
     else {
-      key = 0;
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
     }
   }
   else {
-    key = 0;
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+    // anything else than an object will be rejected
+    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
 }
 
@@ -986,6 +985,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
   }
+    
+  // we're only accepting "real" object documents
+  if (! argv[1]->IsObject() || argv[1]->IsArray()) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
@@ -1054,6 +1058,9 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
       holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
+  else {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
@@ -1111,7 +1118,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_voc_key_t key = 0;
   int res;
 
-  if (argv[2]->IsObject()) {
+  if (argv[2]->IsObject() && ! argv[2]->IsArray()) {
     res = ExtractDocumentKey(argv[2]->ToObject(), key);
 
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
@@ -1120,6 +1127,9 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     else if (key != 0) {
       holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
+  }
+  else {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   const bool forceSync = ExtractForceSync(argv, 4);
@@ -1244,6 +1254,11 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   assert(col);
   assert(key);
+
+  if (! argv[1]->IsObject() || argv[1]->IsArray()) {
+    // we're only accepting "real" object documents
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
 
   TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 

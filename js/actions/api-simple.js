@@ -867,7 +867,7 @@ actions.defineHttp({
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
         }
-        else if (typeof example !== "object") {
+        else if (typeof example !== "object" || Array.isArray(example)) {
           actions.badParameter(req, res, "example");
         }
         else {
@@ -947,10 +947,10 @@ actions.defineHttp({
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
         }
-        else if (typeof example !== "object") {
+        else if (typeof example !== "object" || Array.isArray(example)) {
           actions.badParameter(req, res, "example");
         }
-        else if (typeof newValue !== "object") {
+        else if (typeof newValue !== "object" || Array.isArray(newValue)) {
           actions.badParameter(req, res, "newValue");
         }
         else {
@@ -1037,10 +1037,10 @@ actions.defineHttp({
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
         }
-        else if (typeof example !== "object") {
+        else if (typeof example !== "object" || Array.isArray(example)) {
           actions.badParameter(req, res, "example");
         }
-        else if (typeof newValue !== "object") {
+        else if (typeof newValue !== "object" || Array.isArray(newValue)) {
           actions.badParameter(req, res, "newValue");
         }
         else {

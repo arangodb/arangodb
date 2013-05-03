@@ -376,6 +376,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    return false;
+  }
+
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
@@ -469,12 +474,12 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{If-None-Match,string}
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
-/// @RESTHEADERPARAM{If-Match,string}
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -1157,6 +1162,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_json_t* json = parseJsonBody();
 
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+    return false;
+  }
+  
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 

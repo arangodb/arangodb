@@ -271,12 +271,12 @@ function post_graph_graph (req, res) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{If-None-Match,string}
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
-/// @RESTHEADERPARAM{If-Match,string}
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -347,7 +347,7 @@ function get_graph_graph (req, res) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{If-Match,string}
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -507,12 +507,12 @@ function post_graph_vertex (req, res, g) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{If-None-Match,string}
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
-/// @RESTHEADERPARAM{If-Match,string}
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -587,7 +587,7 @@ function get_graph_vertex (req, res, g) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{If-Match,string}
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -726,9 +726,9 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// @RESTBODYPARAM{vertex,json,required}
 /// The call expects a JSON hash array as body with the new vertex properties.
 ///
-/// @RESTHEDERPARAMETERS
+/// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{if-match,string}
+/// @RESTHEADERPARAM{if-match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is updated, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -793,7 +793,7 @@ function put_graph_vertex (req, res, g) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{if-match,string}
+/// @RESTHEADERPARAM{if-match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is updated, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -1233,12 +1233,12 @@ function post_graph_edge (req, res, g) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{if-none-match,string}
+/// @RESTHEADERPARAM{if-none-match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
-/// @RESTHEADERPARAM{if-match,string}
+/// @RESTHEADERPARAM{if-match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -1309,7 +1309,7 @@ function get_graph_edge (req, res, g) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{if-match,string}
+/// @RESTHEADERPARAM{if-match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -1455,7 +1455,7 @@ function update_graph_edge (req, res, g, isPatch) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{if-match,string}
+/// @RESTHEADERPARAM{if-match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -1522,7 +1522,7 @@ function put_graph_edge (req, res, g) {
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{if-match, string}
+/// @RESTHEADERPARAM{if-match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
