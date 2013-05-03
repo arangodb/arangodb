@@ -28,6 +28,7 @@ unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-make \
+	unittests-codebase-static \
 	unittests-boost \
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \

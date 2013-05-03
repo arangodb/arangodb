@@ -412,7 +412,7 @@ bool RestImportHandler::createByDocumentsList () {
   if (documents->_type != TRI_JSON_LIST) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting a JSON array in the request");
+                  "expecting a JSON list in the request");
     return false;
   }
 

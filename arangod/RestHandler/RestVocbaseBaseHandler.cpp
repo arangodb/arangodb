@@ -430,6 +430,10 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
       generateDocumentNotFound(_resolver.getCollectionId(collectionName), key);
       return;
+    
+    case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
+      generateError(HttpResponse::BAD, res);
+      return;
 
     case TRI_ERROR_ARANGO_CONFLICT:
       generatePreconditionFailed(_resolver.getCollectionId(collectionName), key ? key : (TRI_voc_key_t) "unknown", rid);

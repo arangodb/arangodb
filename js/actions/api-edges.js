@@ -44,14 +44,15 @@ var API = "/_api/edges";
 ///
 /// @RESTURLPARAM{collection-id,string,required}
 /// The id of the collection.
-//
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{vertex,string,required}
 /// The id of the start vertex.
 ///
-/// @RESTQUERYPARAM{direction,string,required}
-/// Selects `any`, `in` or `out` direction for edges.
+/// @RESTQUERYPARAM{direction,string,optional}
+/// Selects `in` or `out` direction for edges. If not set, any edges are
+/// returned.
 ///
 /// @RESTDESCRIPTION
 /// Returns the list of edges starting or ending in the vertex identified by

@@ -131,10 +131,10 @@ static void CalculateSkipLimitSlice (size_t length,
 
   // skip from the beginning
   if (0 < skip) {
-    s = skip;
+    s = (size_t) skip;
 
     if (e < s) {
-      s = e;
+      s = (size_t) e;
     }
   }
 
@@ -149,7 +149,15 @@ static void CalculateSkipLimitSlice (size_t length,
 
   // apply limit
   if (s + limit < e) {
-    e = s + limit;
+    int64_t sum = (int64_t) s + (int64_t) limit;
+    if (sum < (int64_t) e) {
+      if (sum >= (int64_t) TRI_QRY_NO_LIMIT) {
+        e = TRI_QRY_NO_LIMIT;
+      }
+      else {
+        e = (size_t) sum;
+      } 
+    }
   }
 }
 

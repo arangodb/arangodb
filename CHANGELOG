@@ -4,6 +4,8 @@ v1.3.0-alpha2 (XXXX-XX-XX)
 * issue #498: fixed reload of authentication info when using 
   `require("org/arangodb/users").reload()`
 
+* issue #495: Passing an empty array to create a document results in a 
+  "phantom" document
 
 * added more precision for requests statistics figures
 
