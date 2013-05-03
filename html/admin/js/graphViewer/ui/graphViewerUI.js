@@ -137,7 +137,18 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         adapterUI = new ArangoAdapterControls(
           adapterList,
           graphViewer.adapter
-        );
+        ),
+        searchFunction = function() {
+          if (searchAttrField.value === ""
+            || searchAttrField.value === undefined) {
+            graphViewer.loadGraph(searchValueField.value);
+          } else {
+            graphViewer.loadGraphWithAttributeValue(
+              searchAttrField.value,
+              searchValueField.value
+            );
+          }
+        };
 
       menubar.id = "menubar";
       menubar.className = "thumbnails2";
@@ -172,18 +183,14 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       
       adapterDropDown.id = "adaptermenu";
       
-      searchStart.onclick = function() {
-        if (searchAttrField.value === ""
-          || searchAttrField.value === undefined) {
-          graphViewer.loadGraph(searchValueField.value);
-        } else {
-          graphViewer.loadGraphWithAttributeValue(
-            searchAttrField.value,
-            searchValueField.value
-          );
+      searchStart.onclick = searchFunction;
+      $(searchValueField).keypress(function(e) {
+        if (e.keyCode === 13 || e.which === 13) {
+          searchFunction();
+          return false;
         }
-      };
-      
+        
+      });
       
       menubar.appendChild(transparentHeader);
       transparentHeader.appendChild(searchDiv);

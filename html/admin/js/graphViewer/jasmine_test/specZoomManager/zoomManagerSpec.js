@@ -85,6 +85,44 @@
     });
     
     describe('the interface', function() {
+      
+      it('should offer a function handle for zoom', function() {
+        expect(manager.zoomHandle).toBeDefined();
+        expect(manager.zoomHandle).toEqual(jasmine.any(Function));
+      });
+      
+      it('should offer a function to get the current scale factor', function() {
+        expect(manager.scaleFactor).toBeDefined();
+        expect(manager.scaleFactor).toEqual(jasmine.any(Function));
+      });
+      
+      it('should offer a function to get the current translation', function() {
+        expect(manager.translation).toBeDefined();
+        expect(manager.translation).toEqual(jasmine.any(Function));
+      });
+      
+      it('should offer a function to get scaled mouse position', function() {
+        expect(manager.scaledMouse).toBeDefined();
+        expect(manager.scaledMouse).toEqual(jasmine.any(Function));
+      });
+      
+      it('should offer a function to get the distortion', function() {
+        expect(manager.getDistortion).toBeDefined();
+        expect(manager.getDistortion).toEqual(jasmine.any(Function));
+      });
+      
+      it('should offer a function to get the distortion radius', function() {
+        expect(manager.getDistortionRadius).toBeDefined();
+        expect(manager.getDistortionRadius).toEqual(jasmine.any(Function));
+      });
+      
+      it('should offer a function to get the node limit', function() {
+        expect(manager.getNodeLimit).toBeDefined();
+        expect(manager.getNodeLimit).toEqual(jasmine.any(Function));
+      });
+      
+      // Old interface might be unused!
+      
       it('should offer a function to get the current font-size', function() {
         expect(manager.getFontSize).toBeDefined();
         expect(manager.getFontSize).toEqual(jasmine.any(Function));
@@ -93,16 +131,6 @@
       it('should offer a function to get the current node-radius', function() {
         expect(manager.getRadius).toBeDefined();
         expect(manager.getRadius).toEqual(jasmine.any(Function));
-      });
-    
-      it('should offer a function to get the node limit', function() {
-        expect(manager.getNodeLimit).toBeDefined();
-        expect(manager.getNodeLimit).toEqual(jasmine.any(Function));
-      });
-    
-      it('should offer a function to get the distortion', function() {
-        expect(manager.getDistortion).toBeDefined();
-        expect(manager.getDistortion).toEqual(jasmine.any(Function));
       });
     
       it('should offer a function for zoom-in', function() {

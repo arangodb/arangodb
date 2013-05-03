@@ -114,7 +114,7 @@
     });
     
     afterEach(function() {
-      document.body.removeChild(div);
+        document.body.removeChild(div);
     });
     
     it('should throw an error if no container element is given', function() {
@@ -328,10 +328,9 @@
         
         runs(function() {
           $("#contentDiv #menubar #value").attr("value", "0");
-          var e = jQuery.Event("keypress");
-          e.which = 13;
+          var e = $.Event("keypress");
           e.keyCode = 13;
-          $("body").trigger(e);
+          $("#value").trigger(e);
         });
         
         waits(waittime);
