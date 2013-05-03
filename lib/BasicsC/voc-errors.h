@@ -166,6 +166,9 @@ extern "C" {
 ///   Will be raised when a key generator runs out of keys.
 /// - 1226: @LIT{missing document key}
 ///   Will be raised when a document key is missing.
+/// - 1227: @LIT{invalid document type}
+///   Will be raised when there is an attempt to create a document with an
+///   invalid type.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -1128,6 +1131,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING                             (1226)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1227: ERROR_ARANGO_DOCUMENT_TYPE_INVALID
+///
+/// invalid document type
+///
+/// Will be raised when there is an attempt to create a document with an
+/// invalid type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID                            (1227)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
