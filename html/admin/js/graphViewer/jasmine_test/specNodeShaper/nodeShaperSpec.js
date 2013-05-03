@@ -710,6 +710,32 @@
         
       });
 
+      it('should be possible to toggle label display', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "test"
+          }
+        }];
+
+        shaper.drawNodes(node);
+        
+        expect($("svg .node text").length).toEqual(1);
+        expect($("svg .node text")[0].textContent).toEqual("test");
+        
+        
+        shaper.activateLabel(false);
+        
+        expect($("svg .node text").length).toEqual(0);
+        
+        
+        shaper.activateLabel(true);
+        
+        expect($("svg .node text").length).toEqual(1);
+        expect($("svg .node text")[0].textContent).toEqual("test");
+        
+      });
+
     });
 
     describe('using a function for labels', function () {
