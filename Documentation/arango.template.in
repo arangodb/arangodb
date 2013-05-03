@@ -225,7 +225,9 @@ ALIASES += \
   "RESTURLPARAMETERS=@htmlonly<div class=\"resturlparameters\">URL parameters</div>@endhtmlonly" \
   "RESTURLPARAM{3}=@htmlonly<div class=\"resturlparam\">URL parameter</div>@endhtmlonly" \
   "RESTHEADERPARAMETERS=@htmlonly<div class=\"restheaderparameters\">HTTP header parameters</div>@endhtmlonly" \
-  "RESTHEADERPARAM{2}=@htmlonly<div class=\"restheaderparam\">HTTP header</div>@endhtmlonly" 
+  "RESTHEADERPARAM{3}=@htmlonly<div class=\"restheaderparam\">HTTP header</div>@endhtmlonly" \
+  "RESTBODYPARAM{3}=@htmlonly<div class=\"restbodyparam\">HTTP body parameter</div>@endhtmlonly" \ 
+  "RESTDOCUMENTATION=@htmlonly<div class=\"restdocumentation\">REST documentation</div>@endhtmlonly"  
 
 # navigation
 ALIASES += \
