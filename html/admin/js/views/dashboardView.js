@@ -1,26 +1,27 @@
 var dashboardView = Backbone.View.extend({
   el: '#content',
-  updateInterval: 3000,
+  updateInterval: 6000,
   clients: [],
   systems: [],
   convertedData: {},
+  oldSum: {},
 
   initialize: function () {
-    //notes
-    //this.collection.fetch();
-    //this.options.description.fetch();
     var self = this;
 
     this.collection.fetch({
       success: function() {
         self.renderCharts();
         window.setInterval(function() {
-          self.collection.fetch({success: function() {self.updateSystems()}});
+          self.collection.fetch({
+            success: function() {
+              self.updateSystems();
+              self.updateCharts();
+            }
+          });
         }, self.updateInterval);
       }
     });
-
-
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -45,6 +46,16 @@ var dashboardView = Backbone.View.extend({
         self.clients.push(this.identifier);
       }
     });
+    if (this.collection.models[0] === undefined) {
+      this.collection.fetch({
+        success: function() {
+          self.renderCharts();
+        }
+      });
+    }
+    else {
+      self.renderCharts();
+    }
 
     return this;
   },
@@ -52,35 +63,68 @@ var dashboardView = Backbone.View.extend({
     var self = this;
     this.generateClientData();
 
-
     $.each(self.clients, function(key, client) {
       var client = client;
-    var test1 = self.sinAndCos();
-    var test2 = self.generateD3Input(self.convertedData[client], client, "#ff7f0e");
- //console.log(test1);
- console.log(test2);
       nv.addGraph(function() {
         var chart = nv.models.lineChart();
 
         chart.xAxis
-          .axisLabel('Time (ms)')
-          .tickFormat(d3.format(',r'));
+        .axisLabel('Time')
+
         chart.yAxis
-          .axisLabel('Voltage (v)')
-          .tickFormat(d3.format('.02f'));
+        .axisLabel('Values')
 
         d3.select("#"+client+"Chart svg")
-          .datum(self.generateD3Input(self.convertedData[client], client, "#ff7f0e"))
-          //.datum(self.sinAndCos())
-          .transition().duration(500)
-          .call(chart)
+        .datum(self.generateD3Input(self.convertedData[client], client, "#8AA051"))
+        .transition().duration(500)
+        .call(chart)
 
-        nv.utils.windowResize(function() { d3.select('#httpConnectionsChart svg').call(chart) });
+        nv.utils.windowResize(function() {
+          d3.select('#httpConnectionsChart svg').call(chart);
+        });
 
         return chart;
       });
 
     });
+  },
+
+  updateCharts: function () {
+    var self = this;
+    this.generateClientData();
+
+    $.each(self.clients, function(key, client) {
+      var client = client;
+
+      var chart = nv.models.lineChart();
+
+      chart.xAxis
+      .axisLabel("Time (ms)")
+
+      chart.yAxis
+      .axisLabel("Values");
+
+      d3.select("#"+client+"Chart svg")
+      .datum(self.generateD3Input(self.convertedData[client], client, "#8AA051"))
+      .transition().duration(500)
+      .call(chart)
+
+      d3.selectAll('.nv-x text').text(function(d){
+        if (isNaN(d)) {
+          return d;
+        }
+        else {
+          var date = new Date(d*1000);
+          var hours = date.getHours();
+          var minutes = date.getMinutes();
+          var seconds = date.getSeconds();
+          return hours+":"+minutes+":"+seconds;
+        }
+      });
+
+    });
+
+
   },
 
   generateClientData: function () {
@@ -89,20 +133,30 @@ var dashboardView = Backbone.View.extend({
     var y = []; //Time
     var tempName;
     var tempArray = [];
-    //FOR TESTING
-    var i = 0;
     $.each(this.collection.models[0].attributes.client, function(key, val) {
       tempName = key;
-      if (val.counts === undefined) {
-        console.log("undefined");
+      if (val.sum === undefined) {
       }
       else {
-        tempArray = [];
-        $.each(val.counts, function(k,v) {
-          tempArray.push({x:i, y:v});
-          self.convertedData[tempName] = tempArray;
-          i++;
-        });
+        if (self.convertedData[tempName] === undefined) {
+          self.convertedData[tempName] = [];
+        }
+        if (self.convertedData[tempName].length === 0) {
+          self.oldSum[tempName] = val.sum;
+          tempArray = self.convertedData[tempName];
+          var timeStamp = Math.round(+new Date()/1000);
+          tempArray.push({x:timeStamp, y:0});
+        }
+        if (self.convertedData[tempName].length !== 0)  {
+          tempArray = self.convertedData[tempName];
+          var calculatedSum = val.sum - self.oldSum[tempName];
+          var timeStamp = Math.round(+new Date()/1000);
+
+
+          self.oldSum[tempName] = val.sum;
+          tempArray.push({x:timeStamp, y:calculatedSum});
+        }
+
       }
     });
   },
@@ -118,29 +172,6 @@ var dashboardView = Backbone.View.extend({
         color: color
       }
     ]
-  },
-
-  sinAndCos: function () {
-    var sin = [],
-    cos = [];
-
-    for (var i = 0; i < 50; i++) {
-      sin.push({x: i, y: Math.sin(i/10)});
-      cos.push({x: i, y: .5 * Math.cos(i/10)});
-    }
-
-    return [
-      {
-      values: sin,
-      key: 'Sine Wave',
-      color: '#ff7f0e'
-    },
-    {
-      values: cos,
-      key: 'Cosine Wave',
-      color: '#2ca02c'
-    }
-    ];
   },
 
   renderClient: function (identifier, name, desc, type, units) {
