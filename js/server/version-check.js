@@ -261,7 +261,8 @@
               permanently: true,
               destination: "/_admin/html/index.html"
             }
-          }
+          },
+          priority: -1000000
         });
       }
 
