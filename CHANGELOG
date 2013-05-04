@@ -1,3 +1,9 @@
+v1.3.0 (2013-05-XX)
+-------------------
+
+* fixed issue 505: statistics not populated on MacOS
+
+
 v1.3.0-rc1 (2013-04-24)
 -----------------------
 
