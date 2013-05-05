@@ -213,6 +213,8 @@
 
   var normalize = isWindows ? normalizeWindows : normalizePosix;
 
+  exports.normalize = normalize;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,6 +348,31 @@
       }).join('/'));
     };
 
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief safe-join
+////////////////////////////////////////////////////////////////////////////////
+
+  if (isWindows) {
+    exports.safeJoin = function (base, relative) {
+      'use strict';
+
+      base = normalize(base + "/");
+      var path = normalizeArray(relative.split(/[\\\/]+/), false);
+
+      return base + path;
+    };
+  }
+  else {
+    exports.safeJoin = function (base, relative) {
+      'use strict';
+
+      base = normalize(base + "/");
+      var path = normalizeArray(relative.split("/"), false);
+
+      return base + path;
+    };
   }
 
 ////////////////////////////////////////////////////////////////////////////////
