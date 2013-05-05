@@ -53,11 +53,6 @@ static char const* EMPTY_STR = "";
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -132,24 +127,9 @@ HttpRequest::~HttpRequest () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* HttpRequest::toJson (char** errmsg) {
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
-
-  return json;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -254,7 +234,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     TRI_AppendStringStringBuffer(buffer, value);
     TRI_AppendString2StringBuffer(buffer, "\r\n", 2);
   }
-  
+
   first = true;
   for (_cookies.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
@@ -268,9 +248,9 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
       TRI_AppendString2StringBuffer(buffer, "Cookie: ", 8);
     }
     else {
-      TRI_AppendString2StringBuffer(buffer, "; ", 2);      
+      TRI_AppendString2StringBuffer(buffer, "; ", 2);
     }
-    
+
     const size_t keyLength = strlen(key);
     TRI_AppendString2StringBuffer(buffer, key, keyLength);
     TRI_AppendString2StringBuffer(buffer, "=", 2);
@@ -553,12 +533,21 @@ int HttpRequest::setBody (char const* newBody, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set a header field
+/// @brief gets the request body as TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* HttpRequest::toJson (char** errmsg) {
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setHeader (char const* key, size_t keyLength, char const* value) {
   if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
-
     _contentLength = TRI_Int64String(value);
   }
   else if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) { // 6 = strlen("cookie")
@@ -567,11 +556,26 @@ void HttpRequest::setHeader (char const* key, size_t keyLength, char const* valu
   else {
     _headers.insert(key, keyLength, value);
   }
-  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server IP
+/// @brief returns the protocol
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpRequest::protocol () const {
+  return _protocol;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the connection info
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setProtocol (const string& protocol) {
+  _protocol = protocol;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionInfo const& HttpRequest::connectionInfo () const {
@@ -579,7 +583,7 @@ ConnectionInfo const& HttpRequest::connectionInfo () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the server IP
+/// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setConnectionInfo (ConnectionInfo const& info) {
@@ -617,10 +621,6 @@ string const& HttpRequest::user () {
 void HttpRequest::setUser (string const& user) {
   _user = user;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -1145,24 +1145,9 @@ void HttpRequest::setValues (char* buffer, char* end) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      public prefix/suffix methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the prefix path of the request
@@ -1205,18 +1190,9 @@ void HttpRequest::addSuffix (char const* part) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the request method string to a string buffer
@@ -1319,7 +1295,7 @@ void HttpRequest::parseCookies (const char* buffer) {
   char const EQUAL   = '=';
   char const PERCENT = '%';
   char const SPACE   = ' ';
-  
+
   char* buffer2 = (char*) buffer;
   char* end = buffer2 + strlen(buffer);
 
@@ -1347,7 +1323,7 @@ void HttpRequest::parseCookies (const char* buffer) {
       }
 
       setCookie(keyBegin, key - keyBegin, valueBegin);
-                  
+
       //keyBegin = key = buffer2 + 1;
       while ( *(keyBegin = key = buffer2 + 1) == SPACE && buffer2 < end) {
         buffer2++;
@@ -1407,15 +1383,11 @@ void HttpRequest::parseCookies (const char* buffer) {
     }
 
     setCookie(keyBegin, key - keyBegin, valueBegin);
-    
+
   }
 }
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
