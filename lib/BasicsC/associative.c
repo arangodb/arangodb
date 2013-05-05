@@ -77,6 +77,7 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
 static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   char * oldTable;
   uint32_t oldAlloc;
+  uint32_t oldUsed;
   uint32_t j;
 
   oldTable = array->_table;
@@ -96,13 +97,10 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
     return;
   }
 
+  oldUsed = array->_nrUsed;
   array->_nrUsed = 0;
 
-  for (j = 0; j < array->_nrAlloc; j++) {
-    array->clearElement(array, array->_table + j * array->_elementSize);
-  }
-
-  for (j = 0; j < oldAlloc; j++) {
+  for (j = 0; array->_nrUsed < oldUsed; j++) {
     if (! array->isEmptyElement(array, oldTable + j * array->_elementSize)) {
       AddNewElement(array, oldTable + j * array->_elementSize);
     }
@@ -249,7 +247,7 @@ void* TRI_FindByKeyAssociativeArray (TRI_associative_array_t* array, void* key) 
 
   element = TRI_LookupByKeyAssociativeArray(array, key);
 
-  if (! array->isEmptyElement(array, element) && array->isEqualKeyElement(array, key, element)) {
+  if (! array->isEmptyElement(array, element)) {
     return element;
   }
 
@@ -295,7 +293,7 @@ void* TRI_FindByElementAssociativeArray (TRI_associative_array_t* array, void* e
 
   element2 = TRI_LookupByElementAssociativeArray(array, element);
 
-  if (! array->isEmptyElement(array, element2) && array->isEqualElementElement(array, element2, element)) {
+  if (! array->isEmptyElement(array, element2)) {
     return element2;
   }
 
