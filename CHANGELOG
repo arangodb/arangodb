@@ -1,6 +1,8 @@
 v1.3.0 (2013-05-XX)
 -------------------
 
+* fixed issue #489: Bug in aal.install
+
 * fixed issue 505: statistics not populated on MacOS
 
 

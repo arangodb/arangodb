@@ -69,10 +69,12 @@ function printRoutingMethod (indent, routes) {
 
   if (routes.hasOwnProperty('exact')) {
     for (k in routes.exact) {
-      arangodb.printf("%sEXACT '%s'\n", indent, k);
-
       if (routes.exact.hasOwnProperty(k)) {
-        printRoutingMethod(indent + " ", routes.exact[k]);
+        arangodb.printf("%sEXACT '%s'\n", indent, k);
+
+        if (routes.exact.hasOwnProperty(k)) {
+          printRoutingMethod(indent + " ", routes.exact[k]);
+        }
       }
     }
   }

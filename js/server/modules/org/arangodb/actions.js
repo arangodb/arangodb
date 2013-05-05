@@ -719,6 +719,8 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
   var part;
   var subsub;
   var ok;
+  var p1;
+  var p2;
 
   part = parts[pos];
   if (part === undefined) {
@@ -742,8 +744,8 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
     }
     else {
       if (subpart.hasOwnProperty('route')) {
-        var p1 = subpart.route.priority || 0;
-        var p2 = route.priority || 0;
+        p1 = subpart.route.priority || 0;
+        p2 = route.priority || 0;
 
         if (p1 <= p2) {
           subpart.route = route;
@@ -808,8 +810,8 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
     }
     else {
       if (subprefix.hasOwnProperty('route')) {
-        var p1 = subprefix.route.priority || 0;
-        var p2 = route.priority || 0;
+        p1 = subprefix.route.priority || 0;
+        p2 = route.priority || 0;
 
         if (p1 <= p2) {
           subprefix.route = route;
@@ -1604,6 +1606,23 @@ function resultPermanentRedirect (req, res, destination, headers) {
 
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
   res.contentType = "text/html";
+
+  if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
+    if (req.headers.hasOwnProperty('host')) {
+      destination = req.protocol
+                  + "://"
+                  + req.headers.host
+                  + destination;
+    }
+    else {
+      destination = req.protocol
+                  + "://"
+                  + req.server.address 
+                  + ":"
+                  + req.server.port
+                  + destination;
+    }
+  }
 
   res.body = "<html><head><title>Moved</title>"
     + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
