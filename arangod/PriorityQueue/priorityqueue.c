@@ -126,21 +126,15 @@ bool TRI_InitPQueue (TRI_pqueue_t* pq, size_t initialCapacity, size_t itemSize, 
 
 
   // ..........................................................................
-  // Set the capacity and assign memeory for storage
+  // Set the capacity and assign memory for storage
   // ..........................................................................
   pq->_base._capacity = initialCapacity;
-  pq->_base._items    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize * pq->_base._capacity, false);
+  pq->_base._items    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._itemSize * pq->_base._capacity, true);
   if (pq->_base._items == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue storage");
     return false;
   }
-
-  // ..........................................................................
-  // Initialise the memory allcoated for the storage of pq (0 filled)
-  // ..........................................................................
-
-  memset(pq->_base._items, 0, pq->_base._itemSize * pq->_base._capacity);
 
 
   // ..........................................................................
@@ -373,26 +367,29 @@ static void* TopPQueue(TRI_pqueue_t* pq) {
 
 static bool CheckPQSize(TRI_pqueue_t* pq) {
   char* newItems;
+  size_t newCapacity;
 
   if (pq == NULL) {
     return false;
   }
 
-  if (pq->_base._capacity > (pq->_base._count + 1) ) {
+  if (pq->_base._capacity >= (pq->_base._count + 1) ) {
     return true;
   }
 
-  pq->_base._capacity = pq->_base._capacity * 2;
-  // allocate and fill with NUL bytes
-  newItems = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._capacity * pq->_base._itemSize, true);
+  newCapacity = pq->_base._capacity * 2;
+
+  // reallocate
+  newItems = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._items, newCapacity * pq->_base._itemSize);
   if (newItems == NULL) {
     return false;
   }
 
-  memcpy(newItems, pq->_base._items, (pq->_base._count * pq->_base._itemSize) );
+  // initialise the remaining memory allocated for the storage of pq (0 filled)
+  memset(pq->_base._items + pq->_base._capacity * pq->_base._itemSize, 0, (newCapacity - pq->_base._capacity) * pq->_base._itemSize);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq->_base._items);
   pq->_base._items = newItems;
+  pq->_base._capacity = newCapacity;
 
   return true;
 }
