@@ -217,17 +217,16 @@ ALIASES += \
 ALIASES += \
   "RESTHEADER{2}=@latexonly\restheader{@endlatexonly@htmlonly<div class=\"restheader\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly,@endlatexonly@htmlonly<div class=\"restheaderremark\">(@endhtmlonly@xmlonly</computeroutput> - @endxmlonly\2@latexonly}@endlatexonly@htmlonly)</div></div>@endhtmlonly@xmlonly@endxmlonly" \
   "REST{1}=@latexonly\restcall{@endlatexonly@htmlonly<div class=\"restcall\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly</computeroutput>@endxmlonly" \
+  "RESTURLPARAMETERS=@htmlonly<div class=\"resturlparameters\">URL parameters</div>@endhtmlonly" \
+  "RESTURLPARAM{3}=@htmlonly<div class=\"resturlparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
   "RESTQUERYPARAMETERS=@htmlonly<div class=\"restqueryparameters\">Query Parameters</div>@endhtmlonly" \
   "RESTQUERYPARAM{3}=@htmlonly<div class=\"restqueryparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
+  "RESTHEADERPARAMETERS=@htmlonly<div class=\"restheaderparameters\">HTTP header parameters</div>@endhtmlonly" \
+  "RESTHEADERPARAM{3}=@htmlonly<div class=\"restheaderparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
+  "RESTBODYPARAM{3}=@htmlonly<div class=\"restbodyparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \ 
   "RESTRETURNCODES=@htmlonly<div class=\"restreturncodes\">Return Codes</div>@endhtmlonly" \
   "RESTRETURNCODE{1}=@htmlonly<div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
   "RESTDESCRIPTION=@htmlonly<div class=\"restdescription\">Description</div>@endhtmlonly" \
-  "RESTURLPARAMETERS=@htmlonly<div class=\"resturlparameters\">URL parameters</div>@endhtmlonly" \
-  "RESTURLPARAM{3}=@htmlonly<div class=\"resturlparam\">URL parameter</div>@endhtmlonly" \
-  "RESTHEADERPARAMETERS=@htmlonly<div class=\"restheaderparameters\">HTTP header parameters</div>@endhtmlonly" \
-  "RESTHEADERPARAM{3}=@htmlonly<div class=\"restheaderparam\">HTTP header</div>@endhtmlonly" \
-  "RESTBODYPARAM{3}=@htmlonly<div class=\"restbodyparam\">HTTP body parameter</div>@endhtmlonly" \ 
-  "RESTDOCUMENTATION=@htmlonly<div class=\"restdocumentation\">REST documentation</div>@endhtmlonly"  
 
 # navigation
 ALIASES += \

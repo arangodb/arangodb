@@ -123,7 +123,7 @@ PQIndex* PQueueIndex_new (void) {
   bool ok;
 
   // ..........................................................................
-  // Allocate the Priority Que Index
+  // Allocate the Priority Queue Index
   // ..........................................................................
 
   idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndex), false);
@@ -136,7 +136,7 @@ PQIndex* PQueueIndex_new (void) {
 
 
   // ..........................................................................
-  // Allocate the priority que
+  // Allocate the priority queue
   // Remember to add any additional structure you need
   // ..........................................................................
 
@@ -155,8 +155,8 @@ PQIndex* PQueueIndex_new (void) {
 
   idx->_aa = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_array_t), false);
   if (idx->_aa == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_pq);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating priority queue index");
     return NULL;
@@ -164,7 +164,7 @@ PQIndex* PQueueIndex_new (void) {
 
 
   // ..........................................................................
-  // Initialise the priority que
+  // Initialise the priority queue
   // ..........................................................................  
   
   ok = TRI_InitPQueue(idx->_pq,
