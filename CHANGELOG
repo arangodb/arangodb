@@ -1,6 +1,10 @@
 v1.3.0 (2013-05-XX)
 -------------------
 
+* issue #508: `unregistergroup` function not mentioned in http interface docs
+
+* issue #507: GET /_api/aqlfunction returns code inside parentheses
+
 * fixed issue #489: Bug in aal.install
 
 * fixed issue 505: statistics not populated on MacOS

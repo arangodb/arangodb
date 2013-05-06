@@ -331,7 +331,7 @@ var toArrayFunctions = function (group) {
   var result = [ ];
 
   getFiltered(group).forEach(function (f) {
-    result.push({ name: f.name, code: f.code });
+    result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2) });
   });
 
   return result;
