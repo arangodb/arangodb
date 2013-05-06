@@ -719,6 +719,8 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
   var part;
   var subsub;
   var ok;
+  var p1;
+  var p2;
 
   part = parts[pos];
   if (part === undefined) {
@@ -735,12 +737,25 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
       subwhere.exact[part] = {};
     }
 
+    var subpart = subwhere.exact[part];
+
     if (pos + 1 < parts.length) {
-      defineRoutePart(route, subwhere.exact[part], parts, pos + 1, constraint, callback);
+      defineRoutePart(route, subpart, parts, pos + 1, constraint, callback);
     }
     else {
-      subwhere.exact[part].route = route;
-      subwhere.exact[part].callback = callback;
+      if (subpart.hasOwnProperty('route')) {
+        p1 = subpart.route.priority || 0;
+        p2 = route.priority || 0;
+
+        if (p1 <= p2) {
+          subpart.route = route;
+          subpart.callback = callback;
+        }
+      }
+      else {
+        subpart.route = route;
+        subpart.callback = callback;
+      }
     }
   }
   else if (part.hasOwnProperty('parameters')) {
@@ -788,12 +803,25 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
       subwhere.prefix = {};
     }
 
+    var subprefix = subwhere.prefix;
+
     if (pos + 1 < parts.length) {
       console.error("cannot define prefix match within url, ignoring route");
     }
     else {
-      subwhere.prefix.route = route;
-      subwhere.prefix.callback = callback;
+      if (subprefix.hasOwnProperty('route')) {
+        p1 = subprefix.route.priority || 0;
+        p2 = route.priority || 0;
+
+        if (p1 <= p2) {
+          subprefix.route = route;
+          subprefix.callback = callback;
+        }
+      }
+      else {
+        subprefix.route = route;
+        subprefix.callback = callback;
+      }
     }
   }
 }
@@ -834,6 +862,7 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   var match;
   var result = [];
 
+  // start with exact matches
   if (routes.hasOwnProperty('exact')) {
     for (k in routes.exact) {
       if (routes.exact.hasOwnProperty(k)) {
@@ -849,6 +878,7 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     }
   }
 
+  // next are parameter matches
   if (routes.hasOwnProperty('parameters')) {
     for (i = 0;  i < routes.parameters.length;  ++i) {
       parameter = routes.parameters[i];
@@ -886,6 +916,7 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     }
   }
 
+  // next use the current callback
   if (routes.hasOwnProperty('callback')) {
     result = result.concat([{
         path: path, 
@@ -898,9 +929,10 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     }]);
   }
 
+  // finally use a prefix match
   if (routes.hasOwnProperty('prefix')) {
     if (! routes.prefix.hasOwnProperty('callback')) {
-      console.error("prefix match must end in '/*'");
+      console.error("prefix match must specify a callback");
     }
     else {
       cur = path + "(/[^/]+)*";
@@ -1574,6 +1606,23 @@ function resultPermanentRedirect (req, res, destination, headers) {
 
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
   res.contentType = "text/html";
+
+  if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
+    if (req.headers.hasOwnProperty('host')) {
+      destination = req.protocol
+                  + "://"
+                  + req.headers.host
+                  + destination;
+    }
+    else {
+      destination = req.protocol
+                  + "://"
+                  + req.server.address 
+                  + ":"
+                  + req.server.port
+                  + destination;
+    }
+  }
 
   res.body = "<html><head><title>Moved</title>"
     + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
