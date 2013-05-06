@@ -137,9 +137,18 @@ function POST_api_aqlfunction (req, res) {
 ///
 /// @REST{DELETE /_api/aqlfunction/`name`}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{group,string,optional}
+/// If set to `true`, then the function name provided in `name` is treated as
+/// a namespace prefix, and all functions in the specified namespace will be deleted.
+///
+/// If set to `false`, the function name provided in `name` must be fully 
+/// qualified, including any namespaces.
+///
+/// @RESTDESCRIPTION
+///
 /// Removes an existing AQL user function, identified by `name`. 
-/// The function name provided in `name` must be fully qualified, including
-/// any namespaces.
 ///
 /// If the function can be removed by the server, the server will respond with 
 /// `HTTP 200`. 
@@ -175,7 +184,13 @@ function DELETE_api_aqlfunction (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   try {
-    aqlfunctions.unregister(name);
+    var g = req.parameters['group'];
+    if (g === 'true' || g === 'yes' || g === 'y' || g === 'on' || g === '1') {
+      aqlfunctions.unregisterGroup(name);
+    }
+    else {
+      aqlfunctions.unregister(name);
+    }
     actions.resultOk(req, res, actions.HTTP_OK, { });
   }
   catch (err) {
