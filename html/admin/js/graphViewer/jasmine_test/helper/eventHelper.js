@@ -57,7 +57,7 @@ var helper = helper || {};
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
     evt.initMouseEvent("DOMMouseScroll", true, true, window,
-      -10, 0, 0, 0, 0, false, false, false, false, 0, null);
+      10, 0, 0, 0, 0, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
   
@@ -65,7 +65,7 @@ var helper = helper || {};
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
     evt.initMouseEvent("DOMMouseScroll", true, true, window,
-      10, 0, 0, 0, 0, false, false, false, false, 0, null);
+      -10, 0, 0, 0, 0, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
   
