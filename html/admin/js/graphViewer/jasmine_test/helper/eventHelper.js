@@ -53,4 +53,20 @@ var helper = helper || {};
     testee.dispatchEvent(evt);
   };
   
+  helper.simulateScrollUpMouseEvent = function (objectId) {
+    var evt = document.createEvent("MouseEvents"),
+      testee = document.getElementById(objectId);
+    evt.initMouseEvent("DOMMouseScroll", true, true, window,
+      -10, 0, 0, 0, 0, false, false, false, false, 0, null);
+    testee.dispatchEvent(evt);
+  };
+  
+  helper.simulateScrollDownMouseEvent = function (objectId) {
+    var evt = document.createEvent("MouseEvents"),
+      testee = document.getElementById(objectId);
+    evt.initMouseEvent("DOMMouseScroll", true, true, window,
+      10, 0, 0, 0, 0, false, false, false, false, 0, null);
+    testee.dispatchEvent(evt);
+  };
+  
 }());

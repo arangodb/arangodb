@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function ZoomManager(width, height, config) {
+function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
   "use strict";
   
   if (width === undefined || width < 0) {
@@ -38,125 +38,134 @@ function ZoomManager(width, height, config) {
   if (height === undefined || height < 0) {
     throw("A height has to be given.");
   }
+  if (g === undefined || g.node === undefined || g.node().tagName !== "G") {
+    throw("A group has to be given.");
+  }
+  if (nodeShaper === undefined || nodeShaper.activate === undefined) {
+    throw("The Node shaper has to be given.");
+  }
+  if (edgeShaper === undefined || edgeShaper.activate === undefined) {
+    throw("The Edge shaper has to be given.");
+  }
+  
   
   var self = this,
-    fontMax,
-    fontMin,
-    rMax,
-    rMin,
-    rMid,
-    
-    radiusStep,
-    fontStep,
-    distortionStep,
-    
+    fontSize,
+    nodeRadius,
+    labelToggle,
     currentZoom,
-    currentFont,
-    currentRadius,
     currentLimit,
     currentDistortion,
+    currentDistortionRadius,
     size =  width * height,
+    zoom,
+    
     calcNodeLimit = function () {
-      var div;
-      if (currentFont !== null) {
-        div = 60 * currentFont * currentFont;
+      var div, reqSize;
+      if (currentZoom >= labelToggle) {
+        reqSize = fontSize * currentZoom;
+        reqSize *= reqSize;
+        div = 60 * reqSize;
       } else {
-        div = 4 * currentRadius * currentRadius * Math.PI;
+        reqSize = nodeRadius * currentZoom;
+        reqSize *= reqSize;
+        div = 4 * Math.PI * reqSize;
       }
       return Math.floor(size / div);
     },
     parseConfig = function (conf) {
-      fontMax = 16;
-      fontMin = 6;
-      rMax = 25;
-      rMin = 1;
-      rMid = (rMax - rMin) / 2 + rMin;
-      
-      fontStep = (fontMax - fontMin) / 100;
-      radiusStep = (rMax - rMin) / 200;
-      distortionStep = 0.001; // TODO!
-      
-      currentFont = fontMax;
-      currentRadius = rMax;
-      currentDistortion = 0;
-      currentLimit = calcNodeLimit();
-      currentZoom = 0;
-    },
-    adjustValues = function (out) {
-      if (out) {
-        currentZoom++;
-        if (currentZoom > 100) {
-          currentFont = null;
-          if (currentZoom === 200) {
-            currentRadius = rMin;
-          } else {
-            currentRadius -= radiusStep;
-          }
-        } else {
-          
-          if (currentZoom === 100) {
-            currentFont = fontMin;
-            currentRadius = rMid;
-          } else {
-            currentRadius -= radiusStep;
-            currentFont -= fontStep;
-          }
-        }
-        currentDistortion += distortionStep;
-      } else {
-        currentZoom--;
-        if (currentZoom < 100) {
-          if (currentZoom === 0) {
-            currentFont = fontMax;
-            currentRadius = rMax;
-          } else {
-            currentFont += fontStep;
-            currentRadius += radiusStep;
-          }
-        } else {
-          if (currentZoom === 100) {
-            currentFont = fontMin;
-            currentRadius = rMid;
-          } else {
-            currentRadius += radiusStep;
-            currentFont = null;
-          }
-        }
-        currentDistortion -= distortionStep;
+      if (conf === undefined) {
+        conf = {};
       }
+      var 
+      fontMax = conf.maxFont || 16,
+      fontMin = conf.minFont || 6,
+      rMax = conf.maxRadius || 25,
+      rMin = conf.minRadius || 1;
+      
+      fontSize = fontMax;
+      nodeRadius = rMax;
+      
+      labelToggle = 0;
+      currentDistortion = 0;
+      currentDistortionRadius = 100;
       currentLimit = calcNodeLimit();
+      currentZoom = 1;
+      
+      zoom = d3.behavior.zoom()
+       .scaleExtent([rMin/rMax, 1])
+       .on("zoom", function() {
+         // TODO: Still to be implemented
+         currentZoom = d3.event.scale;
+         currentLimit = calcNodeLimit();
+         
+         //curTrans = $.extend({}, d3.event.translate);
+         /*
+         //curTrans[0] /= curZoom;
+         //curTrans[1] /= curZoom;
+           //console.log("here", d3.event.translate, d3.event.scale);
+             g.attr("transform",
+                 "translate(" + d3.event.translate + ")"
+                 + " scale(" + d3.event.scale + ")");
+             if (d3.event.scale < stopLabel) {
+               test.remove();
+             }
+             /*
+             fisheye
+             .distortion(1/d3.event.scale * fe_dist - 1);
+             */
+             //.radius(1/d3.event.scale * fe_radius);
+         
+       });
+      
     };
   
   parseConfig(config);
   
-  self.getFontSize = function() {
-    return currentFont;
+  g.call(zoom);
+
+  
+  self.translation = function() {
+    return null;
   };
   
-  self.getRadius = function() {
-    return currentRadius;
+  self.scaleFactor = function() {
+    return currentZoom;
   };
   
+  self.scaledMouse = function() {
+    return null;
+  };
+  
+  self.mouseMoveHandle = function() {
+    // TODO
+    var focus = d3.mouse(this);
+    focus[0] += curTrans[0];
+    focus[1] += curTrans[1];
+    fisheye.focus(focus);
+
+    node.each(function(d) { d.fisheye = fisheye(d); })
+        .attr("cx", function(d) { return d.fisheye.x; })
+        .attr("cy", function(d) { return d.fisheye.y; })
+        .attr("r", function(d) { return d.fisheye.z * 25; });
+
+    link.attr("x1", function(d) { return d.source.fisheye.x; })
+        .attr("y1", function(d) { return d.source.fisheye.y; })
+        .attr("x2", function(d) { return d.target.fisheye.x; })
+        .attr("y2", function(d) { return d.target.fisheye.y; });
+  };
+ 
   self.getDistortion = function() {
     return currentDistortion;
+  };
+  
+  self.getDistortionRadius = function() {
+    return currentDistortionRadius;
   };
   
   self.getNodeLimit = function() {
     return currentLimit;
   };
   
-  self.zoomIn = function() {
-    if (currentZoom === 0) {
-      return;
-    }
-    adjustValues(false);
-  };
-  
-  self.zoomOut = function() {
-    if (currentZoom === 200) {
-      return;
-    }
-    adjustValues(true);
-  };
  
 }
