@@ -254,6 +254,7 @@ describe("Graph Viewer", function() {
         42,
         13,
         jasmine.any(Object),
+        jasmine.any(Object),
         jasmine.any(NodeShaper),
         jasmine.any(EdgeShaper)
       );

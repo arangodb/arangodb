@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
+function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config) {
   "use strict";
   
   if (width === undefined || width < 0) {
@@ -38,7 +38,10 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
   if (height === undefined || height < 0) {
     throw("A height has to be given.");
   }
-  if (g === undefined || g.node === undefined || g.node().tagName !== "G") {
+  if (svg === undefined || svg.node === undefined || svg.node().tagName.toLowerCase() !== "svg") {
+    throw("A svg has to be given.");
+  }
+  if (g === undefined || g.node === undefined || g.node().tagName.toLowerCase() !== "g") {
     throw("A group has to be given.");
   }
   if (
@@ -98,8 +101,7 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
       if (conf === undefined) {
         conf = {};
       }
-      var 
-      fontMax = conf.maxFont || 16,
+      var fontMax = conf.maxFont || 16,
       fontMin = conf.minFont || 6,
       rMax = conf.maxRadius || 25,
       rMin = conf.minRadius || 1;
@@ -126,7 +128,7 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
           calcDistortionValues();
           currentTranslation = $.extend({}, d3.event.translate);
           g.attr("transform",
-              "translate(" + currentTranslation + ")"
+              "translate(" + d3.event.translate + ")"
               + " scale(" + currentZoom + ")");         
        });
       
@@ -148,13 +150,13 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
   
   parseConfig(config);
   
-  g.call(zoom);
+  svg.call(zoom);
 
   nodeShaper.changeTo({
     distortion: fisheye
   });
 
-  g.on("mousemove", mouseMoveHandle);
+  svg.on("mousemove", mouseMoveHandle);
   
   self.translation = function() {
     return null;

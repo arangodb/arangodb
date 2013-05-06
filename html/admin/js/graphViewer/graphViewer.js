@@ -86,7 +86,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   parseZoomConfig = function(config) {
     if (config) {
-      zoomManager = new ZoomManager(width, height,
+      zoomManager = new ZoomManager(width, height, svg,
         graphContainer, self.nodeShaper, self.edgeShaper);
     }
   },
