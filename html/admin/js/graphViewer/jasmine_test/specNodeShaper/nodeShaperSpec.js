@@ -937,7 +937,7 @@
             };
           },
           n = $("#1");
-        expect(n.attr("transform")).toEqual("translate(10,10)");
+        expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
         
         shaper.changeTo({
           distortion: distortion
@@ -947,7 +947,7 @@
           y: 5,
           z: 10
         });
-        expect(n.attr("transform")).toEqual("translate(52,5)");
+        expect(n.attr("transform")).toEqual("translate(52,5)scale(10)");
       });
       
       it('should be able to revoke a distortion for the node positions', function() {
@@ -965,7 +965,7 @@
             };
           },
           n = $("#1");
-        expect(n.attr("transform")).toEqual("translate(10,10)");
+        expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
         
         shaper.changeTo({
           distortion: distortion
@@ -975,7 +975,7 @@
           y: 5,
           z: 10
         });
-        expect(n.attr("transform")).toEqual("translate(52,5)");
+        expect(n.attr("transform")).toEqual("translate(52,5)scale(10)");
         
         shaper.changeTo({
           distortion: "reset"
@@ -985,7 +985,7 @@
           y: 10,
           z: 1
         });
-        expect(n.attr("transform")).toEqual("translate(10,10)");
+        expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
       });
     });
 
