@@ -374,7 +374,7 @@ size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of synced pointers
 ///
-/// Note that lookup, insert, and remove are proctected using a read-write lock.
+/// Note that lookup, insert, and remove are protected using a read-write lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_associative_synced_s {
