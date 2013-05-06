@@ -69,17 +69,25 @@
 
     beforeEach(function () {
       svg = document.createElement("svg");
+      svg.id = "outersvg";
       document.body.appendChild(svg);
       g = d3.select("svg").append("g");
       g.attr("id", "svg");
       nodeShaperMock = {
-        activateLabel: function() {}
+        activateLabel: function() {},
+        changeTo: function() {},
+        updateNodes: function() {}
       };
       edgeShaperMock = {
-        activateLabel: function() {}
+        activateLabel: function() {},
+        updateEdges: function() {}
       };
       spyOn(nodeShaperMock, "activateLabel");
+      spyOn(nodeShaperMock, "changeTo");
+      spyOn(nodeShaperMock, "updateNodes");
+      
       spyOn(edgeShaperMock, "activateLabel");
+      spyOn(edgeShaperMock, "updateEdges");
     });
 
     afterEach(function () {
@@ -141,11 +149,6 @@
     
       describe('the interface', function() {
       
-        it('should offer a function handle for the mouse movement', function() {
-          expect(manager.mouseMoveHandle).toBeDefined();
-          expect(manager.mouseMoveHandle).toEqual(jasmine.any(Function));
-        });
-      
         it('should offer a function to get the current scale factor', function() {
           expect(manager.scaleFactor).toBeDefined();
           expect(manager.scaleFactor).toEqual(jasmine.any(Function));
@@ -160,7 +163,7 @@
           expect(manager.scaledMouse).toBeDefined();
           expect(manager.scaledMouse).toEqual(jasmine.any(Function));
         });
-      
+        
         it('should offer a function to get the distortion', function() {
           expect(manager.getDistortion).toBeDefined();
           expect(manager.getDistortion).toEqual(jasmine.any(Function));
@@ -178,7 +181,7 @@
       
       });
     
-      describe('checking the value propagation', function() {
+      describe('the zoom behaviour', function() {
      
         var fontMax,
           fontMin,
@@ -418,6 +421,22 @@
           });
         
         });
+      });
+      
+      describe('the distortion behaviour', function() {
+        
+        it('should register fisheye distortion at the node shaper', function() {
+          expect(nodeShaperMock.changeTo).toHaveBeenCalledWith({
+            distortion: jasmine.any(Function)
+          });
+        });
+        
+        it('should update the nodes and edges on mouse move event', function() {
+          helper.simulateMouseEvent("mousemove", "svg");
+          expect(nodeShaperMock.updateNodes).toHaveBeenCalled();
+          expect(edgeShaperMock.updateEdges).toHaveBeenCalled();
+        });
+        
       });
     });
 
