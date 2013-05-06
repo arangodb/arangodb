@@ -41,10 +41,19 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
   if (g === undefined || g.node === undefined || g.node().tagName !== "G") {
     throw("A group has to be given.");
   }
-  if (nodeShaper === undefined || nodeShaper.activateLabel === undefined) {
+  if (
+    nodeShaper === undefined
+    || nodeShaper.activateLabel === undefined
+    || nodeShaper.changeTo === undefined
+    || nodeShaper.updateNodes === undefined
+  ) {
     throw("The Node shaper has to be given.");
   }
-  if (edgeShaper === undefined || edgeShaper.activateLabel === undefined) {
+  if (
+    edgeShaper === undefined
+    || edgeShaper.activateLabel === undefined
+    || edgeShaper.updateEdges === undefined
+  ) {
     throw("The Edge shaper has to be given.");
   }
   
@@ -56,6 +65,7 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
     currentZoom,
     currentTranslation,
     currentLimit,
+    fisheye,
     currentDistortion,
     currentDistortionRadius,
     baseDist,
@@ -80,6 +90,8 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
     calcDistortionValues = function () {
       currentDistortion = baseDist / currentZoom - 0.99999999; // Always > 0
       currentDistortionRadius = baseDRadius / currentZoom;
+      fisheye.distortion(currentDistortion);
+      fisheye.radius(currentDistortionRadius);
     },
     
     parseConfig = function (conf) {
@@ -99,11 +111,10 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
       
       labelToggle = fontMin / fontMax;
       currentZoom = 1;
-      
+      currentTranslation = [0, 0];
       calcDistortionValues();
       
       currentLimit = calcNodeLimit();
-      
       
       zoom = d3.behavior.zoom()
         .scaleExtent([rMin/rMax, 1])
@@ -119,12 +130,31 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
               + " scale(" + currentZoom + ")");         
        });
       
+    },
+    mouseMoveHandle = function() {
+      var focus = d3.mouse(this);
+      focus[0] -= currentTranslation[0];
+      focus[0] /= currentZoom;
+      focus[1] -= currentTranslation[1];
+      focus[1] /= currentZoom;
+      fisheye.focus(focus);
+      nodeShaper.updateNodes();
+      edgeShaper.updateEdges();
     };
+    
+    
+  
+  fisheye = d3.fisheye.circular();
   
   parseConfig(config);
   
   g.call(zoom);
 
+  nodeShaper.changeTo({
+    distortion: fisheye
+  });
+
+  g.on("mousemove", mouseMoveHandle);
   
   self.translation = function() {
     return null;
@@ -136,28 +166,6 @@ function ZoomManager(width, height, g, nodeShaper, edgeShaper, config) {
   
   self.scaledMouse = function() {
     return null;
-  };
-  
-  self.mouseMoveHandle = function() {
-    // TODO
-    var focus = d3.mouse(this);
-    focus[0] -= currentTranslation[0];
-    focus[0] /= currentZoom;
-    focus[1] -= currentTranslation[1];
-    focus[1] /= currentZoom;
-    
-
-    fisheye.focus(focus);
-
-    node.each(function(d) { d.fisheye = fisheye(d); })
-        .attr("cx", function(d) { return d.fisheye.x; })
-        .attr("cy", function(d) { return d.fisheye.y; })
-        .attr("r", function(d) { return d.fisheye.z * 25; });
-
-    link.attr("x1", function(d) { return d.source.fisheye.x; })
-        .attr("y1", function(d) { return d.source.fisheye.y; })
-        .attr("x2", function(d) { return d.target.fisheye.x; })
-        .attr("y2", function(d) { return d.target.fisheye.y; });
   };
  
   self.getDistortion = function() {
