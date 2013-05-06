@@ -1684,7 +1684,7 @@ function post_graph_all_edges (req, res, g) {
 /// @RESTBODYPARAM{edge-properties,json,required}
 /// The call expects a JSON hash array as body to filter the result:
 ///
-/// @RESTDOCUMENTATION
+/// @RESTDESCRIPTION
 ///
 /// Returns a cursor.
 ///
