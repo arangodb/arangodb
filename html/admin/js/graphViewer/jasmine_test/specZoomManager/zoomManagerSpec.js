@@ -38,17 +38,18 @@
   "use strict";
 
   describe('Zoom Manager', function () {
-    var svg,
+    var domsvg,
+      svg,
       g,
       nodeShaperMock,
       edgeShaperMock,
     
     simulateZoomOut = function () {
-      helper.simulateScrollUpMouseEvent("svg");
+      helper.simulateScrollUpMouseEvent("outersvg");
     },
     
     simulateZoomIn = function () {
-      helper.simulateScrollDownMouseEvent("svg");
+      helper.simulateScrollDownMouseEvent("outersvg");
     },
 
     lastNodeShaperCall = function() {
@@ -68,10 +69,11 @@
     };
 
     beforeEach(function () {
-      svg = document.createElement("svg");
-      svg.id = "outersvg";
-      document.body.appendChild(svg);
-      g = d3.select("svg").append("g");
+      domsvg = document.createElement("svg");
+      domsvg.id = "outersvg";
+      document.body.appendChild(domsvg);
+      svg = d3.select("svg");
+      g = svg.append("g");
       g.attr("id", "svg");
       nodeShaperMock = {
         activateLabel: function() {},
@@ -91,7 +93,7 @@
     });
 
     afterEach(function () {
-      document.body.removeChild(svg);
+      document.body.removeChild(domsvg);
     });
 
     describe('setup process', function() {
@@ -108,28 +110,34 @@
         }).toThrow("A height has to be given.");
       });
       
-      it('should throw an error if the group is not given', function() {
+      it('should throw an error if the svg is not given', function() {
         expect(function() {
           var s = new ZoomManager(10, 10);
+        }).toThrow("A svg has to be given.");
+      });
+      
+      it('should throw an error if the group is not given', function() {
+        expect(function() {
+          var s = new ZoomManager(10, 10, svg);
         }).toThrow("A group has to be given.");
       });
       
       it('should throw an error if the node shaper is not given', function() {
         expect(function() {
-          var s = new ZoomManager(10, 10, g);
+          var s = new ZoomManager(10, 10, svg, g);
         }).toThrow("The Node shaper has to be given.");
       });
       
       it('should throw an error if the edge shaper is not given', function() {
         expect(function() {
-          var s = new ZoomManager(10, 10, g, nodeShaperMock);
+          var s = new ZoomManager(10, 10, svg, g, nodeShaperMock);
         }).toThrow("The Edge shaper has to be given.");
       });
       
       
       it('should not throw an error if mandatory information is given', function() {
         expect(function() {
-          var s = new ZoomManager(10, 10, g, nodeShaperMock, edgeShaperMock);
+          var s = new ZoomManager(10, 10, svg, g, nodeShaperMock, edgeShaperMock);
         }).not.toThrow();
       });
     });
@@ -144,7 +152,7 @@
       beforeEach(function() {
         w = 200;
         h = 200;
-        manager = new ZoomManager(w, h, g, nodeShaperMock, edgeShaperMock);
+        manager = new ZoomManager(w, h, svg, g, nodeShaperMock, edgeShaperMock);
       });
     
       describe('the interface', function() {
@@ -432,7 +440,7 @@
         });
         
         it('should update the nodes and edges on mouse move event', function() {
-          helper.simulateMouseEvent("mousemove", "svg");
+          helper.simulateMouseEvent("mousemove", "outersvg");
           expect(nodeShaperMock.updateNodes).toHaveBeenCalled();
           expect(edgeShaperMock.updateEdges).toHaveBeenCalled();
         });

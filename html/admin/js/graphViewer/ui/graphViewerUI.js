@@ -222,7 +222,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
   background.className = "thumbnails";
   background.id = "background";
   svg = createSVG();
-  graphViewer = new GraphViewer(svg, width, height, adapterConfig);
+  graphViewer = new GraphViewer(svg, width, height, adapterConfig, {zoom: true});
   
   createToolbox();
   createMenu();
