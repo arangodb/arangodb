@@ -2144,6 +2144,12 @@ function GROUP (value, sortFunction, groupFunction, into) {
 function LIMIT (value, offset, count) {
   LIST(value);
 
+  // check value type for offset and count parameters
+  if (TYPEWEIGHT(offset) !== TYPEWEIGHT_NUMBER ||
+      TYPEWEIGHT(count) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+  }
+
   if (count < 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }

@@ -176,7 +176,7 @@ static inline TRI_json_t* GetRowProtoType (TRI_aql_explain_t* const explain,
 /// @brief create an explain structure
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_explain_t* CreateExplain (void) {
+static TRI_aql_explain_t* CreateExplain (TRI_aql_context_t* context) {
   TRI_aql_explain_t* explain;
 
   explain = (TRI_aql_explain_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_explain_t), false);
@@ -184,6 +184,8 @@ static TRI_aql_explain_t* CreateExplain (void) {
   if (explain == NULL) {
     return NULL;
   }
+  
+  explain->_context = context;
 
   explain->_count = 0;
   explain->_level = 0;
@@ -360,7 +362,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 
     case TRI_AQL_NODE_LIMIT: {
       TRI_aql_node_t* offsetNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_aql_node_t* countNode = TRI_AQL_NODE_MEMBER(node, 1);
+      TRI_aql_node_t* countNode  = TRI_AQL_NODE_MEMBER(node, 1);
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
@@ -368,12 +370,12 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
                            "offset",
-                           TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) TRI_AQL_NODE_INT(offsetNode)));
+                           TRI_NodeJsonAql(explain->_context, offsetNode));
 
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
                            "count",
-                           TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) TRI_AQL_NODE_INT(countNode)));
+                           TRI_NodeJsonAql(explain->_context, countNode));
 
       AddRow(explain, row);
       break;
@@ -428,7 +430,7 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
   TRI_aql_explain_t* explain;
   TRI_json_t* result;
 
-  explain = CreateExplain();
+  explain = CreateExplain(context);
   if (explain == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
