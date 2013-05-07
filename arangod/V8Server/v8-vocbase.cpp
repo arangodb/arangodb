@@ -2675,11 +2675,14 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   if (argc > 2) {
     doCount = TRI_ObjectToBoolean(argv[2]);
+
     if (argc > 3) {
       double maxValue = TRI_ObjectToDouble(argv[3]);
+      
       if (maxValue >= 1.0) {
         batchSize = (uint32_t) maxValue;
       }
+
       if (argc > 4) {
         allowDirectReturn = TRI_ObjectToBoolean(argv[4]);
       }
