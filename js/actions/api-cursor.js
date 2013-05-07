@@ -137,13 +137,73 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Executes a query and extract the result in a single go:
 ///
-/// @verbinclude api-cursor-create-for-limit-return-single
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturnSingle}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hallo1":"world1"});
+///     db.products.save({"hallo2":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = '{ "query" : "FOR p IN products LIMIT 2 RETURN p", "count" : true, "batchSize" : 2 }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Executes a query and extract part of the result:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturn}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hallo1":"world1"});
+///     db.products.save({"hallo2":"world1"});
+///     db.products.save({"hallo3":"world1"});
+///     db.products.save({"hallo4":"world1"});
+///     db.products.save({"hallo5":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = '{ "query" : "FOR p IN products LIMIT 5 RETURN p", "count" : true, "batchSize" : 2 }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Bad queries:
 ///
-/// @verbinclude api-cursor-missing-body
+/// Missing body:
 ///
-/// @verbinclude api-cursor-unknown-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorMissingBody}
+///     var url = "/_api/cursor";
+/// 
+///     var response = logCurlRequest('POST', url, '');
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Unknown collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorUnknownCollection}
+///     var url = "/_api/cursor";
+///     var body = '{ "query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_cursor(req, res) {
