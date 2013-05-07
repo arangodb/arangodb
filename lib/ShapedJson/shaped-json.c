@@ -2198,7 +2198,7 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* j
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a shaped json objet into a json object
+/// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t const* shaped) {
