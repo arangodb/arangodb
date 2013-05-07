@@ -5,7 +5,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper, mocks, JSONAdapter:true*/
-/*global GraphViewerUI*/
+/*global GraphViewerUI, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -58,6 +58,11 @@
         };
         return r;
       };
+      //Mock for ZoomManager
+      if (window.ZoomManager === undefined) {
+        window.ZoomManager = {};
+      }
+      spyOn(window, "ZoomManager");
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -114,7 +119,7 @@
     });
     
     afterEach(function() {
-      document.body.removeChild(div);
+        document.body.removeChild(div);
     });
     
     it('should throw an error if no container element is given', function() {
@@ -143,6 +148,17 @@
     
     it('should append a svg to the given parent', function() {
       expect($("#contentDiv svg").length).toEqual(1);
+    });
+    
+    it('should automatically start the ZoomManager', function() {
+      expect(window.ZoomManager).toHaveBeenCalledWith(
+        140,
+        200,
+        jasmine.any(Object),
+        jasmine.any(Object),
+        jasmine.any(NodeShaper),
+        jasmine.any(EdgeShaper)
+      );
     });
     
     describe('checking the toolbox', function() {
@@ -328,10 +344,9 @@
         
         runs(function() {
           $("#contentDiv #menubar #value").attr("value", "0");
-          var e = jQuery.Event("keypress");
-          e.which = 13;
+          var e = $.Event("keypress");
           e.keyCode = 13;
-          $("body").trigger(e);
+          $("#value").trigger(e);
         });
         
         waits(waittime);
