@@ -1720,11 +1720,14 @@ function resultCursor (req, res, cursor, code, options) {
     if (hasNext) {
       cursor.persist();
       cursorId = cursor.id(); 
+      cursor.unuse();
     }
     else {
       cursor.dispose();
     }
   }
+
+  // do not use cursor after this
 
   var result = { 
     "result" : rows,
