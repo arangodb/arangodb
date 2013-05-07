@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function ZoomManager(width, height, config) {
+function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config) {
   "use strict";
   
   if (width === undefined || width < 0) {
@@ -38,125 +38,149 @@ function ZoomManager(width, height, config) {
   if (height === undefined || height < 0) {
     throw("A height has to be given.");
   }
+  if (svg === undefined || svg.node === undefined || svg.node().tagName.toLowerCase() !== "svg") {
+    throw("A svg has to be given.");
+  }
+  if (g === undefined || g.node === undefined || g.node().tagName.toLowerCase() !== "g") {
+    throw("A group has to be given.");
+  }
+  if (
+    nodeShaper === undefined
+    || nodeShaper.activateLabel === undefined
+    || nodeShaper.changeTo === undefined
+    || nodeShaper.updateNodes === undefined
+  ) {
+    throw("The Node shaper has to be given.");
+  }
+  if (
+    edgeShaper === undefined
+    || edgeShaper.activateLabel === undefined
+    || edgeShaper.updateEdges === undefined
+  ) {
+    throw("The Edge shaper has to be given.");
+  }
+  
   
   var self = this,
-    fontMax,
-    fontMin,
-    rMax,
-    rMin,
-    rMid,
-    
-    radiusStep,
-    fontStep,
-    distortionStep,
-    
+    fontSize,
+    nodeRadius,
+    labelToggle,
     currentZoom,
-    currentFont,
-    currentRadius,
+    currentTranslation,
     currentLimit,
+    fisheye,
     currentDistortion,
+    currentDistortionRadius,
+    baseDist,
+    baseDRadius,
     size =  width * height,
+    zoom,
+    
     calcNodeLimit = function () {
-      var div;
-      if (currentFont !== null) {
-        div = 60 * currentFont * currentFont;
+      var div, reqSize;
+      if (currentZoom >= labelToggle) {
+        reqSize = fontSize * currentZoom;
+        reqSize *= reqSize;
+        div = 60 * reqSize;
       } else {
-        div = 4 * currentRadius * currentRadius * Math.PI;
+        reqSize = nodeRadius * currentZoom;
+        reqSize *= reqSize;
+        div = 4 * Math.PI * reqSize;
       }
       return Math.floor(size / div);
     },
-    parseConfig = function (conf) {
-      fontMax = 16;
-      fontMin = 6;
-      rMax = 25;
-      rMin = 1;
-      rMid = (rMax - rMin) / 2 + rMin;
-      
-      fontStep = (fontMax - fontMin) / 100;
-      radiusStep = (rMax - rMin) / 200;
-      distortionStep = 0.001; // TODO!
-      
-      currentFont = fontMax;
-      currentRadius = rMax;
-      currentDistortion = 0;
-      currentLimit = calcNodeLimit();
-      currentZoom = 0;
+    
+    calcDistortionValues = function () {
+      currentDistortion = baseDist / currentZoom - 0.99999999; // Always > 0
+      currentDistortionRadius = baseDRadius / currentZoom;
+      fisheye.distortion(currentDistortion);
+      fisheye.radius(currentDistortionRadius);
     },
-    adjustValues = function (out) {
-      if (out) {
-        currentZoom++;
-        if (currentZoom > 100) {
-          currentFont = null;
-          if (currentZoom === 200) {
-            currentRadius = rMin;
-          } else {
-            currentRadius -= radiusStep;
-          }
-        } else {
-          
-          if (currentZoom === 100) {
-            currentFont = fontMin;
-            currentRadius = rMid;
-          } else {
-            currentRadius -= radiusStep;
-            currentFont -= fontStep;
-          }
-        }
-        currentDistortion += distortionStep;
-      } else {
-        currentZoom--;
-        if (currentZoom < 100) {
-          if (currentZoom === 0) {
-            currentFont = fontMax;
-            currentRadius = rMax;
-          } else {
-            currentFont += fontStep;
-            currentRadius += radiusStep;
-          }
-        } else {
-          if (currentZoom === 100) {
-            currentFont = fontMin;
-            currentRadius = rMid;
-          } else {
-            currentRadius += radiusStep;
-            currentFont = null;
-          }
-        }
-        currentDistortion -= distortionStep;
+    
+    parseConfig = function (conf) {
+      if (conf === undefined) {
+        conf = {};
       }
+      var fontMax = conf.maxFont || 16,
+      fontMin = conf.minFont || 6,
+      rMax = conf.maxRadius || 25,
+      rMin = conf.minRadius || 1;
+      baseDist = conf.focusZoom || 1;
+      baseDRadius = conf.focusRadius || 100;
+      
+      fontSize = fontMax;
+      nodeRadius = rMax;
+      
+      labelToggle = fontMin / fontMax;
+      currentZoom = 1;
+      currentTranslation = [0, 0];
+      calcDistortionValues();
+      
       currentLimit = calcNodeLimit();
+      
+      zoom = d3.behavior.zoom()
+        .scaleExtent([rMin/rMax, 1])
+        .on("zoom", function() {
+          currentZoom = d3.event.scale;
+          currentLimit = calcNodeLimit();
+          nodeShaper.activateLabel(currentZoom >= labelToggle);
+          edgeShaper.activateLabel(currentZoom >= labelToggle);
+          calcDistortionValues();
+          currentTranslation = $.extend({}, d3.event.translate);
+          g.attr("transform",
+              "translate(" + d3.event.translate + ")"
+              + " scale(" + currentZoom + ")");         
+       });
+      
+    },
+    mouseMoveHandle = function() {
+      var focus = d3.mouse(this);
+      focus[0] -= currentTranslation[0];
+      focus[0] /= currentZoom;
+      focus[1] -= currentTranslation[1];
+      focus[1] /= currentZoom;
+      fisheye.focus(focus);
+      nodeShaper.updateNodes();
+      edgeShaper.updateEdges();
     };
+    
+    
+  
+  fisheye = d3.fisheye.circular();
   
   parseConfig(config);
   
-  self.getFontSize = function() {
-    return currentFont;
+  svg.call(zoom);
+
+  nodeShaper.changeTo({
+    distortion: fisheye
+  });
+
+  svg.on("mousemove", mouseMoveHandle);
+  
+  self.translation = function() {
+    return null;
   };
   
-  self.getRadius = function() {
-    return currentRadius;
+  self.scaleFactor = function() {
+    return currentZoom;
   };
   
+  self.scaledMouse = function() {
+    return null;
+  };
+ 
   self.getDistortion = function() {
     return currentDistortion;
+  };
+  
+  self.getDistortionRadius = function() {
+    return currentDistortionRadius;
   };
   
   self.getNodeLimit = function() {
     return currentLimit;
   };
   
-  self.zoomIn = function() {
-    if (currentZoom === 0) {
-      return;
-    }
-    adjustValues(false);
-  };
-  
-  self.zoomOut = function() {
-    if (currentZoom === 200) {
-      return;
-    }
-    adjustValues(true);
-  };
  
 }

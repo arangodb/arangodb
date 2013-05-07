@@ -64,7 +64,8 @@ function NodeShaper(parent, flags, idfunc) {
   "use strict";
   
   var self = this,
-    nodes = [],  
+    nodes = [],
+    visibleLabels = true,
     noop = function (node) {
     
     },
@@ -120,7 +121,9 @@ function NodeShaper(parent, flags, idfunc) {
     
     addQue = function (g) {
       addShape(g);
-      addLabel(g);
+      if (visibleLabels) {
+        addLabel(g);
+      }
       addColor(g);
       addEvents(g);
       addDistortion();
@@ -140,7 +143,7 @@ function NodeShaper(parent, flags, idfunc) {
       var nodes = self.parent.selectAll(".node");
       addDistortion();
       nodes.attr("transform", function(d) {
-        return "translate(" + d.position.x + "," + d.position.y + ")"; 
+        return "translate(" + d.position.x + "," + d.position.y + ")scale(" + d.position.z + ")"; 
       });
       addUpdate(nodes);
     },
@@ -347,6 +350,15 @@ function NodeShaper(parent, flags, idfunc) {
   };
   
   self.reshapeNodes = function() {
+    shapeNodes();
+  };
+  
+  self.activateLabel = function(toogle) {
+    if (toogle) {
+      visibleLabels = true;
+    } else {
+      visibleLabels = false;
+    }
     shapeNodes();
   };
   
