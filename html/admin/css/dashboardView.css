@@ -1,18 +1,50 @@
-.statGroups {
-  margin-bottom: 10px;
+/*.statGroups {
+  float:left;
+  margin-left:10px;
+  margin-top: 10px;
+  margin-bottom: 40px;
   border: 1px solid black;
   background-color: white;
+  width: 886px;
+  border-radius: 2px 2px 2px 2px;
+  box-shadow: 0 0 3px #333333;
+  border: 8px solid #FFFFFF;
+}
+*/
+
+.statGroups {
+  margin-left: 0px;
+  float:left;
+  width: 100%;
+}
+
+.statGroups h4 {
+  margin-right: 20px;
+  text-align: center;
 }
 
 .statSystem th{
   width: 300px;
 }
 
+.dashboardH5 {
+
+}
+
+.dashboardH4 {
+
+}
+
 .statClient {
-  height: 200px;
-  width: 915px;
-  margin: 10px;
+  float: left;
+  height: 150px;
+  width: 280px;
+  margin-left: 9px;
+  margin-bottom: 15px;
   border: 1px solid black;
+  border-radius: 2px 2px 2px 2px;
+  background-color: #F4F3F3;
+  box-shadow: 0 0 3px #333333;
 }
 
 .statChart {
@@ -24,8 +56,46 @@
 }
 
 .svgClass {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
   height: 150px;
-  width: 100%;
+  width: 270px;
 }
 
+.boxHeader {
+  background-color: #686766;
+}
 
+.boxHeader h6 {
+  padding-top: 2px;
+  color: white;
+  margin-left: 5px;
+  margin-bottom: -15px !important;
+}
+
+#dashboardHeader {
+  background-color: #686766;
+  border-bottom: 1px solid #A0A0A0;
+  border-top: 1px solid #A0A0A0;
+  color: #FFFFFF;
+  height: 36px;
+  margin-bottom: 0px !important;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 20px !important;
+  padding: 0 20px;
+  position: relative;
+}
+
+/*NVD3*/
+.nv-series {
+  display: none;
+}
+
+.nv-x .nv-axislabel {
+  display: none;
+}
+
+.nv-point {
+  display: none;
+}
