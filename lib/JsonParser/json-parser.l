@@ -414,10 +414,10 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
     case STRING_CONSTANT: {
       char* ptr;
       size_t outLength;
-        
+
       if (yyleng <= 2) {
-        // string is empty, use original pointer
-        ptr = yytext + 1;
+        // string is empty
+        ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, 0);
         outLength = 0;
       }
       else {
