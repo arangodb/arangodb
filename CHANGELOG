@@ -1,6 +1,9 @@
 v1.3.0 (2013-05-XX)
 -------------------
 
+* fixed problem on restart ("datafile-xxx is not sealed") when server was killed
+  during a compaction run
+
 * fixed leak when using cursors with very small batchSize
 
 * issue #508: `unregistergroup` function not mentioned in http interface docs
