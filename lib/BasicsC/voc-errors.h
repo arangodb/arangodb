@@ -73,7 +73,7 @@ extern "C" {
 /// - 1003: @LIT{unknown type}
 ///   Internal error that will be raised when an unknown collection type is
 ///   encountered.
-/// - 1004: @LIT{ready only}
+/// - 1004: @LIT{read only}
 ///   Internal error that will be raised when trying to write to a read-only
 ///   datafile or collection.
 /// - 1005: @LIT{duplicate identifier}
@@ -725,7 +725,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1004: ERROR_ARANGO_READ_ONLY
 ///
-/// ready only
+/// read only
 ///
 /// Internal error that will be raised when trying to write to a read-only
 /// datafile or collection.

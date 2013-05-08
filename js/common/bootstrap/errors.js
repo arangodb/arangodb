@@ -45,7 +45,7 @@
     "ERROR_ARANGO_SHAPER_FAILED"   : { "code" : 1001, "message" : "illegal shaper" }, 
     "ERROR_ARANGO_DATAFILE_SEALED" : { "code" : 1002, "message" : "datafile sealed" }, 
     "ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE" : { "code" : 1003, "message" : "unknown type" }, 
-    "ERROR_ARANGO_READ_ONLY"       : { "code" : 1004, "message" : "ready only" }, 
+    "ERROR_ARANGO_READ_ONLY"       : { "code" : 1004, "message" : "read only" }, 
     "ERROR_ARANGO_DUPLICATE_IDENTIFIER" : { "code" : 1005, "message" : "duplicate identifier" }, 
     "ERROR_ARANGO_DATAFILE_UNREADABLE" : { "code" : 1006, "message" : "datafile unreadable" }, 
     "ERROR_ARANGO_CORRUPTED_DATAFILE" : { "code" : 1100, "message" : "corrupted datafile" }, 
