@@ -114,12 +114,11 @@ static int StringifyJson (TRI_memory_zone_t* zone,
         }
 
         res = TRI_AppendString2StringBuffer(buffer, ptr, outLength);
+        TRI_Free(zone, ptr);
   
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
-
-        TRI_Free(zone, ptr);
       }
 
       res = TRI_AppendCharStringBuffer(buffer, '\"');
