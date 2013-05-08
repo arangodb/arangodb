@@ -7,7 +7,7 @@
 ###
 ### find files in
 ###   arangod/RestHandler/*.cpp
-###   js/actions/system/api-*.js
+###   js/actions/api-*.js
 ### @usage generateSwagger.py < RestXXXX.cpp > restSwagger.json
 ###
 ### @file
@@ -41,7 +41,7 @@
 ### Copyright holder is triAGENS GmbH, Cologne, Germany
 ###
 ### @author Thomas Richter
-### @author Copyright 2013, triagens GmbH, Cologne, Germany
+### @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
 import sys, re, json, string
@@ -409,7 +409,6 @@ def read_through(cargo):
         elif len(line) >= 3 and line[:3] == "///": return comment, (fp, line)
         else:                 continue
 
-
 if __name__ == "__main__":
     automat = StateMachine()
     automat.add_state(read_through)
@@ -430,3 +429,4 @@ if __name__ == "__main__":
     automat.add_state(error, end_state=1)
     automat.set_start(read_through)
     automat.run((sys.stdin, ''))
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

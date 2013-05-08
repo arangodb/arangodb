@@ -55,6 +55,7 @@ Doxygen/html/
 Doxygen/latex/
 Doxygen/js/
 Documentation/arango.template
+Documentation/Examples/*.generated
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
 UnitTests/geo_suite
