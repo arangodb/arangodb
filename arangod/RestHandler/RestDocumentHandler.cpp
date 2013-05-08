@@ -534,9 +534,9 @@ bool RestDocumentHandler::readDocument () {
 /// 
 ///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
-///     var header = "If-None-Match: \"" + document._rev + "\"";
+///     var headers = {"If-None-Match":  "\"" + document._rev + "\""};
 /// 
-///     var response = logCurlRequest('GET', url, "", header);
+///     var response = logCurlRequest('GET', url, "", headers);
 /// 
 ///     assert(response.code === 304);
 ///
@@ -953,9 +953,9 @@ bool RestDocumentHandler::checkDocument () {
 ///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -972,7 +972,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -989,7 +989,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1005,9 +1005,8 @@ bool RestDocumentHandler::checkDocument () {
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
-/// 
-///     assert(response.code === 200);
-/// 
+///     assert(response.code === 202);
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -1023,7 +1022,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
