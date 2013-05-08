@@ -316,6 +316,9 @@ swagger:
 		< @srcdir@/js/actions/api-graph.js  > @srcdir@/html/admin/api-docs/graph
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-edges.js  > @srcdir@/html/admin/api-docs/edges
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-user.js  > @srcdir@/html/admin/api-docs/user
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
