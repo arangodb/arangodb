@@ -1,6 +1,8 @@
 v1.4
 ------
 
+* issue #517: Foxx: Route parameters with captial letters fail
+
 * issue #512: Binded Parameters for LIMIT
 
 

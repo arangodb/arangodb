@@ -110,7 +110,7 @@ function errorFunction (route, message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splits an URL into parts
+/// @brief splits a URL into parts
 ////////////////////////////////////////////////////////////////////////////////
 
 function splitUrl (url) {
@@ -124,8 +124,8 @@ function splitUrl (url) {
   var cut;
   var ors;
 
-  re1 = /^(:[a-z]+)(\|:[a-z]+)*$/;
-  re2 = /^(:[a-z]+)\?$/;
+  re1 = /^(:[a-zA-Z]+)(\|:[a-zA-Z]+)*$/;
+  re2 = /^(:[a-zA-Z]+)\?$/;
 
   parts = url.split("/");
   cleaned = [];
