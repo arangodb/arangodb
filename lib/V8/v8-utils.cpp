@@ -1417,10 +1417,12 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ///
 /// - numberOfThreads: Number of threads in this process.
 ///
-/// - residentSize: Resident Set Size: number of pages the process has
-///   in real memory.  This is just the pages which count toward text,
-///   data, or stack space.  This does not include pages which have
-///   not been demand-loaded in, or which are swapped out.
+/// - residentSize: Resident Set Size: total size of the number of pages 
+///   the process has in real memory.  This is just the pages which count 
+///   toward text, data, or stack space.  This does not include pages which 
+///   have not been demand-loaded in, or which are swapped out.
+///
+///   The resident set size is reported in bytes.
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
