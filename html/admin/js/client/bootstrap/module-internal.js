@@ -165,6 +165,7 @@
     return function (method, url, body, headers) {
       var response;
       var curl;
+      var i;
 
       if (typeof body !== 'string') {
         body = JSON.stringify(body);
@@ -173,35 +174,38 @@
       curl = "unix> curl ";
 
       if (method === 'POST') {
-        response = internal.arango.POST_RAW(url, body);
+        response = internal.arango.POST_RAW(url, body, headers);
         curl += "-X " + method + " ";
       }
       else if (method === 'PUT') {
-        response = internal.arango.PUT_RAW(url, body);
+        response = internal.arango.PUT_RAW(url, body, headers);
         curl += "-X " + method + " ";
       }
       else if (method === 'GET') {
-        response = internal.arango.GET_RAW(url, body);
+        response = internal.arango.GET_RAW(url, headers);
       }
       else if (method === 'DELETE') {
-        response = internal.arango.DELETE_RAW(url, body);
+        response = internal.arango.DELETE_RAW(url, headers);
         curl += "-X " + method + " ";
       }
       else if (method === 'PATCH') {
-        response = internal.arango.PATCH_RAW(url, body);
+        response = internal.arango.PATCH_RAW(url, body, headers);
         curl += "-X " + method + " ";
       }
       else if (method === 'HEAD') {
-        response = internal.arango.HEAD_RAW(url, body);
+        response = internal.arango.HEAD_RAW(url, headers);
         curl += "-X " + method + " ";
       }
       else if (method === 'OPTION') {
-        response = internal.arango.OPTION_RAW(url, body);
+        response = internal.arango.OPTION_RAW(url, body, headers);
         curl += "-X " + method + " ";
       }
-
       if (headers !== undefined && headers !== "") {
-        curl += "--header \'" + headers + "\' ";
+        for (i in headers) {
+          if (headers.hasOwnProperty(i)) {
+            curl += "--header \'" + i + ":" + headers[i] + "\' ";
+          }
+        }
       }
 
       if (body !== undefined && body !== "") {
