@@ -73,6 +73,16 @@
   margin-bottom: -15px !important;
 }
 
+.statsHeader {
+  margin-left: 8px;
+  width: 901px;
+  border: 1px solid #F4F3F3;
+  background-color: #F4F3F3;
+  border-radius: 2px 2px 2px 2px;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 3px #333333;
+}
+
 #dashboardHeader {
   background-color: #686766;
   border-bottom: 1px solid #A0A0A0;
