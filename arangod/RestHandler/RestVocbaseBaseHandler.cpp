@@ -311,7 +311,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
   const string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), document->_key);
 
   TRI_json_t augmented;
-  TRI_Init2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, 8);
+  TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, &augmented, 5);
 
   TRI_json_t* _id = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str(), id.size());
 
