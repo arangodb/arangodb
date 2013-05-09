@@ -277,6 +277,8 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   if (fd < 0) {
     LOG_ERROR("cannot create new datafile '%s': '%s'", filename, TRI_last_error());
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
@@ -291,6 +293,8 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot seek in new datafile '%s': '%s'", filename, TRI_last_error());
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -305,6 +309,8 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -319,6 +325,8 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_errno();
   }
 
@@ -329,6 +337,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
 
   if (res < 0) {
+    TRI_CLOSE(datafile->_fd);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     LOG_ERROR("munmap failed with: %d", res);
     return res;
   }
@@ -368,6 +379,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
     return res;
   }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
 
   TRI_SealDatafile(datafile);
   return TRI_ERROR_NO_ERROR;
@@ -738,6 +752,9 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   datafile = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
 
   if (datafile == NULL) {
+    TRI_UNMMFile(data, size, fd, &mmHandle);
+    TRI_CLOSE(fd);
+
     return NULL;
   }
 
