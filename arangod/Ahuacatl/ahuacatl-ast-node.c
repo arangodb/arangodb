@@ -210,7 +210,7 @@ TRI_aql_node_t* TRI_CreateNodeReturnEmptyAql (void) {
   list = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
 
   if (list == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
 
     return NULL;
   }
