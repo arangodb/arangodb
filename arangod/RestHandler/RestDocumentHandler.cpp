@@ -171,6 +171,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @RESTHEADER{POST /_api/document,creates a document}
 ///
+/// @RESTBODYPARAM{document,json,required}
+/// A JSON representation of document.
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{collection,string,required}
@@ -373,6 +376,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    return false;
+  }
+
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
@@ -462,15 +470,16 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
 ///
 /// @RESTHEADERPARAMETERS
 ///
-/// @RESTHEADERPARAM{If-None-Match,string}
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
-/// @RESTHEADERPARAM{If-Match,string}
+/// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -525,9 +534,9 @@ bool RestDocumentHandler::readDocument () {
 /// 
 ///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
-///     var header = "if-none-match: \"" + document._rev + "\"";
+///     var headers = {"If-None-Match":  "\"" + document._rev + "\""};
 /// 
-///     var response = logCurlRequest('GET', url, "", header);
+///     var response = logCurlRequest('GET', url, "", headers);
 /// 
 ///     assert(response.code === 304);
 ///
@@ -639,10 +648,19 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{collection,string,required}
+/// The Id of the collection.
 ///
 /// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
 /// by `collection`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// All went good.
+///
+/// @RESTRETURNCODE{404}
+/// The collection does not exist.
 ///
 /// @EXAMPLES
 ///
@@ -734,7 +752,25 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
 ///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for more details).
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally get a document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
 /// @RESTDESCRIPTION
 /// Like `GET`, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
@@ -795,16 +831,27 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
 /// 
 /// @RESTQUERYPARAMETERS
 ///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
 /// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally replace a document based on a target revision id by
+/// using the `rev` URL parameter.
 /// 
 /// @RESTQUERYPARAM{policy,string,optional}
-/// 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for more details).
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally replace a document based on a target revision id by
+/// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by `document-handle`.
@@ -851,7 +898,8 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you the following request:
-/// @REST{PUT /_api/document/`document-handle`?rev=`etag`}
+/// 
+/// - PUT /_api/document/`document-handle`?rev=`etag`
 ///
 /// If a target revision id is provided in the request (e.g. via the `etag` value
 /// in the `rev` URL query parameter above), ArangoDB will check that
@@ -862,7 +910,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// The conditional update behavior can be overriden with the `policy` URL query parameter:
 ///
-/// @REST{PUT /_api/document/`document-handle`?policy=`policy`}
+/// - PUT /_api/document/`document-handle`?policy=`policy`
 ///
 /// If `policy` is set to `error`, then the behavior is as before: replacements
 /// will fail if the revision id found in the database does not match the target
@@ -905,9 +953,9 @@ bool RestDocumentHandler::checkDocument () {
 ///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -924,7 +972,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -941,7 +989,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -957,9 +1005,8 @@ bool RestDocumentHandler::checkDocument () {
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
-/// 
-///     assert(response.code === 200);
-/// 
+///     assert(response.code === 202);
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -975,7 +1022,7 @@ bool RestDocumentHandler::checkDocument () {
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -993,18 +1040,33 @@ bool RestDocumentHandler::replaceDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{keepNull,string,required}
+/// @RESTQUERYPARAM{keepNull,string,optional}
+/// If the intention is to delete existing attributes with the patch command, 
+/// the URL query parameter `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document with an
+/// attribute value of `null`.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally patch a document based on a target revision id by
+/// using the `rev` URL parameter.
 /// 
 /// @RESTQUERYPARAM{policy,string,optional}
-/// 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter.
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
 /// Partially updates the document identified by `document-handle`.
@@ -1014,12 +1076,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// in the existing document if they do exist there.
 ///
 /// Setting an attribute value to `null` in the patch document will cause a
-/// value of `null` be saved for the attribute by default. If the intention
-/// is to delete existing attributes with the patch command, the URL query parameter
-/// `keepNull` can be used with a value of `false`.
-/// This will modify the behavior of the patch command to remove any attributes
-/// from the existing document that are contained in the patch document with an
-/// attribute value of `null`.
+/// value of `null` be saved for the attribute by default. 
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document update operation to disk even in case
@@ -1104,6 +1161,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_json_t* json = parseJsonBody();
 
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+    return false;
+  }
+  
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
@@ -1224,41 +1286,35 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
+/// Deletes the document identified by `document-handle`. 
 /// 
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `rev` URL parameter.
 /// 
 /// @RESTQUERYPARAM{policy,string,optional}
-/// 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for more details).
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `if-match` HTTP header.
 /// 
 /// @RESTDESCRIPTION
-/// Deletes the document identified by `document-handle`. If the document
-/// exists and could be deleted, then a `HTTP 200` is returned.
-///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute `_id` contains the known
 /// `document-handle` of the updated document, the attribute `_rev`
 /// contains the known document revision.
 ///
-/// If the document does not exist, then a `HTTP 404` is returned and the
-/// body of the response contains an error document.
-///
-/// You can conditionally delete a document based on a target revision id by
-/// using either the `rev` URL parameter or the `if-match` HTTP header.
-/// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter. This is the same as when replacing
-/// documents (see replacing documents for more details).
-///
-/// Optionally, the URL parameter `waitForSync` can be used to force
-/// synchronisation of the document deletion operation to disk even in case
-/// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the `waitForSync` parameter
-/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
 /// applied. The `waitForSync` URL parameter cannot be used to disable
 /// synchronisation for collections that have a default `waitForSync` value

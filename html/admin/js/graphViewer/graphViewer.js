@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
 /*global EventDispatcher, ArangoAdapter, JSONAdapter */
-/*global ForceLayouter, EdgeShaper, NodeShaper */
+/*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -30,8 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function GraphViewer(svg, width, height,
-  adapterConfig, config) {
+function GraphViewer(svg, width, height, adapterConfig, config) {
   
   "use strict";
   // Check if all required inputs are given
@@ -52,8 +51,10 @@ function GraphViewer(svg, width, height,
   }
   
   var self = this,
+    graphContainer,
     nodeContainer,
     edgeContainer,
+    zoomManager,
     fixedSize,
     dispatcher,
     edges = [],
@@ -82,17 +83,27 @@ function GraphViewer(svg, width, height,
         throw "Sorry unknown layout type.";
     }
   },
+  
+  parseZoomConfig = function(config) {
+    if (config) {
+      zoomManager = new ZoomManager(width, height, svg,
+        graphContainer, self.nodeShaper, self.edgeShaper);
+    }
+  },
+  
   parseConfig = function(config) {
     var esConf = config.edgeShaper || {},
       nsConf = config.nodeShaper || {},
-      idFunc = nsConf.idfunc || undefined;
+      idFunc = nsConf.idfunc || undefined,
+      zConf = config.zoom || false;
     
     parseLayouterConfig(config.layouter);
-    edgeContainer = svg.append("svg:g");
+    edgeContainer = graphContainer.append("g");
     self.edgeShaper = new EdgeShaper(edgeContainer, esConf);
-    nodeContainer = svg.append("svg:g");
+    nodeContainer = graphContainer.append("g");
     self.nodeShaper = new NodeShaper(nodeContainer, nsConf, idFunc);
     self.layouter.setCombinedUpdateFunction(self.nodeShaper, self.edgeShaper);
+    parseZoomConfig(zConf);
   };
   
   switch (adapterConfig.type.toLowerCase()) {
@@ -117,6 +128,8 @@ function GraphViewer(svg, width, height,
     default:
       throw "Sorry unknown adapter type.";
   }    
+  
+  graphContainer = svg.append("g");
   
   parseConfig(config || {});
     

@@ -163,6 +163,22 @@ function CollectionEdgeSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief save edge w/ invalid type
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgesInvalidType : function () {
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          edge.save(v1._key, v2._key, doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an edge referring to a vertex documents by keys
 ////////////////////////////////////////////////////////////////////////////////
 

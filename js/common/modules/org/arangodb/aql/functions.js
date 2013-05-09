@@ -48,6 +48,24 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the _aqlfunctions collection
+////////////////////////////////////////////////////////////////////////////////
+
+var getStorage = function () {
+  var functions = db._collection("_aqlfunctions");
+
+  if (functions === null) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+    err.errorMessage = "collection '_aqlfunctions' not found";
+
+    throw err;
+  }
+
+  return functions;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a prefix filter on the functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,24 +142,6 @@ var stringifyFunction = function (code, name) {
   err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
     
   throw err;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the _aqlfunctions collection
-////////////////////////////////////////////////////////////////////////////////
-
-var getStorage = function () {
-  var functions = db._collection("_aqlfunctions");
-
-  if (functions === null) {
-    var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = "collection '_aqlfunctions' not found";
-
-    throw err;
-  }
-
-  return functions;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +331,7 @@ var toArrayFunctions = function (group) {
   var result = [ ];
 
   getFiltered(group).forEach(function (f) {
-    result.push({ name: f.name, code: f.code });
+    result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2) });
   });
 
   return result;

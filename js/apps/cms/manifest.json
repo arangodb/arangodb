@@ -1,0 +1,69 @@
+{
+  "name": "arangoCMS",
+  "version": "1.0.0",
+  "description": "A Content Management System for ArangoDB",
+  "thumbnail": "arangoLogo.png",
+
+  "apps": {
+    "/": "cms.js"
+  },
+  
+  "lib": ".",
+  
+  "assets": {
+    "index.html": {
+      "files": [
+        "assets/index.html"
+      ]
+    },
+    
+    "test/test.html": {
+      "files": [
+        "assets/test/runner.html"
+      ]
+    },
+    
+    "app.js": {
+      "files": [
+	      "assets/components/js/underscore/**",
+	      "assets/components/js/jquery/**",
+	      "assets/components/js/backbone/**",
+        "assets/components/js/bootstrap/**",
+        "assets/components/js/ejs/**",
+	      "assets/js/models/**",
+	      "assets/js/collections/**",
+	      "assets/js/views/**",
+	      "assets/js/routers/**"
+      ]
+    },
+    
+    "test/test.js": {
+      "files": [
+        "assets/test/lib/jasmine.js",
+        "assets/test/lib/jasmine-html.js",
+        "assets/test/specs/**"
+      ]
+    },
+
+    "style.css": {
+      "files": [
+        "assets/bootstrap.css",
+        "assets/style.css"
+      ]
+    },
+    
+    "test/style.css": {
+      "files": [
+        "assets/bootstrap.css",
+        "assets/test/style/style.css"
+      ]
+    }
+    
+  },
+  
+  "files": {
+    "templates": "assets/templates",
+    "test/templates": "assets/templates",
+    "img": "assets/bootstrap/glyphicons"
+  }
+}

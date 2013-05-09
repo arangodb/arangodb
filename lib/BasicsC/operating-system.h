@@ -126,6 +126,7 @@
 #define TRI_HAVE_POSIX                      1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
+#define TRI_HAVE_MACH                       1
 #define TRI_HAVE_MACOS_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 #define TRI_HAVE_POSIX_MMAP                 1

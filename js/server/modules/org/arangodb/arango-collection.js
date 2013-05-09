@@ -293,7 +293,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     return 0;
   }
 
-  if (typeof newValue !== "object") {
+  if (typeof newValue !== "object" || Array.isArray(newValue)) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "invalid value for parameter 'newValue'";
@@ -333,7 +333,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     return 0;
   }
   
-  if (typeof newValue !== "object") {
+  if (typeof newValue !== "object" || Array.isArray(newValue)) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "invalid value for parameter 'newValue'";

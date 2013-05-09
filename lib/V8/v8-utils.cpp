@@ -1415,12 +1415,14 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 /// - systemTime: Amount of time that this process has been scheduled
 ///   in kernel mode, measured in clock ticks.
 ///
-/// - numberThreads: Number of threads in this process.
+/// - numberOfThreads: Number of threads in this process.
 ///
-/// - residentSize: Resident Set Size: number of pages the process has
-///   in real memory.  This is just the pages which count toward text,
-///   data, or stack space.  This does not include pages which have
-///   not been demand-loaded in, or which are swapped out.
+/// - residentSize: Resident Set Size: total size of the number of pages 
+///   the process has in real memory.  This is just the pages which count 
+///   toward text, data, or stack space.  This does not include pages which 
+///   have not been demand-loaded in, or which are swapped out.
+///
+///   The resident set size is reported in bytes.
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
@@ -1438,7 +1440,7 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
   result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
   result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime / (double) info._scClkTck));
   result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime / (double) info._scClkTck));
-  result->Set(v8::String::New("numberThreads"), v8::Number::New((double) info._numberThreads));
+  result->Set(v8::String::New("numberOfThreads"), v8::Number::New((double) info._numberThreads));
   result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 

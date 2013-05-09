@@ -41,6 +41,7 @@
 #include "PriorityQueue/pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
+#include "SkipListsEx/skiplistExIndex.h"
 #include "VocBase/voc-types.h"
 
 #ifdef __cplusplus
@@ -85,6 +86,7 @@ typedef enum {
   TRI_IDX_TYPE_FULLTEXT_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
   TRI_IDX_TYPE_SKIPLIST_INDEX,
+  TRI_IDX_TYPE_SKIPLIST_EX_INDEX,
   TRI_IDX_TYPE_BITARRAY_INDEX,
   TRI_IDX_TYPE_CAP_CONSTRAINT
 }
@@ -224,6 +226,18 @@ typedef struct TRI_skiplist_index_s {
   TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
 }
 TRI_skiplist_index_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skiplistEx index supports transactions
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_skiplistEx_index_s {
+  TRI_index_t base;
+
+  SkiplistExIndex* _skiplistExIndex;  // effectively the skiplist
+  TRI_vector_t _paths;                // a list of shape pid which identifies the fields of the index
+}
+TRI_skiplistEx_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext index

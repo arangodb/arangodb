@@ -239,7 +239,8 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     result._systemTime = TRI_MicrosecondsTv(&used.ru_stime);
     result._userTime = TRI_MicrosecondsTv(&used.ru_utime);
 
-    result._residentSize = used.ru_maxrss;
+    // ru_maxrss is the resident set size in kilobytes. need to multiply with 1024 to get the number of bytes
+    result._residentSize = used.ru_maxrss * 1024; 
   }
 
 #ifdef TRI_HAVE_MACH
@@ -367,7 +368,8 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     result._userTime = st.utime;
     result._systemTime = st.stime;
     result._numberThreads = st.num_threads;
-    result._residentSize = st.rss;
+    // st.rss is measured in number of pages, we need to multiply by page size to get the actual amount
+    result._residentSize = st.rss * getpagesize();  
     result._virtualSize = st.vsize;
     result._scClkTck = sysconf(_SC_CLK_TCK);
   }

@@ -216,6 +216,58 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ invalid type 
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveInvalidDocumentType : function () {
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          collection.save(doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document w/ invalid type 
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateInvalidDocumentType : function () {
+      var d = collection.save({ _key: "test" });
+
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          collection.update(d, doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a document w/ invalid type 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceInvalidDocumentType : function () {
+      var d = collection.save({ _key: "test" });
+
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          collection.replace(d, doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document w/ invalid primary key data types
 ////////////////////////////////////////////////////////////////////////////////
 

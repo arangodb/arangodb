@@ -979,7 +979,12 @@ int SkiplistExIndex_insert(SkiplistExIndex* skiplistExIndex, SkiplistExIndexElem
 
 int SkiplistExIndex_remove(SkiplistExIndex* skiplistExIndex, SkiplistExIndexElement* element, uint64_t thisTransID) {
   int result;
-  result = TRI_RemoveElementSkipListEx(skiplistExIndex->_skiplistEx.uniqueSkiplistEx, element, NULL, thisTransID); 
+
+  // ............................................................................
+  // This has been called from the database so it has a pass level of 1
+  // ............................................................................
+  
+  result = TRI_RemoveElementSkipListEx(skiplistExIndex->_skiplistEx.uniqueSkiplistEx, element, NULL, 1, thisTransID); 
   return result;
 }
 
@@ -1355,7 +1360,12 @@ int MultiSkiplistExIndex_insert(SkiplistExIndex* skiplistExIndex, SkiplistExInde
 
 int MultiSkiplistExIndex_remove(SkiplistExIndex* skiplistExIndex, SkiplistExIndexElement* element, uint64_t thisTransID) {
   int result;
-  result = TRI_RemoveElementSkipListExMulti(skiplistExIndex->_skiplistEx.nonUniqueSkiplistEx, element, NULL, thisTransID); 
+  
+  // ............................................................................
+  // This has been called from the database so it has a pass level of 1
+  // ............................................................................
+  
+  result = TRI_RemoveElementSkipListExMulti(skiplistExIndex->_skiplistEx.nonUniqueSkiplistEx, element, NULL, 1, thisTransID); 
   return result;
 }
 

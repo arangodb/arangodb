@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_ZIP_H
-#define TRIAGENS_BASICS_C_ZIP_H 1
+#ifndef TRIAGENS_BASICS_C_TRI_ZIP_H
+#define TRIAGENS_BASICS_C_TRI_ZIP_H 1
 
 #ifdef _WIN32
  #include "BasicsC/win-utils.h"

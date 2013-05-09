@@ -5,6 +5,7 @@ mr-*.h
 *.o
 *.a
 *~
+*.pyc
 
 .libev-build-64
 .v8-build-64
@@ -54,6 +55,7 @@ Doxygen/html/
 Doxygen/latex/
 Doxygen/js/
 Documentation/arango.template
+Documentation/Examples/*.generated
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
 UnitTests/geo_suite
@@ -84,3 +86,6 @@ nbproject/
 html/admin/api-docs/
 !html/admin/api-docs/api-docs.json
 test.cpp.txt
+
+js/apps/*
+!js/apps/aardvark

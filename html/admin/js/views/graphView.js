@@ -27,7 +27,7 @@ window.graphView = Backbone.View.extend({
     };
 
     $("#creationDialog").remove();
-    ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 770);
+    ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 680);
   },
 
 

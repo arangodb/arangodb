@@ -49,7 +49,7 @@ ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be rai
 ERROR_ARANGO_SHAPER_FAILED,1001,"illegal shaper","Internal error that will be raised when the shaper encountered a porblem."
 ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be raised when trying to write to a datafile."
 ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE,1003,"unknown type","Internal error that will be raised when an unknown collection type is encountered."
-ERROR_ARANGO_READ_ONLY,1004,"ready only","Internal error that will be raised when trying to write to a read-only datafile or collection."
+ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
 ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error that will be raised when a identifier duplicate is detected."
 ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when the datafile is unreadable."
 
@@ -103,6 +103,7 @@ ERROR_ARANGO_INDEX_NEEDS_RESIZE,1223,"index needs resizing","Will be raised when
 ERROR_ARANGO_DATADIR_NOT_WRITABLE,1224,"database directory not writable","Will be raised when the database directory is not writable for the current user."
 ERROR_ARANGO_OUT_OF_KEYS,1225,"out of keys","Will be raised when a key generator runs out of keys."
 ERROR_ARANGO_DOCUMENT_KEY_MISSING,1226,"missing document key","Will be raised when a document key is missing."
+ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised when there is an attempt to create a document with an invalid type."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -238,18 +239,19 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ERROR_ARANGO_INDEX_PQ_INSERT_FAILED,3100,"priority queue insert failure","Will be raised when an attempt to insert a document into a priority queue index fails for some reason."
 ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED,3110,"priority queue remove failure","Will be raised when an attempt to remove a document from a priority queue index fails for some reason."
 ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING,3111,"priority queue remove failure - item missing in index","Will be raised when an attempt to remove a document from a priority queue index fails when document can not be located within the index."
-
-ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED,3312,"(non-unique) hash index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique hash index fails due to the fact that document is duplicated within that index."
-ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED,3313,"(non-unique) skiplist index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique skiplist index fails due to the fact that document is duplicated within that index."
+ERROR_ARANGO_INDEX_HASH_INSERT_ITEM_DUPLICATED,3112,"(non-unique) hash index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique hash index fails due to the fact that document is duplicated within that index."
+ERROR_ARANGO_INDEX_SKIPLIST_INSERT_ITEM_DUPLICATED,3113,"(non-unique) skiplist index insert failure - document duplicated in index","Will be raised when an attempt to insert a document into a non-unique skiplist index fails due to the fact that document is duplicated within that index."
 
 WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING,3200,"hash index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a hash index is caused by the document not having one or more attributes which are required by the hash index."
 WARNING_ARANGO_INDEX_HASH_UPDATE_ATTRIBUTE_MISSING,3202,"hash index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the hash index."
 WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING,3211,"hash index remove failure - item missing in index","Will be raised when an attempt to remove a document from a hash index fails when document can not be located within that index."
 
-
 WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING,3300,"skiplist index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a skiplist index is caused by in the document not having one or more attributes which are required by the skiplist index."
 WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING,3302,"skiplist index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the skiplist index."
+WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE,3304,"skiplist index insertion warning - CAS failure while attempting to insert document","Will be raised when an attempt to insert a document into a skiplist index fails due to repeated CAS failures/clashes."
 WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING,3311,"skiplist index remove failure - item missing in index","Will be raised when an attempt to remove a document from a skiplist index fails when document can not be located within that index."
+WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE,3313,"skiplist index remove warning - CAS failure while attempting to remove document","Will be raised when an attempt to remove a document into a skiplist index fails due to repeated CAS failures/clashes."
+
 
 WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING,3400,"bitarray index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a bitarray index is caused by in the document not having one or more attributes which are required by the bitarray index."
 WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING,3402,"bitarray index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the bitarray index."

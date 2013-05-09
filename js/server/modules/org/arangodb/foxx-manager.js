@@ -373,13 +373,19 @@ function routingAalApp (app, mount, prefix) {
       }
     };
 
+    var p = mount;
+
+    if (p !== "/") {
+      p = mount + "/";
+    }
+
     routes.routes.push({
       "url" : { match: "/" },
       "action" : {
         "do" : "org/arangodb/actions/redirectRequest",
         "options" : {
           "permanently" : true,
-          "destination" : mount + "/" + "index.html"
+          "destination" : p + "index.html"
         }
       }
     });
@@ -412,12 +418,13 @@ function routingAalApp (app, mount, prefix) {
         // .............................................................................
 
         var ri = context.routingInfo;
-        var p = ri.urlPrefix;
+        var rm = [ "routes", "middleware" ];
+
         var route;
         var j;
         var k;
 
-        var rm = [ "routes", "middleware" ];
+        p = ri.urlPrefix;
 
         for (k = 0;  k < rm.length;  ++k) {
           var key = rm[k];
@@ -638,7 +645,7 @@ exports.installDevApp = function (name, mount, options) {
     appId = "dev:" + name + ":" + name;
   }
   else {
-    throw new Error("not manifest found at '" + filename + "'");
+    throw new Error("no manifest found at '" + filename + "'");
   }
 
   var app = null;

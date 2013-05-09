@@ -41,7 +41,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_SHAPER_FAILED, "illegal shaper");
   REG_ERROR(ERROR_ARANGO_DATAFILE_SEALED, "datafile sealed");
   REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
-  REG_ERROR(ERROR_ARANGO_READ_ONLY, "ready only");
+  REG_ERROR(ERROR_ARANGO_READ_ONLY, "read only");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_IDENTIFIER, "duplicate identifier");
   REG_ERROR(ERROR_ARANGO_DATAFILE_UNREADABLE, "datafile unreadable");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_DATAFILE, "corrupted datafile");
@@ -81,6 +81,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "database directory not writable");
   REG_ERROR(ERROR_ARANGO_OUT_OF_KEYS, "out of keys");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_MISSING, "missing document key");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "invalid document type");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
@@ -159,7 +160,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(WARNING_ARANGO_INDEX_HASH_REMOVE_ITEM_MISSING, "hash index remove failure - item missing in index");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING, "skiplist index insertion warning - attribute missing in document");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING, "skiplist index update warning - attribute missing in revised document");
+  REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE, "skiplist index insertion warning - CAS failure while attempting to insert document");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING, "skiplist index remove failure - item missing in index");
+  REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE, "skiplist index remove warning - CAS failure while attempting to remove document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING, "bitarray index insertion warning - attribute missing in document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING, "bitarray index update warning - attribute missing in revised document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING, "bitarray index remove failure - item missing in index");
