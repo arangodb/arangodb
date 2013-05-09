@@ -910,6 +910,10 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         // encounter this situation
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
 
+        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+        regfree(&re);
+        TRI_DestroyVectorString(&files);
+
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
       }
 
