@@ -400,6 +400,34 @@ function ahuacatlBindTestSuite () {
       assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ ] }, true); });
       assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ { } ] }, true); });
       assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : { "name" : "collection" } }, true); });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test limit with bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindLimit : function () {
+      var offset, limit;
+      var data = [ 1, 2, 3, 4 ];
+
+      for (offset = 0; offset < 6; ++offset) {
+        for (limit = 0; limit < 6; ++limit) {
+          var actual = getQueryResults("FOR u IN [ 1, 2, 3, 4 ] LIMIT @offset, @count RETURN u", { "offset" : offset, "count": limit }, true);
+       
+          assertEqual(data.slice(offset, limit == 0 ? limit : offset + limit), actual);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test limit with invalid bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindLimitInvalid : function () {
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : 1 }, true); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : 1, "count" : "foo" }, true); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : "foo" }, true); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : -1, "count" : -1 }, true); });
     }
 
   };

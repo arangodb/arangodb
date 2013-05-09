@@ -81,13 +81,15 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationScheduler* applicationScheduler,
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
-                                                      HttpHandlerFactory::auth_fptr checkAuthentication)
+                                                      HttpHandlerFactory::auth_fptr checkAuthentication,
+                                                      HttpHandlerFactory::flush_fptr flushAuthentication)
   : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
+    _flushAuthentication(flushAuthentication),
     _handlerFactory(0),
     _servers(),
     _endpointList(),
@@ -289,7 +291,9 @@ bool ApplicationEndpointServer::prepare () {
   // dump used endpoints for user information
   _endpointList.dump();
 
-  _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
+  _handlerFactory = new HttpHandlerFactory(_authenticationRealm, 
+                                           _checkAuthentication, 
+                                           _flushAuthentication);
 
   return true;
 }

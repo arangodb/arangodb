@@ -1093,7 +1093,7 @@ function require (path) {
           var desc = JSON.parse(fs.read(n));
           var mainfile = m + module.normalizeModuleName("", desc.main);
 
-          if (mainfile.length < 3 || mainfile.substr(mainfile.length - 3) != ".js") {
+          if (mainfile.length < 3 || mainfile.substr(mainfile.length - 3) !== ".js") {
             mainfile += ".js";
           }
 

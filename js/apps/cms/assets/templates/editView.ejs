@@ -1,0 +1,41 @@
+<% var m = this.data.model,
+    cs = this.data.columns;
+%>
+
+<%
+  var templ = new EJS({url: 'templates/inputView.ejs'});
+%>
+
+<div id="document_modal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false">
+
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <%if (m !== undefined) {%>
+      <h3>Edit Document</h3>
+    <% } else { %>
+      <h3>New Document</h3>
+    <% } %>
+  </div>
+
+  <div class="modal-body">
+    <form id="document_form" class="form-horizontal">
+      <% if(m !== undefined) {%>
+      <div class="control-group">
+        <label class="control-label" for="_key">_key</label>
+        <div class="controls">
+          <label class="control-label" id="_key"><%=m.get("_key")%></label>
+        </div>
+      </div>
+      <%}
+        _.each(cs, function(c) { %>
+          <div class="control-group">
+            <label class="control-label" for="<%=c.name%>"><%=c.name%></label>
+            <%=templ.render({col: c, mod: m})%>
+          </div>
+        <%});%>
+    </form>
+  </div>
+  <div class="modal-footer">
+    <button id="store" class="btn btn-success pull-right">Save</button>
+  </div>
+</div>

@@ -106,6 +106,7 @@ int TRI_ReadServerId (char const* filename) {
   }
 
   json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
+
   if (json == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -119,14 +120,13 @@ int TRI_ReadServerId (char const* filename) {
 
   foundId = TRI_UInt64String(idString->_value._string.data);
   LOG_TRACE("using existing server id: %llu", (unsigned long long) foundId);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (foundId == 0) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_INTERNAL;
   }
 
   TRI_EstablishServerId(foundId);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -148,6 +148,7 @@ int TRI_WriteServerId (char const* filename) {
 
   // create a json object
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (json == NULL) {
     // out of memory
     LOG_ERROR("cannot save server id in file '%s': out of memory", filename);
@@ -168,15 +169,13 @@ int TRI_WriteServerId (char const* filename) {
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
   ok = TRI_SaveJson(filename, json, true);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (! ok) {
     LOG_ERROR("could not save server id in file '%s': %s", filename, TRI_last_error());
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     return TRI_ERROR_INTERNAL;
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -189,14 +188,14 @@ int TRI_WriteServerId (char const* filename) {
 
 int TRI_GenerateServerId () {
   uint64_t randomValue = 0ULL; // init for our friend Valgrind
-  uint32_t* value;
+  uint32_t value1, value2;
 
   // save two uint32_t values
-  value = (uint32_t*) &randomValue;
-  *(value++) = TRI_UInt32Random();
-  *(value)   = TRI_UInt32Random();
+  value1 = TRI_UInt32Random();
+  value2 = TRI_UInt32Random();
 
   // use the lower 6 bytes only
+  randomValue = (((uint64_t) value1) << 32) | ((uint64_t) value2);
   randomValue &= TRI_SERVER_ID_MASK;
 
   TRI_EstablishServerId((TRI_server_id_t) randomValue);

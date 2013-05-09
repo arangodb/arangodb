@@ -1,5 +1,43 @@
-v1.3.0-alpha2 (XXXX-XX-XX)
---------------------------
+v1.4
+------
+
+* issue #517: Foxx: Route parameters with captial letters fail
+
+* issue #512: Binded Parameters for LIMIT
+
+
+v1.3.0 (2013-05-XX)
+-------------------
+
+* fixed problem on restart ("datafile-xxx is not sealed") when server was killed
+  during a compaction run
+
+* fixed leak when using cursors with very small batchSize
+
+* issue #508: `unregistergroup` function not mentioned in http interface docs
+
+* issue #507: GET /_api/aqlfunction returns code inside parentheses
+
+* fixed issue #489: Bug in aal.install
+
+* fixed issue 505: statistics not populated on MacOS
+
+
+v1.3.0-rc1 (2013-04-24)
+-----------------------
+
+* updated documentation for 1.3.0
+
+* added node modules and npm packages
+
+* changed compaction to only compact datafiles with more at least 10% of dead
+  documents (byte size-wise)
+
+* issue #498: fixed reload of authentication info when using 
+  `require("org/arangodb/users").reload()`
+
+* issue #495: Passing an empty array to create a document results in a 
+  "phantom" document
 
 * added more precision for requests statistics figures
 

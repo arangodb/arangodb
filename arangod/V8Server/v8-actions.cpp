@@ -384,8 +384,26 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
   }
 
+  // set the full url
   string const& fullUrl = request->fullUrl();
   req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), fullUrl.size()));
+
+  // set the protocol
+  string const& protocol = request->protocol();
+  req->Set(v8g->ProtocolKey, v8::String::New(protocol.c_str(), protocol.size()));
+
+  // set the connection info
+  const ConnectionInfo& info = request->connectionInfo();
+
+  v8::Handle<v8::Object> serverArray = v8::Object::New();
+  serverArray->Set(v8g->AddressKey, v8::String::New(info.serverAddress.c_str(), info.serverAddress.size()));
+  serverArray->Set(v8g->PortKey, v8::Number::New(info.serverPort));
+  req->Set(v8g->ServerKey, serverArray);
+
+  v8::Handle<v8::Object> clientArray = v8::Object::New();
+  clientArray->Set(v8g->AddressKey, v8::String::New(info.clientAddress.c_str(), info.clientAddress.size()));
+  clientArray->Set(v8g->PortKey, v8::Number::New(info.clientPort));
+  req->Set(v8g->ClientKey, clientArray);
 
   // copy prefix
   string path = request->prefix();

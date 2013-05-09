@@ -196,7 +196,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* resu
   TRI_general_cursor_t* cursor;
 
   cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
-  if (!cursor) {
+  if (cursor == NULL) {
     return NULL;
   }
 

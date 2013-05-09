@@ -104,6 +104,14 @@ function byExample (collection, example, skip, limit) {
   var documentId = null;
   var attributes = [];
   var k;
+      
+  if (typeof example !== "object" || Array.isArray(example)) {
+    // invalid datatype for example
+    var err1 = new ArangoError();
+    err1.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    err1.errorMessage = "invaldi document type";
+    throw err1;
+  }
 
   for (k in example) {
     if (example.hasOwnProperty(k)) {

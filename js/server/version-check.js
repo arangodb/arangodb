@@ -261,7 +261,8 @@
               permanently: true,
               destination: "/_admin/html/index.html"
             }
-          }
+          },
+          priority: -1000000
         });
       }
 
@@ -356,7 +357,7 @@
     });
     
     // create a unique index on collection attribute in _aal
-    addTask("createFisbowlIndex",
+    addTask("createFishbowlIndex",
             "create indexes on collection attribute in _fishbowl collection",
       function () {
         var fishbowl = getCollection("_fishbowl");

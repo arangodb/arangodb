@@ -51,6 +51,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief types which enumerate the probability used to determine the height of node
 ////////////////////////////////////////////////////////////////////////////////
+struct TRI_skiplistEx_node_s;
 
 typedef enum {
   TRI_SKIPLIST_EX_PROB_HALF,
@@ -82,9 +83,10 @@ TRI_skiplistEx_compare_e;
 // .............................................................................
 
 typedef struct TRI_skiplistEx_nb_s {
-  void* _prev;     // points to the previous nearest neighbour of this node (the left node)
-  void* _next;     // points to the successor of this node (right node)
-} TRI_skiplistEx_nb_t; // nearest neighbour;
+  struct TRI_skiplistEx_node_s* volatile _prev; // points to the previous nearest neighbour of this node (the left node)
+  struct TRI_skiplistEx_node_s* volatile _next; // points to the successor of this node (right node)
+  volatile uint32_t _nbFlag;                    // a flag for the nearest neighbour
+} TRI_skiplistEx_nb_t;                          // nearest neighbour;
 
 
 
@@ -98,16 +100,13 @@ typedef struct TRI_skiplistEx_nb_s {
 // .............................................................................
 
 typedef struct TRI_skiplistEx_node_s {
-  uint64_t _flag;  // the _flag field operates as follows:
-                   // if (_flag & 1) == 1, then the Tower Node (the node which uses this structure) is a Glass Tower Node.
-                   // if (_flag & 2) == 2, then busy extending Tower Node
-                   // if (_flag & 4) == 4, then busy joing nearest neighbours in this Tower Node
-  volatile TRI_skiplistEx_nb_t* _column; // these represent the levels and the links within these, an array of these
+  volatile uint32_t _towerFlag;   // the _flag field operates as follows (see the corresponding source file for enum type):
+  volatile uint32_t _colLength;   // the height of the column  
+  volatile uint64_t _delTransID;  // the transaction id which removed (deleted) this node
+  volatile uint64_t _insTransID;  // the transaction id which inserted this node
+  TRI_skiplistEx_nb_t* _column;   // these represent the levels and the links within these, an array of these
   void* _extraData;
   void* _element;  
-  uint64_t _delTransID;         // the transaction id which removed (deleted) this node
-  uint64_t _insTransID;         // the transaction id which inserted this node
-  uint32_t _colLength;          // the height of the column  
 } 
 TRI_skiplistEx_node_t;
 
@@ -117,11 +116,12 @@ TRI_skiplistEx_node_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplistEx_base_s {
+
   // ...........................................................................
-  // 64 bit integer for CAS flags
+  // 32 bit integer for CAS flags
   // ...........................................................................
-  uint64_t _flags;
-  
+  volatile uint32_t _growStartEndNodesFlag;
+
   // ...........................................................................
   // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
   // stored in the skip list. 
@@ -131,12 +131,8 @@ typedef struct TRI_skiplistEx_base_s {
   // ...........................................................................
   // The size of each element which is to be stored.
   // ...........................................................................
-  uint32_t _elementSize;
+  size_t _elementSize;
   
-  // ...........................................................................
-  // The actual list itself
-  // ...........................................................................
-  char* _skiplist; 
   
   // ...........................................................................
   // The probability which is used to determine the level for insertions
@@ -150,8 +146,10 @@ typedef struct TRI_skiplistEx_base_s {
   TRI_skiplistEx_node_t _startNode;
   TRI_skiplistEx_node_t _endNode;
   
+  /* not currently used 
   TRI_mutex_t _startEndNodeExclusiveLock; // Exclusive lock in prepartion for simultaneous inserts which
                                           // affect the -\infty and \infty nodes 
+  */                                          
 }
 TRI_skiplistEx_base_t;
 
@@ -322,7 +320,8 @@ void* TRI_PrevNodeSkipListEx (TRI_skiplistEx_t*, void*, uint64_t thisTransID);
 /// @brief removes an element from the skip list using element for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*, uint64_t thisTransID);
+int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*, 
+                                 const int passLevel, const uint64_t thisTransID);
 
 
 
@@ -330,7 +329,8 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*, uint64_t thisT
 /// @brief removes an element from the skip list using key for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveKeySkipListEx (TRI_skiplistEx_t*, void*, void*, uint64_t thisTransID);
+int TRI_RemoveKeySkipListEx (TRI_skiplistEx_t*, void*, void*, 
+                             const int passLevel, const uint64_t thisTransID);
 
 
 
@@ -525,7 +525,8 @@ void* TRI_PrevNodeSkipListExMulti (TRI_skiplistEx_multi_t*, void*, uint64_t this
 /// @brief removes an element from the skip list using element for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, uint64_t thisTransID);
+int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, 
+                                      const int passLevel, const uint64_t thisTransID);
 
 
 
@@ -533,7 +534,8 @@ int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, uin
 /// @brief removes an element from the skip list using key for comparison
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveKeySkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, uint64_t thisTransID);
+int TRI_RemoveKeySkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, 
+                                  const int passLevel, const uint64_t thisTransID);
 
 
 

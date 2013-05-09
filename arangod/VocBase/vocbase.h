@@ -289,13 +289,14 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
-  char* _path;
+  char* _path;               // path to the data directory
+  char* _shutdownFilename;   // absolute filename of the file that contains the shutdown information
 
-  bool _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
-  bool _removeOnDrop;       // wipe collection from disk after dropping
-  bool _removeOnCompacted;  // wipe datafile from disk after compaction
+  bool _authInfoLoaded;      // flag indicating whether the authentication info was loaded successfully
+  bool _removeOnDrop;        // wipe collection from disk after dropping
+  bool _removeOnCompacted;   // wipe datafile from disk after compaction
   bool _defaultWaitForSync;
-  bool _forceSyncShapes;    // force syncing of shape data to disk
+  bool _forceSyncShapes;     // force syncing of shape data to disk
   bool _forceSyncProperties; // force syncing of shape data to disk
 
   TRI_voc_size_t _defaultMaximalSize;
@@ -309,6 +310,7 @@ typedef struct TRI_vocbase_s {
 
   TRI_associative_pointer_t _authInfo;
   TRI_read_write_lock_t     _authInfoLock;
+  bool                      _authInfoFlush;
 
   struct TRI_transaction_context_s* _transactionContext;
 
@@ -322,7 +324,11 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
   TRI_thread_t _cleanup;
-
+  
+  // the index garbage collection  
+  TRI_thread_t _indexGC;
+  
+  
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 

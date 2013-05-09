@@ -399,7 +399,8 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
                                                              "arangodb",
-                                                             TRI_CheckAuthenticationAuthInfo);
+                                                             TRI_CheckAuthenticationAuthInfo,
+                                                             TRI_FlushAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
