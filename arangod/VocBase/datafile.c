@@ -528,17 +528,6 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
               (unsigned int) marker->_type);
 #endif
 
-    if (marker->_size == 0 && marker->_crc == 0 && marker->_type == 0 && marker->_tick == 0) {
-      LOG_DEBUG("reached end of datafile '%s' data, current size %lu",
-                datafile->getName(datafile),
-                (unsigned long) currentSize);
-
-      datafile->_currentSize = currentSize;
-      datafile->_next = datafile->_data + datafile->_currentSize;
-
-      return true;
-    }
-
     if (marker->_size == 0) {
       LOG_DEBUG("reached end of datafile '%s' data, current size %lu",
                 datafile->getName(datafile),
