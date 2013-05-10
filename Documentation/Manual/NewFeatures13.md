@@ -20,6 +20,9 @@ As the datafile structure has changed, please read the
 Rapid API Development with FOXX{#NewFeatures13Foxx}
 ---------------------------------------------------
 
+A preview of the forthcoming Foxx is contained in 1.3. Please note
+that this is not the final version, Foxx is still experimental.
+
 Foxx is a lightweight Javascript “micro framework” which allows you to
 build applications directly on top of ArangoDB and therefore skip the
 middleman (Rails, Django, Symfony or whatever your favorite web
