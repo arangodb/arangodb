@@ -1063,7 +1063,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor console(context, ".arangosh");
+  V8LineEditor console(context, ".arangosh.history");
 
   console.open(BaseClient.autoComplete());
 
