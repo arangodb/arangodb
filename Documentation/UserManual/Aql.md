@@ -997,6 +997,16 @@ AQL supports the following functions to operate on list values:
   are ignored. If the list is empty or only `null` values are contained in the list, 
   the function will return `null`.
 
+- @FN{STDDEV_POPULATION(@FA{list})}: returns the population standard deviation of the 
+  values in @FA{list}. This requires the elements in @FA{list} to be numbers. `null` 
+  values are ignored. If the list is empty or only `null` values are contained in the list, 
+  the function will return `null`.
+
+- @FN{STDDEV_SAMPLE(@FA{list})}: returns the sample standard deviation of the values in 
+  @FA{list}. This requires the elements in @FA{list} to be numbers. `null` values 
+  are ignored. If the list is empty or only `null` values are contained in the list, 
+  the function will return `null`.
+
 - @FN{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
 
 - @FN{FIRST(@FA{list})}: returns the first element in @FA{list} or `null` if the
