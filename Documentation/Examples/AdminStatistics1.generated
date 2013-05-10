@@ -5,17 +5,18 @@ content-type: application/json; charset=utf-8
 
 { 
   "system" : { 
-    "minorPageFaults" : 18666, 
-    "majorPageFaults" : 57, 
-    "userTime" : 1.162991, 
-    "systemTime" : 0.464635, 
-    "numberThreads" : 0, 
-    "residentSize" : 34525184, 
-    "virtualSize" : 0 
+    "minorPageFaults" : 15943, 
+    "majorPageFaults" : 1468, 
+    "userTime" : 2.263013, 
+    "systemTime" : 0.534675, 
+    "numberOfThreads" : 15, 
+    "residentSize" : 30121984, 
+    "virtualSize" : 4935065600 
   }, 
   "client" : { 
     "httpConnections" : 1, 
     "connectionTime" : { 
+      "sum" : 0, 
       "count" : 0, 
       "counts" : [ 
         0, 
@@ -25,30 +26,33 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "totalTime" : { 
+      "sum" : 3.4207284450531006, 
       "count" : 54, 
       "counts" : [ 
-        51, 
+        17, 
+        20, 
+        5, 
+        6, 
+        6, 
         0, 
-        0, 
-        0, 
-        0, 
-        0, 
-        3 
+        0 
       ] 
     }, 
     "requestTime" : { 
+      "sum" : 3.3930552005767822, 
       "count" : 54, 
       "counts" : [ 
-        51, 
+        19, 
+        18, 
+        5, 
+        6, 
+        6, 
         0, 
-        0, 
-        0, 
-        0, 
-        0, 
-        3 
+        0 
       ] 
     }, 
     "queueTime" : { 
+      "sum" : 0.00289154052734375, 
       "count" : 53, 
       "counts" : [ 
         53, 
@@ -61,6 +65,7 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "bytesSent" : { 
+      "sum" : 35387, 
       "count" : 54, 
       "counts" : [ 
         13, 
@@ -72,6 +77,7 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "bytesReceived" : { 
+      "sum" : 9278, 
       "count" : 54, 
       "counts" : [ 
         52, 

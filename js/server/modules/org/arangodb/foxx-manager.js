@@ -612,7 +612,11 @@ exports.installApp = function (appId, mount, options) {
   desc.active = true;
   doc = aal.replace(doc, desc);
 
-  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  if (typeof options === "undefined" 
+   || typeof options.reload === "undefined" 
+      || options.reload === true) {
+    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  }
 
   return { appId: app._id, mountId: doc._key };
 };
