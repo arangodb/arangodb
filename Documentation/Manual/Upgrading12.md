@@ -430,7 +430,7 @@ Removed Functionality {#Upgrading12RemovedFunctionality}
 The global `edges` variable has been removed in `arangosh`. In ArangoDB 1.1 and
 before this variable could be used to create and access edge collections.
 
-Since ArangoDb 1.1, all collections can be accessed using the `db` variable, and
+Since ArangoDB 1.1, all collections can be accessed using the `db` variable, and
 there was no need to keep the `edges` variable any longer.
 
 ### arangoimp
