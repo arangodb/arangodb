@@ -1,4 +1,4 @@
-v1.3.0 (2013-05-XX)
+v1.3.0 (2013-05-10)
 -------------------
 
 * fixed problem on restart ("datafile-xxx is not sealed") when server was killed
