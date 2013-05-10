@@ -42,6 +42,9 @@ User functions can take any number of input arguments and should
 provide one result. They should be kept purely functional and thus free of
 side effects and state. 
 
+Especially it is unsupported to modify any global variables, or to change 
+data of a collection from an AQL user function. 
+
 User function code is late-bound, and may thus not rely on any variables
 that existed at the time of declaration. If user function code requires
 access to any external data, it must take care to set up the data by
