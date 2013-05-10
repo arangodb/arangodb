@@ -7,19 +7,11 @@
             "operations": [
                 {
                     "errorResponses": [],
-                    "parameters": [
-                        {
-                            "dataType": "String",
-                            "paramType": "body",
-                            "required": "false",
-                            "name": "body",
-                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
-                        }
-                    ],
-                    "notes": "",
+                    "parameters": [],
+                    "notes": "Creates an new collection with a given name. The request must contain an object with the following attributes. <br><br>- <em>name</em>: The name of the collection.<br><br>- <em>waitForSync</em> (optional, default: false): If <em>true</em> then<br>  the data is synchronised to disk before returning from a create or   update of an document. <br><br>- <em>journalSize</em> (optional, default is a @ref<br>  CommandLineArangod \"configuration parameter\"): The maximal size of   a journal or datafile.  Note that this also limits the maximal   size of a single object. Must be at least 1MB. <br><br>- <em>isSystem</em> (optional, default is <em>false</em>): If <em>true</em>, create a<br>  system collection. In this case <em>collection-name</em> should start with   an underscore. End users should normally create non-system collections   only. API implementors may be required to create system collections in   very special occasions, but normally a regular collection will do. <br><br>- <em>isVolatile</em> (optional, default is <em>false</em>): If <em>true</em> then the<br>  collection data is kept in-memory only and not made persistent. Unloading   the collection will cause the collection data to be discarded. Stopping   or re-starting the server will also cause full loss of data in the   collection. Setting this option will make the resulting collection be    slightly faster than regular collections because ArangoDB does not   enforce any synchronisation to disk and does not calculate any CRC    checksums for datafiles (as there are no datafiles). <br><br>  This option should threrefore be used for cache-type collections only,    and not for data that cannot be re-created otherwise. <br><br>- <em>keyOptions</em> (optional) additional options for key generation. If<br>  specified, then <em>keyOptions</em> should be a JSON array containing the   following attributes (note: some of them are optional):   - <em>type</em>: specifies the type of the key generator. The currently      available generators are <em>traditional</em> and <em>autoincrement</em>.   - <em>allowUserKeys</em>: if set to <em>true</em>, then it is allowed to supply     own key values in the <em>_key</em> attribute of a document. If set to      <em>false</em>, then the key generator will solely be responsible for     generating keys and supplying own key values in the <em>_key</em> attribute     of documents is considered an error.   - <em>increment</em>: increment value for <em>autoincrement</em> key generator.     Not used for other key generator types.   - <em>offset</em>: initial offset value for <em>autoincrement</em> key generator.     Not used for other key generator types. <br><br>- <em>type</em> (optional, default is <em>2</em>): the type of the collection to<br>  create. The following values for <em>type</em> are valid:   - <em>2</em>: document collection   - <em>3</em>: edges collection <br><br>",
                     "summary": "creates a collection",
                     "httpMethod": "POST",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl --data @- -X POST --dump - http://localhost:8529/_api/collection\n{ \"name\" : \"UnitTestsCollectionBasics\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"waitForSync\": false,\n  \"isVolatile\": false,\n  \"id\": 179665369,\n  \"status\": 3,\n  \"type\" : 2,\n  \"error\": false\n}\n\n> curl --data @- -X POST --dump - http://localhost:8529/_api/collection\n{ \"name\" : \"UnitTestsCollectionEdges\", \"type\" : 3 }\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionEdges\",\n  \"code\": 200,\n  \"waitForSync\": false,\n  \"isVolatile\": false,\n  \"id\": 184354432,\n  \"status\": 3,\n  \"type\": 3,\n  \"error\": false\n}\n</code></pre><br><br><br><pre><code class=\"json\" >> curl --data @- -X POST --dump - http://localhost:8529/_api/collection\n{ \"name\" : \"users\", \"keyOptions\" : { \"type\" : \"autoincrement\", \"increment\" : 5, \"allowUserKeys\" : true } }\n\nHTTP/1.1 200 OK\nlocation: /_api/collection/users\ncontent-type: application/json; charset=utf-8\n\n{\n  \"name\" : \"users\", \n  \"waitForSync\" : false,\n  \"isVolatile\" : false,\n  \"isSystem\" : false,\n  \"status\" : 3,\n  \"type\" : 2,\n  \"error\" : false,\n  \"code\": 200\n}\n</code></pre><br>",
                     "nickname": "createsACollection"
                 }
             ],
@@ -29,11 +21,19 @@
             "operations": [
                 {
                     "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "parameters": [
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "excludeSystem",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Returns an object with an attribute <em>collections</em> containing a  list of all collection descriptions. The same information is also available in the <em>names</em> as hash map with the collection names as keys. <br><br>By providing the optional URL parameter <em>excludeSystem</em> with a value of <em>true</em>, all system collections will be excluded from the response. <br><br>",
                     "summary": "reads all collections",
                     "httpMethod": "GET",
-                    "examples": "",
+                    "examples": "Return information about all collections: <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/collection\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"collections\": [\n    {\n      \"name\": \"employees\",\n      \"id\": 64091684,\n      \"status\": 3,\n      \"type\": 2\n    },\n    {\n      \"name\": \"units\",\n      \"id\": 63043108,\n      \"status\": 3,\n      \"type\": 2\n    }\n  ],\n  \"code\": 200,\n  \"names\": {\n    \"units\": {\n      \"name\": \"units\",\n      \"id\": 63043108,\n      \"status\": 3,\n      \"type\": 2\n    },\n    \"employees\": {\n      \"name\": \"employees\",\n      \"id\": 64091684,\n      \"status\": 3,\n      \"type\": 2\n    }\n  },\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "readsAllCollections"
                 }
             ],
@@ -42,100 +42,312 @@
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "The result is an object describing the collection with the following attributes: <br><br>- <em>id</em>: The identifier of the collection.<br><br>- <em>name</em>: The name of the collection.<br><br>- <em>status</em>: The status of the collection as number.<br> - 1: new born collection  - 2: unloaded  - 3: loaded  - 4: in the process of being unloaded  - 5: deleted <br><br>Every other status indicates a corrupted collection. <br><br>- <em>type</em>: The type of the collection as number.<br>  - 2: document collection (normal case)   - 3: edges collection <br><br>",
                     "summary": "reads a collection",
                     "httpMethod": "GET",
                     "examples": "",
                     "nickname": "readsACollection"
                 }
             ],
-            "path": "/_api/collection"
+            "path": "/_api/collection/{collection-name}"
         },
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "In addition to the above, the result will always contain the <em>waitForSync</em>, <em>journalSize</em>, and <em>isVolatile</em> properties.  This is achieved by forcing a load of the underlying collection. <br><br>- <em>waitForSync</em>: If <em>true</em> then creating or changing a<br>  document will wait until the data has been synchronised to disk. <br><br>- <em>journalSize</em>: The maximal size of a journal / datafile.<br><br>- <em>isVolatile</em>: If <em>true</em> then the collection data will be<br>  kept in memory only and ArangoDB will not write or sync the data   to disk. <br><br>",
+                    "summary": "reads a collection with properties",
+                    "httpMethod": "GET",
+                    "examples": "Using an identifier: <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/collection/73482\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"id\": 73482,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>Using a name: <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/collection/UnitTestsCollectionBasics\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"id\": 73482,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
+                    "nickname": "readsACollectionWithProperties"
+                }
+            ],
+            "path": "/_api/collection/{collection-name}/properties"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "In addition to the above, the result also contains the number of documents. Note that this will always load the collection into memory. <br><br>- <em>count</em>: The number of documents inside the collection.<br><br>",
+                    "summary": "reads a collection with count",
+                    "httpMethod": "GET",
+                    "examples": "Using an identifier and requesting the number of documents: <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/collection/73482/count\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"waitForSync\": true,\n  \"isVolatile\": false,\n  \"id\": 73482,\n  \"journalSize\": 33554432,\n  \"count\": 0,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
+                    "nickname": "readsACollectionWithCount"
+                }
+            ],
+            "path": "/_api/collection/{collection-name}/count"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "In addition to the above, the result also contains the number of documents and additional statistical information about the collection.  Note that this will always load the collection into memory. <br><br>- <em>count</em>: The number of documents inside the collection.<br><br>- <em>figures.alive.count</em>: The number of living documents.<br><br>- <em>figures.alive.size</em>: The total size in bytes used by all<br>  living documents. <br><br>- <em>figures.dead.count</em>: The number of dead documents.<br><br>- <em>figures.dead.size</em>: The total size in bytes used by all<br>  dead documents. <br><br>- <em>figures.dead.deletion</em>: The total number of deletion markers.<br><br>- <em>figures.datafiles.count</em>: The number of active datafiles.<br>- <em>figures.datafiles.fileSize</em>: The total filesize of datafiles.<br><br>- <em>figures.journals.count</em>: The number of journal files.<br>- <em>figures.journals.fileSize</em>: The total filesize of journal files.<br><br>- <em>figures.shapes.count</em>: The total number of shapes used in the <br>  collection (this includes shapes that are not in use anymore)  <br><br>- <em>figures.attributes.count</em>: The total number of attributes used <br>  in the collection (this includes attributes that are not in use anymore)  <br><br>- <em>journalSize</em>: The maximal size of the journal in bytes.<br><br>Note: the filesizes of shapes and compactor files are not reported. <br><br>",
+                    "summary": "reads a collection with stats",
+                    "httpMethod": "GET",
+                    "examples": "Using an identifier and requesting the figures of the collection: <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/collection/73482/figures\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"figures\": {\n    \"datafiles\": {\n      \"count\": 0,\n      \"fileSize\": 0\n    },\n    \"journals\": {\n      \"count\": 0,\n      \"fileSize\": 33554432 \n    },\n    \"alive\": {\n      \"size\": 0,\n      \"count\": 0\n    },\n    \"dead\": {\n      \"size\": 2384,\n      \"count\": 149\n    },\n    \"shapes\": {\n      \"count\": 59\n    },\n  },\n  \"waitForSync\": true,\n  \"isVolatile\": false,\n  \"id\": 73482,\n  \"journalSize\": 134217728,\n  \"count\": 0,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
+                    "nickname": "readsACollectionWithStats"
+                }
+            ],
+            "path": "/_api/collection/{collection-name}/figures"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "In addition to the above, the result will also contain the collection's revision id. The revision id is a server-generated string that clients can use to check whether data in a collection has changed since the last revision check. <br><br>- <em>revision</em>: The collection revision id as a string.<br><br>",
+                    "summary": " reads a collection with revision id",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "readsACollectionWithRevisionId"
+                }
+            ],
+            "path": "/_api/collection/{collection-name}/revision"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Loads a collection into memory. Returns the collection on success. <br><br>The request might optionally contain the following attribute: <br><br>- <em>count</em>: If set, this controls whether the return value should include<br>  the number of documents in the collection. Setting <em>count</em> to    <em>false</em> may speed up loading a collection. The default value for    <em>count</em> is <em>true</em>. <br><br>On success an object with the following attributes is returned: <br><br>- <em>id</em>: The identifier of the collection.<br><br>- <em>name</em>: The name of the collection.<br><br>- <em>count</em>: The number of documents inside the collection. This is only<br>  returned if the <em>count</em> input parameters is set to <em>true</em> or has   not been specified. <br><br>- <em>status</em>: The status of the collection as number.<br><br>- <em>type</em>: The collection type. Valid types are:<br>  - 2: document collection   - 3: edges collection <br><br>",
                     "summary": "loads a collection",
                     "httpMethod": "PUT",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl -X PUT --dump - http://localhost:8529/_api/collection/55144253/load\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"id\": 55144253,\n  \"count\": 0,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "loadsACollection"
                 }
             ],
-            "path": "/_api/collection/.../load"
+            "path": "/_api/collection/{collection-name}/load"
         },
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Removes a collection from memory. This call does not delete any documents. You can use the collection afterwards; in which case it will be loaded into memory, again. On success an object with the following attributes is returned: <br><br>- <em>id</em>: The identifier of the collection.<br><br>- <em>name</em>: The name of the collection.<br><br>- <em>status</em>: The status of the collection as number.<br><br>- <em>type</em>: The collection type. Valid types are:<br>  - 2: document collection   - 3: edges collection <br><br>",
                     "summary": "unloads a collection",
                     "httpMethod": "PUT",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl -X PUT --dump - http://localhost:8529/_api/collection/57765693/unload\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"id\": 57765693,\n  \"status\": 4,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "unloadsACollection"
                 }
             ],
-            "path": "/_api/collection/.../unload"
+            "path": "/_api/collection/{collection-name}/unload"
         },
         {
             "operations": [
                 {
                     "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Removes all documents from the collection, but leaves the indexes intact. <br><br>",
                     "summary": "truncates a collection",
                     "httpMethod": "PUT",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl -X PUT --dump - http://localhost:8529/_api/collection/56478340/truncate\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"id\": 56478340,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "truncatesACollection"
                 }
             ],
-            "path": "/_api/collection/.../truncate"
+            "path": "/_api/collection/{collection-name}/truncate"
         },
         {
             "operations": [
                 {
                     "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Changes the properties of a collection. Expects an object with the attribute(s) <br><br>- <em>waitForSync</em>: If <em>true</em> then creating or changing a<br>  document will wait until the data has been synchronised to disk. <br><br>- <em>journalSize</em>: Size (in bytes) for new journal files that are<br>  created for the collection. <br><br>If returns an object with the attributes <br><br>- <em>id</em>: The identifier of the collection.<br><br>- <em>name</em>: The name of the collection.<br><br>- <em>waitForSync</em>: The new value.<br><br>- <em>journalSize</em>: The new value.<br><br>- <em>status</em>: The status of the collection as number.<br><br>- <em>type</em>: The collection type. Valid types are:<br>  - 2: document collection   - 3: edges collection <br><br>Note: some other collection properties, such as <em>type</em> or <em>isVolatile</em>  cannot be changed once the collection is created. <br><br>",
                     "summary": "changes the properties of a collection",
                     "httpMethod": "PUT",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl --data @- -X PUT --dump - http://localhost:8529/_api/collection/70109828/properties\n{ \"waitForSync\" : true }\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics\",\n  \"code\": 200,\n  \"waitForSync\": true,\n  \"isVolatile\": false,\n  \"id\": 70109828,\n  \"journalSize\": 134217728,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "changesThePropertiesOfACollection"
                 }
             ],
-            "path": "/_api/collection/.../properties"
+            "path": "/_api/collection/{collection-name}/properties"
         },
         {
             "operations": [
                 {
                     "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Renames a collection. Expects an object with the attribute(s) <br><br>- <em>name</em>: The new name.<br><br>If returns an object with the attributes <br><br>- <em>id</em>: The identifier of the collection.<br><br>- <em>name</em>: The new name of the collection.<br><br>- <em>status</em>: The status of the collection as number.<br><br>- <em>type</em>: The collection type. Valid types are:<br>  - 2: document collection   - 3: edges collection <br><br>",
                     "summary": "renames a collection",
                     "httpMethod": "PUT",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl --data @- -X PUT --dump - http://localhost:8529/_api/collection/59230852/rename\n{ \"name\" : \"UnitTestsCollectionBasics2\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"name\": \"UnitTestsCollectionBasics2\",\n  \"code\": 200,\n  \"id\": 59230852,\n  \"status\": 3,\n  \"type\": 2,\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "renamesACollection"
                 }
             ],
-            "path": "/_api/collection/.../rename"
+            "path": "/_api/collection/{collection-name}/rename"
         },
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "errorResponses": [
+                        {
+                            "reason": "If the <em>collection-name</em> is missing, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-name",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "Deletes a collection identified by <em>collection-name</em>. <br><br>If the collection was successfully deleted then, an object is returned with the following attributes: <br><br>- <em>error</em>: <em>false</em><br><br>- <em>id</em>: The identifier of the deleted collection.<br><br>",
                     "summary": "deletes a collection",
                     "httpMethod": "DELETE",
-                    "examples": "",
+                    "examples": "Using an identifier: <br><br><pre><code class=\"json\" >> curl -X DELETE --dump - http://localhost:8529/_api/collection/101711425\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"code\": 200,\n  \"id\": 101711425,\n  \"error\": false\n}\n</code></pre><br>Using a name: <br><br><pre><code class=\"json\" >> curl -X DELETE --dump - http://localhost:8529/_api/collection/UnitTestsCollectionBasics\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"code\": 200,\n  \"id\": 103022145,\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "deletesACollection"
                 }
             ],
-            "path": "/_api/collection"
+            "path": "/_api/collection/{collection-name}"
         }
     ]
 }
