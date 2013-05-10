@@ -154,11 +154,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.initializeFoxx = function () {
+    var fm = require("org/arangodb/foxx-manager");
+
     try {
-      require("org/arangodb/foxx-manager").scanAppDirectory();
+      fm.scanAppDirectory();
     }
     catch (err) {
       console.error("cannot initialize FOXX application: %s", String(err));
+    }
+
+    var aal = internal.db._collection("_aal");
+
+    if (aal !== null) {
+      var found = aal.firstExample({ type: "mount", mount: "/_admin/aardvark" });
+
+      if (found === null) {
+        fm.installApp("aardvark", "/_admin/aardvark", {reload: false});
+      }
     }
   };
 
