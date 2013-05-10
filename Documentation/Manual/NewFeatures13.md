@@ -54,6 +54,41 @@ are performed by a still-ongoing transaction are not exposed to other
 parallel transactions. In fact, transactions on the same collection will
 be executed serially.
 
+The following example will atomically transfer money from one user account
+to another:
+
+    db._create("accounts");
+    db.accounts.save({ _key: "john", amount: 423 });
+    db.accounts.save({ _key: "fred", amount: 197 });
+
+    db._executeTransaction({
+      collections: {
+        write: "accounts"
+      },
+      params: {
+        user1: "fred",
+        user2: "john", 
+        amount: 10
+      },
+      action: function (params) {
+        var db = require("internal").db;
+        var account1 = db.accounts.document(params['user1']);
+        var account2 = db.accounts.document(params['user2']);
+        var amount = params['amount'];
+
+        if (account1.amount < amount) {
+          throw "account of user '" + user1 + "' does not have enough money!";
+        }
+
+        db.accounts.update(account1, { amount : account1.amount - amount });
+        db.accounts.update(account2, { amount : account2.amount + amount });
+
+        /* will commit the transaction and return the value true */
+        return true; 
+      }
+    });
+
+
 Please refer to @ref Transactions for more details and examples on
 transaction usage in ArangoDB.
 
