@@ -415,6 +415,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
             }
           }
 
+          TRI_Free(TRI_CORE_MEM_ZONE, filename);
+
           filename = newName;
           TRI_PushBackVectorString(&structure._datafiles, filename);
         }
@@ -1151,6 +1153,7 @@ int TRI_LoadCollectionInfo (char const* path,
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
@@ -1191,7 +1194,7 @@ int TRI_LoadCollectionInfo (char const* path,
 
         parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
       }
-      else if (value->_type == TRI_JSON_STRING) {
+      else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
     }
