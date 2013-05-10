@@ -282,7 +282,6 @@ var dashboardView = Backbone.View.extend({
           if (v.identifier === tempName) {
             myType = v.type;
             if (v.units === 'bytes') {
-              console.log(val);
               if (val.sum === undefined) {
                 val = val / 1024 / 1024;
                 val = Math.round(val*100)/100;
