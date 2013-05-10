@@ -7,9 +7,9 @@ New Features in ArangoDB 1.3 {#NewFeatures13}
 Features and Improvements {#NewFeatures13Introduction}
 ======================================================
 
-The following list shows in detail which features have been added or
-improved in ArangoDB 1.3.  ArangoDB 1.3 also contains several bugfixes
-that are not listed here.
+The following list shows in detail which features have been added or improved in
+ArangoDB 1.3.  ArangoDB 1.3 also contains several bugfixes that are not listed
+here.
 
 Changes to the Datafile Structure{#NewFeatures13Datafile}
 ---------------------------------------------------------
@@ -20,15 +20,14 @@ As the datafile structure has changed, please read the
 Rapid API Development with FOXX{#NewFeatures13Foxx}
 ---------------------------------------------------
 
-A preview of the forthcoming Foxx is contained in 1.3. Please note
-that this is not the final version, Foxx is still experimental.
+A preview of the forthcoming Foxx is contained in 1.3. Please note that this is
+not the final version, Foxx is still experimental.
 
-Foxx is a lightweight Javascript "micro framework" which allows you to
-build applications directly on top of ArangoDB and therefore skip the
-middleman (Rails, Django, Symfony or whatever your favorite web
-framework is). Inspired by frameworks like Sinatra Foxx is designed
-with simplicity and the specific use case of modern client-side MVC
-frameworks in mind.
+Foxx is a lightweight Javascript "micro framework" which allows you to build
+applications directly on top of ArangoDB and therefore skip the middleman
+(Rails, Django, Symfony or whatever your favorite web framework is). Inspired by
+frameworks like Sinatra Foxx is designed with simplicity and the specific use
+case of modern client-side MVC frameworks in mind.
 
 The screencast at
 <a href="http://foxx.arangodb.org">http://foxx.arangodb.org</a>
@@ -37,25 +36,24 @@ explains how to use Foxx.
 Transactions{#NewFeatures13Transactions}
 ----------------------------------------
 
-ArangoDB provides server-side transactions that allow executing multi-
-document and even multi-collection operations with ACID guarantees.
+ArangoDB provides server-side transactions that allow executing multi-document
+and even multi-collection operations with ACID guarantees.
 
-Transactions in ArangoDB are defined by providing a JavaScript object 
-which needs to contain the transaction code, and some declarations about
-the collections involved in the transaction.
+Transactions in ArangoDB are defined by providing a JavaScript object which
+needs to contain the transaction code, and some declarations about the
+collections involved in the transaction.
 
-The transaction code will be executed by the server en bloc. If 
-execution of any statement in the transaction code fails for whatever reason, 
-the entire transaction will be aborted and rolled back.
+The transaction code will be executed by the server en bloc. If execution of any
+statement in the transaction code fails for whatever reason, the entire
+transaction will be aborted and rolled back.
 
-Data modifications done by transactions become visible to following
-transactions only when a transaction succeeds. Data modifications that
-are performed by a still-ongoing transaction are not exposed to other
-parallel transactions. In fact, transactions on the same collection will
-be executed serially.
+Data modifications done by transactions become visible to following transactions
+only when a transaction succeeds. Data modifications that are performed by a
+still-ongoing transaction are not exposed to other parallel transactions. In
+fact, transactions on the same collection will be executed serially.
 
-The following example will atomically transfer money from one user account
-to another:
+The following example will atomically transfer money from one user account to
+another:
 
     db._create("accounts");
     db.accounts.save({ _key: "john", amount: 423 });
@@ -89,35 +87,40 @@ to another:
     });
 
 
-Please refer to @ref Transactions for more details and examples on
-transaction usage in ArangoDB.
+Please refer to @ref Transactions for more details and examples on transaction
+usage in ArangoDB.
 
 New Administration Interface{#NewFeatures13Admin}
 -------------------------------------------------
 
-TODO
+ArangoDB 1.3 comes with a new administration front-end. The front-end is now
+based on backbone and uses repl.it, which allows for instance line editing when
+using the browser based ArangoDB shell.
+
+Please note, that the "Application" tab belongs to the forthcoming @ref
+NewFeatures13Foxx Foxx. The functionality below this tab is neither stable nor
+complete. It has been shipped as a feature preview.
 
 New Server Statistics{#NewFeatures13Statistics}
 -----------------------------------------------
 
 The server statistics provided by ArangoDB have been changed in 1.3.
 
-Before version 1.3, the server provided a multi-level history of request
-and connection statistics. Values for each incoming request and connection 
-were kept individually and mapped to the chronological period they appeared
-in. The server then provided aggregated values for different periods, 
-which was implemented using a constant recalculation of the aggregation 
-values.
+Before version 1.3, the server provided a multi-level history of request and
+connection statistics. Values for each incoming request and connection were kept
+individually and mapped to the chronological period they appeared in. The server
+then provided aggregated values for different periods, which was implemented
+using a constant recalculation of the aggregation values.
 
-To lower ArangoDB's CPU usage, the constant recalculation has been removed
-in 1.3. Instead, the server will now only keep aggregate values per figure
+To lower ArangoDB's CPU usage, the constant recalculation has been removed in
+1.3. Instead, the server will now only keep aggregate values per figure
 reported, but will not provide any chronological values.
 
 Request and connection statistics values are 0 at server start, and will be
 increased with each incoming request or connection. Clients querying the
-statistics will see the accumulated values only. They can calculate the 
-values for a period of time by querying the statistics twice and calculating
-the difference between the values themselves. 
+statistics will see the accumulated values only. They can calculate the values
+for a period of time by querying the statistics twice and calculating the
+difference between the values themselves.
 
 The REST APIs for the statistics in ArangoDB 1.3 can be found at:
 
@@ -139,9 +142,9 @@ are not available in ArangoDB 1.3 anymore.
 AQL extensions{#NewFeatures13AQL}
 ---------------------------------
 
-It is now possible to extend AQL with user-defined functions. 
-These functions need to be written in Javascript, and be registered before usage
-in an AQL query.
+It is now possible to extend AQL with user-defined functions.  These functions
+need to be written in Javascript, and be registered before usage in an AQL
+query.
 
     arangosh> var aqlfunctions = require("org/arangodb/aql/functions");
     arangosh> aqlfunctions.register("myfunctions:double", function (value) { return value * 2; }, true);
@@ -216,16 +219,12 @@ instance CoffeeScript.
       9 
     ]
 
-The node packages can be installed using npm in the "share/npm"
-directory. If you find out, that a node package is also working
-under ArangoDB, please share your findings with us and other
-users.
+The node packages can be installed using npm in the "share/npm" directory. If
+you find out, that a node package is also working under ArangoDB, please share
+your findings with us and other users.
 
 Miscelleanous changes{#NewFeatures13Misc}
 -----------------------------------------
-
-* added `db._saveOrReplace()` method for server-side JavaScript.
-  TODO
 
 * Added server startup option `--database.force-sync-properties` to force syncing of
   collection properties on collection creation, deletion and on collection properties
@@ -285,4 +284,3 @@ Miscelleanous changes{#NewFeatures13Misc}
   The result will now contain an attribute `attributes` with a sub-attribute `count`.
   This value provides the number of different attributes that are or have been used
   in the collection.
-
