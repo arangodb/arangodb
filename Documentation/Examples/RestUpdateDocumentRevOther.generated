@@ -1,3 +1,3 @@
-unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/25903527
+unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/26952103
 {}
 
