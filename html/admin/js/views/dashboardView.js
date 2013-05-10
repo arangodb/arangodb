@@ -1,6 +1,7 @@
 var dashboardView = Backbone.View.extend({
   el: '#content',
   updateInterval: 5000,
+  counterInterval: 0,
   arraySize: 100,
   clients: [],
   systems: [],
@@ -12,16 +13,46 @@ var dashboardView = Backbone.View.extend({
 
     this.collection.fetch({
       success: function() {
+        var toCheck;
         self.renderCharts("system");
         self.renderCharts("client");
         window.setInterval(function() {
-          self.collection.fetch({
-            success: function() {
-              self.updateSystems();
-              self.updateCharts("system");
-              self.updateCharts("client");
-            }
-          });
+              var toCheck = false;
+
+              self.counterInterval++;
+              if (self.updateInterval === 5000 && self.counterInterval === 1) {
+                toCheck = true;
+                self.counterInterval = 0;
+              }
+              else if (self.updateInterval === 15000 && self.counterInterval === 3) {
+                toCheck = true;
+                self.counterInterval = 0;
+              }
+              else if (self.updateInterval === 30000 && self.counterInterval === 6) {
+                toCheck = true;
+                self.counterInterval = 0;
+              }
+              else if (self.updateInterval === 60000 && self.counterInterval === 12) {
+                toCheck = true;
+                self.counterInterval = 0;
+              }
+              else if (self.updateInterval === 120000 && self.counterInterval === 24) {
+                toCheck = true;
+                self.counterInterval = 0;
+              }
+              else {
+                return false;
+              }
+              if (toCheck === true) {
+                self.collection.fetch({
+                  success: function() {
+                    self.updateSystems();
+                    self.updateCharts("system");
+                    self.updateCharts("client");
+                  }
+                });
+
+              }
         }, self.updateInterval);
       }
     });
@@ -71,8 +102,8 @@ var dashboardView = Backbone.View.extend({
   },
   checkInterval: function (a) {
     var self = this;
-    console.log(self.updateInterval);
     self.updateInterval = a.target.value * 1000;
+
   },
   checkEnabled: function (a) {
     var myId = a.target.id;
@@ -110,7 +141,12 @@ var dashboardView = Backbone.View.extend({
 
         $.each(self.options.description.models[0].attributes.figures, function(k,v) {
           if (v.identifier === client) {
-            label = v.units;
+            if (v.units === 'bytes') {
+              label = 'megabyte';
+            }
+            else {
+              label = v.units;
+            }
           }
         });
 
@@ -168,7 +204,12 @@ var dashboardView = Backbone.View.extend({
       .axisLabel("")
       $.each(self.options.description.models[0].attributes.figures, function(k,v) {
         if (v.identifier === client) {
-          label = v.units;
+            if (v.units === 'bytes') {
+              label = 'megabyte';
+            }
+            else {
+              label = v.units;
+            }
         }
       });
 
@@ -236,35 +277,44 @@ var dashboardView = Backbone.View.extend({
 
         var timeStamp = Math.round(+new Date()/1000);
 
-
-          //FIX FIX TODO
-          var myType;
-          $.each(self.options.description.models[0].attributes.figures, function(k,v) {
-            if (v.identifier === tempName) {
-              myType = v.type;
+        var myType;
+        $.each(self.options.description.models[0].attributes.figures, function(k,v) {
+          if (v.identifier === tempName) {
+            myType = v.type;
+            if (v.units === 'bytes') {
+              console.log(val);
+              if (val.sum === undefined) {
+                val = val / 1024 / 1024;
+                val = Math.round(val*100)/100;
+              }
+              else {
+                val.sum = val.sum / 1024 / 1024;
+                val.sum = Math.round(val.sum*100)/100;
+              }
             }
-          });
+          }
+        });
 
-          if (myType === "current") {
-            tempArray.push({x:timeStamp, y:val});
-            return;
+        if (myType === "current") {
+          tempArray.push({x:timeStamp, y:val});
+          return;
+        }
+        else {
+          if (val.sum === undefined) {
+            var calculatedSum = val - self.oldSum[tempName];
+            //Round value
+            calculatedSum = Math.round(calculatedSum*100)/100;
+            self.oldSum[tempName] = val;
+            tempArray.push({x:timeStamp, y:calculatedSum});
           }
           else {
-            if (val.sum === undefined) {
-              var calculatedSum = val - self.oldSum[tempName];
-              //Round value
-              calculatedSum = Math.round(calculatedSum*100)/100;
-              self.oldSum[tempName] = val;
-              tempArray.push({x:timeStamp, y:calculatedSum});
-            }
-            else {
-              var calculatedSum = val.sum - self.oldSum[tempName];
-              //Round value
-              calculatedSum = Math.round(calculatedSum*100)/100;
-              self.oldSum[tempName] = val.sum;
-              tempArray.push({x:timeStamp, y:calculatedSum});
-            }
+            var calculatedSum = val.sum - self.oldSum[tempName];
+            //Round value
+            calculatedSum = Math.round(calculatedSum*100)/100;
+            self.oldSum[tempName] = val.sum;
+            tempArray.push({x:timeStamp, y:calculatedSum});
           }
+        }
       }
     });
   },
@@ -289,7 +339,7 @@ var dashboardView = Backbone.View.extend({
       '<div class="statChart" id="'+identifier+'Chart"><svg class="svgClass"/></div>' +
       '</li>'
     );
-    $('.client-entry').after(
+    $('#lastDashDivider').before(
       '<li><a><label class="checkbox">'+
       '<input type="checkbox" id='+identifier+'Checkbox checked>'+name+'</label></a></li>'
     );
@@ -301,31 +351,31 @@ var dashboardView = Backbone.View.extend({
       '<div class="statChart" id="'+identifier+'Chart"><svg class="svgClass"/></div>' +
       '</li>'
     );
-    $('.system-entry').after(
+    $('#firstDashDivider').before(
       '<li><a><label class="checkbox">'+
       '<input type="checkbox" id='+identifier+'Checkbox checked>'+name+'</label></a></li>'
     );
   },
   /*
-  renderSystem: function (identifier, name, desc, type, units) {
-    $('#system').append(
-      '<div class="statSystem" id="'+identifier+'">' +
-      '<table><tr>' +
-      '<th>'+ name +'</th>' +
-      '<th class="updateValue">'+ 'counting...' +'</th>' +
-      '</tr></table>' +
-      '</div>'
-    );
-  },
-  */
-  updateClient: function (identifier, count, counts) {
+renderSystem: function (identifier, name, desc, type, units) {
+$('#system').append(
+'<div class="statSystem" id="'+identifier+'">' +
+'<table><tr>' +
+'<th>'+ name +'</th>' +
+'<th class="updateValue">'+ 'counting...' +'</th>' +
+'</tr></table>' +
+'</div>'
+);
+},
+*/
+updateClient: function (identifier, count, counts) {
 
-  },
-  updateSystems: function () {
-    $.each(this.collection.models[0].attributes.system, function(key, val) {
-      $('#'+key+' .updateValue').html(val);
-    });
+},
+updateSystems: function () {
+  $.each(this.collection.models[0].attributes.system, function(key, val) {
+    $('#'+key+' .updateValue').html(val);
+  });
 
-  }
+}
 
 });
