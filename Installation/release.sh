@@ -14,7 +14,7 @@ fi
 
 VERSION="$1"
 
-git tag | fgrep -q "v$VERSION"
+git tag | grep -q "^v$VERSION\$"
 
 if [ "$?" == 0 ];  then
   echo "$0: version $VERSION already defined"
