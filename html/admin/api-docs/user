@@ -21,15 +21,7 @@
             "operations": [
                 {
                     "errorResponses": [],
-                    "parameters": [
-                        {
-                            "dataType": "String",
-                            "paramType": "body",
-                            "required": "false",
-                            "name": "body",
-                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
-                        }
-                    ],
+                    "parameters": [],
                     "notes": "",
                     "summary": "creates user",
                     "httpMethod": "POST",
