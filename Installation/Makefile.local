@@ -27,7 +27,7 @@ publish-html:
 	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
 	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images/; done
 	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
-	@cp Documentation/Manual/arangodb_1.2_shell_reference_card.pdf $(OUTPUT_FOLDER)
+	@cp Documentation/Manual/arangodb_$(MAJOR_MINOR)_shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 publish-pdf: $(OUTPUT_FOLDER)
 	$(MAKE) latex
@@ -38,4 +38,3 @@ publish-pdf: $(OUTPUT_FOLDER)
 	cp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
 	cp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
 	cp Documentation/Manual/arangodb_1.2_shell_reference_card.pdf $(OUTPUT_FOLDER)
-

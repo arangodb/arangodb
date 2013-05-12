@@ -16,10 +16,6 @@
 
 # -*- mode: Makefile; -*-
 
-################################################################################
-### @brief source to build before compile
-################################################################################
-
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -1048,6 +1044,14 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+comma := ,
+empty := 
+space := $(empty) $(empty)
+MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
+
+################################################################################
+### @brief source to build before compile
+################################################################################
 
 ################################################################################
 ### @brief sets up the directories
@@ -1720,7 +1724,8 @@ DOXYGEN_TOC = \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/RefManual/RefManual.md \
-	Documentation/UserManual/UserManual.md
+	Documentation/UserManual/UserManual.md \
+	Documentation/Manual/Upgrading.md
 
 
 ################################################################################
@@ -1827,6 +1832,7 @@ WIKI = \
 	RestEdge \
 	SimpleQueries \
 	Transactions \
+	Upgrading \
 	Upgrading11 \
 	Upgrading12 \
 	Upgrading13 \
