@@ -14,7 +14,8 @@ DOXYGEN_TOC = \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/RefManual/RefManual.md \
-	Documentation/UserManual/UserManual.md
+	Documentation/UserManual/UserManual.md \
+	Documentation/Manual/Upgrading.md
 
 ################################################################################
 ### @brief install man pages
@@ -133,6 +134,7 @@ WIKI = \
 	RestEdge \
 	SimpleQueries \
 	Transactions \
+	Upgrading \
 	Upgrading11 \
 	Upgrading12 \
 	Upgrading13 \
