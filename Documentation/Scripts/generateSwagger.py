@@ -289,9 +289,9 @@ def restdescription(cargo, r=Regexen()):
                 operation['notes'] += '<br><br>'
         elif r.DESCRIPTION_LI.match(line):           operation['notes'] += Typography(line[4:-1]) + '<br>'
         elif r.read_through.match(line):             return read_through, (fp, line)
-        elif r.EXAMPLES.match(line):
-            return examples, (fp, line)
-        elif r.RESTRETURNCODES.match(line):				   return restreturncodes, (fp, line)
+        elif r.EXAMPLES.match(line):                 return examples, (fp, line)
+        elif len(line) >= 4 and line[:4] == "////":  continue
+        elif r.RESTRETURNCODES.match(line):	     return restreturncodes, (fp, line)
         else:
             operation['notes'] += Typography(line[4:-1]) + ' '
         last = line
