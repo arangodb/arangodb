@@ -119,7 +119,7 @@ static bool AppendListValues (TRI_string_buffer_t* const buffer,
   n = node->_members._length;
   for (i = 0; i < n; ++i) {
     if (i > 0) {
-      if (TRI_AppendStringStringBuffer(buffer, ", ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, ", ", 2) != TRI_ERROR_NO_ERROR) {
         return false;
       }
     }
@@ -327,20 +327,30 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
                              const TRI_aql_value_t* const value,
                              const TRI_aql_value_type_e type) {
   switch (type) {
-    case TRI_AQL_TYPE_FAIL:
-      return (TRI_AppendStringStringBuffer(buffer, "fail") == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_TYPE_FAIL: {
+      return (TRI_AppendString2StringBuffer(buffer, "fail", 4) == TRI_ERROR_NO_ERROR);
+    }
 
-    case TRI_AQL_TYPE_NULL:
-      return (TRI_AppendStringStringBuffer(buffer, "null") == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_TYPE_NULL: {
+      return (TRI_AppendString2StringBuffer(buffer, "null", 4) == TRI_ERROR_NO_ERROR);
+    }
 
-    case TRI_AQL_TYPE_BOOL:
-      return (TRI_AppendStringStringBuffer(buffer, value->_value._bool ? "true" : "false") == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_TYPE_BOOL: {
+      if (value->_value._bool) {
+        return (TRI_AppendString2StringBuffer(buffer, "true", 4) == TRI_ERROR_NO_ERROR);
+      }
+      else {
+        return (TRI_AppendString2StringBuffer(buffer, "false", 5) == TRI_ERROR_NO_ERROR);
+      }
+    }
 
-    case TRI_AQL_TYPE_INT:
+    case TRI_AQL_TYPE_INT: {
       return (TRI_AppendInt64StringBuffer(buffer, value->_value._int) == TRI_ERROR_NO_ERROR);
+    }
 
-    case TRI_AQL_TYPE_DOUBLE:
+    case TRI_AQL_TYPE_DOUBLE: {
       return (TRI_AppendDoubleStringBuffer(buffer, value->_value._double) == TRI_ERROR_NO_ERROR);
+    }
 
     case TRI_AQL_TYPE_STRING: {
       char* escapedString;
@@ -354,12 +364,13 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
                                             value->_value._string,
                                             strlen(value->_value._string),
                                             false,
-                                            &outLength);
+                                            &outLength,
+                                            false);
       if (escapedString == NULL) {
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, escapedString) != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, escapedString, outLength) != TRI_ERROR_NO_ERROR) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString);
 
         return false;
@@ -426,20 +437,30 @@ bool TRI_ValueStringAql (TRI_string_buffer_t* const buffer,
                          const TRI_aql_value_t* const value,
                          const TRI_aql_value_type_e type) {
   switch (type) {
-    case TRI_AQL_TYPE_FAIL:
-      return (TRI_AppendStringStringBuffer(buffer, "fail") == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_TYPE_FAIL: {
+      return (TRI_AppendString2StringBuffer(buffer, "fail", 4) == TRI_ERROR_NO_ERROR);
+    }
 
-    case TRI_AQL_TYPE_NULL:
-      return (TRI_AppendStringStringBuffer(buffer, "null") == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_TYPE_NULL: {
+      return (TRI_AppendString2StringBuffer(buffer, "null", 4) == TRI_ERROR_NO_ERROR);
+    }
 
-    case TRI_AQL_TYPE_BOOL:
-      return (TRI_AppendStringStringBuffer(buffer, value->_value._bool ? "true" : "false") == TRI_ERROR_NO_ERROR);
+    case TRI_AQL_TYPE_BOOL: {
+      if (value->_value._bool) { 
+        return (TRI_AppendString2StringBuffer(buffer, "true", 4) == TRI_ERROR_NO_ERROR);
+      }
+      else {
+        return (TRI_AppendString2StringBuffer(buffer, "false", 5) == TRI_ERROR_NO_ERROR);
+      }
+    }
 
-    case TRI_AQL_TYPE_INT:
+    case TRI_AQL_TYPE_INT: {
       return (TRI_AppendInt64StringBuffer(buffer, value->_value._int) == TRI_ERROR_NO_ERROR);
+    }
 
-    case TRI_AQL_TYPE_DOUBLE:
+    case TRI_AQL_TYPE_DOUBLE: {
       return (TRI_AppendDoubleStringBuffer(buffer, value->_value._double) == TRI_ERROR_NO_ERROR);
+    }
 
     case TRI_AQL_TYPE_STRING: {
       if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
@@ -473,7 +494,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, " : ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, " : ", 3) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -481,7 +502,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_NODE_LIST: {
-      if (TRI_AppendStringStringBuffer(buffer, "[ ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, "[ ", 2) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -489,11 +510,11 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      return (TRI_AppendStringStringBuffer(buffer, " ]") == TRI_ERROR_NO_ERROR);
+      return (TRI_AppendString2StringBuffer(buffer, " ]", 2) == TRI_ERROR_NO_ERROR);
     }
 
     case TRI_AQL_NODE_ARRAY: {
-      if (TRI_AppendStringStringBuffer(buffer, "{ ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, "{ ", 2) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -501,7 +522,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      return (TRI_AppendStringStringBuffer(buffer, " }") == TRI_ERROR_NO_ERROR);
+      return (TRI_AppendString2StringBuffer(buffer, " }", 2) == TRI_ERROR_NO_ERROR);
     }
 
     case TRI_AQL_NODE_OPERATOR_UNARY_PLUS:
@@ -542,7 +563,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, " ? ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, " ? ", 3) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -550,7 +571,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, " : ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, " : ", 3) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -562,7 +583,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, ".") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendCharStringBuffer(buffer, '.') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -574,7 +595,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, "[") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendCharStringBuffer(buffer, '[') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -582,7 +603,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      return TRI_AppendStringStringBuffer(buffer, "]") == TRI_ERROR_NO_ERROR;
+      return TRI_AppendCharStringBuffer(buffer, ']') == TRI_ERROR_NO_ERROR;
     }
 
     case TRI_AQL_NODE_FCALL: {
@@ -592,7 +613,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, "(") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendCharStringBuffer(buffer, '(') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -600,7 +621,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      return TRI_AppendStringStringBuffer(buffer, ")") == TRI_ERROR_NO_ERROR;
+      return TRI_AppendCharStringBuffer(buffer, ')') == TRI_ERROR_NO_ERROR;
     }
 
     case TRI_AQL_NODE_FCALL_USER: {
@@ -608,7 +629,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, "(") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendCharStringBuffer(buffer, '(') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -616,7 +637,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      return TRI_AppendStringStringBuffer(buffer, ")") == TRI_ERROR_NO_ERROR;
+      return TRI_AppendCharStringBuffer(buffer, ')') == TRI_ERROR_NO_ERROR;
     }
 
     case TRI_AQL_NODE_EXPAND: {
@@ -654,7 +675,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (TRI_AppendStringStringBuffer(buffer, " = ") != TRI_ERROR_NO_ERROR) {
+      if (TRI_AppendString2StringBuffer(buffer, " = ", 3) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
@@ -662,7 +683,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     default: {
-      // nadata
+      // nada
     }
   }
 

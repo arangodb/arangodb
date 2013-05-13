@@ -380,7 +380,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     _response->headResponse(TRI_LengthStringBuffer(&buffer));
   }
 
-  TRI_AnnihilateStringBuffer(&buffer);
+  TRI_DestroyStringBuffer(&buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
