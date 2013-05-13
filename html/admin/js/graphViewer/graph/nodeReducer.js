@@ -40,6 +40,6 @@ function NodeReducer(nodes, edges) {
   var self = this;
     
   self.getCommunity = function(limit, focus) {
-    return null;
+    return [];
   };
 }

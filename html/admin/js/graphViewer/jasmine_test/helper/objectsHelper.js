@@ -62,6 +62,7 @@ var helper = helper || {};
         edges.push(helper.createSimpleEdge(nodes, toConnect[i], toConnect[j]));
       }
     }
+    return edges;
   };
   
 }());

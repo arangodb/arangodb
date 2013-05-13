@@ -119,7 +119,7 @@
         
         it('should prefer cliques as a community over an equal sized other group', function() {
           nodes = helper.createSimpleNodes([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-          edges = helper.createcreateClique(nodes, [0, 1, 2, 3]);
+          edges = helper.createClique(nodes, [0, 1, 2, 3]);
           edges.push(helper.createSimpleEdge(nodes, 4, 3));
           edges.push(helper.createSimpleEdge(nodes, 4, 5));
           edges.push(helper.createSimpleEdge(nodes, 5, 6));
@@ -132,7 +132,7 @@
         
         it('should not return a close group if there is an alternative', function() {
           nodes = helper.createSimpleNodes([0, 1, 2, 3, 4, 5, 6, 7]);
-          edges = helper.createcreateClique(nodes, [0, 1, 2]);
+          edges = helper.createClique(nodes, [0, 1, 2]);
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
           edges.push(helper.createSimpleEdge(nodes, 4, 5));
