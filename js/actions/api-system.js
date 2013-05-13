@@ -179,9 +179,15 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/routing/reload,reloads the routing collection}
 ///
-/// @REST{POST /_admin/routing/reload}
+/// @RESTDESCRIPTION
 ///
-/// The reloads the routing information from the collection `routing`.
+/// Reloads the routing information from the collection `routing`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Routing information was reloaded successfully.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -216,10 +222,16 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/modules/flush,flushs the module cache}
 ///
-/// @REST{POST /_admin/modules/flush}
+/// @RESTDESCRIPTION
 ///
-/// The call flushes the modules cache on the server. See @ref JSModulesCache
+/// The call flushes the modules cache on the server. See `JSModulesCache`
 /// for details about this cache.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Module cache was flushed successfully.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -240,10 +252,16 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{GET /_admin/time,returns the system time}
 ///
-/// @REST{GET /_admin/time}
+/// @RESTDESCRIPTION
 ///
 /// The call returns an object with the attribute `time`. This contains the
 /// current system time as a Unix timestamp with microsecond precision.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Time was returned successfully.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -262,7 +280,7 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{GET /_admin/echo,returns the current request}
 ///
-/// @REST{GET /_admin/echo}
+/// @RESTDESCRIPTION
 ///
 /// The call returns an object with the following attributes:
 ///
@@ -271,6 +289,12 @@ actions.defineHttp({
 /// - `requestType`: the HTTP request method (e.g. GET)
 ///
 /// - `parameters`: list of URL parameters received
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Echo was returned successfully.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -292,6 +316,7 @@ actions.defineHttp({
 /// @RESTHEADER{GET /_admin/statistics,reads the statistics}
 ///
 /// @RESTDESCRIPTION
+///
 /// Returns the statistics information. The returned objects contains the
 /// statistics figures group together according to the description returned by
 /// `_admin/statistics-description`. For instance, to access a figure `userTime`
@@ -348,6 +373,7 @@ actions.defineHttp({
 /// @RESTHEADER{GET /_admin/statistics-description,statistics description}
 /// 
 /// @RESTDESCRIPTION
+///
 /// Returns a description of the statistics returned by `/_admin/statistics`.
 /// The returned objects contains a list of statistics groups in the attribute
 /// `groups` and a list of statistics figures in the attribute `figures`.
@@ -574,7 +600,12 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/execute,executes a program}
 ///
-/// Executes the body on the server.
+/// @RESTBODYPARAM{body,javascript,required}
+/// The body to be executed.
+///
+/// @RESTDESCRIPTION
+///
+/// Executes the javascript code in the body on the server.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

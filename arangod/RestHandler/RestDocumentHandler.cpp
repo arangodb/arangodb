@@ -515,7 +515,7 @@ bool RestDocumentHandler::readDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('GET', url);
@@ -532,7 +532,7 @@ bool RestDocumentHandler::readDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 ///     var headers = {"If-None-Match":  "\"" + document._rev + "\""};
 /// 
@@ -669,9 +669,9 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     db.products.save({"hello1":"world1"});
-///     db.products.save({"hello2":"world1"});
-///     db.products.save({"hello3":"world1"});
+///     db.products.save({"hallo1":"world1"});
+///     db.products.save({"hallo2":"world1"});
+///     db.products.save({"hallo3":"world1"});
 ///     var url = "/_api/document/?collection=" + cn;
 /// 
 ///     var response = logCurlRequest('GET', url);
@@ -799,7 +799,7 @@ bool RestDocumentHandler::readAllDocuments () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('HEAD', url);
@@ -950,7 +950,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
@@ -967,7 +967,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -984,7 +984,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -1001,7 +1001,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -1017,7 +1017,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -1126,6 +1126,20 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @EXAMPLES
 ///
+/// @EXAMPLE_ARANGOSH_RUN{RestPatchDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hello":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PATCH', url, "{'one': 1, 'two': 2, 'three': 3}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @verbinclude rest-patch-document
 ////////////////////////////////////////////////////////////////////////////////
 
