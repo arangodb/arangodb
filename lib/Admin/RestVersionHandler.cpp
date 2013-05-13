@@ -97,12 +97,12 @@ HttpHandler::status_e RestVersionHandler::execute () {
   TRI_json_t server;
   TRI_json_t version;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
 
-  TRI_InitStringJson(TRI_CORE_MEM_ZONE, &server, TRI_DuplicateString(_name.c_str()));
+  TRI_InitStringJson(&server, TRI_DuplicateString(_name.c_str()));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
 
-  TRI_InitStringJson(TRI_CORE_MEM_ZONE, &version, TRI_DuplicateString(_version.c_str()));
+  TRI_InitStringJson(&version, TRI_DuplicateString(_version.c_str()));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
   bool found;

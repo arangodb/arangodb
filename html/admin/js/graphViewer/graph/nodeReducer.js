@@ -1,7 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _*/
-/*global document, window*/
-
+/*global $, d3, _, console, alert*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -29,40 +27,19 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var helper = helper || {};
-
-(function objectsHelper() {
+function NodeReducer(nodes, edges) {
   "use strict";
   
-  helper.createSimpleNodes = function (ids) {
-    var nodes = [];
-    _.each(ids, function(i) {
-      nodes.push({
-        _id: i,
-        position: {
-          x: 1,
-          y: 1,
-          z: 1
-        }
-      });
-    });
-    return nodes;
-  };
-  helper.createSimpleEdge = function(nodes, s, t) {
-    return {
-      source: nodes[s],
-      target: nodes[t]
-    };
-  };
+  if (nodes === undefined) {
+    throw "Nodes have to be given.";
+  }
+  if (edges === undefined) {
+    throw "Edges have to be given.";
+  }
   
-  helper.createClique = function(nodes, toConnect) {
-    var edges = [], i, j;
-    for (i = 0; i < toConnect.length - 1; i++) {
-      for (j = i + 1; j < toConnect.length; j++) {
-        edges.push(helper.createSimpleEdge(nodes, toConnect[i], toConnect[j]));
-      }
-    }
-    return edges;
+  var self = this;
+    
+  self.getCommunity = function(limit, focus) {
+    return [];
   };
-  
-}());
+}

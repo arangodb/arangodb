@@ -593,12 +593,7 @@ bool ApplicationV8::prepare () {
     // TODO: decide if we want to abort server start here
   }
   
-  // check whether package-path exist
-  if (! _packagePath.empty() && ! FileUtils::isDirectory(_packagePath.c_str())) {
-    LOGGER_ERROR("specified package-path '" << _packagePath << "' does not exist.");
-    // TODO: decide if we want to abort server start here
-  }
-  else if (_packagePath.empty()) {
+  if (_packagePath.empty()) {
     LOGGER_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
     // TODO: decide if we want to abort server start here
   }

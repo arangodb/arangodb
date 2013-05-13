@@ -287,13 +287,22 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength);
 /// escape the character '/'.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, size_t* outLength);
+char* TRI_EscapeUtf8String (char const* in, 
+                            size_t inLength, 
+                            bool escapeSlash, 
+                            size_t* outLength,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using unicode escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*, char const* in, size_t inLength, bool escapeSlash, size_t* outLength);
+char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*, 
+                             char const* in, 
+                             size_t inLength, 
+                             bool escapeSlash, 
+                             size_t* outLength, 
+                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
