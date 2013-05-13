@@ -56,6 +56,7 @@ window.communicationMock = function (spyOn) {
       "age": 42
     }
   };
+  
   spyOn(d3, "json").andCallFake(function(path, cb) {
     var last = path.substring(path.lastIndexOf("/") + 1),
      obj, res; 
@@ -65,5 +66,6 @@ window.communicationMock = function (spyOn) {
     }
     obj = last.substring(0, last.indexOf("."));
     cb(null, graph[obj]);
-  });    
+  });
+      
 };
