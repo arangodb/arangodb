@@ -1,5 +1,5 @@
 {
-  "apiVersion":"1.2beta",
+  "apiVersion":"1.3",
   "swaggerVersion":"1.1",
   "apis":[    {
       "path": "api-docs/document",
