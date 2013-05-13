@@ -73,14 +73,13 @@ var helper = helper || {};
     };
   };
   
-  helper.createClique = function(nodes, toConnect) {
-    var edges = [], i, j;
+  helper.insertClique = function(nodes, edges, toConnect) {
+    var i, j;
     for (i = 0; i < toConnect.length - 1; i++) {
       for (j = i + 1; j < toConnect.length; j++) {
         edges.push(helper.createSimpleEdge(nodes, toConnect[i], toConnect[j]));
       }
     }
-    return edges;
   };
   
 }());
