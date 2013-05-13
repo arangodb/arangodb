@@ -521,7 +521,8 @@ nv.models.axis = function() {
           axisLabel.enter().append('text').attr('class', 'nv-axislabel')
               .attr('text-anchor', rotateYLabel ? 'middle' : 'begin')
               .attr('transform', rotateYLabel ? 'rotate(90)' : '')
-              .attr('y', rotateYLabel ? (-Math.max(margin.right,width) + 12) : -10); //TODO: consider calculating this based on largest tick width... OR at least expose this on chart
+              //FIX BY HEIKO
+              .attr('y', rotateYLabel ? (-Math.max(margin.right,width) + 5) : -10); //TODO: consider calculating this based on largest tick width... OR at least expose this on chart
           axisLabel
               .attr('x', rotateYLabel ? (scale.range()[0] / 2) : axis.tickPadding());
           if (showMaxMin) {

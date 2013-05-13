@@ -592,6 +592,11 @@ bool ApplicationV8::prepare () {
     LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
     // TODO: decide if we want to abort server start here
   }
+  
+  if (_packagePath.empty()) {
+    LOGGER_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
+    // TODO: decide if we want to abort server start here
+  }
 
 
   _startupLoader.setDirectory(_startupPath);

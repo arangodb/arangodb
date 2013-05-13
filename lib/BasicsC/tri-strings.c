@@ -1164,8 +1164,12 @@ char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLen
 /// @brief escapes special characters using unicode escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String (char const* in, size_t inLength, bool escapeSlash, size_t* outLength) {
-  return TRI_EscapeUtf8StringZ(TRI_CORE_MEM_ZONE, in, inLength, escapeSlash, outLength);
+char* TRI_EscapeUtf8String (char const* in, 
+                            size_t inLength, 
+                            bool escapeSlash, 
+                            size_t* outLength, 
+                            bool compactResult) {
+  return TRI_EscapeUtf8StringZ(TRI_CORE_MEM_ZONE, in, inLength, escapeSlash, outLength, compactResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1176,7 +1180,8 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
                              char const* in,
                              size_t inLength,
                              bool escapeSlash,
-                             size_t* outLength) {
+                             size_t* outLength,
+                             bool compactResult) {
   char * buffer;
   char * qtr;
   char const * ptr;
@@ -1316,13 +1321,18 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
   *qtr = '\0';
   *outLength = (size_t) (qtr - buffer);
 
+  if (! compactResult) {
+    return buffer;
+  }
+
   qtr = TRI_Allocate(zone, *outLength + 1, false);
 
   if (qtr != NULL) {
     memcpy(qtr, buffer, *outLength + 1);
+  
+    TRI_Free(zone, buffer);
   }
-
-  TRI_Free(zone, buffer);
+    
   return qtr;
 }
 

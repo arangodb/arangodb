@@ -14,7 +14,8 @@ DOXYGEN_TOC = \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/RefManual/RefManual.md \
-	Documentation/UserManual/UserManual.md
+	Documentation/UserManual/UserManual.md \
+	Documentation/Manual/Upgrading.md
 
 ################################################################################
 ### @brief install man pages
@@ -126,14 +127,17 @@ WIKI = \
 	NamingConventions \
 	NewFeatures11 \
 	NewFeatures12 \
+	NewFeatures13 \
 	RefManual \
 	RefManualArangoErrors \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \
 	Transactions \
+	Upgrading \
 	Upgrading11 \
 	Upgrading12 \
+	Upgrading13 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -314,6 +318,9 @@ swagger:
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-graph.js  > @srcdir@/html/admin/api-docs/graph
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-edges.js  > @srcdir@/html/admin/api-docs/edges
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-user.js  > @srcdir@/html/admin/api-docs/user

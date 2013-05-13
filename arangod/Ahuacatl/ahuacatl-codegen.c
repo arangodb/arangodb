@@ -162,6 +162,16 @@ static inline bool OutputString (TRI_string_buffer_t* const buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append a string to the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool OutputString2 (TRI_string_buffer_t* const buffer,
+                                  const char* const value,
+                                  size_t length) {
+  return (TRI_AppendString2StringBuffer(buffer, value, length) == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief append a single character to the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -259,9 +269,10 @@ static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  escaped = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, strlen(value), false, &outLength);
-  if (escaped) {
-    if (! OutputString(scope->_buffer, escaped)) {
+  escaped = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, strlen(value), false, &outLength, false);
+
+  if (escaped != NULL) {
+    if (! OutputString2(scope->_buffer, escaped, outLength)) {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     }
 

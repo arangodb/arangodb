@@ -515,7 +515,7 @@ bool RestDocumentHandler::readDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('GET', url);
@@ -532,11 +532,11 @@ bool RestDocumentHandler::readDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
-///     var header = "If-None-Match: \"" + document._rev + "\"";
+///     var headers = {"If-None-Match":  "\"" + document._rev + "\""};
 /// 
-///     var response = logCurlRequest('GET', url, "", header);
+///     var response = logCurlRequest('GET', url, "", headers);
 /// 
 ///     assert(response.code === 304);
 ///
@@ -669,9 +669,9 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     db.products.save({"hallo1":"world1"});
-///     db.products.save({"hallo2":"world1"});
-///     db.products.save({"hallo3":"world1"});
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///     db.products.save({"hello3":"world1"});
 ///     var url = "/_api/document/?collection=" + cn;
 /// 
 ///     var response = logCurlRequest('GET', url);
@@ -799,7 +799,7 @@ bool RestDocumentHandler::readAllDocuments () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('HEAD', url);
@@ -950,12 +950,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -967,12 +967,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -984,12 +984,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1001,13 +1001,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
-/// 
-///     assert(response.code === 200);
-/// 
+///     assert(response.code === 202);
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -1018,12 +1017,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hallo":"world"});
+///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN

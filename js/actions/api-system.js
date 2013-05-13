@@ -448,10 +448,10 @@ actions.defineHttp({
             group: "system",
             identifier: "residentSize",
             name: "Resident Set Size",
-            description: "The number of pages the process has in real memory. " + 
+            description: "The total size of the number of pages the process has in real memory. " + 
                          "This is just the pages which count toward text, data, or stack space. " +
                          "This does not include pages which have not been demand-loaded in, " +
-                         "or which are swapped out.",
+                         "or which are swapped out. The resident set size is reported in bytes.",
             type: "current",
             units: "bytes"
           },
