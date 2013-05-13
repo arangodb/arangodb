@@ -26,7 +26,8 @@
     "app.js": {
       "files": [
 	      "assets/components/js/underscore/**",
-	      "assets/components/js/jquery/**",
+	      "assets/components/js/jquery/jquery.js",
+        "assets/components/js/jquery/jquery.validate.min.js",
 	      "assets/components/js/backbone/**",
         "assets/components/js/bootstrap/**",
         "assets/components/js/ejs/**",
