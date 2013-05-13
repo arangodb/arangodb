@@ -47,6 +47,7 @@
     
     beforeEach(function() {
       //Mock for jsonAdapter
+      window.communicationMock(spyOn);
       var Tmp = JSONAdapter;
       JSONAdapter = function (jsonPath, nodes, edges, width, height) {
         var r = new Tmp(jsonPath, nodes, edges, width, height);

@@ -219,7 +219,7 @@
       runs(function() {    
         standardConfig.nodes = createNodeList(1);
         nodes = standardConfig.nodes;
-        edgeShaper = {"updateEdges": function(){}};
+        edgeShaper = {updateEdges: function(){}};
         layouter = new ForceLayouter(standardConfig);
         layouter.setCombinedUpdateFunction(dummyNodeShaper, edgeShaper);
         spyOn(layouter, 'stop').andCallThrough();
@@ -331,9 +331,9 @@
       
       
       beforeEach(function() {
-        d3.layout.force = function() {
+        spyOn(d3.layout, "force").andCallFake(function() {
           return mock;
-        };
+        });
         config = {
           nodes: [],
           links: []

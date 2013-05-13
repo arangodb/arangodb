@@ -66,9 +66,8 @@
         _.each(ids, existNode);
       };
       
-      
-    
     beforeEach(function() {
+      window.communicationMock(spyOn);
       jsonPath = "../test_data/";
       nodes = [];
       edges = [];

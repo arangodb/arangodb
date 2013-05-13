@@ -46,6 +46,7 @@ describe("Graph Viewer", function() {
     docSVG = document.createElement("svg");
     document.body.appendChild(docSVG);
     svg = d3.select("svg");
+    window.communicationMock(spyOn);
   });
   
   
