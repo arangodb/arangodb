@@ -291,7 +291,7 @@ static inline void InitArray (TRI_memory_zone_t* zone,
   else {
     // need to allocate twice the space because for each array entry,
     // we need one object for the attribute key, and one for the attribute value
-    TRI_InitVector2(&result->_value._objects, zone, 2 * sizeof(TRI_json_t), initialSize);
+    TRI_InitVector2(&result->_value._objects, zone, sizeof(TRI_json_t), 2 * initialSize);
   }
 }
 
