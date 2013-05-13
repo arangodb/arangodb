@@ -74,7 +74,7 @@ typedef struct TRI_process_info_s {
   uint64_t _userTime;
   uint64_t _systemTime;
   int64_t _numberThreads;
-  int64_t _residentSize;
+  int64_t _residentSize; // resident set size in number of bytes
   uint64_t _virtualSize;
   uint64_t _scClkTck;
 }

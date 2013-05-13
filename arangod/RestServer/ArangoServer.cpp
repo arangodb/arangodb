@@ -842,7 +842,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        V8LineEditor console(context->_context, ".arangod");
+        V8LineEditor console(context->_context, ".arangod.history");
 
         console.open(true);
 
@@ -1014,12 +1014,12 @@ int ArangoServer::executeRubyConsole () {
   // create a line editor
   cout << "ArangoDB MRuby emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
 
-  MRLineEditor console(context->_mrb, ".arangod");
+  MRLineEditor console(context->_mrb, ".arangod-ruby.history");
 
   console.open(false);
 
   while (true) {
-    char* input = console.prompt("arangod> ");
+    char* input = console.prompt("arangod (ruby)> ");
 
     if (input == 0) {
       printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");

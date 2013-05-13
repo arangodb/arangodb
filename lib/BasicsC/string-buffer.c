@@ -42,7 +42,7 @@
 /// @brief append a character without check
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AppendChar (TRI_string_buffer_t * self, char chr) {
+static inline void AppendChar (TRI_string_buffer_t * self, char chr) {
   *self->_current++ = chr;
 }
 
@@ -50,7 +50,7 @@ static void AppendChar (TRI_string_buffer_t * self, char chr) {
 /// @brief how much space is presently left in buffer?
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t Remaining (TRI_string_buffer_t * self) {
+static inline size_t Remaining (TRI_string_buffer_t * self) {
   return (size_t) (self->_len - (size_t) (self->_current - self->_buffer));
 }
 
@@ -82,6 +82,27 @@ static int Reserve (TRI_string_buffer_t * self, const size_t size) {
     self->_current = self->_buffer + off;
 
     memset(self->_current, 0, Remaining(self) + 1);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append a string to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static int AppendString (TRI_string_buffer_t* self, char const* str, const size_t len) {
+  if (0 < len) {
+    int res;
+
+    res = Reserve(self, len);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    memcpy(self->_current, str, len);
+    self->_current += len;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -368,18 +389,7 @@ int TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) {
-  size_t len = strlen(str);
-  int res;
-
-  res = Reserve(self, len);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  memcpy(self->_current, str, len);
-  self->_current += len;
-  return TRI_ERROR_NO_ERROR;
+  return AppendString(self, str, strlen(str));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,20 +397,7 @@ int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) 
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
-  if (0 < len) {
-    int res;
-
-    res = Reserve(self, len);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    memcpy(self->_current, str, len);
-    self->_current += len;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return AppendString(self, str, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

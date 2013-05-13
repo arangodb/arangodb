@@ -111,7 +111,7 @@ ArangoCollection.prototype.toArray = function () {
 /// @code
 /// arango> col = db.examples;
 /// [ArangoCollection 91022, "examples" (status new born)]
-/// arango> col.save({ "Hallo" : "World" });
+/// arango> col.save({ "Hello" : "World" });
 /// { "_id" : "91022/1532814", "_rev" : 1532814 }
 /// arango> col.count();
 /// 1

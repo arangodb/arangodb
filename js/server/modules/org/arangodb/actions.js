@@ -110,7 +110,7 @@ function errorFunction (route, message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splits an URL into parts
+/// @brief splits a URL into parts
 ////////////////////////////////////////////////////////////////////////////////
 
 function splitUrl (url) {
@@ -124,8 +124,8 @@ function splitUrl (url) {
   var cut;
   var ors;
 
-  re1 = /^(:[a-z]+)(\|:[a-z]+)*$/;
-  re2 = /^(:[a-z]+)\?$/;
+  re1 = /^(:[a-zA-Z]+)(\|:[a-zA-Z]+)*$/;
+  re2 = /^(:[a-zA-Z]+)\?$/;
 
   parts = url.split("/");
   cleaned = [];
@@ -994,8 +994,8 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ///
 /// Note that the url for "user" actions is automatically prefixed
 /// with @LIT{_action}. This applies to all specified contexts. For example, if
-/// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
-/// action is accessible under @LIT{/_action/hallo} - even for the admin context.
+/// the context contains "admin" and "user" and the url is @LIT{hello}, then the
+/// action is accessible under @LIT{/_action/hello} - even for the admin context.
 ///
 /// @FA{options.callback}(@FA{request}, @FA{response})
 ///
@@ -1720,11 +1720,14 @@ function resultCursor (req, res, cursor, code, options) {
     if (hasNext) {
       cursor.persist();
       cursorId = cursor.id(); 
+      cursor.unuse();
     }
     else {
       cursor.dispose();
     }
   }
+
+  // do not use cursor after this
 
   var result = { 
     "result" : rows,
