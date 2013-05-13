@@ -77,6 +77,12 @@ function buildAssetContent (app, assets) {
 
     if (match !== null) {
       m = fs.listTree(fs.join(rootDir, match[1]));
+  
+      // files are sorted in file-system order. 
+      // this makes the order non-portable
+      // we'll be sorting the files now using JS sort
+      // so the order is more consistent across multiple platforms
+      m.sort();
 
       for (i = 0; i < m.length; ++i) {
         var filename = fs.join(rootDir, match[1], m[i]);
@@ -508,6 +514,9 @@ exports.scanAppDirectory = function () {
   }
 
   var files = fs.list(path);
+
+  // note: files do not have a determinstic order, but it doesn't matter here
+  // as we're treating individual Foxx apps and their order is irrelevant
 
   for (j = 0;  j < files.length;  ++j) {
     var m = fs.join(path, files[j], "manifest.json");
