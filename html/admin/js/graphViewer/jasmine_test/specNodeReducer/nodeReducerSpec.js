@@ -75,16 +75,13 @@
             var com = this.actual,
             check = true;
             this.message = function() {
-              var msg = _.map(com, function(c) {
-                return c._id;
-              });
-              return "Expected " + msg + " to contain " + ns; 
+              return "Expected " + com + " to contain " + ns; 
             };
             if (com.length !== ns.length) {
               return false;
             }
             _.each(ns, function(n) {
-              if(!_.contains(com, nodes[n])) {
+              if(!_.contains(com, n)) {
                 check = false;
               }
             });
@@ -106,20 +103,19 @@
       describe('checking community identification', function() {
         
         it('should be able to identify an obvious community', function() {
-          nodes = helper.createSimpleNodes([0, 1, 2, 3, 4]);
-          edges = [];
+          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4]);
           edges.push(helper.createSimpleEdge(nodes, 0, 1));
           edges.push(helper.createSimpleEdge(nodes, 0, 2));
           edges.push(helper.createSimpleEdge(nodes, 0, 3));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
           
-          var com = reducer.getCommunity(2, nodes[4]);
-          expect(com).toContainNodes([0, 1, 2, 3]);
+          var com = reducer.getCommunity(3, nodes[4]);
+          expect(com).toContainNodes([0, 1, 2]);
         });
         
         it('should prefer cliques as a community over an equal sized other group', function() {
-          nodes = helper.createSimpleNodes([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-          edges = helper.createClique(nodes, [0, 1, 2, 3]);
+          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+          helper.insertClique(nodes, edges, [0, 1, 2, 3]);
           edges.push(helper.createSimpleEdge(nodes, 4, 3));
           edges.push(helper.createSimpleEdge(nodes, 4, 5));
           edges.push(helper.createSimpleEdge(nodes, 5, 6));
@@ -131,8 +127,8 @@
         });
         
         it('should not return a close group if there is an alternative', function() {
-          nodes = helper.createSimpleNodes([0, 1, 2, 3, 4, 5, 6, 7]);
-          edges = helper.createClique(nodes, [0, 1, 2]);
+          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4, 5, 6, 7]);
+          helper.insertClique(nodes, edges, [0, 1, 2]);
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
           edges.push(helper.createSimpleEdge(nodes, 4, 5));
