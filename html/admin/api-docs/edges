@@ -10,20 +10,33 @@
                     "parameters": [
                         {
                             "dataType": "String",
-                            "paramType": "body",
-                            "required": "false",
-                            "name": "body",
-                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "collection-id",
+                            "description": "The id of the collection. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "vertex",
+                            "description": "The id of the start vertex. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "direction",
+                            "description": "Selects <em>in</em> or <em>out</em> direction for edges. If not set, any edges are returned. "
                         }
                     ],
-                    "notes": "",
-                    "summary": "creates an edge",
-                    "httpMethod": "POST",
-                    "examples": "",
-                    "nickname": "createsAnEdge"
+                    "notes": "Returns the list of edges starting or ending in the vertex identified by <em>vertex-handle</em>. <br><br>",
+                    "summary": "reads in- or outbound edges",
+                    "httpMethod": "GET",
+                    "examples": "Any direction <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/edges/17501660?vertex=17501660/18419164\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"edges\": [\n    {\n      \"_from\": \"17501660/18419164\",\n      \"_rev\": \"19140060\",\n      \"_to\": \"17501660/19008988\",\n      \"_id\": \"17501660/19140060\"\n    },\n    {\n      \"_from\": \"17501660/18419164\",\n      \"_rev\": \"19336668\",\n      \"_to\": \"17501660/19008988\",\n      \"_id\": \"17501660/19336668\",\n      \"e\": 1\n    },\n    {\n      \"_from\": \"17501660/19008988\",\n      \"_rev\": \"19402204\",\n      \"_to\": \"17501660/18419164\",\n      \"_id\": \"17501660/19402204\",\n      \"e\": 2\n    }\n  ],\n  \"code\": 200,\n  \"error\": false\n}\n</code></pre><br>In edges <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/edges/17501660?vertex=17501660/18419164&direction=in\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"edges\": [\n    {\n      \"_from\": \"17501660/19008988\",\n      \"_rev\": \"19402204\",\n      \"_to\": \"17501660/18419164\",\n      \"_id\": \"17501660/19402204\",\n      \"e\": 2\n    }\n  ],\n  \"code\": 200,\n  \"error\": false\n}\n</code></pre><br>Out edges <br><br><pre><code class=\"json\" >> curl -X GET --dump - http://localhost:8529/_api/edges/17501660?vertex=17501660/18419164&direction=out\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"edges\": [\n    {\n      \"_from\": \"17501660/18419164\",\n      \"_rev\": \"19336668\",\n      \"_to\": \"17501660/19008988\",\n      \"_id\": \"17501660/19336668\",\n      \"e\": 1\n    },\n    {\n      \"_from\": \"17501660/18419164\",\n      \"_rev\": \"19140060\",\n      \"_to\": \"17501660/19008988\",\n      \"_id\": \"17501660/19140060\"\n    }\n  ],\n  \"code\": 200,\n  \"error\": false\n}\n</code></pre><br>",
+                    "nickname": "readsIn-OrOutboundEdges"
                 }
             ],
-            "path": "/_api/edge"
+            "path": "/_api/edges/{collection-id}"
         }
     ]
 }

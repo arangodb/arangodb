@@ -6,20 +6,29 @@
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [
+                    "errorResponses": [
                         {
-                            "dataType": "String",
-                            "paramType": "body",
-                            "required": "false",
-                            "name": "body",
-                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
+                            "reason": "is returned if the result set can be created by the server. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the JSON representation is malformed or the query specification is missing from the request. ",
+                            "code": "400"
                         }
                     ],
-                    "notes": "",
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "The following attributes can be used inside the JSON object: - <em>query</em>: contains the query string to be executed (mandatory) - <em>count</em>: boolean flag that indicates whether the number of documents   found should be returned as \"count\" attribute in the result set (optional).   Calculating the \"count\" attribute might have a performance penalty for   some queries so this option is turned off by default. - <em>batchSize</em>: maximum number of result documents to be transferred from   the server to the client in one roundtrip (optional). If this attribute is   not set, a server-controlled default value will be used. - <em>bindVars</em>: key/value list of bind parameters (optional).  "
+                        }
+                    ],
+                    "notes": "The query details include the query string plus optional query options and bind parameters. These values need to be passed in a JSON representation in the body of the POST request. <br><br>The following attributes can be used inside the JSON object: <br><br>- <em>query</em>: contains the query string to be executed (mandatory)<br><br>- <em>count</em>: boolean flag that indicates whether the number of documents<br>  found should be returned as \"count\" attribute in the result set (optional).   Calculating the \"count\" attribute might have a performance penalty for   some queries so this option is turned off by default. <br><br>- <em>batchSize</em>: maximum number of result documents to be transferred from<br>  the server to the client in one roundtrip (optional). If this attribute is   not set, a server-controlled default value will be used. <br><br>- <em>bindVars</em>: key/value list of bind parameters (optional). <br><br>If the result set can be created by the server, the server will respond with <em>HTTP 201</em>. The body of the response will contain a JSON object with the result set. <br><br>The JSON object has the following properties: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>false</em><br>  in this case) <br><br>- <em>code</em>: the HTTP status code<br><br>- <em>result</em>: an array of result documents (might be empty if query has no results)<br><br>- <em>hasMore</em>: a boolean indicator whether there are more results<br>  available on the server <br><br>- <em>count</em>: the total number of result documents available (only<br>  available if the query was executed with the <em>count</em> attribute set. <br><br>- <em>id</em>: id of temporary cursor created on the server (optional, see above)<br><br>If the JSON representation is malformed or the query specification is missing from the request, the server will respond with <em>HTTP 400</em>. <br><br>The body of the response will contain a JSON object with additional error details. The object has the following attributes: <br><br>- <em>error</em>: boolean flag to indicate that an error occurred (<em>true</em> in this case)<br><br>- <em>code</em>: the HTTP status code<br><br>- <em>errorNum</em>: the server error number<br><br>- <em>errorMessage</em>: a descriptive error message<br><br>If the query specification is complete, the server will process the query. If an error occurs during query processing, the server will respond with <em>HTTP 400</em>. Again, the body of the response will contain details about the error. <br><br>A list of query errors can be found @ref ArangoErrors here. <br><br>",
                     "summary": "creates a cursor",
                     "httpMethod": "POST",
-                    "examples": "",
+                    "examples": "Executes a query and extract the result in a single go: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/cursor\n{ \"query\" : \"FOR p IN products LIMIT 2 RETURN p\", \"count\" : true, \"batchSize\" : 2 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/34974067\", \n      \"_rev\" : \"34974067\", \n      \"_key\" : \"34974067\", \n      \"hallo1\" : \"world1\" \n    }, \n    { \n      \"_id\" : \"products/35432819\", \n      \"_rev\" : \"35432819\", \n      \"_key\" : \"35432819\", \n      \"hallo2\" : \"world1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Executes a query and extract part of the result: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/cursor\n{ \"query\" : \"FOR p IN products LIMIT 5 RETURN p\", \"count\" : true, \"batchSize\" : 2 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/37988723\", \n      \"_rev\" : \"37988723\", \n      \"_key\" : \"37988723\", \n      \"hallo5\" : \"world1\" \n    }, \n    { \n      \"_id\" : \"products/37464435\", \n      \"_rev\" : \"37464435\", \n      \"_key\" : \"37464435\", \n      \"hallo3\" : \"world1\" \n    } \n  ], \n  \"hasMore\" : true, \n  \"id\" : \"38119795\", \n  \"count\" : 5, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Bad queries: Missing body: <br><br><pre><code class=\"json\" >unix> curl -X POST --dump - http://localhost:8529/_api/cursor\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 400, \n  \"errorNum\" : 1502, \n  \"errorMessage\" : \"query is empty\" \n}\n\n</code></pre><br>Unknown collection: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/cursor\n{ \"query\" : \"FOR u IN unknowncoll LIMIT 2 RETURN u\", \"count\" : true, \"batchSize\" : 2 }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 400, \n  \"errorNum\" : 1203, \n  \"errorMessage\" : \"cannot execute query: collection not found: Error: cannot execute query: collection not found\\n    at POST_api_cursor (./js/actions/api-cursor.js:225:14)\\n    at Function.actions.defineHttp.callback (./js/actions/api-cursor.js:391:11)\" \n}\n\n</code></pre><br>",
                     "nickname": "createsACursor"
                 }
             ],
@@ -28,30 +37,64 @@
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "errorResponses": [
+                        {
+                            "reason": "The server will respond with <em>HTTP 200</em> in case of success.  ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the cursor identifier is ommitted or somehow invalid, the server will respond with <em>HTTP 404</em>. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "cursor-identifer",
+                            "description": "The name of the cursor "
+                        }
+                    ],
+                    "notes": "<br><br>If the cursor is still alive, returns an object with the following attributes. <br><br>- <em>id</em>: the <em>cursor-identifier</em><br>- <em>result</em>: a list of documents for the current batch<br>- <em>hasMore</em>: <em>false</em> if this was the last batch<br>- <em>count</em>: if present the total number of elements<br><br>Note that even if <em>hasMore</em> returns <em>true</em>, the next call might still return no documents. If, however, <em>hasMore</em> is <em>false</em>, then the cursor is exhausted.  Once the <em>hasMore</em> attribute has a value of <em>false</em>, the client can stop. <br><br>",
                     "summary": "reads next batch from a cursor",
                     "httpMethod": "PUT",
-                    "examples": "",
+                    "examples": "Valid request for next batch: <br><br><pre><code class=\"json\" >> curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191\n\nHTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  \"hasMore\": true,\n  \"error\": false,\n  \"id\": 26011191,\n  \"result\": [\n    {\n      \"n\": 2,\n      \"_rev\": \"25880119\",\n      \"_id\": \"23914039/25880119\"\n    },\n    {\n      \"n\": 3,\n      \"_rev\": \"25880119\",\n      \"_id\": \"23914039/25880119\"\n    }\n  ],\n  \"code\": 200,\n  \"count\": 5\n}\n</code></pre><br>Missing identifier <br><br><pre><code class=\"json\" >> curl -X PUT --dump - http://localhost:8529/_api/cursor\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json\n\n{\n  \"code\": 400,\n  \"errorMessage\": \"bad parameter\",\n  \"errorNum\": 400,\n  \"error\": true\n}\n</code></pre><br>Unknown identifier <br><br><pre><code class=\"json\" >> curl -X PUT --dump - http://localhost:8529/_api/cursor/123456\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json\n\n{\n  \"code\": 400,\n  \"errorNum\": 1600,\n  \"error\": true,\n  \"errorMessage\": \"cursor not found: disposed or unknown cursor\"\n}\n</code></pre><br>",
                     "nickname": "readsNextBatchFromACursor"
                 }
             ],
-            "path": "/_api/cursor"
+            "path": "/_api/cursor/{cursor-identifier}"
         },
         {
             "operations": [
                 {
-                    "errorResponses": [],
-                    "parameters": [],
-                    "notes": "",
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the server is aware of the cursor. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the server is not aware of the cursor. It is also returned if a cursor is used after it has been destroyed. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "cursor-identifer",
+                            "description": "The name of the cursor "
+                        }
+                    ],
+                    "notes": "Deletes the cursor and frees the resources associated with it.  <br><br>The cursor will automatically be destroyed on the server when the client has retrieved all documents from it. The client can also explicitly destroy the cursor at any earlier time using an HTTP DELETE request. The cursor id must be included as part of the URL. <br><br>Note: the server will also destroy abandoned cursors automatically after a  certain server-controlled timeout to avoid resource leakage. <br><br>",
                     "summary": "deletes a cursor",
                     "httpMethod": "DELETE",
-                    "examples": "",
+                    "examples": "<br><br><pre><code class=\"json\" >> curl -X DELETE --dump - http://localhost:8529/_api/cursor/8679702\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json\n\n{\n  \"code\": 202,\n  \"id\": \"8679702\",\n  \"error\": false\n}\n</code></pre><br>",
                     "nickname": "deletesACursor"
                 }
             ],
-            "path": "/_api/cursor"
+            "path": "/_api/cursor/{cursor-identifier}"
         }
     ]
 }

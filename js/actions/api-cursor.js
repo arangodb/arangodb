@@ -142,8 +142,8 @@ var QUERY = internal.AQL_QUERY;
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     db.products.save({"hallo1":"world1"});
-///     db.products.save({"hallo2":"world1"});
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
 ///
 ///     var url = "/_api/cursor";
 ///     var body = '{ "query" : "FOR p IN products LIMIT 2 RETURN p", "count" : true, "batchSize" : 2 }';
@@ -162,11 +162,11 @@ var QUERY = internal.AQL_QUERY;
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     db.products.save({"hallo1":"world1"});
-///     db.products.save({"hallo2":"world1"});
-///     db.products.save({"hallo3":"world1"});
-///     db.products.save({"hallo4":"world1"});
-///     db.products.save({"hallo5":"world1"});
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///     db.products.save({"hello3":"world1"});
+///     db.products.save({"hello4":"world1"});
+///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
 ///     var body = '{ "query" : "FOR p IN products LIMIT 5 RETURN p", "count" : true, "batchSize" : 2 }';
