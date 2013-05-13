@@ -10,7 +10,7 @@ OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
 
 .PHONY: publish publish-wiki publish-html publish-pdf publish-copy
 
-publish: publish-wiki publish-html publish-pdf
+publish: examples publish-wiki publish-html publish-pdf
 	make publish-copy
 
 publish-copy:
