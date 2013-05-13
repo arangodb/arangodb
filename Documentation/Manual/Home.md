@@ -28,13 +28,7 @@ Upgrading to ArangoDB 1.3 {#ArangoDBUpgrading13}
 - @BOOK_REF{NewFeatures13}
 - @BOOK_REF{Upgrading13}
 
-Older Releases:
-
-- @BOOK_REF{NewFeatures12}
-- @BOOK_REF{Upgrading12}
-
-- @BOOK_REF{NewFeatures11}
-- @BOOK_REF{Upgrading11}
+See @ref Upgrading from older releases.
 
 ArangoDB's User Manuals {#ArangoDBUserManual}
 =============================================
