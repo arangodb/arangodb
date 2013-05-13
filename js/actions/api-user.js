@@ -226,7 +226,6 @@ function POST_api_user (req, res) {
 ///
 /// @RESTRETURNCODE{404}
 /// The specified user does not exist.
-///.
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_user (req, res) {
@@ -264,7 +263,7 @@ function PUT_api_user (req, res) {
 ///
 /// @RESTHEADER{PATCH /_api/user/{username},updates user}
 ///
-/// @RSTBODYPARAM{userdata,json,required}
+/// @RESTBODYPARAM{userdata,json,required}
 ///
 /// @RESTDESCRIPTION
 ///
