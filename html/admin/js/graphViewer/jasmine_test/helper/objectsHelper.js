@@ -48,7 +48,25 @@ var helper = helper || {};
     });
     return nodes;
   };
+  
+  helper.insertSimpleNodes = function (nodes, ids) {
+    _.each(ids, function(i) {
+      nodes.push({
+        _id: i,
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      });
+    });
+  };
+  
   helper.createSimpleEdge = function(nodes, s, t) {
+    nodes[s]._outboundCounter++;
+    nodes[t]._inboundCounter++;
     return {
       source: nodes[s],
       target: nodes[t]

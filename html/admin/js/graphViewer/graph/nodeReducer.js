@@ -37,9 +37,50 @@ function NodeReducer(nodes, edges) {
     throw "Edges have to be given.";
   }
   
-  var self = this;
+  var self = this,
+    getDegree = function(id) {
+      return $.grep(nodes, function(e){
+        return e._id === id;
+      })[0];
+    },
+    
+    // Will Overwrite dQ, a and heap!
+    populateValues = function(dQ, a, heap) {
+      var m = edges.length,
+        twoM = 2 * m,
+        cFact = 1 / twoM;
+      _.each(nodes, function(n) {
+        a[n._id] = (n._outboundCounter + n._inboundCounter) / twoM;
+      });
+      
+      _.each(edges, function(e) {
+        var sID, lID;
+        if (e.source._id < e.target._id) {
+          sID = e.source._id;
+          lID = e.target._id;
+        } else {
+          sID = e.target._id;
+          lID = e.source._id;
+        }
+        if (dQ[sID] === undefined) {
+          dQ[sID] = {};
+          heap[sID] = {};
+          heap[sID].val = -1;
+        }
+        dQ[sID][lID] = cFact - a[sID] * a[lID];
+        if (heap[sID].val < dQ[sID][lID]) {
+          heap[sID].val = dQ[sID][lID];
+          heap[sID].lID = lID;
+        }
+      });
+   };
     
   self.getCommunity = function(limit, focus) {
+    var dQ = {},
+      a = {},
+      heap = {};
+    populateValues(dQ, a, heap);
+    
     return [];
   };
 }

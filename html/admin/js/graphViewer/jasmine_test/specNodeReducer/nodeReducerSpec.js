@@ -106,8 +106,7 @@
       describe('checking community identification', function() {
         
         it('should be able to identify an obvious community', function() {
-          nodes = helper.createSimpleNodes([0, 1, 2, 3, 4]);
-          edges = [];
+          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4]);
           edges.push(helper.createSimpleEdge(nodes, 0, 1));
           edges.push(helper.createSimpleEdge(nodes, 0, 2));
           edges.push(helper.createSimpleEdge(nodes, 0, 3));
