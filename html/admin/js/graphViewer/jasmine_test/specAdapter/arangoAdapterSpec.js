@@ -50,13 +50,10 @@
       edges,
       arangodb = "http://localhost:8529",
       nodesCollection,
-      nodesCollId,
       altNodesCollection,
-      altNodesCollId,
       edgesCollection,
-      edgesCollId,
       altEdgesCollection,
-      altEdgesCollId,
+      mockCollection,
       callbackCheck,
       checkCallbackFunction = function() {
         callbackCheck = true;
@@ -102,120 +99,65 @@
       notExistNodes = function(ids) {
         _.each(ids, notExistNode);
       },
-      
-      createCollection = function(name, type, callback) {
-        if (type !== "Document" && type !== "Edge") {
-          throw "Unsupported type";
-        }
-        var data = {
-          "name": name,
-          "type": type,
-          "journalSize": 1048576
-        };
-        $.ajax({
-          cache: false,
-          type: "POST",
-          url: arangodb + "/_api/collection",
-          data: JSON.stringify(data),
-          contentType: "application/json",
-          processData: false,
-          async: false,
-          success: function(data) {
-            callback(data.id);
-          },
-          error: function(data) {
-            throw data.statusText;
-          }
-        });
-      },
-      
-      dropCollection = function(id) {
-        $.ajax({
-          cache: false,
-          type: 'DELETE',
-          url: arangodb + "/_api/collection/" + id,
-          async: false,
-          success: function (data) {
             
-          },
-          error: function (data) {
-            throw data.statusText;
-          }
-        });
-      },
       insertEdge = function (collectionID, from, to, cont) {
-        var id;
+        var key = Math.floor(Math.random()*100000),
+          id = collectionID + "/" + key;
         cont = cont || {};
-        $.ajax({
-          cache: false,
-          type: "POST",
-          async: false,
-          url: arangodb + "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
-          data: JSON.stringify(cont),
-          contentType: "application/json",
-          processData: false,
-          success: function(data) {
-            id = data._id;
-          },
-          error: function(data) {
-            throw data.statusText;
-          }
-        });
+        mockCollection[collectionID] = mockCollection[collectionID] || {};
+        mockCollection[collectionID][from] = mockCollection[collectionID][from] || {};
+        cont._id = id;
+        cont._key = key;
+        cont._rev = key;
+        cont._from = from;
+        cont._to = to;
+        mockCollection[collectionID][from][to] = cont;
         return id;
       },
       insertNode = function (collectionID, nodeId, cont) {
-        var id;
+        var key = Math.floor(Math.random()*100000),
+          id = collectionID + "/" + key;
         cont = cont || {};
+        mockCollection[collectionID] = mockCollection[collectionID] || {};
         cont.id = nodeId;
-        $.ajax({
-          cache: false,
-          type: "POST",
-          async: false,
-          url: arangodb + "/_api/document?collection=" + collectionID,
-          data: JSON.stringify(cont),
-          contentType: "application/json",
-          processData: false,
-          success: function(data) {
-            id = data._id;
-          },
-          error: function(data) {
-            throw data.statusText;
-          }
-        });
+        cont._id = id;
+        cont._key = key;
+        cont._rev = key;
+        mockCollection[collectionID][id] = cont;
         return id;
       },
-      
-      deleteArangoContent = function() {
-        try {
-          dropCollection(nodesCollection);
-          dropCollection(edgesCollection);
-          dropCollection(altNodesCollection);
-          dropCollection(altEdgesCollection);
-        }catch(e){
-          
-        }
+      readEdge = function (collectionID, from, to) {
+        return mockCollection[collectionID][from._id][to._id];
       },
-      
-      setupArangoContent = function() {
+      readNode = function (collectionID, id) {
+        return mockCollection[collectionID][id];
+      },
+      constructPath = function(colNodes, colEdges, from, to) {
+        var obj = {},
+          src = readNode(colNodes, from),
+          tar = readNode(colNodes, to);
+        obj.vertex = tar;
+        obj.path = {
+          edges: [
+            readEdge(colEdges, src, tar)
+          ],
+          vertices: [
+            src,
+            tar
+          ]
+        };
+        return obj;
+      };
+    
+      beforeEach(function() {
+        nodes = [];
+        edges = [];
+        mockCollection = {};
         nodesCollection = "TestNodes321";
         edgesCollection = "TestEdges321";
         altNodesCollection = "TestNodes654";
         altEdgesCollection = "TestEdges654";
         
-        
-        deleteArangoContent();
-        
-        createCollection(nodesCollection, "Document", function(id) {nodesCollId = id;});
-        createCollection(edgesCollection, "Edge", function(id) {edgesCollId = id;});
-        
-        createCollection(altNodesCollection, "Document", function(id) {altNodesCollId = id;});
-        createCollection(altEdgesCollection, "Edge", function(id) {altEdgesCollId = id;});
-      };
-    
-      beforeEach(function() {
-        setupArangoContent();
-        nodes = [];
-        edges = [];
         this.addMatchers({
           toHaveCorrectCoordinates: function() {
             var list = this.actual,
@@ -289,6 +231,14 @@
       });
     
       describe('setup correctly', function() {
+        
+        var travQ,
+          filterQ,
+          apiCursor,
+          host,
+          travVars,
+          filterVars;
+        
         beforeEach(function() {      
           adapter = new ArangoAdapter(
             nodes,
@@ -300,6 +250,16 @@
               height: 40
             }
           );
+          travQ = '{"query":"RETURN TRAVERSAL(@@nodes, @@edges, @id, \\"outbound\\", {strategy: \\"depthfirst\\",maxDepth: 1,paths: true})"';
+          filterQ = '{"query":"FOR n IN @@nodes  FILTER n.id == @value RETURN TRAVERSAL(@@nodes, @@edges, n._id, \\"outbound\\", {strategy: \\"depthfirst\\",maxDepth: 1,paths: true})"';
+          host = window.location.protocol + "//" + window.location.host;
+          apiCursor = host + '/_api/cursor';
+          travVars = function(id, nods, edgs) {
+            return '"bindVars":{"id":"' + id + '","@nodes":"' + nods + '","@edges":"' + edgs + '"}}';
+          };
+          filterVars = function(v, nods, edgs) {
+            return '"bindVars":{"value":' + v + ',"@nodes":"' + nods + '","@edges":"' + edgs + '"}}';
+          };
         });
     
         it('should be able to load a tree node from ' 
@@ -308,6 +268,27 @@
           var c0, c1, c2, c3, c4;
       
           runs(function() {
+            spyOn($, "ajax").andCallFake(function(request) {
+              var res = [];
+              var inner = [];
+              res.push(inner);
+              var first = {};
+              var node1 = readNode(nodesCollection, c0);
+              first.vertex = node1;
+              first.path = {
+                edges: [],
+                vertices: [
+                 node1
+                ]
+              };
+              inner.push(first);
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c1));
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c2));
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c3));
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c4));
+              request.success({result: res});
+            });
+            
             c0 = insertNode(nodesCollection, 0);
             c1 = insertNode(nodesCollection, 1);
             c2 = insertNode(nodesCollection, 2);
@@ -330,15 +311,48 @@
           runs(function() {
             existNodes([c0, c1, c2, c3, c4]);
             expect(nodes.length).toEqual(5);
+            expect($.ajax).toHaveBeenCalledWith({
+              type: 'POST',
+              url: apiCursor,
+              data: travQ + ',' + travVars(c0, nodesCollection, edgesCollection),
+              contentType: 'application/json',
+              dataType: 'json',
+              success: jasmine.any(Function),
+              error: jasmine.any(Function),
+              processData: false
+            });
           });
         });
-    
+        
+        
         it('should be able to load a tree node from ArangoDB'
           + ' by internal attribute and value', function() {
       
           var c0, c1, c2, c3, c4;
       
           runs(function() {
+            spyOn($, "ajax").andCallFake(function(request) {
+              var res = [];
+              var inner = [];
+              res.push(inner);
+              var first = {};
+              var node1 = readNode(nodesCollection, c0);
+              first.vertex = node1;
+              first.path = {
+                edges: [],
+                vertices: [
+                 node1
+                ]
+              };
+              inner.push(first);
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c1));
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c2));
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c3));
+              inner.push(constructPath(nodesCollection, edgesCollection, c0, c4));
+              request.success({result: res});
+            });
+            
+            
             c0 = insertNode(nodesCollection, 0);
             c1 = insertNode(nodesCollection, 1);
             c2 = insertNode(nodesCollection, 2);
@@ -361,9 +375,20 @@
           runs(function() {
             existNodes([c0, c1, c2, c3, c4]);
             expect(nodes.length).toEqual(5);
+            expect($.ajax).toHaveBeenCalledWith({
+              type: 'POST',
+              url: apiCursor,
+              data: filterQ + ',' + filterVars("0", nodesCollection, edgesCollection),
+              contentType: 'application/json',
+              dataType: 'json',
+              processData: false,
+              success: jasmine.any(Function),
+              error: jasmine.any(Function)
+              
+            });
           });
         });
-    
+        /*
         it('should be able to request the number of children centrality', function() {
           var c0, c1 ,c2 ,c3 ,c4,
           children;
@@ -516,7 +541,7 @@
           beforeEach(function() {
       
             runs(function() {
-          
+              
               c0 = insertNode(nodesCollection, 0);
               c1 = insertNode(nodesCollection, 1);
               c2 = insertNode(nodesCollection, 2);
@@ -923,6 +948,8 @@
           });
     
         });
+        
+        */
       });
    
   });
