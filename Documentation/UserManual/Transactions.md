@@ -79,7 +79,7 @@ attribute of the object passed to the `_executeTransaction` function. The
     db._executeTransaction({
       collections: {
         write: [ "users", "logins" ],
-        read: [ "recommendations" ],
+        read: [ "recommendations" ]
       },
       ...
     });
@@ -93,7 +93,7 @@ single collection name (as a string):
     db._executeTransaction({
       collections: {
         write: "users",
-        read: "recommendations",
+        read: "recommendations"
       },
       ...
     });
@@ -114,7 +114,7 @@ attribute:
 
     db._executeTransaction({
       collections: {
-        write: "users",
+        write: "users"
       },
       action: function () {
         /* all operations go here */
@@ -128,7 +128,7 @@ of a Javascript function:
 
     db._executeTransaction({
       collections: {
-        write: "users",
+        write: "users"
       },
       action: "function () { /* all operations go here */ }"
     });
@@ -141,7 +141,7 @@ Instead, any variables used inside `action` should be defined inside `action` it
 
     db._executeTransaction({
       collections: {
-        write: "users",
+        write: "users"
       },
       action: function () {
         var db = require(...).db;
@@ -159,7 +159,7 @@ be thrown and not caught inside the transaction:
 
     db._executeTransaction({
       collections: {
-        write: "users",
+        write: "users"
       },
       action: function () {
         var db = require("internal").db;
@@ -178,7 +178,7 @@ case, the user can return any legal Javascript value from the function:
 
     db._executeTransaction({
       collections: {
-        write: "users",
+        write: "users"
       },
       action: function () {
         var db = require("internal").db;
@@ -574,7 +574,7 @@ from inside a running transaction, the server will throw error `1651 (nested
 transactions detected`).
 
 It is also disallowed to execute user transaction on some of ArangoDB's own system
-collections. This shouldn't be problem for regular usage as system collections will
+collections. This shouldn't be a problem for regular usage as system collections will
 not contain user data and there is no need to access them from within a user
 transaction.
 

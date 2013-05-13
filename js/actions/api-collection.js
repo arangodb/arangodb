@@ -106,7 +106,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// - `waitForSync` (optional, default: false): If `true` then
 ///   the data is synchronised to disk before returning from a create or
-///   update of an document.
+///   update of a document.
 ///
 /// - `journalSize` (optional, default is a @ref
 ///   CommandLineArangod "configuration parameter"): The maximal size of

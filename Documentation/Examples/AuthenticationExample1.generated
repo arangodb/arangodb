@@ -1,8 +1,0 @@
-{ 
-  "_id" : "_users/1589671", 
-  "_rev" : "1589671", 
-  "_key" : "1589671", 
-  "active" : true, 
-  "user" : "root", 
-  "password" : "$1$e0d13aed$328469fc501398de5c3626dcc0a5a567e01b4bafbc06d89c0a5cf2b09872ca14" 
-}

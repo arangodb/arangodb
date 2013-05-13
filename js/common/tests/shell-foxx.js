@@ -597,7 +597,7 @@ function BaseMiddlewareWithTemplateSpec () {
 
       myCollection.save({
         path: "simple/path",
-        content: "hallo <%= username %>",
+        content: "hello <%= username %>",
         contentType: "text/plain",
         templateLanguage: "underscore"
       });
@@ -606,7 +606,7 @@ function BaseMiddlewareWithTemplateSpec () {
       middleware(request, response, options, next);
 
       response.render("simple/path", { username: "moonglum" });
-      assertEqual(response.body, "hallo moonglum");
+      assertEqual(response.body, "hello moonglum");
       assertEqual(response.contentType, "text/plain");
     },
 
@@ -618,7 +618,7 @@ function BaseMiddlewareWithTemplateSpec () {
 
       myCollection.save({
         path: "simple/path",
-        content: "hallo <%= username %>",
+        content: "hello <%= username %>",
         contentType: "text/plain",
         templateLanguage: "pirateEngine"
       });
@@ -684,7 +684,7 @@ function ViewHelperSpec () {
 
       myCollection.save({
         path: "simple/path",
-        content: "hallo <%= testHelper() %>",
+        content: "hello <%= testHelper() %>",
         contentType: "text/plain",
         templateLanguage: "underscore"
       });

@@ -994,8 +994,8 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ///
 /// Note that the url for "user" actions is automatically prefixed
 /// with @LIT{_action}. This applies to all specified contexts. For example, if
-/// the context contains "admin" and "user" and the url is @LIT{hallo}, then the
-/// action is accessible under @LIT{/_action/hallo} - even for the admin context.
+/// the context contains "admin" and "user" and the url is @LIT{hello}, then the
+/// action is accessible under @LIT{/_action/hello} - even for the admin context.
 ///
 /// @FA{options.callback}(@FA{request}, @FA{response})
 ///
