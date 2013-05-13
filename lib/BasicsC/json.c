@@ -107,7 +107,8 @@ static int StringifyJson (TRI_memory_zone_t* zone,
                                     object->_value._string.data,
                                     object->_value._string.length - 1,
                                     false,
-                                    &outLength);
+                                    &outLength,
+                                    false);
 
         if (ptr == NULL) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -288,7 +289,9 @@ static inline void InitArray (TRI_memory_zone_t* zone,
     TRI_InitVector(&result->_value._objects, zone, sizeof(TRI_json_t));
   }
   else {
-    TRI_InitVector2(&result->_value._objects, zone, sizeof(TRI_json_t), initialSize);
+    // need to allocate twice the space because for each array entry,
+    // we need one object for the attribute key, and one for the attribute value
+    TRI_InitVector2(&result->_value._objects, zone, 2 * sizeof(TRI_json_t), initialSize);
   }
 }
 
