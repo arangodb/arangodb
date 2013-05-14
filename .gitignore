@@ -49,6 +49,7 @@ config/stamp-h1
 configure
 core
 TAGS
+tags
 
 Doxygen/*.doxy
 Doxygen/html/

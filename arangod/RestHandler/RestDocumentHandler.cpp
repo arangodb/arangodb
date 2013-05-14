@@ -1126,6 +1126,20 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @EXAMPLES
 ///
+/// @EXAMPLE_ARANGOSH_RUN{RestPatchDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hello":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PATCH', url, "{'one': 1, 'two': 2, 'three': 3}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @verbinclude rest-patch-document
 ////////////////////////////////////////////////////////////////////////////////
 
