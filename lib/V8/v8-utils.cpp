@@ -1399,7 +1399,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process information
 ///
-/// @FUN{internal.processStat()}
+/// @FUN{internal.processStatistics()}
 ///
 /// Returns information about the current process:
 ///
@@ -1429,7 +1429,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 /// @verbinclude system1
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -1713,6 +1713,28 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns server statistics
+///
+/// @FUN{internal.serverStatistics()}
+///
+/// Returns information about the server:
+///
+/// - `uptime`: time since server start in seconds.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ServerStatistics (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_server_statistics_t info = TRI_GetServerStatistics();
+  
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  result->Set(v8::String::New("uptime"), v8::Number::New((double) info._uptime));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief formats the arguments
 ///
 /// @FUN{internal.sprintf(@FA{format}, @FA{argument1}, ...)}
@@ -1951,7 +1973,7 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
   FillDistribution(result, "queueTime", queueTime);
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
-
+  
   return scope.Close(result);
 }
 
@@ -2434,12 +2456,13 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);

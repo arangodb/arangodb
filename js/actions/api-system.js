@@ -317,8 +317,8 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// Returns the statistics information. The returned objects contains the
-/// statistics figures group together according to the description returned by
+/// Returns the statistics information. The returned object contains the
+/// statistics figures grouped together according to the description returned by
 /// `_admin/statistics-description`. For instance, to access a figure `userTime`
 /// from the group `system`, you first select the sub-object describing the
 /// group stored in `system` and in that sub-object the value for `userTime` is
@@ -355,8 +355,9 @@ actions.defineHttp({
 
     try {
       result = {};
-      result.system = internal.processStat();
+      result.system = internal.processStatistics();
       result.client = internal.requestStatistics();
+      result.server = internal.serverStatistics();
 
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
@@ -432,7 +433,14 @@ actions.defineHttp({
             group: "client",
             name: "Client Statistics",
             description: "Statistics about the clients connecting to the server."
+          },
+
+          {
+            group: "server",
+            name: "Server Statistics",
+            description: "Statistics about the ArangoDB server"
           }
+
         ],
 
         figures: [
@@ -582,7 +590,21 @@ actions.defineHttp({
             type: "distribution",
             cuts: internal.connectionTimeDistribution,
             units: "seconds"
+          },
+
+          // .............................................................................
+          // server statistics
+          // .............................................................................
+
+          {
+            group: "server",
+            identifier: "uptime",
+            name: "Server Uptime",
+            description: "Number of seconds elapsed since server start.",
+            type: "current",
+            units: "seconds"
           }
+
         ]
       };
 
