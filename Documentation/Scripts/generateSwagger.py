@@ -372,7 +372,6 @@ def comment(cargo, r=Regexen()):
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
-        # elif r.brief.match(line):										print line[4:-1]
         elif r.RESTHEADER.match(line):
             temp = parameters(line).split(',')
             method, path = temp[0].split()
@@ -429,4 +428,5 @@ if __name__ == "__main__":
     automat.add_state(error, end_state=1)
     automat.set_start(read_through)
     automat.run((sys.stdin, ''))
+
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
