@@ -83,6 +83,7 @@ WIKI = \
 	DbaManualEmergencyConsole \
 	ExtendingAql \
 	FirstStepsArangoDB \
+	Graphs \
 	Glossary \
 	HandlingCollections \
 	HandlingDocuments \
