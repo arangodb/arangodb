@@ -101,7 +101,7 @@
       },
             
       insertEdge = function (collectionID, from, to, cont) {
-        var key = Math.floor(Math.random()*100000),
+        var key = String(Math.floor(Math.random()*100000)),
           id = collectionID + "/" + key;
         cont = cont || {};
         mockCollection[collectionID] = mockCollection[collectionID] || {};
@@ -115,7 +115,7 @@
         return id;
       },
       insertNode = function (collectionID, nodeId, cont) {
-        var key = Math.floor(Math.random()*100000),
+        var key = String(Math.floor(Math.random()*100000)),
           id = collectionID + "/" + key;
         cont = cont || {};
         mockCollection[collectionID] = mockCollection[collectionID] || {};
@@ -234,10 +234,11 @@
         
         var travQ,
           filterQ,
-          apiCursor,
-          host,
+          childQ,
           travVars,
-          filterVars;
+          filterVars,
+          loadGraph,
+          requests;
         
         beforeEach(function() {      
           adapter = new ArangoAdapter(
@@ -252,13 +253,98 @@
           );
           travQ = '{"query":"RETURN TRAVERSAL(@@nodes, @@edges, @id, \\"outbound\\", {strategy: \\"depthfirst\\",maxDepth: 1,paths: true})"';
           filterQ = '{"query":"FOR n IN @@nodes  FILTER n.id == @value RETURN TRAVERSAL(@@nodes, @@edges, n._id, \\"outbound\\", {strategy: \\"depthfirst\\",maxDepth: 1,paths: true})"';
-          host = window.location.protocol + "//" + window.location.host;
-          apiCursor = host + '/_api/cursor';
+          childQ = '{"query":"FOR u IN @@nodes FILTER u._id == @id LET g = ( FOR l in @@edges FILTER l._from == u._id RETURN 1 ) RETURN length(g)"';
+          var host = window.location.protocol + "//" + window.location.host,
+           apibase = host + "/_api/",
+           apiCursor = apibase + 'cursor';
           travVars = function(id, nods, edgs) {
             return '"bindVars":{"id":"' + id + '","@nodes":"' + nods + '","@edges":"' + edgs + '"}}';
           };
           filterVars = function(v, nods, edgs) {
             return '"bindVars":{"value":' + v + ',"@nodes":"' + nods + '","@edges":"' + edgs + '"}}';
+          };
+          
+          loadGraph = function(vars) {
+            var nid = vars["id"];
+            var ncol = vars["@nodes"];
+            var ecol = vars["@edges"];
+            var res = [];
+            var inner = [];
+            res.push(inner);
+            var first = {};
+            var node1 = readNode(ncol, nid);
+            first.vertex = node1;
+            first.path = {
+              edges: [],
+              vertices: [
+               node1
+              ]
+            };
+            inner.push(first);
+            if (mockCollection[ecol][nid] !== undefined) {
+              _.each(mockCollection[ecol][nid], function(val, key) {
+                inner.push(constructPath(ncol, ecol, nid, key));
+              });
+            }
+            return res;
+          };
+          
+          
+          requests = {};
+          requests.cursor = function(data) {
+            return {
+              type: 'POST',
+              url: apiCursor,
+              data: data,
+              contentType: 'application/json',
+              dataType: 'json',
+              success: jasmine.any(Function),
+              error: jasmine.any(Function),
+              processData: false
+            };
+          };
+          requests.node = function(col) {
+            var read = apibase + "document?collection=" + col,
+              write = apibase + "document/",
+              base = {
+                cache: false,
+                dataType: "json",
+                contentType: "application/json",
+                processData: false,
+                success: jasmine.any(Function),
+                error: jasmine.any(Function)
+              };
+            return {
+              create: function(data) {
+                return $.extend(base, {url: read, type: "POST", data: JSON.stringify(data)});
+              },
+              patch: function(id, data) {
+                return $.extend(base, {url: write + id, type: "PUT", data: JSON.stringify(data)});
+              },
+              delete: function(id) {
+                return $.extend(base, {url: write + id, type: "DELETE"});
+              }
+            };
+          };
+          requests.edge = function(col) {
+            var create = apibase + "edge?collection=" + col,
+              base = {
+                cache: false,
+                dataType: "json",
+                contentType: "application/json",
+                processData: false,
+                success: jasmine.any(Function),
+                error: jasmine.any(Function)
+              };
+            return {
+              create: function(from, to, data) {
+                return $.extend(base, {
+                  url: create + "&from=" + from + "&to=" + to,
+                  type: "POST",
+                  data: JSON.stringify(data)
+                });
+              },
+            };
           };
         });
     
@@ -269,24 +355,10 @@
       
           runs(function() {
             spyOn($, "ajax").andCallFake(function(request) {
-              var res = [];
-              var inner = [];
-              res.push(inner);
-              var first = {};
-              var node1 = readNode(nodesCollection, c0);
-              first.vertex = node1;
-              first.path = {
-                edges: [],
-                vertices: [
-                 node1
-                ]
-              };
-              inner.push(first);
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c1));
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c2));
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c3));
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c4));
-              request.success({result: res});
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
             });
             
             c0 = insertNode(nodesCollection, 0);
@@ -306,21 +378,14 @@
       
           waitsFor(function() {
             return callbackCheck;
-          });
+          }, 1000);
       
           runs(function() {
             existNodes([c0, c1, c2, c3, c4]);
             expect(nodes.length).toEqual(5);
-            expect($.ajax).toHaveBeenCalledWith({
-              type: 'POST',
-              url: apiCursor,
-              data: travQ + ',' + travVars(c0, nodesCollection, edgesCollection),
-              contentType: 'application/json',
-              dataType: 'json',
-              success: jasmine.any(Function),
-              error: jasmine.any(Function),
-              processData: false
-            });
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(travQ + ',' + travVars(c0, nodesCollection, edgesCollection))
+            );
           });
         });
         
@@ -332,24 +397,11 @@
       
           runs(function() {
             spyOn($, "ajax").andCallFake(function(request) {
-              var res = [];
-              var inner = [];
-              res.push(inner);
-              var first = {};
-              var node1 = readNode(nodesCollection, c0);
-              first.vertex = node1;
-              first.path = {
-                edges: [],
-                vertices: [
-                 node1
-                ]
-              };
-              inner.push(first);
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c1));
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c2));
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c3));
-              inner.push(constructPath(nodesCollection, edgesCollection, c0, c4));
-              request.success({result: res});
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                vars["id"] = c0;
+                request.success({result: loadGraph(vars)});
+              }
             });
             
             
@@ -375,34 +427,20 @@
           runs(function() {
             existNodes([c0, c1, c2, c3, c4]);
             expect(nodes.length).toEqual(5);
-            expect($.ajax).toHaveBeenCalledWith({
-              type: 'POST',
-              url: apiCursor,
-              data: filterQ + ',' + filterVars("0", nodesCollection, edgesCollection),
-              contentType: 'application/json',
-              dataType: 'json',
-              processData: false,
-              success: jasmine.any(Function),
-              error: jasmine.any(Function)
-              
-            });
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(filterQ + ',' + filterVars("0", nodesCollection, edgesCollection))
+            );
           });
         });
-        /*
+        
         it('should be able to request the number of children centrality', function() {
-          var c0, c1 ,c2 ,c3 ,c4,
+          var c0,
           children;
           runs(function() {
             c0 = insertNode(nodesCollection, 0);
-            c1 = insertNode(nodesCollection, 1);
-            c2 = insertNode(nodesCollection, 2);
-            c3 = insertNode(nodesCollection, 3);
-            c4 = insertNode(nodesCollection, 4);
-        
-            insertEdge(edgesCollection, c0, c1);
-            insertEdge(edgesCollection, c0, c2);
-            insertEdge(edgesCollection, c0, c3);
-            insertEdge(edgesCollection, c0, c4);
+            spyOn($, "ajax").andCallFake(function(request) {
+              request.success({result: [4]});
+            });
         
             callbackCheck = false;
             adapter.requestCentralityChildren(c0, function(count) {
@@ -417,13 +455,24 @@
       
           runs(function() {
             expect(children).toEqual(4);
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(childQ + ',' + travVars(c0, nodesCollection, edgesCollection))
+            );
           });
         });
-   
+        
         it('should encapsulate all attributes of nodes and edges in _data', function() {
           var c0, c1, e1_2;
       
           runs(function() {
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
+            });
+            
             c0 = insertNode(nodesCollection, 0, {name: "Alice", age: 42});
             c1 = insertNode(nodesCollection, 1, {name: "Bob", age: 1337});
             e1_2 = insertEdge(edgesCollection, c0, c1, {label: "knows"});
@@ -461,15 +510,28 @@
               _rev: jasmine.any(String),
               label: "knows"
             });
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(travQ + ',' + travVars(c0, nodesCollection, edgesCollection))
+            );
           });
        
       
         });
-   
+        
         it('should be able to switch to different collections', function() {
           var c0, c1, e1_2, insertedId;
       
           runs(function() {
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              } else {
+                request.success({result: {}});
+              }
+            });
+            
             c0 = insertNode(altNodesCollection, 0);
             c1 = insertNode(altNodesCollection, 1);
             e1_2 = insertEdge(altEdgesCollection, c0, c1);
@@ -482,66 +544,61 @@
     
           waitsFor(function() {
             return callbackCheck;
-          });
+          }, 1000);
     
           runs(function() {
             existNodes([c0, c1]);
             expect(nodes.length).toEqual(2);
-        
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(travQ + ',' + travVars(c0, altNodesCollection, altEdgesCollection))
+            );
+            
             callbackCheck = false;
             adapter.createNode({}, function(node) {
               insertedId = node._id;
               callbackCheck = true;
             });
-            this.addMatchers({
-              toBeStoredPermanently: function() {
-                var id = this.actual,
-                res = false;
-                $.ajax({
-                  type: "GET",
-                  url: arangodb + "/_api/document/" + id,
-                  contentType: "application/json",
-                  processData: false,
-                  async: false,
-                  success: function(data) {
-                    res = true;
-                  },
-                  error: function(data) {
-                    try {
-                      var temp = JSON.parse(data);
-                      throw "[" + temp.errorNum + "] " + temp.errorMessage;
-                    }
-                    catch (e) {
-                      throw "Undefined ERROR";
-                    }
-                  }
-                });
-                return res;
-              }
-            });
-        
           });
       
           waitsFor(function() {
             return callbackCheck;
-          });
+          }, 1000);
       
           runs(function() {
-            expect(insertedId).toBeStoredPermanently();
             existNode(insertedId);
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.node(altNodesCollection).create({})
+            );
           });
       
         });
    
-    
+        
         describe('that has already loaded one graph', function() {
-          var c0, c1, c2, c3, c4, c5, c6, c7;
+          var c0, c1, c2, c3, c4, c5, c6, c7,
+            fakeResult, spyHook;
       
       
           beforeEach(function() {
       
             runs(function() {
               
+              spyOn($, "ajax").andCallFake(function(request) {
+                if (spyHook !== undefined) {
+                  if(!spyHook(request)) {
+                    return;
+                  }
+                }
+                if (request.url.indexOf("cursor", request.url.length - "cursor".length) !== -1) {
+                  var vars = JSON.parse(request.data).bindVars;
+                  if (vars !== undefined) {
+                    request.success({result: loadGraph(vars)});
+                  }
+                } else {
+                  request.success(fakeResult);
+                }
+                
+              });
               c0 = insertNode(nodesCollection, 0);
               c1 = insertNode(nodesCollection, 1);
               c2 = insertNode(nodesCollection, 2);
@@ -640,7 +697,7 @@
               callbackCheck = false;
             });     
           });
-      
+          
           it('should be able to add nodes from another query', function() {
         
             runs(function() {
@@ -654,13 +711,17 @@
             runs(function() {
               existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
               expect(nodes.length).toEqual(8);
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.cursor(travQ + ',' + travVars(c1, nodesCollection, edgesCollection))
+              );
             });
           });
-      
+          
           it('should be able to change a value of one node permanently', function() {
             var toPatch;
         
             runs(function() {
+              fakeResult = {hello: "world"};
               toPatch = nodeWithID(c0);
               adapter.patchNode(toPatch, {hello: "world"}, checkCallbackFunction);
             });
@@ -671,15 +732,19 @@
         
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
-              expect(toPatch._id).toHavePermanentAttributeWithValue("hello", "world");
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(nodesCollection).patch(c0, fakeResult)
+              );
+              
             });
         
           });
-      
+          
           it('should be able to change a value of one edge permanently', function() {
             var toPatch;
         
             runs(function() {
+              fakeResult = {hello: "world"};
               toPatch = edgeWithSourceAndTargetId(c0, c1);
               adapter.patchEdge(toPatch, {hello: "world"}, checkCallbackFunction);
             });
@@ -690,18 +755,21 @@
         
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
-              expect(toPatch._id).toHavePermanentAttributeWithValue("hello", "world");
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(edgesCollection).patch(toPatch._id, fakeResult)
+              );
             });
           });
-      
+          
           it('should be able to remove an edge permanently', function() {
         
             var toDelete;
         
             runs(function() {
+              fakeResult = "";
               toDelete = edgeWithSourceAndTargetId(c0, c4);
-              adapter.deleteEdge(toDelete, checkCallbackFunction);
               existEdge(c0, c4);
+              adapter.deleteEdge(toDelete, checkCallbackFunction);
             });
         
             waitsFor(function() {
@@ -709,12 +777,14 @@
             });
         
             runs(function() {
-              expect(toDelete._id).toNotBeStoredPermanently();
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(edgesCollection).delete(toDelete._id)
+              );
               notExistEdge(c0, c4);
             });
         
           });
-      
+          
           it('should be able to add a node permanently', function() {
         
             var insertedId;
@@ -731,11 +801,14 @@
             });
         
             runs(function() {
-              expect(insertedId).toBeStoredPermanently();
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(nodesCollection).create({})
+              );
+              
               existNode(insertedId);
             });
           });
-    
+          
           describe('that has loaded several queries', function() {
             var c8, c9, e2_8;
       
@@ -762,7 +835,7 @@
               });
       
             });
-      
+            
             it('should not add a node to the list twice', function() {
       
               runs(function() {
@@ -778,7 +851,7 @@
                 expect(nodes.length).toEqual(7);
               });
             });
-      
+            
             it('should be able to add an edge permanently', function() {
               var insertedId,
                 source,
@@ -789,6 +862,13 @@
               runs(function() {
                 source = nodeWithID(c0);
                 target = nodeWithID(c8);
+                fakeResult = {
+                  _id: edgesCollection + "/123",
+                  _key: "123",
+                  _rev: "123",
+                  _from: source._id,
+                  _to: target._id
+                };
                 adapter.createEdge({source: source, target: target}, function(edge) {
                   insertedId = edge._id;
                   callbackCheck = true;
@@ -801,7 +881,9 @@
               });
         
               runs(function() {
-                expect(insertedId).toBeStoredPermanently();
+                expect($.ajax).toHaveBeenCalledWith(
+                  requests.edge(edgesCollection).create(source._id, target._id, {})
+                );
                 existEdge(source._id, target._id);
                 expect(insertedEdge).toEqual({
                   source: source,
@@ -818,10 +900,20 @@
               });
         
             });
-      
+            
             it('should be able to remove a node and all connected edges permanently', function() {
               var toDelete;
               runs(function() {
+                spyHook = function(request) {
+                  if (request.data !== undefined) {
+                    request.success({result: [
+                     {_id: e2_8}
+                    ]});
+                    return false;
+                  }
+                  return true;
+                }
+                fakeResult = "";
                 toDelete = nodeWithID(c2);
                 adapter.deleteNode(toDelete, checkCallbackFunction);
               });
@@ -829,17 +921,21 @@
               waits(2000);
         
               runs(function() {
-                expect(toDelete._id).toNotBeStoredPermanently();
+                expect($.ajax).toHaveBeenCalledWith(
+                  requests.node(nodesCollection).delete(toDelete._id)
+                );
                 notExistNode(c2);
-                expect(e2_8).toNotBeStoredPermanently();
+                expect($.ajax).toHaveBeenCalledWith(
+                  requests.node(edgesCollection).delete(e2_8)
+                );
                 notExistEdge(c2, c8);
               });
             });
-      
+            
           });
-      
+          
         });
-   
+        
         describe('displaying only parts of the graph', function() {
     
           it('should be able to remove a node and all '
@@ -848,55 +944,6 @@
             s0_toDel, s1_toDel, toDel_t0;
         
             runs(function() {
-          
-              this.addMatchers({
-                toBeStoredPermanently: function() {
-                  var id = this.actual,
-                  res = false;
-                  $.ajax({
-                    type: "GET",
-                    url: arangodb + "/_api/document/" + id,
-                    contentType: "application/json",
-                    processData: false,
-                    async: false,
-                    success: function(data) {
-                      res = true;
-                    },
-                    error: function(data) {
-                      try {
-                        var temp = JSON.parse(data);
-                        throw "[" + temp.errorNum + "] " + temp.errorMessage;
-                      }
-                      catch (e) {
-                        throw "Undefined ERROR";
-                      }
-                    }
-                  });
-                  return res;
-                },
-            
-                toNotBeStoredPermanently: function() {
-                  var id = this.actual,
-                  res = false;
-                  $.ajax({
-                    type: "GET",
-                    url: arangodb + "/_api/document/" + id,
-                    contentType: "application/json",
-                    processData: false,
-                    async: false,
-                    success: function(data) {
-
-                    },
-                    error: function(data) {
-                      if (data.status === 404) {
-                        res = true;
-                      }
-                  
-                    }
-                  });
-                  return res;
-                }
-              });
           
               callbackCheck = false;
               s0 = insertNode(nodesCollection, 0);
@@ -907,7 +954,34 @@
               s0_toDel = insertEdge(edgesCollection, s0, toDel);
               s1_toDel = insertEdge(edgesCollection, s1, toDel);
               toDel_t0 = insertEdge(edgesCollection, toDel, t0);
-          
+              
+              var loaded = false;
+              var fakeResult = "";
+              
+              spyOn($, "ajax").andCallFake(function(request) {                
+                if (request.url.indexOf("cursor", request.url.length - "cursor".length) !== -1) {
+                  if (!loaded) {
+                    var vars = JSON.parse(request.data).bindVars;
+                    if (vars !== undefined) {
+                      loaded = true;
+                      request.success({result: loadGraph(vars)});
+                    }
+                  } else {
+                    request.success({result: [
+                     {
+                       _id: s0_toDel
+                     },{
+                       _id: s1_toDel
+                     },{
+                       _id: toDel_t0
+                     }      
+                    ]});    
+                  }
+                } else {
+                  request.success(fakeResult);
+                }
+              });
+
               adapter.loadNodeFromTreeById(s0, checkCallbackFunction);
             });
         
@@ -930,17 +1004,20 @@
               notExistEdge(s0, toDel);
               notExistEdge(s1, toDel);
               notExistEdge(toDel, t0);
-          
-              expect(toDel).toNotBeStoredPermanently();
-              expect(s0).toBeStoredPermanently();
-              expect(s1).toBeStoredPermanently();
-              expect(t0).toBeStoredPermanently();
-          
-          
-              expect(s0_toDel).toNotBeStoredPermanently();
-              expect(s1_toDel).toNotBeStoredPermanently();
-              expect(toDel_t0).toNotBeStoredPermanently();
-          
+              
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(nodesCollection).delete(toDel)
+              );
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(edgesCollection).delete(s0_toDel)
+              );
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(edgesCollection).delete(s1_toDel)
+              );
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(edgesCollection).delete(toDel_t0)
+              );
+              
               // Check if counter is set correctly
               expect(nodeWithID(s0)._outboundCounter).toEqual(0);
             });
@@ -949,9 +1026,9 @@
     
         });
         
-        */
+        
       });
-   
+      
   });
   
   
