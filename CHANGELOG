@@ -1,3 +1,9 @@
+v1.3.1 (2013-??-??)
+-------------------
+
+* fixed usage of --temp-path in aranogd and arangosh
+
+
 v1.3.0 (2013-05-10)
 -------------------
 
