@@ -256,7 +256,7 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_binaryPath, _tempPath);
+  _applicationV8 = new ApplicationV8(_binaryPath);
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -411,9 +411,15 @@ void ArangoServer::buildApplicationServer () {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
 
+  // set the temp-path
+  if (_applicationServer->programOptions().has("temp-path")) {
+    TRI_SetUserTempPath((char*) _tempPath.c_str());
+  }
+
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
+  // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
     _developmentMode = true;
     _applicationV8->enableDevelopmentMode();

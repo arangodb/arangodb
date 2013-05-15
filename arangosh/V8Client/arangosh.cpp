@@ -1454,7 +1454,8 @@ int main (int argc, char* argv[]) {
   TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
   TRI_InitV8Buffer(context);
-  TRI_InitV8Utils(context, StartupModules, StartupPackages, BaseClient.tempPath());
+
+  TRI_InitV8Utils(context, StartupModules, StartupPackages);
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)

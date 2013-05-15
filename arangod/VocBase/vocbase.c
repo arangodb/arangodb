@@ -2224,8 +2224,11 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseVocBase () {
+  // TODO: these two fcalls can probably be removed because we're initialising
+  // BasicsC anyway
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
+
   TRI_GlobalInitStatementListAql();
 
   ServerIdentifier = TRI_UInt16Random();
