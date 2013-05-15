@@ -664,6 +664,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// @EXAMPLES
 ///
+/// Returns a collection.
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -680,6 +682,21 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Collection does not exist.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAllCollectionDoesNotExist}
+///     var cn = "doesnotexist";
+///     db._drop(cn);
+///     var url = "/_api/document/?collection=" + cn;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -968,11 +985,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
+///     db.products.remove(document._id);
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 202);
+///     assert(response.code === 404);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -985,26 +1003,30 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
+///     var document2 = db.products.save({"hello2":"world"});
 ///     var url = "/_api/document/" + document._id;
+///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
 /// 
-///     assert(response.code === 202);
+///     assert(response.code === 412);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWrite}
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWriteWins}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
-///     var url = "/_api/document/" + document._id;
+///     var document2 = db.products.replace(document._id,{"other":"content"});
+///     var url = "/_api/document/products/" + document._rev + "?policy=last";
+///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, "{}", headers);
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1018,11 +1040,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
-///     var url = "/_api/document/" + document._id;
+///     var document2 = db.products.save({"hello2":"world"});
+///     var url = "/_api/document/" + document._id + "?rev=" + document2._rev;
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"other":"content"}');
 /// 
-///     assert(response.code === 202);
+///     assert(response.code === 412);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
