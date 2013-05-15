@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config) {
+function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limitCallback) {
   "use strict";
   
   if (width === undefined || width < 0) {
@@ -75,6 +75,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config) {
     baseDRadius,
     size =  width * height,
     zoom,
+    limitCB = limitCallback || function() {},
     
     calcNodeLimit = function () {
       var div, reqSize;
@@ -123,6 +124,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config) {
         .on("zoom", function() {
           currentZoom = d3.event.scale;
           currentLimit = calcNodeLimit();
+          limitCB(currentLimit);
           nodeShaper.activateLabel(currentZoom >= labelToggle);
           edgeShaper.activateLabel(currentZoom >= labelToggle);
           calcDistortionValues();
