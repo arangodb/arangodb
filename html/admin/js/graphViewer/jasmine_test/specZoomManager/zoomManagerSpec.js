@@ -452,8 +452,31 @@
     
     });
 
+    it('if a nodelimit callback is defined it should be invoked on zoom-in', function() {
+      var w = 200,
+        h = 200,
+        nl = -1 ,
+        callback = function(n) {
+          nl = n;
+        },
+        manager = new ZoomManager(w, h, svg, g, nodeShaperMock, edgeShaperMock, {}, callback);
+        
+      simulateZoomIn();
+      expect(nl).toEqual(manager.getNodeLimit());
+    });
+
+    it('if a nodelimit callback is defined it should be invoked on zoom-out', function() {
+      var w = 200,
+        h = 200,
+        nl = -1 ,
+        callback = function(n) {
+          nl = n;
+        },
+        manager = new ZoomManager(w, h, svg, g, nodeShaperMock, edgeShaperMock, {}, callback);
+        
+      simulateZoomOut();
+      expect(nl).toEqual(manager.getNodeLimit());
+    });
   });
-
-
 
 }());
