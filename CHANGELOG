@@ -1,6 +1,8 @@
 v1.4
 ------
 
+* issue #526: Unable to escape when an errorneous command is entered into the js shell
+
 * issue #523: Graph and vertex methods for the javascript api
  
 * issue #517: Foxx: Route parameters with captial letters fail
