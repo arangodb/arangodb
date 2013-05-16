@@ -59,7 +59,9 @@ var dashboardView = Backbone.View.extend({
     var self = this;
     $(this.el).html(this.template.text);
 
-    console.log(this.options.description.models[0].attributes.groups);
+    //Client calculated charts
+    self.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
+    self.genCustomChart();
 
     $.each(this.options.description.models[0].attributes.groups, function () {
       $('.thumbnails').append(
@@ -95,6 +97,34 @@ var dashboardView = Backbone.View.extend({
       self.renderCharts();
     }
     return this;
+  },
+  genCustomCategory: function(description, group, name) {
+    this.options.description.models[0].attributes.groups.push({
+      "description":description,
+      "group":group,
+      "name":name
+    });
+  },
+  genCustomChart: function () {
+    //totalTime
+    var figure = {
+      "description" : "userTime + systemTime",
+      "group" : "custom",
+      "identifier" : "totalTime2",
+      "name" : "Total Time (User+System)",
+      "type" : "accumulated",
+      "units" : "seconds"
+    };
+    this.options.description.models[0].attributes.figures.push(figure);
+    this.renderFigure(figure);
+  },
+
+  updateCustomChart: function () {
+    //totalTime
+    var val1 = this.collection.models[0].attributes.system.userTime;
+    var val2 = this.collection.models[0].attributes.system.systemTime;
+    var totalTime2Value = val1+val2;
+    this.collection.models[0].attributes["custom"] = {"totalTime2":totalTime2Value};
   },
 
   checkInterval: function (a) {
@@ -253,6 +283,8 @@ var dashboardView = Backbone.View.extend({
 
   calculateSeries: function (flush) {
     var self = this;
+    self.updateCustomChart();
+
     var timeStamp = Math.round(new Date() * 10);
 
     $.each(self.options.description.models[0].attributes.figures, function () {
@@ -320,7 +352,6 @@ var dashboardView = Backbone.View.extend({
   },
 
   renderFigure: function (figure) {
-    console.log(figure);
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
