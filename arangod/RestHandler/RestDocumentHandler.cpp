@@ -1149,7 +1149,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @EXAMPLES
 ///
-/// patches a existing Document with new content.
+/// patches an existing document with new content.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestPatchDocument}
 ///     var cn = "products";
