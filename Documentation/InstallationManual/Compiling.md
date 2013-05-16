@@ -40,7 +40,33 @@ Micro Instance:
     amazon> make
     amazon> make install
 
-For detailed instructions the following section.
+For detailed instructions see the following section.
+
+Red Hat Enterprise Linux{#CompilingRHEL}
+----------------------------------------
+
+We provide packages for the latest version of RHEL. If you need to run ArangoDB
+on an older version, please follow the instructions:
+
+- install the source from GITHUB or http://www.arangodb.org/download
+- install at least Pythin 2.7.4 from http://www.python.org/ftp/python/2.7.4/Python-2.7.4.tar.bz2
+
+Compile Python - this is needed in order to compile V8.
+
+    rhel> bzip2 -d Python-2.7.4.tar.bz2 && tar xf Python-2.7.4.tar 
+    rhel> cd Python-2.7.4
+    rhel> ./configure
+    rhel> make
+    rhel> sudo make install
+
+Compile ArangoDB
+
+    rhel> cd ArangoDB
+    rhel> ./configure --enable-all-in-one-v8 --enable-all-in-one-icu --enable-all-in-one-libev LDFLAGS=-lncurses
+    rhel> make
+    rhel> sudo make install
+
+For detailed instructions see the following section.
 
 All-In-One Version{#CompilingAIO}
 =================================

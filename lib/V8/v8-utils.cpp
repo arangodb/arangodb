@@ -698,7 +698,7 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
   }
 
   // return result
-  return scope.Close(v8::String::New(TempPath.c_str(), TempPath.size()));
+  return scope.Close(v8::String::New(TRI_GetUserTempPath()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1691,15 +1691,23 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
     TRI_V8_EXCEPTION_PARAMETER(scope, "<path> must be a valid directory name");
   }
 
-  if (TempPath.size() < 8) {
+  char* tempPath = TRI_GetUserTempPath();
+  
+  if (tempPath == NULL || strlen(tempPath) < 6) {
     // some security measure so we don't accidently delete all our files
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
+
     TRI_V8_EXCEPTION_PARAMETER(scope, "temporary directory name is too short. will not remove directory");
   }
 
   const string path(*name);
-  if (path.substr(0, TempPath.size()) != TempPath) {
+  if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
+
     TRI_V8_EXCEPTION_PARAMETER(scope, "directory to be removed is outside of temporary path");
   }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
 
   int res = TRI_RemoveDirectory(*name);
 
@@ -2365,8 +2373,7 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& modules,
-                      string const& packages,
-                      string const& tempPath) {
+                      string const& packages) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -2375,8 +2382,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::ObjectTemplate> rt;
-
-  TempPath = tempPath;
 
   // .............................................................................
   // generate the general error template

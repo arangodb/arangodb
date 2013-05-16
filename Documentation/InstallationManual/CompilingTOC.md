@@ -3,7 +3,8 @@ TOC {#CompilingTOC}
 
 - @ref Compiling
   - @ref CompilingIntro
-  - @ref CompilingAmazonMicroInstance
+    - @ref CompilingAmazonMicroInstance
+    - @ref CompilingRHEL
   - @ref CompilingAIO
     - @ref CompilingAIOPrerequisites
     - @ref DownloadSourceAIO
