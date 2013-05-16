@@ -240,7 +240,8 @@
     
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
-      return createSystemCollection("_routing");
+      // needs to be big enough for assets
+      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
     });
     
     // create the default route in the _routing collection
