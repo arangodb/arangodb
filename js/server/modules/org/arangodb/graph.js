@@ -963,6 +963,7 @@ Graph.prototype.removeEdge = function (edge, waitForSync) {
       throw "cannot delete edge";
     }
 
+    this._edgesCache[edge._properties._id] = undefined;
     edge._properties = undefined;
   }
 };
