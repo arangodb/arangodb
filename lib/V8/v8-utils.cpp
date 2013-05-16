@@ -698,7 +698,16 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
   }
 
   // return result
-  return scope.Close(v8::String::New(TRI_GetUserTempPath()));
+  char* path = TRI_GetUserTempPath();
+
+  if (path == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  v8::Handle<v8::Value> result = v8::String::New(path);
+  TRI_Free(TRI_CORE_MEM_ZONE, path);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
