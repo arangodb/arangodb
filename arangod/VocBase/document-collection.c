@@ -758,6 +758,9 @@ static int RollbackUpdate (TRI_document_collection_t* document,
   
   // ignore any errors we're getting from this
   DeleteSecondaryIndexes(document, newHeader, true);
+  
+  // put back the header into its old position
+  document->_headers->move(document->_headers, newHeader, oldHeader);
 
   *newHeader = *oldHeader; 
 
@@ -766,9 +769,6 @@ static int RollbackUpdate (TRI_document_collection_t* document,
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("error rolling back update operation");
   }
-
-  // put back the header into its old position
-  document->_headers->move(document->_headers, newHeader, newHeader);
 
   return res;
 }

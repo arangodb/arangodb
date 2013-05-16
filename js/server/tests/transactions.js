@@ -2132,6 +2132,66 @@ function transactionRollbackSuite () {
       assertEqual([ "bar", "baz", "test" ], sortedKeys(c1));
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback inserts with cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackGraphUpdates : function () {
+      var g = require('org/arangodb/graph').Graph; 
+
+      var graph;
+
+      try {
+        graph = new g('UnitTestsGraph'); 
+        graph.drop();
+      }
+      catch (err) {
+      }
+
+      db._drop("UnitTestsVertices");
+      db._drop("UnitTestsEdges");
+
+      graph = new g('UnitTestsGraph', 'UnitTestsVertices', 'UnitTestsEdges');
+      var gotHere = 0;
+
+      var obj = {
+        collections: { 
+          write: [ "UnitTestsEdges" , "UnitTestsVertices" ] 
+        }, 
+        action : function () {
+          var result = { };
+          result.enxirvp = graph.addVertex(null, { _rev : null})._properties;
+          result.biitqtk = graph.addVertex(null, { _rev : null})._properties;
+          result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name: "john smith" })._properties;
+          result.cvwmkym = db.UnitTestsVertices.replace(result.enxirvp._id, { _rev : null});
+          result.gsalfxu = db.UnitTestsVertices.replace(result.biitqtk._id, { _rev : null});
+          result.xsjzbst = function(){
+            graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
+            return true;
+          }(); 
+
+          result.thizhdd = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name: "david smith" });
+          gotHere = 1;
+
+          result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
+          gotHere = 2;
+
+          return result;
+        } 
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(0, db.UnitTestsVertices.count());
+      assertEqual(0, db.UnitTestsEdges.count());
+      assertEqual(1, gotHere);
+    }
+
   };
 }
 
