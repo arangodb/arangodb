@@ -10,7 +10,7 @@ var dashboardView = Backbone.View.extend({
 
   initialize: function () {
     var self = this;
-    
+
     this.initUnits();
 
     this.collection.fetch({
@@ -69,6 +69,8 @@ var dashboardView = Backbone.View.extend({
       self.renderFigure(this);
     });
 
+    $('input[name=every'+self.updateInterval/1000 +']').attr('checked', true);
+
     if (this.collection.models[0] === undefined) {
       this.collection.fetch({
         success: function() {
@@ -85,7 +87,6 @@ var dashboardView = Backbone.View.extend({
       self.calculateSeries();
       self.renderCharts();
     }
-
     return this;
   },
 
@@ -147,19 +148,19 @@ var dashboardView = Backbone.View.extend({
       var identifier = figure.identifier;
       var chart;
 
-      if (self.charts[identifier] === undefined) {      
+      if (self.charts[identifier] === undefined) {
         chart = self.charts[identifier] = nv.models.lineChart();
         chart.xAxis.axisLabel('').tickFormat(function (d) {
           if (isNaN(d)) {
             return '';
           }
-           
+
           function pad (value) {
             return (value < 10 ? "0" + String(value) : String(value));
           }
 
-          var date = new Date(d / 10); 
-  
+          var date = new Date(d / 10);
+
           return pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
         });
 
@@ -167,9 +168,9 @@ var dashboardView = Backbone.View.extend({
 
         if (figure.units === 'bytes') {
           label = "megabytes";
-        } 
+        }
         chart.yAxis.axisLabel(label);
-          
+
         nv.addGraph (function () {
           nv.utils.windowResize(function () {
             d3.select('#' + identifier + 'Chart svg').call(chart);
@@ -181,7 +182,7 @@ var dashboardView = Backbone.View.extend({
       else {
         chart = self.charts[identifier];
       }
-      
+
       chart.yDomain([ 0, self.getMaxValue(identifier) ]);
 
       d3.select("#" + identifier + "Chart svg")
@@ -211,7 +212,7 @@ var dashboardView = Backbone.View.extend({
         self.seriesData[identifier].values.push({ x: timeStamp, y: undefined, value: undefined });
         return;
       }
-      
+
       var responseValue = self.collection.models[0].attributes[figure.group][identifier];
 
       if (responseValue !== undefined && responseValue !== null) {
