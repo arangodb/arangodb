@@ -12,13 +12,18 @@
 }
 */
 
-.db-zoom, .db-minimize {
+#dashboardHeader .btn-group {
+  margin-left: 10px;
+  margin-top: 6px;
+}
+
+.db-zoom, .db-minimize, .db-hide, .db-info {
   float: right;
   margin-top: -4px !important;
   margin-right: 4px !important;
 }
 
-.db-zoom:hover, .db-minimize:hover {
+.db-zoom:hover, .db-minimize:hover, .db-hide, .db-info:hover {
   cursor:pointer;
 }
 
@@ -26,10 +31,13 @@
   margin-left: 0px;
   float:left;
   width: 100%;
+  margin-bottom: -15px !important;
 }
 
 .statGroups h4 {
+  padding-top: 5px;
   margin-right: 20px;
+  height: 25px;
   text-align: center;
 }
 
@@ -41,16 +49,15 @@
 
 }
 
-.dashboardH4 {
-
+.dashboardH4 {
 }
 
 .statSingleClient {
   height: 300px;
   width: 888px;
-  margin-top: 5px;
+  margin-top: 0px;
   margin-left: 9px !important;
-  margin-bottom: 0;
+  margin-bottom: 0px !important;
   border: 1px solid black;
   border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
@@ -103,13 +110,11 @@
 }
 
 .statsHeader {
-  margin-left: 8px;
-  width: 901px;
-  border: 1px solid #F4F3F3;
-  background-color: #F4F3F3;
-  border-radius: 2px 2px 2px 2px;
-  background-color: #FFFFFF;
-  box-shadow: 0 0 3px #333333;
+  margin-left: -10px;
+  width: 940px;
+  background-color: #686766;
+  color: white;
+  height: 36px;
 }
 
 #dashboardHeader {
