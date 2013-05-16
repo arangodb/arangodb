@@ -12,6 +12,16 @@
 }
 */
 
+.db-zoom, .db-minimize {
+  float: right;
+  margin-top: -4px !important;
+  margin-right: 4px !important;
+}
+
+.db-zoom:hover, .db-minimize:hover {
+  cursor:pointer;
+}
+
 .statGroups {
   margin-left: 0px;
   float:left;
@@ -33,6 +43,18 @@
 
 .dashboardH4 {
 
+}
+
+.statSingleClient {
+  height: 300px;
+  width: 888px;
+  margin-top: 5px;
+  margin-left: 9px !important;
+  margin-bottom: 0;
+  border: 1px solid black;
+  border-radius: 2px 2px 2px 2px;
+  background-color: #F4F3F3;
+  box-shadow: 0 0 3px #333333;
 }
 
 .statClient {
@@ -60,6 +82,13 @@
   padding-top: 0 !important;
   height: 150px;
   width: 270px;
+}
+
+.svgDetailClass {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  height: 300px;
+  width: 877px;
 }
 
 .boxHeader {

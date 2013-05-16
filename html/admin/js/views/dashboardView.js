@@ -7,6 +7,7 @@ var dashboardView = Backbone.View.extend({
   seriesData: {},
   charts: {},
   units: [],
+  detailGraph: "userTime",
 
   initialize: function () {
     var self = this;
@@ -45,7 +46,9 @@ var dashboardView = Backbone.View.extend({
 
   events: {
     "click .dashboard-dropdown li" : "checkEnabled",
-    "click .interval-dropdown li" : "checkInterval"
+    "click .interval-dropdown li" : "checkInterval",
+    "click .db-zoom" : "renderDetailChart",
+    "click .db-minimize" : "checkDetailChart"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -92,6 +95,8 @@ var dashboardView = Backbone.View.extend({
 
   checkInterval: function (a) {
     this.updateFrequency = a.target.value;
+    self.calculateSeries();
+    self.renderCharts();
   },
 
   checkEnabled: function (a) {
@@ -140,6 +145,38 @@ var dashboardView = Backbone.View.extend({
     return max;
   },
 
+  checkDetailChart: function (a) {
+    if ($(a.target).hasClass('icon-minus') === true) {
+      $('#detailGraph').height(50);
+      $('#detailGraphChart').hide();
+      $(a.target).removeClass('icon-minus');
+      $(a.target).addClass('icon-plus');
+    }
+    else {
+      $('#detailGraphChart').show();
+      $('#detailGraph').height(300);
+      $(a.target).removeClass('icon-plus');
+      $(a.target).addClass('icon-minus');
+    }
+  },
+
+  renderDetailChart: function (a) {
+    var self = this;
+    self.detailGraph = $(a.target).attr("value");
+    $.each(this.options.description.models[0].attributes.figures, function () {
+      if(this.identifier === self.detailGraph) {
+        $('#detailGraphHeader').text(this.name);
+        self.calculateSeries();
+        self.renderCharts();
+        $("html, body").animate({ scrollTop: 0 }, "slow");
+        $('#detailGraphChart').show();
+        $('#detailGraph').height(300);
+        $(a.target).addClass('icon-plus');
+        $(a.target).removeClass('icon-minus');
+      }
+    });
+  },
+
   renderCharts: function () {
     var self = this;
 
@@ -184,6 +221,17 @@ var dashboardView = Backbone.View.extend({
       }
 
       chart.yDomain([ 0, self.getMaxValue(identifier) ]);
+
+      if (self.detailGraph === undefined) {
+        self.detailGraph = "userTime";
+      }
+      if (self.detailGraph === identifier) {
+        d3.select("#detailGraphChart svg")
+          .call(chart)
+          .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
+          .transition().duration(500);
+
+      }
 
       d3.select("#" + identifier + "Chart svg")
         .call(chart)
@@ -263,7 +311,8 @@ var dashboardView = Backbone.View.extend({
   renderFigure: function (figure) {
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
-      '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name + '</h6></div>' +
+      '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
+      '</h6><i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i></div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
     );
