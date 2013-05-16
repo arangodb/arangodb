@@ -1439,6 +1439,314 @@ function transactionOperationsSuite () {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+function transactionBarriersSuite () {
+  var cn1 = "UnitTestsTransaction1";
+  var cn2 = "UnitTestsTransaction2";
+
+  var c1 = null;
+  var c2 = null;
+  
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      if (c1 !== null) {
+        c1.drop();
+      }
+
+      c1 = null;
+      
+      if (c2 !== null) {
+        c2.drop();
+      }
+
+      c2 = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: usage of barriers outside of transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testBarriersOutsideCommit : function () {
+      c1 = db._create(cn1);
+
+      var docs = [ ];
+      var i;
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          for (i = 0; i < 100; ++i) {
+            c1.save({ _key: "foo" + i, value1: i, value2: "foo" + i + "x" });
+          }
+          
+          for (i = 0; i < 100; ++i) {
+            docs.push(c1.document("foo" + i));
+          }
+
+          return c1.document("foo0");
+        }
+      };
+
+      var result = TRANSACTION(obj);
+     
+      assertEqual(100, docs.length);
+      assertEqual(100, c1.count());
+
+      assertEqual("foo0", result._key);
+      assertEqual(0, result.value1);
+      assertEqual("foo0x", result.value2);
+     
+      for (i = 0; i < 100; ++i) {
+        assertEqual("foo" + i, docs[i]._key);
+        assertEqual(i, docs[i].value1);
+        assertEqual("foo" + i + "x", docs[i].value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: usage of barriers outside of transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testBarriersOutsideRollback : function () {
+      c1 = db._create(cn1);
+
+      var docs = [ ];
+      var i;
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          for (i = 0; i < 100; ++i) {
+            c1.save({ _key: "foo" + i, value1: i, value2: "foo" + i + "x" });
+          }
+          
+          for (i = 0; i < 100; ++i) {
+            docs.push(c1.document("foo" + i));
+          }
+
+          throw "doh!";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+     
+      assertEqual(100, docs.length);
+
+      for (i = 0; i < 100; ++i) {
+        assertEqual("foo" + i, docs[i]._key);
+        assertEqual(i, docs[i].value1);
+        assertEqual("foo" + i + "x", docs[i].value2);
+      }
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function transactionGraphSuite () {
+  var cn1 = "UnitTestsVertices";
+  var cn2 = "UnitTestsEdges";
+
+  var g = require('org/arangodb/graph').Graph; 
+
+  var c1 = null;
+  var c2 = null;
+  
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+
+      db._create(cn1);
+      db._createEdgeCollection(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      if (c1 !== null) {
+        c1.drop();
+      }
+
+      c1 = null;
+      
+      if (c2 !== null) {
+        c2.drop();
+      }
+
+      c2 = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback updates in a graph transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackGraphUpdates : function () {
+      var graph;
+
+      try {
+        graph = new g('UnitTestsGraph'); 
+        graph.drop();
+      }
+      catch (err) {
+      }
+
+      graph = new g('UnitTestsGraph', cn1, cn2);
+      var gotHere = 0;
+
+      var obj = {
+        collections: { 
+          write: [ cn1, cn2 ]
+        }, 
+        action : function () {
+          var result = { };
+          result.enxirvp = graph.addVertex(null, { _rev : null })._properties;
+          result.biitqtk = graph.addVertex(null, { _rev : null })._properties;
+          result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name: "john smith" })._properties;
+          result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev : null });
+          result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev : null });
+          result.xsjzbst = function (){
+            graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
+            return true;
+          }(); 
+
+          result.thizhdd = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name: "david smith" });
+          gotHere = 1;
+
+          result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
+          gotHere = 2;
+
+          return result;
+        } 
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(0, db[cn1].count());
+      assertEqual(0, db[cn2].count());
+      assertEqual(1, gotHere);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: usage of barriers outside of graph transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseBarriersOutsideGraphTransaction : function () {
+      var graph;
+
+      try {
+        graph = new g('UnitTestsGraph'); 
+        graph.drop();
+      }
+      catch (err) {
+      }
+
+      graph = new g('UnitTestsGraph', cn1, cn2);
+
+      var obj = {
+        collections: { 
+          write: [ cn1, cn2 ]
+        }, 
+        action : function () {
+          var result = { };
+
+          result.enxirvp = graph.addVertex(null, { _rev : null })._properties;
+          result.biitqtk = graph.addVertex(null, { _rev : null })._properties;
+          result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name : "john smith" })._properties;
+          result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev : null });
+          result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev : null });
+          result.xsjzbst = function (){
+            graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
+            return true;
+          }();
+
+          result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
+
+          return result;
+        } 
+      };
+
+      var result = TRANSACTION(obj);
+      assertTrue(result.enxirvp._key.length > 0);
+      assertEqual(undefined, result.enxirvp.name);
+
+      assertTrue(result.biitqtk._key.length > 0);
+      assertEqual(undefined, result.biitqtk.name);
+      
+      assertTrue(result.oboyuhh._key.length > 0);
+      assertEqual("john smith", result.oboyuhh.name);
+      assertEqual(null, result.oboyuhh.$label);
+      assertTrue(result.oboyuhh._from.length > 0);
+      assertTrue(result.oboyuhh._to.length > 0);
+      
+      assertTrue(result.cvwmkym._key.length > 0);
+      assertEqual(undefined, result.cvwmkym.name);
+      assertEqual(result.enxirvp._rev, result.cvwmkym._oldRev);
+
+      assertTrue(result.gsalfxu._key.length > 0);
+      assertEqual(undefined, result.gsalfxu.name);
+      assertEqual(result.biitqtk._rev, result.gsalfxu._oldRev);
+      
+      assertEqual(true, result.xsjzbst);
+      
+      assertTrue(result.rldfnre._key.length > 0);
+      assertEqual(result.oboyuhh._key, result.rldfnre._key);
+      assertEqual("david smith", result.rldfnre.name);
+      assertEqual(null, result.rldfnre.$label);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
 function transactionRollbackSuite () {
   var cn1 = "UnitTestsTransaction1";
 
@@ -2130,66 +2438,6 @@ function transactionRollbackSuite () {
       c1.save({ _key: "test" });
       assertEqual(3, c1.count());
       assertEqual([ "bar", "baz", "test" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackGraphUpdates : function () {
-      var g = require('org/arangodb/graph').Graph; 
-
-      var graph;
-
-      try {
-        graph = new g('UnitTestsGraph'); 
-        graph.drop();
-      }
-      catch (err) {
-      }
-
-      db._drop("UnitTestsVertices");
-      db._drop("UnitTestsEdges");
-
-      graph = new g('UnitTestsGraph', 'UnitTestsVertices', 'UnitTestsEdges');
-      var gotHere = 0;
-
-      var obj = {
-        collections: { 
-          write: [ "UnitTestsEdges" , "UnitTestsVertices" ] 
-        }, 
-        action : function () {
-          var result = { };
-          result.enxirvp = graph.addVertex(null, { _rev : null})._properties;
-          result.biitqtk = graph.addVertex(null, { _rev : null})._properties;
-          result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name: "john smith" })._properties;
-          result.cvwmkym = db.UnitTestsVertices.replace(result.enxirvp._id, { _rev : null});
-          result.gsalfxu = db.UnitTestsVertices.replace(result.biitqtk._id, { _rev : null});
-          result.xsjzbst = function(){
-            graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
-            return true;
-          }(); 
-
-          result.thizhdd = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name: "david smith" });
-          gotHere = 1;
-
-          result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
-          gotHere = 2;
-
-          return result;
-        } 
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(0, db.UnitTestsVertices.count());
-      assertEqual(0, db.UnitTestsEdges.count());
-      assertEqual(1, gotHere);
     }
 
   };
@@ -2661,6 +2909,8 @@ function transactionCrossCollectionSuite () {
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
+jsunity.run(transactionBarriersSuite);
+jsunity.run(transactionGraphSuite);
 jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
