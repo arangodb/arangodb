@@ -36,6 +36,7 @@ var dashboardView = Backbone.View.extend({
               // need to flush previous values
               self.calculateSeries(true);
               self.renderCharts();
+              arangoHelper.arangoError("Lost connection to Database!");
             }
           });
 
@@ -48,7 +49,8 @@ var dashboardView = Backbone.View.extend({
     "click .dashboard-dropdown li" : "checkEnabled",
     "click .interval-dropdown li" : "checkInterval",
     "click .db-zoom" : "renderDetailChart",
-    "click .db-minimize" : "checkDetailChart"
+    "click .db-minimize" : "checkDetailChart",
+    "click .db-hide" : "hideChart"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -56,6 +58,8 @@ var dashboardView = Backbone.View.extend({
   render: function() {
     var self = this;
     $(this.el).html(this.template.text);
+
+    console.log(this.options.description.models[0].attributes.groups);
 
     $.each(this.options.description.models[0].attributes.groups, function () {
       $('.thumbnails').append(
@@ -72,7 +76,7 @@ var dashboardView = Backbone.View.extend({
       self.renderFigure(this);
     });
 
-    $('input[name=every'+self.updateInterval/1000 +']').attr('checked', true);
+    $('#every'+self.updateFrequency+'seconds').prop('checked',true);
 
     if (this.collection.models[0] === undefined) {
       this.collection.fetch({
@@ -147,7 +151,7 @@ var dashboardView = Backbone.View.extend({
 
   checkDetailChart: function (a) {
     if ($(a.target).hasClass('icon-minus') === true) {
-      $('#detailGraph').height(50);
+      $('#detailGraph').height(43);
       $('#detailGraphChart').hide();
       $(a.target).removeClass('icon-minus');
       $(a.target).addClass('icon-plus');
@@ -158,6 +162,12 @@ var dashboardView = Backbone.View.extend({
       $(a.target).removeClass('icon-plus');
       $(a.target).addClass('icon-minus');
     }
+  },
+
+  hideChart: function (a) {
+    var figure = $(a.target).attr("value");
+    $('#'+figure+'Checkbox').prop('checked', false);
+    $('#'+figure).hide();
   },
 
   renderDetailChart: function (a) {
@@ -171,14 +181,15 @@ var dashboardView = Backbone.View.extend({
         $("html, body").animate({ scrollTop: 0 }, "slow");
         $('#detailGraphChart').show();
         $('#detailGraph').height(300);
-        $(a.target).addClass('icon-plus');
-        $(a.target).removeClass('icon-minus');
+        $('#dbHideSwitch').addClass('icon-minus');
+        $('#dbHideSwitch').removeClass('icon-plus');
       }
     });
   },
 
   renderCharts: function () {
     var self = this;
+    $('#every'+self.updateFrequency+'seconds').prop('checked',true);
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
@@ -309,10 +320,15 @@ var dashboardView = Backbone.View.extend({
   },
 
   renderFigure: function (figure) {
+    console.log(figure);
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
-      '</h6><i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i></div>' +
+      '</h6>'+
+      '<i class="icon-remove icon-white db-hide" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+'" title="'+figure.description+'"></i>' +
+      '<i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i>' +
+      '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
     );
@@ -321,6 +337,9 @@ var dashboardView = Backbone.View.extend({
       '<li><a><label class="checkbox">'+
       '<input type="checkbox" id=' + figure.identifier + 'Checkbox checked>' + figure.name + '</label></a></li>'
     );
+    $('.db-info').tooltip({
+      placement: "top"
+    }); 
   }
 
 });
