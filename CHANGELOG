@@ -1,3 +1,15 @@
+v1.3.1 (2013-XX-XX)
+-------------------
+
+* set --javascript.app-path for test execution to prevent startup error
+
+* issue #532: Graph _edgesCache returns invalid data?
+
+* issue #531: Arangod errors
+
+* issue #529: Really weird transaction issue
+
+
 v1.3.0 (2013-05-10)
 -------------------
 
