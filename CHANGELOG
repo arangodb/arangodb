@@ -12,7 +12,21 @@ v1.4
 * issue #512: Binded Parameters for LIMIT
 
 
-v1.3.0 (2013-05-XX)
+v1.3.1 (2013-XX-XX)
+-------------------
+
+* set --javascript.app-path for test execution to prevent startup error
+
+* issue #532: Graph _edgesCache returns invalid data?
+
+* issue #531: Arangod errors
+
+* issue #529: Really weird transaction issue
+
+* fixed usage of --temp-path in aranogd and arangosh
+
+
+v1.3.0 (2013-05-10)
 -------------------
 
 * fixed problem on restart ("datafile-xxx is not sealed") when server was killed
