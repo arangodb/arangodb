@@ -3424,9 +3424,12 @@ function reloadUserFunctions () {
   UserFunctions = { };
 
   c = INTERNAL.db._collection("_aqlfunctions");
+
   if (c === null) {
     return;
   }
+
+  var foundError = false;
 
   c.toArray().forEach(function (f) {
     var code;
@@ -3444,9 +3447,13 @@ function reloadUserFunctions () {
   
     }
     catch (err) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+      foundError = true;
     }
   });
+      
+  if (foundError) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

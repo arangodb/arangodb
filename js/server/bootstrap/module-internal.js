@@ -185,7 +185,7 @@
   }
   else {
     internal.reloadAqlFunctions = function () {
-      internal.executeGlobalContextFunction("require(\"org/arangodb/ahuacatl\").reload();");
+      internal.executeGlobalContextFunction("try { require(\"org/arangodb/ahuacatl\").reload(); } catch (err) { }");
       require("org/arangodb/ahuacatl").reload();
     };
   }
