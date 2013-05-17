@@ -163,6 +163,22 @@ function CollectionEdgeSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief save edge w/ invalid type
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgesInvalidType : function () {
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          edge.save(v1._key, v2._key, doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an edge referring to a vertex documents by keys
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -286,7 +302,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveEdge : function () {
-      var doc = edge.save(v1, v2, { "Hallo" : "World" });
+      var doc = edge.save(v1, v2, { "Hello" : "World" });
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
@@ -332,7 +348,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdge : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       var doc = edge.document(d._id);
 
@@ -354,8 +370,8 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdges : function () {
-      var d1 = edge.save(v1, v2, { "Hallo" : "World" });
-      var d2 = edge.save(v2, v1, { "World" : "Hallo" });
+      var d1 = edge.save(v1, v2, { "Hello" : "World" });
+      var d2 = edge.save(v2, v1, { "World" : "Hello" });
 
       var e = edge.edges(v1);
 
@@ -384,7 +400,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadInEdges : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       var e = edge.inEdges(v2);
 
@@ -403,7 +419,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadOutEdges : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       var e = edge.outEdges(v1);
 
@@ -422,8 +438,8 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdgesList : function () {
-      var d1 = edge.save(v1, v2, { "Hallo" : "World" });
-      var d2 = edge.save(v2, v1, { "World" : "Hallo" });
+      var d1 = edge.save(v1, v2, { "Hello" : "World" });
+      var d2 = edge.save(v2, v1, { "World" : "Hello" });
 
       var e = edge.edges([v1]);
 
@@ -456,7 +472,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadInEdgesList : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       var e = edge.inEdges([v2]);
 
@@ -479,7 +495,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadOutEdgesList : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       var e = edge.outEdges([v1]);
 
@@ -502,8 +518,8 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdgesUnloaded : function () {
-      var d1 = edge.save(v1, v2, { "Hallo" : "World" })._id;
-      var d2 = edge.save(v2, v1, { "World" : "Hallo" })._id;
+      var d1 = edge.save(v1, v2, { "Hello" : "World" })._id;
+      var d2 = edge.save(v2, v1, { "World" : "Hello" })._id;
 
       var e1 = edge.document(d1);
       var e2 = edge.document(d2);
@@ -550,7 +566,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdgesInvalid1 : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       try {
         var e = edge.edges("t/h/e/f/o/x");
@@ -565,7 +581,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadEdgesInvalid2 : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       try {
         var e = edge.edges("123456  ");
@@ -580,7 +596,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadInEdgesInvalid1 : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       try {
         var e = edge.inEdges("the//fox");
@@ -595,7 +611,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadInEdgesInvalid2 : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       try {
         var e = edge.inEdges(" 123456 ");
@@ -610,7 +626,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadOutEdgesInvalid1 : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       try {
         var e = edge.outEdges("the//fox");
@@ -625,7 +641,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadOutEdgesInvalid2 : function () {
-      var d = edge.save(v1, v2, { "Hallo" : "World" });
+      var d = edge.save(v1, v2, { "Hello" : "World" });
 
       try {
         var e = edge.outEdges("123456  ");

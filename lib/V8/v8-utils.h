@@ -66,12 +66,6 @@ class TRI_Utf8ValueNFC {
 // -----------------------------------------------------------------------------
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief temporary path
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string TempPath;
-
-///////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -201,8 +195,7 @@ v8::Handle<v8::Array> TRI_V8PathList (std::string const& modules);
 
 void TRI_InitV8Utils (v8::Handle<v8::Context>,
                       std::string const& modules,
-                      std::string const& nodes,
-                      std::string const& tempPath);
+                      std::string const& nodes);
 
 #endif
 

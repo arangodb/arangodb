@@ -51,8 +51,19 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// @RESTHEADER{POST /_api/cursor,creates a cursor}
 ///
-/// @REST{POST /_api/cursor}
+/// @RESTBODYPARAM{query,json,required}
+/// The following attributes can be used inside the JSON object:
+/// - `query`: contains the query string to be executed (mandatory)
+/// - `count`: boolean flag that indicates whether the number of documents
+///   found should be returned as "count" attribute in the result set (optional).
+///   Calculating the "count" attribute might have a performance penalty for
+///   some queries so this option is turned off by default.
+/// - `batchSize`: maximum number of result documents to be transferred from
+///   the server to the client in one roundtrip (optional). If this attribute is
+///   not set, a server-controlled default value will be used.
+/// - `bindVars`: key/value list of bind parameters (optional). 
 ///
+/// @RESTDESCRIPTION
 /// The query details include the query string plus optional query options and
 /// bind parameters. These values need to be passed in a JSON representation in
 /// the body of the POST request.
@@ -113,17 +124,86 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// A list of query errors can be found @ref ArangoErrors here.
 ///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the result set can be created by the server.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the JSON representation is malformed or the query specification is
+/// missing from the request.
+///
 /// @EXAMPLES
 ///
 /// Executes a query and extract the result in a single go:
 ///
-/// @verbinclude api-cursor-create-for-limit-return-single
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturnSingle}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = '{ "query" : "FOR p IN products LIMIT 2 RETURN p", "count" : true, "batchSize" : 2 }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Executes a query and extract part of the result:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturn}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///     db.products.save({"hello3":"world1"});
+///     db.products.save({"hello4":"world1"});
+///     db.products.save({"hello5":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = '{ "query" : "FOR p IN products LIMIT 5 RETURN p", "count" : true, "batchSize" : 2 }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Bad queries:
 ///
-/// @verbinclude api-cursor-missing-body
+/// Missing body:
 ///
-/// @verbinclude api-cursor-unknown-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorMissingBody}
+///     var url = "/_api/cursor";
+/// 
+///     var response = logCurlRequest('POST', url, '');
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Unknown collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorUnknownCollection}
+///     var url = "/_api/cursor";
+///     var body = '{ "query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_cursor(req, res) {
@@ -166,9 +246,14 @@ function POST_api_cursor(req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next results from an existing cursor
 ///
-/// @RESTHEADER{PUT /_api/cursor,reads next batch from a cursor}
+/// @RESTHEADER{PUT /_api/cursor/`cursor-identifier`,reads next batch from a cursor}
 ///
-/// @REST{PUT /_api/cursor/`cursor-identifier`}
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{cursor-identifer,string,required}
+/// The name of the cursor
+///
+/// @RESTDESCRIPTION
 ///
 /// If the cursor is still alive, returns an object with the following
 /// attributes.
@@ -183,8 +268,13 @@ function POST_api_cursor(req, res) {
 /// the cursor is exhausted.  Once the `hasMore` attribute has a value of
 /// `false`, the client can stop.
 ///
-/// The server will respond with `HTTP 200` in case of success. If the
-/// cursor identifier is ommitted or somehow invalid, the server will respond
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// The server will respond with `HTTP 200` in case of success. 
+///
+/// @RESTRETURNCODE{404}
+/// If the cursor identifier is ommitted or somehow invalid, the server will respond
 /// with `HTTP 404`.
 ///
 /// @EXAMPLES
@@ -232,10 +322,14 @@ function PUT_api_cursor (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispose an existing cursor
 ///
-/// @RESTHEADER{DELETE /_api/cursor,deletes a cursor}
+/// @RESTHEADER{DELETE /_api/cursor/`cursor-identifier`,deletes a cursor}
 ///
-/// @REST{DELETE /_api/cursor/`cursor-identifier`}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{cursor-identifer,string,required}
+/// The name of the cursor
+///
+/// @RESTDESCRIPTION
 /// Deletes the cursor and frees the resources associated with it. 
 ///
 /// The cursor will automatically be destroyed on the server when the client has
@@ -243,15 +337,17 @@ function PUT_api_cursor (req, res) {
 /// cursor at any earlier time using an HTTP DELETE request. The cursor id must
 /// be included as part of the URL.
 /// 
-/// In case the server is aware of the cursor, it will respond with @LIT{HTTP
-/// 202}. Otherwise, it will respond with `404`.
-/// 
-/// Cursors that have been explicitly destroyed must not be used afterwards. If
-/// a cursor is used after it has been destroyed, the server will respond with
-/// `HTTP 404` as well.
-///
 /// Note: the server will also destroy abandoned cursors automatically after a 
 /// certain server-controlled timeout to avoid resource leakage.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{202}
+/// is returned if the server is aware of the cursor.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the server is not aware of the cursor. It is also
+/// returned if a cursor is used after it has been destroyed.
 ///
 /// @EXAMPLES
 ///

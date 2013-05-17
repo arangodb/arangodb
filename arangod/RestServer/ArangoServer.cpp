@@ -256,7 +256,7 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_binaryPath, _tempPath);
+  _applicationV8 = new ApplicationV8(_binaryPath);
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -399,7 +399,8 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
                                                              "arangodb",
-                                                             TRI_CheckAuthenticationAuthInfo);
+                                                             TRI_CheckAuthenticationAuthInfo,
+                                                             TRI_FlushAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -410,9 +411,15 @@ void ArangoServer::buildApplicationServer () {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
 
+  // set the temp-path
+  if (_applicationServer->programOptions().has("temp-path")) {
+    TRI_SetUserTempPath((char*) _tempPath.c_str());
+  }
+
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
+  // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
     _developmentMode = true;
     _applicationV8->enableDevelopmentMode();
@@ -841,7 +848,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        V8LineEditor console(context->_context, ".arangod");
+        V8LineEditor console(context->_context, ".arangod.history");
 
         console.open(true);
 
@@ -1013,12 +1020,12 @@ int ArangoServer::executeRubyConsole () {
   // create a line editor
   cout << "ArangoDB MRuby emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
 
-  MRLineEditor console(context->_mrb, ".arangod");
+  MRLineEditor console(context->_mrb, ".arangod-ruby.history");
 
   console.open(false);
 
   while (true) {
-    char* input = console.prompt("arangod> ");
+    char* input = console.prompt("arangod (ruby)> ");
 
     if (input == 0) {
       printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");

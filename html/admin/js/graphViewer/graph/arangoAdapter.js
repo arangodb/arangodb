@@ -54,6 +54,7 @@ function ArangoAdapter(nodes, edges, config) {
     queries = {},
     nodeCollection,
     edgeCollection,
+    reducer,
     arangodb,
     width,
     height,
@@ -369,6 +370,9 @@ function ArangoAdapter(nodes, edges, config) {
    + " || e._from == @id"
    + " RETURN e";
   
+  reducer = new NodeReducer(nodes, edges);
+  
+  
   self.oldLoadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.nodeById, {
       id: nodeId
@@ -528,6 +532,10 @@ function ArangoAdapter(nodes, edges, config) {
     edgeCollection = edgesCol;
     api.node = api.base + "document?collection=" + nodeCollection; 
     api.edge = api.base + "edge?collection=" + edgeCollection;
+  };
+  
+  self.setNodeLimit = function (limit) {
+  
   };
   
 }

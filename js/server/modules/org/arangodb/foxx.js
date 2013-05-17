@@ -752,7 +752,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 ///
 ///     {
 ///       path: "high/way",
-///       content: "hallo <%= username %>",
+///       content: "hello <%= username %>",
 ///       contentType: "text/plain",
 ///       templateLanguage: "underscore"
 ///     }

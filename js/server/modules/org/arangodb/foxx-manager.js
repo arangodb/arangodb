@@ -77,6 +77,12 @@ function buildAssetContent (app, assets) {
 
     if (match !== null) {
       m = fs.listTree(fs.join(rootDir, match[1]));
+  
+      // files are sorted in file-system order. 
+      // this makes the order non-portable
+      // we'll be sorting the files now using JS sort
+      // so the order is more consistent across multiple platforms
+      m.sort();
 
       for (i = 0; i < m.length; ++i) {
         var filename = fs.join(rootDir, match[1], m[i]);
@@ -373,13 +379,19 @@ function routingAalApp (app, mount, prefix) {
       }
     };
 
+    var p = mount;
+
+    if (p !== "/") {
+      p = mount + "/";
+    }
+
     routes.routes.push({
       "url" : { match: "/" },
       "action" : {
         "do" : "org/arangodb/actions/redirectRequest",
         "options" : {
           "permanently" : true,
-          "destination" : mount + "/" + "index.html"
+          "destination" : p + "index.html"
         }
       }
     });
@@ -412,12 +424,13 @@ function routingAalApp (app, mount, prefix) {
         // .............................................................................
 
         var ri = context.routingInfo;
-        var p = ri.urlPrefix;
+        var rm = [ "routes", "middleware" ];
+
         var route;
         var j;
         var k;
 
-        var rm = [ "routes", "middleware" ];
+        p = ri.urlPrefix;
 
         for (k = 0;  k < rm.length;  ++k) {
           var key = rm[k];
@@ -501,6 +514,9 @@ exports.scanAppDirectory = function () {
   }
 
   var files = fs.list(path);
+
+  // note: files do not have a determinstic order, but it doesn't matter here
+  // as we're treating individual Foxx apps and their order is irrelevant
 
   for (j = 0;  j < files.length;  ++j) {
     var m = fs.join(path, files[j], "manifest.json");
@@ -601,7 +617,11 @@ exports.installApp = function (appId, mount, options) {
   desc.active = true;
   doc = aal.replace(doc, desc);
 
-  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  if (typeof options === "undefined" 
+   || typeof options.reload === "undefined" 
+      || options.reload === true) {
+    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  }
 
   return { appId: app._id, mountId: doc._key };
 };
@@ -638,7 +658,7 @@ exports.installDevApp = function (name, mount, options) {
     appId = "dev:" + name + ":" + name;
   }
   else {
-    throw new Error("not manifest found at '" + filename + "'");
+    throw new Error("no manifest found at '" + filename + "'");
   }
 
   var app = null;

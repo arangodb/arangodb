@@ -630,7 +630,7 @@ function CollectionSuite () {
       assertEqual(0, f.dead.size);
       assertEqual(0, f.dead.deletion);
 
-      var d1 = c1.save({ hallo : 1 });
+      var d1 = c1.save({ hello : 1 });
 
       f = c1.figures();
 
@@ -644,7 +644,7 @@ function CollectionSuite () {
       assertEqual(0, f.dead.size);
       assertEqual(0, f.dead.deletion);
 
-      var d2 = c1.save({ hallo : 2 });
+      var d2 = c1.save({ hello : 2 });
 
       f = c1.figures();
 
