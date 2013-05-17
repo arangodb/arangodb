@@ -44,6 +44,7 @@ describe("Graph Viewer", function() {
   
   beforeEach(function() {
     docSVG = document.createElement("svg");
+    docSVG.id = "outersvg";
     document.body.appendChild(docSVG);
     svg = d3.select("svg");
     window.communicationMock(spyOn);
@@ -242,7 +243,7 @@ describe("Graph Viewer", function() {
       if (window.ZoomManager === undefined) {
         window.ZoomManager = {};
       }
-      spyOn(window, "ZoomManager");
+      spyOn(window, "ZoomManager").andCallThrough();
       adapterConfig = {type: "json", path: "../test_data/"};
       var config = {
         zoom: true
@@ -257,8 +258,16 @@ describe("Graph Viewer", function() {
         jasmine.any(Object),
         jasmine.any(Object),
         jasmine.any(NodeShaper),
-        jasmine.any(EdgeShaper)
+        jasmine.any(EdgeShaper),
+        {},
+        jasmine.any(Function)
       );
+    });
+    
+    it('should trigger the adapter if zoom level is changed', function() {
+      spyOn(viewer.adapter, "setNodeLimit");
+      helper.simulateScrollUpMouseEvent("outersvg");
+      expect(viewer.adapter.setNodeLimit).wasCalled();
     });
     
     

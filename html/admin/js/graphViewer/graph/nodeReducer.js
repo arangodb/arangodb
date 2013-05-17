@@ -82,10 +82,13 @@ function NodeReducer(nodes, edges) {
      });
    },
    
-   joinCommunities = function(sID, lID, coms) {
-     var old = coms[sID] || [sID],
-       newC = coms[lID] || [lID];
-     coms[lID] = old.concat(newC);
+   joinCommunities = function(sID, lID, coms, heap, val) {
+     coms[sID] = coms[sID] || {com: [sID], q: 0};
+     coms[lID] = coms[lID] || {com: [lID], q: 0};
+     var old = coms[sID].com,
+      newC = coms[lID].com;
+     coms[lID].com = old.concat(newC);
+     coms[lID].q += coms[sID].q + val;
      delete coms[sID];
    },
    
@@ -168,12 +171,93 @@ function NodeReducer(nodes, edges) {
      delete a[sID];
    },
    
+   sortBySize = function(a, b) {
+     return b.length - a.length;
+   },
+   
+   neighbors = function(sID) {
+     var neigh = [];
+     _.each(edges, function(e) {
+       if (e.source._id === sID) {
+         neigh.push(e.target._id);
+         return;
+       }
+       if (e.target._id === sID) {
+         neigh.push(e.source._id);
+         return;
+       }
+     });
+     return neigh;
+   },
+   
+   minDist = function(dist) {
+     return function(a) {
+       return dist[a];
+     }
+   },
+   
+   dijkstra = function(sID) {
+     var dist = {},
+       toDo, next, neigh;
+       
+     toDo = _.pluck(nodes, "_id");
+     _.each(toDo, function(n) {
+       dist[n] = Number.POSITIVE_INFINITY;
+     });
+     dist[sID] = 0;
+     while(toDo.length > 0) {
+       next = _.min(toDo, minDist(dist));
+       if (next === Number.POSITIVE_INFINITY) {
+         break;
+       }
+       toDo = toDo.filter(function(e) {return e !== next});
+       neigh = neighbors(next);
+       _.each(neigh, function(v) {
+         if (_.contains(toDo, v)) {
+           if (dist[v] > dist[next] + 1) {
+             dist[v] = dist[next] + 1;
+           }
+         }
+       });
+     }
+     return dist;
+   },
+   
+   floatDistStep = function(dist, depth, todo) {
+     if (todo.length === 0) {
+       return true;
+     }
+     var nextTodo = [];
+     _.each(todo, function(t) {
+       if (dist[t] !== Number.POSITIVE_INFINITY) {
+         return;
+       }
+       dist[t] = depth;
+       nextTodo = nextTodo.concat(neighbors(t));
+     });
+     return floatDistStep(dist, depth+1, nextTodo);
+   },
+   
+   floatDist = function(sID) {
+     var dist = {};
+     _.each(_.pluck(nodes, "_id"), function(n) {
+       dist[n] = Number.POSITIVE_INFINITY;
+     });
+     dist[sID] = 0;
+     if (floatDistStep(dist, 1, neighbors(sID))) {
+       return dist;
+     }
+     throw "FAIL!";
+   },
+   
    communityDetectionStep = function(dQ, a, heap, coms) {
+     //console.log("COMS: " + JSON.stringify(coms));
+     //console.log("HEAP: " + JSON.stringify(heap));
      var l = getLargestOnHeap(heap);
-     if (l.val < 0) {
+     if (l === Number.NEGATIVE_INFINITY || l.val < 0) {
        return false;
      }
-     joinCommunities(l.sID, l.lID, coms);
+     joinCommunities(l.sID, l.lID, coms, heap, l.val);
      updateValues(l, dQ, a, heap);
      return true;
    };
@@ -184,22 +268,37 @@ function NodeReducer(nodes, edges) {
     var dQ = {},
       a = {},
       heap = {},
-      q = 0,
       coms = {},
-      res = [];
+      res = [],
+      dist = {},
+      dist2 = {},
+      sortByDistance = function (a, b) {
+        var d1 = dist[_.min(a,minDist(dist))],
+          d2 = dist[_.min(b,minDist(dist))],
+          val = d2 - d1;
+        if (val === 0) {
+          val = coms[b[b.length-1]].q - coms[a[a.length-1]].q;
+        }
+        return val;
+      };
     if (nodes.length === 0 || edges.length === 0) {
       throw "Load some nodes first.";
     }
     populateValues(dQ, a, heap);
+    var max = 0;
     while (communityDetectionStep(dQ, a, heap, coms)) {
+      max++;
+      if (max > 100) {
+        break;
+        //console.log(max);
+      }
     }
-    res = _.values(coms);
-    res.sort(function(a, b) {
-      return b.length - a.length;
-    });
-    if (_.contains(res[0], focus)) {
-      return res[1];
-    }
+    //console.log(max);
+    res = _.pluck(_.values(coms), "com");
+    dist = floatDist(focus._id);
+    res = res.filter(function(e) {return !_.contains(e, focus._id)});
+    res = res.filter(function(e) {return e.length > 1});
+    res.sort(sortByDistance);
     return res[0];
   };
 }
