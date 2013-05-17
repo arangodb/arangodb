@@ -7,10 +7,11 @@ var dashboardView = Backbone.View.extend({
   seriesData: {},
   charts: {},
   units: [],
+  detailGraph: "userTime",
 
   initialize: function () {
     var self = this;
-    
+
     this.initUnits();
 
     this.collection.fetch({
@@ -35,6 +36,7 @@ var dashboardView = Backbone.View.extend({
               // need to flush previous values
               self.calculateSeries(true);
               self.renderCharts();
+              arangoHelper.arangoError("Lost connection to Database!");
             }
           });
 
@@ -45,7 +47,10 @@ var dashboardView = Backbone.View.extend({
 
   events: {
     "click .dashboard-dropdown li" : "checkEnabled",
-    "click .interval-dropdown li" : "checkInterval"
+    "click .interval-dropdown li" : "checkInterval",
+    "click .db-zoom" : "renderDetailChart",
+    "click .db-minimize" : "checkDetailChart",
+    "click .db-hide" : "hideChart"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -53,6 +58,10 @@ var dashboardView = Backbone.View.extend({
   render: function() {
     var self = this;
     $(this.el).html(this.template.text);
+
+    //Client calculated charts
+    self.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
+    self.genCustomChart();
 
     $.each(this.options.description.models[0].attributes.groups, function () {
       $('.thumbnails').append(
@@ -68,6 +77,8 @@ var dashboardView = Backbone.View.extend({
     $.each(this.options.description.models[0].attributes.figures, function () {
       self.renderFigure(this);
     });
+
+    $('#every'+self.updateFrequency+'seconds').prop('checked',true);
 
     if (this.collection.models[0] === undefined) {
       this.collection.fetch({
@@ -85,12 +96,41 @@ var dashboardView = Backbone.View.extend({
       self.calculateSeries();
       self.renderCharts();
     }
-
     return this;
+  },
+  genCustomCategory: function(description, group, name) {
+    this.options.description.models[0].attributes.groups.push({
+      "description":description,
+      "group":group,
+      "name":name
+    });
+  },
+  genCustomChart: function () {
+    //totalTime
+    var figure = {
+      "description" : "userTime + systemTime",
+      "group" : "custom",
+      "identifier" : "totalTime2",
+      "name" : "Total Time (User+System)",
+      "type" : "accumulated",
+      "units" : "seconds"
+    };
+    this.options.description.models[0].attributes.figures.push(figure);
+    this.renderFigure(figure);
+  },
+
+  updateCustomChart: function () {
+    //totalTime
+    var val1 = this.collection.models[0].attributes.system.userTime;
+    var val2 = this.collection.models[0].attributes.system.systemTime;
+    var totalTime2Value = val1+val2;
+    this.collection.models[0].attributes["custom"] = {"totalTime2":totalTime2Value};
   },
 
   checkInterval: function (a) {
     this.updateFrequency = a.target.value;
+    self.calculateSeries();
+    self.renderCharts();
   },
 
   checkEnabled: function (a) {
@@ -139,27 +179,66 @@ var dashboardView = Backbone.View.extend({
     return max;
   },
 
+  checkDetailChart: function (a) {
+    if ($(a.target).hasClass('icon-minus') === true) {
+      $('#detailGraph').height(43);
+      $('#detailGraphChart').hide();
+      $(a.target).removeClass('icon-minus');
+      $(a.target).addClass('icon-plus');
+    }
+    else {
+      $('#detailGraphChart').show();
+      $('#detailGraph').height(300);
+      $(a.target).removeClass('icon-plus');
+      $(a.target).addClass('icon-minus');
+    }
+  },
+
+  hideChart: function (a) {
+    var figure = $(a.target).attr("value");
+    $('#'+figure+'Checkbox').prop('checked', false);
+    $('#'+figure).hide();
+  },
+
+  renderDetailChart: function (a) {
+    var self = this;
+    self.detailGraph = $(a.target).attr("value");
+    $.each(this.options.description.models[0].attributes.figures, function () {
+      if(this.identifier === self.detailGraph) {
+        $('#detailGraphHeader').text(this.name);
+        self.calculateSeries();
+        self.renderCharts();
+        $("html, body").animate({ scrollTop: 0 }, "slow");
+        $('#detailGraphChart').show();
+        $('#detailGraph').height(300);
+        $('#dbHideSwitch').addClass('icon-minus');
+        $('#dbHideSwitch').removeClass('icon-plus');
+      }
+    });
+  },
+
   renderCharts: function () {
     var self = this;
+    $('#every'+self.updateFrequency+'seconds').prop('checked',true);
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
       var identifier = figure.identifier;
       var chart;
 
-      if (self.charts[identifier] === undefined) {      
+      if (self.charts[identifier] === undefined) {
         chart = self.charts[identifier] = nv.models.lineChart();
         chart.xAxis.axisLabel('').tickFormat(function (d) {
           if (isNaN(d)) {
             return '';
           }
-           
+
           function pad (value) {
             return (value < 10 ? "0" + String(value) : String(value));
           }
 
-          var date = new Date(d / 10); 
-  
+          var date = new Date(d / 10);
+
           return pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
         });
 
@@ -167,9 +246,9 @@ var dashboardView = Backbone.View.extend({
 
         if (figure.units === 'bytes') {
           label = "megabytes";
-        } 
+        }
         chart.yAxis.axisLabel(label);
-          
+
         nv.addGraph (function () {
           nv.utils.windowResize(function () {
             d3.select('#' + identifier + 'Chart svg').call(chart);
@@ -181,8 +260,19 @@ var dashboardView = Backbone.View.extend({
       else {
         chart = self.charts[identifier];
       }
-      
+
       chart.yDomain([ 0, self.getMaxValue(identifier) ]);
+
+      if (self.detailGraph === undefined) {
+        self.detailGraph = "userTime";
+      }
+      if (self.detailGraph === identifier) {
+        d3.select("#detailGraphChart svg")
+          .call(chart)
+          .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
+          .transition().duration(500);
+
+      }
 
       d3.select("#" + identifier + "Chart svg")
         .call(chart)
@@ -193,6 +283,8 @@ var dashboardView = Backbone.View.extend({
 
   calculateSeries: function (flush) {
     var self = this;
+    self.updateCustomChart();
+
     var timeStamp = Math.round(new Date() * 10);
 
     $.each(self.options.description.models[0].attributes.figures, function () {
@@ -211,7 +303,7 @@ var dashboardView = Backbone.View.extend({
         self.seriesData[identifier].values.push({ x: timeStamp, y: undefined, value: undefined });
         return;
       }
-      
+
       var responseValue = self.collection.models[0].attributes[figure.group][identifier];
 
       if (responseValue !== undefined && responseValue !== null) {
@@ -262,7 +354,12 @@ var dashboardView = Backbone.View.extend({
   renderFigure: function (figure) {
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
-      '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name + '</h6></div>' +
+      '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
+      '</h6>'+
+      '<i class="icon-remove icon-white db-hide" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+'" title="'+figure.description+'"></i>' +
+      '<i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i>' +
+      '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
     );
@@ -271,6 +368,9 @@ var dashboardView = Backbone.View.extend({
       '<li><a><label class="checkbox">'+
       '<input type="checkbox" id=' + figure.identifier + 'Checkbox checked>' + figure.name + '</label></a></li>'
     );
+    $('.db-info').tooltip({
+      placement: "top"
+    }); 
   }
 
 });

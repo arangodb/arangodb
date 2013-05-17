@@ -90,6 +90,12 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for read-only transaction class type
+////////////////////////////////////////////////////////////////////////////////
+
+#define ReadTransactionType SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> >
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to make sure we won't continue if we are inside a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -871,7 +877,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   assert(col);
   assert(key);
 
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, col->_cid);
+  ReadTransactionType trx(vocbase, resolver, col->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -893,7 +900,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   res = trx.read(&document, key);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson(resolver, col, &document, barrier);
+    result = TRI_WrapShapedJson<ReadTransactionType >(trx, col->_cid, &document, barrier);
+
     if (! result.IsEmpty()) {
       freeBarrier = false;
     }
@@ -3438,7 +3446,8 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4515,7 +4524,8 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> result = v8::Object::New();
 
   CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4603,7 +4613,8 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -5441,7 +5452,8 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -6257,9 +6269,8 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
 static void WeakBarrierCallback (v8::Isolate* isolate,
                                  v8::Persistent<v8::Value> object,
                                  void* parameter) {
-  TRI_barrier_t* barrier;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
-  barrier = (TRI_barrier_t*) parameter;
+  TRI_barrier_blocker_t* barrier = (TRI_barrier_blocker_t*) parameter;
 
   LOG_TRACE("weak-callback for barrier called");
 
@@ -6267,13 +6278,12 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   v8::Persistent<v8::Value> persistent = v8g->JSBarriers[barrier];
   v8g->JSBarriers.erase(barrier);
 
-
   // dispose and clear the persistent handle
   persistent.Dispose(isolate);
   persistent.Clear();
 
   // free the barrier
-  TRI_FreeBarrier(barrier);
+  TRI_FreeBarrier(&barrier->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6705,15 +6715,16 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver,
-                                          TRI_vocbase_col_t const* collection,
+template<class T>
+v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
+                                          TRI_voc_cid_t cid,
                                           TRI_doc_mptr_t const* document,
                                           TRI_barrier_t* barrier) {
   v8::HandleScope scope;
   
   TRI_ASSERT_MAINTAINER(document != 0);
   TRI_ASSERT_MAINTAINER(document->_key != 0);
-  TRI_ASSERT_MAINTAINER(collection != 0);
+  TRI_ASSERT_MAINTAINER(document->_data != 0);
   TRI_ASSERT_MAINTAINER(barrier != 0);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -6728,9 +6739,39 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
     return scope.Close(result);
   }
 
+  TRI_barrier_blocker_t* blocker = (TRI_barrier_blocker_t*) barrier;
+  bool doCopy = trx.mustCopyShapedJson();
+
+  if (doCopy) {
+    // we'll create our own copy of the data
+    TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(document->_data);
+
+    if (blocker->_data != NULL && blocker->_mustFree) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, blocker->_data);
+      blocker->_data = NULL;
+      blocker->_mustFree = false;
+    }
+
+    blocker->_data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, m->_size, false);
+
+    if (blocker->_data == 0) {
+      // out of memory
+      return scope.Close(result);
+    }
+
+    memcpy(blocker->_data, m, m->_size);
+
+    blocker->_mustFree = true;
+  }
+  else {
+    // we'll use the pointer into the datafile
+    blocker->_data = const_cast<void*>(document->_data);
+  }
+
+
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
-  result->SetInternalField(SLOT_CLASS, v8::External::New(const_cast<void*>(document->_data)));
+  result->SetInternalField(SLOT_CLASS, v8::External::New(blocker->_data));
 
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
@@ -6748,7 +6789,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver().getCollectionName(cid), document->_key), v8::ReadOnly);
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->_KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
@@ -6757,8 +6798,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
   }
 
   // and return
