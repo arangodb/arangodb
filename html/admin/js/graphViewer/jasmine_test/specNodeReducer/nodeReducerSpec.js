@@ -139,6 +139,19 @@
           expect(com).toContainNodes([5, 6, 7]);
         });
         
+        it('should also take the best community if no focus is given', function() {
+          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4, 5, 6, 7]);
+          helper.insertClique(nodes, edges, [0, 1, 2]);
+          edges.push(helper.createSimpleEdge(nodes, 3, 2));
+          edges.push(helper.createSimpleEdge(nodes, 3, 4));
+          edges.push(helper.createSimpleEdge(nodes, 4, 5));
+          edges.push(helper.createSimpleEdge(nodes, 5, 6));
+          edges.push(helper.createSimpleEdge(nodes, 5, 7));
+          
+          var com = reducer.getCommunity(6);
+          expect(com).toContainNodes([0, 1, 2]);
+        });
+        
       });
       
     });
