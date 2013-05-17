@@ -832,7 +832,7 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
   v8::String::Utf8Value utf8def(argv[0]);
 
   if (*utf8def == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<defition> must be a UTF-8 function definition");
+    TRI_V8_TYPE_ERROR(scope, "<definition> must be a UTF-8 function definition");
   }
 
   string def = *utf8def;
