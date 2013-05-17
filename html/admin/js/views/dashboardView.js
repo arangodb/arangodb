@@ -60,8 +60,15 @@ var dashboardView = Backbone.View.extend({
     $(this.el).html(this.template.text);
 
     //Client calculated charts
-    self.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
-    self.genCustomChart();
+    self.genCustomCategories();
+    self.genCustomChartDescription(
+      "userTime + systemTime",
+      "custom",
+      "totalTime2",
+      "Total Time (User+System)",
+      "accumulated",
+      "seconds"
+    );
 
     $.each(this.options.description.models[0].attributes.groups, function () {
       $('.thumbnails').append(
@@ -98,6 +105,11 @@ var dashboardView = Backbone.View.extend({
     }
     return this;
   },
+  //generate function for all custom categories
+  genCustomCategories: function () {
+    this.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
+  },
+  //generate a custom category
   genCustomCategory: function(description, group, name) {
     this.options.description.models[0].attributes.groups.push({
       "description":description,
@@ -105,22 +117,26 @@ var dashboardView = Backbone.View.extend({
       "name":name
     });
   },
-  genCustomChart: function () {
-    //totalTime
+  //generate a custom description
+  genCustomChartDescription: function (description, group, identifier, name, type, units) {
     var figure = {
-      "description" : "userTime + systemTime",
-      "group" : "custom",
-      "identifier" : "totalTime2",
-      "name" : "Total Time (User+System)",
-      "type" : "accumulated",
-      "units" : "seconds"
+      "description" : description,
+      "group" : group,
+      "identifier" : identifier,
+      "name" : name,
+      "type" : type,
+      "units" : units
     };
     this.options.description.models[0].attributes.figures.push(figure);
     this.renderFigure(figure);
   },
+  //calculate customized chart value functions here
+  updateCustomChartValues: function ( {
+    this.totalTime2();
+  },
 
-  updateCustomChart: function () {
-    //totalTime
+  //custom chart value calculation for totalTime2
+  totalTime2: function () {
     var val1 = this.collection.models[0].attributes.system.userTime;
     var val2 = this.collection.models[0].attributes.system.systemTime;
     var totalTime2Value = val1+val2;
@@ -283,7 +299,7 @@ var dashboardView = Backbone.View.extend({
 
   calculateSeries: function (flush) {
     var self = this;
-    self.updateCustomChart();
+    self.updateCustomChartValues();
 
     var timeStamp = Math.round(new Date() * 10);
 
