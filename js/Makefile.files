@@ -23,6 +23,7 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
 	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
+	html/admin/js/modules/org/arangodb/aql/functions.js \
 	html/admin/js/modules/org/arangodb/mimetypes.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js \
 	\
@@ -84,6 +85,7 @@ BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
+	@test -d html/admin/js/modules/org/arangodb/aql || mkdir -p html/admin/js/modules/org/arangodb/aql
 	@test -d html/admin/js/bootstrap || mkdir -p html/admin/js/bootstrap
 	@test -d html/admin/js/client/bootstrap || mkdir -p html/admin/js/client/bootstrap
 	@touch $@

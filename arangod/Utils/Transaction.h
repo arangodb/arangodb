@@ -90,7 +90,6 @@ namespace triagens {
           T(),
           _setupState(TRI_ERROR_NO_ERROR),
           _nestingLevel(0),
-          _readOnly(true),
           _hints(0),
           _timeout(0.0),
           _waitForSync(false),
@@ -142,6 +141,14 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+        
+        const CollectionNameResolver& resolver () const {
+          return _resolver;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,11 +157,15 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether or not the transaction is read-only
+/// @brief whether or not shaped json in this trx should be copied
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isReadOnlyTransaction () const {
-          return _readOnly;
+        inline bool mustCopyShapedJson () const {
+          if (_trx != 0 && _trx->_hasOperations) {
+            return true;
+          }
+
+          return false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,10 +323,6 @@ namespace triagens {
             res = this->addCollectionToplevel(cid, type);
           }
           
-          if (type == TRI_TRANSACTION_WRITE) {
-            _readOnly = false;
-          }
-
           return res;
         }
 
@@ -991,12 +998,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _nestingLevel;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is read-only
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _readOnly;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction hints

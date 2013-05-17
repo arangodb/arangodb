@@ -664,6 +664,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// @EXAMPLES
 ///
+/// Returns a collection.
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -680,6 +682,21 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Collection does not exist.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAllCollectionDoesNotExist}
+///     var cn = "doesnotexist";
+///     db._drop(cn);
+///     var url = "/_api/document/?collection=" + cn;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -968,11 +985,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
+///     db.products.remove(document._id);
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
 /// 
-///     assert(response.code === 202);
+///     assert(response.code === 404);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -985,26 +1003,30 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
+///     var document2 = db.products.save({"hello2":"world"});
 ///     var url = "/_api/document/" + document._id;
+///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
 /// 
-///     assert(response.code === 202);
+///     assert(response.code === 412);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWrite}
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWriteWins}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
-///     var url = "/_api/document/" + document._id;
+///     var document2 = db.products.replace(document._id,{"other":"content"});
+///     var url = "/_api/document/products/" + document._rev + "?policy=last";
+///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, "{}", headers);
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1018,11 +1040,12 @@ bool RestDocumentHandler::checkDocument () {
 ///     db._create(cn);
 /// 
 ///     var document = db.products.save({"hello":"world"});
-///     var url = "/_api/document/" + document._id;
+///     var document2 = db.products.save({"hello2":"world"});
+///     var url = "/_api/document/" + document._id + "?rev=" + document2._rev;
 /// 
-///     var response = logCurlRequest('PUT', url, "{}");
+///     var response = logCurlRequest('PUT', url, '{"other":"content"}');
 /// 
-///     assert(response.code === 202);
+///     assert(response.code === 412);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1126,21 +1149,34 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @EXAMPLES
 ///
+/// patches an existing document with new content.
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestPatchDocument}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var document = db.products.save({"hello":"world"});
+///     var document = db.products.save({"one":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
-///     var response = logCurlRequest('PATCH', url, "{'one': 1, 'two': 2, 'three': 3}");
+///     var response = logCurlRequest("PATCH", url, { "hello": "world" });
 /// 
-///     assert(response.code === 200);
+///     assert(response.code === 202);
 /// 
 ///     logJsonResponse(response);
+///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1, "two": 2, "three": 3, "empty": null } });
+///     assert(response2.code === 202);
+///     logJsonResponse(response2);
+///     var response3 = logCurlRequest("GET", url);
+///     assert(response3.code === 200);
+///     logJsonResponse(response3);
+///     var response4 = logCurlRequest("PATCH", url + "?keepNull=false", { "hello": null, "numbers": { "four": 4 } });
+///     assert(response4.code === 202);
+///     logJsonResponse(response4);
+///     var response5 = logCurlRequest("GET", url);
+///     assert(response5.code === 200);
+///     logJsonResponse(response5);
 /// @END_EXAMPLE_ARANGOSH_RUN
-/// @verbinclude rest-patch-document
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
@@ -1356,15 +1392,57 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ///
 /// Using document handle:
 ///
-/// @verbinclude rest-delete-document
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDELETEDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     var document = db.products.save({"hello":"world"});
+///
+///     var url = "/_api/document/" + document._id;
+///
+///     var response = logCurlRequest('DELETE', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-delete-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandle}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     var document = db.products.save({"hello":"world"});
+///     db.products.remove(document._id);
+///
+///     var url = "/_api/document/" + document._id;
+///
+///     var response = logCurlRequest('DELETE', url);
+///
+///     assert(response.code === 404);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Revision conflict:
 ///
-/// @verbinclude rest-delete-document-if-match-other
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentIfMatchOther}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hello":"world"});
+///     var document2 = db.products.save({"hello2":"world"});
+///     var url = "/_api/document/" + document._id;
+///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
+/// 
+///     var response = logCurlRequest('DELETE', url, "", headers);
+/// 
+///     assert(response.code === 412);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
