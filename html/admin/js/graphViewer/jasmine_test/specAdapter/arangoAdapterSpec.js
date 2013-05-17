@@ -227,7 +227,38 @@
       });
     
       it('should automatically determine the host of not given', function() {
+        var adapter = new ArangoAdapter(
+          nodes,
+          edges,
+          {
+            nodeCollection: nodesCollection,
+            edgeCollection: edgesCollection,
+            width: 100,
+            height: 40
+          }
+        ),
+          args,
+          host;
+        spyOn($, "ajax");
+        adapter.createNode({}, function() {});
+        args = $.ajax.mostRecentCall.args[0];
+        host = window.location.protocol + "//" + window.location.host;
+        expect(args.url).toContain(host);
+      });
       
+      it('should create a nodeReducer instance', function() {
+        spyOn(window, "NodeReducer");
+        var adapter = new ArangoAdapter(
+          nodes,
+          edges,
+          {
+            nodeCollection: nodesCollection,
+            edgeCollection: edgesCollection,
+            width: 100,
+            height: 40
+          }
+        );
+        expect(window.NodeReducer).wasCalledWith({});
       });
     
       describe('setup correctly', function() {
