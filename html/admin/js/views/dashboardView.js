@@ -131,7 +131,7 @@ var dashboardView = Backbone.View.extend({
     this.renderFigure(figure);
   },
   //calculate customized chart value functions here
-  updateCustomChartValues: function ( {
+  updateCustomChartValues: function () {
     this.totalTime2();
   },
 
