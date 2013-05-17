@@ -84,10 +84,15 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     }
   },
   
+  nodeLimitCallBack = function(limit) {
+    self.adapter.setNodeLimit(limit);
+  }, 
+  
   parseZoomConfig = function(config) {
     if (config) {
       zoomManager = new ZoomManager(width, height, svg,
-        graphContainer, self.nodeShaper, self.edgeShaper);
+        graphContainer, self.nodeShaper, self.edgeShaper,
+        {}, nodeLimitCallBack);
     }
   },
   
