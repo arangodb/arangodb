@@ -158,7 +158,9 @@
         jasmine.any(Object),
         jasmine.any(Object),
         jasmine.any(NodeShaper),
-        jasmine.any(EdgeShaper)
+        jasmine.any(EdgeShaper),
+        {},
+        jasmine.any(Function)
       );
     });
     
