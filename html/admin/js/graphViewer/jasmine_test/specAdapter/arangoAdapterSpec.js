@@ -258,7 +258,7 @@
             height: 40
           }
         );
-        expect(window.NodeReducer).wasCalledWith({});
+        expect(window.NodeReducer).wasCalledWith(nodes, edges);
       });
     
       describe('setup correctly', function() {
