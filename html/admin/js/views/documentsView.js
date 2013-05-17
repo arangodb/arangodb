@@ -311,7 +311,7 @@ var documentsView = Backbone.View.extend({
     if (total.length > 0) {
       total.html("Total: " + this.documentsCount + " documents");
     } else {
-      $('#documentsToolbarFL').append('<a id="totalDocuments">Total: ' + this.documentsCount + ' documents </a>');
+      $('#documentsToolbarFL').append('<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>');
     }
   },
   breadcrumb: function () {

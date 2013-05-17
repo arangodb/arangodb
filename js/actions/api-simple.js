@@ -45,9 +45,12 @@ var API = "_api/simple/";
 /// @fn JSA_PUT_api_simple_all
 /// @brief returns all documents of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/all,executes simple query "all"}
+/// @RESTHEADER{PUT /_api/simple/all,executes simple query ALL}
 ///
-/// @REST{PUT /_api/simple/all}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// Returns all documents of a collections. The call expects a JSON object
 /// as body with the following attributes:
@@ -121,9 +124,12 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_any
 /// @brief returns a random document of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/any,executes simple query "any"}
+/// @RESTHEADER{PUT /_api/simple/any,executes simple query ANY}
 ///
-/// @REST{PUT /_api/simple/any}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// Returns a random document of a collection. The call expects a JSON object
 /// as body with the following attributes:
@@ -196,9 +202,12 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
-/// @RESTHEADER{PUT /_api/simple/near,executes simple query "near"}
+/// @RESTHEADER{PUT /_api/simple/near,executes simple query NEAR}
 ///
-/// @REST{PUT /_api/simple/near}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// The default will find at most 100 documents near a given coordinate.  The
 /// returned list is sorted according to the distance, with the nearest document
@@ -312,9 +321,12 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
-/// @RESTHEADER{PUT /_api/simple/within,executes simple query "within"}
+/// @RESTHEADER{PUT /_api/simple/within,executes simple query WITHIN}
 ///
-/// @REST{PUT /_api/simple/within}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents with in a given radius around the coordinate
 /// (`latitude`, `longitude`). The returned list is sorted by distance.
@@ -427,9 +439,12 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
-/// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query "fulltext"}
+/// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query FULLTEXT}
 ///
-/// @REST{PUT /_api/simple/fulltext}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents from the collection that match the fulltext
 /// query specified in `query`.
@@ -516,9 +531,12 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example,executes simple query "by-example"}
+/// @RESTHEADER{PUT /_api/simple/by-example,executes simple query by-example}
 ///
-/// @REST{PUT /_api/simple/by-example}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents matching a given example.
 ///
@@ -602,9 +620,12 @@ actions.defineHttp({
 /// @fn JSA_PUT_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
-/// @RESTHEADER{PUT /_api/simple/first-example,executes simple query "first-example"}
+/// @RESTHEADER{PUT /_api/simple/first-example,executes simple query first-example}
 ///
-/// @REST{PUT /_api/simple/first-example}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will return the first document matching a given example.
 ///
@@ -724,7 +745,10 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
 ///
-/// @REST{PUT /_api/simple/range}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents within a given range. You must declare a
 /// skip-list index on the attribute in order to be able to use a range query.
@@ -815,7 +839,10 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
 ///
-/// @REST{PUT /_api/simple/remove-by-example}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object. 
@@ -867,7 +894,7 @@ actions.defineHttp({
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
         }
-        else if (typeof example !== "object") {
+        else if (typeof example !== "object" || Array.isArray(example)) {
           actions.badParameter(req, res, "example");
         }
         else {
@@ -889,7 +916,10 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/replace-by-example,replaces documents by example}
 ///
-/// @REST{PUT /_api/simple/replace-by-example}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object, and replace the entire document body with the new value
@@ -947,10 +977,10 @@ actions.defineHttp({
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
         }
-        else if (typeof example !== "object") {
+        else if (typeof example !== "object" || Array.isArray(example)) {
           actions.badParameter(req, res, "example");
         }
-        else if (typeof newValue !== "object") {
+        else if (typeof newValue !== "object" || Array.isArray(newValue)) {
           actions.badParameter(req, res, "newValue");
         }
         else {
@@ -972,7 +1002,10 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/update-by-example,updates documents by example}
 ///
-/// @REST{PUT /_api/simple/update-by-example}
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+//
+/// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object, and partially update the document body with the new value
@@ -1037,10 +1070,10 @@ actions.defineHttp({
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
         }
-        else if (typeof example !== "object") {
+        else if (typeof example !== "object" || Array.isArray(example)) {
           actions.badParameter(req, res, "example");
         }
-        else if (typeof newValue !== "object") {
+        else if (typeof newValue !== "object" || Array.isArray(newValue)) {
           actions.badParameter(req, res, "newValue");
         }
         else {

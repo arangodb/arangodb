@@ -697,8 +697,16 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "getTempPath()");
   }
 
-  // return result
-  return scope.Close(v8::String::New(TempPath.c_str(), TempPath.size()));
+  char* path = TRI_GetUserTempPath();
+
+  if (path == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  v8::Handle<v8::Value> result = v8::String::New(path);
+  TRI_Free(TRI_CORE_MEM_ZONE, path);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1399,7 +1407,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process information
 ///
-/// @FUN{internal.processStat()}
+/// @FUN{internal.processStatistics()}
 ///
 /// Returns information about the current process:
 ///
@@ -1415,19 +1423,21 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 /// - systemTime: Amount of time that this process has been scheduled
 ///   in kernel mode, measured in clock ticks.
 ///
-/// - numberThreads: Number of threads in this process.
+/// - numberOfThreads: Number of threads in this process.
 ///
-/// - residentSize: Resident Set Size: number of pages the process has
-///   in real memory.  This is just the pages which count toward text,
-///   data, or stack space.  This does not include pages which have
-///   not been demand-loaded in, or which are swapped out.
+/// - residentSize: Resident Set Size: total size of the number of pages 
+///   the process has in real memory.  This is just the pages which count 
+///   toward text, data, or stack space.  This does not include pages which 
+///   have not been demand-loaded in, or which are swapped out.
+///
+///   The resident set size is reported in bytes.
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
 /// @verbinclude system1
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -1438,7 +1448,7 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
   result->Set(v8::String::New("majorPageFaults"), v8::Number::New((double) info._majorPageFaults));
   result->Set(v8::String::New("userTime"), v8::Number::New((double) info._userTime / (double) info._scClkTck));
   result->Set(v8::String::New("systemTime"), v8::Number::New((double) info._systemTime / (double) info._scClkTck));
-  result->Set(v8::String::New("numberThreads"), v8::Number::New((double) info._numberThreads));
+  result->Set(v8::String::New("numberOfThreads"), v8::Number::New((double) info._numberThreads));
   result->Set(v8::String::New("residentSize"), v8::Number::New((double) info._residentSize));
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
@@ -1691,15 +1701,23 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
     TRI_V8_EXCEPTION_PARAMETER(scope, "<path> must be a valid directory name");
   }
 
-  if (TempPath.size() < 8) {
+  char* tempPath = TRI_GetUserTempPath();
+  
+  if (tempPath == NULL || strlen(tempPath) < 6) {
     // some security measure so we don't accidently delete all our files
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
+
     TRI_V8_EXCEPTION_PARAMETER(scope, "temporary directory name is too short. will not remove directory");
   }
 
   const string path(*name);
-  if (path.substr(0, TempPath.size()) != TempPath) {
+  if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
+
     TRI_V8_EXCEPTION_PARAMETER(scope, "directory to be removed is outside of temporary path");
   }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
 
   int res = TRI_RemoveDirectory(*name);
 
@@ -1708,6 +1726,28 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
   }
 
   return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns server statistics
+///
+/// @FUN{internal.serverStatistics()}
+///
+/// Returns information about the server:
+///
+/// - `uptime`: time since server start in seconds.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ServerStatistics (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_server_statistics_t info = TRI_GetServerStatistics();
+  
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  result->Set(v8::String::New("uptime"), v8::Number::New((double) info._uptime));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1920,6 +1960,92 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set a failure point
+///
+/// @FUN{internal.debugSetFailAt(@FA{point})}
+///
+/// Set a point for an intentional system failure
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugSetFailAt(<point>)");
+  }
+
+  string point = TRI_ObjectToString(argv[0]);
+
+  TRI_AddFailurePointDebugging(point.c_str());
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a failure point
+///
+/// @FUN{internal.debugRemoveFailAt(@FA{point})}
+///
+/// Remove a point for an intentional system failure
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugRemoveFailAt(<point>)");
+  }
+
+  string point = TRI_ObjectToString(argv[0]);
+
+  TRI_RemoveFailurePointDebugging(point.c_str());
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear all failure points
+///
+/// @FUN{internal.debugClearFailAt()}
+///
+/// Remove all points for intentional system failures
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugClearFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugClearFailAt()");
+  }
+
+  TRI_ClearFailurePointsDebugging();
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether failure points can be used
+///
+/// @FUN{internal.debugCanUseFailAt()}
+///
+/// Returns whether failure points can be be used
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugCanUseFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugCanUseFailAt()");
+  }
+
+  return scope.Close(TRI_CanUseFailurePointsDebugging() ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current request and connection statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1949,7 +2075,7 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
   FillDistribution(result, "queueTime", queueTime);
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
-
+  
   return scope.Close(result);
 }
 
@@ -2365,8 +2491,7 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& modules,
-                      string const& packages,
-                      string const& tempPath) {
+                      string const& packages) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -2375,8 +2500,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::ObjectTemplate> rt;
-
-  TempPath = tempPath;
 
   // .............................................................................
   // generate the general error template
@@ -2432,16 +2555,23 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
+
+  // debugging functions
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SET_FAILAT", JS_DebugSetFailAt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_REMOVE_FAILAT", JS_DebugRemoveFailAt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CLEAR_FAILAT", JS_DebugClearFailAt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CAN_USE_FAILAT", JS_DebugCanUseFailAt);
 
   // .............................................................................
   // create the global variables

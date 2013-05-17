@@ -693,6 +693,32 @@
         expect($("#2-1")[0].textContent).toEqual("new");
       });
       
+      it('should be possible to toggle label display', function() {
+        var nodes = helper.createSimpleNodes([1, 2]),
+        edges = [
+          {
+            "source": nodes[0],
+            "target": nodes[1],
+            _data: {
+              "label": "test"
+            }
+          }
+        ];
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2")[0].textContent).toEqual("test");
+        
+        shaper.activateLabel(false);
+        
+        expect($("#1-2")[0].textContent).toEqual("");
+        expect($("#1-2 text").length).toEqual(0);
+        
+        shaper.activateLabel(true);
+        
+        expect($("#1-2")[0].textContent).toEqual("test");
+      });
+      
+      
     });
     
     describe('using a function for labels', function() {

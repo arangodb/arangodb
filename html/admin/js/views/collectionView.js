@@ -73,7 +73,7 @@ var collectionView = Backbone.View.extend({
       $('#change-collection-sync').val('true');
     }
     var calculatedSize = data.journalSize / 1024 / 1024;
-      $('#change-collection-size').val(calculatedSize);
+    $('#change-collection-size').val(calculatedSize);
     $('#change-collection').modal('show')
   },
   saveModifiedCollection: function() {

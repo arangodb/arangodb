@@ -244,7 +244,7 @@ static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* conne
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RunShell (mrb_state* mrb) {
-  MRLineEditor console(mrb, ".arangoirb");
+  MRLineEditor console(mrb, ".arangoirb.history");
 
   console.open(false /*! NoAutoComplete*/);
 

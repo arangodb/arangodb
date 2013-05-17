@@ -1,8 +1,10 @@
 arango> require("internal").processStat();
-{ minorPageFaults : 2683, 	
+{ 
+  minorPageFaults : 2683, 	
   majorPageFaults : 0,
   userTime : 26,
   systemTime : 7,
-  numberThreads : 4,
+  numberOfThreads : 4,
   residentSize : 2288,
-  virtualSize : 55861248 }
+  virtualSize : 55861248 
+}

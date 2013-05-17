@@ -165,7 +165,7 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                            private connection statistics ariables
+// --SECTION--                           private connection statistics variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +190,7 @@ static TRI_statistics_list_t ConnectionFreeList;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                               public connection statistics functions
+// --SECTION--                            public connection statistics functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,6 +274,32 @@ void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                public server statistics functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Statistics
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the global server statistics
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_server_statistics_t TRI_GetServerStatistics () {
+  TRI_server_statistics_t server;
+
+  server._startTime = ServerStatistics._startTime;
+  server._uptime    = TRI_microtime() - server._startTime;
+
+  return server;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -301,6 +327,21 @@ static void FillStatisticsList (TRI_statistics_list_t* list, size_t element, siz
     list->_last->_next = entry;
     list->_last = entry;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a linked list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyStatisticsList (TRI_statistics_list_t* list) {
+  TRI_statistics_entry_t* entry = list->_first;
+  while (entry != NULL) {
+    TRI_statistics_entry_t* next = entry->_next;
+    TRI_Free(TRI_CORE_MEM_ZONE, entry);
+    entry = next;
+  }
+
+  list->_first = list->_last = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -389,6 +430,12 @@ StatisticsVector BytesReceivedDistributionVector;
 StatisticsDistribution* BytesReceivedDistribution;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief global server statistics
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_server_statistics_t ServerStatistics;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -428,6 +475,8 @@ double TRI_StatisticsTime () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseStatistics () {
+  ServerStatistics._startTime = TRI_microtime();
+
 #if TRI_ENABLE_FIGURES
 
   static size_t const QUEUE_SIZE = 1000;
@@ -473,7 +522,24 @@ void TRI_InitialiseStatistics () {
   FillStatisticsList(&ConnectionFreeList, sizeof(TRI_connection_statistics_t), QUEUE_SIZE);
 
   STATISTICS_INIT(&ConnectionListLock);
+#endif
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut down statistics
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownStatistics (void) {
+#if TRI_ENABLE_FIGURES
+  delete ConnectionTimeDistribution;
+  delete TotalTimeDistribution;
+  delete RequestTimeDistribution;
+  delete QueueTimeDistribution;
+  delete BytesSentDistribution;
+  delete BytesReceivedDistribution;
+
+  TRI_DestroyStatisticsList(&RequestFreeList);
+  TRI_DestroyStatisticsList(&ConnectionFreeList);
 #endif
 }
 

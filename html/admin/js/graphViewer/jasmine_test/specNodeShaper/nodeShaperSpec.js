@@ -128,7 +128,7 @@
       expect($("svg circle").length).toEqual(1);
       expect($("svg .node circle")[0]).toBeDefined();
       expect($("svg .node circle").length).toEqual(1);
-      expect($("svg #1 circle")[0].attributes.r.value).toEqual("8");
+      expect($("svg #1 circle")[0].attributes.r.value).toEqual("25");
     });
 
     describe('testing for colours', function() {
@@ -710,6 +710,32 @@
         
       });
 
+      it('should be possible to toggle label display', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "test"
+          }
+        }];
+
+        shaper.drawNodes(node);
+        
+        expect($("svg .node text").length).toEqual(1);
+        expect($("svg .node text")[0].textContent).toEqual("test");
+        
+        
+        shaper.activateLabel(false);
+        
+        expect($("svg .node text").length).toEqual(0);
+        
+        
+        shaper.activateLabel(true);
+        
+        expect($("svg .node text").length).toEqual(1);
+        expect($("svg .node text")[0].textContent).toEqual("test");
+        
+      });
+
     });
 
     describe('using a function for labels', function () {
@@ -911,7 +937,7 @@
             };
           },
           n = $("#1");
-        expect(n.attr("transform")).toEqual("translate(10,10)");
+        expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
         
         shaper.changeTo({
           distortion: distortion
@@ -921,7 +947,7 @@
           y: 5,
           z: 10
         });
-        expect(n.attr("transform")).toEqual("translate(52,5)");
+        expect(n.attr("transform")).toEqual("translate(52,5)scale(10)");
       });
       
       it('should be able to revoke a distortion for the node positions', function() {
@@ -939,7 +965,7 @@
             };
           },
           n = $("#1");
-        expect(n.attr("transform")).toEqual("translate(10,10)");
+        expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
         
         shaper.changeTo({
           distortion: distortion
@@ -949,7 +975,7 @@
           y: 5,
           z: 10
         });
-        expect(n.attr("transform")).toEqual("translate(52,5)");
+        expect(n.attr("transform")).toEqual("translate(52,5)scale(10)");
         
         shaper.changeTo({
           distortion: "reset"
@@ -959,7 +985,7 @@
           y: 10,
           z: 1
         });
-        expect(n.attr("transform")).toEqual("translate(10,10)");
+        expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
       });
     });
 

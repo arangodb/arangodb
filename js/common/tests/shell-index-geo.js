@@ -806,7 +806,7 @@ function GeoIndexErrorHandlingSuite() {
       collection.save({ lat : 1, lon : null });
 
       try {
-        collection.save({ lat : "Hallo", lon : 10 });
+        collection.save({ lat : "Hello", lon : 10 });
         fail();
       }
       catch (err) {
@@ -827,7 +827,7 @@ function GeoIndexErrorHandlingSuite() {
       collection.replace(d1._id, { lat : null });
 
       try {
-        collection.replace(d1._id, { lat : "Hallo" });
+        collection.replace(d1._id, { lat : "Hello" });
         fail();
       }
       catch (err) {
@@ -843,7 +843,7 @@ function GeoIndexErrorHandlingSuite() {
       }
 
       try {
-        collection.replace(d1._id, { lat : -100, lon : "Hallo" });
+        collection.replace(d1._id, { lat : -100, lon : "Hello" });
         fail();
       }
       catch (err) {
@@ -851,7 +851,7 @@ function GeoIndexErrorHandlingSuite() {
       }
 
       try {
-        collection.replace(d1._id, { lat : "Hallo", lon : 10 });
+        collection.replace(d1._id, { lat : "Hello", lon : 10 });
         fail();
       }
       catch (err) {
