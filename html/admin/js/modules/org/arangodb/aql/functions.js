@@ -247,7 +247,7 @@ var unregisterFunctionsGroup = function (group) {
 /// @fn JSF_aqlfunctions_register
 /// @brief register an AQL user function
 ///
-/// @FUN{aqlfunctions.register(@FA{name}, @FA{code})}
+/// @FUN{aqlfunctions.register(@FA{name}, @FA{code}, @FA{isDeterministic}, @FA{testValues})}
 ///
 /// Registers an AQL user function, identified by a fully qualified function 
 /// name. The function code in @FA{code} must be specified as a Javascript
@@ -255,6 +255,11 @@ var unregisterFunctionsGroup = function (group) {
 ///
 /// If a function identified by @FA{name} already exists, the previous function
 /// definition will be updated.
+///
+/// The @FA{isDeterministic} attribute can be used to specify whether the 
+/// function results are fully deterministic (i.e. depend solely on the input 
+/// and are the same for repeated calls with the same input values). It is not
+/// used at the moment but may be used for optimisations later.
 ///
 /// @EXAMPLES
 ///
@@ -269,7 +274,19 @@ var unregisterFunctionsGroup = function (group) {
 var registerFunction = function (name, code, isDeterministic) {
   // validate input
   validateName(name);
+
   code = stringifyFunction(code, name);
+
+  var testCode = "(function() { var callback = " + code + "; return callback; })()";
+    
+  try {
+    var res = INTERNAL.executeScript(testCode, undefined, "(user function " + name + ")"); 
+  }
+  catch (err1) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
+    err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
+  }
 
   var exists = false;
     
@@ -277,7 +294,7 @@ var registerFunction = function (name, code, isDeterministic) {
     unregisterFunction(name);
     exists = true;
   }
-  catch (err) {
+  catch (err2) {
   }
 
   var data = {
