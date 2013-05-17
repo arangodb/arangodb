@@ -530,4 +530,8 @@ function ArangoAdapter(nodes, edges, config) {
     api.edge = api.base + "edge?collection=" + edgeCollection;
   };
   
+  self.setNodeLimit = function (limit) {
+  
+  };
+  
 }
