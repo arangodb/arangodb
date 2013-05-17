@@ -87,6 +87,12 @@ function GET_api_aqlfunction (req, res) {
 /// - `name`: the fully qualified name of the user functions.
 ///
 /// - `code`: a string representation of the function body.
+/// 
+/// - `isDeterministic`: an optional boolean value to indicate that the function
+///   results are fully deterministic (function return value solely depends on 
+///   the input value and return value is the same for repeated calls with same
+///   input). The `isDeterministic` attribute is currently not used but may be
+///   used later for optimisations.
 ///
 /// If the function can be registered by the server, the server will respond with 
 /// `HTTP 201`. If the function already existed and was replaced by the
@@ -125,7 +131,7 @@ function POST_api_aqlfunction (req, res) {
     return;
   }
 
-  var result = aqlfunctions.register(json.name, json.code);
+  var result = aqlfunctions.register(json.name, json.code, json.isDeterministic);
 
   actions.resultOk(req, res, result ? actions.HTTP_OK : actions.HTTP_CREATED, { });
 }
