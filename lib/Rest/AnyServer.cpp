@@ -66,7 +66,7 @@ static void WritePidFile (string const& pidFile, int pid) {
   ofstream out(pidFile.c_str(), ios::trunc);
 
   if (! out) {
-    LOGGER_FATAL_AND_EXIT("cannot write pid-file \"" << pidFile << "\"\n");
+    LOGGER_FATAL_AND_EXIT("cannot write pid-file \"" << pidFile << "\"");
   }
 
   out << pid;
