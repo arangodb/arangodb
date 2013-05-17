@@ -613,7 +613,11 @@
           beforeEach(function() {
       
             runs(function() {
-              
+              var self = this;
+              this.fakeReducerRequest = function() {};
+              spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+                this.getCommunity = self.fakeReducerRequest;
+              });
               spyOn($, "ajax").andCallFake(function(request) {
                 if (spyHook !== undefined) {
                   if(!spyHook(request)) {
@@ -838,6 +842,22 @@
               
               existNode(insertedId);
             });
+          });
+          
+          it('should trigger the reducer if too many nodes are added', function() {
+        
+            runs(function() {
+              adapter.setNodeLimit(6);
+              spyOn(this, "fakeReducerRequest");
+              adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
+              expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, c1);
+            });
+          });
+          
+          it('should not trigger the reducer if the limit is set large enough', function() {
+            spyOn(this, "fakeReducerRequest");
+            adapter.setNodeLimit(10);
+            expect(this.fakeReducerRequest).not.toHaveBeenCalled();
           });
           
           describe('that has loaded several queries', function() {
