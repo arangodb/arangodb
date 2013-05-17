@@ -2438,6 +2438,155 @@ function transactionRollbackSuite () {
       c1.save({ _key: "test" });
       assertEqual(3, c1.count());
       assertEqual([ "bar", "baz", "test" ], sortedKeys(c1));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback a mixed workload
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackMixed1 : function () {
+      c1 = db._create(cn1);
+      
+      var i;
+
+      for (i = 0; i < 100; ++i) {
+        c1.save({ _key: "key" + i, value: i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+
+          for (i = 0; i < 50; ++i) {
+            c1.remove("key" + i);
+          }
+
+          for (i = 50; i < 100; ++i) {
+            c1.update("key" + i, { value: i - 50 });
+          }
+
+          c1.remove("key50");
+          throw "doh!";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+      
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback a mixed workload
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackMixed2 : function () {
+      c1 = db._create(cn1);
+      
+      c1.save({ _key: "foo" });
+      c1.save({ _key: "bar" });
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var i;
+
+          for (i = 0; i < 10; ++i) {
+            c1.save({ _key: "key" + i, value: i });
+          }
+
+          for (i = 0; i < 5; ++i) {
+            c1.remove("key" + i);
+          }
+
+          for (i = 5; i < 10; ++i) {
+            c1.update("key" + i, { value: i - 5 });
+          }
+
+          c1.remove("key5");
+          throw "doh!";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+      
+      assertEqual(2, c1.count());
+      assertEqual("foo", c1.document("foo")._key);
+      assertEqual("bar", c1.document("bar")._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback a mixed workload
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackMixed3 : function () {
+      c1 = db._create(cn1);
+      
+      c1.save({ _key: "foo" });
+      c1.save({ _key: "bar" });
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var i;
+
+          for (i = 0; i < 10; ++i) {
+            c1.save({ _key: "key" + i, value: i });
+          }
+
+          for (i = 0; i < 10; ++i) {
+            c1.remove("key" + i);
+          }
+          
+          for (i = 0; i < 10; ++i) {
+            c1.save({ _key: "key" + i, value: i });
+          }
+
+          for (i = 0; i < 10; ++i) {
+            c1.update("key" + i, { value: i - 5 });
+          }
+          
+          for (i = 0; i < 10; ++i) {
+            c1.update("key" + i, { value: i + 5 });
+          }
+          
+          for (i = 0; i < 10; ++i) {
+            c1.remove("key" + i);
+          }
+          
+          for (i = 0; i < 10; ++i) {
+            c1.save({ _key: "key" + i, value: i });
+          }
+
+          throw "doh!";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+      
+      assertEqual(2, c1.count());
+      assertEqual("foo", c1.document("foo")._key);
+      assertEqual("bar", c1.document("bar")._key);
     }
 
   };
