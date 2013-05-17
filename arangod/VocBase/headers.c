@@ -171,8 +171,6 @@ static void UnlinkHeader (TRI_headers_t* h,
                           TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
 
-//printf("UNLINK\n-------------\n");
-//h->dump(h);
   TRI_ASSERT_MAINTAINER(header != NULL); 
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
