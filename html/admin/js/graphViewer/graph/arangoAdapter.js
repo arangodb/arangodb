@@ -54,6 +54,7 @@ function ArangoAdapter(nodes, edges, config) {
     queries = {},
     nodeCollection,
     edgeCollection,
+    limit,
     reducer,
     arangodb,
     width,
@@ -267,7 +268,11 @@ function ArangoAdapter(nodes, edges, config) {
         });
       });
       if (callback) {
-        callback(result[0].vertex);
+        var n = insertNode(result[0].vertex);
+        if (limit < nodes.length) {
+          reducer.getCommunity(limit, n);
+        }
+        callback(n);
       }
     },
   
@@ -534,8 +539,14 @@ function ArangoAdapter(nodes, edges, config) {
     api.edge = api.base + "edge?collection=" + edgeCollection;
   };
   
-  self.setNodeLimit = function (limit) {
-  
+  self.setNodeLimit = function (pLimit, callback) {
+    limit = pLimit;
+    if (limit < nodes.length) {
+      reducer.getCommunity(limit);
+      if (callback !== undefined) {
+        callback();
+      }
+    }
   };
   
 }
