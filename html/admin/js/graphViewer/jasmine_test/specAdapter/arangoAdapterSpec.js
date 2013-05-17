@@ -39,12 +39,12 @@
   "use strict";
 
   describe('Arango Adapter', function () {
-    /*
+    
     describeInterface(new ArangoAdapter([], [], {
       nodeCollection: "",
       edgeCollection: ""
     }));
-    */
+    
     var adapter,
       nodes,
       edges,
@@ -271,7 +271,20 @@
           loadGraph,
           requests;
         
-        beforeEach(function() {      
+        beforeEach(function() {  
+          var self = this;
+          self.fakeReducerRequest = function() {};
+          spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+            return {
+              getCommunity: function(limit, focus) {
+                if (focus !== undefined) {
+                  self.fakeReducerRequest(limit, focus);
+                } else {
+                  self.fakeReducerRequest(limit);
+                }
+              }
+            };
+          });
           adapter = new ArangoAdapter(
             nodes,
             edges,
@@ -419,7 +432,6 @@
             );
           });
         });
-        
         
         it('should be able to load a tree node from ArangoDB'
           + ' by internal attribute and value', function() {
@@ -613,11 +625,6 @@
           beforeEach(function() {
       
             runs(function() {
-              var self = this;
-              this.fakeReducerRequest = function() {};
-              spyOn(window, "NodeReducer").andCallFake(function(v, e) {
-                this.getCommunity = self.fakeReducerRequest;
-              });
               spyOn($, "ajax").andCallFake(function(request) {
                 if (spyHook !== undefined) {
                   if(!spyHook(request)) {
@@ -850,8 +857,31 @@
               adapter.setNodeLimit(6);
               spyOn(this, "fakeReducerRequest");
               adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
-              expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, c1);
+              expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, nodeWithID(c1));
             });
+          });
+          
+          
+          it('should render a reduced set of nodes if too many nodes are added', function() {
+            runs(function() {
+              adapter.setNodeLimit(6);
+              spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                return [0, 1, 2, 3];
+              });
+              adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
+            });
+            
+            waitsFor(function() {
+              return callbackCheck;
+            });
+      
+            runs(function() {
+              notExistNodes([c0, c1, c2, c3]);
+              existNodes([c4, c5, c6, c7]);
+              expect(nodes.length).toEqual(5);
+              
+            });
+            
           });
           
           it('should not trigger the reducer if the limit is set large enough', function() {
@@ -859,6 +889,33 @@
             adapter.setNodeLimit(10);
             expect(this.fakeReducerRequest).not.toHaveBeenCalled();
           });
+          
+          
+          it('should trigger the reducer if the limit is set too small', function() {
+            spyOn(this, "fakeReducerRequest");
+            adapter.setNodeLimit(2);
+            expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
+          });
+          
+          it('should reshape all objects if limit is set too small', function() {
+            var called = false;
+            var callback = function() {
+              called = true;
+            };
+            spyOn(this, "fakeReducerRequest").andCallFake(function() {
+              return [0, 1, 2];
+            });
+            adapter.setNodeLimit(2, callback);
+            
+            notExistNodes([c0, c1, c2]);
+            existNodes([c3]);
+            expect(nodes.length).toEqual(2);
+            
+            expect(called).toBeTruthy();
+            
+            
+          });
+          
           
           describe('that has loaded several queries', function() {
             var c8, c9, e2_8;

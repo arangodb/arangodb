@@ -287,18 +287,21 @@ function NodeReducer(nodes, edges) {
     populateValues(dQ, a, heap);
     var max = 0;
     while (communityDetectionStep(dQ, a, heap, coms)) {
+      // InfiniteLoopCheck should be removed!
       max++;
       if (max > 100) {
         break;
-        //console.log(max);
       }
     }
-    //console.log(max);
     res = _.pluck(_.values(coms), "com");
-    dist = floatDist(focus._id);
-    res = res.filter(function(e) {return !_.contains(e, focus._id)});
-    res = res.filter(function(e) {return e.length > 1});
-    res.sort(sortByDistance);
+    if (focus !== undefined) {
+      dist = floatDist(focus._id);
+      res = res.filter(function(e) {return !_.contains(e, focus._id)});
+      res = res.filter(function(e) {return e.length > 1});
+      res.sort(sortByDistance);
+    } else {
+      res = res.filter(function(e) {return e.length > 1});
+    }
     return res[0];
   };
 }
