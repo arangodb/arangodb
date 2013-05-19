@@ -59,15 +59,23 @@
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  try {
-    // necessary for the web interface
-    if (ArangoError !== undefined) {
-      exports.ArangoError = ArangoError;
-      delete ArangoError;
-    }
+  if (typeof ArangoError !== "undefined") {
+    exports.ArangoError = ArangoError;
+    delete ArangoError;
   }
-  catch (err) {
-    exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
+  else {
+    exports.ArangoError = function (error) {
+      if (error !== undefined) {
+        this.error = error.error;
+        this.code = error.code;
+        this.errorNum = error.errorNum;
+        this.errorMessage = error.errorMessage;
+      }
+
+      this.message = this.toString();
+    }
+
+    exports.ArangoError.prototype = Error.prototype;
   }
 
   exports.ArangoError.prototype._PRINT = function (context) {
