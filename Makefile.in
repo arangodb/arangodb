@@ -1553,6 +1553,7 @@ SERVER_OPT := \
 	--database.force-sync-shapes false \
 	--database.force-sync-properties false \
 	--javascript.action-directory @top_srcdir@/js/actions \
+	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.gc-interval 1 \
 	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/npm\;@top_srcdir@/js/common/test-data/modules \
@@ -1858,6 +1859,7 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
 	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
+	html/admin/js/modules/org/arangodb/aql/functions.js \
 	html/admin/js/modules/org/arangodb/mimetypes.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js \
 	\
@@ -7598,6 +7600,7 @@ jslint:
 
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
+	@test -d html/admin/js/modules/org/arangodb/aql || mkdir -p html/admin/js/modules/org/arangodb/aql
 	@test -d html/admin/js/bootstrap || mkdir -p html/admin/js/bootstrap
 	@test -d html/admin/js/client/bootstrap || mkdir -p html/admin/js/client/bootstrap
 	@touch $@
