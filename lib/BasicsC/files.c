@@ -167,6 +167,9 @@ static void RemoveAllLockedFiles (void) {
     TRI_RemoveVector(&FileDescriptors, i);
   }
 
+  TRI_DestroyVectorString(&FileNames);
+  TRI_DestroyVector(&FileDescriptors);
+
   TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 }
 
