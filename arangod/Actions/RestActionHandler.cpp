@@ -103,7 +103,7 @@ bool RestActionHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestActionHandler::queue () {
+string const& RestActionHandler::queue () const {
   return _queue;
 }
 

@@ -227,7 +227,7 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
     case SSL_ERROR_WANT_CONNECT:
     case SSL_ERROR_SYSCALL:
     default: {
-      /* fallthrough */
+      /* fall through */
     }
   }
 
@@ -244,13 +244,17 @@ bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   }
 
   do {
-    char buffer[READBUFFER_SIZE];
+    // reserve some memory for reading
+    if (stringBuffer.reserve(READBUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+      // out of memory
+      return false;
+    }
 
-    int lenRead = SSL_read(_ssl, buffer, READBUFFER_SIZE - 1);
+    int lenRead = SSL_read(_ssl, stringBuffer.end(), READBUFFER_SIZE - 1);
 
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
-        stringBuffer.appendText(buffer, lenRead);
+        stringBuffer.increaseLength(lenRead);
         break;
 
       case SSL_ERROR_ZERO_RETURN:

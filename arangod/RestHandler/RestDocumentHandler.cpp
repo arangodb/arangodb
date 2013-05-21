@@ -85,7 +85,7 @@ bool RestDocumentHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestDocumentHandler::queue () {
+string const& RestDocumentHandler::queue () const {
   static string const client = "STANDARD";
 
   return client;

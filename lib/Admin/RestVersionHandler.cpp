@@ -84,7 +84,7 @@ bool RestVersionHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestVersionHandler::queue () {
+string const& RestVersionHandler::queue () const {
   return _queue;
 }
 
