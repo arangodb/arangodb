@@ -278,7 +278,7 @@ function ArangoAdapter(nodes, edges, config) {
     },
     
     collapseCommunity = function (community) {
-      var commId = "community_1",
+      var commId = "*community_" + Math.floor(Math.random()* 1000000),
         commNode = {
           _id: commId,
           edges: []
@@ -590,6 +590,12 @@ function ArangoAdapter(nodes, edges, config) {
       if (callback !== undefined) {
         callback();
       }
+    }
+  };
+  
+  self.expandCommunity = function (commNode, callback) {
+    if (callback !== undefined) {
+      callback();
     }
   };
   
