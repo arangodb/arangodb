@@ -234,29 +234,38 @@ static void MoveHeader (TRI_headers_t* h,
   if (old->_prev == NULL) {
     headers->_begin = header;
   }
+  else if (headers->_begin == header) {
+    if (header->_next != NULL) {
+      headers->_begin = header->_next;
+    }
+  }
+
   if (old->_next == NULL) {
     headers->_end = header;
   }
-  if (header->_prev != NULL && header->_prev == old->_next) {
-    header->_prev->_next = NULL;
-    headers->_end = header->_prev;
+  else if (headers->_end == header) {
+    if (header->_prev != NULL) {
+      headers->_end = header->_prev;
+    }
   }
-  else if (header->_next != NULL && header->_next == old->_prev) {
-    header->_next->_prev = NULL;
-    headers->_begin = header->_next;
+
+  if (header->_prev != NULL) {
+    if (header->_prev == old->_next) {
+      header->_prev->_next = NULL;
+    }
+    else {
+      header->_prev->_next = header->_next;
+    }
   }
-/*
-  if (headers->_begin == old->_next) {
-    // adjust list start pointer
-    headers->_begin = header;
+
+  if (header->_next != NULL) {
+    if (header->_next == old->_prev) {
+      header->_next->_prev = NULL;
+    }
+    else {
+      header->_next->_prev = header->_prev;
+    }
   }
-*/
-/*
-  if (old->_next == NULL) {
-    // adjust list end pointer
-    headers->_end = header;
-  }
-*/
 
   if (old->_prev != NULL) {
     old->_prev->_next = header;
@@ -273,11 +282,7 @@ static void MoveHeader (TRI_headers_t* h,
   else {
     header->_next = NULL;
   }
-/*
-  header->_prev = old->_prev; 
-  header->_next = old->_next;
-  */
-  
+
   TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
   TRI_ASSERT_MAINTAINER(headers->_end != NULL);
   TRI_ASSERT_MAINTAINER(header->_prev != header);

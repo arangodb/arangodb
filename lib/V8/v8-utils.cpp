@@ -1960,6 +1960,92 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set a failure point
+///
+/// @FUN{internal.debugSetFailAt(@FA{point})}
+///
+/// Set a point for an intentional system failure
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugSetFailAt(<point>)");
+  }
+
+  string point = TRI_ObjectToString(argv[0]);
+
+  TRI_AddFailurePointDebugging(point.c_str());
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a failure point
+///
+/// @FUN{internal.debugRemoveFailAt(@FA{point})}
+///
+/// Remove a point for an intentional system failure
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugRemoveFailAt(<point>)");
+  }
+
+  string point = TRI_ObjectToString(argv[0]);
+
+  TRI_RemoveFailurePointDebugging(point.c_str());
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear all failure points
+///
+/// @FUN{internal.debugClearFailAt()}
+///
+/// Remove all points for intentional system failures
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugClearFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugClearFailAt()");
+  }
+
+  TRI_ClearFailurePointsDebugging();
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether failure points can be used
+///
+/// @FUN{internal.debugCanUseFailAt()}
+///
+/// Returns whether failure points can be be used
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DebugCanUseFailAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "debugCanUseFailAt()");
+  }
+
+  return scope.Close(TRI_CanUseFailurePointsDebugging() ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current request and connection statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2480,6 +2566,12 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
   TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
+
+  // debugging functions
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SET_FAILAT", JS_DebugSetFailAt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_REMOVE_FAILAT", JS_DebugRemoveFailAt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CLEAR_FAILAT", JS_DebugClearFailAt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CAN_USE_FAILAT", JS_DebugCanUseFailAt);
 
   // .............................................................................
   // create the global variables
