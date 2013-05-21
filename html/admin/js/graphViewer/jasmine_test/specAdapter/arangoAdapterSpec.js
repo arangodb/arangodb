@@ -907,7 +907,6 @@
               expect(this.fakeReducerRequest).not.toHaveBeenCalled();
             });
           
-          
             it('should trigger the reducer if the limit is set too small', function() {
               spyOn(this, "fakeReducerRequest").andCallFake(function() {
                 return [c0];
