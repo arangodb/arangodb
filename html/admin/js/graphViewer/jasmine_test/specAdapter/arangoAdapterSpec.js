@@ -1010,7 +1010,6 @@
                 
                 runs(function() {
                   expect(getCommunityNodes().length).toEqual(0);
-                  console.log(edges);
                   existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
                   existEdge(c0, c1);
                   existEdge(c0, c2);
@@ -1020,7 +1019,8 @@
                 
               });
               
-              it('should expand a community and join another one if not enough space is available', function() {
+              it('should expand a community and join another '
+                + 'one if not enough space is available', function() {
                 runs(function() {
                   fakeResult = [c1, c7];
                   callbackCheck = false;
