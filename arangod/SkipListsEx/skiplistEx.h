@@ -321,7 +321,8 @@ void* TRI_PrevNodeSkipListEx (TRI_skiplistEx_t*, void*, uint64_t thisTransID);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*, 
-                                 const int passLevel, const uint64_t thisTransID);
+                                 const int passLevel, const uint64_t thisTransID,
+                                 TRI_skiplistEx_node_t**);
 
 
 
@@ -330,7 +331,8 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveKeySkipListEx (TRI_skiplistEx_t*, void*, void*, 
-                             const int passLevel, const uint64_t thisTransID);
+                             const int passLevel, const uint64_t thisTransID,
+                             TRI_skiplistEx_node_t**);
 
 
 
@@ -526,7 +528,8 @@ void* TRI_PrevNodeSkipListExMulti (TRI_skiplistEx_multi_t*, void*, uint64_t this
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, 
-                                      const int passLevel, const uint64_t thisTransID);
+                                      const int passLevel, const uint64_t thisTransID,
+                                      TRI_skiplistEx_node_t**);
 
 
 
@@ -535,7 +538,8 @@ int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveKeySkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, 
-                                  const int passLevel, const uint64_t thisTransID);
+                                  const int passLevel, const uint64_t thisTransID,
+                                  TRI_skiplistEx_node_t**);
 
 
 

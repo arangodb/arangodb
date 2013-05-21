@@ -220,7 +220,7 @@ int TRI_InitSkipListEx (TRI_skiplistEx_t* skiplist, size_t elementSize,
   // ..........................................................................  
   result = GrowNewNodeHeight(&(skiplist->_base._startNode), skiplist->_base._maxHeight, 2,TRI_ERROR_NO_ERROR); // may fail
   result = GrowNewNodeHeight(&(skiplist->_base._endNode), skiplist->_base._maxHeight, 2, result); // may fail
-     
+  
   if (result != TRI_ERROR_NO_ERROR) { 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)(skiplist->_base._random));
     
@@ -235,6 +235,7 @@ int TRI_InitSkipListEx (TRI_skiplistEx_t* skiplist, size_t elementSize,
     return result;
   }
 
+  
   // ..........................................................................  
   // Join the empty lists together
   // no locking requirements for joining nodes since the skip list index is not known 
@@ -489,13 +490,14 @@ int TRI_InsertKeySkipListEx (TRI_skiplistEx_t* skiplist, // the skiplist we are 
       
 
       // .........................................................................
-      // Is our next node a glass node? If so we must skip it!
-      // Note: since Garbage Collection is performed in TWO passes, it is possible
-      // that we have more than one glass node.
+      // An insert/lookup/removal SEARCH like this, can ONLY ever find 1 glass
+      // node when we are very unlucky. (The GC makes the node glass and then
+      // goes and unlinks the pointers.) If skip the glass node, then we 
+      // will have the wrong pointers to compare, so we have to CAS_RESTART
       // .........................................................................
       
-      if (TRI_CompareIntegerUInt32(&(nextNode->_towerFlag),TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG)) {
-        goto START;
+      if (nextNode->_towerFlag == TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG) {
+        goto CAS_RESTART;
       }
       
     
@@ -810,7 +812,7 @@ void* TRI_LookupByKeySkipListEx (TRI_skiplistEx_t* skiplist, void* key, uint64_t
       // that we have more than one glass node.
       // .........................................................................
       
-      if (TRI_CompareIntegerUInt32(&(nextNode->_towerFlag),TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG)) {
+      if (nextNode->_towerFlag == TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG) {
         goto START;
       }
             
@@ -900,6 +902,7 @@ void* TRI_LookupByKeySkipListEx (TRI_skiplistEx_t* skiplist, void* key, uint64_t
           
             // ...................................................................            
             // This node has been inserted AFTER the reading starting reading!
+            // Treat this as if the node was NEVER there.
             // ...................................................................            
             
             return NULL;            
@@ -915,7 +918,8 @@ void* TRI_LookupByKeySkipListEx (TRI_skiplistEx_t* skiplist, void* key, uint64_t
           
             // ...................................................................
             // Node has NOT been deleted (e.g. imagine it will be deleted some 
-            // time in the future). This is the node we want.
+            // time in the future). This is the node we want, even though it may 
+            // be deleted very very soon.
             // ...................................................................            
             
             return nextNode;
@@ -991,7 +995,8 @@ void* TRI_PrevNodeSkipListEx(TRI_skiplistEx_t* skiplist, void* currentNode, uint
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void* old, 
-                                 const int passLevel,  const uint64_t thisTransID) {
+                                 const int passLevel,  const uint64_t thisTransID,
+                                 TRI_skiplistEx_node_t** passNode) {
   // ...........................................................................
   // To remove an element from this skip list we have three pass levels:
   // Pass 1: locate (if possible) the exact NODE - must match exactly.
@@ -1199,7 +1204,7 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
             goto END;          
           }   
  
-         // .....................................................................
+          // .....................................................................
           // The only case left here is that the node has been deleted by either
           // this transaction (which could happen in an UPDATE) or by some
           // previous write transaction. Treat this case as if the element is 
@@ -1260,6 +1265,9 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
         if (old != NULL) {
           IndexStaticCopyElementElement(&(skiplist->_base), old, &(currentNode->_element));
         }
+        
+        *passNode = currentNode;
+        
         return TRI_ERROR_NO_ERROR;        
       }
       
@@ -1276,22 +1284,23 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
         // transaction id and/or the pointer to the doc. Easier to simply
         // send the address of the node back.
         // .......................................................................
-        if (element == NULL) {
+        if (*passNode == NULL) {
           return TRI_ERROR_INTERNAL;
         }  
-        currentNode  = (TRI_skiplistEx_node_t*)(element);
+        currentNode  = (TRI_skiplistEx_node_t*)(*passNode);
         // .......................................................................
         // Only the Garbage Collector can transform a node into a glass node, and
         // since the GC is only operating in one thread safe to do a simple
         // comparison here.
         // .......................................................................
-        if (currentNode->_towerFlag != TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG) {
+        if (currentNode->_towerFlag == TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG) {
           return TRI_ERROR_INTERNAL;
         }  
 
+        // .......................................................................
         // safety check         
-        ok = TRI_CompareIntegerUInt64 (&(currentNode->_delTransID), thisTransID);
-        if (!ok) {
+        // .......................................................................
+        if (currentNode->_delTransID != thisTransID) {
           return TRI_ERROR_INTERNAL;
         }
         
@@ -1328,10 +1337,11 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
         // transaction id and/or the pointer to the doc. Easier to simply
         // send the address of the node back.
         // .......................................................................
-        if (element == NULL) {
+        if (*passNode == NULL) {
           return TRI_ERROR_INTERNAL;
         }  
-        currentNode  = (TRI_skiplistEx_node_t*)(element);
+        currentNode  = (TRI_skiplistEx_node_t*)(*passNode);
+        
         // .......................................................................
         // Only the Garbage Collector can transform a node into a glass node, and
         // since the GC is only operating in one thread safe to do a simple
@@ -1341,9 +1351,10 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
           return TRI_ERROR_INTERNAL;
         }  
 
+        // .......................................................................
         // safety check         
-        ok = TRI_CompareIntegerUInt64 (&(currentNode->_delTransID), thisTransID);
-        if (!ok) {
+        // .......................................................................
+        if (currentNode->_delTransID != thisTransID) {
           return TRI_ERROR_INTERNAL;
         }
   
@@ -1373,7 +1384,8 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveKeySkipListEx(TRI_skiplistEx_t* skiplist, void* key, void* old, 
-                            const int passLevel, const uint64_t thisTransID) {
+                            const int passLevel, const uint64_t thisTransID,
+                            TRI_skiplistEx_node_t** passNode) {
   // Use the TRI_RemoveElementSkipList method instead.
   assert(false);
   return 0;
@@ -2196,7 +2208,8 @@ void* TRI_PrevNodeSkipListExMulti(TRI_skiplistEx_multi_t* skiplist, void* curren
 
 
 int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t* skiplist, void* element, void* old, 
-                                      const int passLevel, const uint64_t thisTransID) {
+                                      const int passLevel, const uint64_t thisTransID,
+                                      TRI_skiplistEx_node_t** passNode) {
 
   int32_t currentLevel;
   TRI_skiplistEx_node_t* currentNode;
@@ -2388,7 +2401,8 @@ int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t* skiplist, void* el
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveKeySkipListExMulti(TRI_skiplistEx_multi_t* skiplist, void* key, void* old, 
-                                 const int passLevel, const  uint64_t thisTransID) {
+                                 const int passLevel, const  uint64_t thisTransID,
+                                 TRI_skiplistEx_node_t** passNode) {
   // Use the TRI_RemoveElementSkipListExMulti method instead.
   assert(false);
   return 0;
@@ -2639,12 +2653,20 @@ static int GrowNewNodeHeight(TRI_skiplistEx_node_t* node, uint32_t height, uint3
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  
+  // ..........................................................................  
+  // Ensure that the towers are normal ) at least initially for a new node
+  // ..........................................................................  
+  
+  node->_towerFlag = TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG;
+
+  
   // ...........................................................................
   // Initialise the storage
   // ...........................................................................
   {
     uint32_t j;
-    for (j = node->_colLength; j < height; ++j) {
+    for (j = 0; j < height; ++j) {
       node->_column[j]._prev     = NULL; 
       node->_column[j]._next     = NULL; 
       node->_column[j]._nbFlag   = TRI_SKIPLIST_EX_NORMAL_NEAREST_NEIGHBOUR_FLAG;
@@ -2888,7 +2910,7 @@ static int GrowStartEndNodes(TRI_skiplistEx_base_t* skiplist, uint32_t newHeight
   }  
   
   oldStartHeight = skiplist->_startNode._colLength;
-  oldEndHeight   = skiplist->_startNode._colLength;
+  oldEndHeight   = skiplist->_endNode._colLength;
   
   if (oldStartHeight != oldEndHeight) {
     result = TRI_ERROR_INTERNAL;
@@ -2897,11 +2919,9 @@ static int GrowStartEndNodes(TRI_skiplistEx_base_t* skiplist, uint32_t newHeight
   if (result == TRI_ERROR_NO_ERROR) {
     if (oldStartHeight < newHeight) {
       // ............................................................................
-      // need a CAS statement here since we may have multiple readers busy ready
+      // need a CAS statement here since we may have multiple readers busy reading
       // the height of the towers.
       // ............................................................................
-      skiplist->_startNode._colLength = newHeight;  
-      skiplist->_endNode._colLength   = newHeight;  
       if (!TRI_CompareAndSwapIntegerUInt32(&(skiplist->_startNode._colLength), 
                                            oldStartHeight, newHeight) ) {
         // should never happen
