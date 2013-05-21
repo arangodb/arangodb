@@ -118,7 +118,7 @@ function ArangoAdapter(nodes, edges, config) {
       if (res.length === 1) {
         return res[0];
       }
-      throw "Too many nodes with the same ID, should never happen";
+      throw "Too many edges with the same ID, should never happen";
     },
   
     insertNode = function(data) {
@@ -203,22 +203,48 @@ function ArangoAdapter(nodes, edges, config) {
     },
   
     combineCommunityEdges = function (nodes, commNode) {
-      var i, j, s, t;
+      var i, j, s, t,
+        cachedCommEdges = cachedCommunities[commNode._id].edges,
+        edgeToPush;
       for (i = 0; i < edges.length; i++ ) {
+        edgeToPush = {};
         // s and t keep old values yay!
         s = edges[i].source;
         t = edges[i].target;
         for (j = 0; j < nodes.length; j++) {
           if (s === nodes[j]) {
+            if (edgeToPush.type !== undefined) {
+              edges[i].target = edgeToPush.target;
+              delete edgeToPush.target;
+              edgeToPush.type = "b";
+              edgeToPush.edge = edges[i];
+              edges.splice( i, 1 );
+              i--;
+              break;
+            }
             edges[i].source = commNode;
+            edgeToPush.type = "s";
+            edgeToPush.id = edges[i]._id;
+            edgeToPush.source = s;
           }
           if (t === nodes[j]) {
+            if (edgeToPush.type !== undefined) {
+              edges[i].source = edgeToPush.source;
+              delete edgeToPush.source;
+              edgeToPush.type = "b";
+              edgeToPush.edge = edges[i];
+              edges.splice( i, 1 );
+              i--;
+              break;
+            }
             edges[i].target = commNode;
+            edgeToPush.type = "t";
+            edgeToPush.id = edges[i]._id;
+            edgeToPush.target = t;
           }
         }
-        if (edges[i].source === commNode && edges[i].target === commNode) {
-          edges.splice( i, 1 );
-          i--;
+        if (edgeToPush.type !== undefined) {
+          cachedCommEdges.push(edgeToPush);
         }
       }
     },
@@ -288,12 +314,41 @@ function ArangoAdapter(nodes, edges, config) {
         });
       commNode.x = nodesToRemove[0].x;
       commNode.y = nodesToRemove[0].y;
-      cachedCommunities[commId] = nodesToRemove;
+      cachedCommunities[commId] = {};
+      cachedCommunities[commId].nodes = nodesToRemove;
+      cachedCommunities[commId].edges = [];
       combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
         removeNode(n);
       });
       nodes.push(commNode);
+    },
+  
+    expandCommunity = function (commNode) {
+      var commId = commNode._id,
+        nodesToAdd = cachedCommunities[commId].nodes,
+        edgesToChange = cachedCommunities[commId].edges;
+      removeNode(commNode);
+      _.each(nodesToAdd, function(n) {
+        nodes.push(n);
+      });
+      _.each(edgesToChange, function(e) {
+        var edge;
+        switch(e.type) {
+          case "t":
+            edge = findEdge(e.id);
+            edge.target = e.target;
+            break;
+          case "s":
+            edge = findEdge(e.id);
+            edge.source = e.source;
+            break;
+          case "b":
+            edges.push(e.edge);
+            break;
+        }
+      });
+      delete cachedCommunities[commId];      
     },
   
     parseResultOfTraversal = function (result, callback) {
@@ -594,6 +649,7 @@ function ArangoAdapter(nodes, edges, config) {
   };
   
   self.expandCommunity = function (commNode, callback) {
+    expandCommunity(commNode);
     if (callback !== undefined) {
       callback();
     }

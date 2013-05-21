@@ -939,8 +939,7 @@
                 expect(nodes.length).toEqual(3);
                 existEdge(commId, c3);
                 existEdge(commId, c4);
-                expect(edges.length).toEqual(2);    
-                expect(called).toBeTruthy();
+                expect(edges.length).toEqual(2);
               });              
             });
             
@@ -998,7 +997,7 @@
                 });
               });
               
-              it('should expand a community if enough space is available', function() {
+            it('should expand a community if enough space is available', function() {
                 runs(function() {
                   adapter.setNodeLimit(10);
                   callbackCheck = false;
@@ -1011,6 +1010,7 @@
                 
                 runs(function() {
                   expect(getCommunityNodes().length).toEqual(0);
+                  console.log(edges);
                   existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
                   existEdge(c0, c1);
                   existEdge(c0, c2);
