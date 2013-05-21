@@ -877,21 +877,27 @@
         
             runs(function() {
               adapter.setNodeLimit(6);
-              spyOn(this, "fakeReducerRequest");
+              spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                return [c0];
+              });
               adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
               expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, nodeWithID(c1));
             });
           });
           
           it('should not trigger the reducer if the limit is set large enough', function() {
-            spyOn(this, "fakeReducerRequest");
+            spyOn(this, "fakeReducerRequest").andCallFake(function() {
+              return [c0];
+            });
             adapter.setNodeLimit(10);
             expect(this.fakeReducerRequest).not.toHaveBeenCalled();
           });
           
           
           it('should trigger the reducer if the limit is set too small', function() {
-            spyOn(this, "fakeReducerRequest");
+            spyOn(this, "fakeReducerRequest").andCallFake(function() {
+              return [c0];
+            });
             adapter.setNodeLimit(2);
             expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
           });
@@ -911,10 +917,11 @@
             
               notExistNodes([c0, c1, c2]);
               existNode("community_1");
-              existNodes([c3]);
-              expect(nodes.length).toEqual(2);
+              existNodes([c3, c4]);
+              expect(nodes.length).toEqual(3);
               existEdge("community_1", c3);
-              expect(edges.length).toEqual(1);
+              existEdge("community_1", c4);
+              expect(edges.length).toEqual(2);
             
               expect(called).toBeTruthy();
             });

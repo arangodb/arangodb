@@ -187,7 +187,7 @@ function ArangoAdapter(nodes, edges, config) {
   
     removeEdgesForNode = function (node) {
       var i;
-      for ( i = 0; i < edges.length; i++ ) {
+      for (i = 0; i < edges.length; i++ ) {
         if (edges[i].source === node) {
           node._outboundCounter--;
           edges[i].target._inboundCounter--;
@@ -196,6 +196,27 @@ function ArangoAdapter(nodes, edges, config) {
         } else if (edges[i].target === node) {
           node._inboundCounter--;
           edges[i].source._outboundCounter--;
+          edges.splice( i, 1 );
+          i--;
+        }
+      }
+    },
+  
+    combineCommunityEdges = function (nodes, commNode) {
+      var i, j, s, t;
+      for (i = 0; i < edges.length; i++ ) {
+        // s and t keep old values yay!
+        s = edges[i].source;
+        t = edges[i].target;
+        for (j = 0; j < nodes.length; j++) {
+          if (s === nodes[j]) {
+            edges[i].source = commNode;
+          }
+          if (t === nodes[j]) {
+            edges[i].target = commNode;
+          }
+        }
+        if (edges[i].source === commNode && edges[i].target === commNode) {
           edges.splice( i, 1 );
           i--;
         }
@@ -260,17 +281,17 @@ function ArangoAdapter(nodes, edges, config) {
       var commId = "community_1",
         commNode = {
           _id: commId,
-          x: 1,
-          y: 1
+          edges: []
         },
         nodesToRemove = _.map(community, function(id) {
           return findNode(id);
         });
+      commNode.x = nodesToRemove[0].x;
+      commNode.y = nodesToRemove[0].y;
       cachedCommunities[commId] = nodesToRemove;
-      
+      combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
         removeNode(n);
-        removeEdgesForNode(n);
       });
       nodes.push(commNode);
     },
