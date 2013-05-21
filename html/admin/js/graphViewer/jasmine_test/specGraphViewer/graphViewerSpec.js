@@ -270,6 +270,15 @@ describe("Graph Viewer", function() {
       expect(viewer.adapter.setNodeLimit).wasCalled();
     });
     
+    it('should trigger the start function if node limit is reduced to far', function() {
+      spyOn(viewer.adapter, "setNodeLimit").andCallFake(function(l, callback) {
+        callback();
+      });
+      spyOn(viewer, "start");
+      helper.simulateScrollUpMouseEvent("outersvg");
+      expect(viewer.start).wasCalled();
+    });
+    
     
   });
 
