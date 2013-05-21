@@ -552,8 +552,7 @@ void HttpResponse::setCookie (string const& name, string const& value,
   }
   
   char const* l = StringUtils::duplicate(buffer->c_str());
-  buffer->clear();
-  free(buffer);
+  delete buffer;
   _cookies.push_back(l);
   
   _freeables.push_back(l);

@@ -83,7 +83,7 @@ bool RestImportHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestImportHandler::queue () {
+string const& RestImportHandler::queue () const {
   static string const client = "STANDARD";
 
   return client;
