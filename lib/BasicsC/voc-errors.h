@@ -368,6 +368,10 @@ extern "C" {
 /// - 3313: @LIT{skiplist index remove warning - CAS failure while attempting to remove document}
 ///   Will be raised when an attempt to remove a document into a skiplist index
 ///   fails due to repeated CAS failures/clashes.
+/// - 3315: @LIT{skiplist index remove failure - item inserted post this transaction in the index}
+///   Will be raised when an attempt to remove a document from a skiplist index
+///   fails due to the fact that the document to be removed was inserted in a
+///   transaction post this removal transaction.
 /// - 3400: @LIT{bitarray index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   is caused by in the document not having one or more attributes which are
@@ -1974,6 +1978,19 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE              (3313)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3315: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED
+///
+/// skiplist index remove failure - item inserted post this transaction in the
+/// index
+///
+/// Will be raised when an attempt to remove a document from a skiplist index
+/// fails due to the fact that the document to be removed was inserted in a
+/// transaction post this removal transaction.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED       (3315)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3400: WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING

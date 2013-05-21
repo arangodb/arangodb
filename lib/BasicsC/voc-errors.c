@@ -162,6 +162,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE, "skiplist index insertion warning - CAS failure while attempting to insert document");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING, "skiplist index remove failure - item missing in index");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE, "skiplist index remove warning - CAS failure while attempting to remove document");
+  REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED, "skiplist index remove failure - item inserted post this transaction in the index");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING, "bitarray index insertion warning - attribute missing in document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING, "bitarray index update warning - attribute missing in revised document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING, "bitarray index remove failure - item missing in index");
