@@ -1035,6 +1035,7 @@
         expect(star.length).toEqual(1);
         expect(star.attr("points")).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
       });
+      
     });
 
   });

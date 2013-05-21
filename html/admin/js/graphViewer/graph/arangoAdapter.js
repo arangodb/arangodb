@@ -489,6 +489,10 @@ function ArangoAdapter(nodes, edges, config) {
     });
   };
   
+  self.loadNode = function(nodeId, callback) {
+    self.loadNodeFromTreeById(nodeId, callback);
+  };
+  
   self.loadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.traversalById, {
       id: nodeId
