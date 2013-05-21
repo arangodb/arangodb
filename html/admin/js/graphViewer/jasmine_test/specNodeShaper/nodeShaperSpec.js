@@ -988,6 +988,54 @@
         expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
       });
     });
+    
+    describe('testing community nodes', function() {
+      var shaper;
+      
+      beforeEach(function() {
+        shaper = new NodeShaper(d3.select("svg"));
+      });
+      
+      it('should render community nodes', function() {
+        var nodes = helper.createSimpleNodes([0, 1, 2]),
+          commNode = {
+            _id: "*community_42",
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          };
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        expect($("svg .node").length).toEqual(4);
+        expect($("svg #\\*community_42")[0]).toBeDefined();
+      });
+      
+      it('should render communtiy nodes as stars', function() {
+        var nodes = helper.createSimpleNodes([0, 1, 2]),
+          commNode = {
+            _id: "*community_42",
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          star;
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        expect($("svg .communitynode").length).toEqual(1);
+        expect($("svg #\\*community_42")[0]).toBeDefined();
+        star = $("svg #\\*community_42 polygon")[0];
+        expect(star).toBeDefined();
+        expect(star.points).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
+      });
+    });
 
   });
 
