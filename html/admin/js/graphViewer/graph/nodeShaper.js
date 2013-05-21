@@ -64,6 +64,7 @@ function NodeShaper(parent, flags, idfunc) {
   "use strict";
   
   var self = this,
+    communityRegEx = /^\*community/,
     nodes = [],
     visibleLabels = true,
     noop = function (node) {
@@ -158,7 +159,12 @@ function NodeShaper(parent, flags, idfunc) {
       // Append the group and class to all new    
       g.enter()
         .append("g")
-        .attr("class", "node") // node is CSS class that might be edited
+        .attr("class", function(d) {
+          if (communityRegEx.test(d._id)) {
+            return "node communitynode";
+          }
+          return "node";
+        }) // node is CSS class that might be edited
         .attr("id", idFunction);
       // Remove all old
       g.exit().remove();
@@ -176,8 +182,17 @@ function NodeShaper(parent, flags, idfunc) {
         case NodeShaper.shapes.CIRCLE:
           radius = shape.radius || 25;
           addShape = function (node) {
-            node.append("circle") // Display nodes as circles
-              .attr("r", radius); // Set radius
+            node.filter(function(n) {
+              return communityRegEx.test(n._id);
+            })
+            .append("polygon")
+            .attr("points", "0,-25 -16,20 23,-10 -23,-10 16,20");
+            
+            node.filter(function(n) {
+              return !communityRegEx.test(n._id);
+            })
+            .append("circle") // Display nodes as circles
+            .attr("r", radius); // Set radius
           };
           break;
         case NodeShaper.shapes.RECT:

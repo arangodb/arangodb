@@ -1031,9 +1031,9 @@
         shaper.drawNodes(nodes);
         expect($("svg .communitynode").length).toEqual(1);
         expect($("svg #\\*community_42")[0]).toBeDefined();
-        star = $("svg #\\*community_42 polygon")[0];
-        expect(star).toBeDefined();
-        expect(star.points).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
+        star = $("svg #\\*community_42 polygon");
+        expect(star.length).toEqual(1);
+        expect(star.attr("points")).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
       });
     });
 
