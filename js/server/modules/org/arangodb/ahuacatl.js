@@ -2144,6 +2144,12 @@ function GROUP (value, sortFunction, groupFunction, into) {
 function LIMIT (value, offset, count) {
   LIST(value);
 
+  // check value type for offset and count parameters
+  if (TYPEWEIGHT(offset) !== TYPEWEIGHT_NUMBER ||
+      TYPEWEIGHT(count) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+  }
+
   if (count < 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
@@ -3418,9 +3424,12 @@ function reloadUserFunctions () {
   UserFunctions = { };
 
   c = INTERNAL.db._collection("_aqlfunctions");
+
   if (c === null) {
     return;
   }
+
+  var foundError = false;
 
   c.toArray().forEach(function (f) {
     var code;
@@ -3438,9 +3447,13 @@ function reloadUserFunctions () {
   
     }
     catch (err) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+      foundError = true;
     }
   });
+      
+  if (foundError) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

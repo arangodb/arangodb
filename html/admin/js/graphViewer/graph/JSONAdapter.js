@@ -155,5 +155,8 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       throw "Sorry this adapter is read-only";
   };
   
+  self.setNodeLimit = function (limit, callback) {
+  
+  };
   
 }

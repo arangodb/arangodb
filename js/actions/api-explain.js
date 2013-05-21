@@ -45,7 +45,7 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///
 /// @RESTHEADER{POST /_api/explain,explains a query}
 ///
-/// @REST{POST /_api/explain}
+/// @RESTDESCRIPTION
 ///
 /// To explain how an AQL query would be executed on the server, the query string 
 /// can be sent to the server via an HTTP POST request. The server will then validate

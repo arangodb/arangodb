@@ -128,6 +128,8 @@ static void MoveBackHeader (TRI_headers_t* h,
   // we have at least one element in the list
   TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
   TRI_ASSERT_MAINTAINER(headers->_end != NULL);
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
 
   if (headers->_end == header) {
     // header is already at the end
@@ -157,6 +159,8 @@ static void MoveBackHeader (TRI_headers_t* h,
   
   TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
   TRI_ASSERT_MAINTAINER(headers->_end != NULL);
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,6 +170,10 @@ static void MoveBackHeader (TRI_headers_t* h,
 static void UnlinkHeader (TRI_headers_t* h,
                           TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
+
+  TRI_ASSERT_MAINTAINER(header != NULL); 
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
 
   // unlink the header
   if (header->_prev != NULL) {
@@ -199,10 +207,13 @@ static void UnlinkHeader (TRI_headers_t* h,
     TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
     TRI_ASSERT_MAINTAINER(headers->_end != NULL);
   }
+  
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moves a header back into the list, using its previous position
+/// @brief moves a header around in the list, using its previous position
 /// (specified in "old")
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -216,26 +227,66 @@ static void MoveHeader (TRI_headers_t* h,
   }
 
   TRI_ASSERT_MAINTAINER(headers->_nrAllocated > 0);
-  if (headers->_begin == old->_next) {
-    // adjust list start pointer
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
+
+  // adjust list start and end pointers
+  if (old->_prev == NULL) {
     headers->_begin = header;
+  }
+  else if (headers->_begin == header) {
+    if (header->_next != NULL) {
+      headers->_begin = header->_next;
+    }
   }
 
   if (old->_next == NULL) {
-    // adjust list end pointer
     headers->_end = header;
+  }
+  else if (headers->_end == header) {
+    if (header->_prev != NULL) {
+      headers->_end = header->_prev;
+    }
+  }
+
+  if (header->_prev != NULL) {
+    if (header->_prev == old->_next) {
+      header->_prev->_next = NULL;
+    }
+    else {
+      header->_prev->_next = header->_next;
+    }
+  }
+
+  if (header->_next != NULL) {
+    if (header->_next == old->_prev) {
+      header->_next->_prev = NULL;
+    }
+    else {
+      header->_next->_prev = header->_prev;
+    }
   }
 
   if (old->_prev != NULL) {
     old->_prev->_next = header;
+    header->_prev = old->_prev;
+  }
+  else {
+    header->_prev = NULL;
   }
 
   if (old->_next != NULL) {
     old->_next->_prev = header;
+    header->_next = old->_next;
+  }
+  else {
+    header->_next = NULL;
   }
 
-  header->_prev = old->_prev; 
-  header->_next = old->_next;
+  TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
+  TRI_ASSERT_MAINTAINER(headers->_end != NULL);
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,6 +308,9 @@ static void RelinkHeader (TRI_headers_t* h,
  
   MoveHeader(h, header, old);
   headers->_nrLinked++;
+
+  TRI_ASSERT_MAINTAINER(header->_prev != header);
+  TRI_ASSERT_MAINTAINER(header->_next != header);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,13 +456,13 @@ static void DumpHeaders (TRI_headers_t const* h) {
   TRI_doc_mptr_t* next = headers->_begin;
   size_t i = 0;
 
-  LOG_TRACE("number of allocated headers: %lu\n", (unsigned long) headers->_nrAllocated);
-  LOG_TRACE("number of linked headers: %lu\n", (unsigned long) headers->_nrLinked);
-  LOG_TRACE("begin ptr: %p\n", headers->_begin);
-  LOG_TRACE("end ptr: %p\n", headers->_end);
+  printf("number of allocated headers: %lu\n", (unsigned long) headers->_nrAllocated);
+  printf("number of linked headers: %lu\n", (unsigned long) headers->_nrLinked);
+  printf("begin ptr: %p\n", headers->_begin);
+  printf("end ptr: %p\n", headers->_end);
 
   while (next != NULL) {
-    LOG_TRACE("- header #%lu: ptr: %p, prev: %p, next: %p, key: %s\n", 
+    printf("- header #%lu: ptr: %p, prev: %p, next: %p, key: %s\n", 
               (unsigned long) i, 
               next, 
               next->_prev, 
@@ -423,7 +477,6 @@ static void DumpHeaders (TRI_headers_t const* h) {
     next = next->_next;
   }
 
-  TRI_ASSERT_MAINTAINER(i == headers->_nrLinked);
   TRI_ASSERT_MAINTAINER(i == headers->_nrLinked);
 }
 

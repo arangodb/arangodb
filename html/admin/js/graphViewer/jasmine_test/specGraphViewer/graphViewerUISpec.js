@@ -5,7 +5,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper, mocks, JSONAdapter:true*/
-/*global GraphViewerUI*/
+/*global GraphViewerUI, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -47,6 +47,7 @@
     
     beforeEach(function() {
       //Mock for jsonAdapter
+      window.communicationMock(spyOn);
       var Tmp = JSONAdapter;
       JSONAdapter = function (jsonPath, nodes, edges, width, height) {
         var r = new Tmp(jsonPath, nodes, edges, width, height);
@@ -58,6 +59,11 @@
         };
         return r;
       };
+      //Mock for ZoomManager
+      if (window.ZoomManager === undefined) {
+        window.ZoomManager = {};
+      }
+      spyOn(window, "ZoomManager");
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -114,7 +120,7 @@
     });
     
     afterEach(function() {
-      document.body.removeChild(div);
+        document.body.removeChild(div);
     });
     
     it('should throw an error if no container element is given', function() {
@@ -143,6 +149,19 @@
     
     it('should append a svg to the given parent', function() {
       expect($("#contentDiv svg").length).toEqual(1);
+    });
+    
+    it('should automatically start the ZoomManager', function() {
+      expect(window.ZoomManager).toHaveBeenCalledWith(
+        140,
+        200,
+        jasmine.any(Object),
+        jasmine.any(Object),
+        jasmine.any(NodeShaper),
+        jasmine.any(EdgeShaper),
+        {},
+        jasmine.any(Function)
+      );
     });
     
     describe('checking the toolbox', function() {
@@ -217,7 +236,7 @@
         expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
       });
       
-      
+      /*
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -230,7 +249,8 @@
         expect($(menuSelector +  " #control_attributecolour").length).toEqual(1);
         expect($(menuSelector +  " #control_expandcolour").length).toEqual(1);
       });
-      
+      */
+      /*
       it('should contain a menu for the edge shapes', function() {
         var menuSelector = "#contentDiv #menubar #edgeshapermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -242,14 +262,14 @@
         expect($(menuSelector + " #control_attributecolour").length).toEqual(1);
         expect($(menuSelector + " #control_gradientcolour").length).toEqual(1);
       });
-      
+      */
       it('should contain a menu for the adapter', function() {
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
-      
+      /*
       it('should contain a menu for the layouter', function() {
         var menuSelector = "#contentDiv #menubar #layoutermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -258,7 +278,7 @@
         expect($(menuSelector + " #control_distance").length).toEqual(1);
         expect($(menuSelector + " #control_charge").length).toEqual(1);
       });
-      
+      */
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
@@ -313,6 +333,23 @@
         runs(function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
+        });
+        
+        waits(waittime);
+        
+        runs(function() {
+          expect([0, 1, 2, 3, 4]).toBeDisplayed();
+        });
+        
+      });
+      
+      it('should load the graph on pressing enter', function() {
+        
+        runs(function() {
+          $("#contentDiv #menubar #value").attr("value", "0");
+          var e = $.Event("keypress");
+          e.keyCode = 13;
+          $("#value").trigger(e);
         });
         
         waits(waittime);

@@ -982,7 +982,7 @@ void TRI_SortShapeValues (TRI_shape_value_t* values, size_t n);
 TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*, TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a shaped json objet into a json object
+/// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t const*);

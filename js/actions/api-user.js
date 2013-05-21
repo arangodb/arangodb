@@ -43,9 +43,14 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a user
 ///
-/// @RESTHEADER{GET /_api/user,fetches a user}
+/// @RESTHEADER{GET /_api/user/{username},fetches a user}
 ///
-/// @REST{GET /_api/user/`username`}
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{username,string,required}
+/// The username of the user.
+///
+/// @RESTDESCRIPTION
 ///
 /// Fetches data about the specified user.
 ///
@@ -58,6 +63,15 @@ var ArangoError = arangodb.ArangoError;
 ///
 /// - `extra`: an optional JSON object with arbitrary extra data about the
 ///   user.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// The user was found.
+///
+/// @RESTRETURNCODE{404}
+/// The user with `username` does not exist.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_api_user (req, res) {
@@ -86,7 +100,9 @@ function GET_api_user (req, res) {
 ///
 /// @RESTHEADER{POST /_api/user,creates user}
 ///
-/// @REST{POST /_api/user}
+/// @RESTBODYPARAM{user,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// The following data need to be passed in a JSON representation in the body of
 /// the POST request:
@@ -125,6 +141,16 @@ function GET_api_user (req, res) {
 /// - `errorNum`: the server error number
 ///
 /// - `errorMessage`: a descriptive error message
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// returned if the user can be added by the server.
+///
+/// @RESTRETURNCODE{400}
+/// If the JSON representation is malformed or mandatory data is missing from the
+/// request.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_user (req, res) {
@@ -143,9 +169,11 @@ function POST_api_user (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replace an existing user
 ///
-/// @RESTHEADER{PUT /_api/user,replaces user}
+/// @RESTHEADER{PUT /_api/user/{username},replaces user}
 ///
-/// @REST{PUT /_api/user/`username`}
+/// @RESTBODYPARAM{user,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Replaces the data of an existing user. The name of an existing user must
 /// be specified in `username`.
@@ -186,6 +214,18 @@ function POST_api_user (req, res) {
 /// - `errorNum`: the server error number
 ///
 /// - `errorMessage`: a descriptive error message
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the user data can be replaced by the server.
+///
+/// @RESTRETURNCODE{400}
+/// The JSON representation is malformed or mandatory data is missing from the
+/// request.
+///
+/// @RESTRETURNCODE{404}
+/// The specified user does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_user (req, res) {
@@ -221,9 +261,11 @@ function PUT_api_user (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief partially update an existing user
 ///
-/// @RESTHEADER{PATCH /_api/user,updates user}
+/// @RESTHEADER{PATCH /_api/user/{username},updates user}
 ///
-/// @REST{PATCH /_api/user/`username`}
+/// @RESTBODYPARAM{userdata,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Partially updates the data of an existing user. The name of an existing user 
 /// must be specified in `username`.
@@ -265,6 +307,19 @@ function PUT_api_user (req, res) {
 /// - `errorNum`: the server error number
 ///
 /// - `errorMessage`: a descriptive error message
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the user data can be replaced by the server.
+///
+/// @RESTRETURNCODE{400}
+/// The JSON representation is malformed or mandatory data is missing from the
+/// request.
+///
+/// @RESTRETURNCODE{404}
+/// The specified user does not exist.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function PATCH_api_user (req, res) {
@@ -299,9 +354,9 @@ function PATCH_api_user (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove an existing user
 ///
-/// @RESTHEADER{DELETE /_api/user,removes a user}
+/// @RESTHEADER{DELETE /_api/user/{username},removes a user}
 ///
-/// @REST{DELETE /_api/user/`username`}
+/// @RESTDESCRIPTION
 ///
 /// Removes an existing user, identified by `username`.
 ///
@@ -328,6 +383,15 @@ function PATCH_api_user (req, res) {
 /// - `errorNum`: the server error number
 ///
 /// - `errorMessage`: a descriptive error message
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{202}
+/// Is returned if the user was removed by the server.
+///
+/// @RESTRETURNCODE{404}
+/// The specified user does not exist.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function DELETE_api_user (req, res) {

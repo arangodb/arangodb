@@ -786,6 +786,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
                                       TRI_aql_node_t* node) {
   TRI_aql_scope_t* scope;
   TRI_aql_node_t* limit;
+  aql_optimiser_t* optimiser = (aql_optimiser_t*) walker->_data;
   int64_t limitValue;
 
   assert(node);
@@ -794,7 +795,27 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
   assert(scope);
 
   limit = TRI_AQL_NODE_MEMBER(node, 1);
-  limitValue = TRI_AQL_NODE_INT(limit);
+
+  if (limit->_type != TRI_AQL_NODE_VALUE) {
+    return node;
+  }
+
+  if (limit->_value._type == TRI_AQL_TYPE_INT) {
+    limitValue = TRI_AQL_NODE_INT(limit);
+  }
+  else if (limit->_value._type == TRI_AQL_TYPE_DOUBLE) {
+    limitValue = (int64_t) TRI_AQL_NODE_DOUBLE(limit);
+  }
+  else if (limit->_value._type == TRI_AQL_TYPE_NULL) {
+    limitValue = 0;  
+  }
+  else if (limit->_value._type == TRI_AQL_TYPE_BOOL) {
+    limitValue = (int64_t) TRI_AQL_NODE_BOOL(limit);
+  }
+  else {
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    return node;
+  }
 
   // check for the easy case, a limit value of 0, e.g. LIMIT 10, 0
   if (limitValue == 0) {
@@ -1506,9 +1527,49 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
                        const TRI_aql_node_t* const node) {
   TRI_aql_node_t* offset  = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_node_t* limit  = TRI_AQL_NODE_MEMBER(node, 1);
-  int64_t offsetValue = TRI_AQL_NODE_INT(offset);
-  int64_t limitValue = TRI_AQL_NODE_INT(limit);
+  int64_t offsetValue; 
+  int64_t limitValue;
   TRI_aql_scope_t* scope;
+  aql_optimiser_t* optimiser;
+
+  optimiser = walker->_data;
+  
+  if (offset->_type != TRI_AQL_NODE_VALUE || limit->_type != TRI_AQL_NODE_VALUE) {
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    return;
+  }
+
+  if (offset->_value._type == TRI_AQL_TYPE_INT) {
+    offsetValue = TRI_AQL_NODE_INT(offset);
+  }
+  else if (offset->_value._type == TRI_AQL_TYPE_DOUBLE) {
+    offsetValue = (int64_t) TRI_AQL_NODE_DOUBLE(offset);
+  }
+  else {
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    return;
+  }
+
+  if (offsetValue < 0) {
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    return;
+  }
+
+  if (limit->_value._type == TRI_AQL_TYPE_INT) {
+    limitValue = TRI_AQL_NODE_INT(limit);
+  }
+  else if (limit->_value._type == TRI_AQL_TYPE_DOUBLE) {
+    limitValue = (int64_t) TRI_AQL_NODE_DOUBLE(limit);
+  }
+  else {
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    return;
+  }
+  
+  if (limitValue < 0) {
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+    return;
+  }
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
   if (scope->_type != TRI_AQL_SCOPE_MAIN) {

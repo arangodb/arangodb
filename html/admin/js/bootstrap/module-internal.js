@@ -1,8 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true, regexp: true */
-/*global require, module, Module, ArangoError, SYS_DOWNLOAD,
-  SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT,
-  SYS_RAND, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
-  SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
+/*global require, module, Module, ArangoError, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT,
+  SYS_DEBUG_CLEAR_FAILAT, SYS_DOWNLOAD,
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
+  SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
+  SYS_SHA256, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, COLORS, COLOR_OUTPUT,
@@ -59,15 +60,23 @@
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  try {
-    // necessary for the web interface
-    if (ArangoError !== undefined) {
-      exports.ArangoError = ArangoError;
-      delete ArangoError;
-    }
+  if (typeof ArangoError !== "undefined") {
+    exports.ArangoError = ArangoError;
+    delete ArangoError;
   }
-  catch (err) {
-    exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
+  else {
+    exports.ArangoError = function (error) {
+      if (error !== undefined) {
+        this.error = error.error;
+        this.code = error.code;
+        this.errorNum = error.errorNum;
+        this.errorMessage = error.errorMessage;
+      }
+
+      this.message = this.toString();
+    }
+
+    exports.ArangoError.prototype = Error.prototype;
   }
 
   exports.ArangoError.prototype._PRINT = function (context) {
@@ -217,6 +226,42 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief debugSetFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DEBUG_SET_FAILAT !== "undefined") {
+    exports.debugSetFailAt = SYS_DEBUG_SET_FAILAT;
+    delete SYS_DEBUG_SET_FAILAT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugRemoveFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DEBUG_REMOVE_FAILAT !== "undefined") {
+    exports.debugRemoveFailAt = SYS_DEBUG_REMOVE_FAILAT;
+    delete SYS_DEBUG_REMOVE_FAILAT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugClearFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DEBUG_CLEAR_FAILAT !== "undefined") {
+    exports.debugClearFailAt = SYS_DEBUG_CLEAR_FAILAT;
+    delete SYS_DEBUG_CLEAR_FAILAT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugCanUseFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DEBUG_CAN_USE_FAILAT !== "undefined") {
+    exports.debugCanUseFailAt = SYS_DEBUG_CAN_USE_FAILAT;
+    delete SYS_DEBUG_CAN_USE_FAILAT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief download
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -342,12 +387,12 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processStat
+/// @brief processStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PROCESS_STAT !== "undefined") {
-    exports.processStat = SYS_PROCESS_STAT;
-    delete SYS_PROCESS_STAT;
+  if (typeof SYS_PROCESS_STATISTICS !== "undefined") {
+    exports.processStatistics = SYS_PROCESS_STATISTICS;
+    delete SYS_PROCESS_STATISTICS;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,6 +411,15 @@
   if (typeof SYS_SHA256 !== "undefined") {
     exports.sha256 = SYS_SHA256;
     delete SYS_SHA256;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief serverStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SERVER_STATISTICS !== "undefined") {
+    exports.serverStatistics = SYS_SERVER_STATISTICS;
+    delete SYS_SERVER_STATISTICS;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -48,4 +48,38 @@ var helper = helper || {};
     });
     return nodes;
   };
+  
+  helper.insertSimpleNodes = function (nodes, ids) {
+    _.each(ids, function(i) {
+      nodes.push({
+        _id: i,
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      });
+    });
+  };
+  
+  helper.createSimpleEdge = function(nodes, s, t) {
+    nodes[s]._outboundCounter++;
+    nodes[t]._inboundCounter++;
+    return {
+      source: nodes[s],
+      target: nodes[t]
+    };
+  };
+  
+  helper.insertClique = function(nodes, edges, toConnect) {
+    var i, j;
+    for (i = 0; i < toConnect.length - 1; i++) {
+      for (j = i + 1; j < toConnect.length; j++) {
+        edges.push(helper.createSimpleEdge(nodes, toConnect[i], toConnect[j]));
+      }
+    }
+  };
+  
 }());

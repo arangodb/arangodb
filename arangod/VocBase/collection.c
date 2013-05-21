@@ -388,7 +388,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           newName = TRI_Concatenate2File(path, relName);
           TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
           
-          if (! TRI_ExistsFile(newName)) {
+          if (TRI_ExistsFile(newName)) {
+            // we have a compaction-xxxx and a datafile-xxxx file. we'll keep the datafile
             TRI_UnlinkFile(filename);
           
             LOG_WARNING("removing left-over compaction file '%s'", filename);
@@ -413,6 +414,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
               continue;
             }
           }
+
+          TRI_Free(TRI_CORE_MEM_ZONE, filename);
 
           filename = newName;
           TRI_PushBackVectorString(&structure._datafiles, filename);
@@ -529,7 +532,6 @@ static bool CheckCollection (TRI_collection_t* collection) {
         char* ptr;
         TRI_col_header_marker_t* cm;
 
-
         if (TRI_EqualString2("compaction", first, firstLen)) {
           // found a compaction file. now rename it back
           char* relName;
@@ -540,10 +542,10 @@ static bool CheckCollection (TRI_collection_t* collection) {
           newName  = TRI_Concatenate2File(collection->_directory, relName);
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
-          
-          if (! TRI_ExistsFile(newName)) {
+
+          if (TRI_ExistsFile(newName)) {
             // we have a compaction-xxxx and a datafile-xxxx file. we'll keep the datafile
-            LOG_WARNING("removing compaction file '%s'", filename);
+            LOG_WARNING("removing unfinished compaction file '%s'", filename);
             TRI_UnlinkFile(filename);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
@@ -1151,6 +1153,7 @@ int TRI_LoadCollectionInfo (char const* path,
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
@@ -1191,7 +1194,7 @@ int TRI_LoadCollectionInfo (char const* path,
 
         parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
       }
-      else if (value->_type == TRI_JSON_STRING) {
+      else if (TRI_EqualString(key->_value._string.data, "cid")) {
         parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
     }

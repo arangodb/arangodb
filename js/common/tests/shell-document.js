@@ -216,6 +216,58 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ invalid type 
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveInvalidDocumentType : function () {
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          collection.save(doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document w/ invalid type 
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateInvalidDocumentType : function () {
+      var d = collection.save({ _key: "test" });
+
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          collection.update(d, doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a document w/ invalid type 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceInvalidDocumentType : function () {
+      var d = collection.save({ _key: "test" });
+
+      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+        try {
+          collection.replace(d, doc);
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document w/ invalid primary key data types
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -488,7 +540,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveDocument : function () {
-      var doc = collection.save({ "Hallo" : "World" });
+      var doc = collection.save({ "Hello" : "World" });
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
@@ -499,7 +551,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveDocumentSyncFalse : function () {
-      var doc = collection.save({ "Hallo" : "World" }, false);
+      var doc = collection.save({ "Hello" : "World" }, false);
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
@@ -510,7 +562,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveDocumentSyncTrue : function () {
-      var doc = collection.save({ "Hallo" : "World" }, true);
+      var doc = collection.save({ "Hello" : "World" }, true);
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
@@ -521,7 +573,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadDocument : function () {
-      var d = collection.save({ "Hallo" : "World" });
+      var d = collection.save({ "Hello" : "World" });
 
       var doc = collection.document(d._id);
 
@@ -539,14 +591,14 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadDocumentConflict : function () {
-      var d = collection.save({ "Hallo" : "World" });
+      var d = collection.save({ "Hello" : "World" });
 
       var doc = collection.document(d._id);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
 
-      var r = collection.replace(d, { "Hallo" : "You" });
+      var r = collection.replace(d, { "Hello" : "You" });
 
       doc = collection.document(r);
 
@@ -1045,7 +1097,7 @@ function DatabaseDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadDocument : function () {
-      var d = collection.save({ "Hallo" : "World" });
+      var d = collection.save({ "Hello" : "World" });
 
       var doc = db._document(d._id);
 
@@ -1063,14 +1115,14 @@ function DatabaseDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadDocumentConflict : function () {
-      var d = collection.save({ "Hallo" : "World" });
+      var d = collection.save({ "Hello" : "World" });
 
       var doc = db._document(d._id);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
 
-      var r = collection.replace(d, { "Hallo" : "You" });
+      var r = collection.replace(d, { "Hello" : "You" });
 
       doc = db._document(r);
 

@@ -283,9 +283,9 @@ TRI_datafile_t;
 ///   <tr>
 ///     <td>TRI_voc_size_t</td>
 ///     <td>_size</td>
-///     <td>The total size of the blob. This includes the size of the the
-///         marker and the data. In order to iterate through the datafile
-///         you can read the TRI_voc_size_t entry _size and skip the next
+///     <td>The total size of the blob. This includes the size of the marker
+///         and the data. In order to iterate through the datafile you can
+///         read the TRI_voc_size_t entry _size and skip the next
 ///         _size - sizeof(TRI_voc_size_t) bytes.</td>
 ///   </tr>
 ///   <tr>
@@ -369,7 +369,7 @@ TRI_df_header_marker_t;
 /// @brief datafile footer marker
 ///
 /// The last entry in a full datafile is always a TRI_df_footer_marker_t.
-/// The footer contains the maximal size of the datafile and it total
+/// The footer contains the maximal size of the datafile and its total
 /// size.
 ///
 /// <table border>
