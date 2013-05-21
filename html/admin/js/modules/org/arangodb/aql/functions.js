@@ -247,7 +247,7 @@ var unregisterFunctionsGroup = function (group) {
 /// @fn JSF_aqlfunctions_register
 /// @brief register an AQL user function
 ///
-/// @FUN{aqlfunctions.register(@FA{name}, @FA{code}, @FA{isDeterministic}, @FA{testValues})}
+/// @FUN{aqlfunctions.register(@FA{name}, @FA{code}, @FA{isDeterministic})}
 ///
 /// Registers an AQL user function, identified by a fully qualified function 
 /// name. The function code in @FA{code} must be specified as a Javascript
@@ -280,7 +280,7 @@ var registerFunction = function (name, code, isDeterministic) {
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
     
   try {
-    var res = INTERNAL.executeScript(testCode, undefined, "(user function " + name + ")"); 
+    var res = internal.executeScript(testCode, undefined, "(user function " + name + ")"); 
   }
   catch (err1) {
     var err = new ArangoError();
