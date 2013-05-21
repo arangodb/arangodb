@@ -263,25 +263,25 @@
     
       describe('setup correctly', function() {
         
-        var travQ,
-          filterQ,
-          childQ,
-          travVars,
-          filterVars,
+        var traversalQuery,
+          filterQuery,
+          childrenQuery,
           loadGraph,
           requests;
         
         beforeEach(function() {  
-          var self = this;
+          var self = this,
+           host = window.location.protocol + "//" + window.location.host,
+           apibase = host + "/_api/",
+           apiCursor = apibase + 'cursor';
           self.fakeReducerRequest = function() {};
           spyOn(window, "NodeReducer").andCallFake(function(v, e) {
             return {
               getCommunity: function(limit, focus) {
                 if (focus !== undefined) {
-                  self.fakeReducerRequest(limit, focus);
-                } else {
-                  self.fakeReducerRequest(limit);
+                  return self.fakeReducerRequest(limit, focus);
                 }
+                return self.fakeReducerRequest(limit);
               }
             };
           });
@@ -295,28 +295,50 @@
               height: 40
             }
           );
-          travQ = '{"query":"RETURN TRAVERSAL(@@nodes, @@edges, @id, \\"outbound\\", {strategy: \\"depthfirst\\",maxDepth: 1,paths: true})"';
-          filterQ = '{"query":"FOR n IN @@nodes  FILTER n.id == @value RETURN TRAVERSAL(@@nodes, @@edges, n._id, \\"outbound\\", {strategy: \\"depthfirst\\",maxDepth: 1,paths: true})"';
-          childQ = '{"query":"FOR u IN @@nodes FILTER u._id == @id LET g = ( FOR l in @@edges FILTER l._from == u._id RETURN 1 ) RETURN length(g)"';
-          var host = window.location.protocol + "//" + window.location.host,
-           apibase = host + "/_api/",
-           apiCursor = apibase + 'cursor';
-          travVars = function(id, nods, edgs) {
-            return '"bindVars":{"id":"' + id + '","@nodes":"' + nods + '","@edges":"' + edgs + '"}}';
+          traversalQuery = function(id, nods, edgs) {
+            return JSON.stringify({
+              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, \"outbound\","
+                + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
+              bindVars: {
+                id: id,
+                "@nodes": nods,
+                "@edges": edgs
+              }
+            });
           };
-          filterVars = function(v, nods, edgs) {
-            return '"bindVars":{"value":' + v + ',"@nodes":"' + nods + '","@edges":"' + edgs + '"}}';
+          filterQuery = function(v, nods, edgs) {
+            return JSON.stringify({
+              query: "FOR n IN @@nodes FILTER n.id == @value"
+                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, \"outbound\","
+                + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
+              bindVars: {
+                value: v,
+                "@nodes": nods,
+                "@edges": edgs
+              }
+            });
           };
-          
+          childrenQuery = function(id, nods, edgs) {
+            return JSON.stringify({
+              query: "FOR u IN @@nodes FILTER u._id == @id"
+               + " LET g = ( FOR l in @@edges FILTER l._from == u._id RETURN 1 )" 
+               + " RETURN length(g)",
+              bindVars: {
+                id: id,
+                "@nodes": nods,
+                "@edges": edgs
+              }
+            });
+          };          
           loadGraph = function(vars) {
-            var nid = vars["id"];
-            var ncol = vars["@nodes"];
-            var ecol = vars["@edges"];
-            var res = [];
-            var inner = [];
+            var nid = vars.id,
+             ncol = vars["@nodes"],
+             ecol = vars["@edges"],
+             res = [],
+             inner = [],
+             first = {},
+             node1 = readNode(ncol, nid);
             res.push(inner);
-            var first = {};
-            var node1 = readNode(ncol, nid);
             first.vertex = node1;
             first.path = {
               edges: [],
@@ -365,7 +387,7 @@
               patch: function(id, data) {
                 return $.extend(base, {url: write + id, type: "PUT", data: JSON.stringify(data)});
               },
-              delete: function(id) {
+              del: function(id) {
                 return $.extend(base, {url: write + id, type: "DELETE"});
               }
             };
@@ -387,7 +409,7 @@
                   type: "POST",
                   data: JSON.stringify(data)
                 });
-              },
+              }
             };
           };
         });
@@ -428,7 +450,7 @@
             existNodes([c0, c1, c2, c3, c4]);
             expect(nodes.length).toEqual(5);
             expect($.ajax).toHaveBeenCalledWith(
-              requests.cursor(travQ + ',' + travVars(c0, nodesCollection, edgesCollection))
+              requests.cursor(traversalQuery(c0, nodesCollection, edgesCollection))
             );
           });
         });
@@ -442,7 +464,7 @@
             spyOn($, "ajax").andCallFake(function(request) {
               var vars = JSON.parse(request.data).bindVars;
               if (vars !== undefined) {
-                vars["id"] = c0;
+                vars.id = c0;
                 request.success({result: loadGraph(vars)});
               }
             });
@@ -471,7 +493,7 @@
             existNodes([c0, c1, c2, c3, c4]);
             expect(nodes.length).toEqual(5);
             expect($.ajax).toHaveBeenCalledWith(
-              requests.cursor(filterQ + ',' + filterVars("0", nodesCollection, edgesCollection))
+              requests.cursor(filterQuery(0, nodesCollection, edgesCollection))
             );
           });
         });
@@ -499,7 +521,7 @@
           runs(function() {
             expect(children).toEqual(4);
             expect($.ajax).toHaveBeenCalledWith(
-              requests.cursor(childQ + ',' + travVars(c0, nodesCollection, edgesCollection))
+              requests.cursor(childrenQuery(c0, nodesCollection, edgesCollection))
             );
           });
         });
@@ -554,7 +576,7 @@
               label: "knows"
             });
             expect($.ajax).toHaveBeenCalledWith(
-              requests.cursor(travQ + ',' + travVars(c0, nodesCollection, edgesCollection))
+              requests.cursor(traversalQuery(c0, nodesCollection, edgesCollection))
             );
           });
        
@@ -593,7 +615,7 @@
             existNodes([c0, c1]);
             expect(nodes.length).toEqual(2);
             expect($.ajax).toHaveBeenCalledWith(
-              requests.cursor(travQ + ',' + travVars(c0, altNodesCollection, altEdgesCollection))
+              requests.cursor(traversalQuery(c0, altNodesCollection, altEdgesCollection))
             );
             
             callbackCheck = false;
@@ -754,7 +776,7 @@
               existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
               expect(nodes.length).toEqual(8);
               expect($.ajax).toHaveBeenCalledWith(
-                requests.cursor(travQ + ',' + travVars(c1, nodesCollection, edgesCollection))
+                requests.cursor(traversalQuery(c1, nodesCollection, edgesCollection))
               );
             });
           });
@@ -820,7 +842,7 @@
         
             runs(function() {
               expect($.ajax).toHaveBeenCalledWith(
-                requests.node(edgesCollection).delete(toDelete._id)
+                requests.node(edgesCollection).del(toDelete._id)
               );
               notExistEdge(c0, c4);
             });
@@ -861,29 +883,6 @@
             });
           });
           
-          
-          it('should render a reduced set of nodes if too many nodes are added', function() {
-            runs(function() {
-              adapter.setNodeLimit(6);
-              spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                return [0, 1, 2, 3];
-              });
-              adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
-            });
-            
-            waitsFor(function() {
-              return callbackCheck;
-            });
-      
-            runs(function() {
-              notExistNodes([c0, c1, c2, c3]);
-              existNodes([c4, c5, c6, c7]);
-              expect(nodes.length).toEqual(5);
-              
-            });
-            
-          });
-          
           it('should not trigger the reducer if the limit is set large enough', function() {
             spyOn(this, "fakeReducerRequest");
             adapter.setNodeLimit(10);
@@ -897,25 +896,58 @@
             expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
           });
           
-          it('should reshape all objects if limit is set too small', function() {
-            var called = false;
-            var callback = function() {
-              called = true;
-            };
-            spyOn(this, "fakeReducerRequest").andCallFake(function() {
-              return [0, 1, 2];
+
+          describe('checking community nodes', function() {
+            
+            it('should create a community node if limit is set too small', function() {
+              var called = false,
+                callback = function() {
+                  called = true;
+                };
+              spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                return [c0, c1, c2];
+              });
+              adapter.setNodeLimit(2, callback);
+            
+              notExistNodes([c0, c1, c2]);
+              existNode("community_1");
+              existNodes([c3]);
+              expect(nodes.length).toEqual(2);
+              existEdge("community_1", c3);
+              expect(edges.length).toEqual(1);
+            
+              expect(called).toBeTruthy();
             });
-            adapter.setNodeLimit(2, callback);
             
-            notExistNodes([c0, c1, c2]);
-            existNodes([c3]);
-            expect(nodes.length).toEqual(2);
+            it('should create a community node if too many nodes are added', function() {
+              runs(function() {
+                adapter.setNodeLimit(6);
+                spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                  return [c0, c1, c2, c3];
+                });
+                adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
+              });
             
-            expect(called).toBeTruthy();
+              waitsFor(function() {
+                return callbackCheck;
+              });
+      
+              runs(function() {
+                notExistNodes([c0, c1, c2, c3]);
+                existNode("community_1");
+                existNodes([c4, c5, c6, c7]);
+                expect(nodes.length).toEqual(5);
+              
+                existEdge("community_1", c4);
+                existEdge("community_1", c5);
+                existEdge("community_1", c6);
+                existEdge("community_1", c7);
+                expect(edges.length).toEqual(4);
+              });
             
+            });
             
           });
-          
           
           describe('that has loaded several queries', function() {
             var c8, c9, e2_8;
@@ -1020,7 +1052,7 @@
                     return false;
                   }
                   return true;
-                }
+                };
                 fakeResult = "";
                 toDelete = nodeWithID(c2);
                 adapter.deleteNode(toDelete, checkCallbackFunction);
@@ -1030,11 +1062,11 @@
         
               runs(function() {
                 expect($.ajax).toHaveBeenCalledWith(
-                  requests.node(nodesCollection).delete(toDelete._id)
+                  requests.node(nodesCollection).del(toDelete._id)
                 );
                 notExistNode(c2);
                 expect($.ajax).toHaveBeenCalledWith(
-                  requests.node(edgesCollection).delete(e2_8)
+                  requests.node(edgesCollection).del(e2_8)
                 );
                 notExistEdge(c2, c8);
               });
@@ -1063,8 +1095,8 @@
               s1_toDel = insertEdge(edgesCollection, s1, toDel);
               toDel_t0 = insertEdge(edgesCollection, toDel, t0);
               
-              var loaded = false;
-              var fakeResult = "";
+              var loaded = false,
+                fakeResult = "";
               
               spyOn($, "ajax").andCallFake(function(request) {                
                 if (request.url.indexOf("cursor", request.url.length - "cursor".length) !== -1) {
@@ -1114,16 +1146,16 @@
               notExistEdge(toDel, t0);
               
               expect($.ajax).toHaveBeenCalledWith(
-                requests.node(nodesCollection).delete(toDel)
+                requests.node(nodesCollection).del(toDel)
               );
               expect($.ajax).toHaveBeenCalledWith(
-                requests.node(edgesCollection).delete(s0_toDel)
+                requests.node(edgesCollection).del(s0_toDel)
               );
               expect($.ajax).toHaveBeenCalledWith(
-                requests.node(edgesCollection).delete(s1_toDel)
+                requests.node(edgesCollection).del(s1_toDel)
               );
               expect($.ajax).toHaveBeenCalledWith(
-                requests.node(edgesCollection).delete(toDel_t0)
+                requests.node(edgesCollection).del(toDel_t0)
               );
               
               // Check if counter is set correctly

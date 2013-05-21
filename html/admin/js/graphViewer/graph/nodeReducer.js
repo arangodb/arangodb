@@ -146,12 +146,13 @@ function NodeReducer(nodes, edges) {
      var lID = largest.lID,
        sID = largest.sID;
      _.each(nodes, function (n) {
-       var id = n._id;
+       var id = n._id,
+         c1, c2;
        if (id == sID || id == lID) {
          return null;
        }
-       var c1 = getDQValue(dQ, id, sID),
-         c2 = getDQValue(dQ, id, lID);
+       c1 = getDQValue(dQ, id, sID);
+       c2 = getDQValue(dQ, id, lID);
        if (c1 !== undefined) {
          if (c2 !== undefined) {
            setDQValue(dQ, heap, id, lID, c1 + c2);
@@ -193,12 +194,22 @@ function NodeReducer(nodes, edges) {
    minDist = function(dist) {
      return function(a) {
        return dist[a];
-     }
+     };
    },
    
    dijkstra = function(sID) {
      var dist = {},
-       toDo, next, neigh;
+       toDo, next, neigh,
+       filterNotNext = function(e) {
+         return e !== next;
+       },
+       computeNeighbours = function(v) {
+         if (_.contains(toDo, v)) {
+           if (dist[v] > dist[next] + 1) {
+             dist[v] = dist[next] + 1;
+           }
+         }
+       };
        
      toDo = _.pluck(nodes, "_id");
      _.each(toDo, function(n) {
@@ -210,15 +221,9 @@ function NodeReducer(nodes, edges) {
        if (next === Number.POSITIVE_INFINITY) {
          break;
        }
-       toDo = toDo.filter(function(e) {return e !== next});
+       toDo = toDo.filter(filterNotNext);
        neigh = neighbors(next);
-       _.each(neigh, function(v) {
-         if (_.contains(toDo, v)) {
-           if (dist[v] > dist[next] + 1) {
-             dist[v] = dist[next] + 1;
-           }
-         }
-       });
+       _.each(neigh, computeNeighbours);
      }
      return dist;
    },
@@ -285,22 +290,15 @@ function NodeReducer(nodes, edges) {
       throw "Load some nodes first.";
     }
     populateValues(dQ, a, heap);
-    var max = 0;
-    while (communityDetectionStep(dQ, a, heap, coms)) {
-      // InfiniteLoopCheck should be removed!
-      max++;
-      if (max > 100) {
-        break;
-      }
-    }
+    while (communityDetectionStep(dQ, a, heap, coms)) {}
     res = _.pluck(_.values(coms), "com");
     if (focus !== undefined) {
       dist = floatDist(focus._id);
-      res = res.filter(function(e) {return !_.contains(e, focus._id)});
-      res = res.filter(function(e) {return e.length > 1});
+      res = res.filter(function(e) {return !_.contains(e, focus._id);});
+      res = res.filter(function(e) {return e.length > 1;});
       res.sort(sortByDistance);
     } else {
-      res = res.filter(function(e) {return e.length > 1});
+      res = res.filter(function(e) {return e.length > 1;});
     }
     return res[0];
   };

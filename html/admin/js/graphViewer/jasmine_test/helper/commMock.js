@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global document, window*/
+/*global document, window, d3*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
