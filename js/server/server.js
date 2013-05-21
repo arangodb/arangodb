@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,5 +47,5 @@ var Buffer = require("buffer").Buffer;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:

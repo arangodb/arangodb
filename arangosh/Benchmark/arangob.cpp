@@ -308,7 +308,7 @@ int main (int argc, char* argv[]) {
 
   if (Delay) {
     Status("sleeping (startup delay)...");
-    sleep(15);
+    sleep(10);
   }
   Status("executing tests...");
 
@@ -347,26 +347,18 @@ int main (int argc, char* argv[]) {
 
   size_t failures = operationsCounter.failures();
 
-  if (! BaseClient.quiet()) {
-    cout << endl;
-    cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
-    cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
-    cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
-    cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
-    cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
-    cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
-    cout << "Elapsed time since start: " << fixed << time << " s" << endl;
+  cout << endl;
+  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
+  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", collection: '" << Collection << "'" << endl;
+  cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
+  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
+  cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
+  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
+  cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
+  cout << "Elapsed time since start: " << fixed << time << " s" << endl << endl;
 
-    cout << endl;
-
-    if (failures > 0) {
-      cerr << "WARNING: " << failures << " request(s) failed!!" << endl << endl;
-    }
-  }
-  else {
-    if (failures > 0) {
-      cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
-    }
+  if (failures > 0) {
+    cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
   }
 
   testCase->tearDown();

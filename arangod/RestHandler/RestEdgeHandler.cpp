@@ -154,6 +154,11 @@ bool RestEdgeHandler::createDocument () {
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
+  
+  if (json->_type != TRI_JSON_ARRAY) {
+    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    return false;
+  }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
     return false;

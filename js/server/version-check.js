@@ -240,7 +240,8 @@
     
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
-      return createSystemCollection("_routing");
+      // needs to be big enough for assets
+      return createSystemCollection("_routing", { journalSize: 32 * 1024 * 1024 });
     });
     
     // create the default route in the _routing collection
@@ -261,7 +262,8 @@
               permanently: true,
               destination: "/_admin/html/index.html"
             }
-          }
+          },
+          priority: -1000000
         });
       }
 
@@ -356,7 +358,7 @@
     });
     
     // create a unique index on collection attribute in _aal
-    addTask("createFisbowlIndex",
+    addTask("createFishbowlIndex",
             "create indexes on collection attribute in _fishbowl collection",
       function () {
         var fishbowl = getCollection("_fishbowl");

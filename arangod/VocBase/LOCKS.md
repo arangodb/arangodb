@@ -1,7 +1,7 @@
 Using Locks in ArangoDB
 =======================
 
-This documents summarizes the various locks and their usage. You should
+This document summarizes the various locks and their usage. You should
 carefully read it in order to avoid dead-locks.
 
 TRI_*_COLLECTIONS_VOCBASE (R/W)

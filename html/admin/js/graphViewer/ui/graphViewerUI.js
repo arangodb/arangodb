@@ -47,6 +47,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
     width = (optWidth || container.offsetWidth) - 60,
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
+    background = document.createElement("div"),
     svg, 
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
@@ -66,11 +67,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       return list;
     },
     createSVG = function () {
-      return d3.select("#" + container.id)
+      return d3.select("#" + container.id + " #background")
         .append("svg")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "pull-right")
+        .attr("class", "pull-right graphViewer")
         .attr("style", "width:" + width + "px;height:" + height + ";");
     },
     createToolbox = function() {
@@ -83,7 +84,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         );
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
-      container.appendChild(toolbox);
+      background.appendChild(toolbox);
       dispatcherUI.addAll();
     },
     createMenu = function() {
@@ -93,6 +94,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         buttons = document.createElement("div"),
+        /*
         nodeShaperDropDown = document.createElement("div"),
         nodeShaperList = makeBootstrapDropdown(
           nodeShaperDropDown,
@@ -105,12 +107,14 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
           "edgeshaperdropdown",
           "Edges"
         ),
+        */
         adapterDropDown = document.createElement("div"),
         adapterList = makeBootstrapDropdown(
           adapterDropDown,
           "adapterdropdown",
           "Connection"
         ),
+        /*
         layouterDropDown = document.createElement("div"),
         layouterList = makeBootstrapDropdown(
           layouterDropDown,
@@ -125,15 +129,27 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
           edgeShaperList,
           graphViewer.edgeShaper
         ),
+        layouterUI = new LayouterControls(
+          layouterList,
+          graphViewer.layouter
+        ),
+        */
         adapterUI = new ArangoAdapterControls(
           adapterList,
           graphViewer.adapter
         ),
-        layouterUI = new LayouterControls(
-          layouterList,
-          graphViewer.layouter
-        );
-      
+        searchFunction = function() {
+          if (searchAttrField.value === ""
+            || searchAttrField.value === undefined) {
+            graphViewer.loadGraph(searchValueField.value);
+          } else {
+            graphViewer.loadGraphWithAttributeValue(
+              searchAttrField.value,
+              searchValueField.value
+            );
+          }
+        };
+
       menubar.id = "menubar";
       menubar.className = "thumbnails2";
       
@@ -159,23 +175,22 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       searchStart.height = 16;
       searchStart.src = "img/enter_icon.png";
       
+      /*
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
-      adapterDropDown.id = "adaptermenu";
       layouterDropDown.id = "layoutermenu";
+      */
       
-      searchStart.onclick = function() {
-        if (searchAttrField.value === ""
-          || searchAttrField.value === undefined) {
-          graphViewer.loadGraph(searchValueField.value);
-        } else {
-          graphViewer.loadGraphWithAttributeValue(
-            searchAttrField.value,
-            searchValueField.value
-          );
+      adapterDropDown.id = "adaptermenu";
+      
+      searchStart.onclick = searchFunction;
+      $(searchValueField).keypress(function(e) {
+        if (e.keyCode === 13 || e.which === 13) {
+          searchFunction();
+          return false;
         }
-      };
-      
+        
+      });
       
       menubar.appendChild(transparentHeader);
       transparentHeader.appendChild(searchDiv);
@@ -183,24 +198,31 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       searchDiv.appendChild(searchValueField);
       searchDiv.appendChild(searchStart);
       transparentHeader.appendChild(buttons);
+      /*
       buttons.appendChild(nodeShaperDropDown);
       buttons.appendChild(edgeShaperDropDown);
-      buttons.appendChild(adapterDropDown);
       buttons.appendChild(layouterDropDown);
+      */
+      buttons.appendChild(adapterDropDown);
       /*
       transparentHeader.appendChild(nodeShaperDropDown);
       transparentHeader.appendChild(edgeShaperDropDown);
       transparentHeader.appendChild(adapterDropDown);
       transparentHeader.appendChild(layouterDropDown);
       */
+      /*
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
-      adapterUI.addAll();
       layouterUI.addAll();
+      */
+      adapterUI.addAll();
     };
   container.appendChild(menubar);
+  container.appendChild(background);
+  background.className = "thumbnails";
+  background.id = "background";
   svg = createSVG();
-  graphViewer = new GraphViewer(svg, width, height, adapterConfig);
+  graphViewer = new GraphViewer(svg, width, height, adapterConfig, {zoom: true});
   
   createToolbox();
   createMenu();

@@ -202,6 +202,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
+
   if (result == NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
     TRI_FreeString(TRI_CORE_MEM_ZONE, password);
@@ -266,10 +267,10 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
   // .............................................................................
-  // inside a read transaction
+  // inside a write transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
+  collection->_collection->beginWrite(collection->_collection);
 
   beg = primary->_primaryIndex._table;
   end = beg + primary->_primaryIndex._nrAlloc;
@@ -302,12 +303,13 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     }
   }
 
-  collection->_collection->endRead(collection->_collection);
+  collection->_collection->endWrite(collection->_collection);
 
   // .............................................................................
-  // outside a read transaction
+  // outside a write transaction
   // .............................................................................
 
+  vocbase->_authInfoFlush = true;
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
@@ -358,9 +360,31 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
     }
   }
 
-  vocbase->_authInfo._nrUsed = 0;
+  vocbase->_authInfo._nrUsed   = 0;
 
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether some externally cached authentication info 
+/// should be flushed, by querying the internal flush flag
+/// checking the information may also change the state of the flag
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_FlushAuthenticationAuthInfo () {
+  bool res;
+
+  TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+  res = DefaultAuthInfo->_authInfoFlush;
+  TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+
+  if (res) {
+    TRI_WriteLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+    DefaultAuthInfo->_authInfoFlush = false;
+    TRI_WriteUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,16 +403,11 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
 
   assert(DefaultAuthInfo);
 
-  // lockup username
+  // look up username
   TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
   auth = TRI_LookupByKeyAssociativePointer(&DefaultAuthInfo->_authInfo, username);
 
-  if (auth == 0) {
-    TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
-    return false;
-  }
-
-  if (! auth->_active) {
+  if (auth == NULL || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
     return false;
   }

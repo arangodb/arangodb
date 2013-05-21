@@ -1,11 +1,11 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect, jasmine */
+/*global describe, it, expect, jasmine, spyOn*/
 /*global waitsFor, runs, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
-/*global GraphViewer*/
+/*global GraphViewer, EdgeShaper, NodeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -38,14 +38,16 @@
 describe("Graph Viewer", function() {
   "use strict";
   var viewer,
-  waittime = 200,
+  waittime = 500,
   svg,
   docSVG;
   
   beforeEach(function() {
     docSVG = document.createElement("svg");
+    docSVG.id = "outersvg";
     document.body.appendChild(docSVG);
     svg = d3.select("svg");
+    window.communicationMock(spyOn);
   });
   
   
@@ -115,7 +117,7 @@ describe("Graph Viewer", function() {
     
   });
   
-  describe('GraphViewer set up correctly', function() {
+  describe('set up correctly', function() {
     
     var viewer, adapterConfig;
     
@@ -231,6 +233,43 @@ describe("Graph Viewer", function() {
         expect([0, 1, 2, 3, 4]).toBeDisplayed();
       });
     });
+    
+  });
+
+  describe('set up to support zoom', function() {
+    var viewer, adapterConfig;
+    
+    beforeEach(function() {
+      if (window.ZoomManager === undefined) {
+        window.ZoomManager = {};
+      }
+      spyOn(window, "ZoomManager").andCallThrough();
+      adapterConfig = {type: "json", path: "../test_data/"};
+      var config = {
+        zoom: true
+      };
+      viewer = new GraphViewer(svg, 42, 13, adapterConfig, config);
+    });
+    
+    it('should set up the zoom manager', function() {
+      expect(window.ZoomManager).toHaveBeenCalledWith(
+        42,
+        13,
+        jasmine.any(Object),
+        jasmine.any(Object),
+        jasmine.any(NodeShaper),
+        jasmine.any(EdgeShaper),
+        {},
+        jasmine.any(Function)
+      );
+    });
+    
+    it('should trigger the adapter if zoom level is changed', function() {
+      spyOn(viewer.adapter, "setNodeLimit");
+      helper.simulateScrollUpMouseEvent("outersvg");
+      expect(viewer.adapter.setNodeLimit).wasCalled();
+    });
+    
     
   });
 

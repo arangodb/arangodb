@@ -341,6 +341,11 @@ void ArangoClient::parse (ProgramOptions& options,
     }
   }
 
+  // set temp path
+  if (options.has("temp-path")) {
+    TRI_SetUserTempPath((char*) _tempPath.c_str());
+  } 
+
   // check if have a password
   _hasPassword = options.has("server.password") ||
                  options.has("server.disable-authentication") ||
@@ -666,14 +671,6 @@ bool ArangoClient::usePager () const {
 
 void ArangoClient::setUsePager (bool value) {
   _usePager = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the temporary path
-////////////////////////////////////////////////////////////////////////////////
-
-string const& ArangoClient::tempPath () const {
-  return _tempPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

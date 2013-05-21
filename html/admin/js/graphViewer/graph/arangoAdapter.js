@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, document*/
+/*global NodeReducer*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -27,7 +28,6 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-//function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, width, height) {
 function ArangoAdapter(nodes, edges, config) {
   "use strict";
   
@@ -52,8 +52,11 @@ function ArangoAdapter(nodes, edges, config) {
     initialY = {},
     api = {},
     queries = {},
+    cachedCommunities = {},
     nodeCollection,
     edgeCollection,
+    limit,
+    reducer,
     arangodb,
     width,
     height,
@@ -252,6 +255,25 @@ function ArangoAdapter(nodes, edges, config) {
         }
       });
     },
+    
+    collapseCommunity = function (community) {
+      var commId = "community_1",
+        commNode = {
+          _id: commId,
+          x: 1,
+          y: 1
+        },
+        nodesToRemove = _.map(community, function(id) {
+          return findNode(id);
+        });
+      cachedCommunities[commId] = nodesToRemove;
+      
+      _.each(nodesToRemove, function(n) {
+        removeNode(n);
+        removeEdgesForNode(n);
+      });
+      nodes.push(commNode);
+    },
   
     parseResultOfTraversal = function (result, callback) {
       result = result[0];
@@ -266,7 +288,13 @@ function ArangoAdapter(nodes, edges, config) {
         });
       });
       if (callback) {
-        callback(result[0].vertex);
+        var n = insertNode(result[0].vertex),
+         com;
+        if (limit < nodes.length) {
+          com = reducer.getCommunity(limit, n);
+          collapseCommunity(com);
+        }
+        callback(n);
       }
     },
   
@@ -344,7 +372,7 @@ function ArangoAdapter(nodes, edges, config) {
     + "paths: true"
     + "})";
   queries.traversalByAttribute = function(attr) {
-    return "FOR n IN @@nodes "
+    return "FOR n IN @@nodes"
       + " FILTER n." + attr
       + " == @value"
       + " RETURN TRAVERSAL("
@@ -368,6 +396,9 @@ function ArangoAdapter(nodes, edges, config) {
    + " FILTER e._to == @id"
    + " || e._from == @id"
    + " RETURN e";
+  
+  reducer = new NodeReducer(nodes, edges);
+  
   
   self.oldLoadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.nodeById, {
@@ -528,6 +559,17 @@ function ArangoAdapter(nodes, edges, config) {
     edgeCollection = edgesCol;
     api.node = api.base + "document?collection=" + nodeCollection; 
     api.edge = api.base + "edge?collection=" + edgeCollection;
+  };
+  
+  self.setNodeLimit = function (pLimit, callback) {
+    limit = pLimit;
+    if (limit < nodes.length) {
+      var com = reducer.getCommunity(limit);
+      collapseCommunity(com);
+      if (callback !== undefined) {
+        callback();
+      }
+    }
   };
   
 }

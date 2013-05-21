@@ -173,6 +173,7 @@
     afterEach(function () {
       expect(list).toConformToToolbox();
       document.body.removeChild(list);
+      document.body.removeChild(svg);
     });
 
     it('should throw errors if not setup correctly', function() {
@@ -245,12 +246,12 @@
         
         helper.simulateMouseEvent("click", "control_node_edit_submit");
         expect(adapter.patchNode).toHaveBeenCalledWith(
-        nodes[0],
-        { _id: "1",
-          name: "Bob"
-        },
-        jasmine.any(Function));
-      });
+          nodes[0],
+          { _id: "1",
+            name: "Bob"
+          },
+          jasmine.any(Function));
+        });
       
       waitsFor(function() {
         return $("#control_node_edit_modal").length === 0;

@@ -111,7 +111,7 @@ ArangoCollection.prototype.toArray = function () {
 /// @code
 /// arango> col = db.examples;
 /// [ArangoCollection 91022, "examples" (status new born)]
-/// arango> col.save({ "Hallo" : "World" });
+/// arango> col.save({ "Hello" : "World" });
 /// { "_id" : "91022/1532814", "_rev" : 1532814 }
 /// arango> col.count();
 /// 1
@@ -293,7 +293,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     return 0;
   }
 
-  if (typeof newValue !== "object") {
+  if (typeof newValue !== "object" || Array.isArray(newValue)) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "invalid value for parameter 'newValue'";
@@ -333,7 +333,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     return 0;
   }
   
-  if (typeof newValue !== "object") {
+  if (typeof newValue !== "object" || Array.isArray(newValue)) {
     var err = new ArangoError();
     err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = "invalid value for parameter 'newValue'";

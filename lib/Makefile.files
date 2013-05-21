@@ -39,6 +39,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/associative.c \
 	lib/BasicsC/conversions.c \
 	lib/BasicsC/csv.c \
+	lib/BasicsC/debugging.c \
 	lib/BasicsC/error.c \
 	lib/BasicsC/files.c \
 	lib/BasicsC/hashes.c \

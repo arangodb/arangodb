@@ -750,14 +750,20 @@ static int RollbackInsert (TRI_document_collection_t* document,
 
 static int RollbackUpdate (TRI_document_collection_t* document,
                            TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_t* oldHeader) {
+                           TRI_doc_mptr_t* oldHeader,
+                           bool adjustHeader) {
   int res;
 
   assert(newHeader != NULL);
   assert(oldHeader != NULL);
-  
+
   // ignore any errors we're getting from this
   DeleteSecondaryIndexes(document, newHeader, true);
+
+  if (adjustHeader) {  
+    // put back the header into its old position
+    document->_headers->move(document->_headers, newHeader, oldHeader);
+  }
 
   *newHeader = *oldHeader; 
 
@@ -766,9 +772,6 @@ static int RollbackUpdate (TRI_document_collection_t* document,
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("error rolling back update operation");
   }
-
-  // put back the header into its old position
-  document->_headers->move(document->_headers, newHeader, newHeader);
 
   return res;
 }
@@ -779,7 +782,8 @@ static int RollbackUpdate (TRI_document_collection_t* document,
 
 static int RollbackRemove (TRI_document_collection_t* document,
                            TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_t* oldHeader) {
+                           TRI_doc_mptr_t* oldHeader, 
+                           bool adjustHeader) {
   int res;
 
   // there is no new header
@@ -794,8 +798,10 @@ static int RollbackRemove (TRI_document_collection_t* document,
     LOG_ERROR("error rolling back remove operation");
   }
 
-  // put back the header into its old position
-  document->_headers->relink(document->_headers, oldHeader, oldHeader);
+  if (adjustHeader) {
+    // put back the header into its old position
+    document->_headers->relink(document->_headers, oldHeader, oldHeader);
+  }
 
   return res;
 }
@@ -851,7 +857,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* mptr,
                            bool* freeMarker) {
   TRI_document_collection_t* document;
-  bool written;
+  bool directOperation;
   int res;
 
   TRI_ASSERT_MAINTAINER(*freeMarker == true);
@@ -893,8 +899,8 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                                               &marker->base, 
                                               totalSize, 
                                               forceSync, 
-                                              &written);
-  if (! written) {
+                                              &directOperation);
+  if (! directOperation) {
     *freeMarker = false;
   }
       
@@ -918,11 +924,13 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
         idx->postInsert(trxCollection, idx, header);
       }
     }
+
+    return TRI_ERROR_NO_ERROR;
   }
-  else {
-    // something has failed.... now delete from the indexes again
-    RollbackInsert(document, header, NULL);
-  }
+
+  // something has failed.... now delete from the indexes again
+  RollbackInsert(document, header, NULL);
+  TRI_ASSERT_MAINTAINER(*freeMarker == true);
 
   return res;
 }
@@ -988,7 +996,7 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
   TRI_primary_collection_t* primary;
   TRI_document_collection_t* document;
   TRI_doc_mptr_t* header;
-  bool written;
+  bool directOperation;
   int res;
 
   TRI_ASSERT_MAINTAINER(*freeMarker == true);
@@ -1048,22 +1056,24 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
                                               &marker->base, 
                                               totalSize, 
                                               forceSync, 
-                                              &written);
+                                              &directOperation);
 
-  if (! written) {
+  if (! directOperation) {
     *freeMarker = false;
   }
   
   if (res == TRI_ERROR_NO_ERROR) {
-    if (written) {
+    if (directOperation) {
       // release the header pointer
       document->_headers->release(document->_headers, header);
     }
+
+    return TRI_ERROR_NO_ERROR;
   }
-  else {
-    // deletion failed. roll back
-    RollbackRemove(document, NULL, header);
-  }
+
+  // deletion failed. roll back
+  RollbackRemove(document, NULL, header, ! directOperation);
+  TRI_ASSERT_MAINTAINER(*freeMarker == true);
 
   return res;
 }
@@ -1153,7 +1163,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   TRI_doc_mptr_t* newHeader;
   TRI_doc_mptr_t oldData;
   int res;
-  bool written;
+  bool directOperation;
 
   TRI_ASSERT_MAINTAINER(*freeMarker == true);
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
@@ -1215,23 +1225,25 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
                                               &marker->base, 
                                               totalSize, 
                                               forceSync, 
-                                              &written);
+                                              &directOperation);
 
-  if (! written) {
+  if (! directOperation) {
     *freeMarker = false;
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (written) {
+    if (directOperation) {
       document->_headers->moveBack(document->_headers, oldHeader);
     }
 
     // write new header into result  
     *mptr = *((TRI_doc_mptr_t*) newHeader);
+
+    return TRI_ERROR_NO_ERROR;
   }
-  else {
-    RollbackUpdate(document, newHeader, &oldData);
-  }
+
+  RollbackUpdate(document, newHeader, &oldData, ! directOperation);
+  TRI_ASSERT_MAINTAINER(*freeMarker == true);
     
   return res;
 }
@@ -2988,10 +3000,10 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
     res = RollbackInsert(document, newHeader, NULL);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    res = RollbackUpdate(document, newHeader, oldData);
+    res = RollbackUpdate(document, newHeader, oldData, true);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    res = RollbackRemove(document, NULL, oldHeader);
+    res = RollbackRemove(document, NULL, oldHeader, true);
   }
   else {
     res = TRI_ERROR_INTERNAL;
@@ -3056,6 +3068,10 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
                                           TRI_voc_size_t totalSize,
                                           bool waitForSync) {
   int res;
+
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("TRI_WriteOperationDocumentCollection") {
+    return TRI_ERROR_INTERNAL;
+  }
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     res = WriteInsertMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, totalSize, waitForSync);

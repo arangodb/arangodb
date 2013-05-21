@@ -144,11 +144,14 @@ exports.HELP = exports.createHelpHeadline("Help") +
   ' > exit                                                             ' + "\n" +
   'Note: collection names may be cached in arangosh. To refresh them, issue: ' + "\n" +
   ' > db._collections();                                               ' + "\n" +
+  '                                                                          ' + "\n" +
   (internal.printBrowser ?
+  'To cancel the current prompt, press CTRL + z.                       ' + "\n" +
   '                                                                          ' + "\n" +
   'Please note that all variables defined with the var keyword will disappear' + "\n" +
   'when the command is finished. To introduce variables that are persisted   ' + "\n" +
-  'until the next command, you should omit the var keyword.                  ' + "\n" : '');
+  'until the next command, you should omit the var keyword.                  ' + "\n" : 
+  'To cancel the current prompt, press CTRL + d.                       ' + "\n");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query help
