@@ -174,7 +174,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       edges: edges,
       nodes: nodes,
       startCallback: self.start,
-      loadNode: self.adapter.loadNodeFromTreeById,
+      adapter: self.adapter,
       reshapeNodes: self.nodeShaper.reshapeNodes
     },
     drag: {
