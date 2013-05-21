@@ -327,8 +327,13 @@ function ArangoAdapter(nodes, edges, config) {
     expandCommunity = function (commNode) {
       var commId = commNode._id,
         nodesToAdd = cachedCommunities[commId].nodes,
-        edgesToChange = cachedCommunities[commId].edges;
+        edgesToChange = cachedCommunities[commId].edges,
+        com;
       removeNode(commNode);
+      if (limit < nodes.length + nodesToAdd.length) {
+        com = reducer.getCommunity(limit);
+        collapseCommunity(com);
+      }
       _.each(nodesToAdd, function(n) {
         nodes.push(n);
       });
