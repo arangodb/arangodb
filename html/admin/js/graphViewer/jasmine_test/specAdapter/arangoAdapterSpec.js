@@ -58,6 +58,17 @@
       checkCallbackFunction = function() {
         callbackCheck = true;
       },
+      
+      getCommunityNodes = function() {
+        return _.filter(nodes, function(n) {
+          return n._id.match(/^\*community/);
+        });
+      },
+      
+      getCommunityNodesIds = function() {
+        return _.pluck(getCommunityNodes(), "_id");
+      },
+      
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
           return e._id === id;
@@ -885,44 +896,52 @@
             });
           });
           
-          it('should not trigger the reducer if the limit is set large enough', function() {
-            spyOn(this, "fakeReducerRequest").andCallFake(function() {
-              return [c0];
-            });
-            adapter.setNodeLimit(10);
-            expect(this.fakeReducerRequest).not.toHaveBeenCalled();
-          });
-          
-          
-          it('should trigger the reducer if the limit is set too small', function() {
-            spyOn(this, "fakeReducerRequest").andCallFake(function() {
-              return [c0];
-            });
-            adapter.setNodeLimit(2);
-            expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
-          });
-          
 
           describe('checking community nodes', function() {
             
-            it('should create a community node if limit is set too small', function() {
-              var called = false,
-                callback = function() {
-                  called = true;
-                };
+            it('should not trigger the reducer if the limit is set large enough', function() {
               spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                return [c0, c1, c2];
+                return [c0];
               });
-              adapter.setNodeLimit(2, callback);
+              adapter.setNodeLimit(10);
+              expect(this.fakeReducerRequest).not.toHaveBeenCalled();
+            });
+          
+          
+            it('should trigger the reducer if the limit is set too small', function() {
+              spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                return [c0];
+              });
+              adapter.setNodeLimit(2);
+              expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
+            });
             
-              notExistNodes([c0, c1, c2]);
-              existNode("community_1");
-              existNodes([c3, c4]);
-              expect(nodes.length).toEqual(3);
-              existEdge("community_1", c3);
-              existEdge("community_1", c4);
-              expect(edges.length).toEqual(2);    
-              expect(called).toBeTruthy();
+            it('should create a community node if limit is set too small', function() {
+              var called;
+              
+              runs(function() {
+                callbackCheck = false;
+                spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                  return [c0, c1, c2];
+                });
+                adapter.setNodeLimit(2, checkCallbackFunction);
+              });
+              
+              waitsFor(function() {
+                return callbackCheck;
+              });
+              
+              runs(function() {
+                var commId = getCommunityNodesIds()[0];
+                notExistNodes([c0, c1, c2]);
+                existNode(commId);
+                existNodes([c3, c4]);
+                expect(nodes.length).toEqual(3);
+                existEdge(commId, c3);
+                existEdge(commId, c4);
+                expect(edges.length).toEqual(2);    
+                expect(called).toBeTruthy();
+              });              
             });
             
             it('should create a community node if too many nodes are added', function() {
@@ -939,18 +958,128 @@
               });
       
               runs(function() {
+                var commId = getCommunityNodesIds()[0];
                 notExistNodes([c0, c1, c2, c3]);
-                existNode("community_1");
+                existNode(commId);
                 existNodes([c4, c5, c6, c7]);
                 expect(nodes.length).toEqual(5);
               
-                existEdge("community_1", c4);
-                existEdge("community_1", c5);
-                existEdge("community_1", c6);
-                existEdge("community_1", c7);
+                existEdge(commId, c4);
+                existEdge(commId, c5);
+                existEdge(commId, c6);
+                existEdge(commId, c7);
                 expect(edges.length).toEqual(4);
               });
             
+            });
+            
+            describe('that displays a community node already', function() {
+              
+              var firstCommId,
+              fakeResult;
+              
+              beforeEach(function() {
+                runs(function() {
+                  callbackCheck = false;
+                  adapter.setNodeLimit(7);
+                  fakeResult = [c0, c2];
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return fakeResult;
+                  });
+                  adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
+                });
+            
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+      
+                runs(function() {
+                  firstCommId = getCommunityNodesIds()[0];
+                });
+              });
+              
+              it('should expand a community if enough space is available', function() {
+                runs(function() {
+                  adapter.setNodeLimit(10);
+                  callbackCheck = false;
+                  adapter.expandCommunity(nodeWithID(firstCommId), checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  expect(getCommunityNodes().length).toEqual(0);
+                  existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
+                  existEdge(c0, c1);
+                  existEdge(c0, c2);
+                  existEdge(c0, c3);
+                  existEdge(c0, c4);
+                });
+                
+              });
+              
+              it('should expand a community and join another one if not enough space is available', function() {
+                runs(function() {
+                  fakeResult = [c1, c7];
+                  callbackCheck = false;
+                  adapter.expandCommunity(nodeWithID(firstCommId), checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  var newCommId = getCommunityNodesIds()[0];
+                  expect(getCommunityNodes().length).toEqual(1);
+                  existNodes([c0, c2, c3, c4, c5, c6, newCommId]);
+                  notExistNodes([c1, c7]);
+                  
+                  existEdge(c0, c2);
+                  existEdge(c0, c3);
+                  existEdge(c0, c4);
+                  
+                  existEdge(c0, newCommId);
+                  existEdge(newCommId, c5);
+                  existEdge(newCommId, c6);
+                });
+              });
+              
+              it('should join another community if space is further reduced', function() {
+                runs(function() {
+                  fakeResult = [c1, c7];
+                  callbackCheck = false;
+                  adapter.setNodeLimit(6, checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  expect(getCommunityNodes().length).toEqual(2);
+                  var ids = getCommunityNodesIds(),
+                    newCommId;
+                  
+                  if (firstCommId === ids[0]) {
+                    newCommId = ids[1];
+                  } else {
+                    newCommId = ids[0];
+                  }
+                  
+                  existNodes([c3, c4, c5, c6, firstCommId, newCommId]);
+                  notExistNodes([c0, c1, c2, c7]);
+                  
+                  existEdge(firstCommId, c3);
+                  existEdge(firstCommId, c4);
+                  existEdge(firstCommId, newCommId);
+                  existEdge(newCommId, c5);
+                  existEdge(newCommId, c6);
+                });
+              });
+              
             });
             
           });

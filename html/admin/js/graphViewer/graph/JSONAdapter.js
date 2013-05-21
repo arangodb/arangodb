@@ -159,4 +159,8 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   
   };
   
+  self.expandCommunity = function (commNode, callback) {
+  
+  };
+  
 }
