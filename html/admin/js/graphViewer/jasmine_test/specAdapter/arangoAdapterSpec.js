@@ -921,8 +921,7 @@
               expect(nodes.length).toEqual(3);
               existEdge("community_1", c3);
               existEdge("community_1", c4);
-              expect(edges.length).toEqual(2);
-            
+              expect(edges.length).toEqual(2);    
               expect(called).toBeTruthy();
             });
             
