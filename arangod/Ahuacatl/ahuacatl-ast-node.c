@@ -437,10 +437,13 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
 
-  if (! TRI_AddVariableScopeAql(context, name, definingNode)) {
-    // duplicate variable name
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
-    return NULL;
+  // if not a temporary variable
+  if (*name != '_') {
+    if (! TRI_AddVariableScopeAql(context, name, definingNode)) {
+      // duplicate variable name
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+      return NULL;
+    }
   }
 
   TRI_AQL_NODE_STRING(node) = (char*) name;
