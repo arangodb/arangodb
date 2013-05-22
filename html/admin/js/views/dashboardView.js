@@ -70,15 +70,19 @@ var dashboardView = Backbone.View.extend({
       "seconds"
     );
 
+    var counter = 1;
     $.each(this.options.description.models[0].attributes.groups, function () {
+      console.log(self.options.description.models[0].attributes.groups.length);
       $('.thumbnails').append(
         '<ul class="statGroups" id="' + this.group + '">' +
         '<h4 class="statsHeader">' + this.name + '</h4>' +
         '</ul>');
-      $('#menuGroups').append(
-        '<li class="nav-header">' + this.name + '</li>' + 
-        '<li class="divider" id="' + this.group + 'Divider"></li>'
-      );
+      $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
+      $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+      if (self.options.description.models[0].attributes.groups.length === counter) {
+        $('#'+this.group+'Divider').addClass('dbNotVisible');
+      }
+      counter++;
     });
 
     $.each(this.options.description.models[0].attributes.figures, function () {

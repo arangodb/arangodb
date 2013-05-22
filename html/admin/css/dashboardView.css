@@ -12,6 +12,10 @@
 }
 */
 
+.dbNotVisible {
+  opacity: 0 !important;
+}
+
 #dashboardHeader .btn-group {
   margin-left: 10px;
   margin-top: 6px;
