@@ -66,8 +66,8 @@
 
 .statClient {
   float: left;
-  height: 150px;
-  width: 280px;
+  height: 120px;
+  width: 205px;
   margin-left: 9px;
   margin-bottom: 15px;
   border: 1px solid black;
@@ -77,7 +77,11 @@
 }
 
 .statChart {
+  margin-left: -15px !important;
+}
 
+.nv-axislabel {
+  margin-left: 20px;
 }
 
 .nv-axisMaxMin > text {
@@ -87,15 +91,15 @@
 .svgClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
-  height: 150px;
-  width: 270px;
+  height: 140px;
+  width: 220px;
 }
 
 .svgDetailClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 300px;
-  width: 877px;
+  width: 887px;
 }
 
 .boxHeader {
