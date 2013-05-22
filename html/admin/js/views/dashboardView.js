@@ -3,7 +3,7 @@ var dashboardView = Backbone.View.extend({
   updateInterval: 1000, // 1 second, constant
   updateFrequency: 5, // the actual update rate (5 s)
   updateCounter: 0,
-  arraySize: 99, // how many values will we keep per figure?
+  arraySize: 20, // how many values will we keep per figure?
   seriesData: {},
   charts: {},
   units: [],
@@ -47,10 +47,12 @@ var dashboardView = Backbone.View.extend({
 
   events: {
     "click .dashboard-dropdown li" : "checkEnabled",
-    "click .interval-dropdown li" : "checkInterval",
-    "click .db-zoom" : "renderDetailChart",
-    "click .db-minimize" : "checkDetailChart",
-    "click .db-hide" : "hideChart"
+    "click .interval-dropdown li"  : "checkInterval",
+    "click .db-zoom"               : "renderDetailChart",
+    "click .db-minimize"           : "checkDetailChart",
+    "click .db-hide"               : "hideChart",
+    "click .group-close"           : "hideGroup",
+    "click .group-open"            : "showGroup"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -72,9 +74,10 @@ var dashboardView = Backbone.View.extend({
 
     var counter = 1;
     $.each(this.options.description.models[0].attributes.groups, function () {
-      console.log(self.options.description.models[0].attributes.groups.length);
+      console.log(this);
       $('.thumbnails').append(
         '<ul class="statGroups" id="' + this.group + '">' +
+        '<i class="group-close icon-minus icon-white"></i>' +
         '<h4 class="statsHeader">' + this.name + '</h4>' +
         '</ul>');
       $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
@@ -212,6 +215,20 @@ var dashboardView = Backbone.View.extend({
       $(a.target).removeClass('icon-plus');
       $(a.target).addClass('icon-minus');
     }
+  },
+
+  hideGroup: function (a) {
+    var group = $(a.target).parent();
+    $(a.target).removeClass('icon-minus group-close');
+    $(a.target).addClass('icon-plus group-open');
+    $(group).addClass("groupHidden");
+  },
+
+  showGroup: function (a) {
+    var group = $(a.target).parent();
+    $(a.target).removeClass('icon-plus group-open');
+    $(a.target).addClass('icon-minus group-close');
+    $(group).removeClass("groupHidden");
   },
 
   hideChart: function (a) {

@@ -21,14 +21,24 @@
   margin-top: 6px;
 }
 
+.group-close, .group-open {
+  float:right;
+  margin-top: 17px !important;
+  margin-right: 7px !important;
+}
+
 .db-zoom, .db-minimize, .db-hide, .db-info {
   float: right;
   margin-top: -4px !important;
   margin-right: 4px !important;
 }
 
-.db-zoom:hover, .db-minimize:hover, .db-hide, .db-info:hover {
+.db-zoom:hover, .db-minimize:hover, .db-hide, .db-info:hover, .group-close:hover, .group-open:hover {
   cursor:pointer;
+}
+
+.groupHidden li {
+  display:none;
 }
 
 .statGroups {
