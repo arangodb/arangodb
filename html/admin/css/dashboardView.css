@@ -81,9 +81,9 @@
 .statClient {
   float: left;
   height: 120px;
-  width: 205px;
+  width: 203px;
   margin-left: 9px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   border: 1px solid black;
   border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
@@ -132,6 +132,7 @@
 }
 
 .statsHeader {
+  margin-top: 12px;
   margin-left: -10px;
   width: 940px;
   background-color: #686766;
