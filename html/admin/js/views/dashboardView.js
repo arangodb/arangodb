@@ -308,8 +308,12 @@ var dashboardView = Backbone.View.extend({
           .call(chart)
           .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
           .transition().duration(500);
-
       }
+      else {
+      }
+
+      //disable ticks for small charts
+      //disable label for small charts
 
       d3.select("#" + identifier + "Chart svg")
         .call(chart)
@@ -402,8 +406,10 @@ var dashboardView = Backbone.View.extend({
     );
 
     $('#' + figure.group + 'Divider').before(
-      '<li><a><label class="checkbox">'+
-      '<input type="checkbox" id=' + figure.identifier + 'Checkbox checked>' + figure.name + '</label></a></li>'
+      '<li><a><label class="checkbox checkboxLabel">'+
+        '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
+        '<label class="css-label"/>' +
+      figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
       placement: "top"

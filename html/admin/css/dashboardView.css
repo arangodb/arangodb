@@ -90,8 +90,12 @@
   box-shadow: 0 0 3px #333333;
 }
 
-.statChart {
-  margin-left: -15px !important;
+#detailGraphChart {
+  margin-left: -10px !important;
+}
+
+.statGroups .statChart {
+  margin-left: -45px !important;
 }
 
 .nv-axislabel {
@@ -106,7 +110,7 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 140px;
-  width: 220px;
+  width: 255px;
 }
 
 .svgDetailClass {
@@ -160,4 +164,55 @@
 
 .nv-point {
   display: none;
+}
+
+/*Dashboard Dropdown*/
+
+.dropdown-menu li > a {
+  padding: 0px 20px !important;
+}
+
+.checkboxLabel {
+  margin-top: 4px;
+  padding-left: 0;
+}
+
+.svgClass .nv-axisMaxMin text {
+  visibility: hidden;
+}
+
+.svgClass .major text {
+  visibility: hidden;
+}
+
+.svgClass .nv-axislabel {
+  visibility: hidden;
+}
+
+/*Dashboard Checkbox*/
+
+input[type=checkbox].css-checkbox {
+  display:none;
+}
+
+input[type=checkbox].css-checkbox + label.css-label {
+  padding-left:20px;
+  margin-top: 0px;
+  margin-bottom: -0px;
+  height:15px; 
+  display:inline-block;
+  line-height:15px;
+  background-repeat:no-repeat;
+  background-position: 0 0;
+  font-size:15px;
+  vertical-align:middle;
+  cursor:pointer;
+}
+
+input[type=checkbox].css-checkbox:checked + label.css-label {
+  background-position: 0 -15px;
+}
+
+.css-label {
+  background-image:url(../img/dark-check-green.png);
 }
