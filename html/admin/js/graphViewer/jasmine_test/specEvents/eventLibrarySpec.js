@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor */
 /*global window, eb, loadFixtures, document, $ */
 /*global EventLibrary*/
@@ -40,13 +40,15 @@
 
     var eventLib,
       nodeShaperDummy = {},
-      edgeShaperDummy = {};
+      edgeShaperDummy = {},
+      adapterDummy = {};
     
     beforeEach(function() {
       eventLib = new EventLibrary();
       nodeShaperDummy.reshapeNodes = function() {};
       edgeShaperDummy.reshapeEdges = function() {};
-      
+      adapterDummy.loadNode = function() {};
+      adapterDummy.expandCommunity = function() {};
       spyOn(nodeShaperDummy, "reshapeNodes");
       spyOn(edgeShaperDummy, "reshapeEdges");
     });
@@ -59,10 +61,6 @@
       edges,
       loadedNodes,
       started,
-      loadNodeCallback = function(node) {
-        loaded++;
-        loadedNodes.push(node);
-      },
       reshapeNodesCallback = function() {
         reshaped++;
       },
@@ -84,7 +82,7 @@
           edges: edges,
           nodes: nodes,
           startCallback: startCallback,
-          loadNode: loadNodeCallback,
+          adapter: adapterDummy,
           reshapeNodes: reshapeNodesCallback
         };
       });
@@ -96,6 +94,11 @@
           _inboundCounter: 0
         };
         nodes.push(node);
+        spyOn(adapterDummy, "loadNode").andCallFake(function(node) {
+          loaded++;
+          loadedNodes.push(node);
+        });
+        //config.adapter = adapterDummy.loadNode;
         testee = eventLib.Expand(config);
         testee(node);
         
@@ -206,7 +209,19 @@
         expect(c2._outboundCounter).toEqual(1);
       });
       
-      
+      it('should expand a community node properly', function() {
+        var comm = {
+          _id: "*community_1"
+        };
+        nodes.push(comm);
+        
+        spyOn(adapterDummy, "expandCommunity");
+        
+        testee = eventLib.Expand(config);
+        testee(comm);
+        
+        expect(adapterDummy.expandCommunity).toHaveBeenCalledWith(comm, jasmine.any(Function));
+      });
       
       
       describe('setup process', function() {
@@ -248,14 +263,14 @@
             function() {
               eventLib.Expand(testConfig);
             }
-          ).toThrow("A callback to load a node has to be defined");
+          ).toThrow("An adapter to load data has to be defined");
         });
         
         it('should throw an error if reshape node callback is not given', function() {
           testConfig.edges = [];
           testConfig.nodes = [];
           testConfig.startCallback = function(){};
-          testConfig.loadNode = function(){};
+          testConfig.adapter = adapterDummy;
           expect(
             function() {
               eventLib.Expand(testConfig);

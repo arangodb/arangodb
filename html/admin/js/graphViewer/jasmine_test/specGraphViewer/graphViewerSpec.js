@@ -153,7 +153,7 @@ describe("Graph Viewer", function() {
           edges: [],
           nodes: [],
           startCallback: jasmine.any(Function),
-          loadNode: jasmine.any(Function),
+          adapter: jasmine.any(Object),
           reshapeNodes: jasmine.any(Function)
         },
         drag: {
@@ -172,7 +172,7 @@ describe("Graph Viewer", function() {
         edges: [],
         nodes: [],
         startCallback: jasmine.any(Function),
-        loadNode: jasmine.any(Function),
+        adapter: jasmine.any(Object),
         reshapeNodes: jasmine.any(Function)
       });
       expect(viewer.dispatcherConfig.drag).toEqual({
