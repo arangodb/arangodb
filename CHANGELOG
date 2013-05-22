@@ -1,6 +1,8 @@
 v1.3.1 (2013-XX-XX)
 -------------------
 
+* removed currently unused _ids collection
+
 * issue #530: ReferenceError: ArangoError is not a constructor
 
 * issue #535: Problem with AQL user functions javascript API
