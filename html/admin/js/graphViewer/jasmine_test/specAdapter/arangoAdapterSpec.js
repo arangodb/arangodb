@@ -466,6 +466,12 @@
           });
         });
         
+        it('should map loadNode to loadByID', function() {
+          spyOn(adapter, "loadNodeFromTreeById");
+          adapter.loadNode("a", "b");
+          expect(adapter.loadNodeFromTreeById).toHaveBeenCalledWith("a", "b");
+        });
+        
         it('should be able to load a tree node from ArangoDB'
           + ' by internal attribute and value', function() {
       
@@ -996,7 +1002,7 @@
                 });
               });
               
-            it('should expand a community if enough space is available', function() {
+              it('should expand a community if enough space is available', function() {
                 runs(function() {
                   adapter.setNodeLimit(10);
                   callbackCheck = false;
@@ -1019,7 +1025,7 @@
               });
               
               it('should expand a community and join another '
-                + 'one if not enough space is available', function() {
+              + 'one if not enough space is available', function() {
                 runs(function() {
                   fakeResult = [c1, c7];
                   callbackCheck = false;
@@ -1077,6 +1083,26 @@
                   existEdge(newCommId, c5);
                   existEdge(newCommId, c6);
                 });
+              });
+              
+              it('should connect edges to community-internal nodes', function() {
+                
+                runs(function() {
+                  insertEdge(edgesCollection, c3, c0);
+                  
+                  adapter.setNodeLimit(20);
+                  callbackCheck = false;
+                  adapter.loadNode(c3, checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  existEdge(c3, firstCommId);
+                });
+                
               });
               
             });
