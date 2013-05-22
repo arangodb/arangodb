@@ -29,8 +29,6 @@
         "../../../html/admin/js/modules/org/arangodb/arango-collection-common.js",
         "../../../html/admin/js/modules/org/arangodb/arango-collection.js",
         "../../../html/admin/js/modules/org/arangodb/arango-database.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-error-common.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-error.js",
         "../../../html/admin/js/modules/org/arangodb/arango-query-cursor.js",
         "../../../html/admin/js/modules/org/arangodb/arango-statement-common.js",
         "../../../html/admin/js/modules/org/arangodb/arango-statement.js",
