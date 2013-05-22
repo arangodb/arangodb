@@ -8,15 +8,25 @@ var dashboardView = Backbone.View.extend({
   charts: {},
   units: [],
   updateNOW: false,
+  collectionsStats: {
+    "corrupted": 0,
+    "new born collection" : 0,
+    "unloaded" : 0,
+    "loaded" : 0,
+    "in the process of being unloaded" : 0,
+    "deleted" : 0
+  },
   detailGraph: "userTime",
 
   initialize: function () {
     var self = this;
 
     this.initUnits();
+    self.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
+        self.countCollections();
         self.calculateSeries();
         self.renderCharts();
 
@@ -63,6 +73,16 @@ var dashboardView = Backbone.View.extend({
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
+
+  countCollections: function() {
+    var self = this;
+    $.each(window.arangoCollectionsStore.models, function(k,v) {
+      if ( self.collectionsStats[this.attributes.status] === undefined ) {
+        self.collectionsStats[this.attributes.status] = 0;
+      }
+      self.collectionsStats[this.attributes.status]++;
+    });
+  },
 
   render: function() {
     var self = this;
@@ -118,42 +138,41 @@ var dashboardView = Backbone.View.extend({
     }
     return this;
   },
-  //generate function for all custom categories
-  genCustomCategories: function () {
-    //this.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
-  },
-  //generate a custom category
-  genCustomCategory: function(description, group, name) {
-    this.options.description.models[0].attributes.groups.push({
-      "description":description,
-      "group":group,
-      "name":name
-    });
-  },
-  //generate a custom description
-  genCustomChartDescription: function (description, group, identifier, name, type, units) {
-    var figure = {
-      "description" : description,
-      "group" : group,
-      "identifier" : identifier,
-      "name" : name,
-      "type" : type,
-      "units" : units
-    };
-    this.options.description.models[0].attributes.figures.push(figure);
-    this.renderFigure(figure);
-  },
-  //calculate customized chart value functions here
-  updateCustomChartValues: function () {
-    //this.totalTime2();
-  },
 
-  //custom chart value calculation for totalTime2
-  totalTime2: function () {
-    var val1 = this.collection.models[0].attributes.system.userTime;
-    var val2 = this.collection.models[0].attributes.system.systemTime;
-    var totalTime2Value = val1+val2;
-    this.collection.models[0].attributes["custom"] = {"totalTime2":totalTime2Value};
+  addCustomCharts: function () {
+    var self = this;
+    var figure = {
+      "description" : "my custom chart",
+      "group" : "custom",
+      "identifier" : "custom1",
+      "name" : "Custom1",
+      "type" : "accumulated",
+      "units" : "seconds",
+      "exec" : function () {
+        var val1 = self.collection.models[0].attributes.system.userTime;
+        var val2 = self.collection.models[0].attributes.system.systemTime;
+        var totalTime2Value = val1+val2;
+        return totalTime2Value;
+      }
+    };
+
+    var addGroup = true;
+
+    $.each(this.options.description.models[0].attributes.groups, function(k, v) {
+      if (self.options.description.models[0].attributes.groups[k].group === figure.group) {
+        addGroup = false;
+      }
+    });
+
+    if (addGroup == true) {
+      self.options.description.models[0].attributes.groups.push({
+        "description" : "custom",
+        "group" : "custom",
+        "name" : "custom"
+      });
+    }
+
+    this.options.description.models[0].attributes.figures.push(figure);
   },
 
   checkInterval: function (a) {
@@ -262,9 +281,44 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  renderCollectionsChart: function () {
+    var self = this;
+    nv.addGraph(function() {
+      var chart = nv.models.pieChart()
+      .x(function(d) { return d.label })
+      .y(function(d) { return d.value })
+      .showLabels(true);
+
+      d3.select("#detailCollectionsChart svg")
+      .datum(self.convertCollections())
+      .transition().duration(1200)
+      .call(chart);
+
+      return chart;
+    });
+
+  },
+
+  convertCollections: function () {
+    var self = this;
+    var collValues = [];
+    $.each(self.collectionsStats, function(k,v) {
+      collValues.push({
+        "label" : k,
+        "value" : v,
+      });
+    });
+
+    return [{
+      key: "Collections Status",
+      values: collValues
+    }];
+  },
+
   renderCharts: function () {
     var self = this;
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
+    self.renderCollectionsChart();
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
@@ -313,9 +367,9 @@ var dashboardView = Backbone.View.extend({
       }
       if (self.detailGraph === identifier) {
         d3.select("#detailGraphChart svg")
-          .call(chart)
-          .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
-          .transition().duration(500);
+        .call(chart)
+        .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
+        .transition().duration(500);
       }
       else {
       }
@@ -324,15 +378,14 @@ var dashboardView = Backbone.View.extend({
       //disable label for small charts
 
       d3.select("#" + identifier + "Chart svg")
-        .call(chart)
-        .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
-        .transition().duration(500);
+      .call(chart)
+      .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
+      .transition().duration(500);
     });
   },
 
   calculateSeries: function (flush) {
     var self = this;
-    self.updateCustomChartValues();
 
     var timeStamp = Math.round(new Date() * 10);
 
@@ -353,7 +406,14 @@ var dashboardView = Backbone.View.extend({
         return;
       }
 
-      var responseValue = self.collection.models[0].attributes[figure.group][identifier];
+      var responseValue;
+
+      if (figure.exec) {
+        responseValue = figure.exec();
+      }
+      else {
+        responseValue = self.collection.models[0].attributes[figure.group][identifier];
+      }
 
       if (responseValue !== undefined && responseValue !== null) {
         if (responseValue.sum !== undefined) {
@@ -415,8 +475,8 @@ var dashboardView = Backbone.View.extend({
 
     $('#' + figure.group + 'Divider').before(
       '<li><a><label class="checkbox checkboxLabel">'+
-        '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
-        '<label class="css-label"/>' +
+      '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
+      '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
