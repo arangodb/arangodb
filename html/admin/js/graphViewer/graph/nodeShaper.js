@@ -92,7 +92,17 @@ function NodeShaper(parent, flags, idfunc) {
     addColor = noop,
     addShape = noop,
     addLabel = noop,
-    
+    addCommunityShape = function(g) {
+      g.append("polygon")
+      .attr("points", "0,-25 -16,20 23,-10 -23,-10 16,20");
+    },
+    addCommunityLabel = function(g) {
+      g.append("text") // Append a label for the node
+        .attr("text-anchor", "middle") // Define text-anchor
+        .text(function(d) {
+          return d._size;
+        });
+    },
     unbindEvents = function() {
       // Hard unbind the dragging
       self.parent
@@ -121,9 +131,18 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     addQue = function (g) {
-      addShape(g);
+      var community = g.filter(function(n) {
+          return communityRegEx.test(n._id);
+        }),
+        normal = g.filter(function(n) {
+          return !communityRegEx.test(n._id);
+        });
+      addCommunityShape(community);
+      addShape(normal);
+      
       if (visibleLabels) {
-        addLabel(g);
+        addCommunityLabel(community);
+        addLabel(normal);
       }
       addColor(g);
       addEvents(g);
@@ -182,17 +201,9 @@ function NodeShaper(parent, flags, idfunc) {
         case NodeShaper.shapes.CIRCLE:
           radius = shape.radius || 25;
           addShape = function (node) {
-            node.filter(function(n) {
-              return communityRegEx.test(n._id);
-            })
-            .append("polygon")
-            .attr("points", "0,-25 -16,20 23,-10 -23,-10 16,20");
-            
-            node.filter(function(n) {
-              return !communityRegEx.test(n._id);
-            })
-            .append("circle") // Display nodes as circles
-            .attr("r", radius); // Set radius
+            node
+              .append("circle") // Display nodes as circles
+              .attr("r", radius); // Set radius
           };
           break;
         case NodeShaper.shapes.RECT:

@@ -1018,6 +1018,7 @@
         var nodes = helper.createSimpleNodes([0, 1, 2]),
           commNode = {
             _id: "*community_42",
+            _size: 4,
             _inboundCounter: 0,
             _outboundCounter: 0,
             position: {
@@ -1034,6 +1035,26 @@
         star = $("svg #\\*community_42 polygon");
         expect(star.length).toEqual(1);
         expect(star.attr("points")).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
+      });
+      
+      it('should print the size of the capsulated community', function() {
+        var nodes = helper.createSimpleNodes([0, 1, 2]),
+          commNode = {
+            _id: "*community_42",
+            _size: 4,
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          text;
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        text = $("svg #\\*community_42 text")[0].textContent;
+        expect(text).toEqual("4");
       });
       
     });
