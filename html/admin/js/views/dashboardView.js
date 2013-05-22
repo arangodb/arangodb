@@ -7,6 +7,7 @@ var dashboardView = Backbone.View.extend({
   seriesData: {},
   charts: {},
   units: [],
+  updateNOW: false,
   detailGraph: "userTime",
 
   initialize: function () {
@@ -21,6 +22,12 @@ var dashboardView = Backbone.View.extend({
 
         window.setInterval(function() {
           self.updateCounter++;
+
+          if (self.updateNOW === true) {
+            self.calculateSeries();
+            self.renderCharts();
+            self.updateNOW = false;
+          }
 
           if (self.updateCounter < self.updateFrequency) {
             return false;
@@ -74,7 +81,6 @@ var dashboardView = Backbone.View.extend({
 
     var counter = 1;
     $.each(this.options.description.models[0].attributes.groups, function () {
-      console.log(this);
       $('.thumbnails').append(
         '<ul class="statGroups" id="' + this.group + '">' +
         '<i class="group-close icon-minus icon-white"></i>' +
@@ -151,6 +157,7 @@ var dashboardView = Backbone.View.extend({
   },
 
   checkInterval: function (a) {
+    var self = this;
     this.updateFrequency = a.target.value;
     self.calculateSeries();
     self.renderCharts();
@@ -243,13 +250,14 @@ var dashboardView = Backbone.View.extend({
     $.each(this.options.description.models[0].attributes.figures, function () {
       if(this.identifier === self.detailGraph) {
         $('#detailGraphHeader').text(this.name);
-        self.calculateSeries();
-        self.renderCharts();
         $("html, body").animate({ scrollTop: 0 }, "slow");
         $('#detailGraphChart').show();
         $('#detailGraph').height(300);
         $('#dbHideSwitch').addClass('icon-minus');
         $('#dbHideSwitch').removeClass('icon-plus');
+        self.calculateSeries();
+        self.renderCharts();
+        self.updateNOW = true;
       }
     });
   },
