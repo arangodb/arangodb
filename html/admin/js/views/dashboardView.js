@@ -1,6 +1,6 @@
 var dashboardView = Backbone.View.extend({
   el: '#content',
-  updateInterval: 1000, // 1 second, constant
+  updateInterval: 500, // 0.5 second, constant
   updateFrequency: 5, // the actual update rate (5 s)
   updateCounter: 0,
   arraySize: 20, // how many values will we keep per figure?
@@ -69,7 +69,7 @@ var dashboardView = Backbone.View.extend({
     $(this.el).html(this.template.text);
 
     //Client calculated charts
-    self.genCustomCategories();
+    /*self.genCustomCategories();
     self.genCustomChartDescription(
       "userTime + systemTime",
       "custom",
@@ -77,7 +77,7 @@ var dashboardView = Backbone.View.extend({
       "Total Time (User+System)",
       "accumulated",
       "seconds"
-    );
+    );*/
 
     var counter = 1;
     $.each(this.options.description.models[0].attributes.groups, function () {
@@ -120,7 +120,7 @@ var dashboardView = Backbone.View.extend({
   },
   //generate function for all custom categories
   genCustomCategories: function () {
-    this.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
+    //this.genCustomCategory("Client calculated charts", "custom", "Customized Charts");
   },
   //generate a custom category
   genCustomCategory: function(description, group, name) {
@@ -145,7 +145,7 @@ var dashboardView = Backbone.View.extend({
   },
   //calculate customized chart value functions here
   updateCustomChartValues: function () {
-    this.totalTime2();
+    //this.totalTime2();
   },
 
   //custom chart value calculation for totalTime2
@@ -255,9 +255,9 @@ var dashboardView = Backbone.View.extend({
         $('#detailGraph').height(300);
         $('#dbHideSwitch').addClass('icon-minus');
         $('#dbHideSwitch').removeClass('icon-plus');
+        self.updateNOW = true;
         self.calculateSeries();
         self.renderCharts();
-        self.updateNOW = true;
       }
     });
   },
