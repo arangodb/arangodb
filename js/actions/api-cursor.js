@@ -235,7 +235,7 @@ function POST_api_cursor(req, res) {
    
   // error occurred
   if (cursor instanceof Error) {
-    actions.resultException(req, res, cursor);
+    actions.resultException(req, res, cursor, undefined, false);
     return;
   }
 
@@ -404,7 +404,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
