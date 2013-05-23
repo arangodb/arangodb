@@ -1198,7 +1198,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
   
   res.body = JSON.stringify(result);
 
-  if (headers !== undefined) {
+  if (headers !== undefined && headers !== null) {
     res.headers = headers;    
   }
 }
@@ -1806,36 +1806,42 @@ function indexNotFound (req, res, collection, index, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for an exception
 ///
-/// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers})}
+/// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers}, @FA{verbose})}
 ///
-/// The function generates an error response.
+/// The function generates an error response. If @FA{verbose} is set to 
+/// @LIT{true} or not specified (the default), then the error stack trace will 
+/// be included in the error message if available.
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultException (req, res, err, headers) {
+function resultException (req, res, err, headers, verbose) {
   'use strict';
 
   var code;
   var msg;
   var num;
 
+  if (verbose || verbose === undefined) {
+    msg = String(err.stack || err);
+  }
+  else {
+    msg = String(err);
+  }
+
   if (err instanceof internal.ArangoError) {
     num = err.errorNum;
-    msg = err.errorMessage;
     code = exports.HTTP_BAD;
 
     if (num === 0) {
       num = arangodb.ERROR_INTERNAL;
     }
 
-    if (msg === "") {
-      msg = String(err.stack || err);
+    if (err.errorMessage !== "" && ! verbose) {
+      msg = err.errorMessage; 
     }
-    else {
-      msg += ": " + String(err.stack || err);
-    }
-    
+
     switch (num) {
       case arangodb.ERROR_INTERNAL: 
+      case arangodb.ERROR_OUT_OF_MEMORY: 
         code = exports.HTTP_SERVER_ERROR; 
         break;
 
@@ -1844,23 +1850,17 @@ function resultException (req, res, err, headers) {
         code = exports.HTTP_CONFLICT; 
         break;
     }
-
-    resultError(req, res, code, num, msg, headers);
   }
   else if (err instanceof TypeError) {
     num = arangodb.ERROR_TYPE_ERROR;
     code = exports.HTTP_BAD;
-    msg = String(err.stack || err);
-
-    resultError(req, res, code, num, msg, headers);
   }
-
   else {
-    resultError(req, res,
-                exports.HTTP_SERVER_ERROR, arangodb.ERROR_HTTP_SERVER_ERROR,
-                String(err.stack || err),
-                headers);
+    num = arangodb.ERROR_HTTP_SERVER_ERROR;
+    code = exports.HTTP_SERVER_ERROR;
   }
+  
+  resultError(req, res, code, num, msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
