@@ -149,7 +149,7 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 7));
           
           var com = reducer.getCommunity(6);
-          expect(com).toContainNodes([0, 1, 2]);
+          expect(com).toContainNodes([0, 1, 2, 3]);
         });
         
       });

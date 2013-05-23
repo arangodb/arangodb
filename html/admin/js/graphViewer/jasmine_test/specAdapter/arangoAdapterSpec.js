@@ -58,6 +58,17 @@
       checkCallbackFunction = function() {
         callbackCheck = true;
       },
+      
+      getCommunityNodes = function() {
+        return _.filter(nodes, function(n) {
+          return n._id.match(/^\*community/);
+        });
+      },
+      
+      getCommunityNodesIds = function() {
+        return _.pluck(getCommunityNodes(), "_id");
+      },
+      
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
           return e._id === id;
@@ -295,26 +306,40 @@
               height: 40
             }
           );
-          traversalQuery = function(id, nods, edgs) {
+          traversalQuery = function(id, nods, edgs, undirected) {
+            var dir;
+            if (undirected === true) {
+              dir = "any";
+            } else {
+              dir = "outbound";
+            }
             return JSON.stringify({
-              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, \"outbound\","
+              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, @dir,"
                 + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
               bindVars: {
                 id: id,
                 "@nodes": nods,
+                "@dir": dir,
                 "@edges": edgs
               }
             });
           };
-          filterQuery = function(v, nods, edgs) {
+          filterQuery = function(v, nods, edgs, undirected) {
+            var dir;
+            if (undirected === true) {
+              dir = "any";
+            } else {
+              dir = "outbound";
+            }
             return JSON.stringify({
               query: "FOR n IN @@nodes FILTER n.id == @value"
-                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, \"outbound\","
+                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, @dir,"
                 + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
               bindVars: {
                 value: v,
                 "@nodes": nods,
-                "@edges": edgs
+                "@dir": dir,
+                "@edges": edgs 
               }
             });
           };
@@ -453,6 +478,12 @@
               requests.cursor(traversalQuery(c0, nodesCollection, edgesCollection))
             );
           });
+        });
+        
+        it('should map loadNode to loadByID', function() {
+          spyOn(adapter, "loadNodeFromTreeById");
+          adapter.loadNode("a", "b");
+          expect(adapter.loadNodeFromTreeById).toHaveBeenCalledWith("a", "b");
         });
         
         it('should be able to load a tree node from ArangoDB'
@@ -638,6 +669,40 @@
       
         });
    
+        it('should be able to switch to different collections and change to directed', function() {
+      
+          runs(function() {
+            
+            spyOn($, "ajax");
+            
+            adapter.changeTo(altNodesCollection, altEdgesCollection, false);
+            
+            adapter.loadNode("42");
+            
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(traversalQuery("42", altNodesCollection, altEdgesCollection, false))
+            );
+            
+          });      
+        });
+        
+        it('should be able to switch to different collections'
+        + ' and change to undirected', function() {
+      
+          runs(function() {
+            
+            spyOn($, "ajax");
+            
+            adapter.changeTo(altNodesCollection, altEdgesCollection, true);
+            
+            adapter.loadNode("42");
+            
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(traversalQuery("42", altNodesCollection, altEdgesCollection, true))
+            );
+            
+          });      
+        });
         
         describe('that has already loaded one graph', function() {
           var c0, c1, c2, c3, c4, c5, c6, c7,
@@ -877,46 +942,58 @@
         
             runs(function() {
               adapter.setNodeLimit(6);
-              spyOn(this, "fakeReducerRequest");
+              spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                return [c0];
+              });
               adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
               expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, nodeWithID(c1));
             });
           });
           
-          it('should not trigger the reducer if the limit is set large enough', function() {
-            spyOn(this, "fakeReducerRequest");
-            adapter.setNodeLimit(10);
-            expect(this.fakeReducerRequest).not.toHaveBeenCalled();
-          });
-          
-          
-          it('should trigger the reducer if the limit is set too small', function() {
-            spyOn(this, "fakeReducerRequest");
-            adapter.setNodeLimit(2);
-            expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
-          });
-          
 
           describe('checking community nodes', function() {
             
-            it('should create a community node if limit is set too small', function() {
-              var called = false,
-                callback = function() {
-                  called = true;
-                };
+            it('should not trigger the reducer if the limit is set large enough', function() {
               spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                return [c0, c1, c2];
+                return [c0];
               });
-              adapter.setNodeLimit(2, callback);
+              adapter.setNodeLimit(10);
+              expect(this.fakeReducerRequest).not.toHaveBeenCalled();
+            });
+          
+            it('should trigger the reducer if the limit is set too small', function() {
+              spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                return [c0];
+              });
+              adapter.setNodeLimit(2);
+              expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
+            });
             
-              notExistNodes([c0, c1, c2]);
-              existNode("community_1");
-              existNodes([c3]);
-              expect(nodes.length).toEqual(2);
-              existEdge("community_1", c3);
-              expect(edges.length).toEqual(1);
-            
-              expect(called).toBeTruthy();
+            it('should create a community node if limit is set too small', function() {
+              var called;
+              
+              runs(function() {
+                callbackCheck = false;
+                spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                  return [c0, c1, c2];
+                });
+                adapter.setNodeLimit(2, checkCallbackFunction);
+              });
+              
+              waitsFor(function() {
+                return callbackCheck;
+              });
+              
+              runs(function() {
+                var commId = getCommunityNodesIds()[0];
+                notExistNodes([c0, c1, c2]);
+                existNode(commId);
+                existNodes([c3, c4]);
+                expect(nodes.length).toEqual(3);
+                existEdge(commId, c3);
+                existEdge(commId, c4);
+                expect(edges.length).toEqual(2);
+              });              
             });
             
             it('should create a community node if too many nodes are added', function() {
@@ -933,18 +1010,310 @@
               });
       
               runs(function() {
+                var commId = getCommunityNodesIds()[0];
                 notExistNodes([c0, c1, c2, c3]);
-                existNode("community_1");
+                existNode(commId);
                 existNodes([c4, c5, c6, c7]);
                 expect(nodes.length).toEqual(5);
               
-                existEdge("community_1", c4);
-                existEdge("community_1", c5);
-                existEdge("community_1", c6);
-                existEdge("community_1", c7);
+                existEdge(commId, c4);
+                existEdge(commId, c5);
+                existEdge(commId, c6);
+                existEdge(commId, c7);
                 expect(edges.length).toEqual(4);
               });
             
+            });
+            
+            describe('expanding after a while', function() {
+              
+              it('should connect edges of internal nodes accordingly', function() {
+                
+                var commNode, called, counterCallback,
+                v0, v1, v2, v3, v4,
+                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                
+                runs(function() {
+                  var v = "vertices",
+                    e = "edges";
+                  nodes.length = 0;
+                  edges.length = 0;
+                  v0 = insertNode(v, 0);
+                  v1 = insertNode(v, 1);
+                  v2 = insertNode(v, 2);
+                  v3 = insertNode(v, 3);
+                  v4 = insertNode(v, 4);
+                  e0_1 = insertEdge(e, v0, v1);
+                  e0_2 = insertEdge(e, v0, v2);
+                  e1_3 = insertEdge(e, v1, v3);
+                  e1_4 = insertEdge(e, v1, v4);
+                  e2_3 = insertEdge(e, v2, v3);
+                  e2_4 = insertEdge(e, v2, v4);
+                  called = 0;
+                  counterCallback = function() {
+                    called++;
+                  };
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return [v1, v3, v4];
+                  });
+                  adapter.setNodeLimit(3);
+                  
+                  adapter.changeTo(v, e);
+                  adapter.loadNode(v0, counterCallback);
+                  adapter.loadNode(v1, counterCallback);
+                  
+                });
+                
+                waitsFor(function() {
+                  return called === 2;
+                });
+                
+                runs(function() {
+                  adapter.loadNode(v2, counterCallback);
+                  commNode = getCommunityNodes()[0];
+                });
+                
+                waitsFor(function() {
+                  return called === 3;
+                });
+                
+                runs(function() {
+                  var commId = commNode._id;
+                  // Check start condition
+                  existNodes([commId, v0, v2]);
+                  expect(nodes.length).toEqual(3);
+                  
+                  existEdge(v0, v2);
+                  existEdge(v0, commId);
+                  existEdge(v2, commId);
+                  expect(edges.length).toEqual(4);
+                  
+                  adapter.setNodeLimit(20);
+                  adapter.expandCommunity(commNode, counterCallback);
+                });
+                
+                waitsFor(function() {
+                  return called === 4;
+                });
+                
+                runs(function() {
+                  existNodes([v0, v1, v2, v3, v4]);
+                  expect(nodes.length).toEqual(5);
+                  
+                  existEdge(v0, v1);
+                  existEdge(v0, v2);
+                  existEdge(v1, v3);
+                  existEdge(v1, v4);
+                  existEdge(v2, v3);
+                  existEdge(v2, v4);
+                  expect(edges.length).toEqual(6);
+                  
+                });
+              });
+              
+              it('set inbound and outboundcounter correctly', function() {
+                
+                var commNode, called, counterCallback,
+                v0, v1, v2, v3, v4,
+                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                
+                runs(function() {
+                  var v = "vertices",
+                    e = "edges";
+                  nodes.length = 0;
+                  edges.length = 0;
+                  v0 = insertNode(v, 0);
+                  v1 = insertNode(v, 1);
+                  v2 = insertNode(v, 2);
+                  v3 = insertNode(v, 3);
+                  v4 = insertNode(v, 4);
+                  e0_1 = insertEdge(e, v0, v1);
+                  e0_2 = insertEdge(e, v0, v2);
+                  e1_3 = insertEdge(e, v1, v3);
+                  e1_4 = insertEdge(e, v1, v4);
+                  e2_3 = insertEdge(e, v2, v3);
+                  e2_4 = insertEdge(e, v2, v4);
+                  called = 0;
+                  counterCallback = function() {
+                    called++;
+                  };
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return [v1, v3, v4];
+                  });
+                  adapter.setNodeLimit(3);
+                  
+                  adapter.changeTo(v, e);
+                  adapter.loadNode(v0, counterCallback);
+                  adapter.loadNode(v1, counterCallback);
+                  
+                });
+                
+                waitsFor(function() {
+                  return called === 2;
+                });
+                
+                runs(function() {
+                  adapter.loadNode(v2, counterCallback);
+                  commNode = getCommunityNodes()[0];
+                });
+                
+                waitsFor(function() {
+                  return called === 3;
+                });
+                
+                runs(function() {
+                  adapter.setNodeLimit(20);
+                  adapter.expandCommunity(commNode, counterCallback);
+                });
+                
+                waitsFor(function() {
+                  return called === 4;
+                });
+                
+                runs(function() {
+                  var checkNodeWithInAndOut = function(id, inbound, outbound) {
+                    var n = nodeWithID(id);
+                    expect(n._outboundCounter).toEqual(outbound);
+                    expect(n._inboundCounter).toEqual(inbound);
+                  };
+                  checkNodeWithInAndOut(v0, 0, 2);
+                  checkNodeWithInAndOut(v1, 1, 2);
+                  checkNodeWithInAndOut(v2, 1, 2);
+                  checkNodeWithInAndOut(v3, 2, 0);
+                  checkNodeWithInAndOut(v4, 2, 0);            
+                });
+              });
+              
+            });
+            
+            describe('that displays a community node already', function() {
+              
+              var firstCommId,
+              fakeResult;
+              
+              beforeEach(function() {
+                runs(function() {
+                  callbackCheck = false;
+                  adapter.setNodeLimit(7);
+                  fakeResult = [c0, c2];
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return fakeResult;
+                  });
+                  adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
+                });
+            
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+      
+                runs(function() {
+                  firstCommId = getCommunityNodesIds()[0];
+                });
+              });
+              
+              it('should expand a community if enough space is available', function() {
+                runs(function() {
+                  adapter.setNodeLimit(10);
+                  callbackCheck = false;
+                  adapter.expandCommunity(nodeWithID(firstCommId), checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  expect(getCommunityNodes().length).toEqual(0);
+                  existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
+                  existEdge(c0, c1);
+                  existEdge(c0, c2);
+                  existEdge(c0, c3);
+                  existEdge(c0, c4);
+                });
+                
+              });
+              
+              it('should expand a community and join another '
+              + 'one if not enough space is available', function() {
+                runs(function() {
+                  fakeResult = [c1, c7];
+                  callbackCheck = false;
+                  adapter.expandCommunity(nodeWithID(firstCommId), checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  var newCommId = getCommunityNodesIds()[0];
+                  expect(getCommunityNodes().length).toEqual(1);
+                  existNodes([c0, c2, c3, c4, c5, c6, newCommId]);
+                  notExistNodes([c1, c7]);
+                  
+                  existEdge(c0, c2);
+                  existEdge(c0, c3);
+                  existEdge(c0, c4);
+                  
+                  existEdge(c0, newCommId);
+                  existEdge(newCommId, c5);
+                  existEdge(newCommId, c6);
+                });
+              });
+              
+              it('should join another community if space is further reduced', function() {
+                runs(function() {
+                  fakeResult = [c1, c7];
+                  callbackCheck = false;
+                  adapter.setNodeLimit(6, checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  expect(getCommunityNodes().length).toEqual(2);
+                  var ids = getCommunityNodesIds(),
+                    newCommId;
+                  
+                  if (firstCommId === ids[0]) {
+                    newCommId = ids[1];
+                  } else {
+                    newCommId = ids[0];
+                  }
+                  
+                  existNodes([c3, c4, c5, c6, firstCommId, newCommId]);
+                  notExistNodes([c0, c1, c2, c7]);
+                  
+                  existEdge(firstCommId, c3);
+                  existEdge(firstCommId, c4);
+                  existEdge(firstCommId, newCommId);
+                  existEdge(newCommId, c5);
+                  existEdge(newCommId, c6);
+                });
+              });
+              
+              it('should connect edges to internal nodes', function() {
+                
+                runs(function() {
+                  insertEdge(edgesCollection, c3, c0);
+                  
+                  adapter.setNodeLimit(20);
+                  callbackCheck = false;
+                  adapter.loadNode(c3, checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  existEdge(c3, firstCommId);
+                });
+                
+              });
+              
             });
             
           });

@@ -148,7 +148,7 @@ function NodeReducer(nodes, edges) {
      _.each(nodes, function (n) {
        var id = n._id,
          c1, c2;
-       if (id == sID || id == lID) {
+       if (id === sID || id === lID) {
          return null;
        }
        c1 = getDQValue(dQ, id, sID);
@@ -277,6 +277,7 @@ function NodeReducer(nodes, edges) {
       res = [],
       dist = {},
       dist2 = {},
+      detectSteps = true,
       sortByDistance = function (a, b) {
         var d1 = dist[_.min(a,minDist(dist))],
           d2 = dist[_.min(b,minDist(dist))],
@@ -290,7 +291,9 @@ function NodeReducer(nodes, edges) {
       throw "Load some nodes first.";
     }
     populateValues(dQ, a, heap);
-    while (communityDetectionStep(dQ, a, heap, coms)) {}
+    while (detectSteps) {
+      detectSteps = communityDetectionStep(dQ, a, heap, coms);
+    }
     res = _.pluck(_.values(coms), "com");
     if (focus !== undefined) {
       dist = floatDist(focus._id);

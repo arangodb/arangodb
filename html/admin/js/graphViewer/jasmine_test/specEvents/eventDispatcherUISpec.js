@@ -51,6 +51,8 @@
       spyOn(adapter, "createEdge");
       spyOn(adapter, "patchEdge");
       spyOn(adapter, "deleteEdge");
+      spyOn(adapter, "loadNode");
+      spyOn(adapter, "expandCommunity");
     };
 
 
@@ -87,15 +89,13 @@
       }];
       adapter = mocks.adapter;
       layouter = mocks.layouter;
-      this.loadNode = function() {};
-      spyOn(this, "loadNode");
       addSpies();
 
       var expandConfig = {
           edges: edges,
           nodes: nodes,
           startCallback: function() {},
-          loadNode: this.loadNode,
+          adapter: adapter,
           reshapeNodes: function() {}
         },
       
@@ -307,7 +307,7 @@
 
         helper.simulateMouseEvent("click", "1");
         
-        expect(this.loadNode).toHaveBeenCalledWith(nodes[0]._id, jasmine.any(Function));
+        expect(adapter.loadNode).toHaveBeenCalledWith(nodes[0]._id, jasmine.any(Function));
         
       });      
     });

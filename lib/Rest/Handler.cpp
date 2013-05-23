@@ -78,7 +78,7 @@ Job::JobType Handler::type () {
 /// @brief returns the queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& Handler::queue () {
+string const& Handler::queue () const {
   static string standard = "STANDARD";
   return standard;
 }

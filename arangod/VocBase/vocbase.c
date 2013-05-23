@@ -216,96 +216,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON array with collection meta data 
-///
-/// this function is called when a collection is created or dropped
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* CreateJsonCollectionInfo (TRI_vocbase_col_t const* collection,
-                                             const char* situation) {
-  TRI_json_t* json;
-  TRI_json_t* details;
-  char* cidString;
-
-  details = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_TypeNameCollection(collection->_type)));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, collection->_name));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "action", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, situation));
-
-  cidString = TRI_StringUInt64((uint64_t) collection->_cid);
-
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "collection"));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "details", details);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, cidString);
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert the id of a collection into the "_ids" collection 
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertIdCallback (TRI_transaction_collection_t* trxCollection,
-                             void* data) {
-  TRI_shaped_json_t* shaped;
-  TRI_primary_collection_t* primary;
-  TRI_json_t* json;
-  TRI_doc_mptr_t mptr;
-  int res;
-
-  primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
-  json = data;
-
-  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-
-  if (shaped == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  res = primary->insert(trxCollection, NULL, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, NULL, false, false);
-  TRI_FreeShapedJson(primary->_shaper, shaped);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save collection info on create or drop
-///
-/// the info will be stored permanently in the "_ids" collection, so we can
-/// later reconstruct ids of collections that are/were dropped
-////////////////////////////////////////////////////////////////////////////////
-
-static bool WriteCollectionInfo (TRI_vocbase_t* vocbase,
-                                 TRI_vocbase_col_t const* collection,
-                                 const char* situation) {
-  TRI_json_t* json;
-  int res;
-
-  if (collection == NULL) {
-    return false;
-  }
-
-  json = CreateJsonCollectionInfo(collection, situation);
-
-  if (json == NULL) {
-    return false;
-  }
-
-  res = TRI_ExecuteSingleOperationTransaction(vocbase,  
-                                              "_ids", 
-                                              TRI_TRANSACTION_WRITE, 
-                                              InsertIdCallback, 
-                                              json);
-  
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  return (res == TRI_ERROR_NO_ERROR);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current tick value, without using a lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -456,8 +366,6 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
-  WriteCollectionInfo(vocbase, collection, "drop");
-
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
