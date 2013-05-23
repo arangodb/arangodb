@@ -306,26 +306,40 @@
               height: 40
             }
           );
-          traversalQuery = function(id, nods, edgs) {
+          traversalQuery = function(id, nods, edgs, undirected) {
+            var dir;
+            if (undirected === true) {
+              dir = "any";
+            } else {
+              dir = "outbound";
+            }
             return JSON.stringify({
-              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, \"outbound\","
+              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, @dir,"
                 + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
               bindVars: {
                 id: id,
                 "@nodes": nods,
+                "@dir": dir,
                 "@edges": edgs
               }
             });
           };
-          filterQuery = function(v, nods, edgs) {
+          filterQuery = function(v, nods, edgs, undirected) {
+            var dir;
+            if (undirected === true) {
+              dir = "any";
+            } else {
+              dir = "outbound";
+            }
             return JSON.stringify({
               query: "FOR n IN @@nodes FILTER n.id == @value"
-                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, \"outbound\","
+                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, @dir,"
                 + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
               bindVars: {
                 value: v,
                 "@nodes": nods,
-                "@edges": edgs
+                "@dir": dir,
+                "@edges": edgs 
               }
             });
           };
@@ -655,6 +669,40 @@
       
         });
    
+        it('should be able to switch to different collections and change to directed', function() {
+      
+          runs(function() {
+            
+            spyOn($, "ajax");
+            
+            adapter.changeTo(altNodesCollection, altEdgesCollection, false);
+            
+            adapter.loadNode("42");
+            
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(traversalQuery("42", altNodesCollection, altEdgesCollection, false))
+            );
+            
+          });      
+        });
+        
+        it('should be able to switch to different collections'
+        + ' and change to undirected', function() {
+      
+          runs(function() {
+            
+            spyOn($, "ajax");
+            
+            adapter.changeTo(altNodesCollection, altEdgesCollection, true);
+            
+            adapter.loadNode("42");
+            
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(traversalQuery("42", altNodesCollection, altEdgesCollection, true))
+            );
+            
+          });      
+        });
         
         describe('that has already loaded one graph', function() {
           var c0, c1, c2, c3, c4, c5, c6, c7,
