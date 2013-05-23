@@ -61,6 +61,7 @@ function ArangoAdapter(nodes, edges, config) {
     arangodb,
     width,
     height,
+    direction,
     
     setWidth = function(w) {
       initialX.range = w / 2;
@@ -93,6 +94,15 @@ function ArangoAdapter(nodes, edges, config) {
       }
       if (config.height !== undefined) {
         setHeight(config.height);
+      }
+      if (config.undirected !== undefined) {
+        if (config.undirected === true) {
+          direction = "any";
+        } else {
+          direction = "outbound";
+        }
+      } else {
+        direction = "outbound";
       }
     },
   
@@ -302,6 +312,9 @@ function ArangoAdapter(nodes, edges, config) {
       if (query !== queries.connectedEdges) {
         bindVars["@nodes"] = nodeCollection;
       }
+      if (query !== queries.childrenCentrality) {
+        bindVars["@dir"] = direction;
+      }
       bindVars["@edges"] = edgeCollection;
       var data = {
         query: query,
@@ -477,7 +490,7 @@ function ArangoAdapter(nodes, edges, config) {
     + "@@nodes, "
     + "@@edges, "
     + "@id, "
-    + "\"outbound\", {"
+    + "@dir, {"
     + "strategy: \"depthfirst\","
     + "maxDepth: 1,"
     + "paths: true"
@@ -490,7 +503,7 @@ function ArangoAdapter(nodes, edges, config) {
       + "@@nodes, "
       + "@@edges, "
       + "n._id, "
-      + "\"outbound\", {"
+      + "@dir, {"
       + "strategy: \"depthfirst\","
       + "maxDepth: 1,"
       + "paths: true"
@@ -509,7 +522,6 @@ function ArangoAdapter(nodes, edges, config) {
    + " RETURN e";
   
   reducer = new NodeReducer(nodes, edges);
-  
   
   self.oldLoadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.nodeById, {
@@ -669,9 +681,16 @@ function ArangoAdapter(nodes, edges, config) {
     });
   };
   
-  self.changeTo = function (nodesCol, edgesCol ) {
+  self.changeTo = function (nodesCol, edgesCol, dir) {
     nodeCollection = nodesCol;
     edgeCollection = edgesCol;
+    if (dir !== undefined) {
+      if (dir === true) {
+        direction = "any";
+      } else {
+        direction = "outbound";
+      }
+    }
     api.node = api.base + "document?collection=" + nodeCollection; 
     api.edge = api.base + "edge?collection=" + edgeCollection;
   };
