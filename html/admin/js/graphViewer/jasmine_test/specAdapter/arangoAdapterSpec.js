@@ -977,6 +977,88 @@
             
             });
             
+            describe('expanding after a while', function() {
+              it('should connect edges of internal nodes accordingly', function() {
+                
+                var commNode, called, counterCallback,
+                v0, v1, v2, v3, v4;
+                
+                runs(function() {
+                  var v = "vertices",
+                    e = "edges",
+                    e0_1 = insertEdge(e, v0, v1),
+                    e0_2 = insertEdge(e, v0, v2),
+                    e1_3 = insertEdge(e, v1, v3),
+                    e1_4 = insertEdge(e, v1, v4),
+                    e2_3 = insertEdge(e, v2, v3),
+                    e2_4 = insertEdge(e, v2, v4);
+                  v0 = insertNode(v, 0);
+                  v1 = insertNode(v, 1);
+                  v2 = insertNode(v, 2);
+                  v3 = insertNode(v, 3);
+                  v4 = insertNode(v, 4);
+                  called = 0;
+                  counterCallback = function() {
+                    called++;
+                  };
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return [c0, c1, c2, c3];
+                  });
+                  adapter.setNodeLimit(3);
+                  
+                  adapter.changeTo(v, e);
+                  adapter.loadNode(v0, counterCallback);
+                  adapter.loadNode(v1, counterCallback);
+                  
+                });
+                
+                waitsFor(function() {
+                  return called === 2;
+                });
+                
+                runs(function() {
+                  adapter.loadNode(v2, counterCallback);
+                  commNode = getCommunityNodesIds()[0];
+                });
+                
+                waitsFor(function() {
+                  return called === 3;
+                });
+                
+                runs(function() {
+                  // Check start condition
+                  existNodes([commNode, v0, v2]);
+                  expect(nodes.length).toEqual(3);
+                  
+                  existEdge(v0, v2);
+                  existEdge(v0, commNode);
+                  existEdge(v2, commNode);
+                  expect(edges.length).toEqual(3);
+                  
+                  adapter.setNodeLimit(20);
+                  adapter.expandCommunity(commNode, counterCallback);
+                });
+                
+                waitsFor(function() {
+                  return called === 4;
+                });
+                
+                runs(function() {
+                  existNodes([v0, v1, v2, v3, v4]);
+                  expect(nodes.length).toEqual(5);
+                  
+                  existEdge(v0, v1);
+                  existEdge(v0, v2);
+                  existEdge(v1, v3);
+                  existEdge(v1, v4);
+                  existEdge(v2, v3);
+                  existEdge(v2, v4);
+                  expect(edges.length).toEqual(6);
+                  
+                });
+              });
+            });
+            
             describe('that displays a community node already', function() {
               
               var firstCommId,
@@ -1085,7 +1167,7 @@
                 });
               });
               
-              it('should connect edges to community-internal nodes', function() {
+              it('should connect edges to internal nodes', function() {
                 
                 runs(function() {
                   insertEdge(edgesCollection, c3, c0);
