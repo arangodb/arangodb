@@ -319,7 +319,7 @@
               bindVars: {
                 id: id,
                 "@nodes": nods,
-                "@dir": dir,
+                dir: dir,
                 "@edges": edgs
               }
             });
@@ -338,7 +338,7 @@
               bindVars: {
                 value: v,
                 "@nodes": nods,
-                "@dir": dir,
+                dir: dir,
                 "@edges": edgs 
               }
             });

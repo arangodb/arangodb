@@ -313,7 +313,7 @@ function ArangoAdapter(nodes, edges, config) {
         bindVars["@nodes"] = nodeCollection;
       }
       if (query !== queries.childrenCentrality) {
-        bindVars["@dir"] = direction;
+        bindVars.dir = direction;
       }
       bindVars["@edges"] = edgeCollection;
       var data = {
