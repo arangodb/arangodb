@@ -51,10 +51,14 @@ function ArangoAdapterControls(list, adapter) {
         },{
           type: "text",
           id: "edgecollection"
+        },{
+          type: "checkbox",
+          id: "undirected"
         }], function () {
           var nodes = $("#" + idprefix + "nodecollection").attr("value"),
-            edges = $("#" + idprefix + "edgecollection").attr("value");
-          adapter.changeTo(nodes, edges);
+            edges = $("#" + idprefix + "edgecollection").attr("value"),
+            undirected = !!$("#" + idprefix + "undirected").attr("checked");
+          adapter.changeTo(nodes, edges, undirected);
         }
       );
     });
