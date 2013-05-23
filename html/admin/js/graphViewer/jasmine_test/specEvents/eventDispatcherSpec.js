@@ -62,6 +62,8 @@
         spyOn(adapter, "createEdge");
         spyOn(adapter, "patchEdge");
         spyOn(adapter, "deleteEdge");
+        spyOn(adapter, "loadNode");
+        spyOn(adapter, "expandCommunity");
       };
     
     beforeEach(function() {
@@ -74,9 +76,6 @@
       nodes = [];
       edges = [];
       
-      this.loadNode = function() {};
-      spyOn(this, "loadNode");
-      
       defaultPosition = {
         x: 1,
         y: 1,
@@ -87,7 +86,7 @@
         edges: edges,
         nodes: nodes,
         startCallback: function() {},
-        loadNode: this.loadNode,
+        adapter: adapter,
         reshapeNodes: function() {}
       };
       
@@ -437,7 +436,7 @@
         });
         
         waitsFor(function() {
-          return this.loadNode.wasCalled;
+          return adapter.loadNode.wasCalled;
         }, 1000, "The loadNode function should have been called.");
         
         runs(function() {

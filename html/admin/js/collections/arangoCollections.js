@@ -17,6 +17,9 @@ window.arangoCollections = Backbone.Collection.extend({
       },
 
       translateStatus : function (status) {
+        if (status == 0) {
+          return 'corrupted';
+        }
         if (status == 1) {
           return 'new born collection';
         }

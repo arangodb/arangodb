@@ -85,7 +85,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   },
   
   nodeLimitCallBack = function(limit) {
-    self.adapter.setNodeLimit(limit);
+    self.adapter.setNodeLimit(limit, self.start);
   }, 
   
   parseZoomConfig = function(config) {
@@ -174,7 +174,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       edges: edges,
       nodes: nodes,
       startCallback: self.start,
-      loadNode: self.adapter.loadNodeFromTreeById,
+      adapter: self.adapter,
       reshapeNodes: self.nodeShaper.reshapeNodes
     },
     drag: {

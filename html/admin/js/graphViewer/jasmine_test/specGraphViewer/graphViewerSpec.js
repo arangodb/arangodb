@@ -153,7 +153,7 @@ describe("Graph Viewer", function() {
           edges: [],
           nodes: [],
           startCallback: jasmine.any(Function),
-          loadNode: jasmine.any(Function),
+          adapter: jasmine.any(Object),
           reshapeNodes: jasmine.any(Function)
         },
         drag: {
@@ -172,7 +172,7 @@ describe("Graph Viewer", function() {
         edges: [],
         nodes: [],
         startCallback: jasmine.any(Function),
-        loadNode: jasmine.any(Function),
+        adapter: jasmine.any(Object),
         reshapeNodes: jasmine.any(Function)
       });
       expect(viewer.dispatcherConfig.drag).toEqual({
@@ -268,6 +268,15 @@ describe("Graph Viewer", function() {
       spyOn(viewer.adapter, "setNodeLimit");
       helper.simulateScrollUpMouseEvent("outersvg");
       expect(viewer.adapter.setNodeLimit).wasCalled();
+    });
+    
+    it('should trigger the start function if node limit is reduced to far', function() {
+      spyOn(viewer.adapter, "setNodeLimit").andCallFake(function(l, callback) {
+        callback();
+      });
+      spyOn(viewer, "start");
+      helper.simulateScrollUpMouseEvent("outersvg");
+      expect(viewer.start).wasCalled();
     });
     
     

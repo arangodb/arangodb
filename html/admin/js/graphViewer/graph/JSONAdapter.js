@@ -79,6 +79,9 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
     return this.start + Math.random() * this.range;
   };
   
+  self.loadNode = function(nodeId, callback) {
+    self.loadNodeFromTreeById(nodeId, callback);
+  };
   
   self.loadNodeFromTreeById = function(nodeId, callback) {
     var json = jsonPath + nodeId + ".json";
@@ -156,6 +159,10 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   };
   
   self.setNodeLimit = function (limit, callback) {
+  
+  };
+  
+  self.expandCommunity = function (commNode, callback) {
   
   };
   
