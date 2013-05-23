@@ -126,7 +126,7 @@
       edgeShaper = new EdgeShaper(d3.select("svg"));
       list = document.createElement("ul");
       document.body.appendChild(list);
-      list.id = "control_list";
+      list.id = "control_event_list";
       nodeShaper.drawNodes(nodes);
       edgeShaper.drawEdges(edges);
       
@@ -192,9 +192,9 @@
       runs(function() {
         dispatcherUI.addControlDrag();
       
-        expect($("#control_list #control_drag").length).toEqual(1);
+        expect($("#control_event_list #control_event_drag").length).toEqual(1);
         
-        helper.simulateMouseEvent("click", "control_drag");
+        helper.simulateMouseEvent("click", "control_event_drag");
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -220,9 +220,9 @@
       runs(function() {
         dispatcherUI.addControlEdit();
       
-        expect($("#control_list #control_edit").length).toEqual(1);
+        expect($("#control_event_list #control_event_edit").length).toEqual(1);
       
-        helper.simulateMouseEvent("click", "control_edit");
+        helper.simulateMouseEvent("click", "control_event_edit");
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -240,11 +240,11 @@
       
         helper.simulateMouseEvent("click", "1");
       
-        expect($("#control_node_edit_modal").length).toEqual(1);
+        expect($("#control_event_node_edit_modal").length).toEqual(1);
       
-        $("#control_node_edit_name_value").val("Bob");
+        $("#control_event_node_edit_name_value").val("Bob");
         
-        helper.simulateMouseEvent("click", "control_node_edit_submit");
+        helper.simulateMouseEvent("click", "control_event_node_edit_submit");
         expect(adapter.patchNode).toHaveBeenCalledWith(
           nodes[0],
           { _id: "1",
@@ -254,16 +254,16 @@
         });
       
       waitsFor(function() {
-        return $("#control_node_edit_modal").length === 0;
+        return $("#control_event_node_edit_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
       runs(function() {
         helper.simulateMouseEvent("click", "1-2");
       
-        expect($("#control_edge_edit_modal").length).toEqual(1);
+        expect($("#control_event_edge_edit_modal").length).toEqual(1);
       
-        $("#control_edge_edit_label_value").val("newLabel");
-        helper.simulateMouseEvent("click", "control_edge_edit_submit");
+        $("#control_event_edge_edit_label_value").val("newLabel");
+        helper.simulateMouseEvent("click", "control_event_edge_edit_submit");
 
         expect(adapter.patchEdge).toHaveBeenCalledWith(
           edges[0],
@@ -279,7 +279,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_edge_edit_modal").length === 0;
+        return $("#control_event_edge_edit_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
            
     });
@@ -288,9 +288,9 @@
       runs(function() {
         dispatcherUI.addControlExpand();
       
-        expect($("#control_list #control_expand").length).toEqual(1);
+        expect($("#control_event_list #control_event_expand").length).toEqual(1);
       
-        helper.simulateMouseEvent("click", "control_expand");
+        helper.simulateMouseEvent("click", "control_event_expand");
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -316,9 +316,9 @@
       runs(function() {
         dispatcherUI.addControlDelete();
       
-        expect($("#control_list #control_delete").length).toEqual(1);
+        expect($("#control_event_list #control_event_delete").length).toEqual(1);
       
-        helper.simulateMouseEvent("click", "control_delete");
+        helper.simulateMouseEvent("click", "control_event_delete");
       
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -355,9 +355,9 @@
       runs(function() {
         dispatcherUI.addControlConnect();
       
-        expect($("#control_list #control_connect").length).toEqual(1);
+        expect($("#control_event_list #control_event_connect").length).toEqual(1);
       
-        helper.simulateMouseEvent("click", "control_connect");
+        helper.simulateMouseEvent("click", "control_event_connect");
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -388,11 +388,11 @@
     it('should be able to add all controls to the list', function () {
       dispatcherUI.addAll();
       
-      expect($("#control_list #control_drag").length).toEqual(1);
-      expect($("#control_list #control_edit").length).toEqual(1);
-      expect($("#control_list #control_expand").length).toEqual(1);
-      expect($("#control_list #control_delete").length).toEqual(1);
-      expect($("#control_list #control_connect").length).toEqual(1);
+      expect($("#control_event_list #control_event_drag").length).toEqual(1);
+      expect($("#control_event_list #control_event_edit").length).toEqual(1);
+      expect($("#control_event_list #control_event_expand").length).toEqual(1);
+      expect($("#control_event_list #control_event_delete").length).toEqual(1);
+      expect($("#control_event_list #control_event_connect").length).toEqual(1);
     });
   });
 

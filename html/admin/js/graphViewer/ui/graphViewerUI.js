@@ -94,6 +94,14 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         buttons = document.createElement("div"),
+        
+        configureDropDown = document.createElement("div"),
+        configureList = makeBootstrapDropdown(
+          configureDropDown,
+          "configuredropdown",
+          "Configure"
+        ),
+        
         /*
         nodeShaperDropDown = document.createElement("div"),
         nodeShaperList = makeBootstrapDropdown(
@@ -107,14 +115,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
           "edgeshaperdropdown",
           "Edges"
         ),
-        */
         adapterDropDown = document.createElement("div"),
         adapterList = makeBootstrapDropdown(
           adapterDropDown,
           "adapterdropdown",
           "Connection"
         ),
-        /*
         layouterDropDown = document.createElement("div"),
         layouterList = makeBootstrapDropdown(
           layouterDropDown,
@@ -133,11 +139,21 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
           layouterList,
           graphViewer.layouter
         ),
-        */
         adapterUI = new ArangoAdapterControls(
           adapterList,
           graphViewer.adapter
         ),
+        */
+        
+        nodeShaperUI = new NodeShaperControls(
+          configureList,
+          graphViewer.nodeShaper
+        ),
+        adapterUI = new ArangoAdapterControls(
+          configureList,
+          graphViewer.adapter
+        ),
+        
         searchFunction = function() {
           if (searchAttrField.value === ""
             || searchAttrField.value === undefined) {
@@ -179,9 +195,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
       layouterDropDown.id = "layoutermenu";
-      */
-      
       adapterDropDown.id = "adaptermenu";
+      */
+      configureDropDown.id = "configuremenu";
+      
       
       searchStart.onclick = searchFunction;
       $(searchValueField).keypress(function(e) {
@@ -198,24 +215,23 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       searchDiv.appendChild(searchValueField);
       searchDiv.appendChild(searchStart);
       transparentHeader.appendChild(buttons);
+      
+      buttons.appendChild(configureDropDown);
+      
+      adapterUI.addControlChangeCollections();
+      nodeShaperUI.addControlOpticLabel();
+      
       /*
       buttons.appendChild(nodeShaperDropDown);
       buttons.appendChild(edgeShaperDropDown);
       buttons.appendChild(layouterDropDown);
-      */
       buttons.appendChild(adapterDropDown);
-      /*
-      transparentHeader.appendChild(nodeShaperDropDown);
-      transparentHeader.appendChild(edgeShaperDropDown);
-      transparentHeader.appendChild(adapterDropDown);
-      transparentHeader.appendChild(layouterDropDown);
-      */
-      /*
+      
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
       layouterUI.addAll();
-      */
       adapterUI.addAll();
+      */
     };
   container.appendChild(menubar);
   container.appendChild(background);

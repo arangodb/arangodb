@@ -72,14 +72,14 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         baseClass,
         list,
         title,
-        "control_" + title,
+        "control_event_" + title,
         callback
       );
     },
     createIcon = function(icon, title, callback) {
       var btn = uiComponentsHelper.createIconButton(
         icon,
-        "control_" + title,
+        "control_event_" + title,
         callback
       );
       appendToList(btn);
@@ -92,7 +92,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     };
   
   this.addControlDrag = function() {
-    var prefix = "control_drag",
+    var prefix = "control_event_drag",
       idprefix = prefix + "_",
       callback = function() {
         rebindNodes( {
@@ -106,16 +106,16 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   };
   
   this.addControlEdit = function() {
-    var prefix = "control_edit",
+    var prefix = "control_event_edit",
       idprefix = prefix + "_",
       nodeCallback = function(n) {
         modalDialogHelper.createModalEditDialog(
           "Edit Node " + n._id,
-          "control_node_edit_",
+          "control_event_node_edit_",
           n._data,
           function(newData) {
             dispatcher.events.PATCHNODE(n, newData, function() {
-              $("#control_node_edit_modal").modal('hide');
+              $("#control_event_node_edit_modal").modal('hide');
             })();
           }
         );
@@ -123,11 +123,11 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       edgeCallback = function(e) {
         modalDialogHelper.createModalEditDialog(
           "Edit Edge " + e._data._from + "->" + e._data._to,
-          "control_edge_edit_",
+          "control_event_edge_edit_",
           e._data,
           function(newData) {
             dispatcher.events.PATCHEDGE(e, newData, function() {
-              $("#control_edge_edit_modal").modal('hide');
+              $("#control_event_edge_edit_modal").modal('hide');
             })();
           }
         );
@@ -140,7 +140,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   };
   
   this.addControlExpand = function() {
-    var prefix = "control_expand",
+    var prefix = "control_event_expand",
       idprefix = prefix + "_",
       callback = function() {
         rebindNodes({click: dispatcher.events.EXPAND});
@@ -150,7 +150,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   };
   
   this.addControlDelete = function() {
-    var prefix = "control_delete",
+    var prefix = "control_event_delete",
       idprefix = prefix + "_",
       callback = function() {
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
@@ -164,7 +164,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   };
   
   this.addControlConnect = function() {
-    var prefix = "control_connect",
+    var prefix = "control_event_connect",
       idprefix = prefix + "_",
       callback = function() {
         
