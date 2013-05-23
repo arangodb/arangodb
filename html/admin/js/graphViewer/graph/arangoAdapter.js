@@ -163,8 +163,8 @@ function ArangoAdapter(nodes, edges, config) {
       edge.source = source;
       edge.target = target;
       edges.push(edge);
-      source._outboundCounter++;
-      target._inboundCounter++;
+      
+      
       if (cachedCommunities[source._id] !== undefined) {
         edgeToPush = {};
         edgeToPush.type = "s";
@@ -172,7 +172,10 @@ function ArangoAdapter(nodes, edges, config) {
         edgeToPush.source = $.grep(cachedCommunities[source._id].nodes, function(e){
           return e._id === data._from;
         })[0];
+        edgeToPush.source._outboundCounter++;
         cachedCommunities[source._id].edges.push(edgeToPush);
+      } else {
+        source._outboundCounter++;
       }
       if (cachedCommunities[target._id] !== undefined) {
         edgeToPush = {};
@@ -181,7 +184,10 @@ function ArangoAdapter(nodes, edges, config) {
         edgeToPush.target = $.grep(cachedCommunities[target._id].nodes, function(e){
           return e._id === data._to;
         })[0];
+        edgeToPush.target._inboundCounter++;
         cachedCommunities[target._id].edges.push(edgeToPush);
+      } else {
+        target._inboundCounter++;
       }
       return edge;
     },

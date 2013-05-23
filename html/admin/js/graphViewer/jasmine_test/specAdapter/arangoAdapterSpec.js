@@ -1062,6 +1062,80 @@
                   
                 });
               });
+              
+              it('set inbound and outboundcounter correctly', function() {
+                
+                var commNode, called, counterCallback,
+                v0, v1, v2, v3, v4,
+                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                
+                runs(function() {
+                  var v = "vertices",
+                    e = "edges";
+                  nodes.length = 0;
+                  edges.length = 0;
+                  v0 = insertNode(v, 0);
+                  v1 = insertNode(v, 1);
+                  v2 = insertNode(v, 2);
+                  v3 = insertNode(v, 3);
+                  v4 = insertNode(v, 4);
+                  e0_1 = insertEdge(e, v0, v1);
+                  e0_2 = insertEdge(e, v0, v2);
+                  e1_3 = insertEdge(e, v1, v3);
+                  e1_4 = insertEdge(e, v1, v4);
+                  e2_3 = insertEdge(e, v2, v3);
+                  e2_4 = insertEdge(e, v2, v4);
+                  called = 0;
+                  counterCallback = function() {
+                    called++;
+                  };
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return [v1, v3, v4];
+                  });
+                  adapter.setNodeLimit(3);
+                  
+                  adapter.changeTo(v, e);
+                  adapter.loadNode(v0, counterCallback);
+                  adapter.loadNode(v1, counterCallback);
+                  
+                });
+                
+                waitsFor(function() {
+                  return called === 2;
+                });
+                
+                runs(function() {
+                  adapter.loadNode(v2, counterCallback);
+                  commNode = getCommunityNodes()[0];
+                });
+                
+                waitsFor(function() {
+                  return called === 3;
+                });
+                
+                runs(function() {
+                  adapter.setNodeLimit(20);
+                  adapter.expandCommunity(commNode, counterCallback);
+                });
+                
+                waitsFor(function() {
+                  return called === 4;
+                });
+                
+                runs(function() {
+                  var checkNodeWithInAndOut = function(id, inbound, outbound) {
+                    var n = nodeWithID(id);
+                    expect(n._outboundCounter).toEqual(outbound);
+                    expect(n._inboundCounter).toEqual(inbound);
+                  };
+                  checkNodeWithInAndOut(v0, 0, 2);
+                  checkNodeWithInAndOut(v1, 1, 2);
+                  checkNodeWithInAndOut(v2, 1, 2);
+                  checkNodeWithInAndOut(v3, 2, 0);
+                  checkNodeWithInAndOut(v4, 2, 0);            
+                });
+              });
+              
             });
             
             describe('that displays a community node already', function() {
