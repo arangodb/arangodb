@@ -285,11 +285,27 @@ function POST_api_cursor(req, res) {
 ///
 /// Missing identifier
 ///
-/// @verbinclude api-cursor-missing-cursor-identifier
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorMissingCursorIdentifier}
+///     var url = "/_api/cursor";
+/// 
+///     var response = logCurlRequest('PUT', url, '');
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown identifier
 ///
-/// @verbinclude api-cursor-invalid-cursor-identifier
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorInvalidCursorIdentifier}
+///     var url = "/_api/cursor/123123";
+/// 
+///     var response = logCurlRequest('PUT', url, '');
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_cursor (req, res) {
