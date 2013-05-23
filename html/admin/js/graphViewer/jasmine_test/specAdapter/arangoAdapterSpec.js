@@ -978,31 +978,35 @@
             });
             
             describe('expanding after a while', function() {
+              
               it('should connect edges of internal nodes accordingly', function() {
                 
                 var commNode, called, counterCallback,
-                v0, v1, v2, v3, v4;
+                v0, v1, v2, v3, v4,
+                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
                 
                 runs(function() {
                   var v = "vertices",
-                    e = "edges",
-                    e0_1 = insertEdge(e, v0, v1),
-                    e0_2 = insertEdge(e, v0, v2),
-                    e1_3 = insertEdge(e, v1, v3),
-                    e1_4 = insertEdge(e, v1, v4),
-                    e2_3 = insertEdge(e, v2, v3),
-                    e2_4 = insertEdge(e, v2, v4);
+                    e = "edges";
+                  nodes.length = 0;
+                  edges.length = 0;
                   v0 = insertNode(v, 0);
                   v1 = insertNode(v, 1);
                   v2 = insertNode(v, 2);
                   v3 = insertNode(v, 3);
                   v4 = insertNode(v, 4);
+                  e0_1 = insertEdge(e, v0, v1);
+                  e0_2 = insertEdge(e, v0, v2);
+                  e1_3 = insertEdge(e, v1, v3);
+                  e1_4 = insertEdge(e, v1, v4);
+                  e2_3 = insertEdge(e, v2, v3);
+                  e2_4 = insertEdge(e, v2, v4);
                   called = 0;
                   counterCallback = function() {
                     called++;
                   };
                   spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                    return [c0, c1, c2, c3];
+                    return [v1, v3, v4];
                   });
                   adapter.setNodeLimit(3);
                   
@@ -1018,7 +1022,7 @@
                 
                 runs(function() {
                   adapter.loadNode(v2, counterCallback);
-                  commNode = getCommunityNodesIds()[0];
+                  commNode = getCommunityNodes()[0];
                 });
                 
                 waitsFor(function() {
@@ -1026,14 +1030,15 @@
                 });
                 
                 runs(function() {
+                  var commId = commNode._id;
                   // Check start condition
-                  existNodes([commNode, v0, v2]);
+                  existNodes([commId, v0, v2]);
                   expect(nodes.length).toEqual(3);
                   
                   existEdge(v0, v2);
-                  existEdge(v0, commNode);
-                  existEdge(v2, commNode);
-                  expect(edges.length).toEqual(3);
+                  existEdge(v0, commId);
+                  existEdge(v2, commId);
+                  expect(edges.length).toEqual(4);
                   
                   adapter.setNodeLimit(20);
                   adapter.expandCommunity(commNode, counterCallback);

@@ -53,6 +53,7 @@ function ArangoAdapter(nodes, edges, config) {
     api = {},
     queries = {},
     cachedCommunities = {},
+    joinedInCommunities = {},
     nodeCollection,
     edgeCollection,
     limit,
@@ -96,9 +97,10 @@ function ArangoAdapter(nodes, edges, config) {
     },
   
     findNode = function(id) {
-      var res = $.grep(nodes, function(e){
-        return e._id === id;
-      });
+      var intId = joinedInCommunities[id] || id,
+        res = $.grep(nodes, function(e){
+          return e._id === intId;
+        });
       if (res.length === 0) {
         return false;
       } 
@@ -145,7 +147,8 @@ function ArangoAdapter(nodes, edges, config) {
           _data: data,
           _id: data._id
         },
-        e = findEdge(edge._id);
+        e = findEdge(edge._id),
+        edgeToPush;
       if (e) {
         return e;
       }
@@ -162,6 +165,24 @@ function ArangoAdapter(nodes, edges, config) {
       edges.push(edge);
       source._outboundCounter++;
       target._inboundCounter++;
+      if (cachedCommunities[source._id] !== undefined) {
+        edgeToPush = {};
+        edgeToPush.type = "s";
+        edgeToPush.id = edge._id;
+        edgeToPush.source = $.grep(cachedCommunities[source._id].nodes, function(e){
+          return e._id === data._from;
+        })[0];
+        cachedCommunities[source._id].edges.push(edgeToPush);
+      }
+      if (cachedCommunities[target._id] !== undefined) {
+        edgeToPush = {};
+        edgeToPush.type = "t";
+        edgeToPush.id = edge._id;
+        edgeToPush.target = $.grep(cachedCommunities[target._id].nodes, function(e){
+          return e._id === data._to;
+        })[0];
+        cachedCommunities[target._id].edges.push(edgeToPush);
+      }
       return edge;
     },
   
@@ -317,8 +338,10 @@ function ArangoAdapter(nodes, edges, config) {
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
+      
       combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
+        joinedInCommunities[n._id] = commId;
         removeNode(n);
       });
       nodes.push(commNode);
@@ -335,6 +358,7 @@ function ArangoAdapter(nodes, edges, config) {
         collapseCommunity(com);
       }
       _.each(nodesToAdd, function(n) {
+        delete joinedInCommunities[n._id];
         nodes.push(n);
       });
       _.each(edgesToChange, function(e) {
