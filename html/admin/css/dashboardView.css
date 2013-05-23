@@ -27,13 +27,14 @@
   margin-right: 7px !important;
 }
 
-.db-zoom, .db-minimize, .db-hide, .db-info {
+.db-zoom, .db-minimize, .db-hide, .db-info, #db-collectionMinimize {
   float: right;
   margin-top: -4px !important;
   margin-right: 4px !important;
 }
 
-.db-zoom:hover, .db-minimize:hover, .db-hide, .db-info:hover, .group-close:hover, .group-open:hover {
+.db-zoom:hover, .db-minimize:hover, .db-hide, .db-info:hover, .group-close:hover, .group-open:hover,
+#db-collectionMinimize:hover {
   cursor:pointer;
 }
 
@@ -81,17 +82,21 @@
 .statClient {
   float: left;
   height: 120px;
-  width: 205px;
+  width: 203px;
   margin-left: 9px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   border: 1px solid black;
   border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
   box-shadow: 0 0 3px #333333;
 }
 
-.statChart {
-  margin-left: -15px !important;
+#detailGraphChart {
+  margin-left: -10px !important;
+}
+
+.statGroups .statChart {
+  margin-left: -45px !important;
 }
 
 .nv-axislabel {
@@ -102,11 +107,16 @@
   font: 10px sans-serif;
 }
 
+.svgCollections {
+  height: 300px;
+  width: 300px;
+}
+
 .svgClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 140px;
-  width: 220px;
+  width: 255px;
 }
 
 .svgDetailClass {
@@ -128,6 +138,7 @@
 }
 
 .statsHeader {
+  margin-top: 12px;
   margin-left: -10px;
   width: 940px;
   background-color: #686766;
@@ -160,4 +171,84 @@
 
 .nv-point {
   display: none;
+}
+
+/*Dashboard Dropdown*/
+
+.dropdown-menu li > a {
+  padding: 0px 20px !important;
+}
+
+.checkboxLabel {
+  margin-top: 4px;
+  padding-left: 0;
+}
+
+.svgClass .nv-axisMaxMin text {
+  visibility: hidden;
+}
+
+.svgClass .major text {
+  visibility: hidden;
+}
+
+.svgClass .nv-axislabel {
+  visibility: hidden;
+}
+
+/*Dashboard Checkbox*/
+input[type=checkbox].css-checkbox {
+  display:none;
+}
+
+input[type=checkbox].css-checkbox + label.css-label {
+  padding-left:20px;
+  margin-top: 0px;
+  margin-bottom: -0px;
+  height:15px; 
+  display:inline-block;
+  line-height:15px;
+  background-repeat:no-repeat;
+  background-position: 0 0;
+  font-size:15px;
+  vertical-align:middle;
+  cursor:pointer;
+}
+
+input[type=checkbox].css-checkbox:checked + label.css-label {
+  background-position: 0 -15px;
+}
+
+.css-label {
+  background-image:url(../img/dark-check-green.png);
+}
+
+/*Dashboard Radio */
+
+.dropdown-menu .radio {
+  margin-left: -21px;
+}
+
+input[type="radio"] {
+  display:none;
+}
+
+input[type="radio"] + label {
+  /*color:#f2f2f2;*/
+  /*font-family:Arial, sans-serif;
+  font-size:14px;*/
+}
+
+input[type="radio"] + label span {
+  display:inline-block;
+  width:19px;
+  height:19px;
+  margin:-1px 4px 0 0;
+  vertical-align:middle;
+  background:url(../img/check_radio_sheet.png) -38px top no-repeat;
+  cursor:pointer;
+}
+
+input[type="radio"]:checked + label span {
+  background:url(../img/check_radio_sheet.png) -57px top no-repeat;
 }
