@@ -41,7 +41,7 @@ function NodeShaperControls(list, shaper) {
     baseClass = "graph";
   
   this.addControlOpticShapeNone = function() {
-    uiComponentsHelper.createButton(baseClass, list, "None", "control_none", function() {
+    uiComponentsHelper.createButton(baseClass, list, "None", "control_node_none", function() {
       shaper.changeTo({
         shape: {
           type: NodeShaper.shapes.NONE
@@ -51,7 +51,7 @@ function NodeShaperControls(list, shaper) {
   };
   
   this.addControlOpticShapeCircle = function() {
-    var prefix = "control_circle",
+    var prefix = "control_node_circle",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Circle", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Circle",
@@ -72,11 +72,11 @@ function NodeShaperControls(list, shaper) {
   };
   
   this.addControlOpticShapeRect = function() {
-    var prefix = "control_rect",
+    var prefix = "control_node_rect",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Rectangle", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Rectangle",
-        "control_rect_", [{
+        "control_node_rect_", [{
           type: "text",
           id: "width"
         },{
@@ -98,7 +98,7 @@ function NodeShaperControls(list, shaper) {
   };
   
   this.addControlOpticLabel = function() {
-    var prefix = "control_label",
+    var prefix = "control_node_label",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
@@ -120,7 +120,7 @@ function NodeShaperControls(list, shaper) {
   //////////////////////////////////////////////////////////////////
   
   this.addControlOpticSingleColour = function() {
-    var prefix = "control_singlecolour",
+    var prefix = "control_node_singlecolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Single Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Colour",
@@ -146,7 +146,7 @@ function NodeShaperControls(list, shaper) {
   };
   
   this.addControlOpticAttributeColour = function() {
-    var prefix = "control_attributecolour",
+    var prefix = "control_node_attributecolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Colour by Attribute", prefix, function() {
       modalDialogHelper.createModalDialog("Display colour by attribute",
@@ -167,7 +167,7 @@ function NodeShaperControls(list, shaper) {
   };
   
   this.addControlOpticExpandColour = function() {
-    var prefix = "control_expandcolour",
+    var prefix = "control_node_expandcolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Expansion Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Display colours for expansion",

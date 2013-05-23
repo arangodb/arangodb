@@ -190,11 +190,11 @@
       });
       
       it('should contain the objects from eventDispatcher', function() {
-        expect($(toolboxSelector + " #control_drag").length).toEqual(1);
-        expect($(toolboxSelector + " #control_edit").length).toEqual(1);
-        expect($(toolboxSelector + " #control_expand").length).toEqual(1);
-        expect($(toolboxSelector + " #control_delete").length).toEqual(1);
-        expect($(toolboxSelector + " #control_connect").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
       });
       
       it('should have the correct layout', function() {
@@ -263,12 +263,14 @@
         expect($(menuSelector + " #control_gradientcolour").length).toEqual(1);
       });
       */
+      /*
       it('should contain a menu for the adapter', function() {
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
+      */
       /*
       it('should contain a menu for the layouter', function() {
         var menuSelector = "#contentDiv #menubar #layoutermenu";
@@ -279,6 +281,15 @@
         expect($(menuSelector + " #control_charge").length).toEqual(1);
       });
       */
+      
+      it('should contain a general configure menu', function() {
+        var menuSelector = "#contentDiv #menubar #configuremenu";
+        expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
+        expect($(menuSelector).text()).toEqual("Configure");
+        expect($(menuSelector +  " #control_adapter_collections").length).toEqual(1);
+        expect($(menuSelector +  " #control_node_label").length).toEqual(1);
+      });
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
@@ -444,7 +455,7 @@
         runs (function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
-          helper.simulateMouseEvent("click", "control_expand");
+          helper.simulateMouseEvent("click", "control_event_expand");
         });
 
         waits(waittime);

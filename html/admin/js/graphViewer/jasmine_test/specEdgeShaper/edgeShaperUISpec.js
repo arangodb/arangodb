@@ -47,7 +47,7 @@
       shaper = new EdgeShaper(d3.select("svg"));
       list = document.createElement("ul");
       document.body.appendChild(list);
-      list.id = "control_list";
+      list.id = "control_edge_list";
       shaperUI = new EdgeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
       this.addMatchers({
@@ -94,10 +94,10 @@
       runs(function() {
         shaperUI.addControlOpticShapeNone();
       
-        expect($("#control_list #control_none").length).toEqual(1);
-        expect($("#control_list #control_none")[0]).toConformToListCSS();
+        expect($("#control_edge_list #control_edge_none").length).toEqual(1);
+        expect($("#control_edge_list #control_edge_none")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_none");
+        helper.simulateMouseEvent("click", "control_edge_none");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -111,10 +111,10 @@
       runs(function() {
         shaperUI.addControlOpticShapeArrow();
       
-        expect($("#control_list #control_arrow").length).toEqual(1);
-        expect($("#control_list #control_arrow")[0]).toConformToListCSS();
+        expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
+        expect($("#control_edge_list #control_edge_arrow")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_arrow");
+        helper.simulateMouseEvent("click", "control_edge_arrow");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -129,12 +129,12 @@
       runs(function() {
         shaperUI.addControlOpticLabel();
       
-        expect($("#control_list #control_label").length).toEqual(1);
-        expect($("#control_list #control_label")[0]).toConformToListCSS();
+        expect($("#control_edge_list #control_edge_label").length).toEqual(1);
+        expect($("#control_edge_list #control_edge_label")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_label");
-        $("#control_label_key").attr("value", "theAnswer");
-        helper.simulateMouseEvent("click", "control_label_submit");
+        helper.simulateMouseEvent("click", "control_edge_label");
+        $("#control_edge_label_key").attr("value", "theAnswer");
+        helper.simulateMouseEvent("click", "control_edge_label_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           label: "theAnswer"
@@ -142,7 +142,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_label_modal").length === 0;
+        return $("#control_edge_label_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -151,12 +151,12 @@
       runs(function() {
         shaperUI.addControlOpticSingleColour();
       
-        expect($("#control_list #control_singlecolour").length).toEqual(1);
-        expect($("#control_list #control_singlecolour")[0]).toConformToListCSS();
+        expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
+        expect($("#control_edge_list #control_edge_singlecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_singlecolour");
-        $("#control_singlecolour_stroke").attr("value", "#123456");
-        helper.simulateMouseEvent("click", "control_singlecolour_submit");
+        helper.simulateMouseEvent("click", "control_edge_singlecolour");
+        $("#control_edge_singlecolour_stroke").attr("value", "#123456");
+        helper.simulateMouseEvent("click", "control_edge_singlecolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
@@ -167,7 +167,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_singlecolour_modal").length === 0;
+        return $("#control_edge_singlecolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -176,12 +176,12 @@
       runs(function() {
         shaperUI.addControlOpticAttributeColour();
       
-        expect($("#control_list #control_attributecolour").length).toEqual(1);
-        expect($("#control_list #control_attributecolour")[0]).toConformToListCSS();
+        expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
+        expect($("#control_edge_list #control_edge_attributecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_attributecolour");
-        $("#control_attributecolour_key").attr("value", "label");
-        helper.simulateMouseEvent("click", "control_attributecolour_submit");
+        helper.simulateMouseEvent("click", "control_edge_attributecolour");
+        $("#control_edge_attributecolour_key").attr("value", "label");
+        helper.simulateMouseEvent("click", "control_edge_attributecolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
@@ -192,7 +192,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_attributecolour_modal").length === 0;
+        return $("#control_edge_attributecolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -201,13 +201,13 @@
       runs(function() {
         shaperUI.addControlOpticGradientColour();
       
-        expect($("#control_list #control_gradientcolour").length).toEqual(1);
-        expect($("#control_list #control_gradientcolour")[0]).toConformToListCSS();
+        expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
+        expect($("#control_edge_list #control_edge_gradientcolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_gradientcolour");
-        $("#control_gradientcolour_source").attr("value", "#123456");
-        $("#control_gradientcolour_target").attr("value", "#654321");
-        helper.simulateMouseEvent("click", "control_gradientcolour_submit");
+        helper.simulateMouseEvent("click", "control_edge_gradientcolour");
+        $("#control_edge_gradientcolour_source").attr("value", "#123456");
+        $("#control_edge_gradientcolour_target").attr("value", "#654321");
+        helper.simulateMouseEvent("click", "control_edge_gradientcolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
@@ -219,7 +219,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_gradientcolour_modal").length === 0;
+        return $("#control_edge_gradientcolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -227,12 +227,12 @@
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
-      expect($("#control_list #control_none").length).toEqual(1);
-      expect($("#control_list #control_arrow").length).toEqual(1);
-      expect($("#control_list #control_label").length).toEqual(1);
-      expect($("#control_list #control_singlecolour").length).toEqual(1);
-      expect($("#control_list #control_attributecolour").length).toEqual(1);
-      expect($("#control_list #control_gradientcolour").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_none").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_label").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
       
     });
     
@@ -244,12 +244,12 @@
     it('should be able to add all controls to the list', function () {
       shaperUI.addAll();
       
-      expect($("#control_list #control_none").length).toEqual(1);
-      expect($("#control_list #control_arrow").length).toEqual(1);
-      expect($("#control_list #control_label").length).toEqual(1);
-      expect($("#control_list #control_singlecolour").length).toEqual(1);
-      expect($("#control_list #control_attributecolour").length).toEqual(1);
-      expect($("#control_list #control_gradientcolour").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_none").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_label").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
+      expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
       
     });
   });
