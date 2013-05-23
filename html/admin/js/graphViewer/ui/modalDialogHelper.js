@@ -132,6 +132,12 @@ var modalDialogHelper = modalDialogHelper || {};
           input.id = idprefix + o.id;
           contentTh.appendChild(input);
           break;
+        case "checkbox":
+          input = document.createElement("input");
+          input.type = "checkbox";
+          input.id = idprefix + o.id;
+          contentTh.appendChild(input);
+          break;
         default:
           //Sorry unknown
           table.removeChild(tr);

@@ -102,7 +102,57 @@
       
         expect(adapter.changeTo).toHaveBeenCalledWith(
           "newNodes",
-          "newEdges"
+          "newEdges",
+          false
+        );
+        
+      });
+      
+      waitsFor(function() {
+        return $("#control_collections_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+          
+    });
+    
+    it('should change collections and traversal direction to directed', function() {
+      runs(function() {
+        adapterUI.addControlChangeCollections();
+        helper.simulateMouseEvent("click", "control_collections");
+
+        $("#control_collections_nodecollection").attr("value", "newNodes");
+        $("#control_collections_edgecollection").attr("value", "newEdges");
+        $("#control_collections_undirected").attr("checked", false);
+        
+        helper.simulateMouseEvent("click", "control_collections_submit");
+      
+        expect(adapter.changeTo).toHaveBeenCalledWith(
+          "newNodes",
+          "newEdges",
+          false
+        );
+        
+      });
+      
+      waitsFor(function() {
+        return $("#control_collections_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+          
+    });
+    
+    it('should change collections and traversal direction to undirected', function() {
+      runs(function() {
+        adapterUI.addControlChangeCollections();      
+        helper.simulateMouseEvent("click", "control_collections");
+        $("#control_collections_nodecollection").attr("value", "newNodes");
+        $("#control_collections_edgecollection").attr("value", "newEdges");
+        $("#control_collections_undirected").attr("checked", true);
+        
+        helper.simulateMouseEvent("click", "control_collections_submit");
+      
+        expect(adapter.changeTo).toHaveBeenCalledWith(
+          "newNodes",
+          "newEdges",
+          true
         );
         
       });
