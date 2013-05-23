@@ -343,6 +343,32 @@ function ahuacatlQueryVariablesTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect and return (should omit any temporary variables)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemporaryVariables : function () {
+      var data = [ { name: "baz" }, { name: "bar" } ];
+      var expected = [ { "criteria" : "bar", "g" : [ { "y" : { "test" : "test", "name" : "bar" } } ] }, { "criteria" : "baz", "g" : [ { "y" : { "test" : "test", "name" : "baz" } } ] } ];
+
+      var query = "FOR y IN (FOR x IN " + JSON.stringify(data) + " LET object = (FOR a IN [ '1', '2' ] RETURN a) RETURN { test: \"test\", name: x.name }) COLLECT criteria = y.name INTO g RETURN { criteria: criteria, g: g }";
+      
+      var actual = getQueryResults("LET result = (" + query + ") RETURN result");
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults(query);
+      assertEqual(expected, actual);
+     
+      // omit creating sub-objects 
+      query = "FOR y IN (FOR x IN " + JSON.stringify(data) + " RETURN { test: \"test\", name: x.name }) COLLECT criteria = y.name INTO g RETURN { criteria: criteria, g: g }";
+      
+      actual = getQueryResults("LET result = (" + query + ") RETURN result");
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults(query);
+      assertEqual(expected, actual);
     }
 
   };
