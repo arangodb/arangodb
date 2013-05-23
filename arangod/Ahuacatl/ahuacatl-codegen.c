@@ -668,12 +668,23 @@ static void InitArray (TRI_aql_codegen_js_t* const generator,
 static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
                          const char* const name,
                          const TRI_aql_codegen_register_t registerIndex) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  TRI_aql_codegen_scope_t* scope; 
   TRI_aql_codegen_variable_t* variable = CreateVariable(name, registerIndex);
 
   if (variable == NULL) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return;
+  }
+
+  // if not a temporary variable
+  if (*name != '_') {
+    scope = CurrentScope(generator);
+  } 
+  else {
+    assert(generator->_scopes._length > 0);
+  
+    // get scope at level 0
+    scope = (TRI_aql_codegen_scope_t*) TRI_AtVectorPointer(&generator->_scopes, 0);
   }
 
   if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false)) {

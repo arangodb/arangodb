@@ -137,7 +137,7 @@ function POST_api_explain (req, res) {
   var result = EXPLAIN(json.query, json.bindVars);
 
   if (result instanceof Error) {
-    actions.resultException(req, res, result);
+    actions.resultException(req, res, result, undefined, false);
     return;
   }
 
@@ -169,7 +169,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
