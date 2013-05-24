@@ -761,6 +761,11 @@ exports.developmentRoutes = function () {
     var prefix = doc.collectionPrefix;
 
     var app = module.createApp(appId);
+
+    if (app === null) {
+      throw new Error("cannot find application '" + appId + "'");
+    }
+
     var r = routingAalApp(app, mount, prefix);
 
     routes.push(r);
