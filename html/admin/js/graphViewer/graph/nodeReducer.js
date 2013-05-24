@@ -331,8 +331,6 @@ function NodeReducer(nodes, edges) {
     return res[0];
   };
   
-  
-  
   self.bucketNodes = function(toSort, numBuckets) {
     var res = [],
     threshold = 0.3;

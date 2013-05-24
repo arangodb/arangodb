@@ -27,6 +27,16 @@
   margin-right: 10px;
 }
 
+svg.graphViewer text {
+  font: 11px Arial;
+  pointer-events: none;
+  stroke: #000;
+}
+
+.capitalize {
+    text-transform:capitalize;
+}
+
 svg.graphViewer {
   border-style: groove;
 }

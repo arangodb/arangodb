@@ -57,7 +57,7 @@ var modalDialogHelper = modalDialogHelper || {};
       document.body.removeChild(div);
     };
       
-    headerDiv.className = "modal_header";
+    headerDiv.className = "modal-header";
     
     buttonDismiss.className = "close";
     buttonDismiss.dataDismiss = "modal";
@@ -66,11 +66,11 @@ var modalDialogHelper = modalDialogHelper || {};
     
     header.appendChild(document.createTextNode(title));
     
-    bodyDiv.className = "modal_body";
+    bodyDiv.className = "modal-body";
     
     bodyTable.id = idprefix + "table";
     
-    footerDiv.className = "modal_footer";
+    footerDiv.className = "modal-footer";
     
     buttonCancel.id = idprefix + "cancel";
     buttonCancel.className = "btn btn-danger pull-left";

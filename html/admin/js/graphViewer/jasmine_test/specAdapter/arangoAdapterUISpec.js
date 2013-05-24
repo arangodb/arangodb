@@ -47,7 +47,7 @@
       };
       list = document.createElement("ul");
       document.body.appendChild(list);
-      list.id = "control_list";
+      list.id = "control_adapter_list";
       adapterUI = new ArangoAdapterControls(list, adapter);
       spyOn(adapter, 'changeTo');
       this.addMatchers({
@@ -88,17 +88,17 @@
       runs(function() {
         adapterUI.addControlChangeCollections();
       
-        expect($("#control_list #control_collections").length).toEqual(1);
-        expect($("#control_list #control_collections")[0]).toConformToListCSS();
+        expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);
+        expect($("#control_adapter_list #control_adapter_collections")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_collections");
+        helper.simulateMouseEvent("click", "control_adapter_collections");
       
-        expect($("#control_collections_modal").length).toEqual(1);
+        expect($("#control_adapter_collections_modal").length).toEqual(1);
       
-        $("#control_collections_nodecollection").attr("value", "newNodes");
-        $("#control_collections_edgecollection").attr("value", "newEdges");
+        $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
+        $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
         
-        helper.simulateMouseEvent("click", "control_collections_submit");
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
       
         expect(adapter.changeTo).toHaveBeenCalledWith(
           "newNodes",
@@ -109,7 +109,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_collections_modal").length === 0;
+        return $("#control_adapter_collections_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
           
     });
@@ -117,13 +117,13 @@
     it('should change collections and traversal direction to directed', function() {
       runs(function() {
         adapterUI.addControlChangeCollections();
-        helper.simulateMouseEvent("click", "control_collections");
+        helper.simulateMouseEvent("click", "control_adapter_collections");
 
-        $("#control_collections_nodecollection").attr("value", "newNodes");
-        $("#control_collections_edgecollection").attr("value", "newEdges");
-        $("#control_collections_undirected").attr("checked", false);
+        $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
+        $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
+        $("#control_adapter_collections_undirected").attr("checked", false);
         
-        helper.simulateMouseEvent("click", "control_collections_submit");
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
       
         expect(adapter.changeTo).toHaveBeenCalledWith(
           "newNodes",
@@ -134,7 +134,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_collections_modal").length === 0;
+        return $("#control_adapter_collections_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
           
     });
@@ -142,12 +142,12 @@
     it('should change collections and traversal direction to undirected', function() {
       runs(function() {
         adapterUI.addControlChangeCollections();      
-        helper.simulateMouseEvent("click", "control_collections");
-        $("#control_collections_nodecollection").attr("value", "newNodes");
-        $("#control_collections_edgecollection").attr("value", "newEdges");
-        $("#control_collections_undirected").attr("checked", true);
+        helper.simulateMouseEvent("click", "control_adapter_collections");
+        $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
+        $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
+        $("#control_adapter_collections_undirected").attr("checked", true);
         
-        helper.simulateMouseEvent("click", "control_collections_submit");
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
       
         expect(adapter.changeTo).toHaveBeenCalledWith(
           "newNodes",
@@ -158,14 +158,14 @@
       });
       
       waitsFor(function() {
-        return $("#control_collections_modal").length === 0;
+        return $("#control_adapter_collections_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
           
     });
     
     it('should be able to add all controls to the list', function() {
       adapterUI.addAll();
-      expect($("#control_list #control_collections").length).toEqual(1);
+      expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);
     });
   });
 }());
