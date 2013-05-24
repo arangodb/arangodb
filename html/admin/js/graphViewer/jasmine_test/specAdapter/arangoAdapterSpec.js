@@ -438,7 +438,43 @@
             };
           };
         });
-    
+        
+        it('should offer lists of available collections', function() {
+          var collections = [],
+          sys1 = {id: "1", name: "_sys1", status: 3, type: 2},
+          sys2 = {id: "2", name: "_sys2", status: 2, type: 2},
+          doc1 = {id: "3", name: "doc1", status: 3, type: 2},
+          doc2 = {id: "4", name: "doc2", status: 2, type: 2},
+          doc3 = {id: "5", name: "doc3", status: 3, type: 2},
+          edge1 = {id: "6", name: "edge1", status: 3, type: 3},
+          edge2 = {id: "7", name: "edge2", status: 2, type: 3};
+
+          collections.push(sys1);
+          collections.push(sys2);
+          collections.push(doc1);
+          collections.push(doc2);
+          collections.push(doc3);
+          collections.push(edge1);
+          collections.push(edge2);
+          
+          spyOn($, "ajax").andCallFake(function(request) {
+            request.success({collections: collections});
+          });
+          
+          adapter.getCollections(function(docs, edge) {
+            expect(docs).toContain("doc1");
+            expect(docs).toContain("doc2");
+            expect(docs).toContain("doc3");
+            
+            expect(docs.length).toEqual(3);
+            
+            expect(edge).toContain("edge1");
+            expect(edge).toContain("edge2");
+            
+            expect(edge.length).toEqual(2);
+          });
+        });
+        
         it('should be able to load a tree node from ' 
            + 'ArangoDB by internal _id attribute', function() {
       
