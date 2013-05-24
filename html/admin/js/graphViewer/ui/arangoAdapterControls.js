@@ -41,7 +41,7 @@ function ArangoAdapterControls(list, adapter) {
     baseClass = "adapter";
   
   this.addControlChangeCollections = function() {
-    var prefix = "control_collections",
+    var prefix = "control_adapter_collections",
     idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Collections",
