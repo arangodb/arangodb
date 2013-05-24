@@ -463,6 +463,10 @@ function ArangoAdapter(nodes, edges, config) {
        }, function(res) {
          _.each(res, self.deleteEdge);
        });
+    },
+    
+    combineNodesBySimilarity = function () {
+      return;
     };
   
   parseConfig(config);

@@ -14,20 +14,37 @@ window.graphView = Backbone.View.extend({
 
   createViewer: function() {
     var ecol,
-    ncol,
-    aaconfig;
+      ncol,
+      aaconfig,
+      undirected,
+      label,
+      config;
     
-    ecol = $("#edgeCollection")[0].value;
-    ncol = $("#nodeCollection")[0].value;
-           
+    
+    ecol = $("#edgeCollection").val();
+    ncol = $("#nodeCollection").val();
+    undirected = !!$("#undirected").attr("checked");
+    label = $("#nodeLabel").val();
+    
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
-      edgeCollection: ecol
+      edgeCollection: ecol,
+      undirected: undirected
     };
+    
+    if (label !== undefined && label !== "") {
+      console.log(label);
+      config = {
+        nodeShaper: {
+          label: label
+        }
+      }
+      console.log(config);
+    }
 
     $("#creationDialog").remove();
-    ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 680);
+    ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 680, config);
   },
 
 
