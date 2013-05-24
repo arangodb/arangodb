@@ -24,7 +24,13 @@
 #ifdef _Z_OF
 #undef OF
 #define OF _Z_OF
+#else
+#ifndef OF
+#define _Z_OF(args) args
+#define OF _Z_OF
 #endif
+#endif
+
 
 #if (!defined(_WIN32)) && (!defined(WIN32)) && (!defined(__APPLE__))
 
