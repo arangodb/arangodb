@@ -30,7 +30,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
+function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConfig) {
   "use strict";
   
   if (container === undefined) {
@@ -238,7 +238,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
   background.className = "thumbnails";
   background.id = "background";
   svg = createSVG();
-  graphViewer = new GraphViewer(svg, width, height, adapterConfig, {zoom: true});
+  viewerConfig = viewerConfig || {};
+  viewerConfig.zoom = true;
+  graphViewer = new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
   
   createToolbox();
   createMenu();
