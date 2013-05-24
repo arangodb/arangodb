@@ -717,4 +717,34 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.getCollections = function(callback) {
+    if (callback && callback.length >= 2) {
+      $.ajax({
+        cache: false,
+        type: "GET",
+        url: api.collection,
+        contentType: "application/json",
+        dataType: "json",
+        processData: false,
+        success: function(data) {
+          var cols = data.collections,
+            docs = [],
+            edgeCols = [];
+          _.each(cols, function(c) {
+            if (!c.name.match(/^_/)) {
+              if (c.type === 3) {
+                edgeCols.push(c.name);
+              } else if (c.type === 2){
+                docs.push(c.name);
+              }
+            }
+          });
+          callback(docs, edgeCols);
+        },
+        error: function(data) {
+          throw data.statusText;
+        }
+      });
+    }
+  };  
 }
