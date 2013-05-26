@@ -91,7 +91,7 @@ bool TRI_ExistsFile (char const* path);
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateRecursiveDirectory (char const* path);
+int TRI_CreateRecursiveDirectory (char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
