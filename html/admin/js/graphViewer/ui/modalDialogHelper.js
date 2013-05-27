@@ -138,6 +138,19 @@ var modalDialogHelper = modalDialogHelper || {};
           input.id = idprefix + o.id;
           contentTh.appendChild(input);
           break;
+        case "list":
+          input = document.createElement("select");
+          input.id = idprefix + o.id;
+          contentTh.appendChild(input);
+          _.each(o.objects, function(entry) {
+            var option = document.createElement("option");
+            option.value = entry;
+            option.appendChild(
+              document.createTextNode(entry)
+            );
+            input.appendChild(option);
+          });
+          break;
         default:
           //Sorry unknown
           table.removeChild(tr);
