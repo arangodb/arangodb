@@ -805,6 +805,71 @@
             );
             expect(callNodesIds).toEqual(inNodeCol.slice(1));
             expect(nodes.length).toEqual(6);
+            expect(getCommunityNodes().length).toEqual(5);
+          });
+          
+        });
+        
+        it('should not replace single nodes by communities', function() {
+          var inNodeCol, callNodes;
+          
+          runs(function() {
+            var addNNodes = function(n) {
+                var i = 0,
+                  res = [];
+                for (i = 0; i < n; i++) {
+                  res.push(insertNode(nodesCollection, i));
+                }
+                return res;
+              },
+              connectToAllButSelf = function(source, ns) {
+                _.each(ns, function(target) {
+                  if (source !== target) {
+                    insertEdge(edgesCollection, source, target);
+                  }
+                });
+              };
+            
+            inNodeCol = addNNodes(7);
+            connectToAllButSelf(inNodeCol[0], inNodeCol);
+            adapter.setChildLimit(5);
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
+            });
+            spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
+              var i = 0,
+                res = [],
+                pos;
+              for (i = 0; i < 4; i++) {
+                res.push([ns[i]]);
+              }
+              res.push([ns[4], ns[5]]);
+              return res;
+            });
+            
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(inNodeCol[0], checkCallbackFunction);
+            
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          });
+          
+          runs(function() {
+            var callNodesIds = _.map(callNodes, function(n) {
+              return n._id;
+            });
+            expect(this.fakeReducerBucketRequest).toHaveBeenCalledWith(
+              jasmine.any(Array),
+              5
+            );
+            expect(nodes.length).toEqual(6);
+            expect(getCommunityNodes().length).toEqual(1);
           });
           
         });
