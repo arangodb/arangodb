@@ -286,7 +286,7 @@
         var menuSelector = "#contentDiv #menubar #configuremenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect($(menuSelector).text()).toEqual("Configure");
+        expect($("> button", menuSelector).text()).toEqual("Configure ");
         expect($(menuSelector +  " #control_adapter_collections").length).toEqual(1);
         expect($(menuSelector +  " #control_node_label").length).toEqual(1);
       });
