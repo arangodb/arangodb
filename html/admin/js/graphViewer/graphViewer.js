@@ -112,13 +112,14 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
-    adapterConfig.width = width;
-    adapterConfig.height = height;
+      adapterConfig.width = width;
+      adapterConfig.height = height;
       self.adapter = new ArangoAdapter(
         nodes,
         edges,
         adapterConfig
       );
+      self.adapter.setChildLimit(5);
       break;
     case "json":
       self.adapter = new JSONAdapter(

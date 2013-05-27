@@ -745,7 +745,7 @@
         });
         
         it('should add at most the upper bound of children in one step', function() {
-          var inNodeCol;
+          var inNodeCol, callNodes;
           
           runs(function() {
             var addNNodes = function(n) {
@@ -778,6 +778,7 @@
               var i = 0,
                 res = [],
                 pos;
+              callNodes = ns;
               for (i = 0; i < 5; i++) {
                 pos = i*4;
                 res.push(ns.slice(pos, pos + 4));
@@ -795,10 +796,14 @@
           });
           
           runs(function() {
+            var callNodesIds = _.map(callNodes, function(n) {
+              return n._id;
+            });
             expect(this.fakeReducerBucketRequest).toHaveBeenCalledWith(
-              inNodeCol.slice(1),
+              jasmine.any(Array),
               5
             );
+            expect(callNodesIds).toEqual(inNodeCol.slice(1));
             expect(nodes.length).toEqual(6);
           });
           

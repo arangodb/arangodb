@@ -408,10 +408,10 @@ function ArangoAdapter(nodes, edges, config) {
       _.each(result, function(visited) {
         var node = insertNode(visited.vertex),
           path = visited.path;
-        inserted[node._id] = true;
+        inserted[node._id] = node;
         _.each(path.vertices, function(connectedNode) {
           var ins = insertNode(connectedNode);
-          inserted[ins._id] = true;
+          inserted[ins._id] = ins;
         });
         _.each(path.edges, function(edge) {
           insertEdge(edge);
@@ -419,9 +419,12 @@ function ArangoAdapter(nodes, edges, config) {
       });      
       delete inserted[n._id];
       if (_.size(inserted) > childLimit) {
-        buckets = reducer.bucketNodes(_.keys(inserted), childLimit);
+        buckets = reducer.bucketNodes(_.values(inserted), childLimit);
         _.each(buckets, function(b) {
-          collapseCommunity(b);
+          var ids = _.map(b, function(n) {
+            return n._id;
+          });
+          collapseCommunity(ids);
         });
       }
       if (limit < nodes.length) {
@@ -474,12 +477,8 @@ function ArangoAdapter(nodes, edges, config) {
        }, function(res) {
          _.each(res, self.deleteEdge);
        });
-    },
-    
-    combineNodesBySimilarity = function () {
-      return;
     };
-  
+    
   parseConfig(config);
   
   api.base = arangodb.lastIndexOf("http://", 0) === 0
