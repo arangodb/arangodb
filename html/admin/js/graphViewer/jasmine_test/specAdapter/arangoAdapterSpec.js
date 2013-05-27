@@ -286,6 +286,7 @@
            apibase = host + "/_api/",
            apiCursor = apibase + 'cursor';
           self.fakeReducerRequest = function() {};
+          self.fakeReducerBucketRequest = function() {};
           spyOn(window, "NodeReducer").andCallFake(function(v, e) {
             return {
               getCommunity: function(limit, focus) {
@@ -293,6 +294,9 @@
                   return self.fakeReducerRequest(limit, focus);
                 }
                 return self.fakeReducerRequest(limit);
+              },
+              bucketNodes: function(toSort, numBuckets) {
+                return self.fakeReducerBucketRequest(toSort, numBuckets);
               }
             };
           });
@@ -738,6 +742,66 @@
             );
             
           });      
+        });
+        
+        it('should add at most the upper bound of children in one step', function() {
+          var inNodeCol;
+          
+          runs(function() {
+            var addNNodes = function(n) {
+                var i = 0,
+                  res = [];
+                for (i = 0; i < n; i++) {
+                  res.push(insertNode(nodesCollection, i));
+                }
+                return res;
+              },
+              connectToAllButSelf = function(source, ns) {
+                _.each(ns, function(target) {
+                  if (source !== target) {
+                    insertEdge(edgesCollection, source, target);
+                  }
+                });
+              };
+            
+            inNodeCol = addNNodes(21);
+            connectToAllButSelf(inNodeCol[0], inNodeCol);
+            adapter.setChildLimit(5);
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
+            });
+            spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
+              var i = 0,
+                res = [],
+                pos;
+              for (i = 0; i < 5; i++) {
+                pos = i*4;
+                res.push(ns.slice(pos, pos + 4));
+              }
+              return res;
+            });
+            
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(inNodeCol[0], checkCallbackFunction);
+            
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          });
+          
+          runs(function() {
+            expect(this.fakeReducerBucketRequest).toHaveBeenCalledWith(
+              inNodeCol.slice(1),
+              5
+            );
+            expect(nodes.length).toEqual(6);
+          });
+          
         });
         
         describe('that has already loaded one graph', function() {
