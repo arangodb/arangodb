@@ -162,6 +162,10 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   
   };
   
+  self.setChildLimit = function (limit) {
+  
+  };
+  
   self.expandCommunity = function (commNode, callback) {
   
   };

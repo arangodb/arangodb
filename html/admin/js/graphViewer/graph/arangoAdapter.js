@@ -57,6 +57,7 @@ function ArangoAdapter(nodes, edges, config) {
     nodeCollection,
     edgeCollection,
     limit,
+    childLimit,
     reducer,
     arangodb,
     width,
@@ -401,23 +402,33 @@ function ArangoAdapter(nodes, edges, config) {
   
     parseResultOfTraversal = function (result, callback) {
       result = result[0];
+      var inserted = {},
+        n = insertNode(result[0].vertex),
+        com, buckets; 
       _.each(result, function(visited) {
         var node = insertNode(visited.vertex),
-        path = visited.path;
+          path = visited.path;
+        inserted[node._id] = true;
         _.each(path.vertices, function(connectedNode) {
-          insertNode(connectedNode);
+          var ins = insertNode(connectedNode);
+          inserted[ins._id] = true;
         });
         _.each(path.edges, function(edge) {
           insertEdge(edge);
         });
-      });
+      });      
+      delete inserted[n._id];
+      if (_.size(inserted) > childLimit) {
+        buckets = reducer.bucketNodes(_.keys(inserted), childLimit);
+        _.each(buckets, function(b) {
+          collapseCommunity(b);
+        });
+      }
+      if (limit < nodes.length) {
+        com = reducer.getCommunity(limit, n);
+        collapseCommunity(com);
+      }
       if (callback) {
-        var n = insertNode(result[0].vertex),
-         com;
-        if (limit < nodes.length) {
-          com = reducer.getCommunity(limit, n);
-          collapseCommunity(com);
-        }
         callback(n);
       }
     },
@@ -524,6 +535,8 @@ function ArangoAdapter(nodes, edges, config) {
    + " FILTER e._to == @id"
    + " || e._from == @id"
    + " RETURN e";
+  
+  childLimit = Number.POSITIVE_INFINITY;
   
   reducer = new NodeReducer(nodes, edges);
   
@@ -710,6 +723,10 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.setChildLimit = function (pLimit) {
+    childLimit = pLimit;
+  };
+  
   self.expandCommunity = function (commNode, callback) {
     expandCommunity(commNode);
     if (callback !== undefined) {
@@ -746,5 +763,5 @@ function ArangoAdapter(nodes, edges, config) {
         }
       });
     }
-  };  
+  };
 }
