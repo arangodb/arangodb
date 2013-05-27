@@ -34,16 +34,14 @@ window.graphView = Backbone.View.extend({
     };
     
     if (label !== undefined && label !== "") {
-      console.log(label);
       config = {
         nodeShaper: {
           label: label
         }
       }
-      console.log(config);
     }
 
-    $("#creationDialog").remove();
+    $("#background").remove();
     ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 680, config);
   },
 
