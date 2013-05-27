@@ -480,7 +480,7 @@
         });
         
         it('should be able to load a tree node from ' 
-           + 'ArangoDB by internal _id attribute', function() {
+        + 'ArangoDB by internal _id attribute', function() {
       
           var c0, c1, c2, c3, c4;
       
@@ -527,7 +527,7 @@
         });
         
         it('should be able to load a tree node from ArangoDB'
-          + ' by internal attribute and value', function() {
+        + ' by internal attribute and value', function() {
       
           var c0, c1, c2, c3, c4;
       
