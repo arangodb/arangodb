@@ -275,7 +275,7 @@ function NodeReducer(nodes, edges) {
    getSimilarityValue = function(bucket, node) {
      if (bucket.length === 0) {
        return 1;
-     }
+     }     
      var comp = bucket[0],
        props = _.union(_.keys(comp), _.keys(node)),
        countMatch = 0,
@@ -284,11 +284,11 @@ function NodeReducer(nodes, edges) {
        if (comp[key] !== undefined && node[key]!== undefined) {
          countMatch++;
          if (comp[key] === node[key]) {
-           countMatch++;
+           countMatch += 4;
          }
        }
      });
-     propCount = props.length * 2;
+     propCount = props.length * 5;
      propCount++;
      countMatch++;
      return countMatch / propCount;
@@ -333,7 +333,7 @@ function NodeReducer(nodes, edges) {
   
   self.bucketNodes = function(toSort, numBuckets) {
     var res = [],
-    threshold = 0.3;
+    threshold = 0.5;
     if (toSort.length <= numBuckets) {
       res = _.map(toSort, function(n) {
         return [n];
