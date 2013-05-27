@@ -421,10 +421,12 @@ function ArangoAdapter(nodes, edges, config) {
       if (_.size(inserted) > childLimit) {
         buckets = reducer.bucketNodes(_.values(inserted), childLimit);
         _.each(buckets, function(b) {
-          var ids = _.map(b, function(n) {
-            return n._id;
-          });
-          collapseCommunity(ids);
+          if (b.length > 1) {
+            var ids = _.map(b, function(n) {
+              return n._id;
+            });
+            collapseCommunity(ids);
+          }
         });
       }
       if (limit < nodes.length) {
