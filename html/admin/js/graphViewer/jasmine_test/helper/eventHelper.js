@@ -33,6 +33,14 @@ var helper = helper || {};
 (function eventHelper() {
   "use strict";
   
+  helper.simulateMouseMoveEvent = function(objectId, x, y) {
+    var evt = document.createEvent("MouseEvents"),
+      testee = document.getElementById(objectId);
+    evt.initMouseEvent("mousemove", true, true, window,
+      0, x, y, x, y, false, false, false, false, 0, null);
+    testee.dispatchEvent(evt);
+  };
+  
   helper.simulateDragEvent = function (objectId) {
     helper.simulateMouseEvent("mousedown", objectId);
     var e1 = document.createEvent("MouseEvents"),

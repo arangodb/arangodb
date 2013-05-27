@@ -2,7 +2,7 @@
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
 /*global LayouterControls, ArangoAdapterControls*/
-/*global GraphViewer, d3*/
+/*global GraphViewer, d3, window*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -48,7 +48,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
-    svg, 
+    mousePointerBox = document.createElement("div"),
+    svg,
+    moveCursorBox = function(ev) {
+      var e = ev || window.event;
+      mousePointerBox.style.position = "absolute";
+      mousePointerBox.style.left  = (e.clientX + 7) + 'px';
+      mousePointerBox.style.top = (e.clientY + 12) + 'px';
+    },
+    
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
       div.className = "btn-group";
@@ -69,6 +77,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     createSVG = function () {
       return d3.select("#" + container.id + " #background")
         .append("svg")
+        .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
         .attr("class", "pull-right graphViewer")
@@ -84,7 +93,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         );
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
+      mousePointerBox.id = "mousepointer";
+      mousePointerBox.className = "mousepointer";
       background.appendChild(toolbox);
+      background.appendChild(mousePointerBox);
       dispatcherUI.addAll();
     },
     createMenu = function() {
@@ -94,7 +106,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         buttons = document.createElement("div"),
-        
+        equalsField = document.createElement("span"),
         configureDropDown = document.createElement("div"),
         configureList = makeBootstrapDropdown(
           configureDropDown,
@@ -191,6 +203,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchStart.height = 16;
       searchStart.src = "img/enter_icon.png";
       
+      equalsField.className = "searchEqualsLabel";
+      equalsField.appendChild(document.createTextNode("=="));
+      
+      
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
@@ -212,6 +228,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.appendChild(transparentHeader);
       transparentHeader.appendChild(searchDiv);
       searchDiv.appendChild(searchAttrField);
+      searchDiv.appendChild(equalsField);
       searchDiv.appendChild(searchValueField);
       searchDiv.appendChild(searchStart);
       transparentHeader.appendChild(buttons);
@@ -244,4 +261,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   
   createToolbox();
   createMenu();
+  
+  document.getElementById("graphViewerSVG").onmousemove = moveCursorBox;
+  document.getElementById("graphViewerSVG").onmouseout = function() {
+    mousePointerBox.style.display = "none";
+  };
+  document.getElementById("graphViewerSVG").onmouseover = function() {
+    mousePointerBox.style.display = "block";
+  };
 }

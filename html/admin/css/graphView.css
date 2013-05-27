@@ -22,9 +22,9 @@
   background-color: rgb(56, 52, 52);
 }
 
-.searchByAttribute {
+.searchByAttribute, .searchEqualsLabel {
   margin-top: 3px;
-  margin-right: 10px;
+  margin-right: 6px;
 }
 
 svg.graphViewer text {
@@ -39,4 +39,10 @@ svg.graphViewer text {
 
 svg.graphViewer {
   border-style: groove;
+}
+
+div.mousepointer {
+  position: absolute;
+  margin: 0;
+  padding: 5px;  
 }

@@ -42,6 +42,7 @@
     var svg, dispatcher, dispatcherUI, list,
     nodeShaper, edgeShaper, layouter,
     nodes, edges, adapter,
+    mousePointerbox,
     
     addSpies = function() {
       spyOn(layouter, "drag");
@@ -127,6 +128,13 @@
       list = document.createElement("ul");
       document.body.appendChild(list);
       list.id = "control_event_list";
+      
+      mousePointerbox = document.createElement("svg");
+      mousePointerbox.id = "mousepointer";
+      mousePointerbox.className = "mousepointer";
+      
+      document.body.appendChild(mousePointerbox);
+      
       nodeShaper.drawNodes(nodes);
       edgeShaper.drawEdges(edges);
       
@@ -174,6 +182,7 @@
       expect(list).toConformToToolbox();
       document.body.removeChild(list);
       document.body.removeChild(svg);
+      document.body.removeChild(mousePointerbox);
     });
 
     it('should throw errors if not setup correctly', function() {
@@ -209,6 +218,8 @@
           }
         });
         
+        expect(mousePointerbox.className).toEqual("mousepointer icon-move");
+        
         helper.simulateDragEvent("1");
         
         expect(layouter.drag).toHaveBeenCalled();
@@ -237,6 +248,8 @@
             click: jasmine.any(Function)
           }
         });
+      
+        expect(mousePointerbox.className).toEqual("mousepointer icon-pencil");
       
         helper.simulateMouseEvent("click", "1");
       
@@ -305,6 +318,8 @@
           }
         });
 
+        expect(mousePointerbox.className).toEqual("mousepointer icon-plus");
+
         helper.simulateMouseEvent("click", "1");
         
         expect(adapter.loadNode).toHaveBeenCalledWith(nodes[0]._id, jasmine.any(Function));
@@ -333,6 +348,8 @@
             click: jasmine.any(Function)
           }
         });
+      
+        expect(mousePointerbox.className).toEqual("mousepointer icon-trash");
       
         helper.simulateMouseEvent("click", "1");
         
@@ -372,6 +389,8 @@
             reset: true
           }
         });
+        
+        expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
         
         helper.simulateMouseEvent("mousedown", "2");
         
