@@ -171,9 +171,6 @@
       runs(function() {
         adapterUI.addControlChangeCollections();
         
-        
-        
-        
         helper.simulateMouseEvent("click", "control_adapter_collections");
         var docList = document.getElementById("control_adapter_collections_nodecollection"),
           edgeList = document.getElementById("control_adapter_collections_edgecollection"),

@@ -204,6 +204,30 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
+      it('should create the additional mouse-icon box', function() {
+        var pointerBox = $("#contentDiv #mousepointer");
+        expect(pointerBox.length).toEqual(1);
+        expect(pointerBox[0]).toBeTag("div");
+        expect(pointerBox[0]).toBeOfClass("mousepointer");
+      });
+      
+      it('should position the mouse-icon box next to the mouse pointer', function() {
+        var x = 40,
+          y = 50,
+          pointerBox = $("#contentDiv #mousepointer");
+          
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
+        expect(pointerBox.offset().left).toEqual(x + 7);
+        expect(pointerBox.offset().top).toEqual(y + 12);
+        
+        x = 66;
+        y = 33;
+        
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
+        expect(pointerBox.offset().left).toEqual(x + 7);
+        expect(pointerBox.offset().top).toEqual(y + 12);
+      });
+      
     });
     
     describe('checking the menubar', function() {
@@ -310,8 +334,10 @@
         expect(searchField.id).toEqual("transparentPlaceholder");
         expect(searchField.className).toEqual("pull-left");
         expect(searchField.children[0].id).toEqual("attribute");
-        expect(searchField.children[1].id).toEqual("value");
-        expect(searchField.children[2].id).toEqual("loadnode");
+        expect(searchField.children[1]).toBeTag("span");
+        expect(searchField.children[1].textContent).toEqual("==");
+        expect(searchField.children[2].id).toEqual("value");
+        expect(searchField.children[3].id).toEqual("loadnode");
       });
     });
     
