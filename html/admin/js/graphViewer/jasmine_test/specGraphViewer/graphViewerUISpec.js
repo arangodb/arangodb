@@ -57,6 +57,9 @@
             value: value
           };
         };
+        r.getCollections = function(callback) {
+          callback(["nodes"], ["edges"]);
+        };
         return r;
       };
       //Mock for ZoomManager
