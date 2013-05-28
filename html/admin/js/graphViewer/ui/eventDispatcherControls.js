@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
-/*global document*/
+/*global document, window*/
 /*global modalDialogHelper, uiComponentsHelper */
 /*global EventDispatcher, EventLibrary*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,11 +29,14 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig) {
+function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, dispatcherConfig) {
   "use strict";
   
   if (list === undefined) {
     throw "A list element has to be given.";
+  }
+  if (cursorIconBox === undefined) {
+    throw "The cursor decoration box has to be given.";
   }
   if (nodeShaper === undefined) {
     throw "The NodeShaper has to be given.";
@@ -45,7 +48,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   var self = this,
     firstButton = true,
     currentListGroup,
-    cursorIconBox,
     placeHolderBtn = uiComponentsHelper.createIconButton(
       "none",
       ""
@@ -55,7 +57,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
     setCursorIcon = function(icon) {
-      cursorIconBox = cursorIconBox || document.getElementById("mousepointer");
       cursorIconBox.className = "mousepointer icon-" + icon;
     },
     
@@ -98,7 +99,34 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     },
     rebindSVG = function(actions) {
       dispatcher.rebind("svg", actions);
+    },
+    
+    getCursorPosition = function (ev) {
+      var e = ev || window.event,
+        res = {};
+      res.x = e.clientX;
+      res.y = e.clientY;
+      res.x += document.body.scrollLeft;
+      res.y += document.body.scrollTop;
+      return res;
+    },
+    
+    moveCursorBox = function(ev) {
+      var pos = getCursorPosition(ev);
+      pos.x += 7;
+      pos.y += 12;
+      cursorIconBox.style.position = "absolute";
+      cursorIconBox.style.left  = pos.x + 'px';
+      cursorIconBox.style.top = pos.y + 'px';
     };
+  
+  dispatcher.fixSVG("mousemove", moveCursorBox);
+  dispatcher.fixSVG("mouseout", function() {
+    cursorIconBox.style.display = "none";
+  });
+  dispatcher.fixSVG("mouseover", function() {
+    cursorIconBox.style.display = "block";
+  });
   
   this.addControlDrag = function() {
     var prefix = "control_event_drag",

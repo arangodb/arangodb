@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-/*global EventDispatcher, ArangoAdapter, JSONAdapter */
+/*global ArangoAdapter, JSONAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -56,7 +56,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     edgeContainer,
     zoomManager,
     fixedSize,
-    dispatcher,
     edges = [],
     nodes = [],
 

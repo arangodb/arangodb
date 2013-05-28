@@ -152,7 +152,9 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     dblclick: [],
     mousedown: [],
     mouseup: [],
-    mousemove: []
+    mousemove: [],
+    mouseout: [],
+    mouseover: []
   };
   svgTemp = {};
   
