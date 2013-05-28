@@ -138,7 +138,9 @@
       nodeShaper.drawNodes(nodes);
       edgeShaper.drawEdges(edges);
       
-      dispatcherUI = new EventDispatcherControls(list, nodeShaper, edgeShaper, completeConfig);
+      dispatcherUI = new EventDispatcherControls(
+        list, mousePointerbox, nodeShaper, edgeShaper, completeConfig
+      );
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
       
@@ -191,9 +193,12 @@
       }).toThrow("A list element has to be given.");
       expect(function() {
         var e = new EventDispatcherControls(list);
+      }).toThrow("The cursor decoration box has to be given.");
+      expect(function() {
+        var e = new EventDispatcherControls(list, mousePointerbox);
       }).toThrow("The NodeShaper has to be given.");
       expect(function() {
-        var e = new EventDispatcherControls(list, nodeShaper);
+        var e = new EventDispatcherControls(list, mousePointerbox, nodeShaper);
       }).toThrow("The EdgeShaper has to be given.");
     });
     

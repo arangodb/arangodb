@@ -114,7 +114,9 @@ function NodeShaper(parent, flags, idfunc) {
         drag: noop,
         mousedown: noop,
         mouseup: noop,
-        mousemove: noop
+        mousemove: noop,
+        mouseout: noop,
+        mouseover: noop
       };
       addUpdate = noop;
     },

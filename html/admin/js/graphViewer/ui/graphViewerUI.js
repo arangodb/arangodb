@@ -50,24 +50,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     background = document.createElement("div"),
     mousePointerBox = document.createElement("div"),
     svg,
-    getCursorPosition = function (ev) {
-      var e = ev || window.event,
-        res = {};
-      res.x = e.clientX;
-      res.y = e.clientY;
-      res.x += document.body.scrollLeft;
-      res.y += document.body.scrollTop;
-      return res;
-    },
-    
-    moveCursorBox = function(ev) {
-      var pos = getCursorPosition(ev);
-      pos.x += 7;
-      pos.y += 12;
-      mousePointerBox.style.position = "absolute";
-      mousePointerBox.style.left  = pos.x + 'px';
-      mousePointerBox.style.top = pos.y + 'px';
-    },
     
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
@@ -99,6 +81,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       var toolbox = document.createElement("div"),
         dispatcherUI = new EventDispatcherControls(
           toolbox,
+          mousePointerBox,
           graphViewer.nodeShaper,
           graphViewer.edgeShaper,
           graphViewer.dispatcherConfig
@@ -273,12 +256,4 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   
   createToolbox();
   createMenu();
-  
-  document.getElementById("graphViewerSVG").onmousemove = moveCursorBox;
-  document.getElementById("graphViewerSVG").onmouseout = function() {
-    mousePointerBox.style.display = "none";
-  };
-  document.getElementById("graphViewerSVG").onmouseover = function() {
-    mousePointerBox.style.display = "block";
-  };
 }
