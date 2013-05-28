@@ -50,17 +50,23 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     background = document.createElement("div"),
     mousePointerBox = document.createElement("div"),
     svg,
-    moveCursorBox = function(ev) {
+    getCursorPosition = function (ev) {
       var e = ev || window.event,
-        x = e.clientX,
-        y = e.clientY;
-      x += document.body.scrollLeft;
-      x += 7; 
-      y += document.body.scrollTop;
-      y += 12;
+        res = {};
+      res.x = e.clientX;
+      res.y = e.clientY;
+      res.x += document.body.scrollLeft;
+      res.y += document.body.scrollTop;
+      return res;
+    },
+    
+    moveCursorBox = function(ev) {
+      var pos = getCursorPosition(ev);
+      pos.x += 7;
+      pos.y += 12;
       mousePointerBox.style.position = "absolute";
-      mousePointerBox.style.left  = x + 'px';
-      mousePointerBox.style.top = y + 'px';
+      mousePointerBox.style.left  = pos.x + 'px';
+      mousePointerBox.style.top = pos.y + 'px';
     },
     
     makeBootstrapDropdown = function (div, id, title) {
