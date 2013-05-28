@@ -759,6 +759,147 @@
         });
       });
       
+    }); 
+    
+    describe('checking binding to SVG', function() {
+      
+      it('should be able to permanently bind many functions to events', function() {
+        var functions = {
+          a: function() {},
+          b: function() {},
+          c: function() {},
+          d: function() {}
+        };
+        spyOn(functions, "a");
+        spyOn(functions, "b");
+        spyOn(functions, "c");
+        spyOn(functions, "d");
+        
+        dispatcher.fixSVG("click", functions.a);
+        dispatcher.fixSVG("click", functions.b);
+        dispatcher.fixSVG("click", functions.c);
+        dispatcher.fixSVG("click", functions.d);
+        
+        helper.simulateMouseEvent("click", "svg");
+        
+        expect(functions.a).wasCalled();
+        expect(functions.b).wasCalled();
+        expect(functions.c).wasCalled();
+        expect(functions.d).wasCalled();
+      });
+      
+      it('should be able to bind temporary functions to events', function() {
+        var functions = {
+          a: function() {}
+        };
+        spyOn(functions, "a");
+        
+        dispatcher.bind("svg", "click", functions.a);
+        
+        helper.simulateMouseEvent("click", "svg");
+        
+        expect(functions.a).wasCalled();
+      });
+      
+      it('should be able to overwrite temporary functions on events', function() {
+        var functions = {
+          a: function() {},
+          b: function() {}
+        };
+        spyOn(functions, "a");
+        spyOn(functions, "b");
+        
+        dispatcher.bind("svg", "click", functions.a);
+        
+        dispatcher.bind("svg", "click", functions.b);
+        
+        helper.simulateMouseEvent("click", "svg");
+        
+        expect(functions.b).wasCalled();
+        expect(functions.a).wasNotCalled();
+      });
+      
+      it('should not overwrite permanent functions', function() {
+        var functions = {
+          a: function() {},
+          b: function() {}
+        };
+        spyOn(functions, "a");
+        spyOn(functions, "b");
+        
+        dispatcher.fixSVG("click", functions.a);
+        
+        dispatcher.bind("svg", "click", functions.b);
+        
+        helper.simulateMouseEvent("click", "svg");
+        
+        expect(functions.b).wasCalled();
+        expect(functions.a).wasCalled();
+      });
+      
+      it('binding a permanent function should not effect temporary function', function() {
+        var functions = {
+          a: function() {},
+          b: function() {}
+        };
+        spyOn(functions, "a");
+        spyOn(functions, "b");
+        
+        dispatcher.bind("svg", "click", functions.b);
+        dispatcher.fixSVG("click", functions.a);
+        
+        helper.simulateMouseEvent("click", "svg");
+        
+        expect(functions.b).wasCalled();
+        expect(functions.a).wasCalled();
+      });
+      
+      it('should be able to bind only the given events and'
+      + ' unbind other temporary events', function() {
+        var functions = {
+          a: function() {},
+          b: function() {},
+          c: function() {},
+          d: function() {}
+        };
+        spyOn(functions, "a");
+        spyOn(functions, "b");
+        spyOn(functions, "c");
+        spyOn(functions, "d");
+        
+        dispatcher.bind("svg", "mouseup", functions.a);
+        dispatcher.bind("svg", "mousedown", functions.b);
+        dispatcher.bind("svg", "click", functions.c);
+        dispatcher.rebind("svg", {click: functions.d});
+        
+        helper.simulateMouseEvent("click", "svg");
+        helper.simulateMouseEvent("mouseup", "svg");
+        helper.simulateMouseEvent("mousedown", "svg");
+        
+        expect(functions.a).wasNotCalled();
+        expect(functions.b).wasNotCalled();
+        expect(functions.c).wasNotCalled();
+        expect(functions.d).wasCalled();
+      });
+      
+      it('should not remove permanent events on rebind', function() {
+        var functions = {
+          a: function() {},
+          b: function() {}
+        };
+        spyOn(functions, "a");
+        spyOn(functions, "b");
+        
+        dispatcher.fixSVG("mousemove", functions.a);
+        dispatcher.rebind("svg", {click: functions.b});
+        
+        helper.simulateMouseEvent("mousemove", "svg");
+        helper.simulateMouseEvent("click", "svg");
+        
+        expect(functions.a).wasCalled();
+        expect(functions.b).wasCalled();
+      });
+      
     });
     
     describe('checking rebinding of events', function() {
@@ -843,6 +984,8 @@
         });
         
       });
+      
+      
     });
   });
 

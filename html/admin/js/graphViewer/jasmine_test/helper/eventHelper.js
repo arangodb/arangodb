@@ -37,7 +37,7 @@ var helper = helper || {};
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
     evt.initMouseEvent("mousemove", true, true, window,
-      0, x, y, x, y, false, false, false, false, 0, null);
+      0, 0, 0, x, y, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
   

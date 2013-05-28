@@ -95,6 +95,9 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     },
     rebindEdges = function(actions) {
       dispatcher.rebind("edges", actions);
+    },
+    rebindSVG = function(actions) {
+      dispatcher.rebind("svg", actions);
     };
   
   this.addControlDrag = function() {
@@ -107,6 +110,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
           drag: dispatcher.events.DRAG
         });
         rebindEdges();
+        rebindSVG();
       };
     createIcon(icon, "drag", callback);
   };
@@ -143,6 +147,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         setCursorIcon(icon);
         rebindNodes({click: nodeCallback});
         rebindEdges({click: edgeCallback});
+        rebindSVG();
       };
     createIcon(icon, "edit", callback);
   };
@@ -155,6 +160,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.EXPAND});
         rebindEdges();
+        rebindSVG();
       };
     createIcon(icon, "expand", callback);
   };
@@ -171,6 +177,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         rebindEdges({click: dispatcher.events.DELETEEDGE(function() {
           
         })});
+        rebindSVG();
       };
     createIcon(icon, "delete", callback);
   };
@@ -187,6 +194,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
           })
         });
         rebindEdges();
+        rebindSVG({
+          mouseup: dispatcher.events.CANCELCREATEEDGE(),
+          mouseout: dispatcher.events.CANCELCREATEEDGE()
+        });
       };
     createIcon(icon, "connect", callback);
   };
