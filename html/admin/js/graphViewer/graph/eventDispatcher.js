@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global _, $*/
+/*global _, $, window*/
 /*global EventLibrary*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -80,11 +80,14 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         
         self.events.STARTCREATEEDGE = function(callback) {
           return function(node) {
+            var e = d3.event || window.event;
             edgeStart = node;
             didInsert = false;
             if (callback !== undefined) {
-              callback();
+              callback(node, e);
             }
+            // Necessary to omit dragging of the graph
+            e.stopPropagation();
           };
         };
         
