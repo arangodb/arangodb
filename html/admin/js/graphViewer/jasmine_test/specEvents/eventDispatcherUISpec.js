@@ -61,17 +61,21 @@
     beforeEach(function () {
       nodes = [{
         _id: 1,
-        _rev: 1,
-        _key: 1,
+        x: 3,
+        y: 4,
         _data: {
           _id: 1,
+          _rev: 1,
+          _key: 1,
           name: "Alice"
         }
       },{
         _id: 2,
-        _rev: 2,
-        _key: 2,
+        x: 1,
+        y: 2,
         _data: {
+          _rev: 2,
+          _key: 2,
           _id: 2
         }
       }];
@@ -122,6 +126,7 @@
         };
       
       svg = document.createElement("svg");
+      svg.id = "svg";
       document.body.appendChild(svg);
       nodeShaper = new NodeShaper(d3.select("svg"));
       edgeShaper = new EdgeShaper(d3.select("svg"));
@@ -265,7 +270,7 @@
         helper.simulateMouseEvent("click", "control_event_node_edit_submit");
         expect(adapter.patchNode).toHaveBeenCalledWith(
           nodes[0],
-          { _id: "1",
+          {
             name: "Bob"
           },
           jasmine.any(Function));
@@ -286,9 +291,6 @@
         expect(adapter.patchEdge).toHaveBeenCalledWith(
           edges[0],
           {
-            _id: "12",
-            _rev: "12",
-            _key: "12",
             _from: "1",
             _to: "2",
             label: "newLabel"
@@ -373,41 +375,95 @@
       });      
     });
     
-    it('should be able to add a connect control to the list', function() {
-      runs(function() {
+    describe('the connect control', function() {
+      
+      it('should be added to the list', function() {
+        runs(function() {
+          dispatcherUI.addControlConnect();
+      
+          expect($("#control_event_list #control_event_connect").length).toEqual(1);
+      
+          helper.simulateMouseEvent("click", "control_event_connect");
+      
+          expect(nodeShaper.changeTo).toHaveBeenCalledWith({
+            actions: {
+              reset: true,
+              mousedown: jasmine.any(Function),
+              mouseup: jasmine.any(Function)
+            }
+          });
+        
+          expect(edgeShaper.changeTo).toHaveBeenCalledWith({
+            actions: {
+              reset: true
+            }
+          });
+        
+          expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
+        
+          helper.simulateMouseEvent("mousedown", "2");
+        
+          helper.simulateMouseEvent("mouseup", "1");
+        
+          expect(adapter.createEdge).toHaveBeenCalledWith(
+            {source: nodes[1], target: nodes[0]},
+            jasmine.any(Function)
+          );
+        
+        });      
+      });
+      
+      it('should draw a line from startNode following the cursor', function() {
+        var line,
+        cursorX,
+        cursorY;
+        
+        spyOn(edgeShaper, "addAnEdgeFollowingTheCursor");
+        
         dispatcherUI.addControlConnect();
-      
-        expect($("#control_event_list #control_event_connect").length).toEqual(1);
-      
         helper.simulateMouseEvent("click", "control_event_connect");
-      
-        expect(nodeShaper.changeTo).toHaveBeenCalledWith({
-          actions: {
-            reset: true,
-            mousedown: jasmine.any(Function),
-            mouseup: jasmine.any(Function)
-          }
-        });
-        
-        expect(edgeShaper.changeTo).toHaveBeenCalledWith({
-          actions: {
-            reset: true
-          }
-        });
-        
-        expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
-        
         helper.simulateMouseEvent("mousedown", "2");
         
-        helper.simulateMouseEvent("mouseup", "1");
-        
-        expect(adapter.createEdge).toHaveBeenCalledWith(
-          {source: nodes[1], target: nodes[0]},
-          jasmine.any(Function)
+        expect(edgeShaper.addAnEdgeFollowingTheCursor).toHaveBeenCalledWith(
+          0, 0
         );
+      });
+      
+      it('the cursor-line should follow the cursor on mousemove over svg', function() {        
+        dispatcherUI.addControlConnect();
+        helper.simulateMouseEvent("click", "control_event_connect");
+        helper.simulateMouseEvent("mousedown", "2");
         
-      });      
+        helper.simulateMouseMoveEvent("svg", 40, 50);
+        
+        var line = $("#connectionLine");
+        expect(line.attr("x1")).toEqual(String(nodes[1].x));
+        expect(line.attr("y1")).toEqual(String(nodes[1].y));
+        expect(line.attr("x2")).toEqual("40");
+        expect(line.attr("y2")).toEqual("50");
+      });
+      
+      it('the cursor-line should disappear on mouseup on svg', function() {
+        spyOn(edgeShaper, "removeCursorFollowingEdge");
+        dispatcherUI.addControlConnect();
+        helper.simulateMouseEvent("click", "control_event_connect");
+        helper.simulateMouseEvent("mousedown", "2");
+        helper.simulateMouseEvent("mouseup", "1-2");
+        expect(edgeShaper.removeCursorFollowingEdge).toHaveBeenCalled();
+      });
+      
+      it('the cursor-line should disappear on mouseup on svg', function() {
+        spyOn(edgeShaper, "removeCursorFollowingEdge");  
+        dispatcherUI.addControlConnect();
+        helper.simulateMouseEvent("click", "control_event_connect");
+        helper.simulateMouseEvent("mousedown", "2");
+        helper.simulateMouseEvent("mouseup", "1");
+        expect(edgeShaper.removeCursorFollowingEdge).toHaveBeenCalled();
+      });
+      
     });
+    
+    
             
     it('should be able to add all controls to the list', function () {
       dispatcherUI.addAll();
