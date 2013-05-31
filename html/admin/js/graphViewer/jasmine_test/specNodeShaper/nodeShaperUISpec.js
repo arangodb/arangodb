@@ -263,6 +263,33 @@
     });
     
     
+    it('should be able to add a switch colour on attribute control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticLabelAndColour();
+      
+        expect($("#control_node_list #control_node_labelandcolour").length).toEqual(1);
+        expect($("#control_node_list #control_node_labelandcolour")[0]).toConformToListCSS();
+      
+        helper.simulateMouseEvent("click", "control_node_labelandcolour");
+        $("#control_node_labelandcolour_key").attr("value", "label");
+        helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          label: "label",
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_node_attributecolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
