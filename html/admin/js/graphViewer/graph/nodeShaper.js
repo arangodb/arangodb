@@ -214,14 +214,14 @@ function NodeShaper(parent, flags, idfunc) {
           if (_.isFunction(width)) {
             translateX = function(d) {
               return -(width(d) / 2);
-            }
+            };
           } else {
             translateX = -(width / 2);
           }
           if (_.isFunction(height)) {
             translateY = function(d) {
               return -(height(d) / 2);
-            }
+            };
           } else {
             translateY = -(height / 2);
           }
@@ -245,14 +245,16 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black") // Foce a black color20*75)
+            .attr("fill", "black") // Force a black color
+            .attr("stroke", "none") // Make it readable
             .text(label);
         };
       } else {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black") // Foce a black color20*75)
+            .attr("fill", "black") // Force a black color
+            .attr("stroke", "none") // Make it readable
             .text(function(d) { 
               return d._data[label] !== undefined ? d._data[label] : "";
             });

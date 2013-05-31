@@ -679,6 +679,23 @@
         expect($("svg .node text")[0].textContent).toEqual("MyLabel");
       });
 
+      it('should set up the text element correctly', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            "label": "MyLabel"
+          }
+        }],
+        textEl;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        expect(textEl.attr("fill")).toEqual("black");
+        expect(textEl.attr("stroke")).toEqual("none");
+        
+        
+        
+      });
+
       it('should ignore other attributes', function () {
         var nodes = [
           {
