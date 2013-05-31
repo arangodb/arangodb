@@ -1,3 +1,7 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
+/*global window, $, Backbone, document, arangoCollection, arangoHelper, dashboardView */
+/*global FoxxInstalledListView, FoxxActiveListView*/
+
 $(document).ready(function() {
 
   window.Router = Backbone.Router.extend({
@@ -37,20 +41,18 @@ $(document).ready(function() {
       });
 
       window.documentsView = new window.documentsView({
-        collection: window.arangoDocuments,
+        collection: window.arangoDocuments
       });
       window.documentView = new window.documentView({
-        collection: window.arangoDocument,
+        collection: window.arangoDocument
       });
       window.documentSourceView = new window.documentSourceView({
-        collection: window.arangoDocument,
+        collection: window.arangoDocument
       });
 
       window.arangoLogsStore = new window.arangoLogs();
       window.arangoLogsStore.fetch({
         success: function () {
-          if (!window.logsView) {
-          }
           window.logsView = new window.logsView({
             collection: window.arangoLogsStore
           });
@@ -156,13 +158,13 @@ $(document).ready(function() {
       });
       */
       if (this.statisticsDescription === undefined) {
-        this.statisticsDescription = new window.StatisticsDescription;
+        this.statisticsDescription = new window.StatisticsDescription();
         this.statisticsDescription.fetch({
           async:false
         });
       }
       if (this.statistics === undefined) {
-        this.statisticsCollection = new window.StatisticsCollection;
+        this.statisticsCollection = new window.StatisticsCollection();
         //this.statisticsCollection.fetch();
       }
       if (this.dashboardView === undefined) {
@@ -171,15 +173,14 @@ $(document).ready(function() {
           description: this.statisticsDescription
         });
       }
-
       this.dashboardView.render();
     },
-    
+
     graph: function() {
       this.graphView.render();
       this.naviView.selectMenuItem('graph-menu'); 
     },
-    
+
     applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
@@ -212,7 +213,9 @@ $(document).ready(function() {
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
           success: function() {
-            var editAppView = new window.foxxEditView({model: self.foxxList.findWhere({_key: appkey})});
+            var editAppView = new window.foxxEditView({
+              model: self.foxxList.findWhere({_key: appkey})
+            });
             editAppView.render();
           }
         });
@@ -228,12 +231,16 @@ $(document).ready(function() {
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
           success: function() {
-            var installAppView = new window.foxxMountView({model: self.foxxList.findWhere({_key: appkey})});
+            var installAppView = new window.foxxMountView({
+              model: self.foxxList.findWhere({_key: appkey})
+            });
             installAppView.render();
           }
         });
       } else {
-        var installAppView = new window.foxxMountView({model: this.foxxList.findWhere({_key: appkey})});
+        var installAppView = new window.foxxMountView({
+          model: this.foxxList.findWhere({_key: appkey})
+        });
         installAppView.render();
       }
       

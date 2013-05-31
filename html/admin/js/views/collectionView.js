@@ -1,3 +1,6 @@
+/*jslint indent: 2, stupid: true, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, window, exports, Backbone, EJS, $, arangoHelper */
+
 var collectionView = Backbone.View.extend({
   el: '#modalPlaceholder',
   initialize: function () {
@@ -30,7 +33,7 @@ var collectionView = Backbone.View.extend({
     "keydown #change-collection-size"     :    "listenKey"
   },
   listenKey: function(e) {
-    if (e.keyCode == 13) {
+    if (e.keyCode === 13) {
       this.saveModifiedCollection();
     }
   },
@@ -52,13 +55,18 @@ var collectionView = Backbone.View.extend({
     $('#change-collection-type').text(this.myCollection.type);
     $('#change-collection-status').text(this.myCollection.status);
 
-    if (this.myCollection.status == 'unloaded') {
-      $('#colFooter').append('<button id="load-modified-collection" class="btn" style="margin-right: 10px">Load</button>');
+    if (this.myCollection.status === 'unloaded') {
+      $('#colFooter').append(
+        '<button id="load-modified-collection" class="btn" style="margin-right: 10px">Load</button>'
+      );
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
-    else if (this.myCollection.status == 'loaded') {
-      $('#colFooter').append('<button id="unload-modified-collection" class="btn" style="margin-right: 10px">Unload</button>');
+    else if (this.myCollection.status === 'loaded') {
+      $('#colFooter').append(
+        '<button id="unload-modified-collection"'+
+        'class="btn" style="margin-right: 10px">Unload</button>'
+      );
       var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
       this.fillLoadedModal(data);
     }
@@ -66,7 +74,7 @@ var collectionView = Backbone.View.extend({
   fillLoadedModal: function (data) {
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();
-    if (data.waitForSync == false) {
+    if (data.waitForSync === false) {
       $('#change-collection-sync').val('false');
     }
     else {
@@ -74,7 +82,7 @@ var collectionView = Backbone.View.extend({
     }
     var calculatedSize = data.journalSize / 1024 / 1024;
     $('#change-collection-size').val(calculatedSize);
-    $('#change-collection').modal('show')
+    $('#change-collection').modal('show');
   },
   saveModifiedCollection: function() {
     var newname = $('#change-collection-name').val();
@@ -87,8 +95,9 @@ var collectionView = Backbone.View.extend({
     var status = this.getCollectionStatus();
 
     if (status === 'loaded') {
+      var result;
       if (this.myCollection.name !== newname) {
-        var result = window.arangoCollectionsStore.renameCollection(collid, newname);
+        result = window.arangoCollectionsStore.renameCollection(collid, newname);
       }
 
       var wfs = $('#change-collection-sync').val();
@@ -107,9 +116,7 @@ var collectionView = Backbone.View.extend({
       }
 
       if (result !== true) {
-        if (result === undefined) {
-        }
-        else {
+        if (result !== undefined) {
           arangoHelper.arangoError("Collection error: " + result);
           return 0;
         }
