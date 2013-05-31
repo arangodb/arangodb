@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-/*global EventDispatcher, ArangoAdapter, JSONAdapter */
+/*global ArangoAdapter, JSONAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -56,7 +56,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     edgeContainer,
     zoomManager,
     fixedSize,
-    dispatcher,
     edges = [],
     nodes = [],
 
@@ -101,7 +100,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       nsConf = config.nodeShaper || {},
       idFunc = nsConf.idfunc || undefined,
       zConf = config.zoom || false;
-    
     parseLayouterConfig(config.layouter);
     edgeContainer = graphContainer.append("g");
     self.edgeShaper = new EdgeShaper(edgeContainer, esConf);
@@ -113,13 +111,14 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
-    adapterConfig.width = width;
-    adapterConfig.height = height;
+      adapterConfig.width = width;
+      adapterConfig.height = height;
       self.adapter = new ArangoAdapter(
         nodes,
         edges,
         adapterConfig
       );
+      self.adapter.setChildLimit(5);
       break;
     case "json":
       self.adapter = new JSONAdapter(

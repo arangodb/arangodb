@@ -57,6 +57,9 @@
             value: value
           };
         };
+        r.getCollections = function(callback) {
+          callback(["nodes"], ["edges"]);
+        };
         return r;
       };
       //Mock for ZoomManager
@@ -190,15 +193,39 @@
       });
       
       it('should contain the objects from eventDispatcher', function() {
-        expect($(toolboxSelector + " #control_drag").length).toEqual(1);
-        expect($(toolboxSelector + " #control_edit").length).toEqual(1);
-        expect($(toolboxSelector + " #control_expand").length).toEqual(1);
-        expect($(toolboxSelector + " #control_delete").length).toEqual(1);
-        expect($(toolboxSelector + " #control_connect").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
       });
       
       it('should have the correct layout', function() {
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
+      
+      it('should create the additional mouse-icon box', function() {
+        var pointerBox = $("#contentDiv #mousepointer");
+        expect(pointerBox.length).toEqual(1);
+        expect(pointerBox[0]).toBeTag("div");
+        expect(pointerBox[0]).toBeOfClass("mousepointer");
+      });
+      
+      it('should position the mouse-icon box next to the mouse pointer', function() {
+        var x = 40,
+          y = 50,
+          pointerBox = $("#contentDiv #mousepointer");
+          
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
+        expect(pointerBox.offset().left).toEqual(x + 7);
+        expect(pointerBox.offset().top).toEqual(y + 12);
+        
+        x = 66;
+        y = 33;
+        
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
+        expect(pointerBox.offset().left).toEqual(x + 7);
+        expect(pointerBox.offset().top).toEqual(y + 12);
       });
       
     });
@@ -263,12 +290,14 @@
         expect($(menuSelector + " #control_gradientcolour").length).toEqual(1);
       });
       */
+      /*
       it('should contain a menu for the adapter', function() {
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
+      */
       /*
       it('should contain a menu for the layouter', function() {
         var menuSelector = "#contentDiv #menubar #layoutermenu";
@@ -279,6 +308,15 @@
         expect($(menuSelector + " #control_charge").length).toEqual(1);
       });
       */
+      
+      it('should contain a general configure menu', function() {
+        var menuSelector = "#contentDiv #menubar #configuremenu";
+        expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
+        expect($("> button", menuSelector).text()).toEqual("Configure ");
+        expect($(menuSelector +  " #control_adapter_collections").length).toEqual(1);
+        expect($(menuSelector +  " #control_node_label").length).toEqual(1);
+      });
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
@@ -296,8 +334,10 @@
         expect(searchField.id).toEqual("transparentPlaceholder");
         expect(searchField.className).toEqual("pull-left");
         expect(searchField.children[0].id).toEqual("attribute");
-        expect(searchField.children[1].id).toEqual("value");
-        expect(searchField.children[2].id).toEqual("loadnode");
+        expect(searchField.children[1]).toBeTag("span");
+        expect(searchField.children[1].textContent).toEqual("==");
+        expect(searchField.children[2].id).toEqual("value");
+        expect(searchField.children[3].id).toEqual("loadnode");
       });
     });
     
@@ -444,7 +484,7 @@
         runs (function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
-          helper.simulateMouseEvent("click", "control_expand");
+          helper.simulateMouseEvent("click", "control_event_expand");
         });
 
         waits(waittime);

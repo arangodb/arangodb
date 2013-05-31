@@ -50,7 +50,8 @@ function EdgeShaper(parent, flags, idfunc) {
     edges = [],
     toplevelSVG,
     visibleLabels = true,
-    
+    followEdge = {},
+    followEdgeG,
     idFunction = function(d) {
       return d.source._id + "-" + d.target._id;
     },
@@ -70,7 +71,9 @@ function EdgeShaper(parent, flags, idfunc) {
        dblclick: noop,
        mousedown: noop,
        mouseup: noop,
-       mousemove: noop
+       mousemove: noop,
+       mouseout: noop,
+       mouseover: noop
      };
      addUpdate = noop;
     },
@@ -317,6 +320,8 @@ function EdgeShaper(parent, flags, idfunc) {
     idFunction = idfunc;
   }
   
+  followEdgeG = toplevelSVG.append("g");
+  
   
   /////////////////////////////////////////////////////////
   /// Public functions
@@ -348,6 +353,24 @@ function EdgeShaper(parent, flags, idfunc) {
       visibleLabels = false;
     }
     shapeEdges();
+  };
+  
+  self.addAnEdgeFollowingTheCursor = function(x, y) {
+    followEdge = followEdgeG.append("line");
+    followEdge.attr("stroke", "black")
+      .attr("id", "connectionLine")
+      .attr("x1", x)
+      .attr("y1", y)
+      .attr("x2", x)
+      .attr("y2", y);
+    return function(x, y) {
+      followEdge.attr("x2", x).attr("y2", y);
+    };
+  };
+  
+  self.removeCursorFollowingEdge = function() {
+    followEdge.remove();
+    followEdge = {};
   };
 }
 

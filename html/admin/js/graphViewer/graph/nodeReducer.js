@@ -265,9 +265,34 @@ function NodeReducer(nodes, edges) {
      joinCommunities(l.sID, l.lID, coms, heap, l.val);
      updateValues(l, dQ, a, heap);
      return true;
+   },
+   
+   addNode = function(bucket, node) {
+     bucket.push(node);
+     
+   },
+   
+   getSimilarityValue = function(bucket, node) {
+     if (bucket.length === 0) {
+       return 1;
+     }     
+     var comp = bucket[0],
+       props = _.union(_.keys(comp), _.keys(node)),
+       countMatch = 0,
+       propCount = 0;
+     _.each(props, function(key) {
+       if (comp[key] !== undefined && node[key]!== undefined) {
+         countMatch++;
+         if (comp[key] === node[key]) {
+           countMatch += 4;
+         }
+       }
+     });
+     propCount = props.length * 5;
+     propCount++;
+     countMatch++;
+     return countMatch / propCount;
    };
-   
-   
     
   self.getCommunity = function(limit, focus) {
     var dQ = {},
@@ -305,4 +330,34 @@ function NodeReducer(nodes, edges) {
     }
     return res[0];
   };
+  
+  self.bucketNodes = function(toSort, numBuckets) {
+    var res = [],
+    threshold = 0.5;
+    if (toSort.length <= numBuckets) {
+      res = _.map(toSort, function(n) {
+        return [n];
+      });
+      return res;
+    }
+    _.each(toSort, function(n) {
+      var i, shortest, sLength;
+      shortest = 0;
+      sLength = Number.POSITIVE_INFINITY;
+      for (i = 0; i < numBuckets; i++) {
+        res[i] = res[i] || [];
+        if (getSimilarityValue(res[i], n) > threshold) {
+          addNode(res[i], n);
+          return;
+        }
+        if (sLength > res[i].length) {
+          shortest = i;
+          sLength = res[i].length;
+        }
+      }
+      addNode(res[shortest], n);
+    });
+    return res;
+  };
+  
 }

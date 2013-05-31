@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, Backbone*/
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, continue: true, regexp: true */
+/*global require, window, Backbone */
 
 window.StatisticsDescription = Backbone.Model.extend({
   defaults: {
@@ -7,6 +7,8 @@ window.StatisticsDescription = Backbone.Model.extend({
     "groups" : ""
   },
   url: function() {
+    'use strict';
+
     return "../statistics-description";
   }
 });

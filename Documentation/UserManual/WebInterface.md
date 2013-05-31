@@ -7,7 +7,7 @@ ArangoDB's Web-Interface {#UserManualWebInterface}
 Accessing the Web-Interface {#UserManualWebInterfaceAccess}
 ===========================================================
 
-The web interfaced can be access as
+The web interface can be accessed via the URL
 
     http://localhost:8529
 
@@ -20,64 +20,55 @@ application instead. In this case use
 Collections Tab {#UserManualWebInterfaceCollections}
 ----------------------------------------------------
 
-The collection tabs shows an overview about the loaded and unloaded
-collections of the database.
+The *Collections* tab shows an overview of the loaded and unloaded
+collections present in ArangoDB. System collections (i.e. collections
+whose names start with an underscore) are not shown by default.
 
-@htmlonly <img src="images/fe-collections.png" alt="ArangoDB Front-End">@endhtmlonly
-@latexonly\includegraphics[width=12cm]{images/fe-collections.png}@endlatexonly
+The list of collections can be restricted using the search bar, or by
+using the filtering at the top. The filter can also be used to show or
+hide system collections.
 
-You can load, unloaded, delete, or inspect the collections. Please
-note that you should not delete or change system collections, i. e.,
-collections starting with an underscore.
+Clicking on a collection will show the documents contained in it. 
+Clicking the small icon on a collection's badge will bring up a dialog
+that allows loading/unloading, renaming and deleting the collection.
 
-If you click on the magnifying glass, you will get a list of all documents
-in the collection.
+Please note that you should not change or delete system collections.
 
-@htmlonly <img src="images/fe-documents.png" alt="ArangoDB Front-End">@endhtmlonly
-@latexonly\includegraphics[width=12cm]{images/fe-documents.png}@endlatexonly
+In the list of documents of a collection, you can click on the *Add document*
+line to add a new document to the collection. The document will be created
+instantly, with a system-defined key. The key and all other attributes of the
+document can be adjusted in the following view.
 
-Using the pencil you can edit the document.
 
-Query Tab {#UserManualWebInterfaceQuery}
-----------------------------------------
+AQL Editor Tab {#UserManualWebInterfaceQuery}
+---------------------------------------------
 
-The query tabs allows you to execute AQL queries.
+The *AQL Editor* tab allow to execute AQL queries.
 
-@htmlonly <img src="images/fe-query.png" alt="ArangoDB Front-End">@endhtmlonly
-@latexonly\includegraphics[width=12cm]{images/fe-query.png}@endlatexonly
+Type in a query in the bottom box and execute it by pressing the *Submit* button.
+The query result will be shown in the box at the top.
 
-Type in a query and execute it.
 
-Shell Tab {#UserManualWebInterfaceShell}
-----------------------------------------
+JS Shell Tab {#UserManualWebInterfaceShell}
+-------------------------------------------
 
-The shell tabs give you access to a JavaScript shell connection to the
+The *JS Shell* tab provides access to a JavaScript shell connection to the
 database server.
 
-@htmlonly <img src="images/fe-shell.png" alt="ArangoDB Front-End">@endhtmlonly
-@latexonly\includegraphics[width=12cm]{images/fe-shell.png}@endlatexonly
+Any valid JavaScript code can be executed inside the shell. The code will be
+executed inside your browser. To contact the ArangoDB server, you can use the
+`db` object, for example as follows:
 
-Use the OK button or return to execute a command.
+    JSH> db._create("mycollection");
+    JSH> db.mycollection.save({ _key: "test", value: "something" });
+
 
 Logs Tab {#UserManualWebInterfaceLogs}
 --------------------------------------
 
-You can browse the log files.
-
-@htmlonly <img src="images/fe-logs.png" alt="ArangoDB Front-End">@endhtmlonly
-@latexonly\includegraphics[width=12cm]{images/fe-logs.png}@endlatexonly
+You can use the *Logs* tab to browse the most recent log entries provided by the
+ArangoDB database server.
 
 Note that the server only keeps a limited number of log entries. For
 real log analyses write the logs to disk using syslog or a similar
-mechanism.
-
-Statistics Tab {#UserManualWebInterfaceStatistics}
---------------------------------------------------
-
-Use the statistics tab to display information about the server.
-
-@htmlonly <img src="images/fe-statistics.png" alt="ArangoDB Front-End">@endhtmlonly
-@latexonly\includegraphics[width=12cm]{images/fe-statistics.png}@endlatexonly
-
-Initially no statistics will be display. You must use the add button
-to configure what type of information should be displayed.
+mechanism. ArangoDB provides several startup options for this.

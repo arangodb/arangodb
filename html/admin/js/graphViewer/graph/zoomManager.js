@@ -105,7 +105,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       var fontMax = conf.maxFont || 16,
       fontMin = conf.minFont || 6,
       rMax = conf.maxRadius || 25,
-      rMin = conf.minRadius || 1;
+      rMin = conf.minRadius || 4;
       baseDist = conf.focusZoom || 1;
       baseDRadius = conf.focusRadius || 100;
       
