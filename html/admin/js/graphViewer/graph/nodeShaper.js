@@ -195,7 +195,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
 
     parseShapeFlag = function (shape) {
-      var radius, width, height;
+      var radius, width, height, translateX, translateY;
       switch (shape.type) {
         case NodeShaper.shapes.NONE:
           addShape = noop;
@@ -209,12 +209,28 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case NodeShaper.shapes.RECT:
-          width = shape.width || 20;
-          height = shape.height || 10;
+          width = shape.width || 120;
+          height = shape.height || 24;
+          if (_.isFunction(width)) {
+            translateX = function(d) {
+              return -(width(d) / 2);
+            }
+          } else {
+            translateX = -(width / 2);
+          }
+          if (_.isFunction(height)) {
+            translateY = function(d) {
+              return -(height(d) / 2);
+            }
+          } else {
+            translateY = -(height / 2);
+          }
           addShape = function(node) {
             node.append("rect") // Display nodes as rectangles
               .attr("width", width) // Set width
-              .attr("height", height); // Set height
+              .attr("height", height) // Set height
+              .attr("x", translateX)
+              .attr("y", translateY);
           };
           break;
         case undefined:
@@ -339,7 +355,7 @@ function NodeShaper(parent, flags, idfunc) {
   
   if (flags.shape === undefined) {
    flags.shape = {
-     type: NodeShaper.shapes.CIRCLE
+     type: NodeShaper.shapes.RECT
    }; 
   }
   
