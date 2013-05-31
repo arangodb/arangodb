@@ -17,18 +17,28 @@ arangoHelper = {
     };
   },
   arangoNotification: function (message) {
+    var returnVal = false;
     $.gritter.add({
       title: "Notification:",
       text: message,
-      time: 800
+      time: 800,
+      before_open: function(){
+        returnVal = true;
+      }
     });
+    return returnVal;
   },
   arangoError: function (message) {
+    var returnVal = false;
     $.gritter.add({
       title: "Error:",
       text: message,
-      sticky: true
+      sticky: true,
+      before_open: function(){
+        returnVal = true;
+      }
     });
+    return returnVal;
   },
   getRandomToken: function () {
     return Math.round(new Date().getTime());
