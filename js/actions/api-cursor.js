@@ -137,7 +137,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Executes a query and extract the result in a single go:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturnSingle}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturnSingle}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -157,7 +157,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Executes a query and extract part of the result:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturn}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturn}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -182,7 +182,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Missing body:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorMissingBody}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorMissingBody}
 ///     var url = "/_api/cursor";
 /// 
 ///     var response = logCurlRequest('POST', url, '');
@@ -194,7 +194,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Unknown collection:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorUnknownCollection}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
 ///     var body = '{ "query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }';
 /// 
