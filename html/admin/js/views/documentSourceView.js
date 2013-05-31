@@ -1,10 +1,13 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, $, window, arangoHelper, ace, arangoDocumentStore */
+
 var documentSourceView = Backbone.View.extend({
   el: '#content',
   init: function () {
   },
   events: {
     "click #tableView"     :   "tableView",
-    "click #saveSourceDoc" :   "saveSourceDoc",
+    "click #saveSourceDoc" :   "saveSourceDoc"
   },
 
   template: new EJS({url: 'js/templates/documentSourceView.ejs'}),
@@ -46,10 +49,11 @@ var documentSourceView = Backbone.View.extend({
     );
   },
   saveSourceDoc: function() {
+    var editor, model, result;
     if (this.type === 'document') {
-      var editor = ace.edit("sourceEditor");
-      var model = editor.getValue();
-      var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
+      editor = ace.edit("sourceEditor");
+      model = editor.getValue();
+      result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Document saved');
       }
@@ -58,9 +62,9 @@ var documentSourceView = Backbone.View.extend({
       }
     }
     else if (this.type === 'edge') {
-      var editor = ace.edit("sourceEditor");
-      var model = editor.getValue();
-      var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
+      editor = ace.edit("sourceEditor");
+      model = editor.getValue();
+      result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Edge saved');
       }
@@ -82,7 +86,7 @@ var documentSourceView = Backbone.View.extend({
       }
     });
     var editor = ace.edit("sourceEditor");
-    editor.setValue(this.FormatJSON(data));
+    editor.setValue(arangoHelper.FormatJSON(data));
   },
   stateReplace: function (value) {
     var inString = false;
@@ -154,86 +158,5 @@ var documentSourceView = Backbone.View.extend({
     }
 
     return output;
-  },
-  FormatJSON: function (oData, sIndent) {
-    var self = this;
-    if (arguments.length < 2) {
-      var sIndent = "";
-    }
-    var sIndentStyle = " ";
-    var sDataType = self.RealTypeOf(oData);
-
-    if (sDataType == "array") {
-      if (oData.length == 0) {
-        return "[]";
-      }
-      var sHTML = "[";
-    } else {
-      var iCount = 0;
-      $.each(oData, function() {
-        iCount++;
-        return;
-      });
-      if (iCount == 0) { // object is empty
-        return "{}";
-      }
-      var sHTML = "{";
-    }
-
-    var iCount = 0;
-    $.each(oData, function(sKey, vValue) {
-      if (iCount > 0) {
-        sHTML += ",";
-      }
-      if (sDataType == "array") {
-        sHTML += ("\n" + sIndent + sIndentStyle);
-      } else {
-        sHTML += ("\n" + sIndent + sIndentStyle + JSON.stringify(sKey) + ": ");
-      }
-
-      // display relevant data type
-      switch (self.RealTypeOf(vValue)) {
-        case "array":
-          case "object":
-          sHTML += self.FormatJSON(vValue, (sIndent + sIndentStyle));
-        break;
-        case "boolean":
-          case "number":
-          sHTML += vValue.toString();
-        break;
-        case "null":
-          sHTML += "null";
-        break;
-        case "string":
-          sHTML += "\"" + vValue.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\"";
-        break;
-        default:
-          sHTML += ("TYPEOF: " + typeof(vValue));
-      }
-
-      // loop
-      iCount++;
-    });
-
-    // close object
-    if (sDataType == "array") {
-      sHTML += ("\n" + sIndent + "]");
-    } else {
-      sHTML += ("\n" + sIndent + "}");
-    }
-
-    // return
-    return sHTML;
-  },
-  RealTypeOf: function (v) {
-    if (typeof(v) == "object") {
-      if (v === null) return "null";
-      if (v.constructor == (new Array).constructor) return "array";
-      if (v.constructor == (new Date).constructor) return "date";
-      if (v.constructor == (new RegExp).constructor) return "regex";
-      return "object";
-    }
-    return typeof(v);
   }
-
 });

@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, window, $, arangoLog*/
+
 window.arangoLogs = Backbone.Collection.extend({
   url: '/_admin/log?upto=4&size=10&offset=0',
   parse: function(response)  {
@@ -9,7 +12,7 @@ window.arangoLogs = Backbone.Collection.extend({
         "lid":response.lid[i],
         "text":response.text[i],
         "timestamp":response.timestamp[i],
-        "totalAmount":response.totalAmount,
+        "totalAmount":response.totalAmount
       });
       i++;
     });
@@ -35,9 +38,9 @@ window.arangoLogs = Backbone.Collection.extend({
       offset = 0;
     }
 
-    loglevel = this.showLogLevel(table);
+    var loglevel = this.showLogLevel(table);
     var url = "";
-    if (loglevel == 5) {
+    if (loglevel === 5) {
       url = "/_admin/log?upto=4&size="+size+"&offset="+offset;
     }
     else {
@@ -61,10 +64,22 @@ window.arangoLogs = Backbone.Collection.extend({
   },
   showLogLevel: function (tableid) {
     tableid = '#'+tableid;
-    if (tableid == "#critTableID") { return 1 ;}
-    else if (tableid == "#warnTableID") { return 2 ;}
-    else if (tableid == "#infoTableID") { return 3 ;}
-    else if (tableid == "#debugTableID") { return 4 ;}
-    else if (tableid == "#logTableID") { return 5 ;}
+    var returnVal = 0;
+    if (tableid === "#critTableID") {
+      returnVal = 1;
+    }
+    else if (tableid === "#warnTableID") {
+      returnVal = 2;
+    }
+    else if (tableid === "#infoTableID") {
+      returnVal = 3;
+    }
+    else if (tableid === "#debugTableID") {
+      returnVal = 4;
+    }
+    else if (tableid === "#logTableID") {
+      returnVal = 5;
+    }
+    return returnVal;
   }
 });

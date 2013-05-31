@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, $, window*/
+
 var logsView = Backbone.View.extend({
   el: '#content',
   offset: 0,
@@ -21,12 +24,10 @@ var logsView = Backbone.View.extend({
     "click #logTableID_first" : "firstTable",
     "click #logTableID_last"  : "lastTable",
     "click #logTableID_prev"  : "prevTable",
-    "click #logTableID_next"  : "nextTable",
+    "click #logTableID_next"  : "nextTable"
   },
   firstTable: function () {
-    if (this.offset == 0) {
-    }
-    else {
+    if (this.offset !== 0) {
       this.offset = 0;
       this.page = 1;
       this.clearTable();
@@ -34,9 +35,7 @@ var logsView = Backbone.View.extend({
     }
   },
   lastTable: function () {
-    if (this.page == this.totalPages) {
-    }
-    else {
+    if (this.page !== this.totalPages) {
       this.totalPages = Math.ceil(this.totalAmount / this.size);
       this.page = this.totalPages;
       this.offset = (this.totalPages * this.size) - this.size;
@@ -45,9 +44,7 @@ var logsView = Backbone.View.extend({
     }
   },
   prevTable: function () {
-    if (this.offset == 0) {
-    }
-    else {
+    if (this.offset !== 0) {
       this.offset = this.offset - this.size;
       this.page = this.page - 1;
       this.clearTable();
@@ -55,9 +52,7 @@ var logsView = Backbone.View.extend({
     }
   },
   nextTable: function () {
-    if (this.page == this.totalPages) {
-    }
-    else {
+    if (this.page !== this.totalPages) {
       this.page = this.page + 1;
       this.offset = this.offset + this.size;
       this.clearTable();
@@ -160,15 +155,21 @@ var logsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
-    $('#logtestdiv').prepend('<ul class="prePagi"><li><a id="logTableID_first"><i class="icon icon-step-backward"></i></a></li></ul>');
-    $('#logtestdiv').append('<ul class="lasPagi"><li><a id="logTableID_last"><i class="icon icon-step-forward"></i></a></li></ul>');
+    $('#logtestdiv').prepend(
+      '<ul class="prePagi"><li><a id="logTableID_first">'+
+      '<i class="icon icon-step-backward"></i></a></li></ul>'
+    );
+    $('#logtestdiv').append(
+      '<ul class="lasPagi"><li><a id="logTableID_last">'+
+      '<i class="icon icon-step-forward"></i></a></li></ul>'
+    );
   },
   drawTable: function () {
     var self = this;
 
     function format (dt) {
       var pad = function (n) {
-        return n < 10 ? '0' + n : n
+        return n < 10 ? '0' + n : n;
       };
 
       return dt.getUTCFullYear() + '-' 
@@ -197,10 +198,22 @@ var logsView = Backbone.View.extend({
     $('#'+this.table).dataTable().fnClearTable();
   },
   convertLogStatus: function (status) {
-    if (status === 1) { return "Error" ;}
-    else if (status === 2) { return "Warning" ;}
-    else if (status === 3) { return "Info" ;}
-    else if (status === 4) { return "Debug" ;}
-    else { return "Unknown";}
+    var returnString;
+    if (status === 1) {
+      returnString = "Error";
+    }
+    else if (status === 2) {
+      returnString = "Warning";
+    }
+    else if (status === 3) {
+      returnString =  "Info";
+    }
+    else if (status === 4) {
+      returnString = "Debug";
+    }
+    else {
+      returnString = "Unknown";
+    }
+    return returnString;
   }
 });
