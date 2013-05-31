@@ -315,7 +315,7 @@
         expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($("> button", menuSelector).text()).toEqual("Configure ");
         expect($(menuSelector +  " #control_adapter_collections").length).toEqual(1);
-        expect($(menuSelector +  " #control_node_label").length).toEqual(1);
+        expect($(menuSelector +  " #control_node_labelandcolour").length).toEqual(1);
       });
       
       it('should have the same layout as the web interface', function() {

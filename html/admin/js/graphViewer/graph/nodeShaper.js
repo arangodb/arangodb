@@ -300,9 +300,15 @@ function NodeShaper(parent, flags, idfunc) {
         case "attribute":
           addColor = function (g) {
              g.attr("fill", function(n) {
+               if (n._data === undefined) {
+                 return colourMapper.getColour(undefined);
+               }
                return colourMapper.getColour(n._data[color.key]);
              });
              g.attr("stroke", function(n) {
+               if (n._data === undefined) {
+                 return colourMapper.getColour(undefined);
+               }
                return colourMapper.getColour(n._data[color.key]);
              });
           };

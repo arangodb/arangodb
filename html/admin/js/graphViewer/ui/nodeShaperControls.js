@@ -192,6 +192,36 @@ function NodeShaperControls(list, shaper) {
     });
   };
   
+  //////////////////////////////////////////////////////////////////
+  //  Mixed Buttons
+  //////////////////////////////////////////////////////////////////  
+  
+  this.addControlOpticLabelAndColour = function() {
+    var prefix = "control_node_labelandcolour",
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
+      modalDialogHelper.createModalDialog("Switch Label Attribute",
+        idprefix, [{
+          type: "text",
+          id: "key"
+        }], function () {
+          var key = $("#" + idprefix + "key").attr("value");
+          shaper.changeTo({
+            label: key,
+            color: {
+              type: "attribute",
+              key: key
+            }
+          });
+        }
+      );
+    });
+  };
+  
+  //////////////////////////////////////////////////////////////////
+  //  Multiple Buttons
+  ////////////////////////////////////////////////////////////////// 
+  
   this.addAllOptics = function () {
     self.addControlOpticShapeNone();
     self.addControlOpticShapeCircle();
