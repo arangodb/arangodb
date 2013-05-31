@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
-/*global document*/
+/*global document, window*/
 /*global modalDialogHelper, uiComponentsHelper */
 /*global EventDispatcher, EventLibrary*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,11 +29,14 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig) {
+function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, dispatcherConfig) {
   "use strict";
   
   if (list === undefined) {
     throw "A list element has to be given.";
+  }
+  if (cursorIconBox === undefined) {
+    throw "The cursor decoration box has to be given.";
   }
   if (nodeShaper === undefined) {
     throw "The NodeShaper has to be given.";
@@ -52,6 +55,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     baseClass = "event",
     eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
+    
+    setCursorIcon = function(icon) {
+      cursorIconBox.className = "mousepointer icon-" + icon;
+    },
     
     appendToList = function(button) {
       if (firstButton) {
@@ -72,14 +79,14 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         baseClass,
         list,
         title,
-        "control_" + title,
+        "control_event_" + title,
         callback
       );
     },
     createIcon = function(icon, title, callback) {
       var btn = uiComponentsHelper.createIconButton(
         icon,
-        "control_" + title,
+        "control_event_" + title,
         callback
       );
       appendToList(btn);
@@ -89,33 +96,72 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     },
     rebindEdges = function(actions) {
       dispatcher.rebind("edges", actions);
+    },
+    rebindSVG = function(actions) {
+      dispatcher.rebind("svg", actions);
+    },
+    
+    getCursorPosition = function (ev) {
+      var e = ev || window.event,
+        res = {};
+      res.x = e.clientX;
+      res.y = e.clientY;
+      res.x += document.body.scrollLeft;
+      res.y += document.body.scrollTop;
+      return res;
+    },
+    
+    getCursorPositionInSVG = function (ev) {
+      var pos = getCursorPosition(ev);
+      pos.x -= $('svg').offset().left;
+      pos.y -= $('svg').offset().top;
+      return pos;
+    },
+    
+    moveCursorBox = function(ev) {
+      var pos = getCursorPosition(ev);
+      pos.x += 7;
+      pos.y += 12;
+      cursorIconBox.style.position = "absolute";
+      cursorIconBox.style.left  = pos.x + 'px';
+      cursorIconBox.style.top = pos.y + 'px';
     };
   
+  dispatcher.fixSVG("mousemove", moveCursorBox);
+  dispatcher.fixSVG("mouseout", function() {
+    cursorIconBox.style.display = "none";
+  });
+  dispatcher.fixSVG("mouseover", function() {
+    cursorIconBox.style.display = "block";
+  });
+  
   this.addControlDrag = function() {
-    var prefix = "control_drag",
+    var prefix = "control_event_drag",
       idprefix = prefix + "_",
+      icon = "move",
       callback = function() {
+        setCursorIcon(icon);
         rebindNodes( {
           drag: dispatcher.events.DRAG
         });
         rebindEdges();
-        
-        
+        rebindSVG();
       };
-    createIcon("move", "drag", callback);
+    createIcon(icon, "drag", callback);
   };
   
   this.addControlEdit = function() {
-    var prefix = "control_edit",
+    var prefix = "control_event_edit",
       idprefix = prefix + "_",
+      icon = "pencil",
       nodeCallback = function(n) {
         modalDialogHelper.createModalEditDialog(
           "Edit Node " + n._id,
-          "control_node_edit_",
+          "control_event_node_edit_",
           n._data,
           function(newData) {
             dispatcher.events.PATCHNODE(n, newData, function() {
-              $("#control_node_edit_modal").modal('hide');
+              $("#control_event_node_edit_modal").modal('hide');
             })();
           }
         );
@@ -123,59 +169,83 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       edgeCallback = function(e) {
         modalDialogHelper.createModalEditDialog(
           "Edit Edge " + e._data._from + "->" + e._data._to,
-          "control_edge_edit_",
+          "control_event_edge_edit_",
           e._data,
           function(newData) {
             dispatcher.events.PATCHEDGE(e, newData, function() {
-              $("#control_edge_edit_modal").modal('hide');
+              $("#control_event_edge_edit_modal").modal('hide');
             })();
           }
         );
       },
       callback = function() {
+        setCursorIcon(icon);
         rebindNodes({click: nodeCallback});
         rebindEdges({click: edgeCallback});
+        rebindSVG();
       };
-    createIcon("pencil", "edit", callback);
+    createIcon(icon, "edit", callback);
   };
   
   this.addControlExpand = function() {
-    var prefix = "control_expand",
+    var prefix = "control_event_expand",
       idprefix = prefix + "_",
+      icon = "plus",
       callback = function() {
+        setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.EXPAND});
         rebindEdges();
+        rebindSVG();
       };
-    createIcon("plus", "expand", callback);
+    createIcon(icon, "expand", callback);
   };
   
   this.addControlDelete = function() {
-    var prefix = "control_delete",
+    var prefix = "control_event_delete",
       idprefix = prefix + "_",
+      icon = "trash",
       callback = function() {
+        setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
           
         })});
         rebindEdges({click: dispatcher.events.DELETEEDGE(function() {
           
         })});
+        rebindSVG();
       };
-    createIcon("trash", "delete", callback);
+    createIcon(icon, "delete", callback);
   };
   
   this.addControlConnect = function() {
-    var prefix = "control_connect",
+    var prefix = "control_event_connect",
       idprefix = prefix + "_",
+      icon = "resize-horizontal",
       callback = function() {
-        
+        setCursorIcon(icon);
         rebindNodes({
-          mousedown: dispatcher.events.STARTCREATEEDGE(),
+          mousedown: dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
+            var pos = getCursorPositionInSVG(ev);
+            var  moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
+            dispatcher.bind("svg", "mousemove", function(ev) {
+              var pos = getCursorPositionInSVG(ev);
+              moveCB(pos.x, pos.y);
+            });
+          }),
           mouseup: dispatcher.events.FINISHCREATEEDGE(function(edge){
+            edgeShaper.removeCursorFollowingEdge();
+            dispatcher.bind("svg", "mousemove", function(){});
           })
         });
         rebindEdges();
+        rebindSVG({
+          mouseup: function() {
+            dispatcher.events.CANCELCREATEEDGE();
+            edgeShaper.removeCursorFollowingEdge();
+          }
+        });
       };
-    createIcon("resize-horizontal", "connect", callback);
+    createIcon(icon, "connect", callback);
   };
   
   

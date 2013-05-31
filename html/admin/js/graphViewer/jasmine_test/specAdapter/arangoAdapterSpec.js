@@ -286,6 +286,7 @@
            apibase = host + "/_api/",
            apiCursor = apibase + 'cursor';
           self.fakeReducerRequest = function() {};
+          self.fakeReducerBucketRequest = function() {};
           spyOn(window, "NodeReducer").andCallFake(function(v, e) {
             return {
               getCommunity: function(limit, focus) {
@@ -293,6 +294,9 @@
                   return self.fakeReducerRequest(limit, focus);
                 }
                 return self.fakeReducerRequest(limit);
+              },
+              bucketNodes: function(toSort, numBuckets) {
+                return self.fakeReducerBucketRequest(toSort, numBuckets);
               }
             };
           });
@@ -306,26 +310,40 @@
               height: 40
             }
           );
-          traversalQuery = function(id, nods, edgs) {
+          traversalQuery = function(id, nods, edgs, undirected) {
+            var dir;
+            if (undirected === true) {
+              dir = "any";
+            } else {
+              dir = "outbound";
+            }
             return JSON.stringify({
-              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, \"outbound\","
+              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, @dir,"
                 + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
               bindVars: {
                 id: id,
                 "@nodes": nods,
+                dir: dir,
                 "@edges": edgs
               }
             });
           };
-          filterQuery = function(v, nods, edgs) {
+          filterQuery = function(v, nods, edgs, undirected) {
+            var dir;
+            if (undirected === true) {
+              dir = "any";
+            } else {
+              dir = "outbound";
+            }
             return JSON.stringify({
               query: "FOR n IN @@nodes FILTER n.id == @value"
-                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, \"outbound\","
+                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, @dir,"
                 + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
               bindVars: {
                 value: v,
                 "@nodes": nods,
-                "@edges": edgs
+                dir: dir,
+                "@edges": edgs 
               }
             });
           };
@@ -424,9 +442,45 @@
             };
           };
         });
-    
+        
+        it('should offer lists of available collections', function() {
+          var collections = [],
+          sys1 = {id: "1", name: "_sys1", status: 3, type: 2},
+          sys2 = {id: "2", name: "_sys2", status: 2, type: 2},
+          doc1 = {id: "3", name: "doc1", status: 3, type: 2},
+          doc2 = {id: "4", name: "doc2", status: 2, type: 2},
+          doc3 = {id: "5", name: "doc3", status: 3, type: 2},
+          edge1 = {id: "6", name: "edge1", status: 3, type: 3},
+          edge2 = {id: "7", name: "edge2", status: 2, type: 3};
+
+          collections.push(sys1);
+          collections.push(sys2);
+          collections.push(doc1);
+          collections.push(doc2);
+          collections.push(doc3);
+          collections.push(edge1);
+          collections.push(edge2);
+          
+          spyOn($, "ajax").andCallFake(function(request) {
+            request.success({collections: collections});
+          });
+          
+          adapter.getCollections(function(docs, edge) {
+            expect(docs).toContain("doc1");
+            expect(docs).toContain("doc2");
+            expect(docs).toContain("doc3");
+            
+            expect(docs.length).toEqual(3);
+            
+            expect(edge).toContain("edge1");
+            expect(edge).toContain("edge2");
+            
+            expect(edge.length).toEqual(2);
+          });
+        });
+        
         it('should be able to load a tree node from ' 
-           + 'ArangoDB by internal _id attribute', function() {
+        + 'ArangoDB by internal _id attribute', function() {
       
           var c0, c1, c2, c3, c4;
       
@@ -466,8 +520,14 @@
           });
         });
         
+        it('should map loadNode to loadByID', function() {
+          spyOn(adapter, "loadNodeFromTreeById");
+          adapter.loadNode("a", "b");
+          expect(adapter.loadNodeFromTreeById).toHaveBeenCalledWith("a", "b");
+        });
+        
         it('should be able to load a tree node from ArangoDB'
-          + ' by internal attribute and value', function() {
+        + ' by internal attribute and value', function() {
       
           var c0, c1, c2, c3, c4;
       
@@ -649,6 +709,170 @@
       
         });
    
+        it('should be able to switch to different collections and change to directed', function() {
+      
+          runs(function() {
+            
+            spyOn($, "ajax");
+            
+            adapter.changeTo(altNodesCollection, altEdgesCollection, false);
+            
+            adapter.loadNode("42");
+            
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(traversalQuery("42", altNodesCollection, altEdgesCollection, false))
+            );
+            
+          });      
+        });
+        
+        it('should be able to switch to different collections'
+        + ' and change to undirected', function() {
+      
+          runs(function() {
+            
+            spyOn($, "ajax");
+            
+            adapter.changeTo(altNodesCollection, altEdgesCollection, true);
+            
+            adapter.loadNode("42");
+            
+            expect($.ajax).toHaveBeenCalledWith(
+              requests.cursor(traversalQuery("42", altNodesCollection, altEdgesCollection, true))
+            );
+            
+          });      
+        });
+        
+        it('should add at most the upper bound of children in one step', function() {
+          var inNodeCol, callNodes;
+          
+          runs(function() {
+            var addNNodes = function(n) {
+                var i = 0,
+                  res = [];
+                for (i = 0; i < n; i++) {
+                  res.push(insertNode(nodesCollection, i));
+                }
+                return res;
+              },
+              connectToAllButSelf = function(source, ns) {
+                _.each(ns, function(target) {
+                  if (source !== target) {
+                    insertEdge(edgesCollection, source, target);
+                  }
+                });
+              };
+            
+            inNodeCol = addNNodes(21);
+            connectToAllButSelf(inNodeCol[0], inNodeCol);
+            adapter.setChildLimit(5);
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
+            });
+            spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
+              var i = 0,
+                res = [],
+                pos;
+              callNodes = ns;
+              for (i = 0; i < 5; i++) {
+                pos = i*4;
+                res.push(ns.slice(pos, pos + 4));
+              }
+              return res;
+            });
+            
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(inNodeCol[0], checkCallbackFunction);
+            
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          });
+          
+          runs(function() {
+            var callNodesIds = _.map(callNodes, function(n) {
+              return n._id;
+            });
+            expect(this.fakeReducerBucketRequest).toHaveBeenCalledWith(
+              jasmine.any(Array),
+              5
+            );
+            expect(callNodesIds).toEqual(inNodeCol.slice(1));
+            expect(nodes.length).toEqual(6);
+            expect(getCommunityNodes().length).toEqual(5);
+          });
+          
+        });
+        
+        it('should not replace single nodes by communities', function() {
+          var inNodeCol, callNodes;
+          
+          runs(function() {
+            var addNNodes = function(n) {
+                var i = 0,
+                  res = [];
+                for (i = 0; i < n; i++) {
+                  res.push(insertNode(nodesCollection, i));
+                }
+                return res;
+              },
+              connectToAllButSelf = function(source, ns) {
+                _.each(ns, function(target) {
+                  if (source !== target) {
+                    insertEdge(edgesCollection, source, target);
+                  }
+                });
+              };
+            
+            inNodeCol = addNNodes(7);
+            connectToAllButSelf(inNodeCol[0], inNodeCol);
+            adapter.setChildLimit(5);
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
+            });
+            spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
+              var i = 0,
+                res = [],
+                pos;
+              for (i = 0; i < 4; i++) {
+                res.push([ns[i]]);
+              }
+              res.push([ns[4], ns[5]]);
+              return res;
+            });
+            
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(inNodeCol[0], checkCallbackFunction);
+            
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          });
+          
+          runs(function() {
+            var callNodesIds = _.map(callNodes, function(n) {
+              return n._id;
+            });
+            expect(this.fakeReducerBucketRequest).toHaveBeenCalledWith(
+              jasmine.any(Array),
+              5
+            );
+            expect(nodes.length).toEqual(6);
+            expect(getCommunityNodes().length).toEqual(1);
+          });
+          
+        });
         
         describe('that has already loaded one graph', function() {
           var c0, c1, c2, c3, c4, c5, c6, c7,
@@ -971,6 +1195,167 @@
             
             });
             
+            describe('expanding after a while', function() {
+              
+              it('should connect edges of internal nodes accordingly', function() {
+                
+                var commNode, called, counterCallback,
+                v0, v1, v2, v3, v4,
+                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                
+                runs(function() {
+                  var v = "vertices",
+                    e = "edges";
+                  nodes.length = 0;
+                  edges.length = 0;
+                  v0 = insertNode(v, 0);
+                  v1 = insertNode(v, 1);
+                  v2 = insertNode(v, 2);
+                  v3 = insertNode(v, 3);
+                  v4 = insertNode(v, 4);
+                  e0_1 = insertEdge(e, v0, v1);
+                  e0_2 = insertEdge(e, v0, v2);
+                  e1_3 = insertEdge(e, v1, v3);
+                  e1_4 = insertEdge(e, v1, v4);
+                  e2_3 = insertEdge(e, v2, v3);
+                  e2_4 = insertEdge(e, v2, v4);
+                  called = 0;
+                  counterCallback = function() {
+                    called++;
+                  };
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return [v1, v3, v4];
+                  });
+                  adapter.setNodeLimit(3);
+                  
+                  adapter.changeTo(v, e);
+                  adapter.loadNode(v0, counterCallback);
+                  adapter.loadNode(v1, counterCallback);
+                  
+                });
+                
+                waitsFor(function() {
+                  return called === 2;
+                });
+                
+                runs(function() {
+                  adapter.loadNode(v2, counterCallback);
+                  commNode = getCommunityNodes()[0];
+                });
+                
+                waitsFor(function() {
+                  return called === 3;
+                });
+                
+                runs(function() {
+                  var commId = commNode._id;
+                  // Check start condition
+                  existNodes([commId, v0, v2]);
+                  expect(nodes.length).toEqual(3);
+                  
+                  existEdge(v0, v2);
+                  existEdge(v0, commId);
+                  existEdge(v2, commId);
+                  expect(edges.length).toEqual(4);
+                  
+                  adapter.setNodeLimit(20);
+                  adapter.expandCommunity(commNode, counterCallback);
+                });
+                
+                waitsFor(function() {
+                  return called === 4;
+                });
+                
+                runs(function() {
+                  existNodes([v0, v1, v2, v3, v4]);
+                  expect(nodes.length).toEqual(5);
+                  
+                  existEdge(v0, v1);
+                  existEdge(v0, v2);
+                  existEdge(v1, v3);
+                  existEdge(v1, v4);
+                  existEdge(v2, v3);
+                  existEdge(v2, v4);
+                  expect(edges.length).toEqual(6);
+                  
+                });
+              });
+              
+              it('set inbound and outboundcounter correctly', function() {
+                
+                var commNode, called, counterCallback,
+                v0, v1, v2, v3, v4,
+                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                
+                runs(function() {
+                  var v = "vertices",
+                    e = "edges";
+                  nodes.length = 0;
+                  edges.length = 0;
+                  v0 = insertNode(v, 0);
+                  v1 = insertNode(v, 1);
+                  v2 = insertNode(v, 2);
+                  v3 = insertNode(v, 3);
+                  v4 = insertNode(v, 4);
+                  e0_1 = insertEdge(e, v0, v1);
+                  e0_2 = insertEdge(e, v0, v2);
+                  e1_3 = insertEdge(e, v1, v3);
+                  e1_4 = insertEdge(e, v1, v4);
+                  e2_3 = insertEdge(e, v2, v3);
+                  e2_4 = insertEdge(e, v2, v4);
+                  called = 0;
+                  counterCallback = function() {
+                    called++;
+                  };
+                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
+                    return [v1, v3, v4];
+                  });
+                  adapter.setNodeLimit(3);
+                  
+                  adapter.changeTo(v, e);
+                  adapter.loadNode(v0, counterCallback);
+                  adapter.loadNode(v1, counterCallback);
+                  
+                });
+                
+                waitsFor(function() {
+                  return called === 2;
+                });
+                
+                runs(function() {
+                  adapter.loadNode(v2, counterCallback);
+                  commNode = getCommunityNodes()[0];
+                });
+                
+                waitsFor(function() {
+                  return called === 3;
+                });
+                
+                runs(function() {
+                  adapter.setNodeLimit(20);
+                  adapter.expandCommunity(commNode, counterCallback);
+                });
+                
+                waitsFor(function() {
+                  return called === 4;
+                });
+                
+                runs(function() {
+                  var checkNodeWithInAndOut = function(id, inbound, outbound) {
+                    var n = nodeWithID(id);
+                    expect(n._outboundCounter).toEqual(outbound);
+                    expect(n._inboundCounter).toEqual(inbound);
+                  };
+                  checkNodeWithInAndOut(v0, 0, 2);
+                  checkNodeWithInAndOut(v1, 1, 2);
+                  checkNodeWithInAndOut(v2, 1, 2);
+                  checkNodeWithInAndOut(v3, 2, 0);
+                  checkNodeWithInAndOut(v4, 2, 0);            
+                });
+              });
+              
+            });
+            
             describe('that displays a community node already', function() {
               
               var firstCommId,
@@ -996,7 +1381,7 @@
                 });
               });
               
-            it('should expand a community if enough space is available', function() {
+              it('should expand a community if enough space is available', function() {
                 runs(function() {
                   adapter.setNodeLimit(10);
                   callbackCheck = false;
@@ -1019,7 +1404,7 @@
               });
               
               it('should expand a community and join another '
-                + 'one if not enough space is available', function() {
+              + 'one if not enough space is available', function() {
                 runs(function() {
                   fakeResult = [c1, c7];
                   callbackCheck = false;
@@ -1077,6 +1462,26 @@
                   existEdge(newCommId, c5);
                   existEdge(newCommId, c6);
                 });
+              });
+              
+              it('should connect edges to internal nodes', function() {
+                
+                runs(function() {
+                  insertEdge(edgesCollection, c3, c0);
+                  
+                  adapter.setNodeLimit(20);
+                  callbackCheck = false;
+                  adapter.loadNode(c3, checkCallbackFunction);
+                });
+                
+                waitsFor(function() {
+                  return callbackCheck;
+                });
+                
+                runs(function() {
+                  existEdge(c3, firstCommId);
+                });
+                
               });
               
             });

@@ -53,13 +53,16 @@ function ArangoAdapter(nodes, edges, config) {
     api = {},
     queries = {},
     cachedCommunities = {},
+    joinedInCommunities = {},
     nodeCollection,
     edgeCollection,
     limit,
+    childLimit,
     reducer,
     arangodb,
     width,
     height,
+    direction,
     
     setWidth = function(w) {
       initialX.range = w / 2;
@@ -93,12 +96,22 @@ function ArangoAdapter(nodes, edges, config) {
       if (config.height !== undefined) {
         setHeight(config.height);
       }
+      if (config.undirected !== undefined) {
+        if (config.undirected === true) {
+          direction = "any";
+        } else {
+          direction = "outbound";
+        }
+      } else {
+        direction = "outbound";
+      }
     },
   
     findNode = function(id) {
-      var res = $.grep(nodes, function(e){
-        return e._id === id;
-      });
+      var intId = joinedInCommunities[id] || id,
+        res = $.grep(nodes, function(e){
+          return e._id === intId;
+        });
       if (res.length === 0) {
         return false;
       } 
@@ -145,7 +158,8 @@ function ArangoAdapter(nodes, edges, config) {
           _data: data,
           _id: data._id
         },
-        e = findEdge(edge._id);
+        e = findEdge(edge._id),
+        edgeToPush;
       if (e) {
         return e;
       }
@@ -160,8 +174,32 @@ function ArangoAdapter(nodes, edges, config) {
       edge.source = source;
       edge.target = target;
       edges.push(edge);
-      source._outboundCounter++;
-      target._inboundCounter++;
+      
+      
+      if (cachedCommunities[source._id] !== undefined) {
+        edgeToPush = {};
+        edgeToPush.type = "s";
+        edgeToPush.id = edge._id;
+        edgeToPush.source = $.grep(cachedCommunities[source._id].nodes, function(e){
+          return e._id === data._from;
+        })[0];
+        edgeToPush.source._outboundCounter++;
+        cachedCommunities[source._id].edges.push(edgeToPush);
+      } else {
+        source._outboundCounter++;
+      }
+      if (cachedCommunities[target._id] !== undefined) {
+        edgeToPush = {};
+        edgeToPush.type = "t";
+        edgeToPush.id = edge._id;
+        edgeToPush.target = $.grep(cachedCommunities[target._id].nodes, function(e){
+          return e._id === data._to;
+        })[0];
+        edgeToPush.target._inboundCounter++;
+        cachedCommunities[target._id].edges.push(edgeToPush);
+      } else {
+        target._inboundCounter++;
+      }
       return edge;
     },
   
@@ -275,6 +313,9 @@ function ArangoAdapter(nodes, edges, config) {
       if (query !== queries.connectedEdges) {
         bindVars["@nodes"] = nodeCollection;
       }
+      if (query !== queries.childrenCentrality) {
+        bindVars.dir = direction;
+      }
       bindVars["@edges"] = edgeCollection;
       var data = {
         query: query,
@@ -317,8 +358,10 @@ function ArangoAdapter(nodes, edges, config) {
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
+      
       combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
+        joinedInCommunities[n._id] = commId;
         removeNode(n);
       });
       nodes.push(commNode);
@@ -335,6 +378,7 @@ function ArangoAdapter(nodes, edges, config) {
         collapseCommunity(com);
       }
       _.each(nodesToAdd, function(n) {
+        delete joinedInCommunities[n._id];
         nodes.push(n);
       });
       _.each(edgesToChange, function(e) {
@@ -358,23 +402,38 @@ function ArangoAdapter(nodes, edges, config) {
   
     parseResultOfTraversal = function (result, callback) {
       result = result[0];
+      var inserted = {},
+        n = insertNode(result[0].vertex),
+        com, buckets; 
       _.each(result, function(visited) {
         var node = insertNode(visited.vertex),
-        path = visited.path;
+          path = visited.path;
+        inserted[node._id] = node;
         _.each(path.vertices, function(connectedNode) {
-          insertNode(connectedNode);
+          var ins = insertNode(connectedNode);
+          inserted[ins._id] = ins;
         });
         _.each(path.edges, function(edge) {
           insertEdge(edge);
         });
-      });
+      });      
+      delete inserted[n._id];
+      if (_.size(inserted) > childLimit) {
+        buckets = reducer.bucketNodes(_.values(inserted), childLimit);
+        _.each(buckets, function(b) {
+          if (b.length > 1) {
+            var ids = _.map(b, function(n) {
+              return n._id;
+            });
+            collapseCommunity(ids);
+          }
+        });
+      }
+      if (limit < nodes.length) {
+        com = reducer.getCommunity(limit, n);
+        collapseCommunity(com);
+      }
       if (callback) {
-        var n = insertNode(result[0].vertex),
-         com;
-        if (limit < nodes.length) {
-          com = reducer.getCommunity(limit, n);
-          collapseCommunity(com);
-        }
         callback(n);
       }
     },
@@ -421,7 +480,7 @@ function ArangoAdapter(nodes, edges, config) {
          _.each(res, self.deleteEdge);
        });
     };
-  
+    
   parseConfig(config);
   
   api.base = arangodb.lastIndexOf("http://", 0) === 0
@@ -447,7 +506,7 @@ function ArangoAdapter(nodes, edges, config) {
     + "@@nodes, "
     + "@@edges, "
     + "@id, "
-    + "\"outbound\", {"
+    + "@dir, {"
     + "strategy: \"depthfirst\","
     + "maxDepth: 1,"
     + "paths: true"
@@ -460,7 +519,7 @@ function ArangoAdapter(nodes, edges, config) {
       + "@@nodes, "
       + "@@edges, "
       + "n._id, "
-      + "\"outbound\", {"
+      + "@dir, {"
       + "strategy: \"depthfirst\","
       + "maxDepth: 1,"
       + "paths: true"
@@ -478,8 +537,9 @@ function ArangoAdapter(nodes, edges, config) {
    + " || e._from == @id"
    + " RETURN e";
   
-  reducer = new NodeReducer(nodes, edges);
+  childLimit = Number.POSITIVE_INFINITY;
   
+  reducer = new NodeReducer(nodes, edges);
   
   self.oldLoadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.nodeById, {
@@ -639,9 +699,16 @@ function ArangoAdapter(nodes, edges, config) {
     });
   };
   
-  self.changeTo = function (nodesCol, edgesCol ) {
+  self.changeTo = function (nodesCol, edgesCol, dir) {
     nodeCollection = nodesCol;
     edgeCollection = edgesCol;
+    if (dir !== undefined) {
+      if (dir === true) {
+        direction = "any";
+      } else {
+        direction = "outbound";
+      }
+    }
     api.node = api.base + "document?collection=" + nodeCollection; 
     api.edge = api.base + "edge?collection=" + edgeCollection;
   };
@@ -657,6 +724,10 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.setChildLimit = function (pLimit) {
+    childLimit = pLimit;
+  };
+  
   self.expandCommunity = function (commNode, callback) {
     expandCommunity(commNode);
     if (callback !== undefined) {
@@ -664,4 +735,34 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.getCollections = function(callback) {
+    if (callback && callback.length >= 2) {
+      $.ajax({
+        cache: false,
+        type: "GET",
+        url: api.collection,
+        contentType: "application/json",
+        dataType: "json",
+        processData: false,
+        success: function(data) {
+          var cols = data.collections,
+            docs = [],
+            edgeCols = [];
+          _.each(cols, function(c) {
+            if (!c.name.match(/^_/)) {
+              if (c.type === 3) {
+                edgeCols.push(c.name);
+              } else if (c.type === 2){
+                docs.push(c.name);
+              }
+            }
+          });
+          callback(docs, edgeCols);
+        },
+        error: function(data) {
+          throw data.statusText;
+        }
+      });
+    }
+  };
 }

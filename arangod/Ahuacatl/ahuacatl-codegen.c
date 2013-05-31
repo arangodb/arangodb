@@ -668,7 +668,7 @@ static void InitArray (TRI_aql_codegen_js_t* const generator,
 static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
                          const char* const name,
                          const TRI_aql_codegen_register_t registerIndex) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator); 
   TRI_aql_codegen_variable_t* variable = CreateVariable(name, registerIndex);
 
   if (variable == NULL) {
@@ -890,7 +890,8 @@ static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
-                                         const TRI_aql_codegen_register_t rowRegister) {
+                                         const TRI_aql_codegen_register_t rowRegister,
+                                         bool suppressTemporaries) {
   TRI_vector_string_t variableNames;
   size_t i = generator->_scopes._length;
 
@@ -907,7 +908,12 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
       TRI_aql_codegen_variable_t* variable = (TRI_aql_codegen_variable_t*) peek->_variables._table[j];
       char* copy;
 
-      if (! variable) {
+      if (variable == NULL) {
+        continue;
+      }
+
+      if (suppressTemporaries && *variable->_name == '_') {
+        // don't emit temporary variables
         continue;
       }
 
@@ -957,6 +963,7 @@ static void RestoreSymbols (TRI_aql_codegen_js_t* const generator,
 
   // iterate over all variables passed
   n = variableNames->_length;
+
   for (i = 0; i < n; ++i) {
     // create a new register for each variable
     TRI_aql_codegen_register_t registerIndex = IncRegister(generator);
@@ -2001,7 +2008,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   InitArray(generator, rowRegister);
 
   // save symbols
-  variableNames = StoreSymbols(generator, rowRegister);
+  variableNames = StoreSymbols(generator, rowRegister, false);
 
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);
@@ -2050,13 +2057,17 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   TRI_aql_node_t* list;
   size_t i, n;
 
+#if AQL_VERBOSE
+  ScopeOutput(generator, "\n/* collect start */\n");
+#endif  
+
   // var row = { };
   InitArray(generator, rowRegister);
 
   // we are not interested in the variable names here, but
   // StoreSymbols also generates code to save the current state in
   // a rowRegister, and we need that
-  variableNames = StoreSymbols(generator, rowRegister);
+  variableNames = StoreSymbols(generator, rowRegister, true);
   TRI_DestroyVectorString(&variableNames);
 
   // result.push(row)
@@ -2133,6 +2144,10 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
 
     EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode), intoRegister);
   }
+
+#if AQL_VERBOSE
+  ScopeOutput(generator, "\n/* collect end */\n");
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2152,7 +2167,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   InitArray(generator, rowRegister);
 
   // save symbols
-  variableNames = StoreSymbols(generator, rowRegister);
+  variableNames = StoreSymbols(generator, rowRegister, false);
 
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);

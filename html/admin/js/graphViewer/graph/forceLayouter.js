@@ -47,9 +47,9 @@ function ForceLayouter(config) {
   "use strict";
   var self = this,
     force = d3.layout.force(),
-    distance = config.distance || 80,
-    gravity = config.gravity || 0.08,
-    charge = config.charge || -240,
+    distance = config.distance || 240, // 80
+    gravity = config.gravity || 0.01, // 0.08
+    charge = config.charge || -1000, // -240
     onUpdate = config.onUpdate || function () {},
     width = config.width || 940,
     height = config.height || 640,

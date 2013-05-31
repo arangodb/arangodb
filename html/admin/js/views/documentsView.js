@@ -29,7 +29,16 @@ var documentsView = Backbone.View.extend({
     "click #documents_next"      : "nextDocuments",
     "click #confirmDeleteBtn"    : "confirmDelete",
     "keyup .modal-body"          : "listenKey",
-    "click .key"                 : "nop"
+    "click .key"                 : "nop",
+    "keyup"                      : "returnPressedHandler"
+  },
+
+  returnPressedHandler: function(event) {
+    if (event.keyCode === 13) {
+      if (!!$("#confirmDeleteBtn").attr("disabled") === false) {
+        this.confirmDelete();
+      }
+    } 
   },
 
   nop: function(event) {
@@ -128,11 +137,12 @@ var documentsView = Backbone.View.extend({
     var thiselement = a.currentTarget.parentElement;
     this.idelement = $(thiselement).prev().prev();
     this.alreadyClicked = true;
-
+    $("#confirmDeleteBtn").attr("disabled", false);
     $('#docDeleteModal').modal('show');
 
   },
   confirmDelete: function () {
+    $("#confirmDeleteBtn").attr("disabled", true);	
     this.reallyDelete();
   },
   reallyDelete: function () {
@@ -152,7 +162,7 @@ var documentsView = Backbone.View.extend({
         deleted = true;
       }
       else if (result === false) {
-        arangoHelper.arangoError('Document error');
+        arangoHelper.arangoError('Could not delete document');
       }
     }
     else if (this.type === 'edge') {

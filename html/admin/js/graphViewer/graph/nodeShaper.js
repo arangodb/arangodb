@@ -62,7 +62,7 @@
 */
 function NodeShaper(parent, flags, idfunc) {
   "use strict";
-  
+
   var self = this,
     communityRegEx = /^\*community/,
     nodes = [],
@@ -114,7 +114,9 @@ function NodeShaper(parent, flags, idfunc) {
         drag: noop,
         mousedown: noop,
         mouseup: noop,
-        mousemove: noop
+        mousemove: noop,
+        mouseout: noop,
+        mouseover: noop
       };
       addUpdate = noop;
     },
@@ -227,12 +229,14 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("stroke", "black") // Foce a black color20*75)
             .text(label);
         };
       } else {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("stroke", "black") // Foce a black color20*75)
             .text(function(d) { 
               return d._data[label] !== undefined ? d._data[label] : "";
             });

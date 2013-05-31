@@ -47,7 +47,7 @@
       shaper = new NodeShaper(d3.select("svg"));
       list = document.createElement("ul");
       document.body.appendChild(list);
-      list.id = "control_list";
+      list.id = "control_node_list";
       shaperUI = new NodeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
       this.addMatchers({
@@ -94,10 +94,10 @@
       runs(function() {
         shaperUI.addControlOpticShapeNone();
       
-        expect($("#control_list #control_none").length).toEqual(1);
-        expect($("#control_list #control_none")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_none").length).toEqual(1);
+        expect($("#control_node_list #control_node_none")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_none");
+        helper.simulateMouseEvent("click", "control_node_none");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -111,14 +111,14 @@
       runs(function() {
         shaperUI.addControlOpticShapeCircle();
       
-        expect($("#control_list #control_circle").length).toEqual(1);
-        expect($("#control_list #control_circle")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_circle").length).toEqual(1);
+        expect($("#control_node_list #control_node_circle")[0]).toConformToListCSS();
         
-        helper.simulateMouseEvent("click", "control_circle");
-        expect($("#control_circle_modal").length).toEqual(1);
+        helper.simulateMouseEvent("click", "control_node_circle");
+        expect($("#control_node_circle_modal").length).toEqual(1);
       
-        $("#control_circle_radius").attr("value", 42);
-        helper.simulateMouseEvent("click", "control_circle_submit");
+        $("#control_node_circle_radius").attr("value", 42);
+        helper.simulateMouseEvent("click", "control_node_circle_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -129,7 +129,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_circle_modal").length === 0;
+        return $("#control_node_circle_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -138,13 +138,13 @@
       runs(function() {
         shaperUI.addControlOpticShapeRect();
       
-        expect($("#control_list #control_rect").length).toEqual(1);
-        expect($("#control_list #control_rect")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_rect").length).toEqual(1);
+        expect($("#control_node_list #control_node_rect")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_rect");
-        $("#control_rect_width").attr("value", 42);
-        $("#control_rect_height").attr("value", 12);
-        helper.simulateMouseEvent("click", "control_rect_submit");
+        helper.simulateMouseEvent("click", "control_node_rect");
+        $("#control_node_rect_width").attr("value", 42);
+        $("#control_node_rect_height").attr("value", 12);
+        helper.simulateMouseEvent("click", "control_node_rect_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
@@ -156,7 +156,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_rect_modal").length === 0;
+        return $("#control_node_rect_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -165,12 +165,12 @@
       runs(function() {
         shaperUI.addControlOpticLabel();
       
-        expect($("#control_list #control_label").length).toEqual(1);
-        expect($("#control_list #control_label")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_label").length).toEqual(1);
+        expect($("#control_node_list #control_node_label")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_label");
-        $("#control_label_key").attr("value", "theAnswer");
-        helper.simulateMouseEvent("click", "control_label_submit");
+        helper.simulateMouseEvent("click", "control_node_label");
+        $("#control_node_label_key").attr("value", "theAnswer");
+        helper.simulateMouseEvent("click", "control_node_label_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           label: "theAnswer"
@@ -178,7 +178,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_label_modal").length === 0;
+        return $("#control_node_label_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -187,13 +187,13 @@
       runs(function() {
         shaperUI.addControlOpticSingleColour();
       
-        expect($("#control_list #control_singlecolour").length).toEqual(1);
-        expect($("#control_list #control_singlecolour")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_singlecolour").length).toEqual(1);
+        expect($("#control_node_list #control_node_singlecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_singlecolour");
-        $("#control_singlecolour_fill").attr("value", "#123456");
-        $("#control_singlecolour_stroke").attr("value", "#654321");
-        helper.simulateMouseEvent("click", "control_singlecolour_submit");
+        helper.simulateMouseEvent("click", "control_node_singlecolour");
+        $("#control_node_singlecolour_fill").attr("value", "#123456");
+        $("#control_node_singlecolour_stroke").attr("value", "#654321");
+        helper.simulateMouseEvent("click", "control_node_singlecolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
@@ -205,7 +205,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_singlecolour_modal").length === 0;
+        return $("#control_node_singlecolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -214,12 +214,12 @@
       runs(function() {
         shaperUI.addControlOpticAttributeColour();
       
-        expect($("#control_list #control_attributecolour").length).toEqual(1);
-        expect($("#control_list #control_attributecolour")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_attributecolour").length).toEqual(1);
+        expect($("#control_node_list #control_node_attributecolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_attributecolour");
-        $("#control_attributecolour_key").attr("value", "label");
-        helper.simulateMouseEvent("click", "control_attributecolour_submit");
+        helper.simulateMouseEvent("click", "control_node_attributecolour");
+        $("#control_node_attributecolour_key").attr("value", "label");
+        helper.simulateMouseEvent("click", "control_node_attributecolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
@@ -230,7 +230,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_attributecolour_modal").length === 0;
+        return $("#control_node_attributecolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -239,13 +239,13 @@
       runs(function() {
         shaperUI.addControlOpticExpandColour();
       
-        expect($("#control_list #control_expandcolour").length).toEqual(1);
-        expect($("#control_list #control_expandcolour")[0]).toConformToListCSS();
+        expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
+        expect($("#control_node_list #control_node_expandcolour")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_expandcolour");
-        $("#control_expandcolour_expanded").attr("value", "#123456");
-        $("#control_expandcolour_collapsed").attr("value", "#654321");
-        helper.simulateMouseEvent("click", "control_expandcolour_submit");
+        helper.simulateMouseEvent("click", "control_node_expandcolour");
+        $("#control_node_expandcolour_expanded").attr("value", "#123456");
+        $("#control_node_expandcolour_collapsed").attr("value", "#654321");
+        helper.simulateMouseEvent("click", "control_node_expandcolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
@@ -257,7 +257,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_expandcolour_modal").length === 0;
+        return $("#control_node_expandcolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
@@ -266,13 +266,13 @@
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
-      expect($("#control_list #control_none").length).toEqual(1);
-      expect($("#control_list #control_circle").length).toEqual(1);
-      expect($("#control_list #control_rect").length).toEqual(1);
-      expect($("#control_list #control_label").length).toEqual(1);
-      expect($("#control_list #control_singlecolour").length).toEqual(1);
-      expect($("#control_list #control_attributecolour").length).toEqual(1);
-      expect($("#control_list #control_expandcolour").length).toEqual(1);
+      expect($("#control_node_list #control_node_none").length).toEqual(1);
+      expect($("#control_node_list #control_node_circle").length).toEqual(1);
+      expect($("#control_node_list #control_node_rect").length).toEqual(1);
+      expect($("#control_node_list #control_node_label").length).toEqual(1);
+      expect($("#control_node_list #control_node_singlecolour").length).toEqual(1);
+      expect($("#control_node_list #control_node_attributecolour").length).toEqual(1);
+      expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
     });
     
     it('should be able to add all action controls to the list', function () {
@@ -283,13 +283,13 @@
     it('should be able to add all controls to the list', function () {
       shaperUI.addAll();
       
-      expect($("#control_list #control_none").length).toEqual(1);
-      expect($("#control_list #control_circle").length).toEqual(1);
-      expect($("#control_list #control_rect").length).toEqual(1);
-      expect($("#control_list #control_label").length).toEqual(1);
-      expect($("#control_list #control_singlecolour").length).toEqual(1);
-      expect($("#control_list #control_attributecolour").length).toEqual(1);
-      expect($("#control_list #control_expandcolour").length).toEqual(1);
+      expect($("#control_node_list #control_node_none").length).toEqual(1);
+      expect($("#control_node_list #control_node_circle").length).toEqual(1);
+      expect($("#control_node_list #control_node_rect").length).toEqual(1);
+      expect($("#control_node_list #control_node_label").length).toEqual(1);
+      expect($("#control_node_list #control_node_singlecolour").length).toEqual(1);
+      expect($("#control_node_list #control_node_attributecolour").length).toEqual(1);
+      expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
     });
   });
 

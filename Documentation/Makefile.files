@@ -310,7 +310,7 @@ CLEANUP += \
 
 swagger:
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/html/admin/api-docs/edges	
+		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/html/admin/api-docs/edge	
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document

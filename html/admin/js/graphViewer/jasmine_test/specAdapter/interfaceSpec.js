@@ -67,7 +67,9 @@ var describeInterface = function (testee) {
       expect(testee).toHaveFunction("deleteNode", 2);
       expect(testee).toHaveFunction("patchNode", 3);
       expect(testee).toHaveFunction("setNodeLimit", 2);
+      expect(testee).toHaveFunction("setChildLimit", 1);
       expect(testee).toHaveFunction("expandCommunity", 2);
+      
     });
     
 };
