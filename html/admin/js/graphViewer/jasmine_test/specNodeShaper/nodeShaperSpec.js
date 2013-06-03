@@ -691,9 +691,6 @@
         textEl = $("svg .node text");
         expect(textEl.attr("fill")).toEqual("black");
         expect(textEl.attr("stroke")).toEqual("none");
-        
-        
-        
       });
 
       it('should ignore other attributes', function () {
@@ -784,6 +781,45 @@
         expect($("svg .node text").length).toEqual(1);
         expect($("svg .node text")[0].textContent).toEqual("test");
         
+      });
+
+      it('should automatically line-break long multi-word labels', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "Label with many words"
+          }
+        }],
+        textEl,
+        spans;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        spans = $("tspan", textEl);
+        
+        expect($(spans.get(0)).text()).toEqual("Label with");
+        expect($(spans.get(0)).attr("x")).toEqual("0");
+        expect($(spans.get(0)).attr("dy")).toEqual("0");
+        
+        expect($(spans.get(1)).text()).toEqual("many words");
+        expect($(spans.get(1)).attr("x")).toEqual("0");
+        expect($(spans.get(1)).attr("dy")).toEqual("20");
+      });
+      
+      it('should automatically cut labels with more then 20 characters', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "The quick brown foxx is jumping lazy over the fence"
+          }
+        }],
+        textEl,
+        spans;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        spans = $("tspan", textEl);
+        
+        expect($(spans.get(0)).text()).toEqual("The quick");
+        expect($(spans.get(1)).text()).toEqual("brown foxx...");
       });
 
     });

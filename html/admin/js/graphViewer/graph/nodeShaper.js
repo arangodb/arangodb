@@ -67,6 +67,24 @@ function NodeShaper(parent, flags, idfunc) {
     communityRegEx = /^\*community/,
     nodes = [],
     visibleLabels = true,
+    
+    splitLabel = function(label) {
+      if (label === undefined) {
+        return [""];
+      }
+      if (typeof label !== "string") {
+        
+        label = String(label);
+      }
+      var chunks = label.match(/[\w\W]{1,10}(\s|$)|\S+?(\s|$)/g);
+      chunks[0] = $.trim(chunks[0]);
+      chunks[1] = $.trim(chunks[1]);
+      if (chunks.length > 2) {
+        chunks.length = 2;
+        chunks[1] += "...";
+      }
+      return chunks;
+    },
     noop = function (node) {
     
     },
@@ -243,21 +261,43 @@ function NodeShaper(parent, flags, idfunc) {
     parseLabelFlag = function (label) {
       if (_.isFunction(label)) {
         addLabel = function (node) {
-          node.append("text") // Append a label for the node
+          var textN = node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
             .attr("fill", "black") // Force a black color
-            .attr("stroke", "none") // Make it readable
-            .text(label);
+            .attr("stroke", "none"); // Make it readable
+            textN.each(function(d) {
+              var chunks = splitLabel(label(d));
+              d3.select(this).append("tspan")
+                .attr("x", "0")
+                .attr("dy", "0")
+                .text(chunks[0]);
+              if (chunks.length === 2) {
+                d3.select(this).append("tspan")
+                  .attr("x", "0")
+                  .attr("dy", "20")
+                  .text(chunks[1]);
+              }
+            });
         };
       } else {
         addLabel = function (node) {
-          node.append("text") // Append a label for the node
+          var textN = node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
             .attr("fill", "black") // Force a black color
-            .attr("stroke", "none") // Make it readable
-            .text(function(d) { 
-              return d._data[label] !== undefined ? d._data[label] : "";
-            });
+            .attr("stroke", "none"); // Make it readable
+          textN.each(function(d) {
+            var chunks = splitLabel(d._data[label]);
+            d3.select(this).append("tspan")
+              .attr("x", "0")
+              .attr("dy", "0")
+              .text(chunks[0]);
+            if (chunks.length === 2) {
+              d3.select(this).append("tspan")
+                .attr("x", "0")
+                .attr("dy", "20")
+                .text(chunks[1]);
+            }
+          });
         };
       }
     },
