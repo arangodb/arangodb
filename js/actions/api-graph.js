@@ -358,8 +358,13 @@ function get_graph_graph (req, res) {
 ///
 /// @RESTRETURNCODES
 /// 
-/// @RESTRETURNCODE{204}
-/// is returned if the graph was deleted
+/// @RESTRETURNCODE{200}
+/// is returned if the graph was deleted and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the graph was deleted and `waitForSync` was
+/// `false`.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the graph was not found.
