@@ -677,34 +677,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   // open the database
   openDatabases();
   TRI_vocbase_t* vocbase = _vocbase;
-  
-/*
-  // TODO load user databases
-  // TODO select a database  
-  string testName = "userDB";
-  string aPath = "/tmp/test_user_database/";
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(aPath.c_str(), testName.c_str(), false);  
-  userVocbase->_removeOnDrop = _removeOnDrop;
-  userVocbase->_removeOnCompacted = _removeOnCompacted;
-  userVocbase->_defaultMaximalSize = _defaultMaximalSize;
-  userVocbase->_defaultWaitForSync = _defaultWaitForSync;
-  userVocbase->_forceSyncShapes = _forceSyncShapes;
-  userVocbase->_forceSyncProperties = _forceSyncProperties;
-  
-  if (! userVocbase) {
-    string message = "cannot open database '" + aPath + "'";
-    LOGGER_FATAL_AND_EXIT(message);
-  }
-  _applicationV8->addUserVocbase(userVocbase);
-  
-            
-  vocbase = _applicationV8->lookupVocbase(testName);
-  if (! vocbase) {
-    LOGGER_FATAL_AND_EXIT("cannot get vocbase");
-  }
-  
-  cout << "got a vocbase: " << vocbase->_name << endl;
-*/  
+
   // load authentication
   TRI_LoadAuthInfoVocBase(vocbase);
 
