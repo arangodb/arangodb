@@ -456,6 +456,10 @@ function NodeShaper(parent, flags, idfunc) {
     shapeNodes();
   };
   
+  self.getColourMapping = function() {
+    return colourMapper.getList();
+  }; 
+  
 }
 
 NodeShaper.shapes = Object.freeze({

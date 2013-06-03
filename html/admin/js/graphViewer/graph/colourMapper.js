@@ -32,6 +32,7 @@ function ColourMapper() {
   
   var mapCreated = false,
   mapping = {},
+  reverseMapping = {},
   colours = [],
   nextColour = 0;
   
@@ -59,6 +60,10 @@ function ColourMapper() {
   this.getColour = function(value) {
     if (mapping[value] === undefined) {
       mapping[value] = colours[nextColour];
+      if (reverseMapping[colours[nextColour]] === undefined) {
+        reverseMapping[colours[nextColour]] = [];
+      }
+      reverseMapping[colours[nextColour]].push(value);
       nextColour++;
       if (nextColour === colours.length) {
         nextColour = 0;
@@ -69,7 +74,13 @@ function ColourMapper() {
   
   this.reset = function() {
     mapping = {};
+    reverseMapping = {};
     nextColour = 0;
   };
   
+  this.getList = function() {
+    return reverseMapping;
+  };
+  
+  this.reset();
 }
