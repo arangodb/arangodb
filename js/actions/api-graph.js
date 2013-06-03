@@ -219,7 +219,17 @@ function graph_by_request (req) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-create-graph
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
+///     var url = "/_api/graph/";
+///     var response = logCurlRequest('POST', url, {"_key" : "graph", "vertices" : "vertices", "edges" : "edges"});
+/// 
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_graph (req, res) {
@@ -262,12 +272,12 @@ function post_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph properties
 ///
-/// @RESTHEADER{GET /_api/graph,get graph properties}
+/// @RESTHEADER{GET /_api/graph/{graph-name},get graph properties}
 ///
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTQUERYPARAM{rev,string,optional}
-/// Revision of a graph
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -308,8 +318,22 @@ function post_graph_graph (req, res) {
 ///
 /// get graph by name
 ///
-/// @verbinclude api-graph-get-graph
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraph}
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
 ///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_graph (req, res) {
@@ -335,15 +359,12 @@ function get_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a graph
 ///
-/// @RESTHEADER{DELETE /_api/graph,delete graph}
+/// @RESTHEADER{DELETE /_api/graph/{graph-name},delete graph}
 ///
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
-/// 
-/// @RESTQUERYPARAM{rev,string,optional}
-/// Revision of a graph
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -376,7 +397,18 @@ function get_graph_graph (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-delete-graph
+/// delete graph by name
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteGraph}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph";
+///     var response = logCurlRequest('DELETE', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_graph (req, res) {
