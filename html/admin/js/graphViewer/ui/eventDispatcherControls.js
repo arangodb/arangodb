@@ -225,8 +225,8 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
         setCursorIcon(icon);
         rebindNodes({
           mousedown: dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
-            var pos = getCursorPositionInSVG(ev);
-            var  moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
+            var pos = getCursorPositionInSVG(ev),
+              moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
             dispatcher.bind("svg", "mousemove", function(ev) {
               var pos = getCursorPositionInSVG(ev);
               moveCB(pos.x, pos.y);
