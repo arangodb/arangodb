@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3*/
+
 var dashboardView = Backbone.View.extend({
   el: '#content',
   updateInterval: 500, // 0.5 second, constant
@@ -164,7 +167,7 @@ var dashboardView = Backbone.View.extend({
       }
     });
 
-    if (addGroup == true) {
+    if (addGroup === true) {
       self.options.description.models[0].attributes.groups.push({
         "description" : "custom",
         "group" : "custom",
@@ -201,7 +204,6 @@ var dashboardView = Backbone.View.extend({
     var scale = 0.0001;
 
     for (i = 0; i < 12; ++i) {
-      this.units.push(scale * 1);
       this.units.push(scale * 2);
       this.units.push(scale * 2.5);
       this.units.push(scale * 4);
@@ -216,13 +218,12 @@ var dashboardView = Backbone.View.extend({
     var i = 0, n = this.units.length;
     while (i < n) {
       var unit = this.units[i++];
-      if (max > unit) {
-        continue;
-      }
-      if (max == unit) {
+      if (max === unit) {
         break;
       }
-      return unit;
+      if (max < unit) {
+        return unit;
+      }
     }
 
     return max;
@@ -285,8 +286,8 @@ var dashboardView = Backbone.View.extend({
     var self = this;
     nv.addGraph(function() {
       var chart = nv.models.pieChart()
-      .x(function(d) { return d.label })
-      .y(function(d) { return d.value })
+      .x(function(d) { return d.label; })
+      .y(function(d) { return d.value; })
       .showLabels(true);
 
       d3.select("#detailCollectionsChart svg")
@@ -305,7 +306,7 @@ var dashboardView = Backbone.View.extend({
     $.each(self.collectionsStats, function(k,v) {
       collValues.push({
         "label" : k,
-        "value" : v,
+        "value" : v
       });
     });
 
@@ -368,14 +369,15 @@ var dashboardView = Backbone.View.extend({
       if (self.detailGraph === identifier) {
         d3.select("#detailGraphChart svg")
         .call(chart)
-        .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
+        .datum([{
+          values: self.seriesData[identifier].values,
+          key: identifier,
+          color: "#8AA051" 
+        }])
         .transition().duration(500);
       }
-      else {
-      }
 
-      //disable ticks for small charts
-      //disable label for small charts
+      //disable ticks/label for small charts
 
       d3.select("#" + identifier + "Chart svg")
       .call(chart)
@@ -466,7 +468,8 @@ var dashboardView = Backbone.View.extend({
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
       '</h6>'+
       '<i class="icon-remove icon-white db-hide" value="'+figure.identifier+'"></i>' +
-      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+'" title="'+figure.description+'"></i>' +
+      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+
+      '" title="'+figure.description+'"></i>' +
       '<i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i>' +
       '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +

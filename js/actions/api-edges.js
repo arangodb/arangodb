@@ -62,15 +62,75 @@ var API = "/_api/edges";
 ///
 /// Any direction
 ///
-/// @verbinclude rest-edge-read-edges-any
+/// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesAny}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex(1);
+///     var v2 = g.addVertex(2);
+///     var v3 = g.addVertex(3);
+///     var v4 = g.addVertex(4);
+///     g.addEdge(v1, v3, 5, "v1 -> v3");
+///     g.addEdge(v2, v1, 6, "v2 -> v1");
+///     g.addEdge(v4, v1, 7, "v4 -> v1");
+///
+///     var url = "/_api/edges/edges?vertex=vertices/1";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// In edges
 ///
-/// @verbinclude rest-edge-read-edges-in
+/// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesIn}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex(1);
+///     var v2 = g.addVertex(2);
+///     var v3 = g.addVertex(3);
+///     var v4 = g.addVertex(4);
+///     g.addEdge(v1, v3, 5, "v1 -> v3");
+///     g.addEdge(v2, v1, 6, "v2 -> v1");
+///     g.addEdge(v4, v1, 7, "v4 -> v1");
+///
+///     var url = "/_api/edges/edges?vertex=vertices/1&direction=in";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Out edges
 ///
-/// @verbinclude rest-edge-read-edges-out
+/// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesOut}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex(1);
+///     var v2 = g.addVertex(2);
+///     var v3 = g.addVertex(3);
+///     var v4 = g.addVertex(4);
+///     g.addEdge(v1, v3, 5, "v1 -> v3");
+///     g.addEdge(v2, v1, 6, "v2 -> v1");
+///     g.addEdge(v4, v1, 7, "v4 -> v1");
+///
+///     var url = "/_api/edges/edges?vertex=vertices/1&direction=out";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_edges (req, res) {

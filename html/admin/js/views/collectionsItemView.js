@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, window, exports, Backbone, EJS, $*/
+
 window.CollectionListItemView = Backbone.View.extend({
 
   tagName: "li",
@@ -24,7 +27,9 @@ window.CollectionListItemView = Backbone.View.extend({
   },
   
   selectCollection: function() {
-    window.App.navigate("collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true});
+    window.App.navigate(
+      "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
+    );
   },
   
   noop: function(event) {

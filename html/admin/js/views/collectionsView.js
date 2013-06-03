@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, window, setTimeout, clearTimeout, $*/
+
 var collectionsView = Backbone.View.extend({
   el: '#content',
   el2: '.thumbnails',
@@ -15,9 +18,14 @@ var collectionsView = Backbone.View.extend({
 
     var searchOptions = this.collection.searchOptions;
 
-    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
+    $('.thumbnails', this.el).append(
+      '<li class="span3"><a href="#new" class="add"><img id="newCollection"'+
+      'src="img/plus_icon.png" class="pull-left" />Add Collection</a></li>'
+    );
     this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
-      $('.thumbnails', this.el).append(new window.CollectionListItemView({model: arango_collection}).render().el);
+      $('.thumbnails', this.el).append(new window.CollectionListItemView({
+        model: arango_collection
+      }).render().el);
     }, this);
 
     
@@ -49,7 +57,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.includeSystem = ($('#checkSystem').is(":checked") === true);
 
-    if (oldValue != searchOptions.includeSystem) {
+    if (oldValue !== searchOptions.includeSystem) {
       this.render();
     }
   },
@@ -59,7 +67,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.includeEdge = ($('#checkEdge').is(":checked") === true);
 
-    if (oldValue != searchOptions.includeEdge) {
+    if (oldValue !== searchOptions.includeEdge) {
       this.render();
     }
   },
@@ -69,7 +77,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.includeDocument = ($('#checkDocument').is(":checked") === true);
 
-    if (oldValue != searchOptions.includeDocument) {
+    if (oldValue !== searchOptions.includeDocument) {
       this.render();
     }
   },
@@ -79,7 +87,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.includeLoaded = ($('#checkLoaded').is(":checked") === true);
 
-    if (oldValue != searchOptions.includeLoaded) {
+    if (oldValue !== searchOptions.includeLoaded) {
       this.render();
     }
   },
@@ -89,7 +97,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.includeUnloaded = ($('#checkUnloaded').is(":checked") === true);
 
-    if (oldValue != searchOptions.includeUnloaded) {
+    if (oldValue !== searchOptions.includeUnloaded) {
       this.render();
     }
   },
@@ -99,7 +107,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.sortBy = (($('#sortName').is(":checked") === true) ? 'name' : 'type');
 
-    if (oldValue != searchOptions.sortBy) {
+    if (oldValue !== searchOptions.sortBy) {
       this.render();
     }
   },
@@ -109,7 +117,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.sortBy = (($('#sortType').is(":checked") === true) ? 'type' : 'name');
 
-    if (oldValue != searchOptions.sortBy) {
+    if (oldValue !== searchOptions.sortBy) {
       this.render();
     }
   },
@@ -119,7 +127,7 @@ var collectionsView = Backbone.View.extend({
 
     searchOptions.sortOrder = (($('#sortOrder').is(":checked") === true) ? -1 : 1);
 
-    if (oldValue != searchOptions.sortOrder) {
+    if (oldValue !== searchOptions.sortOrder) {
       this.render();
     }
   },

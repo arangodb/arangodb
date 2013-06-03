@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, window */
+/*global require, exports, window, Backbone, arangoDocument, $*/
 
 window.arangoDocuments = Backbone.Collection.extend({
       currentPage: 1,
@@ -12,28 +12,28 @@ window.arangoDocuments = Backbone.Collection.extend({
       url: '/_api/documents',
       model: arangoDocument,
       getFirstDocuments: function () {
-        if (this.currentPage != 1) {
+        if (this.currentPage !== 1) {
           var link = window.location.hash.split("/");
           window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/1";
         }
       },
       getLastDocuments: function () {
-        if (this.currentPage != this.totalPages) {
+        if (this.currentPage !== this.totalPages) {
           var link = window.location.hash.split("/");
           window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+this.totalPages;
         }
       },
       getPrevDocuments: function () {
-        if (this.currentPage != 1) {
+        if (this.currentPage !== 1) {
           var link = window.location.hash.split("/");
-          var page = parseInt(this.currentPage) - 1;
+          var page = parseInt(this.currentPage, null) - 1;
           window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+page;
         }
       },
       getNextDocuments: function () {
-        if (this.currentPage != this.totalPages) {
+        if (this.currentPage !== this.totalPages) {
           var link = window.location.hash.split("/");
-          var page = parseInt(this.currentPage) + 1;
+          var page = parseInt(this.currentPage, null) + 1;
           window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+page;
         }
       },
@@ -58,11 +58,10 @@ window.arangoDocuments = Backbone.Collection.extend({
         });
 
 
-        if (isNaN(this.currentPage) || this.currentPage == undefined || this.currentPage < 1) {
+        if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
           this.currentPage = 1;
         }
-
-        if (this.totalPages == 0) {
+        if (this.totalPages === 0) {
           this.totalPages = 1;
         }
 
@@ -73,11 +72,13 @@ window.arangoDocuments = Backbone.Collection.extend({
           type: 'PUT',
           async: false,
           url: '/_api/simple/all/',
-          data: '{"collection":"' + this.collectionID + '","skip":' + this.offset + ',"limit":' + String(this.documentsPerPage) + '}',
+          data:
+            '{"collection":"' + this.collectionID + '","skip":'+
+            this.offset + ',"limit":' + String(this.documentsPerPage) + '}',
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();
-            if (self.documentsCount != 0) {
+            if (self.documentsCount !== 0) {
               $.each(data.result, function(k, v) {
                 window.arangoDocumentsStore.add({
                   "id": v._id,
