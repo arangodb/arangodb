@@ -9,6 +9,5 @@ branches:
     - 1.2
     - 1.3
     - devel
-    - multiple_databases
 notifications:
     webhooks: https://www.buildheroes.com/api/projects/e4a8248a1650ca7f463591f5e0fecf6901e0f475/builds
