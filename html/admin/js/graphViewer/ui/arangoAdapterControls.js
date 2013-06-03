@@ -41,23 +41,32 @@ function ArangoAdapterControls(list, adapter) {
     baseClass = "adapter";
   
   this.addControlChangeCollections = function() {
-    var prefix = "control_collections",
-    idprefix = prefix + "_";
-    uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
-      modalDialogHelper.createModalDialog("Switch Collections",
-        idprefix, [{
-          type: "text",
-          id: "nodecollection"
-        },{
-          type: "text",
-          id: "edgecollection"
-        }], function () {
-          var nodes = $("#" + idprefix + "nodecollection").attr("value"),
-            edges = $("#" + idprefix + "edgecollection").attr("value");
-          adapter.changeTo(nodes, edges);
-        }
-      );
+    var prefix = "control_adapter_collections",
+      idprefix = prefix + "_";
+    adapter.getCollections(function(nodeCols, edgeCols) {
+      uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
+        modalDialogHelper.createModalDialog("Switch Collections",
+          idprefix, [{
+            type: "list",
+            id: "nodecollection",
+            objects: nodeCols
+          },{
+            type: "list",
+            id: "edgecollection",
+            objects: edgeCols
+          },{
+            type: "checkbox",
+            id: "undirected"
+          }], function () {
+            var nodes = $("#" + idprefix + "nodecollection").attr("value"),
+              edges = $("#" + idprefix + "edgecollection").attr("value"),
+              undirected = !!$("#" + idprefix + "undirected").attr("checked");
+            adapter.changeTo(nodes, edges, undirected);
+          }
+        );
+      });
     });
+    
   };
   
   this.addAll = function() {

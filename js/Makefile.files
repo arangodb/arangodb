@@ -23,6 +23,7 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
 	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
+	html/admin/js/modules/org/arangodb/aql/functions.js \
 	html/admin/js/modules/org/arangodb/mimetypes.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js \
 	\
@@ -47,6 +48,7 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
+	`find @srcdir@/html/admin/js/models -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
@@ -71,7 +73,8 @@ jslint:
 			--log.level error \
 			--server.password "" \
 			--javascript.startup-directory @srcdir@/js \
-			--javascript.modules-path "@srcdir@/js/client/modules;@srcdir@/js/common/modules" \
+			--javascript.modules-path "@srcdir@/js/client/modules;@srcdir@/js/common/modules;@srcdir@/js/node" \
+			--javascript.package-path "@srcdir@/js/npm;@srcdir@/js/common/test-data/modules" \
 			--jslint $$file; \
 	done
 
@@ -83,6 +86,7 @@ BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
+	@test -d html/admin/js/modules/org/arangodb/aql || mkdir -p html/admin/js/modules/org/arangodb/aql
 	@test -d html/admin/js/bootstrap || mkdir -p html/admin/js/bootstrap
 	@test -d html/admin/js/client/bootstrap || mkdir -p html/admin/js/client/bootstrap
 	@touch $@

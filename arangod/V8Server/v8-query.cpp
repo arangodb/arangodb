@@ -51,6 +51,31 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for read-only transaction class type
+////////////////////////////////////////////////////////////////////////////////
+
+#define ReadTransactionType SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> >
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut to wrap a shaped-json object in a read-only transaction
+////////////////////////////////////////////////////////////////////////////////
+
+#define WRAP_SHAPED_JSON(...) TRI_WrapShapedJson<ReadTransactionType>(__VA_ARGS__)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
 
@@ -131,10 +156,10 @@ static void CalculateSkipLimitSlice (size_t length,
 
   // skip from the beginning
   if (0 < skip) {
-    s = skip;
+    s = (size_t) skip;
 
     if (e < s) {
-      s = e;
+      s = (size_t) e;
     }
   }
 
@@ -149,7 +174,15 @@ static void CalculateSkipLimitSlice (size_t length,
 
   // apply limit
   if (s + limit < e) {
-    e = s + limit;
+    int64_t sum = (int64_t) s + (int64_t) limit;
+    if (sum < (int64_t) e) {
+      if (sum >= (int64_t) TRI_QRY_NO_LIMIT) {
+        e = TRI_QRY_NO_LIMIT;
+      }
+      else {
+        e = (size_t) sum;
+      } 
+    }
   }
 }
 
@@ -977,7 +1010,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1057,7 +1090,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
         }
       }
 
-      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) indexElement->_document, barrier);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) indexElement->_document, barrier);
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1167,7 +1200,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -1259,13 +1292,14 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
       if (total > skip && count < limit) {
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
           if (barrier == 0) {
             error = true;
             break;
           }
         }
 
-        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, data, barrier);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, data, barrier);
 
         if (doc.IsEmpty()) {
           error = true;
@@ -1347,7 +1381,8 @@ static uint32_t SortGeoRandomGenerator (void) {
 /// @brief creates a geo result
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StoreGeoResult (TRI_vocbase_col_t const* collection,
+static int StoreGeoResult (ReadTransactionType& trx,
+                           TRI_vocbase_col_t const* collection,
                            GeoCoordinates* cors,
                            v8::Handle<v8::Array>& documents,
                            v8::Handle<v8::Array>& distances) {
@@ -1400,11 +1435,9 @@ static int StoreGeoResult (TRI_vocbase_col_t const* collection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  CollectionNameResolver resolver(collection->_vocbase);
-
   // copy the documents
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
-    documents->Set(i, TRI_WrapShapedJson(resolver, collection, (TRI_doc_mptr_t const*) gtr->_data, barrier));
+    documents->Set(i, WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) gtr->_data, barrier));
     distances->Set(i, v8::Number::New(gtr->_distance));
   }
 
@@ -1449,7 +1482,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -1530,7 +1563,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
           }
         }
 
-        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
         if (doc.IsEmpty()) {
           // error
@@ -1588,7 +1621,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
         }
       }
 
-      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1658,7 +1691,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   vector<TRI_doc_mptr_t> docs;
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -1683,11 +1716,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
   v8::Handle<v8::Array> documents = v8::Array::New(n);
-  // reserver full capacity in one go
+  // reserve full capacity in one go
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = TRI_WrapShapedJson(resolver, col, &docs[i], barrier);
+    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i], barrier);
 
     if (document.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1735,7 +1768,8 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   document._key = 0;
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1760,7 +1794,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     return scope.Close(v8::Null());
   }
 
-  return scope.Close(TRI_WrapShapedJson(resolver, col, &document, barrier));
+  return scope.Close(WRAP_SHAPED_JSON(trx, col->_cid, &document, barrier));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1789,7 +1823,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -1853,7 +1887,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       else {
         for (size_t j = s; j < e; ++j) {
           TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
-          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, mptr, barrier);
+
+          v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr, barrier);
 
           if (doc.IsEmpty()) {
             error = true;
@@ -1895,7 +1930,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 /// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t* document,
+static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
                                                       TRI_vocbase_col_t const* collection,
                                                       v8::Handle<v8::Object>* err,
                                                       v8::Arguments const& argv) {
@@ -1926,8 +1961,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   result->Set(v8::String::New("documents"), documents);
 
   // extract the index
-  CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -1941,8 +1975,9 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
 
   // convert the example (index is locked by lockRead)
   TRI_index_search_value_t searchValue;
-
-  TRI_shaper_t* shaper = document->base._shaper;
+  
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_shaper_t* shaper = primary->_shaper;
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1965,13 +2000,13 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
     CalculateSkipLimitSlice(total, skip, limit, s, e);
 
     if (s < e) {
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->base._barrierList);
+      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
       if (barrier == 0) {
         error = true;
       }
       else {
         for (size_t i = s;  i < e;  ++i) {
-          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, collection, list._documents[i], barrier);
+          v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, list._documents[i], barrier);
 
           if (doc.IsEmpty()) {
             error = true;
@@ -2015,7 +2050,8 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2030,7 +2066,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   trx.lockRead();
 
-  v8::Handle<v8::Value> result = ByExampleHashIndexQuery((TRI_document_collection_t*) trx.primaryCollection(), col, &err, argv);
+  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(trx, col, &err, argv);
 
   trx.finish(res);
 
@@ -2131,7 +2167,7 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
+static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
                                             TRI_vocbase_col_t const* collection,
                                             v8::Handle<v8::Object>* err,
                                             v8::Arguments const& argv) {
@@ -2143,8 +2179,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   }
 
   // extract the index
-  CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2198,7 +2233,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   result->Set(v8::String::New("documents"), documents);
 
   for (uint32_t i = 0; i < queryResult->_numDocuments; ++i) {
-    documents->Set(i, TRI_WrapShapedJson(resolver, collection, (TRI_doc_mptr_t const*) queryResult->_documents[i], barrier));
+    documents->Set(i, WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) queryResult->_documents[i], barrier));
   }
 
   TRI_FreeResultFulltextIndex(queryResult);
@@ -2239,7 +2274,8 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2254,7 +2290,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
 
   trx.lockRead();
 
-  v8::Handle<v8::Value> result = FulltextQuery((TRI_document_collection_t*) trx.primaryCollection(), col, &err, argv);
+  v8::Handle<v8::Value> result = FulltextQuery(trx, col, &err, argv);
 
   trx.finish(res);
 
@@ -2271,7 +2307,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
+static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
                                         TRI_vocbase_col_t const* collection,
                                         v8::Handle<v8::Object>* err,
                                         v8::Arguments const& argv) {
@@ -2283,8 +2319,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
   }
 
   // extract the index
-  CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2313,7 +2348,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
   GeoCoordinates* cors = TRI_NearestGeoIndex(idx, latitude, longitude, limit);
 
   if (cors != 0) {
-    int res = StoreGeoResult(collection, cors, documents, distances);
+    int res = StoreGeoResult(trx, collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot add document to geo-index");
@@ -2338,7 +2373,8 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2353,7 +2389,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   trx.lockRead();
 
-  v8::Handle<v8::Value> result = NearQuery((TRI_document_collection_t*) trx.primaryCollection(), col, &err, argv);
+  v8::Handle<v8::Value> result = NearQuery(trx, col, &err, argv);
 
   trx.finish(res);
 
@@ -2405,7 +2441,7 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   }
   
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -2434,10 +2470,15 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   }
 
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) col->_collection)->_barrierList);
-  v8::Handle<v8::Value> result = TRI_WrapShapedJson(resolver,
-                                                    col,
-                                                    (TRI_doc_mptr_t const*) elms->_elements[0]._document,
-                                                    barrier);
+
+  if (barrier == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, 
+                                                  col->_cid,
+                                                  (TRI_doc_mptr_t const*) elms->_elements[0]._document,
+                                                  barrier);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, elms->_elements);
 
@@ -2451,7 +2492,7 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
+static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
                                           TRI_vocbase_col_t const* collection,
                                           v8::Handle<v8::Object>* err,
                                           v8::Arguments const& argv) {
@@ -2463,8 +2504,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
   }
 
   // extract the index
-  CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2493,7 +2533,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
   GeoCoordinates* cors = TRI_WithinGeoIndex(idx, latitude, longitude, radius);
 
   if (cors != 0) {
-    int res = StoreGeoResult(collection, cors, documents, distances);
+    int res = StoreGeoResult(trx, collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot add document to geo-index");
@@ -2518,7 +2558,8 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2533,7 +2574,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   trx.lockRead();
 
-  v8::Handle<v8::Value> result = WithinQuery((TRI_document_collection_t*) trx.primaryCollection(), col, &err, argv);
+  v8::Handle<v8::Value> result = WithinQuery(trx, col, &err, argv);
 
   trx.finish(res);
 

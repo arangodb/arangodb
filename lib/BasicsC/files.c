@@ -68,6 +68,12 @@
 static bool Initialised = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief user-defined temporary path
+////////////////////////////////////////////////////////////////////////////////
+
+static char* TempPath;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief names of blocking files
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -160,6 +166,9 @@ static void RemoveAllLockedFiles (void) {
     TRI_CLOSE(fd);
     TRI_RemoveVector(&FileDescriptors, i);
   }
+
+  TRI_DestroyVectorString(&FileNames);
+  TRI_DestroyVector(&FileDescriptors);
 
   TRI_WriteUnlockReadWriteLock(&FileNamesLock);
 }
@@ -1069,13 +1078,13 @@ int TRI_VerifyLockFile (char const* filename) {
   n = TRI_READ(fd, buffer, sizeof(buffer));
   TRI_CLOSE(fd);
 
-  // file empty
-  if (n == 0) {
+  // file empty or pid too long
+  if (n == 0 || n == sizeof(buf)) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
-  // not really necessary, but this shuts up valgrind
-  memset(buffer, 0, sizeof(buffer));
+  // NUL-terminate buffer
+  buffer[n] = '\0';
 
   fc = TRI_UInt32String(buffer);
   res = TRI_errno();
@@ -1146,13 +1155,13 @@ int TRI_VerifyLockFile (char const* filename) {
   n = TRI_READ(fd, buffer, sizeof(buffer));
   TRI_CLOSE(fd);
 
-  // file empty
-  if (n == 0) {
+  // file empty or pid too long
+  if (n == 0 || n == sizeof(buffer)) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
-  // not really necessary, but this shuts up valgrind
-  memset(buffer, 0, sizeof(buffer));
+  // NUL-terminate buffer
+  buffer[n] = '\0';
 
   fc = TRI_UInt32String(buffer);
   res = TRI_errno();
@@ -1746,7 +1755,8 @@ int TRI_GetTempName (char const* directory,
   char* temp;
   int tries;
 
-  temp = TRI_GetTempPath();
+  temp = TRI_GetUserTempPath();
+
   if (directory != NULL) {
     dir = TRI_Concatenate2File(temp, directory);
   }
@@ -1814,6 +1824,58 @@ int TRI_GetTempName (char const* directory,
   TRI_Free(TRI_CORE_MEM_ZONE, dir);
 
   return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the user-defined temp path, with a fallback to the system's
+/// temp path if none is specified
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetUserTempPath (void) {
+  if (TempPath == NULL) {
+    return TRI_GetTempPath();
+  }
+
+  return TRI_DuplicateString(TempPath);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a new user-defined temp path
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetUserTempPath (char* path) {
+  if (TempPath != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
+  }
+
+  if (path == NULL) {
+    // unregister user-defined temp path
+    TempPath = NULL;
+  }
+  else {
+    // copy the user-defined temp path
+    TempPath = TRI_DuplicateString(path);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the files subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseFiles (void) {
+  // clear user-defined temp path
+  TempPath = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown the files subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownFiles (void) {
+  if (TempPath != NULL) {
+    // free any user-defined temp-path
+    TRI_FreeString(TRI_CORE_MEM_ZONE, TempPath);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -47,6 +47,7 @@ struct TRI_json_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_explain_s {
+  struct TRI_aql_context_s* _context;
   size_t _count;
   size_t _level;
   struct TRI_json_s* _result;

@@ -78,8 +78,9 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const*);
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_WrapShapedJson (const triagens::arango::CollectionNameResolver&,
-                                          TRI_vocbase_col_t const*,
+template<class T>
+v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
+                                          TRI_voc_cid_t,
                                           TRI_doc_mptr_t const*,
                                           TRI_barrier_t*);
 

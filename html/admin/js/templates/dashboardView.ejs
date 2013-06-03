@@ -1,0 +1,58 @@
+<ul class="thumbnails2">
+  <div id="dashboardHeader">
+    <div class="pull-left">
+      <h4 class="dashboardH4">Dashboard</h4>
+    </div>
+
+
+    <!-- /btn-group -->
+    <div class="btn-group pull-right">
+      <button class="btn btn-inverse btn-small disabledHover">Filter:</button>
+      <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle"><span class="caret"></span></button>
+
+      <ul class="dropdown-menu dashboard-dropdown" id="menuGroups">
+      </ul>
+    </div>
+    <!-- /btn-group -->
+
+    <!-- /btn-group update interval-->
+    <div class="btn-group pull-right">
+      <button class="btn btn-inverse btn-small disabledHover">Interval:</button>
+      <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle"><span class="caret"></span></button>
+
+      <ul class="dropdown-menu interval-dropdown">
+        <li class="nav-header">Update every:</li>
+        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every5seconds" value="5"><label><span></span>5 seconds</label></label></a></li>
+        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every15seconds" value="15"><label><span></span>15 seconds</label></label></a></li>
+        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every30seconds" value="30"><label><span></span>30 seconds</label></label></a></li>
+        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every60seconds" value="60"><label><span></span>60 seconds</label></label></a></li>
+        <li><a><label class="radio"><input type="radio" name="updateInterval" id="every120seconds" value="120"><label><span></span>120 seconds</label></label></a></li>
+      </ul>
+    </div>
+    <!-- /btn-group -->
+
+  </div>
+</ul>
+
+<ul class="thumbnails">
+  <li id="detailCollections" class="statSingleClient" style="margin-bottom: 13px !important;">
+    <div class="boxHeader">
+      <h6 id="detailCollectionsHeader" class="dashboardH6">Collections</h6>
+      <i id="db-collectionMinimize" class="icon-white icon-minus"></i>
+    </div>
+    <div id="detailCollectionsChart" class="statChart">
+      <svg class="svgCollections"/>
+    </div>
+  </li>
+
+  <li id="detailGraph" class="statSingleClient">
+    <div class="boxHeader">
+      <h6 id="detailGraphHeader" class="dashboardH6">User Time</h6>
+      <i id="dbHideSwitch" class="icon-minus icon-white db-minimize"></i>
+    </div>
+    <div id="detailGraphChart" class="statChart">
+      <svg class="svgDetailClass"/>
+    </div>
+  </li>
+
+</ul>

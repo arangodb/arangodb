@@ -49,6 +49,7 @@ function EdgeShaper(parent, flags, idfunc) {
   var self = this,
     edges = [],
     toplevelSVG,
+    visibleLabels = true,
     
     idFunction = function(d) {
       return d.source._id + "-" + d.target._id;
@@ -69,7 +70,9 @@ function EdgeShaper(parent, flags, idfunc) {
        dblclick: noop,
        mousedown: noop,
        mouseup: noop,
-       mousemove: noop
+       mousemove: noop,
+       mouseout: noop,
+       mouseover: noop
      };
      addUpdate = noop;
     },
@@ -120,7 +123,9 @@ function EdgeShaper(parent, flags, idfunc) {
     
     addQue = function (line, g) {
       addShape(line, g);
-      addLabel(line, g);
+      if (visibleLabels) {
+        addLabel(line, g);
+      }
       addColor(line, g);
       addEvents(line, g);
       addPosition(line, g);
@@ -336,7 +341,16 @@ function EdgeShaper(parent, flags, idfunc) {
   
   self.reshapeEdges = function() {
     shapeEdges();
-  }; 
+  };
+  
+  self.activateLabel = function(toogle) {
+    if (toogle) {
+      visibleLabels = true;
+    } else {
+      visibleLabels = false;
+    }
+    shapeEdges();
+  };
 }
 
 EdgeShaper.shapes = Object.freeze({

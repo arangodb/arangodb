@@ -154,7 +154,7 @@
               + " should be close to Node " + n2.id
               + " but distance is " + distance;
           };
-          threshold = threshold || 100;
+          threshold = threshold || 150;
           return Math.abs(distance) < threshold;
         },
         
@@ -219,7 +219,7 @@
       runs(function() {    
         standardConfig.nodes = createNodeList(1);
         nodes = standardConfig.nodes;
-        edgeShaper = {"updateEdges": function(){}};
+        edgeShaper = {updateEdges: function(){}};
         layouter = new ForceLayouter(standardConfig);
         layouter.setCombinedUpdateFunction(dummyNodeShaper, edgeShaper);
         spyOn(layouter, 'stop').andCallThrough();
@@ -241,7 +241,7 @@
     });
     
     it('should position not linked nodes close to each other', function() {
-      runs(function() {    
+      runs(function() {
         nodes = createNodeList(4);
         standardConfig.nodes = nodes;
         edgeShaper = {"updateEdges": function(){}};
@@ -331,9 +331,9 @@
       
       
       beforeEach(function() {
-        d3.layout.force = function() {
+        spyOn(d3.layout, "force").andCallFake(function() {
           return mock;
-        };
+        });
         config = {
           nodes: [],
           links: []
@@ -391,10 +391,16 @@
         
         var tmp = new ForceLayouter(config);
         
+        /*
         expect(mock.size).wasCalledWith([940, 640]);
-        expect(mock.linkDistance).wasCalledWith(80);
+        expect(mock.linkDistance).wasCalledWith(240);
         expect(mock.gravity).wasCalledWith(0.08);
         expect(mock.charge).wasCalledWith(-240);
+        */
+        expect(mock.size).wasCalledWith([940, 640]);
+        expect(mock.linkDistance).wasCalledWith(240);
+        expect(mock.gravity).wasCalledWith(0.01);
+        expect(mock.charge).wasCalledWith(-1000);
       });
       
       it('should be able to switch the distance', function() {

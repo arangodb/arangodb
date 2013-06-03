@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global _*/
+/*global _, $*/
 /*global EventLibrary*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -32,6 +32,9 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   
   var eventlib,
     expandConfig,
+    svgBase,
+    svgTemp,
+    svgObj,
     self = this,
     parseNodeEditorConfig = function(config) {
       if (config.shaper === undefined) {
@@ -118,6 +121,20 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           };
         };
       }
+    },
+    
+    bindSVGEvents = function() {
+      svgObj = svgObj || $("svg");
+      _.each(svgBase, function(fs, ev) {
+        svgObj.bind(ev, function(trigger) {
+          _.each(fs, function(f) {
+            f(trigger);
+          });
+          if (!! svgTemp[ev]) {
+            svgTemp[ev](trigger);
+          }
+        });
+      });
     };
   
   if (nodeShaper === undefined) {
@@ -129,6 +146,17 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   }
   
   eventlib = new EventLibrary();
+  
+  svgBase = {
+    click: [],
+    dblclick: [],
+    mousedown: [],
+    mouseup: [],
+    mousemove: [],
+    mouseout: [],
+    mouseover: []
+  };
+  svgTemp = {};
   
   self.events = {};
   
@@ -171,6 +199,10 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           actions: actions
         });
         break;
+      case "svg":
+        svgTemp[event] = func;
+        bindSVGEvents();
+        break;
       default:
         if (object.bind !== undefined) {
           object.unbind(event);
@@ -196,10 +228,27 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           actions: actions
         });
         break;
+      case "svg":
+        svgTemp = {};
+        _.each(actions, function(fs, ev) {
+          if (ev !== "reset") {
+            svgTemp[ev] = fs;
+          }
+        });
+        bindSVGEvents();
+        break;
       default:
           throw "Sorry cannot rebind to object. Please give either "
-          + "\"nodes\" or \"edges\"";
+          + "\"nodes\", \"edges\" or \"svg\"";
     }
+  };
+  
+  self.fixSVG = function(event, action) {
+    if (svgBase[event] === undefined) {
+      throw "Sorry unkown event";
+    }
+    svgBase[event].push(action);
+    bindSVGEvents();
   };
   /*
   self.unbind = function () {

@@ -2,7 +2,7 @@
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
 /*global LayouterControls, ArangoAdapterControls*/
-/*global GraphViewer, d3*/
+/*global GraphViewer, d3, window*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -30,7 +30,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
+function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConfig) {
   "use strict";
   
   if (container === undefined) {
@@ -47,7 +47,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
     width = (optWidth || container.offsetWidth) - 60,
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
-    svg, 
+    background = document.createElement("div"),
+    mousePointerBox = document.createElement("div"),
+    svg,
+    
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
       div.className = "btn-group";
@@ -66,24 +69,29 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       return list;
     },
     createSVG = function () {
-      return d3.select("#" + container.id)
+      return d3.select("#" + container.id + " #background")
         .append("svg")
+        .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "pull-right")
+        .attr("class", "pull-right graphViewer")
         .attr("style", "width:" + width + "px;height:" + height + ";");
     },
     createToolbox = function() {
       var toolbox = document.createElement("div"),
         dispatcherUI = new EventDispatcherControls(
           toolbox,
+          mousePointerBox,
           graphViewer.nodeShaper,
           graphViewer.edgeShaper,
           graphViewer.dispatcherConfig
         );
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
-      container.appendChild(toolbox);
+      mousePointerBox.id = "mousepointer";
+      mousePointerBox.className = "mousepointer";
+      background.appendChild(toolbox);
+      background.appendChild(mousePointerBox);
       dispatcherUI.addAll();
     },
     createMenu = function() {
@@ -93,6 +101,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         buttons = document.createElement("div"),
+        equalsField = document.createElement("span"),
+        configureDropDown = document.createElement("div"),
+        configureList = makeBootstrapDropdown(
+          configureDropDown,
+          "configuredropdown",
+          "Configure"
+        ),
+        
+        /*
         nodeShaperDropDown = document.createElement("div"),
         nodeShaperList = makeBootstrapDropdown(
           nodeShaperDropDown,
@@ -125,15 +142,37 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
           edgeShaperList,
           graphViewer.edgeShaper
         ),
+        layouterUI = new LayouterControls(
+          layouterList,
+          graphViewer.layouter
+        ),
         adapterUI = new ArangoAdapterControls(
           adapterList,
           graphViewer.adapter
         ),
-        layouterUI = new LayouterControls(
-          layouterList,
-          graphViewer.layouter
-        );
-      
+        */
+        
+        nodeShaperUI = new NodeShaperControls(
+          configureList,
+          graphViewer.nodeShaper
+        ),
+        adapterUI = new ArangoAdapterControls(
+          configureList,
+          graphViewer.adapter
+        ),
+        
+        searchFunction = function() {
+          if (searchAttrField.value === ""
+            || searchAttrField.value === undefined) {
+            graphViewer.loadGraph(searchValueField.value);
+          } else {
+            graphViewer.loadGraphWithAttributeValue(
+              searchAttrField.value,
+              searchValueField.value
+            );
+          }
+        };
+
       menubar.id = "menubar";
       menubar.className = "thumbnails2";
       
@@ -159,48 +198,61 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       searchStart.height = 16;
       searchStart.src = "img/enter_icon.png";
       
+      equalsField.className = "searchEqualsLabel";
+      equalsField.appendChild(document.createTextNode("=="));
+      
+      
+      /*
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
-      adapterDropDown.id = "adaptermenu";
       layouterDropDown.id = "layoutermenu";
+      adapterDropDown.id = "adaptermenu";
+      */
+      configureDropDown.id = "configuremenu";
       
-      searchStart.onclick = function() {
-        if (searchAttrField.value === ""
-          || searchAttrField.value === undefined) {
-          graphViewer.loadGraph(searchValueField.value);
-        } else {
-          graphViewer.loadGraphWithAttributeValue(
-            searchAttrField.value,
-            searchValueField.value
-          );
+      
+      searchStart.onclick = searchFunction;
+      $(searchValueField).keypress(function(e) {
+        if (e.keyCode === 13 || e.which === 13) {
+          searchFunction();
+          return false;
         }
-      };
-      
+        
+      });
       
       menubar.appendChild(transparentHeader);
       transparentHeader.appendChild(searchDiv);
       searchDiv.appendChild(searchAttrField);
+      searchDiv.appendChild(equalsField);
       searchDiv.appendChild(searchValueField);
       searchDiv.appendChild(searchStart);
       transparentHeader.appendChild(buttons);
+      
+      buttons.appendChild(configureDropDown);
+      
+      adapterUI.addControlChangeCollections();
+      nodeShaperUI.addControlOpticLabel();
+      
+      /*
       buttons.appendChild(nodeShaperDropDown);
       buttons.appendChild(edgeShaperDropDown);
-      buttons.appendChild(adapterDropDown);
       buttons.appendChild(layouterDropDown);
-      /*
-      transparentHeader.appendChild(nodeShaperDropDown);
-      transparentHeader.appendChild(edgeShaperDropDown);
-      transparentHeader.appendChild(adapterDropDown);
-      transparentHeader.appendChild(layouterDropDown);
-      */
+      buttons.appendChild(adapterDropDown);
+      
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
-      adapterUI.addAll();
       layouterUI.addAll();
+      adapterUI.addAll();
+      */
     };
   container.appendChild(menubar);
+  container.appendChild(background);
+  background.className = "thumbnails";
+  background.id = "background";
   svg = createSVG();
-  graphViewer = new GraphViewer(svg, width, height, adapterConfig);
+  viewerConfig = viewerConfig || {};
+  viewerConfig.zoom = true;
+  graphViewer = new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
   
   createToolbox();
   createMenu();

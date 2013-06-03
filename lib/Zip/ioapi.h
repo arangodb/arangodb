@@ -21,6 +21,17 @@
 #ifndef _ZLIBIOAPI64_H
 #define _ZLIBIOAPI64_H
 
+#ifdef _Z_OF
+#undef OF
+#define OF _Z_OF
+#else
+#ifndef OF
+#define _Z_OF(args) args
+#define OF _Z_OF
+#endif
+#endif
+
+
 #if (!defined(_WIN32)) && (!defined(WIN32)) && (!defined(__APPLE__))
 
   // Linux needs this to support file operation on files larger then 4+GB

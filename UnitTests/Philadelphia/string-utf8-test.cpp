@@ -34,10 +34,10 @@
 // -----------------------------------------------------------------------------
 
 #define TEST_STRING(str) \
-  TRI_EscapeUtf8String(str, strlen(str), true, &outLength);
+  TRI_EscapeUtf8String(str, strlen(str), true, &outLength, true);
 
 #define TEST_STRING_L(str, len) \
-  TRI_EscapeUtf8String(str, len, true, &outLength);
+  TRI_EscapeUtf8String(str, len, true, &outLength, true);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants

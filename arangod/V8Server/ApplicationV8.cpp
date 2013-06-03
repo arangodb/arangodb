@@ -176,9 +176,8 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::ApplicationV8 (string const& binaryPath, string const& tempPath)
+ApplicationV8::ApplicationV8 (string const& binaryPath) 
   : ApplicationFeature("V8"),
-    _tempPath(tempPath),
     _startupPath(),
     _modulesPath(),
     _packagePath(),
@@ -535,7 +534,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.app-path", &_appPath, "one directory for applications")
-    ("javascript.dev-app-path", &_devAppPath, "one directory for dev aaplications")
+    ("javascript.dev-app-path", &_devAppPath, "one directory for dev applications")
     ("javascript.modules-path", &_modulesPath, "one or more directories separated by semi-colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by semi-colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
@@ -597,6 +596,11 @@ bool ApplicationV8::prepare () {
 
   if (! _devAppPath.empty() && ! FileUtils::isDirectory(_devAppPath.c_str())) {
     LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
+  }
+  
+  if (_packagePath.empty()) {
+    LOGGER_ERROR("--javascript.package-path option was not specified. this may cause follow-up errors.");
     // TODO: decide if we want to abort server start here
   }
 
@@ -741,7 +745,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _tempPath);
+  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath);
   TRI_InitV8Shell(context->_context);
 
   {

@@ -57,8 +57,10 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     PostConstant(),
     PutConstant(),
 
+    AddressKey(),
     BodyFromFileKey(),
     BodyKey(),
+    ClientKey(),
     CodeKey(),
     ContentTypeKey(),
     DomainKey(),
@@ -78,10 +80,13 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ParametersKey(),
     PathKey(),
     PrefixKey(),
+    PortKey(),
+    ProtocolKey(),
     RequestBodyKey(),
     RequestTypeKey(),
     ResponseCodeKey(),
     SecureKey(),
+    ServerKey(),
     SuffixKey(),
     TransformationsKey(),
     UrlKey(),
@@ -115,8 +120,10 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   PostConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("POST"));
   PutConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PUT"));
   
+  AddressKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("address"));
   BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
   BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
+  ClientKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("client"));
   CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
   CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
@@ -137,10 +144,13 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
   PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
+  PortKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("port"));
+  ProtocolKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("protocol"));
   RequestBodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestBody"));
   RequestTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestType"));
   ResponseCodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("responseCode"));
   SecureKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("secure"));
+  ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
   TransformationsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("transformations"));
   UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));

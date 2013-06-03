@@ -216,96 +216,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON array with collection meta data 
-///
-/// this function is called when a collection is created or dropped
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* CreateJsonCollectionInfo (TRI_vocbase_col_t const* collection,
-                                             const char* situation) {
-  TRI_json_t* json;
-  TRI_json_t* details;
-  char* cidString;
-
-  details = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_TypeNameCollection(collection->_type)));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, collection->_name));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "action", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, situation));
-
-  cidString = TRI_StringUInt64((uint64_t) collection->_cid);
-
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "collection"));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "details", details);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, cidString);
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert the id of a collection into the "_ids" collection 
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertIdCallback (TRI_transaction_collection_t* trxCollection,
-                             void* data) {
-  TRI_shaped_json_t* shaped;
-  TRI_primary_collection_t* primary;
-  TRI_json_t* json;
-  TRI_doc_mptr_t mptr;
-  int res;
-
-  primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
-  json = data;
-
-  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-
-  if (shaped == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  res = primary->insert(trxCollection, NULL, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, NULL, false, false);
-  TRI_FreeShapedJson(primary->_shaper, shaped);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save collection info on create or drop
-///
-/// the info will be stored permanently in the "_ids" collection, so we can
-/// later reconstruct ids of collections that are/were dropped
-////////////////////////////////////////////////////////////////////////////////
-
-static bool WriteCollectionInfo (TRI_vocbase_t* vocbase,
-                                 TRI_vocbase_col_t const* collection,
-                                 const char* situation) {
-  TRI_json_t* json;
-  int res;
-
-  if (collection == NULL) {
-    return false;
-  }
-
-  json = CreateJsonCollectionInfo(collection, situation);
-
-  if (json == NULL) {
-    return false;
-  }
-
-  res = TRI_ExecuteSingleOperationTransaction(vocbase,  
-                                              "_ids", 
-                                              TRI_TRANSACTION_WRITE, 
-                                              InsertIdCallback, 
-                                              json);
-  
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  return (res == TRI_ERROR_NO_ERROR);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current tick value, without using a lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -326,6 +236,120 @@ static inline void UpdateTick (TRI_voc_tick_t tick) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads shutdown information file
+/// this is called at server startup. if the file is present, the last tick
+/// value used by the server will be read from the file.
+////////////////////////////////////////////////////////////////////////////////
+
+static int ReadShutdownInfo (char const* filename) {
+  TRI_json_t* json;
+  TRI_json_t* shutdownTime;
+  TRI_json_t* tickString;
+  uint64_t foundTick;
+
+  assert(filename != NULL);
+
+  if (! TRI_ExistsFile(filename)) {
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
+
+  if (json == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  shutdownTime = TRI_LookupArrayJson(json, "shutdownTime");
+  if (shutdownTime != NULL && shutdownTime->_type == TRI_JSON_STRING) {
+    LOG_DEBUG("server was shut down cleanly last time at '%s'", shutdownTime->_value._string.data);
+  }
+
+  tickString = TRI_LookupArrayJson(json, "tick");
+
+  if (tickString == NULL || tickString->_type != TRI_JSON_STRING) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return TRI_ERROR_INTERNAL;
+  }
+
+  foundTick = TRI_UInt64String(tickString->_value._string.data);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
+
+  if (foundTick == 0) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  UpdateTick((TRI_voc_tick_t) foundTick);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the shutdown information file
+/// this is called after the shutdown info file is read at restart. we need
+/// to remove the file because if we don't and the server crashes, we would
+/// leave some stale data around, leading to potential inconsistencies later.
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemoveShutdownInfo (char const* filename) {
+  int res = TRI_UnlinkFile(filename);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes shutdown information file
+/// the file will contain the timestamp of the shutdown time plus the last
+/// tick value the server used. it will be read on restart of the server.
+/// if the server can find the file on restart, it can avoid scanning 
+/// collections.
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteShutdownInfo (char const* filename) {
+  TRI_json_t* json;
+  char* tickString;
+  char buffer[32];
+  size_t len;
+  time_t tt;
+  struct tm tb;
+  bool ok;
+
+  assert(filename != NULL);
+
+  // create a json object
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == NULL) {
+    // out of memory
+    LOG_ERROR("cannot save shutdown info in file '%s': out of memory", filename);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  tickString = TRI_StringUInt64((uint64_t) GetTick());
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
+
+  tt = time(0);
+  TRI_gmtime(tt, &tb);
+  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, buffer, len));
+
+  // save json info to file
+  LOG_DEBUG("Writing shutdown info to file '%s'", filename);
+  ok = TRI_SaveJson(filename, json, true);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  if (! ok) {
+    LOG_ERROR("could not save shutdown info in file '%s': %s", filename, TRI_last_error());
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free the memory associated with a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -342,8 +366,6 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
-  WriteCollectionInfo(vocbase, collection, "drop");
-
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
@@ -637,6 +659,7 @@ static int ReadServerId (TRI_vocbase_t* vocbase) {
   }
 
   res = TRI_ReadServerId(filename);
+
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // id file does not yet exist. now create it
     res = TRI_GenerateServerId();
@@ -748,7 +771,9 @@ static bool StartupTickIterator (TRI_df_marker_t const* marker,
 /// @brief scans a directory and loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
+static int ScanPath (TRI_vocbase_t* vocbase, 
+                     char const* path,
+                     const bool iterateMarkers) {
   TRI_vector_string_t files;
   regmatch_t matches[2];
   regex_t re;
@@ -792,6 +817,10 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         // this can cause serious trouble so we will abort the server start if we
         // encounter this situation
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
+
+        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+        regfree(&re);
+        TRI_DestroyVectorString(&files);
 
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
       }
@@ -874,8 +903,12 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           } 
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
-          
-          TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
+       
+          if (iterateMarkers) {   
+            // iterating markers may be time-consuming. we'll only do it if
+            // we have to
+            TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
+          }
 
           if (c == NULL) {
             LOG_ERROR("failed to add document collection from '%s'", file);
@@ -1167,9 +1200,11 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
 /// @brief opens an exiting database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name,
+        TRI_vocbase_defaults_t* defaults) {
   TRI_vocbase_t* vocbase;
   char* lockFile;
+  bool iterateMarkers;
   int res;
 
   if (! TRI_IsDirectory(path)) {
@@ -1230,10 +1265,12 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
   vocbase->_name = TRI_DuplicateString(name);
   vocbase->_isSystem = false;
   vocbase->_requireAuthentication = true;
+  vocbase->_shutdownFilename = TRI_Concatenate2File(path, "SHUTDOWN");
 
   // init AQL functions
   vocbase->_functions = TRI_InitialiseFunctionsAql();
 
+  // init collections
   TRI_InitVectorPointer(&vocbase->_collections, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&vocbase->_deadCollections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -1263,6 +1300,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
 
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
   TRI_InitReadWriteLock(&vocbase->_lock);
+  vocbase->_authInfoFlush = true;
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
@@ -1283,10 +1321,29 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
     LOG_FATAL_AND_EXIT("reading/creating server id failed");
   }
 
+
+  // check if we can find a SHUTDOWN file
+  // this file will contain the last tick value issued by the server
+  // if we find the file, we can avoid scanning datafiles for the last used tick value
+
+  iterateMarkers = true;
+
+  res = ReadShutdownInfo(vocbase->_shutdownFilename);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // we found the SHUTDOWN file
+    // no need to iterate the markers
+    iterateMarkers = false;
+  }
+  else if (res == TRI_ERROR_INTERNAL) {
+    LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
+  }
+
   // scan the database path for collections
   // this will create the list of collections and their datafiles, and will also
-  // determine the last tick values used
-  res = ScanPath(vocbase, vocbase->_path);
+  // determine the last tick values used (if iterateMarkers is true)
+
+  res = ScanPath(vocbase, vocbase->_path, iterateMarkers);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
@@ -1295,15 +1352,26 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
     TRI_DestroyVectorPointer(&vocbase->_deadCollections);
     TRI_DestroyLockFile(vocbase->_lockFile);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_shutdownFilename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_FreeShadowStore(vocbase->_cursors);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
 
     return NULL;
   }
 
+
   LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());  
+    
+
+  // now remove SHUTDOWN file if it was present
+  if (! iterateMarkers) {
+    if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
+    }
+  }
 
 
   // .............................................................................
@@ -1330,6 +1398,16 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
 
   TRI_InitThread(&(vocbase->_indexGC));
   TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
+  
+  if (defaults) {
+    vocbase->_removeOnDrop = defaults->removeOnDrop;
+    vocbase->_removeOnCompacted = defaults->removeOnCompacted;
+    vocbase->_defaultMaximalSize = defaults->defaultMaximalSize;
+    vocbase->_defaultWaitForSync = defaults->defaultWaitForSync;
+    vocbase->_forceSyncShapes = defaults->forceSyncShapes;
+    vocbase->_forceSyncProperties = defaults->forceSyncProperties;
+    vocbase->_requireAuthentication = defaults->requireAuthentication;    
+  }  
   
   // we are done
   return vocbase;
@@ -1390,6 +1468,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     FreeCollection(vocbase, collection);
   }
 
+  // we are just before terminating the server. we can now write out a file with the
+  // shutdown timestamp and the last tick value the server used.
+  // if writing the file fails, it is not a problem as in this case we'll scan the
+  // collections for the tick value on startup
+  WriteShutdownInfo(vocbase->_shutdownFilename);
+
   // free the auth info
   TRI_DestroyAuthInfo(vocbase);
 
@@ -1420,6 +1504,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
 
   // free the filename path
+  TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_shutdownFilename);
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
 }
 
@@ -2061,8 +2146,11 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseVocBase () {
+  // TODO: these two fcalls can probably be removed because we're initialising
+  // BasicsC anyway
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
+
   TRI_GlobalInitStatementListAql();
 
   ServerIdentifier = TRI_UInt16Random();

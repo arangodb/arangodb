@@ -1770,6 +1770,8 @@ void TRI_InitialiseLogging (bool threaded) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ShutdownLogging () {
+  size_t i, j;
+
   if (! Initialised) {
     return ThreadedLogging;
   }
@@ -1797,6 +1799,20 @@ bool TRI_ShutdownLogging () {
   }
 
   TRI_UnlockSpin(&OutputPrefixLock);
+
+  // cleanup output buffers
+  TRI_LockMutex(&BufferLock);
+
+  for (i = 0; i < OUTPUT_LOG_LEVELS; i++) {
+    for (j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
+      if (BufferOutput[i][j]._text != NULL) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, BufferOutput[i][j]._text);
+        BufferOutput[i][j]._text = NULL;
+      }
+    }
+  }
+
+  TRI_UnlockMutex(&BufferLock);
 
   // cleanup locks
   TRI_DestroySpin(&OutputPrefixLock);

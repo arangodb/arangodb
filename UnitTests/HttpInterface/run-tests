@@ -8,6 +8,7 @@ rspec --color --format d \
 	api-attributes-spec.rb \
 	api-batch-spec.rb \
 	api-collection-spec.rb \
+	api-documents-spec.rb \
 	api-graph-spec.rb \
 	rest-key-spec.rb \
 	rest-create-document-spec.rb \

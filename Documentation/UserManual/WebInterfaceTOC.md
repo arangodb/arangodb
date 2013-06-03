@@ -6,4 +6,3 @@ TOC {#UserManualWebInterfaceTOC}
   - @ref UserManualWebInterfaceQuery
   - @ref UserManualWebInterfaceShell
   - @ref UserManualWebInterfaceLogs
-  - @ref UserManualWebInterfaceStatistics

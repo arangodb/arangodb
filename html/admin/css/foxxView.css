@@ -1,6 +1,11 @@
 .foxxList {
   padding-top: 30px;
 }
+
+.foxxElement {
+  cursor: pointer;
+}
+
 .foxxDescription {
   width:170px;
   float: left;

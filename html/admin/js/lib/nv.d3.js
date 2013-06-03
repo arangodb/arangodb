@@ -479,8 +479,9 @@ nv.models.axis = function() {
               .attr('transform', function(d,i,j) { return 'rotate(' + rotateLabels + ' 0,0)' })
               .attr('text-anchor', rotateLabels%360 > 0 ? 'start' : 'end');
           }
-          axisLabel.enter().append('text').attr('class', 'nv-axislabel')
+          axisLabel.enter().append('text').attr('class', 'nv-axislabel nv-x-axislabel')
             .attr('text-anchor', 'middle')
+            .attr('class', 'heikotestclass')
             .attr('y', xLabelMargin);
           var w = (scale.range().length==2) ? scale.range()[1] : (scale.range()[scale.range().length-1]+(scale.range()[1]-scale.range()[0]));
           axisLabel
@@ -521,7 +522,8 @@ nv.models.axis = function() {
           axisLabel.enter().append('text').attr('class', 'nv-axislabel')
               .attr('text-anchor', rotateYLabel ? 'middle' : 'begin')
               .attr('transform', rotateYLabel ? 'rotate(90)' : '')
-              .attr('y', rotateYLabel ? (-Math.max(margin.right,width) + 12) : -10); //TODO: consider calculating this based on largest tick width... OR at least expose this on chart
+              //FIX BY HEIKO
+              .attr('y', rotateYLabel ? (-Math.max(margin.right,width) + 5) : -10); //TODO: consider calculating this based on largest tick width... OR at least expose this on chart
           axisLabel
               .attr('x', rotateYLabel ? (scale.range()[0] / 2) : axis.tickPadding());
           if (showMaxMin) {
@@ -563,7 +565,8 @@ nv.models.axis = function() {
           axisLabel.enter().append('text').attr('class', 'nv-axislabel')
               .attr('text-anchor', rotateYLabel ? 'middle' : 'end')
               .attr('transform', rotateYLabel ? 'rotate(-90)' : '')
-              .attr('y', rotateYLabel ? (-Math.max(margin.left,width) + 12) : -10); //TODO: consider calculating this based on largest tick width... OR at least expose this on chart
+              //Edited 25 in next line -> origin was 12
+              .attr('y', rotateYLabel ? (-Math.max(margin.left,width) + 40) : -10); //TODO: consider calculating this based on largest tick width... OR at least expose this on chart
           axisLabel
               .attr('x', rotateYLabel ? (-scale.range()[0] / 2) : -axis.tickPadding());
           if (showMaxMin) {

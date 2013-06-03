@@ -1,22 +1,54 @@
-<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
-  <fieldset>
-    <legend>Please give the collections</legend>
-    <div class="control-group">
-      <label for="nodeCollection" class="control-label">Node Collection</label>
-      <div class="controls">
-        <input id="nodeCollection" type="text" name="nodeCollection" placeholder="Node Collection" maxlength="75" class="input-xlarge" value="Classes">
+<div class="thumbnails" id="background">
+  <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+    <fieldset>
+      <legend>Configuration</legend>
+      <div class="control-group">
+        <label for="nodeCollection" class="control-label">Node Collection</label>
+        <div class="controls">
+          <input id="nodeCollection" type="text" name="nodeCollection" placeholder="Node Collection" maxlength="75" class="input-xlarge" value="Classes">
+        </div>
       </div>
-    </div>
-    <div class="control-group">
-      <label for="edgeCollection" class="control-label">Edge Collection</label>
-      <div class="controls">
-        <input id="edgeCollection" type="text" name="edgeCollection" placeholder="Edge Collection" maxlength="75" class="input-xlarge" value="Connections">
+      <div class="control-group">
+        <label for="edgeCollection" class="control-label">Edge Collection</label>
+        <div class="controls">
+          <input id="edgeCollection" type="text" name="edgeCollection" placeholder="Edge Collection" maxlength="75" class="input-xlarge" value="Connections">
+        </div>
       </div>
-    </div>   
-    <div class="control-group">
-      <div class="controls">
-        <button type="submit" class="btn btn-primary" id="createViewer" >Start</button>
+    
+      <div class="accordion" id="advancedGraphOptions">
+
+        <div class="accordion-group">
+          <div class="accordion-heading">
+            <a class="accordion-toggle" data-toggle="collapse" data-parent="#advancedGraphOptions" href="#advancedOptions">
+              Advanced
+            </a>
+          </div>
+
+          <div id="advancedOptions" class="accordion-body collapse out">
+            <div class="accordion-inner">
+              <div class="control-group">
+                <label for="undirected" class="control-label">Undirected Graph</label>
+                <div class="controls">
+                  <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
+                </div>
+              </div>
+              <div class="control-group">
+                <label for="nodeLabel" class="control-label">Node Label</label>
+                <div class="controls">
+                  <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Node Label" maxlength="75" class="input-xlarge">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </fieldset>
-</form>
+    
+       
+      <div class="control-group">
+        <div class="controls">
+          <button type="submit" class="btn btn-primary" id="createViewer" >Start</button>
+        </div>
+      </div>
+    </fieldset>
+  </form>
+</div>
