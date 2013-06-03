@@ -649,7 +649,7 @@ int ArangoServer::startupServer () {
 
   _applicationServer->stop();
 
-  closeSystemDatabase();
+  closeDatabases();
 
   return 0;
 }
@@ -907,7 +907,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->stop();
 
 
-  closeSystemDatabase();
+  closeDatabases();
   Random::shutdown();
 
   if (!ok) {
@@ -1078,7 +1078,7 @@ int ArangoServer::executeRubyConsole () {
   console.close();
 
   // close the database
-  closeDatabase();
+  closeDatabases();
 
   Random::shutdown();
 
@@ -1308,7 +1308,7 @@ void ArangoServer::openDatabases () {
 /// @brief closes the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::closeSystemDatabase () {
+void ArangoServer::closeDatabases () {
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
