@@ -1,10 +1,11 @@
 .footer {
+  position: fixed;
   background: url("../img/footer_hd_bg.png") repeat-x scroll left 10px #4A4A4A;
   font-size: 14px;
   text-align: center;
   left: 0;
   right: 0;
-  margin-top:500px;
+  bottom: 0px;
 }
 
 .footerExtra {

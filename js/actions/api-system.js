@@ -335,7 +335,7 @@ actions.defineHttp({
 /// 
 /// @EXAMPLES
 /// 
-/// @EXAMPLE_ARANGOSH_RUN{AdminStatistics1}
+/// @EXAMPLE_ARANGOSH_RUN{RestAdminStatistics1}
 ///     var url = "/_admin/statistics";
 ///     var response = logCurlRequest('GET', url);
 /// 
@@ -402,7 +402,7 @@ actions.defineHttp({
 /// 
 /// @EXAMPLES
 /// 
-/// @EXAMPLE_ARANGOSH_RUN{AdminStatisticsDescription1}
+/// @EXAMPLE_ARANGOSH_RUN{RestAdminStatisticsDescription1}
 ///     var url = "/_admin/statistics-description";
 ///     var response = logCurlRequest('GET', url);
 /// 

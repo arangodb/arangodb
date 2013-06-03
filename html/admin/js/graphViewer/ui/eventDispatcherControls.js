@@ -111,6 +111,13 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       return res;
     },
     
+    getCursorPositionInSVG = function (ev) {
+      var pos = getCursorPosition(ev);
+      pos.x -= $('svg').offset().left;
+      pos.y -= $('svg').offset().top;
+      return pos;
+    },
+    
     moveCursorBox = function(ev) {
       var pos = getCursorPosition(ev);
       pos.x += 7;
@@ -217,14 +224,25 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       callback = function() {
         setCursorIcon(icon);
         rebindNodes({
-          mousedown: dispatcher.events.STARTCREATEEDGE(),
+          mousedown: dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
+            var pos = getCursorPositionInSVG(ev),
+              moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
+            dispatcher.bind("svg", "mousemove", function(ev) {
+              var pos = getCursorPositionInSVG(ev);
+              moveCB(pos.x, pos.y);
+            });
+          }),
           mouseup: dispatcher.events.FINISHCREATEEDGE(function(edge){
+            edgeShaper.removeCursorFollowingEdge();
+            dispatcher.bind("svg", "mousemove", function(){});
           })
         });
         rebindEdges();
         rebindSVG({
-          mouseup: dispatcher.events.CANCELCREATEEDGE(),
-          mouseout: dispatcher.events.CANCELCREATEEDGE()
+          mouseup: function() {
+            dispatcher.events.CANCELCREATEEDGE();
+            edgeShaper.removeCursorFollowingEdge();
+          }
         });
       };
     createIcon(icon, "connect", callback);

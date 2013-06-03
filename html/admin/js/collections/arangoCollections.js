@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
+
 window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
 
@@ -17,38 +18,42 @@ window.arangoCollections = Backbone.Collection.extend({
       },
 
       translateStatus : function (status) {
-        if (status == 0) {
-          return 'corrupted';
+        var returnString;
+        if (status === 0) {
+          returnString = 'corrupted';
         }
-        if (status == 1) {
-          return 'new born collection';
+        if (status === 1) {
+          returnString = 'new born collection';
         }
-        else if (status == 2) {
-          return 'unloaded';
+        else if (status === 2) {
+          returnString = 'unloaded';
         }
-        else if (status == 3) {
-          return 'loaded';
+        else if (status === 3) {
+          returnString = 'loaded';
         }
-        else if (status == 4) {
-          return 'in the process of being unloaded';
+        else if (status === 4) {
+          returnString = 'in the process of being unloaded';
         }
-        else if (status == 5) {
-          return 'deleted';
+        else if (status === 5) {
+          returnString = 'deleted';
         }
+        return returnString;
       },
       translateTypePicture : function (type) {
+        var returnString;
         if (type === 'document') {
-          return "img/icon_document.png";
+          returnString = "img/icon_document.png";
         }
         else if (type === 'edge') {
-          return "img/icon_node.png";
+          returnString = "img/icon_node.png";
         }
         else if (type === 'unknown') {
-          return "img/icon_unknown.png";
+          returnString = "img/icon_unknown.png";
         }
         else {
-          return "img/icon_arango.png";
+          returnString = "img/icon_arango.png";
         }
+        return returnString;
       },
       parse: function(response)  {
         var that = this;
@@ -137,7 +142,7 @@ window.arangoCollections = Backbone.Collection.extend({
             lValue = l.get('name').toLowerCase();
             rValue = r.get('name').toLowerCase();
           }
-          if (lValue != rValue) {
+          if (lValue !== rValue) {
             return options.sortOrder * (lValue < rValue ? -1 : 1);
           }
           return 0;
@@ -173,7 +178,14 @@ window.arangoCollections = Backbone.Collection.extend({
           cache: false,
           type: "POST",
           url: "/_api/collection",
-          data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
+          data:
+            '{"name":' + JSON.stringify(collName) +
+            ',"waitForSync":'+
+            JSON.stringify(wfs)+
+            ',"isSystem":'+
+            JSON.stringify(isSystem)+
+            ',"type":'+
+            collType + '}',
           contentType: "application/json",
           processData: false,
           async: false,

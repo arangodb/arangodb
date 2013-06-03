@@ -67,6 +67,24 @@ function NodeShaper(parent, flags, idfunc) {
     communityRegEx = /^\*community/,
     nodes = [],
     visibleLabels = true,
+    
+    splitLabel = function(label) {
+      if (label === undefined) {
+        return [""];
+      }
+      if (typeof label !== "string") {
+        
+        label = String(label);
+      }
+      var chunks = label.match(/[\w\W]{1,10}(\s|$)|\S+?(\s|$)/g);
+      chunks[0] = $.trim(chunks[0]);
+      chunks[1] = $.trim(chunks[1]);
+      if (chunks.length > 2) {
+        chunks.length = 2;
+        chunks[1] += "...";
+      }
+      return chunks;
+    },
     noop = function (node) {
     
     },
@@ -195,7 +213,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
 
     parseShapeFlag = function (shape) {
-      var radius, width, height;
+      var radius, width, height, translateX, translateY;
       switch (shape.type) {
         case NodeShaper.shapes.NONE:
           addShape = noop;
@@ -209,12 +227,28 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case NodeShaper.shapes.RECT:
-          width = shape.width || 20;
-          height = shape.height || 10;
+          width = shape.width || 90;
+          height = shape.height || 36;
+          if (_.isFunction(width)) {
+            translateX = function(d) {
+              return -(width(d) / 2);
+            };
+          } else {
+            translateX = -(width / 2);
+          }
+          if (_.isFunction(height)) {
+            translateY = function(d) {
+              return -(height(d) / 2);
+            };
+          } else {
+            translateY = -(height / 2);
+          }
           addShape = function(node) {
             node.append("rect") // Display nodes as rectangles
               .attr("width", width) // Set width
-              .attr("height", height); // Set height
+              .attr("height", height) // Set height
+              .attr("x", translateX)
+              .attr("y", translateY);
           };
           break;
         case undefined:
@@ -227,19 +261,43 @@ function NodeShaper(parent, flags, idfunc) {
     parseLabelFlag = function (label) {
       if (_.isFunction(label)) {
         addLabel = function (node) {
-          node.append("text") // Append a label for the node
+          var textN = node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black") // Foce a black color20*75)
-            .text(label);
+            .attr("fill", "black") // Force a black color
+            .attr("stroke", "none"); // Make it readable
+            textN.each(function(d) {
+              var chunks = splitLabel(label(d));
+              d3.select(this).append("tspan")
+                .attr("x", "0")
+                .attr("dy", "-4")
+                .text(chunks[0]);
+              if (chunks.length === 2) {
+                d3.select(this).append("tspan")
+                  .attr("x", "0")
+                  .attr("dy", "16")
+                  .text(chunks[1]);
+              }
+            });
         };
       } else {
         addLabel = function (node) {
-          node.append("text") // Append a label for the node
+          var textN = node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black") // Foce a black color20*75)
-            .text(function(d) { 
-              return d._data[label] !== undefined ? d._data[label] : "";
-            });
+            .attr("fill", "black") // Force a black color
+            .attr("stroke", "none"); // Make it readable
+          textN.each(function(d) {
+            var chunks = splitLabel(d._data[label]);
+            d3.select(this).append("tspan")
+              .attr("x", "0")
+              .attr("dy", "-4")
+              .text(chunks[0]);
+            if (chunks.length === 2) {
+              d3.select(this).append("tspan")
+                .attr("x", "0")
+                .attr("dy", "16")
+                .text(chunks[1]);
+            }
+          });
         };
       }
     },
@@ -282,9 +340,15 @@ function NodeShaper(parent, flags, idfunc) {
         case "attribute":
           addColor = function (g) {
              g.attr("fill", function(n) {
+               if (n._data === undefined) {
+                 return colourMapper.getColour(undefined);
+               }
                return colourMapper.getColour(n._data[color.key]);
              });
              g.attr("stroke", function(n) {
+               if (n._data === undefined) {
+                 return colourMapper.getColour(undefined);
+               }
                return colourMapper.getColour(n._data[color.key]);
              });
           };
@@ -339,7 +403,7 @@ function NodeShaper(parent, flags, idfunc) {
   
   if (flags.shape === undefined) {
    flags.shape = {
-     type: NodeShaper.shapes.CIRCLE
+     type: NodeShaper.shapes.RECT
    }; 
   }
   
@@ -391,6 +455,10 @@ function NodeShaper(parent, flags, idfunc) {
     }
     shapeNodes();
   };
+  
+  self.getColourMapping = function() {
+    return colourMapper.getList();
+  }; 
   
 }
 

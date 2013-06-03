@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, $, window, arangoHelper */
+
 var documentsView = Backbone.View.extend({
   collectionID: 0,
   currentPage: 1,
@@ -150,8 +153,9 @@ var documentsView = Backbone.View.extend({
     var deleted = false;
     this.docid = $(self.idelement).next().text();
 
+    var result;
     if (this.type === 'document') {
-      var result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
+      result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
       if (result === true) {
         //on success
         arangoHelper.arangoNotification('Document deleted');
@@ -162,7 +166,7 @@ var documentsView = Backbone.View.extend({
       }
     }
     else if (this.type === 'edge') {
-      var result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
+      result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
       if (result === true) {
         //on success
         arangoHelper.arangoNotification('Edge deleted');
@@ -174,7 +178,9 @@ var documentsView = Backbone.View.extend({
     }
 
     if (deleted === true) {
-      $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
+      $('#documentsTableID').dataTable().fnDeleteRow(
+        $('#documentsTableID').dataTable().fnGetPosition(row)
+      );
       $('#documentsTableID').dataTable().fnClearTable();
       window.arangoDocumentsStore.getDocuments(this.colid, page);
       $('#docDeleteModal').modal('hide');
@@ -182,7 +188,7 @@ var documentsView = Backbone.View.extend({
 
   },
   clicked: function (event) {
-    if (this.alreadyClicked == true) {
+    if (this.alreadyClicked === true) {
       this.alreadyClicked = false;
       return 0;
     }
@@ -241,9 +247,7 @@ var documentsView = Backbone.View.extend({
 
       var tempObj = {};
       $.each(value.attributes.content, function(k, v) {
-        if (k === '_id' || k === '_rev' || k === '_key') {
-        }
-        else {
+        if (k !== '_id' || k !== '_rev' || k !== '_key') {
           tempObj[k] = v;
         }
       });
@@ -264,17 +268,17 @@ var documentsView = Backbone.View.extend({
         + '<img src="img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
-    $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-/*    $(".prettify").tooltip({
-      html: true,
-      placement: "top"
-    });*/
+    $(".prettify").snippet("javascript", {
+      style: "nedit",
+      menu: false,
+      startText: false,
+      transparent: true,
+      showNum: false
+    });
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
-    if (this.documentsCount === 0) {
-    }
-    else {
+    if (this.documentsCount !== 0) {
       $('#documentsStatus').html(
         'Showing Page '+this.currentPage+' of '+this.totalPages+
         ', '+this.documentsCount+' entries'
@@ -315,13 +319,19 @@ var documentsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
-    $('#documentsToolbarF').prepend('<ul class="prePagi"><li><a id="documents_first"><i class="icon icon-step-backward"></i></a></li></ul>');
-    $('#documentsToolbarF').append('<ul class="lasPagi"><li><a id="documents_last"><i class="icon icon-step-forward"></i></a></li></ul>');
+    $('#documentsToolbarF').prepend(
+      '<ul class="prePagi"><li><a id="documents_first">'+
+      '<i class="icon icon-step-backward"></i></a></li></ul>');
+    $('#documentsToolbarF').append(
+      '<ul class="lasPagi"><li><a id="documents_last">'+
+      '<i class="icon icon-step-forward"></i></a></li></ul>');
     var total = $('#totalDocuments');
     if (total.length > 0) {
       total.html("Total: " + this.documentsCount + " documents");
     } else {
-      $('#documentsToolbarFL').append('<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>');
+      $('#documentsToolbarFL').append(
+        '<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>'
+      );
     }
   },
   breadcrumb: function () {
@@ -341,7 +351,8 @@ var documentsView = Backbone.View.extend({
     return this.escaped(string);
   },
   escaped: function (value) {
-    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
 });

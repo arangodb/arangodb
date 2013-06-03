@@ -42,6 +42,7 @@
     
     beforeEach(function () {
       svg = document.createElement("svg");
+      svg.id = "svg";
       document.body.appendChild(svg);
     });
 
@@ -272,6 +273,55 @@
       expect($("#1-3 line").attr("x2")).toEqual("22.360679774997898");
       expect($("#1-4 line").attr("x2")).toEqual("22.360679774997898");
       expect($("#1-5 line").attr("x2")).toEqual("28.284271247461902");
+    });
+    
+    it('should be able to draw an edge that follows the cursor', function() {
+      var line,
+        jqLine,
+        cursorX,
+        cursorY,
+        nodeX = 15,
+        nodeY = 20,
+        shaper = new EdgeShaper(d3.select("svg")),
+        moveCB = shaper.addAnEdgeFollowingTheCursor(nodeX, nodeY);
+      
+      cursorX = 20;
+      cursorY = 30;
+      moveCB(cursorX, cursorY);
+      
+      expect($("#connectionLine").length).toEqual(1);
+      
+      jqLine = $("#connectionLine");
+      line = document.getElementById("connectionLine");
+      expect(line.tagName.toLowerCase()).toEqual("line");
+      expect(jqLine.attr("x1")).toEqual(String(nodeX));
+      expect(jqLine.attr("y1")).toEqual(String(nodeY));
+      
+      expect(jqLine.attr("x2")).toEqual(String(cursorX));
+      expect(jqLine.attr("y2")).toEqual(String(cursorY));
+      
+      cursorX = 45;
+      cursorY = 12;
+      moveCB(cursorX, cursorY);
+      expect(jqLine.attr("x2")).toEqual(String(cursorX));
+      expect(jqLine.attr("y2")).toEqual(String(cursorY));
+    });
+    
+    it('should be able to remove the cursor-following edge on demand', function() {
+      var line,
+        cursorX,
+        cursorY,
+        nodeX = 15,
+        nodeY = 20,
+        shaper = new EdgeShaper(d3.select("svg")),
+        moveCB;
+
+      moveCB = shaper.addAnEdgeFollowingTheCursor(nodeX, nodeY);
+      cursorX = 20;
+      cursorY = 30;
+      moveCB(cursorX, cursorY);
+      shaper.removeCursorFollowingEdge();
+      expect($("#connectionLine").length).toEqual(0);
     });
     
     describe('testing for colours', function() {
