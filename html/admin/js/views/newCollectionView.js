@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, $, window, arangoHelper*/
+
 var newCollectionView = Backbone.View.extend({
   el: '#modalPlaceholder',
   initialize: function () {
@@ -32,7 +35,7 @@ var newCollectionView = Backbone.View.extend({
   },
 
   listenKey: function(e) {
-    if (e.keyCode == 13) {
+    if (e.keyCode === 13) {
       this.saveNewCollection();
     }
   },
@@ -41,7 +44,6 @@ var newCollectionView = Backbone.View.extend({
   },
 
   saveNewCollection: function(a) {
-    //TODO: other solution
     if (window.location.hash !== '#new') {
       return;
     }
@@ -53,9 +55,10 @@ var newCollectionView = Backbone.View.extend({
     var collType = $('#new-collection-type').val();
     var collSync = $('#new-collection-sync').val();
     var isSystem = (collName.substr(0, 1) === '_');
-    var wfs = (collSync == "true");
+    var wfs = (collSync === "true");
+    var journalSizeString;
 
-    if (collSize == '') {
+    if (collSize === '') {
       journalSizeString = '';
     }
     else {
@@ -68,12 +71,14 @@ var newCollectionView = Backbone.View.extend({
         return 0;
       }
     }
-    if (collName == '') {
+    if (collName === '') {
       arangoHelper.arangoError('No collection name entered!');
       return 0;
     }
 
-    var returnobj = window.arangoCollectionsStore.newCollection(collName, wfs, isSystem, journalSizeString, collType);
+    var returnobj = window.arangoCollectionsStore.newCollection(
+      collName, wfs, isSystem, journalSizeString, collType
+    );
     if (returnobj.status === true) {
       self.hidden();
       $("#add-collection").modal('hide');
