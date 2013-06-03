@@ -227,8 +227,8 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case NodeShaper.shapes.RECT:
-          width = shape.width || 120;
-          height = shape.height || 24;
+          width = shape.width || 90;
+          height = shape.height || 36;
           if (_.isFunction(width)) {
             translateX = function(d) {
               return -(width(d) / 2);
@@ -269,12 +269,12 @@ function NodeShaper(parent, flags, idfunc) {
               var chunks = splitLabel(label(d));
               d3.select(this).append("tspan")
                 .attr("x", "0")
-                .attr("dy", "0")
+                .attr("dy", "-4")
                 .text(chunks[0]);
               if (chunks.length === 2) {
                 d3.select(this).append("tspan")
                   .attr("x", "0")
-                  .attr("dy", "20")
+                  .attr("dy", "16")
                   .text(chunks[1]);
               }
             });
@@ -289,12 +289,12 @@ function NodeShaper(parent, flags, idfunc) {
             var chunks = splitLabel(d._data[label]);
             d3.select(this).append("tspan")
               .attr("x", "0")
-              .attr("dy", "0")
+              .attr("dy", "-4")
               .text(chunks[0]);
             if (chunks.length === 2) {
               d3.select(this).append("tspan")
                 .attr("x", "0")
-                .attr("dy", "20")
+                .attr("dy", "16")
                 .text(chunks[1]);
             }
           });
