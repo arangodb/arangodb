@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -275,6 +275,49 @@
         expect(c1s).toEqual("#123456");
         expect(c2s).toEqual("#654321");
         expect(c3s).toEqual("#654321");
+      });
+      
+      it('should be able to receive the color <-> label mapping', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              label: "lbl2"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl3"
+            }
+          }, {
+            _id: 4,
+            _data: {
+              label: "lbl1"
+            }
+          }],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        colorList;
+        
+        shaper.drawNodes(nodes);
+        
+        colorList = shaper.getColourMapping();
+        
+        expect(_.keys(colorList)).toEqual(3);
+        _.each(_.values(colorList), function(v) {
+          expect(v).toEqual(jasmine.any(Array));
+          expect(v.length).toEqual(1);
+        });
       });
       
     });
