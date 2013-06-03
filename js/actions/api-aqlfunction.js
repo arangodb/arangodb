@@ -87,6 +87,12 @@ function GET_api_aqlfunction (req, res) {
 /// - `name`: the fully qualified name of the user functions.
 ///
 /// - `code`: a string representation of the function body.
+/// 
+/// - `isDeterministic`: an optional boolean value to indicate that the function
+///   results are fully deterministic (function return value solely depends on 
+///   the input value and return value is the same for repeated calls with same
+///   input). The `isDeterministic` attribute is currently not used but may be
+///   used later for optimisations.
 ///
 /// If the function can be registered by the server, the server will respond with 
 /// `HTTP 201`. If the function already existed and was replaced by the
@@ -125,7 +131,7 @@ function POST_api_aqlfunction (req, res) {
     return;
   }
 
-  var result = aqlfunctions.register(json.name, json.code);
+  var result = aqlfunctions.register(json.name, json.code, json.isDeterministic);
 
   actions.resultOk(req, res, result ? actions.HTTP_OK : actions.HTTP_CREATED, { });
 }
@@ -137,9 +143,18 @@ function POST_api_aqlfunction (req, res) {
 ///
 /// @REST{DELETE /_api/aqlfunction/`name`}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{group,string,optional}
+/// If set to `true`, then the function name provided in `name` is treated as
+/// a namespace prefix, and all functions in the specified namespace will be deleted.
+///
+/// If set to `false`, the function name provided in `name` must be fully 
+/// qualified, including any namespaces.
+///
+/// @RESTDESCRIPTION
+///
 /// Removes an existing AQL user function, identified by `name`. 
-/// The function name provided in `name` must be fully qualified, including
-/// any namespaces.
 ///
 /// If the function can be removed by the server, the server will respond with 
 /// `HTTP 200`. 
@@ -175,7 +190,13 @@ function DELETE_api_aqlfunction (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   try {
-    aqlfunctions.unregister(name);
+    var g = req.parameters['group'];
+    if (g === 'true' || g === 'yes' || g === 'y' || g === 'on' || g === '1') {
+      aqlfunctions.unregisterGroup(name);
+    }
+    else {
+      aqlfunctions.unregister(name);
+    }
     actions.resultOk(req, res, actions.HTTP_OK, { });
   }
   catch (err) {
@@ -220,7 +241,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });

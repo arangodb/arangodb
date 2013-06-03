@@ -357,8 +357,8 @@ sort_direction:
   ;
 
 limit_statement: 
-    T_LIMIT integer_value {
-      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), $2); 
+    T_LIMIT atomic_value {
+      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), $2);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -368,7 +368,7 @@ limit_statement:
       }
       
     }
-  | T_LIMIT integer_value T_COMMA integer_value {
+  | T_LIMIT atomic_value T_COMMA atomic_value {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, $2, $4);
       if (node == NULL) {
         ABORT_OOM

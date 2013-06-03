@@ -224,6 +224,11 @@ namespace triagens {
                 return false;
               }
 
+              // update the connection information, i. e. client and server addresses and ports
+              //this->_request->setConnectionInfo(this->_connectionInfo);
+              this->_request->setProtocol(S::protocol());
+
+
               LOGGER_TRACE("server port = " << this->_connectionInfo.serverPort << ", client port = " << this->_connectionInfo.clientPort);
 
               // set body start to current position

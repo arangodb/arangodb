@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*jslint indent: 2, nomen: true, maxlen: 150, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// - `waitForSync` (optional, default: false): If `true` then
 ///   the data is synchronised to disk before returning from a create or
-///   update of an document.
+///   update of a document.
 ///
 /// - `journalSize` (optional, default is a @ref
 ///   CommandLineArangod "configuration parameter"): The maximal size of
@@ -235,7 +235,7 @@ function post_api_collection (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
   }
   catch (err) {
-    actions.resultException(req, res, err);
+    actions.resultException(req, res, err, undefined, false);
   }
 }
 
@@ -668,7 +668,7 @@ function put_api_collection_load (req, res, collection) {
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
-    actions.resultException(req, res, err);
+    actions.resultException(req, res, err, undefined, false);
   }
 }
 
@@ -720,7 +720,7 @@ function put_api_collection_unload (req, res, collection) {
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
-    actions.resultException(req, res, err);
+    actions.resultException(req, res, err, undefined, false);
   }
 }
 
@@ -750,7 +750,7 @@ function put_api_collection_truncate (req, res, collection) {
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
-    actions.resultException(req, res, err);
+    actions.resultException(req, res, err, undefined, false);
   }
 }
 
@@ -812,7 +812,7 @@ function put_api_collection_properties (req, res, collection) {
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
-    actions.resultException(req, res, err);
+    actions.resultException(req, res, err, undefined, false);
   }
 }
 
@@ -870,7 +870,7 @@ function put_api_collection_rename (req, res, collection) {
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
-    actions.resultException(req, res, err);
+    actions.resultException(req, res, err, undefined, false);
   }
 }
 
@@ -979,7 +979,7 @@ function delete_api_collection (req, res) {
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-        actions.resultException(req, res, err);
+        actions.resultException(req, res, err, undefined, false);
       }
     }
   }
@@ -1012,7 +1012,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });

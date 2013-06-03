@@ -82,6 +82,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
                                                       HttpHandlerFactory::auth_fptr checkAuthentication,
+                                                      HttpHandlerFactory::flush_fptr flushAuthentication,
                                                       HttpHandlerFactory::context_fptr setContext)
   : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
@@ -90,6 +91,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
     _setContext(setContext),
+    _flushAuthentication(flushAuthentication),
     _handlerFactory(0),
     _servers(),
     _endpointList(),
@@ -230,8 +232,8 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
     ("server.ssl-cache", &_sslCache, "use SSL session caching")
-    ("server.ssl-options", &_sslOptions, "ssl options, see OpenSSL documentation")
-    ("server.ssl-cipher-list", &_sslCipherList, "ssl cipher list, see OpenSSL documentation")
+    ("server.ssl-options", &_sslOptions, "SSL options, see OpenSSL documentation")
+    ("server.ssl-cipher-list", &_sslCipherList, "SSL cipher list, see OpenSSL documentation")
   ;
 }
 
@@ -318,7 +320,10 @@ bool ApplicationEndpointServer::prepare () {
   // dump used endpoints for user information
   _endpointList.dump();
 
-  _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication, _setContext);
+  _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
+                                           _checkAuthentication, 
+                                           _flushAuthentication, 
+                                           _setContext);
 
   return true;
 }

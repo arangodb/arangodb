@@ -102,7 +102,7 @@ typedef struct TRI_pqueue_base_s {
   bool _reverse;  
   
   // ...........................................................................
-  // Additional hidden extenral structure used outside this priority queue
+  // Additional hidden external structure used outside this priority queue
   // This hidden structure is not available within this priority queue
   // ...........................................................................
   // char[n]
@@ -124,7 +124,7 @@ typedef struct TRI_pqueue_s {
 
 
   // ...........................................................................
-  // default pq add, remove ,top methods
+  // default pq add, remove, top methods
   // ...........................................................................
 
   bool  (*add)    (struct TRI_pqueue_s*, void*);

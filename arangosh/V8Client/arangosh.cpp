@@ -1063,7 +1063,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor console(context, ".arangosh");
+  V8LineEditor console(context, ".arangosh.history");
 
   console.open(BaseClient.autoComplete());
 
@@ -1454,7 +1454,8 @@ int main (int argc, char* argv[]) {
   TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
   TRI_InitV8Buffer(context);
-  TRI_InitV8Utils(context, StartupModules, StartupPackages, BaseClient.tempPath());
+
+  TRI_InitV8Utils(context, StartupModules, StartupPackages);
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)

@@ -289,13 +289,14 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
-  char* _path;
+  char* _path;               // path to the data directory
+  char* _shutdownFilename;   // absolute filename of the file that contains the shutdown information
 
-  bool _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
-  bool _removeOnDrop;       // wipe collection from disk after dropping
-  bool _removeOnCompacted;  // wipe datafile from disk after compaction
+  bool _authInfoLoaded;      // flag indicating whether the authentication info was loaded successfully
+  bool _removeOnDrop;        // wipe collection from disk after dropping
+  bool _removeOnCompacted;   // wipe datafile from disk after compaction
   bool _defaultWaitForSync;
-  bool _forceSyncShapes;    // force syncing of shape data to disk
+  bool _forceSyncShapes;     // force syncing of shape data to disk
   bool _forceSyncProperties; // force syncing of shape data to disk
   
   char* _name;
@@ -311,6 +312,7 @@ typedef struct TRI_vocbase_s {
 
   TRI_associative_pointer_t _authInfo;
   TRI_read_write_lock_t     _authInfoLock;
+  bool                      _authInfoFlush;
 
   struct TRI_transaction_context_s* _transactionContext;
 
@@ -383,6 +385,21 @@ typedef struct TRI_vocbase_col_s {
 TRI_vocbase_col_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief default settings
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_vocbase_defaults_s {
+  bool removeOnDrop;
+  bool removeOnCompacted;
+  uint64_t defaultMaximalSize;
+  bool defaultWaitForSync;
+  bool forceSyncShapes;
+  bool forceSyncProperties;
+  bool requireAuthentication;
+}
+TRI_vocbase_defaults_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -436,7 +453,8 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end);
 /// @brief opens an exiting database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name);
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name, 
+                                TRI_vocbase_defaults_t* defaults);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections

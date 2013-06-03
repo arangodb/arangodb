@@ -260,7 +260,7 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_binaryPath, _tempPath);
+  _applicationV8 = new ApplicationV8(_binaryPath);
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -404,6 +404,7 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationDispatcher,
                                                              "arangodb",
                                                              TRI_CheckAuthenticationAuthInfo,
+                                                             TRI_FlushAuthenticationAuthInfo,
                                                              VocbaseManager::setRequestContext);
   _applicationServer->addFeature(_applicationEndpointServer);
 
@@ -415,9 +416,15 @@ void ArangoServer::buildApplicationServer () {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
 
+  // set the temp-path
+  if (_applicationServer->programOptions().has("temp-path")) {
+    TRI_SetUserTempPath((char*) _tempPath.c_str());
+  }
+
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
+  // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
     _developmentMode = true;
     _applicationV8->enableDevelopmentMode();
@@ -874,7 +881,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        V8LineEditor console(context->_context, ".arangod");
+        V8LineEditor console(context->_context, ".arangod.history");
 
         console.open(true);
 
@@ -1046,12 +1053,12 @@ int ArangoServer::executeRubyConsole () {
   // create a line editor
   cout << "ArangoDB MRuby emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
 
-  MRLineEditor console(context->_mrb, ".arangod");
+  MRLineEditor console(context->_mrb, ".arangod-ruby.history");
 
   console.open(false);
 
   while (true) {
-    char* input = console.prompt("arangod> ");
+    char* input = console.prompt("arangod (ruby)> ");
 
     if (input == 0) {
       printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
@@ -1107,49 +1114,6 @@ int ArangoServer::executeRubyConsole () {
 
 #endif
 
-typedef struct local_vocbase_defaults_s {
-  bool removeOnDrop;
-  bool removeOnCompacted;
-  uint64_t defaultMaximalSize;
-  bool defaultWaitForSync;
-  bool forceSyncShapes;
-  bool forceSyncProperties;
-  ApplicationV8* applicationV8;
-  bool requireAuthentication;
-}
-local_vocbase_defaults_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief load a database
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_t* openDatabase(char const* path, 
-        char const* name,
-        bool removeOnDrop,
-        bool removeOnCompacted,
-        uint64_t defaultMaximalSize,
-        bool defaultWaitForSync,
-        bool forceSyncShapes,
-        bool forceSyncProperties,
-        bool isSystem,
-        bool requireAuthentication) {
-  
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(path, name);
-  vocbase->_removeOnDrop = removeOnDrop;
-  vocbase->_removeOnCompacted = removeOnCompacted;
-  vocbase->_defaultMaximalSize = defaultMaximalSize;
-  vocbase->_defaultWaitForSync = defaultWaitForSync;
-  vocbase->_forceSyncShapes = forceSyncShapes;
-  vocbase->_forceSyncProperties = forceSyncProperties;
-  vocbase->_isSystem = isSystem;
-  vocbase->_requireAuthentication = requireAuthentication;
-
-  LOGGER_INFO("loaded database '" << name << "' ('" << path << "')");
-  
-  return vocbase;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read database name and configuration from document and
 ///        load database
@@ -1179,35 +1143,32 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
     return true;
   }
 
-  local_vocbase_defaults_t* defaults = (local_vocbase_defaults_t*) data;
-
-
-  bool waitForSync = doc.getBooleanValue("waitForSync", 
-          defaults->defaultWaitForSync);
-  bool requireAuthentication = doc.getBooleanValue("requireAuthentication", 
-          defaults->requireAuthentication);  
-  bool removeOnDrop = doc.getBooleanValue("removeOnDrop", 
-          defaults->removeOnDrop);  
-  bool removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
-          defaults->removeOnCompacted);  
-  bool forceSyncShapes = doc.getBooleanValue("forceSyncShapes", 
-          defaults->forceSyncShapes);  
-  bool forceSyncProperties = doc.getBooleanValue("forceSyncProperties", 
-          defaults->forceSyncProperties);  
-  uint64_t defaultMaximalSize = (uint64_t) doc.getNumericValue("defaultMaximalSize", 
-          defaults->defaultMaximalSize);  
+  if (!VocbaseManager::manager.canAddVocbase(dbName, dbPath)) {
+    LOG_ERROR("Cannot add database. (Wrong name or path)");
+    return true;    
+  }
   
-  // open/load the system database
-  TRI_vocbase_t* userVocbase = openDatabase(dbPath.c_str(), 
-        dbName.c_str(), 
-        removeOnDrop,
-        removeOnCompacted,
-        defaultMaximalSize,
-        waitForSync,
-        forceSyncShapes,
-        forceSyncProperties,
-        false,
-        requireAuthentication);
+  TRI_vocbase_defaults_t* systemDefaults = (TRI_vocbase_defaults_t*) data;
+
+  TRI_vocbase_defaults_t defaults;
+  defaults.removeOnDrop = doc.getBooleanValue("removeOnDrop", 
+          systemDefaults->removeOnDrop);
+  defaults.removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
+          systemDefaults->removeOnCompacted);
+  defaults.defaultMaximalSize = (uint64_t) doc.getNumericValue("defaultMaximalSize", 
+          systemDefaults->defaultMaximalSize);
+  defaults.defaultWaitForSync = doc.getBooleanValue("waitForSync", 
+          systemDefaults->defaultWaitForSync);
+  defaults.forceSyncShapes = doc.getBooleanValue("forceSyncShapes", 
+          systemDefaults->forceSyncShapes);
+  defaults.forceSyncProperties = doc.getBooleanValue("forceSyncProperties", 
+          systemDefaults->forceSyncProperties);
+  defaults.requireAuthentication = doc.getBooleanValue("requireAuthentication", 
+          systemDefaults->requireAuthentication);
+  
+  // open/load database
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), 
+        dbName.c_str(), &defaults);
   
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
@@ -1220,10 +1181,9 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
 /// @brief loads user databases found in collection '_databases'
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoServer::loadUserDatabases () {
+bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
-  local_vocbase_defaults_t data;
 
   collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_databases");
 
@@ -1245,20 +1205,11 @@ bool ArangoServer::loadUserDatabases () {
     LOG_FATAL_AND_EXIT("collection '_databases' has an unknown collection type");
   }
 
-  data.applicationV8 = _applicationV8;
-  data.defaultMaximalSize = _defaultMaximalSize;
-  data.defaultWaitForSync = _defaultWaitForSync;
-  data.forceSyncProperties = _forceSyncProperties;
-  data.forceSyncShapes = _forceSyncShapes;
-  data.removeOnCompacted = _removeOnCompacted;
-  data.removeOnDrop = _removeOnDrop;
-  data.requireAuthentication = !_applicationEndpointServer->isAuthenticationDisabled();
-  
   // .............................................................................
   // inside a read transaction
   // .............................................................................
     
-  TRI_DocumentIteratorPrimaryCollection(primary, &data, handleUserDatabase);
+  TRI_DocumentIteratorPrimaryCollection(primary, data, handleUserDatabase);
 
   // .............................................................................
   // outside a read transaction
@@ -1348,29 +1299,35 @@ bool ArangoServer::loadEndpoints () {
 void ArangoServer::openDatabases () {
   TRI_InitialiseVocBase();
 
+  TRI_vocbase_defaults_t defaults;  
+  defaults.removeOnDrop = _removeOnDrop;
+  defaults.removeOnCompacted = _removeOnCompacted;
+  defaults.defaultMaximalSize = _defaultMaximalSize;
+  defaults.defaultWaitForSync = _defaultWaitForSync;
+  defaults.forceSyncShapes = _forceSyncShapes;
+  defaults.forceSyncProperties = _forceSyncProperties;
+  defaults.requireAuthentication = !_applicationEndpointServer->isAuthenticationDisabled();
+  
   // open/load the system database
-  _vocbase = openDatabase(_databasePath.c_str(), 
-        "_system", 
-        _removeOnDrop,
-        _removeOnCompacted,
-        _defaultMaximalSize,
-        _defaultWaitForSync,
-        _forceSyncShapes,
-        _forceSyncProperties,
-        true,                     // TODO: get true/false from config file
-        !_applicationEndpointServer->isAuthenticationDisabled());
+  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), "_system", &defaults);
 
   if (! _vocbase) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
+  _vocbase->_isSystem = true; // TODO: get true/false from config file
+  
   VocbaseManager::manager.addSystemVocbase(_vocbase);
   
   if (_vocbase->_isSystem) {
-    loadUserDatabases();
+    LOGGER_INFO("loaded system database ('" << _databasePath << "')");
+    loadUserDatabases(&defaults);
     loadEndpoints();
     VocbaseManager::manager.addPrefixMapping ("tcp://poll:9000", "userDatabase1");
+  }
+  else {
+    LOGGER_INFO("loaded database ('" << _databasePath << "')");    
   }
 }
 

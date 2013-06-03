@@ -184,7 +184,7 @@ namespace triagens {
 /// @brief loads user databases found in collection '_databases'
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool loadUserDatabases ();
+        bool loadUserDatabases (TRI_vocbase_defaults_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start server endpoints found in collection '_endpoints'

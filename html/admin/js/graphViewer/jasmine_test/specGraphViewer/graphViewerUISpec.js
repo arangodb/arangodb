@@ -5,7 +5,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper, mocks, JSONAdapter:true*/
-/*global GraphViewerUI*/
+/*global GraphViewerUI, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -47,6 +47,7 @@
     
     beforeEach(function() {
       //Mock for jsonAdapter
+      window.communicationMock(spyOn);
       var Tmp = JSONAdapter;
       JSONAdapter = function (jsonPath, nodes, edges, width, height) {
         var r = new Tmp(jsonPath, nodes, edges, width, height);
@@ -56,8 +57,16 @@
             value: value
           };
         };
+        r.getCollections = function(callback) {
+          callback(["nodes"], ["edges"]);
+        };
         return r;
       };
+      //Mock for ZoomManager
+      if (window.ZoomManager === undefined) {
+        window.ZoomManager = {};
+      }
+      spyOn(window, "ZoomManager");
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -114,7 +123,7 @@
     });
     
     afterEach(function() {
-      document.body.removeChild(div);
+        document.body.removeChild(div);
     });
     
     it('should throw an error if no container element is given', function() {
@@ -145,6 +154,19 @@
       expect($("#contentDiv svg").length).toEqual(1);
     });
     
+    it('should automatically start the ZoomManager', function() {
+      expect(window.ZoomManager).toHaveBeenCalledWith(
+        140,
+        200,
+        jasmine.any(Object),
+        jasmine.any(Object),
+        jasmine.any(NodeShaper),
+        jasmine.any(EdgeShaper),
+        {},
+        jasmine.any(Function)
+      );
+    });
+    
     describe('checking the toolbox', function() {
       var toolboxSelector = "#contentDiv #toolbox";
       
@@ -171,15 +193,39 @@
       });
       
       it('should contain the objects from eventDispatcher', function() {
-        expect($(toolboxSelector + " #control_drag").length).toEqual(1);
-        expect($(toolboxSelector + " #control_edit").length).toEqual(1);
-        expect($(toolboxSelector + " #control_expand").length).toEqual(1);
-        expect($(toolboxSelector + " #control_delete").length).toEqual(1);
-        expect($(toolboxSelector + " #control_connect").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
+        expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
       });
       
       it('should have the correct layout', function() {
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
+      
+      it('should create the additional mouse-icon box', function() {
+        var pointerBox = $("#contentDiv #mousepointer");
+        expect(pointerBox.length).toEqual(1);
+        expect(pointerBox[0]).toBeTag("div");
+        expect(pointerBox[0]).toBeOfClass("mousepointer");
+      });
+      
+      it('should position the mouse-icon box next to the mouse pointer', function() {
+        var x = 40,
+          y = 50,
+          pointerBox = $("#contentDiv #mousepointer");
+          
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
+        expect(pointerBox.offset().left).toEqual(x + 7);
+        expect(pointerBox.offset().top).toEqual(y + 12);
+        
+        x = 66;
+        y = 33;
+        
+        helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
+        expect(pointerBox.offset().left).toEqual(x + 7);
+        expect(pointerBox.offset().top).toEqual(y + 12);
       });
       
     });
@@ -217,7 +263,7 @@
         expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
       });
       
-      
+      /*
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -230,7 +276,8 @@
         expect($(menuSelector +  " #control_attributecolour").length).toEqual(1);
         expect($(menuSelector +  " #control_expandcolour").length).toEqual(1);
       });
-      
+      */
+      /*
       it('should contain a menu for the edge shapes', function() {
         var menuSelector = "#contentDiv #menubar #edgeshapermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -242,14 +289,16 @@
         expect($(menuSelector + " #control_attributecolour").length).toEqual(1);
         expect($(menuSelector + " #control_gradientcolour").length).toEqual(1);
       });
-      
+      */
+      /*
       it('should contain a menu for the adapter', function() {
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
-      
+      */
+      /*
       it('should contain a menu for the layouter', function() {
         var menuSelector = "#contentDiv #menubar #layoutermenu";
         expect($(menuSelector).length).toEqual(1);
@@ -258,7 +307,16 @@
         expect($(menuSelector + " #control_distance").length).toEqual(1);
         expect($(menuSelector + " #control_charge").length).toEqual(1);
       });
+      */
       
+      it('should contain a general configure menu', function() {
+        var menuSelector = "#contentDiv #menubar #configuremenu";
+        expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
+        expect($("> button", menuSelector).text()).toEqual("Configure ");
+        expect($(menuSelector +  " #control_adapter_collections").length).toEqual(1);
+        expect($(menuSelector +  " #control_node_label").length).toEqual(1);
+      });
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
@@ -276,8 +334,10 @@
         expect(searchField.id).toEqual("transparentPlaceholder");
         expect(searchField.className).toEqual("pull-left");
         expect(searchField.children[0].id).toEqual("attribute");
-        expect(searchField.children[1].id).toEqual("value");
-        expect(searchField.children[2].id).toEqual("loadnode");
+        expect(searchField.children[1]).toBeTag("span");
+        expect(searchField.children[1].textContent).toEqual("==");
+        expect(searchField.children[2].id).toEqual("value");
+        expect(searchField.children[3].id).toEqual("loadnode");
       });
     });
     
@@ -313,6 +373,23 @@
         runs(function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
+        });
+        
+        waits(waittime);
+        
+        runs(function() {
+          expect([0, 1, 2, 3, 4]).toBeDisplayed();
+        });
+        
+      });
+      
+      it('should load the graph on pressing enter', function() {
+        
+        runs(function() {
+          $("#contentDiv #menubar #value").attr("value", "0");
+          var e = $.Event("keypress");
+          e.keyCode = 13;
+          $("#value").trigger(e);
         });
         
         waits(waittime);
@@ -407,7 +484,7 @@
         runs (function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
-          helper.simulateMouseEvent("click", "control_expand");
+          helper.simulateMouseEvent("click", "control_event_expand");
         });
 
         waits(waittime);

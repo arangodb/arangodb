@@ -141,6 +141,32 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if name and path is not used
+////////////////////////////////////////////////////////////////////////////////
+
+bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& path) {
+  if (name == string(_vocbase->_name)) {
+    return false;
+  }
+  if (path == string(_vocbase->_path)) {
+    return false;
+  }
+
+  std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();
+  for (; i != _vocbases.end(); ++i) {
+    TRI_vocbase_t* vocbase = i->second;
+    if (name == string(vocbase->_name)) {
+      return false;
+    }
+    if (path == string(vocbase->_path)) {
+      return false;
+    }    
+  }
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief look vocbase by http request
 ////////////////////////////////////////////////////////////////////////////////
 

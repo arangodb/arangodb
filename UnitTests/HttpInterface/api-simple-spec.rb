@@ -395,6 +395,77 @@ describe ArangoDB do
     end
 
 ################################################################################
+## by-example query with skip / limit
+################################################################################
+
+    context "by-example query with skip:" do
+      before do
+        @cn = "UnitTestsCollectionByExample"
+        ArangoDB.drop_collection(@cn)
+        @cid = ArangoDB.create_collection(@cn, false)
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "finds the examples" do
+        body = "{ \"someAttribute\" : \"someValue\", \"someOtherAttribute\" : \"someOtherValue\" }"
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        doc.code.should eq(202)
+
+        body = "{ \"someAttribute\" : \"someValue\", \"someOtherAttribute2\" : \"someOtherValue2\" }"
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        doc.code.should eq(202)
+
+        cmd = api + "/by-example"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"someAttribute\" : \"someValue\" } }"
+        doc = ArangoDB.log_put("#{prefix}-by-example-skip", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(2)
+        doc.parsed_response['count'].should eq(2)
+
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"someAttribute\" : \"someValue\" }, \"skip\" : 1 }"
+        doc = ArangoDB.log_put("#{prefix}-by-example-skip", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['count'].should eq(1)
+        
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"someAttribute\" : \"someValue\" }, \"skip\" : 1, \"limit\" : 1 }"
+        doc = ArangoDB.log_put("#{prefix}-by-example-skip", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['count'].should eq(1)
+        
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"someAttribute\" : \"someValue\" }, \"skip\" : 2 }"
+        doc = ArangoDB.log_put("#{prefix}-by-example-skip", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(0)
+        doc.parsed_response['count'].should eq(0)
+      end
+    end
+
+################################################################################
 ## remove-by-example query
 ################################################################################
 

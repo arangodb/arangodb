@@ -43,13 +43,17 @@
 
     beforeEach(function () {
       adapter = {
-        changeTo: function(){}
+        changeTo: function(){},
+        getCollections: function(cb) {
+          cb(["nodes", "newNodes"], ["edges", "newEdges"]);
+        }
       };
       list = document.createElement("ul");
       document.body.appendChild(list);
-      list.id = "control_list";
+      list.id = "control_adapter_list";
       adapterUI = new ArangoAdapterControls(list, adapter);
       spyOn(adapter, 'changeTo');
+      spyOn(adapter, "getCollections").andCallThrough();
       this.addMatchers({
         toBeTag: function(name) {
           var el = this.actual;
@@ -88,34 +92,119 @@
       runs(function() {
         adapterUI.addControlChangeCollections();
       
-        expect($("#control_list #control_collections").length).toEqual(1);
-        expect($("#control_list #control_collections")[0]).toConformToListCSS();
+        expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);
+        expect($("#control_adapter_list #control_adapter_collections")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_collections");
+        helper.simulateMouseEvent("click", "control_adapter_collections");
       
-        expect($("#control_collections_modal").length).toEqual(1);
+        expect($("#control_adapter_collections_modal").length).toEqual(1);
       
-        $("#control_collections_nodecollection").attr("value", "newNodes");
-        $("#control_collections_edgecollection").attr("value", "newEdges");
+        $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
+        $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
         
-        helper.simulateMouseEvent("click", "control_collections_submit");
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
       
         expect(adapter.changeTo).toHaveBeenCalledWith(
           "newNodes",
-          "newEdges"
+          "newEdges",
+          false
         );
         
       });
       
       waitsFor(function() {
-        return $("#control_collections_modal").length === 0;
+        return $("#control_adapter_collections_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
           
     });
     
+    it('should change collections and traversal direction to directed', function() {
+      runs(function() {
+        adapterUI.addControlChangeCollections();
+        helper.simulateMouseEvent("click", "control_adapter_collections");
+
+        $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
+        $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
+        $("#control_adapter_collections_undirected").attr("checked", false);
+        
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+      
+        expect(adapter.changeTo).toHaveBeenCalledWith(
+          "newNodes",
+          "newEdges",
+          false
+        );
+        
+      });
+      
+      waitsFor(function() {
+        return $("#control_adapter_collections_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+          
+    });
+    
+    it('should change collections and traversal direction to undirected', function() {
+      runs(function() {
+        adapterUI.addControlChangeCollections();      
+        helper.simulateMouseEvent("click", "control_adapter_collections");
+        $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
+        $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
+        $("#control_adapter_collections_undirected").attr("checked", true);
+        
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+      
+        expect(adapter.changeTo).toHaveBeenCalledWith(
+          "newNodes",
+          "newEdges",
+          true
+        );
+        
+      });
+      
+      waitsFor(function() {
+        return $("#control_adapter_collections_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+          
+    });
+    
+    it('should offer the available collections as lists', function() {
+      runs(function() {
+        adapterUI.addControlChangeCollections();
+        
+        helper.simulateMouseEvent("click", "control_adapter_collections");
+        var docList = document.getElementById("control_adapter_collections_nodecollection"),
+          edgeList = document.getElementById("control_adapter_collections_edgecollection"),
+          docCollectionOptions = docList.children,
+          edgeCollectionOptions = edgeList.children;
+           
+        expect(adapter.getCollections).toHaveBeenCalled();
+        
+        expect(docList).toBeTag("select");
+        expect(docCollectionOptions.length).toEqual(2);
+        expect(docCollectionOptions[0]).toBeTag("option");
+        expect(docCollectionOptions[1]).toBeTag("option");
+        expect(docCollectionOptions[0].value).toEqual("nodes");
+        expect(docCollectionOptions[1].value).toEqual("newNodes");
+        
+        
+        expect(edgeList).toBeTag("select");
+        expect(edgeCollectionOptions.length).toEqual(2);
+        expect(edgeCollectionOptions[0]).toBeTag("option");
+        expect(edgeCollectionOptions[1]).toBeTag("option");
+        expect(edgeCollectionOptions[0].value).toEqual("edges");
+        expect(edgeCollectionOptions[1].value).toEqual("newEdges");
+        
+        helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+      });
+      
+      waitsFor(function() {
+        return $("#control_adapter_collections_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+    });
+    
     it('should be able to add all controls to the list', function() {
       adapterUI.addAll();
-      expect($("#control_list #control_collections").length).toEqual(1);
+      expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);
     });
   });
 }());

@@ -40,11 +40,16 @@ var API = "_api/index";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all indexes of an collection
+/// @brief returns all indexes of a collection
 ///
 /// @RESTHEADER{GET /_api/index,reads all indexes of a collection}
 ///
-/// @REST{GET /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection,string,required}
+/// The collection name.
+///
+/// @RESTDESCRIPTION
 ///
 /// Returns an object with an attribute `indexes` containing a list of all
 /// index descriptions for the given collection. The same information is also
@@ -86,9 +91,14 @@ function GET_api_indexes (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an index
 ///
-/// @RESTHEADER{GET /_api/index,reads an index}
+/// @RESTHEADER{GET /_api/index/{index-handle},reads an index}
 ///
-/// @REST{GET /_api/index/`index-handle`}
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{index-handle,string,required}
+/// The index-handle.
+///
+/// @RESTDESCRIPTION
 ///
 /// The result is an objects describing the index. It has at least the following
 /// attributes:
@@ -155,7 +165,14 @@ function GET_api_index (req, res) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a cap constraint}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{cap-constraint,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a cap constraint (@ref IndexCapIntro) for the collection `collection-name`, if
 /// it does not already exist. Expects an object containing the index details.
@@ -170,10 +187,17 @@ function GET_api_index (req, res) {
 /// attribute names specified in the `fields` attribute nor uniqueness of
 /// any kind via the `unique` attribute.
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned. If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.
+///
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
@@ -206,7 +230,14 @@ function POST_api_index_cap (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a geo-spatial index}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{index-details,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a geo-spatial index in the collection `collection-name`, if
 /// it does not already exist. Expects an object containing the index details.
@@ -221,7 +252,7 @@ function POST_api_index_cap (req, res, collection, body) {
 ///   double values. The list must contain the latitude (first value) and the
 ///   longitude (second value). All documents, which do not have the attribute
 ///   path or with value that are not suitable, are ignored.
-///   
+///
 ///   If it is a list with two attribute paths `latitude` and `longitude`,
 ///   then a geo-spatial index on all documents is created using `latitude`
 ///   and `longitude` as paths the latitude and the longitude. The value of
@@ -243,10 +274,17 @@ function POST_api_index_cap (req, res, collection, body) {
 ///   `ignoreNull` is true, then documents with a null in `location` or at
 ///   least one null in `latitude` or `longitude` are ignored.
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.  
+///
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
@@ -352,7 +390,14 @@ function POST_api_index_geo (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a hash index}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection-name,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{index-details,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a hash index for the collection `collection-name`, if it
 /// does not already exist. The call expects an object containing the index
@@ -364,15 +409,23 @@ function POST_api_index_geo (req, res, collection, body) {
 ///
 /// - `unique`: If `true`, then create a unique index.
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.  
 ///
+/// @RESTRETURNCODE{400}
 /// If the collection already contains documents and you try to create a unique
 /// hash index in such a way that there are documents violating the uniqueness,
 /// then a `HTTP 400` is returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
 ///
@@ -414,9 +467,16 @@ function POST_api_index_hash (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skip-list
 ///
-/// @RESTHEADER{POST /_api/index,creates a hash index}
+/// @RESTHEADER{POST /_api/index,creates a skip list}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection-name,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{index-details,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a skip-list index for the collection `collection-name`, if
 /// it does not already exist. The call expects an object containing the index
@@ -428,15 +488,23 @@ function POST_api_index_hash (req, res, collection, body) {
 ///
 /// - `unique`: If `true`, then create a unique index.
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.
 ///
+/// @RESTRETURNCODE{400}
 /// If the collection already contains documents and you try to create a unique
 /// skip-list index in such a way that there are documents violating the
 /// uniqueness, then a `HTTP 400` is returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
 ///
@@ -476,7 +544,14 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a fulltext index}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection-name,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{index-details,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a fulltext index for the collection `collection-name`, if
 /// it does not already exist. The call expects an object containing the index
@@ -492,10 +567,17 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ///   to a server-defined value if unspecified. It is thus recommended to set
 ///   this value explicitly when creating the index.
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.
+///
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
@@ -541,7 +623,14 @@ function POST_api_index_fulltext (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a bitarray index}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection-name,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{index-details,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a bitarray index for the collection `collection-name`, if
 /// it does not already exist. The call expects an object containing the index
@@ -553,10 +642,17 @@ function POST_api_index_fulltext (req, res, collection, body) {
 ///
 /// - `unique`: Must always be set to `false`.
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.
+///
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
@@ -599,7 +695,14 @@ function POST_api_index_bitarray (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates an index}
 ///
-/// @REST{POST /_api/index?collection=`collection-name`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection-name,string,required}
+/// The collection name.
+///
+/// @RESTBODYPARAM{index-details,json,required}
+///
+/// @RESTDESCRIPTION
 ///
 /// Creates a new index in the collection `collection-name`. Expects
 /// an object containing the index details.
@@ -628,10 +731,17 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// - cap constraints
 /// - fulltext indexes
 ///
-/// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a `HTTP 200` is
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the index already exists, then a `HTTP 200` is
 /// returned.
 ///
+/// @RESTRETURNCODE{201}
+/// If the index does not already exist and could be created, then a `HTTP 201`
+/// is returned.
+///
+/// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
 /// @EXAMPLES
@@ -706,12 +816,25 @@ function POST_api_index (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an index
 ///
-/// @RESTHEADER{DELETE /_api/index,deletes an index}
+/// @RESTHEADER{DELETE /_api/index/{index-handle},deletes an index}
 ///
-/// @REST{DELETE /_api/index/`index-handle`}
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{index-handle,string,required}
+/// The index handle.
+///
+/// @RESTDESCRIPTION
 ///
 /// Deletes an index with `index-handle`.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{202}
+/// If the index could be deleted, then a `HTTP 202` is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `index-handle` is unknown, then a `HTTP 404` is returned.
 /// @EXAMPLES
 ///
 /// @verbinclude api-index-delete-unique-skiplist
@@ -767,7 +890,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });

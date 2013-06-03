@@ -253,6 +253,23 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
       assertEqual(routes[0].docs.parameters[0].required, true);
     },
+    
+    testDefinePathCaseParam: function () {
+      app.get('/foxx/:idParam', function () {
+        //nothing
+      }).pathParam("idParam", {
+        description: "Id of the Foxx",
+        dataType: "int"
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "idParam");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].required, true);
+    },
 
     testDefineMultiplePathParams: function () {
       app.get('/:foxx/:id', function () {
@@ -277,6 +294,34 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "id");
+      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+      assertEqual(routes[0].docs.parameters[1].required, true);
+    },
+
+    testDefineMultiplePathCaseParams: function () {
+      app.get('/:foxxParam/:idParam', function () {
+        //nothing
+      }).pathParam("foxxParam", {
+        description: "Kind of Foxx",
+        dataType: "string"
+      }).pathParam("idParam", {
+        description: "Id of the Foxx",
+        dataType: "int"
+      });
+
+      assertEqual(routes.length, 1);
+
+      assertEqual(routes[0].url.constraint.foxxParam, "/.+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
+      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "string");
+      assertEqual(routes[0].docs.parameters[0].required, true);
+
+      assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[1].paramType, "path");
+      assertEqual(routes[0].docs.parameters[1].name, "idParam");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
       assertEqual(routes[0].docs.parameters[1].required, true);
@@ -552,7 +597,7 @@ function BaseMiddlewareWithTemplateSpec () {
 
       myCollection.save({
         path: "simple/path",
-        content: "hallo <%= username %>",
+        content: "hello <%= username %>",
         contentType: "text/plain",
         templateLanguage: "underscore"
       });
@@ -561,7 +606,7 @@ function BaseMiddlewareWithTemplateSpec () {
       middleware(request, response, options, next);
 
       response.render("simple/path", { username: "moonglum" });
-      assertEqual(response.body, "hallo moonglum");
+      assertEqual(response.body, "hello moonglum");
       assertEqual(response.contentType, "text/plain");
     },
 
@@ -573,7 +618,7 @@ function BaseMiddlewareWithTemplateSpec () {
 
       myCollection.save({
         path: "simple/path",
-        content: "hallo <%= username %>",
+        content: "hello <%= username %>",
         contentType: "text/plain",
         templateLanguage: "pirateEngine"
       });
@@ -639,7 +684,7 @@ function ViewHelperSpec () {
 
       myCollection.save({
         path: "simple/path",
-        content: "hallo <%= testHelper() %>",
+        content: "hello <%= testHelper() %>",
         contentType: "text/plain",
         templateLanguage: "underscore"
       });

@@ -27,6 +27,7 @@
 
 #include "init.h"
 
+#include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/mersenne.h"
@@ -51,8 +52,10 @@
 
 void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseMemory();
+  TRI_InitialiseDebugging();
   TRI_InitialiseMersenneTwister();
   TRI_InitialiseError();
+  TRI_InitialiseFiles();
   TRI_InitialiseMimetypes();
   TRI_InitialiseLogging(false);
   TRI_InitialiseHashes();
@@ -74,7 +77,9 @@ void TRI_ShutdownC () {
   TRI_ShutdownHashes();
   TRI_ShutdownLogging();
   TRI_ShutdownMimetypes();
+  TRI_ShutdownFiles();
   TRI_ShutdownError();
+  TRI_ShutdownDebugging();
   TRI_ShutdownMemory();
 }
 
