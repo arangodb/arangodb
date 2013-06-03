@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, EJS, $, localStorage, ace, Storage, window, arangoHelper*/
+
 var queryView = Backbone.View.extend({
   el: '#content',
   initialize: function () {
@@ -7,7 +10,7 @@ var queryView = Backbone.View.extend({
   events: {
     'click #submitQueryIcon'   : 'submitQuery',
     'click #submitQueryButton' : 'submitQuery',
-    'click .clearicon': 'clearOutput',
+    'click .clearicon': 'clearOutput'
   },
   clearOutput: function() {
     $('#queryOutput').empty();
@@ -50,7 +53,7 @@ var queryView = Backbone.View.extend({
     $('#aqlEditor .ace_text-input').focus();
     $.gritter.removeAll();
 
-    if(typeof(Storage)!=="undefined") {
+    if(typeof Storage) {
       var queryContent = localStorage.getItem("queryContent");
       var queryOutput = localStorage.getItem("queryOutput");
       editor.setValue(queryContent);
@@ -80,8 +83,8 @@ var queryView = Backbone.View.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        editor2.setValue(self.FormatJSON(data.result));
-        if(typeof(Storage) !== "undefined") {
+        editor2.setValue(arangoHelper.FormatJSON(data.result));
+        if(typeof Storage) {
           localStorage.setItem("queryContent", editor.getValue());
           localStorage.setItem("queryOutput", editor2.getValue());
         }
@@ -91,7 +94,7 @@ var queryView = Backbone.View.extend({
           var temp = JSON.parse(data.responseText);
           editor2.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
 
-          if(typeof(Storage) !== "undefined") {
+          if(typeof Storage) {
             localStorage.setItem("queryContent", editor.getValue());
             localStorage.setItem("queryOutput", editor2.getValue());
           }
@@ -103,87 +106,6 @@ var queryView = Backbone.View.extend({
     });
     editor2.resize();
 
-  },
-  FormatJSON: function(oData, sIndent) {
-    var self = this;
-    if (arguments.length < 2) {
-      var sIndent = "";
-    }
-    var sIndentStyle = "    ";
-    var sDataType = self.RealTypeOf(oData);
-
-    if (sDataType == "array") {
-      if (oData.length == 0) {
-        return "[]";
-      }
-      var sHTML = "[";
-    } else {
-      var iCount = 0;
-      $.each(oData, function() {
-        iCount++;
-        return;
-      });
-      if (iCount == 0) { // object is empty
-        return "{}";
-      }
-      var sHTML = "{";
-    }
-
-    // loop through items
-    var iCount = 0;
-    $.each(oData, function(sKey, vValue) {
-      if (iCount > 0) {
-        sHTML += ",";
-      }
-      if (sDataType == "array") {
-        sHTML += ("\n" + sIndent + sIndentStyle);
-      } else {
-        sHTML += ("\n" + sIndent + sIndentStyle + JSON.stringify(sKey) + ": ");
-      }
-
-      // display relevant data type
-      switch (self.RealTypeOf(vValue)) {
-        case "array":
-          case "object":
-          sHTML += self.FormatJSON(vValue, (sIndent + sIndentStyle));
-        break;
-        case "boolean":
-          case "number":
-          sHTML += vValue.toString();
-        break;
-        case "null":
-          sHTML += "null";
-        break;
-        case "string":
-          sHTML += "\"" + vValue.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\"";
-        break;
-        default:
-          sHTML += ("TYPEOF: " + typeof(vValue));
-      }
-
-      // loop
-      iCount++;
-    });
-
-    // close object
-    if (sDataType == "array") {
-      sHTML += ("\n" + sIndent + "]");
-    } else {
-      sHTML += ("\n" + sIndent + "}");
-    }
-
-    // return
-    return sHTML;
-  },
-  RealTypeOf: function(v) {
-    if (typeof(v) == "object") {
-      if (v === null) return "null";
-      if (v.constructor == (new Array).constructor) return "array";
-      if (v.constructor == (new Date).constructor) return "date";
-      if (v.constructor == (new RegExp).constructor) return "regex";
-      return "object";
-    }
-    return typeof(v);
   }
 
 });
