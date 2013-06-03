@@ -28,9 +28,8 @@
 }
 
 svg.graphViewer text {
-  font: 11px Arial;
+  font: 12px Arial;
   pointer-events: none;
-  stroke: #000;
 }
 
 .capitalize {

@@ -291,8 +291,6 @@
         expect(adapter.patchEdge).toHaveBeenCalledWith(
           edges[0],
           {
-            _from: "1",
-            _to: "2",
             label: "newLabel"
           },
           jasmine.any(Function));
@@ -425,22 +423,27 @@
         helper.simulateMouseEvent("mousedown", "2");
         
         expect(edgeShaper.addAnEdgeFollowingTheCursor).toHaveBeenCalledWith(
-          0, 0
+          -$("svg").offset().left, -$("svg").offset().top
         );
       });
       
       it('the cursor-line should follow the cursor on mousemove over svg', function() {        
         dispatcherUI.addControlConnect();
+        var x = 40,
+          y= 50,
+          line;
+        
         helper.simulateMouseEvent("click", "control_event_connect");
         helper.simulateMouseEvent("mousedown", "2");
         
-        helper.simulateMouseMoveEvent("svg", 40, 50);
+        helper.simulateMouseMoveEvent("svg", x, y);
         
-        var line = $("#connectionLine");
-        expect(line.attr("x1")).toEqual(String(nodes[1].x));
-        expect(line.attr("y1")).toEqual(String(nodes[1].y));
-        expect(line.attr("x2")).toEqual("40");
-        expect(line.attr("y2")).toEqual("50");
+        line = $("#connectionLine");
+        //The Helper event triggers at (0,0) no matter where the node is.
+        expect(line.attr("x1")).toEqual(String(- $("svg").offset().left));
+        expect(line.attr("y1")).toEqual(String(- $("svg").offset().top));
+        expect(line.attr("x2")).toEqual(String(x - $("svg").offset().left));
+        expect(line.attr("y2")).toEqual(String(y - $("svg").offset().top));
       });
       
       it('the cursor-line should disappear on mouseup on svg', function() {
