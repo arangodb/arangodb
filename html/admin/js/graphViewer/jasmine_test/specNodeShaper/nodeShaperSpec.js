@@ -128,8 +128,8 @@
       expect($("svg rect").length).toEqual(1);
       expect($("svg .node rect")[0]).toBeDefined();
       expect($("svg .node rect").length).toEqual(1);
-      expect($("svg #1 rect").attr("width")).toEqual("120");
-      expect($("svg #1 rect").attr("height")).toEqual("24");
+      expect($("svg #1 rect").attr("width")).toEqual("90");
+      expect($("svg #1 rect").attr("height")).toEqual("36");
     });
 
     describe('testing for colours', function() {
@@ -798,11 +798,11 @@
         
         expect($(spans.get(0)).text()).toEqual("Label with");
         expect($(spans.get(0)).attr("x")).toEqual("0");
-        expect($(spans.get(0)).attr("dy")).toEqual("0");
+        expect($(spans.get(0)).attr("dy")).toEqual("-4");
         
         expect($(spans.get(1)).text()).toEqual("many words");
         expect($(spans.get(1)).attr("x")).toEqual("0");
-        expect($(spans.get(1)).attr("dy")).toEqual("20");
+        expect($(spans.get(1)).attr("dy")).toEqual("16");
       });
       
       it('should automatically cut labels with more then 20 characters', function() {
