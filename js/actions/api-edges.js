@@ -63,9 +63,6 @@ var API = "/_api/edges";
 /// Any direction
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesAny}
-///     db._drop("edges");
-///     db._drop("vertices");
-///     db._graphs.remove("graph");
 ///     var Graph = require("org/arangodb/graph").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
@@ -82,14 +79,14 @@ var API = "/_api/edges";
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// In edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesIn}
-///     db._drop("edges");
-///     db._drop("vertices");
-///     db._graphs.remove("graph");
 ///     var Graph = require("org/arangodb/graph").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
@@ -106,14 +103,14 @@ var API = "/_api/edges";
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Out edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesOut}
-///     db._drop("edges");
-///     db._drop("vertices");
-///     db._graphs.remove("graph");
 ///     var Graph = require("org/arangodb/graph").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
@@ -130,6 +127,9 @@ var API = "/_api/edges";
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
