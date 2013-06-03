@@ -169,20 +169,26 @@ var modalDialogHelper = modalDialogHelper || {};
       
     tableToJSON = function() {
       var result = {};
+        
       _.each($("#" + idprefix + "table tr"), function(tr) {
         var key = tr.children[0].children[0].value,
           value = tr.children[1].children[0].value;
+        
         result[key] = value;
       });
       return result;
     };
     _.each(object, function(value, key) {
-      var tr = document.createElement("tr"),
-      keyTh = document.createElement("th"),
-      valueTh = document.createElement("th"),
-      keyInput,
-      valueInput;
-      
+      var internalRegex = /^_(id|rev|key|from|to)/,
+        tr = document.createElement("tr"),
+        keyTh = document.createElement("th"),
+        valueTh = document.createElement("th"),
+        keyInput,
+        valueInput;
+        
+      if (internalRegex.test(key)) {
+        return;
+      }
       table.appendChild(tr);
       tr.appendChild(keyTh);
       keyTh.className = "collectionTh";
