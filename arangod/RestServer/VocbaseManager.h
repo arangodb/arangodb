@@ -42,6 +42,12 @@
 #include "v8.h"
 
 namespace triagens {
+  namespace rest {
+    class ApplicationEndpointServer;    
+  }
+}
+
+namespace triagens {
   namespace arango {
 
     class VocbaseContext;
@@ -62,7 +68,7 @@ namespace triagens {
 
   class VocbaseManager {
       private:
-        VocbaseManager () : _vocbase(0), _startupLoader(0) {};
+        VocbaseManager () : _vocbase(0), _startupLoader(0), _endpointServer(0) {};
         VocbaseManager (const VocbaseManager&);
         VocbaseManager& operator= (const VocbaseManager&);
 
@@ -128,6 +134,14 @@ namespace triagens {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add the application enpoint server
+////////////////////////////////////////////////////////////////////////////////
+
+        void setApplicationEndpointServer (triagens::rest::ApplicationEndpointServer* endpointServer) {
+          _endpointServer = endpointServer;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief run version check
 /// @return bool             returns false if the version check fails
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,6 +153,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void initializeFoxx (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+        bool addEndpoint (std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup vocbase by http request
@@ -247,6 +267,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         JSLoader* _startupLoader;
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the application enpoint server
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::rest::ApplicationEndpointServer* _endpointServer;
+        
     };
   }
 }
