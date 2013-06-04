@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect*/
+/*global describe, it, expect, jasmine*/
 /*global runs, waitsFor, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
@@ -56,6 +56,7 @@
           "green": ["gr", "een"]
         };
       });
+      spyOn(shaper, "setColourMappingListener");
       this.addMatchers({
         toBeTag: function(name) {
           var el = this.actual;
@@ -263,32 +264,6 @@
       
     });
     
-    it('should be able to add a switch colour on attribute control to the list', function() {
-      runs(function() {
-        shaperUI.addControlOpticLabelAndColour();
-      
-        expect($("#control_node_list #control_node_labelandcolour").length).toEqual(1);
-        expect($("#control_node_list #control_node_labelandcolour")[0]).toConformToListCSS();
-      
-        helper.simulateMouseEvent("click", "control_node_labelandcolour");
-        $("#control_node_labelandcolour_key").attr("value", "label");
-        helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
-      
-        expect(shaper.changeTo).toHaveBeenCalledWith({
-          label: "label",
-          color: {
-            type: "attribute",
-            key: "label"
-          }
-        });
-      });
-      
-      waitsFor(function() {
-        return $("#control_node_attributecolour_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");
-      
-    });
-    
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
@@ -324,18 +299,57 @@
         blue = list.children[0],
         green = list.children[1];
       expect(shaper.getColourMapping).wasCalled();
+      expect(shaper.setColourMappingListener).wasCalledWith(jasmine.any(Function));
       expect(div).toBeTag("div");
+      expect($(div).attr("id")).toEqual("node_colour_list");
       expect(list).toBeTag("ul");
       expect(blue).toBeTag("li");
       expect($(blue).text()).toEqual("bl, ue");
       expect(blue.style.backgroundColor).toEqual("blue");
-      
+    
       expect(green).toBeTag("li");
       expect($(green).text()).toEqual("gr, een");
       expect(green.style.backgroundColor).toEqual("green");
-      
+    
     });
     
+    describe('checking to change colour and label at once', function() {
+      
+      it('should be able to add the control and create the mapping list', function() {
+        runs(function() {
+          shaperUI.addControlOpticLabelAndColour();
+          spyOn(shaperUI, "createColourMappingList").andCallThrough();
+          
+          expect($("#control_node_list #control_node_labelandcolour").length).toEqual(1);
+          expect($("#control_node_list #control_node_labelandcolour")[0]).toConformToListCSS();
+      
+          helper.simulateMouseEvent("click", "control_node_labelandcolour");
+          $("#control_node_labelandcolour_key").attr("value", "label");
+          helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
+          
+          
+          
+          expect(shaper.changeTo).toHaveBeenCalledWith({
+            label: "label",
+            color: {
+              type: "attribute",
+              key: "label"
+            }
+          });
+          expect(shaperUI.createColourMappingList).wasCalled();
+          expect(shaper.setColourMappingListener).wasCalledWith(jasmine.any(Function));
+        });
+      
+        waitsFor(function() {
+          return $("#control_node_attributecolour_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+      
+        runs(function() {
+          expect(true).toBeTruthy();
+        });
+      
+      });      
+    });
   });
 
 }());

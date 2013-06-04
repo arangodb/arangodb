@@ -34,6 +34,8 @@ function ColourMapper() {
   mapping = {},
   reverseMapping = {},
   colours = [],
+  listener,
+  self = this,
   nextColour = 0;
   
   colours.push("navy");
@@ -69,18 +71,30 @@ function ColourMapper() {
         nextColour = 0;
       }
     }
+    if (listener !== undefined) {
+      listener(self.getList());
+    }
     return mapping[value];
   };
+  
+  
   
   this.reset = function() {
     mapping = {};
     reverseMapping = {};
     nextColour = 0;
+    if (listener !== undefined) {
+      listener(self.getList());
+    }
   };
   
   this.getList = function() {
     return reverseMapping;
   };
+  
+  this.setChangeListener = function(callback) {
+    listener = callback;
+  }; 
   
   this.reset();
 }

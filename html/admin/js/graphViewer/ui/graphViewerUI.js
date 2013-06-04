@@ -48,6 +48,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
+    colourList,
+    nodeShaperUI,
+    adapterUI,
     mousePointerBox = document.createElement("div"),
     svg,
     
@@ -152,15 +155,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         ),
         */
         
-        nodeShaperUI = new NodeShaperControls(
-          configureList,
-          graphViewer.nodeShaper
-        ),
-        adapterUI = new ArangoAdapterControls(
-          configureList,
-          graphViewer.adapter
-        ),
-        
         searchFunction = function() {
           if (searchAttrField.value === ""
             || searchAttrField.value === undefined) {
@@ -172,6 +166,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
             );
           }
         };
+
+      nodeShaperUI = new NodeShaperControls(
+        configureList,
+        graphViewer.nodeShaper
+      );
+      adapterUI = new ArangoAdapterControls(
+        configureList,
+        graphViewer.adapter
+      );
 
       menubar.id = "menubar";
       menubar.className = "thumbnails2";
@@ -244,6 +247,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       layouterUI.addAll();
       adapterUI.addAll();
       */
+      
+    },
+    
+    createColourList = function() {
+      colourList = nodeShaperUI.createColourMappingList();
+      colourList.style.position = "absolute";
+      var intSVG = $("#graphViewerSVG");
+      colourList.style.top = intSVG.position().top.toFixed(1) + "px";
+      colourList.style.left = (intSVG.position().left + intSVG.width()).toFixed(1) + "px";
+      container.appendChild(colourList);
     };
   container.appendChild(menubar);
   container.appendChild(background);
@@ -253,7 +266,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   viewerConfig = viewerConfig || {};
   viewerConfig.zoom = true;
   graphViewer = new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
-  
+    
   createToolbox();
   createMenu();
+  createColourList();
 }

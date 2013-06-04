@@ -130,6 +130,20 @@
       });
       
     });
+    
+    it('should be possible to add a change listener', function() {
+      var res = {},
+        correct = {},
+        listener = function(mapping) {
+          res = mapping;
+        };
+        
+      mapper.setChangeListener(listener);
+      mapper.getColour("1");
+      correct = mapper.getList();
+      
+      expect(res).toEqual(correct);
+    });
   });
   
 }());

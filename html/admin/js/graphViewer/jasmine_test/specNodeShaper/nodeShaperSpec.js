@@ -320,6 +320,49 @@
         });
       });
       
+      it('should be possible to add a change listener for the mapping', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              label: "lbl2"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl3"
+            }
+          }, {
+            _id: 4,
+            _data: {
+              label: "lbl1"
+            }
+          }],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        testee,
+        colorList;
+        shaper.setColourMappingListener(function(mapping) {
+          testee = mapping;
+        });
+        
+        shaper.drawNodes(nodes);
+        
+        colorList = shaper.getColourMapping();
+        
+        expect(testee).toEqual(colorList);
+      });
+      
     });
 
     describe('when nodes are already drawn', function() {

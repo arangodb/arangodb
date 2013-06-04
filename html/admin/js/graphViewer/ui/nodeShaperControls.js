@@ -38,7 +38,22 @@ function NodeShaperControls(list, shaper) {
     throw "The NodeShaper has to be given.";
   }
   var self = this,
-    baseClass = "graph";
+    baseClass = "graph",
+    colourDiv,
+    
+    fillColourDiv = function(mapping) {
+      while (colourDiv.hasChildNodes()) {
+          colourDiv.removeChild(colourDiv.lastChild);
+      }
+      var list = document.createElement("ul");
+      colourDiv.appendChild(list);
+      _.each(mapping, function(els, col) {
+        var li = document.createElement("li");
+        li.style.backgroundColor = col;
+        li.appendChild(document.createTextNode(els.join(", ")));
+        list.appendChild(li);
+      });
+    };
   
   this.addControlOpticShapeNone = function() {
     uiComponentsHelper.createButton(baseClass, list, "None", "control_node_none", function() {
@@ -213,6 +228,10 @@ function NodeShaperControls(list, shaper) {
               key: key
             }
           });
+          if (colourDiv === undefined) {
+            colourDiv = self.createColourMappingList();
+          }
+          
         }
       );
     });
@@ -246,16 +265,13 @@ function NodeShaperControls(list, shaper) {
   //////////////////////////////////////////////////////////////////  
   
   this.createColourMappingList = function() {
-    var div = document.createElement("div"),
-    list = document.createElement("ul"),
-    mapping = shaper.getColourMapping();
-    div.appendChild(list);
-    _.each(mapping, function(els, col) {
-      var li = document.createElement("li");
-      li.style.backgroundColor = col;
-      li.appendChild(document.createTextNode(els.join(", ")));
-      list.appendChild(li);
-    });
-    return div;
+    if (colourDiv !== undefined) {
+      return colourDiv;
+    }
+    colourDiv = document.createElement("div");
+    colourDiv.id = "node_colour_list";
+    fillColourDiv(shaper.getColourMapping());
+    shaper.setColourMappingListener(fillColourDiv);
+    return colourDiv;
   };
 }
