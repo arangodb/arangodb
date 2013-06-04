@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var EXPLAIN = internal.AQL_EXPLAIN; 
 var QUERY = internal.AQL_QUERY;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +45,14 @@ function ahuacatlSkiplistTestSuite () {
   function executeQuery (query, bindVars) {
     var cursor = QUERY(query, bindVars);
     return cursor;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explain a given query
+////////////////////////////////////////////////////////////////////////////////
+
+  function explainQuery (query) {
+    return EXPLAIN(query);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,10 +108,15 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingleVoid1 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a == 99 RETURN v";
       var expected = [ ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 99 RETURN v");
+      var actual = getQueryResults(query); 
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,10 +124,15 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingleVoid2 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER 99 == v.a RETURN v";
       var expected = [ ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER 99 == v.a RETURN v");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,10 +140,15 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingle1 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a == 1 SORT v.b RETURN [ v.a, v.b ]";
       var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ] ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 1 SORT v.b RETURN [ v.a, v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,10 +156,15 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingle2 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER 1 == v.a SORT v.b RETURN [ v.a, v.b ]";
       var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ] ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER 1 == v.a SORT v.b RETURN [ v.a, v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,10 +216,15 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGeSingle1 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 5 SORT v.b RETURN [ v.a, v.b ]";
       var expected = [ [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a >= 5 SORT v.b RETURN [ v.a, v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1012,6 +1046,49 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults("FOR v1 IN " + skiplist.name() + " FOR v2 IN " + skiplist.name() + " FILTER 1 == v1.a && v1.a == v2.a && 1 == v1.b SORT v1.a, v2.b RETURN [ v1.a, v2.b ]");
 
       assertEqual(expected, actual);
+    },
+     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefFilterSame : function () {
+      skiplist.ensureSkiplist("c");
+      skiplist.ensureSkiplist("d");
+
+      skiplist.truncate();
+
+      for (var i = 1; i <= 5; ++i) {
+        for (var j = 1; j <= 5; ++j) {
+          skiplist.save({ "c" : i, "d": j });
+        }
+      }
+
+      var query = "FOR a IN " + skiplist.name() + " FILTER a.c == a.d SORT a.c RETURN [ a.c, a.d ]";
+      var expected = [ [ 1, 1 ], [ 2, 2 ], [ 3, 3 ], [ 4, 4 ], [ 5, 5 ] ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefFilterNonExisting : function () {
+      var query = "FOR a IN " + skiplist.name() + " FILTER a.e == a.f SORT a.a, a.b RETURN [ a.a, a.b ]";
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ], [ 2, 1 ], [ 2, 2 ], [ 2, 3 ], [ 2, 4 ], [ 2, 5 ], [ 3, 1 ], [ 3, 2 ], [ 3, 3 ], [ 3, 4 ], [ 3, 5 ], [ 4, 1 ], [ 4, 2 ], [ 4, 3 ], [ 4, 4 ], [ 4, 5 ], [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+        
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
     }
 
   };

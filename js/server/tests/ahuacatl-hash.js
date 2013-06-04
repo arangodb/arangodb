@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var EXPLAIN = internal.AQL_EXPLAIN; 
 var QUERY = internal.AQL_QUERY;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +45,14 @@ function ahuacatlHashTestSuite () {
   function executeQuery (query, bindVars) {
     var cursor = QUERY(query, bindVars);
     return cursor;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explain a given query
+////////////////////////////////////////////////////////////////////////////////
+
+  function explainQuery (query, bindVars) {
+    return EXPLAIN(query, bindVars);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,10 +110,15 @@ function ahuacatlHashTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingle1 : function () {
+      var query = "FOR v IN " + hash.name() + " FILTER v.c == 1 SORT v.b RETURN [ v.b ]";
       var expected = [ [ 1 ], [ 2 ], [ 3 ], [ 4 ], [ 5 ] ];
-      var actual = getQueryResults("FOR v IN " + hash.name() + " FILTER v.c == 1 SORT v.b RETURN [ v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,10 +126,15 @@ function ahuacatlHashTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingle2 : function () {
+      var query = "FOR v IN " + hash.name() + " FILTER 1 == v.c SORT v.b RETURN [ v.b ]";
       var expected = [ [ 1 ], [ 2 ], [ 3 ], [ 4 ], [ 5 ] ];
-      var actual = getQueryResults("FOR v IN " + hash.name() + " FILTER 1 == v.c SORT v.b RETURN [ v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,10 +166,15 @@ function ahuacatlHashTestSuite () {
     testEqMultiAll1 : function () {
       for (var i = 1; i <= 5; ++i) {
         for (var j = 1; j <=5; ++j) {
+          var query = "FOR v IN " + hash.name() + " FILTER v.a == @a && v.b == @b RETURN [ v.a, v.b ]";
           var expected = [ [ i, j ] ];
-          var actual = getQueryResults("FOR v IN " + hash.name() + " FILTER v.a == @a && v.b == @b RETURN [ v.a, v.b ]", { "a" : i, "b" : j });
+          var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
+      
+          var explain = explainQuery(query, { "a": i, "b": j });
+          assertEqual("for", explain[0].type);
+          assertEqual("index", explain[0].expression.extra.accessType);
         }
       }
     },
@@ -162,10 +186,15 @@ function ahuacatlHashTestSuite () {
     testEqMultiAll2 : function () {
       for (var i = 1; i <= 5; ++i) {
         for (var j = 1; j <=5; ++j) {
+          var query = "FOR v IN " + hash.name() + " FILTER @a == v.a && @b == v.b RETURN [ v.a, v.b ]";
           var expected = [ [ i, j ] ];
-          var actual = getQueryResults("FOR v IN " + hash.name() + " FILTER @a == v.a && @b == v.b RETURN [ v.a, v.b ]", { "a" : i, "b" : j });
+          var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
+          
+          var explain = explainQuery(query, { "a": i, "b": j });
+          assertEqual("for", explain[0].type);
+          assertEqual("index", explain[0].expression.extra.accessType);
         }
       }
     },
@@ -175,10 +204,16 @@ function ahuacatlHashTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefConst1 : function () {
+      var query = "LET x = 4 FOR v IN " + hash.name() + " FILTER v.c == x SORT v.b RETURN [ v.b, v.c ]";
       var expected = [ [ 1, 4 ], [ 2, 4 ], [ 3, 4 ], [ 4, 4 ], [ 5, 4 ] ];
-      var actual = getQueryResults("LET x = 4 FOR v IN " + hash.name() + " FILTER v.c == x SORT v.b RETURN [ v.b, v.c ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+          
+      var explain = explainQuery(query);
+      assertEqual("let", explain[0].type);
+      assertEqual("for", explain[1].type);
+      assertEqual("index", explain[1].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +290,103 @@ function ahuacatlHashTestSuite () {
 
         assertEqual(expected, actual);
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefMulti3 : function () {
+      var query = "FOR v1 IN " + hash.name() + " FILTER @a == v1.a && @b == v1.b RETURN [ v1.a, v1.b ]";
+      var expected = [ [ 2, 3 ] ];
+      var actual = getQueryResults(query, { "a": 2, "b": 3 });
+
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query, { "a": 2, "b": 3 });
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefFilterSame1 : function () {
+      var query = "FOR a IN " + hash.name() + " FILTER a.a == a.a SORT a.a RETURN a.a";
+      var expected = [ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefFilterSame2 : function () {
+      var query = "FOR a IN " + hash.name() + " FILTER a.a == a.c SORT a.a RETURN a.a";
+      var expected = [ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefNon1 : function () {
+      var query = "FOR a IN " + hash.name() + " FILTER a.a == 1 RETURN a.a";
+      var expected = [ 1, 1, 1, 1, 1 ]; 
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefNon2 : function () {
+      var query = "FOR a IN " + hash.name() + " FILTER a.d == a.a SORT a.a RETURN a.a";
+      var expected = [ ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ref access with filters on the same attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefNon3 : function () {
+      var query = "FOR a IN " + hash.name() + " FILTER a.d == 1 SORT a.a RETURN a.a";
+      var expected = [ ];
+      var actual = getQueryResults(query);
+      
+      assertEqual(expected, actual);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
 
   };
 }
