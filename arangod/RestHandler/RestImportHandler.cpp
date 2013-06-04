@@ -173,7 +173,7 @@ void RestImportHandler::logDocument (const TRI_json_t* const json) const {
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
   int res = TRI_StringifyJson(&buffer, json);
   if (res == TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING("offending document" << buffer._buffer);
+    LOGGER_WARNING("offending document: " << buffer._buffer);
   }
   TRI_DestroyStringBuffer(&buffer);
 }
