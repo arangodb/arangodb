@@ -1002,7 +1002,7 @@ int ArangoServer::executeRubyConsole () {
   bool ok;
 
   // open the database
-  openDatabase();
+  openDatabases();
 
   // load authentication
   TRI_LoadAuthInfoVocBase(_vocbase);
