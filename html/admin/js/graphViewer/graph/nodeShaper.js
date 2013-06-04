@@ -249,7 +249,9 @@ function NodeShaper(parent, flags, idfunc) {
               .attr("width", width) // Set width
               .attr("height", height) // Set height
               .attr("x", translateX)
-              .attr("y", translateY);
+              .attr("y", translateY)
+              .attr("rx", "8")
+              .attr("ry", "8");
           };
           break;
         case undefined:
