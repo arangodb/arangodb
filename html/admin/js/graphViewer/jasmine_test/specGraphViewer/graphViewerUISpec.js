@@ -341,6 +341,37 @@
       });
     });
     
+    describe('checking the node colour mapping list', function() {
+      
+      var map;
+      
+      beforeEach(function() {
+        map = $("#contentDiv #node_colour_list");
+      });
+      
+      it('should append the list', function() {
+        expect(map.length).toEqual(1);
+      });
+      
+      it('should be positioned in the top-right corner of the svg', function() {
+        expect(map.css("position")).toEqual("absolute");
+        var leftPos = $("#contentDiv svg").position().left,
+        topPos = $("#contentDiv svg").position().top;
+        leftPos += $("#contentDiv svg").width();
+        if (leftPos === Math.round(leftPos)) {
+          expect(map.css("left")).toEqual(leftPos + "px");
+        } else {
+          expect(map.css("left")).toEqual(leftPos.toFixed(1) + "px");
+        }
+        if (topPos === Math.round(topPos)) {
+          expect(map.css("top")).toEqual(topPos + "px");
+        } else {
+          expect(map.css("top")).toEqual(topPos.toFixed(1) + "px");
+        }
+      });
+      
+    });
+    
     describe('checking to load a graph', function() {
       
       var waittime = 200;
