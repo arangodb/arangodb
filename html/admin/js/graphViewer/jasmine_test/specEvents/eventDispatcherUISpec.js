@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Event Dispatcher UI', function () {
-    var svg, dispatcher, dispatcherUI, list,
+    var svg, dispatcherUI, list, $list,
     nodeShaper, edgeShaper, layouter,
     nodes, edges, adapter,
     mousePointerbox,
@@ -133,7 +133,7 @@
       list = document.createElement("ul");
       document.body.appendChild(list);
       list.id = "control_event_list";
-      
+      $list = $(list);
       mousePointerbox = document.createElement("svg");
       mousePointerbox.id = "mousepointer";
       mousePointerbox.className = "mousepointer";
@@ -148,6 +148,7 @@
       );
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
+      
       
       this.addMatchers({
         toBeTag: function(name) {
@@ -205,6 +206,59 @@
       expect(function() {
         var e = new EventDispatcherControls(list, mousePointerbox, nodeShaper);
       }).toThrow("The EdgeShaper has to be given.");
+    });
+    
+    it('should be able to add a new node control to the list', function() {
+      runs(function() {
+        dispatcherUI.addControlNewNode();
+      
+        expect($("#control_event_new_node", $list).length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_event_new_node");
+      
+        expect(nodeShaper.changeTo).toHaveBeenCalledWith({
+          actions: {
+            reset: true
+          }
+        });
+        
+        expect(edgeShaper.changeTo).toHaveBeenCalledWith({
+          actions: {
+            reset: true
+          }
+        });
+        
+        expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign");
+      
+        helper.simulateMouseEvent("click", "svg");
+      
+        expect($("#control_event_new_node_modal").length).toEqual(1);
+      
+        //$("#control_event_node_edit_name_value").val("Bob");
+        
+        expect($("#control_event_new_node_submit").text()).toEqual("Create");
+        
+        helper.simulateMouseEvent("click", "control_event_new_node_submit");
+        
+        expect(adapter.createNode).toHaveBeenCalledWith(
+          {},
+          jasmine.any(Function)
+        );
+        /*
+        expect(adapter.createNode).toHaveBeenCalledWith(
+          {
+            name: "Bob"
+          },
+          jasmine.any(Function)
+        );
+        */
+      });
+      
+        
+      waitsFor(function() {
+        return $("#control_event_node_edit_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
     });
     
     it('should be able to add a drag control to the list', function() {
@@ -476,6 +530,7 @@
       expect($("#control_event_list #control_event_expand").length).toEqual(1);
       expect($("#control_event_list #control_event_delete").length).toEqual(1);
       expect($("#control_event_list #control_event_connect").length).toEqual(1);
+      expect($("#control_event_list #control_event_new_node").length).toEqual(1);
     });
   });
 

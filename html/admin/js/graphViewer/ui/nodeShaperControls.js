@@ -38,7 +38,25 @@ function NodeShaperControls(list, shaper) {
     throw "The NodeShaper has to be given.";
   }
   var self = this,
-    baseClass = "graph";
+    baseClass = "graph",
+    colourDiv,
+    
+    fillColourDiv = function(mapping) {
+      while (colourDiv.hasChildNodes()) {
+          colourDiv.removeChild(colourDiv.lastChild);
+      }
+      var list = document.createElement("ul");
+      colourDiv.appendChild(list);
+      _.each(mapping, function(obj, col) {
+        var li = document.createElement("li"),
+          els = obj.list,
+          fore = obj.front;
+        li.style.backgroundColor = col;
+        li.style.color = fore;
+        li.appendChild(document.createTextNode(els.join(", ")));
+        list.appendChild(li);
+      });
+    };
   
   this.addControlOpticShapeNone = function() {
     uiComponentsHelper.createButton(baseClass, list, "None", "control_node_none", function() {
@@ -213,6 +231,10 @@ function NodeShaperControls(list, shaper) {
               key: key
             }
           });
+          if (colourDiv === undefined) {
+            colourDiv = self.createColourMappingList();
+          }
+          
         }
       );
     });
@@ -241,4 +263,18 @@ function NodeShaperControls(list, shaper) {
     self.addAllActions();
   };
   
+  //////////////////////////////////////////////////////////////////
+  //  Colour Mapping List
+  //////////////////////////////////////////////////////////////////  
+  
+  this.createColourMappingList = function() {
+    if (colourDiv !== undefined) {
+      return colourDiv;
+    }
+    colourDiv = document.createElement("div");
+    colourDiv.id = "node_colour_list";
+    fillColourDiv(shaper.getColourMapping());
+    shaper.setColourMappingListener(fillColourDiv);
+    return colourDiv;
+  };
 }
