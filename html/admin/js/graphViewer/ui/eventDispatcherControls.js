@@ -135,6 +135,32 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
     cursorIconBox.style.display = "block";
   });
   
+  this.addControlNewNode = function() {
+    var prefix = "control_event_newnode",
+      idprefix = prefix + "_",
+      icon = "plus-sign",
+      createCallback = function(n) {
+        modalDialogHelper.createModalEditDialog(
+          "Create New Node",
+          "control_event_new_node_",
+          {},
+          function(data) {
+            dispatcher.events.CREATENODE(data, function() {
+              $("#control_event_new_node_modal").modal('hide');
+            })();
+          }
+        );
+      },
+      callback = function() {
+        setCursorIcon(icon);
+        rebindNodes();
+        rebindEdges();
+        rebindSVG({click: createCallback});
+      };
+    createIcon(icon, "newnode", callback);
+  };
+  
+  
   this.addControlDrag = function() {
     var prefix = "control_event_drag",
       idprefix = prefix + "_",
@@ -256,6 +282,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
     self.addControlExpand();
     self.addControlDelete();
     self.addControlConnect();
+    self.addControlNewNode();
   };
   
 }
