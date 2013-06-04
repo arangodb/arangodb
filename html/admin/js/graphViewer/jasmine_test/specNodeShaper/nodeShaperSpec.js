@@ -315,8 +315,8 @@
         
         expect(_.keys(colorList).length).toEqual(3);
         _.each(_.values(colorList), function(v) {
-          expect(v).toEqual(jasmine.any(Array));
-          expect(v.length).toEqual(1);
+          expect(v.list).toEqual(jasmine.any(Array));
+          expect(v.list.length).toEqual(1);
         });
       });
       
@@ -775,7 +775,7 @@
         textEl;
         shaper.drawNodes(node);
         textEl = $("svg .node text");
-        expect(textEl.attr("fill")).toEqual("black");
+        expect(textEl.attr("fill")).toEqual("#8AA051");
         expect(textEl.attr("stroke")).toEqual("none");
       });
 
