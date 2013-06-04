@@ -241,4 +241,21 @@ function NodeShaperControls(list, shaper) {
     self.addAllActions();
   };
   
+  //////////////////////////////////////////////////////////////////
+  //  Colour Mapping List
+  //////////////////////////////////////////////////////////////////  
+  
+  this.createColourMappingList = function() {
+    var div = document.createElement("div"),
+    list = document.createElement("ul"),
+    mapping = shaper.getColourMapping();
+    div.appendChild(list);
+    _.each(mapping, function(els, col) {
+      var li = document.createElement("li");
+      li.style.backgroundColor = col;
+      li.appendChild(document.createTextNode(els.join(", ")));
+      list.appendChild(li);
+    });
+    return div;
+  };
 }
