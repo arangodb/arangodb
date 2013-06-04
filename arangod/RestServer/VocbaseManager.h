@@ -39,10 +39,14 @@
 #include <map>
 #include <string>
 
+#include "v8.h"
+
 namespace triagens {
   namespace arango {
 
     class VocbaseContext;
+    class JSLoader;
+    
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoServer
 // -----------------------------------------------------------------------------
@@ -58,7 +62,7 @@ namespace triagens {
 
   class VocbaseManager {
       private:
-        VocbaseManager () {};
+        VocbaseManager () : _vocbase(0), _startupLoader(0) {};
         VocbaseManager (const VocbaseManager&);
         VocbaseManager& operator= (const VocbaseManager&);
 
@@ -114,6 +118,27 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool canAddVocbase (std::string const& name, std::string const& path);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add the startup loader
+////////////////////////////////////////////////////////////////////////////////
+
+        void setStartupLoader (JSLoader* startupLoader) {
+          _startupLoader = startupLoader;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run version check
+/// @return bool             returns false if the version check fails
+////////////////////////////////////////////////////////////////////////////////
+
+        bool runVersionCheck (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize foxx
+////////////////////////////////////////////////////////////////////////////////
+
+        void initializeFoxx (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup vocbase by http request
@@ -217,6 +242,11 @@ namespace triagens {
 
         std::map<TRI_vocbase_t*, std::map<std::string, std::string> > _authCache;
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the javascript startup file loader (used for the version check)
+////////////////////////////////////////////////////////////////////////////////
+
+        JSLoader* _startupLoader;
     };
   }
 }

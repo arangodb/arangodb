@@ -37,6 +37,11 @@
 #include "VocBase/auth.h"
 #include "Actions/actions.h"
 
+#include "V8/JSLoader.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-globals.h"
+#include "V8/v8-utils.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -145,13 +150,17 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& path) {
+  // loop over all vocbases and check name and path
+  
+  // system vocbase
   if (name == string(_vocbase->_name)) {
     return false;
   }
   if (path == string(_vocbase->_path)) {
     return false;
   }
-
+  
+  // user vocbases
   std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();
   for (; i != _vocbases.end(); ++i) {
     TRI_vocbase_t* vocbase = i->second;
@@ -160,10 +169,58 @@ bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& 
     }
     if (path == string(vocbase->_path)) {
       return false;
-    }    
+    }
   }
   
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run version check
+/// @return bool             returns false if the version check fails
+////////////////////////////////////////////////////////////////////////////////
+
+bool VocbaseManager::runVersionCheck (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context) {
+  if (! _startupLoader) {
+    LOGGER_ERROR("Javascript start up loader not found.");
+    return false;
+  }
+  
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_vocbase_t* orig = (TRI_vocbase_t*) v8g->_vocbase;
+  v8g->_vocbase = vocbase;      
+      
+  v8::Handle<v8::Value> result = _startupLoader->executeGlobalScript(context, "server/version-check.js");
+ 
+  v8g->_vocbase = orig;
+  
+  return TRI_ObjectToBoolean(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize foxx
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context) {
+  TRI_vocbase_t* orig = 0;
+  {
+    v8::HandleScope scope;      
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+    orig = (TRI_vocbase_t*) v8g->_vocbase;
+    v8g->_vocbase = vocbase;      
+  }
+    
+  v8::HandleScope scope;      
+  TRI_ExecuteJavaScriptString(context,
+                              v8::String::New("require(\"internal\").initializeFoxx()"),
+                              v8::String::New("initialize foxx"),
+                              false);
+  {
+    v8::HandleScope scope;
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+    v8g->_vocbase = orig;
+  }  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
