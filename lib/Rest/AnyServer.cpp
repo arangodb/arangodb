@@ -486,6 +486,9 @@ int AnyServer::startupDaemon () {
   if (result != 0) {
     TRI_SetProcessTitle("arangodb [daemon]");
     WritePidFile(_pidFile, result);
+
+    // issue #549: this is used as the exit code
+    result = 0;
   }
 
   // child process

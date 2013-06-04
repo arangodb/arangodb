@@ -1,7 +1,7 @@
 v1.4
 ------
 
-* fixed usage of --temp-path in aranogd and arangosh
+* issue #550: Make AQL graph functions support key in addition to id
 
 * issue #526: Unable to escape when an errorneous command is entered into the js shell
 
@@ -12,8 +12,18 @@ v1.4
 * issue #512: Binded Parameters for LIMIT
 
 
-v1.3.1 (2013-XX-XX)
+v1.3.2 (2013-XX-XX)
 -------------------
+
+* issue #549: wrong return code with --daemon
+
+
+v1.3.1 (2013-05-24)
+-------------------
+
+* removed currently unused _ids collection
+
+* fixed usage of --temp-path in aranogd and arangosh
 
 * issue #540: suppress return of temporary internal variables in AQL
 
