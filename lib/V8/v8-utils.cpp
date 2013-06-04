@@ -348,7 +348,15 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 ///   (non-redirect) request.
 ///
 /// Up to 5 redirects will be followed. Any user-defined headers will only be
-/// sent for the first request. If no timeout is given, a default timeout of
+/// sent for the first request. If no timeout is given, a default timeout will
+/// be used.
+///
+/// If @FA{outfile} is specified, the result body will be saved in a file
+/// specified by @FA{outfile}. If @FA{outfile} already exists, an error will
+/// be thrown.
+///
+/// If @FA{outfile} is not specified, the result body will be returned in the
+/// @LIT{body} attribute of the result object.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
