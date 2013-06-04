@@ -1,6 +1,8 @@
 v1.4
 ------
 
+* issue #547: Javascript error in the web interface
+
 * issue #550: Make AQL graph functions support key in addition to id
 
 * issue #526: Unable to escape when an errorneous command is entered into the js shell
@@ -14,6 +16,8 @@ v1.4
 
 v1.3.2 (2013-XX-XX)
 -------------------
+
+* issue #545: AQL FILTER unnecessary (?) loop
 
 * issue #549: wrong return code with --daemon
 
