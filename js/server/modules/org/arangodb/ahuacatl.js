@@ -3033,7 +3033,7 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
 
 function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
   var searchDirection;
-
+  
   direction      = direction || "outbound";
   followCycles   = followCycles || false;
   minLength      = minLength || 0;
@@ -3140,6 +3140,10 @@ function TRAVERSAL_FILTER (config, vertex, edge, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, direction, params) {
+  if (startVertex.indexOf('/') === -1) {
+    startVertex = vertexCollection + '/' + startVertex;
+  }
+
   vertexCollection = COLLECTION(vertexCollection);
   edgeCollection   = COLLECTION(edgeCollection);
 
