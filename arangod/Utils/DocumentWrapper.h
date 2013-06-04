@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_UTILS_DOCUMENT_WRAPPER_HELPER_H
 #define TRIAGENS_UTILS_DOCUMENT_WRAPPER_HELPER_H 1
 
+#include "Logger/Logger.h"
 #include "BasicsC/json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-collection.h"
@@ -131,7 +132,7 @@ namespace triagens {
         TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
         if (b != 0 && b->_type == TRI_JSON_STRING)
         {
-          return string(b->_value._string.data, b->_value._string.length);
+          return string(b->_value._string.data, b->_value._string.length-1);
         }
 
         return defaultValue;
