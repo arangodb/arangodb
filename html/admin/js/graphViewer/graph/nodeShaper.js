@@ -460,6 +460,10 @@ function NodeShaper(parent, flags, idfunc) {
     return colourMapper.getList();
   }; 
   
+  self.setColourMappingListener = function(callback) {
+    colourMapper.setChangeListener(callback);
+  };
+  
 }
 
 NodeShaper.shapes = Object.freeze({
