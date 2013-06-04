@@ -37,6 +37,7 @@
 #include "VocBase/auth.h"
 #include "Actions/actions.h"
 
+#include "HttpServer/ApplicationEndpointServer.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -140,7 +141,7 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
   map<string, TRI_vocbase_s*>::iterator find = _vocbases.find(name);
   if (find != _vocbases.end()) {
     return find->second;
-  }
+  } 
   
   return 0;  
 }
@@ -224,6 +225,19 @@ void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase, v8::Handle<v8::Cont
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+bool VocbaseManager::addEndpoint (std::string const& name) {
+  
+  if (_endpointServer) {
+    return _endpointServer->addEndpoint(name);
+  }
+  
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief look vocbase by http request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -233,7 +247,7 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpR
   string prefix = (ci.serverPort > 0) 
           ? "tcp://" + ci.serverAddress + ":" + basics::StringUtils::itoa(ci.serverPort)
           : "unix:///localhost";
-  
+
   READ_LOCKER(_rwLock);
   map<string, TRI_vocbase_s*>::iterator find = _prefix2Vocbases.find(prefix);
   if (find != _prefix2Vocbases.end()) {

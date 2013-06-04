@@ -1199,7 +1199,7 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool handleEnpoint (TRI_doc_mptr_t const* document, 
-        TRI_primary_collection_t* primary, void* data) {
+        TRI_primary_collection_t* primary, void*) {
   
   DocumentWrapper doc(document, primary);
   
@@ -1215,9 +1215,7 @@ static bool handleEnpoint (TRI_doc_mptr_t const* document,
     return true;
   }
 
-  triagens::rest::ApplicationEndpointServer* applicationEndpointServer = 
-          (triagens::rest::ApplicationEndpointServer*) data;
-  applicationEndpointServer->addEndpoint(endpoint);
+  VocbaseManager::manager.addEndpoint(endpoint);
   
   return true;
 }
@@ -1230,6 +1228,8 @@ bool ArangoServer::loadEndpoints () {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
 
+  VocbaseManager::manager.setApplicationEndpointServer(_applicationEndpointServer);
+  
   collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_endpoints");
 
   if (collection == NULL) {
@@ -1248,13 +1248,87 @@ bool ArangoServer::loadEndpoints () {
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
     LOG_FATAL_AND_EXIT("collection '_endpoints' has an unknown collection type");
+  }  
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+    
+  TRI_DocumentIteratorPrimaryCollection(primary, 0, handleEnpoint);
+
+  // .............................................................................
+  // outside a read transaction
+  // .............................................................................
+
+  TRI_ReleaseCollectionVocBase(_vocbase, collection);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a tcp endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static bool handlePrefixMapping (TRI_doc_mptr_t const* document, 
+        TRI_primary_collection_t* primary, void* data) {
+  
+  DocumentWrapper doc(document, primary);
+  
+  if (!doc.isArrayDocument()) {
+    // wrong document type
+    return true;
+  }
+  
+  string endpoint = doc.getStringValue("endpoint", "");
+  if (endpoint == "") {
+    LOG_ERROR("Endpoint string not found!");
+    return true;
+  }
+
+  string database = doc.getStringValue("database", "");
+  if (database == "") {
+    LOG_ERROR("Database string not found!");
+    return true;
+  }
+
+  VocbaseManager::manager.addPrefixMapping(endpoint, database);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start server endpoints found in collection '_endpoints'
+////////////////////////////////////////////////////////////////////////////////
+
+bool ArangoServer::loadPrefixMappings () {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_prefixes");
+
+  if (collection == NULL) {
+    // collection '_prefixes' not found
+    return false;
+  }
+
+  TRI_UseCollectionVocBase(_vocbase, collection);
+
+  primary = collection->_collection;
+
+  if (primary == NULL) {
+    LOG_FATAL_AND_EXIT("collection '_prefixes' cannot be loaded");
+  }
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
+    TRI_ReleaseCollectionVocBase(_vocbase, collection);
+    LOG_FATAL_AND_EXIT("collection '_prefixes' has an unknown collection type");
   }
 
   // .............................................................................
   // inside a read transaction
   // .............................................................................
     
-  TRI_DocumentIteratorPrimaryCollection(primary, _applicationEndpointServer, handleEnpoint);
+  TRI_DocumentIteratorPrimaryCollection(primary, 0, handlePrefixMapping);
 
   // .............................................................................
   // outside a read transaction
@@ -1297,7 +1371,7 @@ void ArangoServer::openDatabases () {
     LOGGER_INFO("loaded system database ('" << _databasePath << "')");
     loadUserDatabases(&defaults);
     loadEndpoints();
-    VocbaseManager::manager.addPrefixMapping ("tcp://poll:9000", "userDatabase1");
+    loadPrefixMappings();
   }
   else {
     LOGGER_INFO("loaded database ('" << _databasePath << "')");    
