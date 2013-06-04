@@ -1,6 +1,8 @@
 v1.3.2 (2013-XX-XX)
 -------------------
 
+* issue #545: AQL FILTER unnecessary (?) loop
+
 * issue #549: wrong return code with --daemon
 
 
