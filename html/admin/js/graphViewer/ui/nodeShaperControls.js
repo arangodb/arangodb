@@ -47,9 +47,12 @@ function NodeShaperControls(list, shaper) {
       }
       var list = document.createElement("ul");
       colourDiv.appendChild(list);
-      _.each(mapping, function(els, col) {
-        var li = document.createElement("li");
+      _.each(mapping, function(obj, col) {
+        var li = document.createElement("li"),
+          els = obj.list,
+          fore = obj.front;
         li.style.backgroundColor = col;
+        li.style.color = fore;
         li.appendChild(document.createTextNode(els.join(", ")));
         list.appendChild(li);
       });

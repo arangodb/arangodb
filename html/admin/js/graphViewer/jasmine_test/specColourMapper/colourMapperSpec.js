@@ -125,8 +125,8 @@
       
       expect(_.keys(colorList).length).toEqual(3);
       _.each(_.values(colorList), function(v) {
-        expect(v).toEqual(jasmine.any(Array));
-        expect(v.length).toEqual(1);
+        expect(v.list).toEqual(jasmine.any(Array));
+        expect(v.list.length).toEqual(1);
       });
       
     });
