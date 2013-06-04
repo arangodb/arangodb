@@ -50,27 +50,28 @@
       list.id = "control_node_list";
       shaperUI = new NodeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
+      spyOn(shaper, 'getColourMapping').andCallFake(function() {
+        return {
+          "blue": ["bl", "ue"],
+          "green": ["gr", "een"]
+        };
+      });
       this.addMatchers({
+        toBeTag: function(name) {
+          var el = this.actual;
+          this.message = function() {
+            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
+          };
+          return el.tagName.toLowerCase() === name;
+        },
+        
         toConformToListCSS: function() {
           var li = this.actual,
             a = li.firstChild,
-            lbl = a.firstChild,
-            msg = "";
-          this.message = function() {
-            return "Expected " + msg;
-          };
-          if (li === undefined || li.tagName.toLowerCase() !== "li") {
-            msg = "first element to be a li";
-            return false;
-          }
-          if (a === undefined || a.tagName.toLowerCase() !== "a") {
-            msg = "first element to be a a";
-            return false;
-          }
-          if (lbl === undefined || lbl.tagName.toLowerCase() !== "label") {
-            msg = "first element to be a label";
-            return false;
-          }
+            lbl = a.firstChild;
+          expect(li).toBeTag("li");
+          expect(a).toBeTag("a");
+          expect(lbl).toBeTag("label");
           return true;
         }
       });
@@ -262,7 +263,6 @@
       
     });
     
-    
     it('should be able to add a switch colour on attribute control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticLabelAndColour();
@@ -288,7 +288,6 @@
       }, 2000, "The modal dialog should disappear.");
       
     });
-    
     
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
@@ -318,6 +317,25 @@
       expect($("#control_node_list #control_node_attributecolour").length).toEqual(1);
       expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
     });
+    
+    it('should be able to create a div containing the color <-> label mapping', function() {
+      var div = shaperUI.createColourMappingList(),
+        list = div.firstChild,
+        blue = list.children[0],
+        green = list.children[1];
+      expect(shaper.getColourMapping).wasCalled();
+      expect(div).toBeTag("div");
+      expect(list).toBeTag("ul");
+      expect(blue).toBeTag("li");
+      expect($(blue).text()).toEqual("bl, ue");
+      expect(blue.style.backgroundColor).toEqual("blue");
+      
+      expect(green).toBeTag("li");
+      expect($(green).text()).toEqual("gr, een");
+      expect(green.style.backgroundColor).toEqual("green");
+      
+    });
+    
   });
 
 }());

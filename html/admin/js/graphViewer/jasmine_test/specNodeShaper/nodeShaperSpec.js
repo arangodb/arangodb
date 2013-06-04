@@ -313,7 +313,7 @@
         
         colorList = shaper.getColourMapping();
         
-        expect(_.keys(colorList)).toEqual(3);
+        expect(_.keys(colorList).length).toEqual(3);
         _.each(_.values(colorList), function(v) {
           expect(v).toEqual(jasmine.any(Array));
           expect(v.length).toEqual(1);
