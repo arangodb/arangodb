@@ -21,8 +21,8 @@ var documentView = Backbone.View.extend({
     "click #documentTableID tr"         : "clicked",
     "click #editSecondRow"              : "editSecond",
     "keydown .sorting_1"                : "listenKey",
-    "keydown"                           : "listenGlobalKey",
-    "blur textarea"                     : "checkFocus"
+    "keydown #documentviewMain"         : "listenGlobalKey",
+    "blur #documentviewMain textarea"   : "checkFocus"
   },
 
   checkFocus: function(e) {
