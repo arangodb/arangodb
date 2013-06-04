@@ -736,6 +736,26 @@
         
       });
       
+      it('should add rounded corners', function() {
+        var nodes = [
+          {_id: 1},
+          {_id: 2}
+        ];
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.RECT
+          }
+        });
+        shaper.drawNodes(nodes);
+        
+        expect($("svg #1 rect").attr("rx")).toEqual("8");
+        expect($("svg #2 rect").attr("rx")).toEqual("8");
+        
+        expect($("svg #1 rect").attr("ry")).toEqual("8");
+        expect($("svg #2 rect").attr("ry")).toEqual("8");
+      });
+      
     });
     
     describe('configured for label', function () {
