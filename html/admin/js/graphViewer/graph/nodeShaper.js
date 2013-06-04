@@ -110,6 +110,7 @@ function NodeShaper(parent, flags, idfunc) {
     addColor = noop,
     addShape = noop,
     addLabel = noop,
+    addLabelColor = function() {return "black";},
     addCommunityShape = function(g) {
       g.append("polygon")
       .attr("points", "0,-25 -16,20 23,-10 -23,-10 16,20");
@@ -263,7 +264,7 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           var textN = node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("fill", "black") // Force a black color
+            .attr("fill", addLabelColor) // Force a black color
             .attr("stroke", "none"); // Make it readable
             textN.each(function(d) {
               var chunks = splitLabel(label(d));
@@ -283,7 +284,7 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           var textN = node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("fill", "black") // Force a black color
+            .attr("fill", addLabelColor) // Force a black color
             .attr("stroke", "none"); // Make it readable
           textN.each(function(d) {
             var chunks = splitLabel(d._data[label]);
@@ -320,6 +321,9 @@ function NodeShaper(parent, flags, idfunc) {
             g.attr("stroke", color.stroke);
             g.attr("fill", color.fill);
           };
+          addLabelColor = function (d) {
+            return color.stroke;
+          };
           break;
         case "expand":
           addColor = function (g) {
@@ -336,6 +340,9 @@ function NodeShaper(parent, flags, idfunc) {
               return color.collapsed;
             });
           };
+          addLabelColor = function (d) {
+            return "black";
+          };
           break;
         case "attribute":
           addColor = function (g) {
@@ -351,6 +358,13 @@ function NodeShaper(parent, flags, idfunc) {
                }
                return colourMapper.getColour(n._data[color.key]);
              });
+          };
+          addLabelColor = function (n) {
+            if (n._data === undefined) {
+              return colourMapper.getForegroundColour(undefined);
+            }
+            return colourMapper.getForegroundColour(n._data[color.key]);
+            
           };
           break; 
         default:

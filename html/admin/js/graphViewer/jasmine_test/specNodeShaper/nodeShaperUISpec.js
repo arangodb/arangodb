@@ -52,8 +52,14 @@
       spyOn(shaper, 'changeTo');
       spyOn(shaper, 'getColourMapping').andCallFake(function() {
         return {
-          "blue": ["bl", "ue"],
-          "green": ["gr", "een"]
+          blue: {
+            list: ["bl", "ue"],
+            front: "white"
+          },
+          green: {
+            list: ["gr", "een"],
+            front: "black"
+          }
         };
       });
       spyOn(shaper, "setColourMappingListener");
