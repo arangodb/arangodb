@@ -33,8 +33,62 @@ var modalDialogHelper = modalDialogHelper || {};
 (function dialogHelper() {
   "use strict";
   
-  modalDialogHelper.modalDivTemplate = function (title, idprefix, callback) {
+  var createDialogWithObject = function (title, buttonTitle, idprefix, object, callback) {
+    var tableToJSON,
+      callbackCapsule = function() {
+        callback(tableToJSON);
+      },
+      table =  modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule);
+      
+    tableToJSON = function() {
+      var result = {};
+        
+      _.each($("#" + idprefix + "table tr"), function(tr) {
+        var key = tr.children[0].children[0].value,
+          value = tr.children[1].children[0].value;
+        
+        result[key] = value;
+      });
+      return result;
+    };
+    _.each(object, function(value, key) {
+      var internalRegex = /^_(id|rev|key|from|to)/,
+        tr = document.createElement("tr"),
+        keyTh = document.createElement("th"),
+        valueTh = document.createElement("th"),
+        keyInput,
+        valueInput;
+        
+      if (internalRegex.test(key)) {
+        return;
+      }
+      table.appendChild(tr);
+      tr.appendChild(keyTh);
+      keyTh.className = "collectionTh";
+      keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.id = idprefix + key + "_key";
+      keyInput.value = key;
+      keyTh.appendChild(keyInput);
+      
+      tr.appendChild(valueTh);
+      valueTh.className = "collectionTh";
+      valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.id = idprefix + key + "_value";
+      valueInput.value = value;
+      valueTh.appendChild(valueInput);
+      }
+    );
+    $("#" + idprefix + "modal").modal('show');
+  };
+  
+  
+  modalDialogHelper.modalDivTemplate = function (title, buttonTitle, idprefix, callback) {
     // Create needed Elements
+    
+    buttonTitle = buttonTitle || "Switch";
+    
     var div = document.createElement("div"),
     headerDiv = document.createElement("div"),
     buttonDismiss = document.createElement("button"),
@@ -57,7 +111,7 @@ var modalDialogHelper = modalDialogHelper || {};
       document.body.removeChild(div);
     };
       
-    headerDiv.className = "modal_header";
+    headerDiv.className = "modal-header";
     
     buttonDismiss.className = "close";
     buttonDismiss.dataDismiss = "modal";
@@ -66,11 +120,11 @@ var modalDialogHelper = modalDialogHelper || {};
     
     header.appendChild(document.createTextNode(title));
     
-    bodyDiv.className = "modal_body";
+    bodyDiv.className = "modal-body";
     
     bodyTable.id = idprefix + "table";
     
-    footerDiv.className = "modal_footer";
+    footerDiv.className = "modal-footer";
     
     buttonCancel.id = idprefix + "cancel";
     buttonCancel.className = "btn btn-danger pull-left";
@@ -78,7 +132,7 @@ var modalDialogHelper = modalDialogHelper || {};
     
     buttonSubmit.id = idprefix + "submit";
     buttonSubmit.className = "btn btn-success pull-right";
-    buttonSubmit.appendChild(document.createTextNode("Switch"));
+    buttonSubmit.appendChild(document.createTextNode(buttonTitle));
     
     // Append in correct ordering
     div.appendChild(headerDiv);
@@ -111,7 +165,7 @@ var modalDialogHelper = modalDialogHelper || {};
   };
   
   modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
-    var table =  modalDialogHelper.modalDivTemplate(title, idprefix, callback);
+    var table =  modalDialogHelper.modalDivTemplate(title, null, idprefix, callback);
     
     _.each(objects, function(o) {
       var tr = document.createElement("tr"),
@@ -132,6 +186,25 @@ var modalDialogHelper = modalDialogHelper || {};
           input.id = idprefix + o.id;
           contentTh.appendChild(input);
           break;
+        case "checkbox":
+          input = document.createElement("input");
+          input.type = "checkbox";
+          input.id = idprefix + o.id;
+          contentTh.appendChild(input);
+          break;
+        case "list":
+          input = document.createElement("select");
+          input.id = idprefix + o.id;
+          contentTh.appendChild(input);
+          _.each(o.objects, function(entry) {
+            var option = document.createElement("option");
+            option.value = entry;
+            option.appendChild(
+              document.createTextNode(entry)
+            );
+            input.appendChild(option);
+          });
+          break;
         default:
           //Sorry unknown
           table.removeChild(tr);
@@ -142,47 +215,11 @@ var modalDialogHelper = modalDialogHelper || {};
   };
   
   modalDialogHelper.createModalEditDialog = function(title, idprefix, object, callback) {
-    var tableToJSON,
-      callbackCapsule = function() {
-        callback(tableToJSON);
-      },
-      table =  modalDialogHelper.modalDivTemplate(title, idprefix, callbackCapsule);
-      
-    tableToJSON = function() {
-      var result = {};
-      _.each($("#" + idprefix + "table tr"), function(tr) {
-        var key = tr.children[0].children[0].value,
-          value = tr.children[1].children[0].value;
-        result[key] = value;
-      });
-      return result;
-    };
-    _.each(object, function(value, key) {
-      var tr = document.createElement("tr"),
-      keyTh = document.createElement("th"),
-      valueTh = document.createElement("th"),
-      keyInput,
-      valueInput;
-      
-      table.appendChild(tr);
-      tr.appendChild(keyTh);
-      keyTh.className = "collectionTh";
-      keyInput = document.createElement("input");
-      keyInput.type = "text";
-      keyInput.id = idprefix + key + "_key";
-      keyInput.value = key;
-      keyTh.appendChild(keyInput);
-      
-      tr.appendChild(valueTh);
-      valueTh.className = "collectionTh";
-      valueInput = document.createElement("input");
-      valueInput.type = "text";
-      valueInput.id = idprefix + key + "_value";
-      valueInput.value = value;
-      valueTh.appendChild(valueInput);
-      }
-    );
-    $("#" + idprefix + "modal").modal('show');
+    createDialogWithObject(title, "Edit", idprefix, object, callback);
+  };
+  
+  modalDialogHelper.createModalCreateDialog = function(title, idprefix, object, callback) {
+    createDialogWithObject(title, "Create", idprefix, object, callback);
   };
   
 }());

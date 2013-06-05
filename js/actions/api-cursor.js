@@ -137,7 +137,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Executes a query and extract the result in a single go:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturnSingle}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturnSingle}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -157,7 +157,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Executes a query and extract part of the result:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorForLimitReturn}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturn}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -182,7 +182,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Missing body:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorMissingBody}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorMissingBody}
 ///     var url = "/_api/cursor";
 /// 
 ///     var response = logCurlRequest('POST', url, '');
@@ -194,7 +194,7 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// Unknown collection:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestCreateCursorUnknownCollection}
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
 ///     var body = '{ "query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }';
 /// 
@@ -235,7 +235,7 @@ function POST_api_cursor(req, res) {
    
   // error occurred
   if (cursor instanceof Error) {
-    actions.resultException(req, res, cursor);
+    actions.resultException(req, res, cursor, undefined, false);
     return;
   }
 
@@ -285,11 +285,27 @@ function POST_api_cursor(req, res) {
 ///
 /// Missing identifier
 ///
-/// @verbinclude api-cursor-missing-cursor-identifier
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorMissingCursorIdentifier}
+///     var url = "/_api/cursor";
+/// 
+///     var response = logCurlRequest('PUT', url, '');
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown identifier
 ///
-/// @verbinclude api-cursor-invalid-cursor-identifier
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorInvalidCursorIdentifier}
+///     var url = "/_api/cursor/123123";
+/// 
+///     var response = logCurlRequest('PUT', url, '');
+/// 
+///     assert(response.code === 400);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function PUT_api_cursor (req, res) {
@@ -404,7 +420,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });

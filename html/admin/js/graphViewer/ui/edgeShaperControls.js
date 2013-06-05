@@ -41,7 +41,7 @@ function EdgeShaperControls(list, shaper) {
     baseClass = "graph";
   
   this.addControlOpticShapeNone = function() {
-    var prefix = "control_none",
+    var prefix = "control_edge_none",
     idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "None", prefix, function() {
       shaper.changeTo({
@@ -53,7 +53,7 @@ function EdgeShaperControls(list, shaper) {
   };
   
   this.addControlOpticShapeArrow = function() {
-    var prefix = "control_arrow",
+    var prefix = "control_edge_arrow",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Arrow", prefix, function() {
       shaper.changeTo({
@@ -67,7 +67,7 @@ function EdgeShaperControls(list, shaper) {
 
     
   this.addControlOpticLabel = function() {
-    var prefix = "control_label",
+    var prefix = "control_edge_label",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
@@ -88,7 +88,7 @@ function EdgeShaperControls(list, shaper) {
   
   
   this.addControlOpticSingleColour = function() {
-    var prefix = "control_singlecolour",
+    var prefix = "control_edge_singlecolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Single Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Colour",
@@ -109,7 +109,7 @@ function EdgeShaperControls(list, shaper) {
   };
   
   this.addControlOpticAttributeColour = function() {
-    var prefix = "control_attributecolour",
+    var prefix = "control_edge_attributecolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Colour by Attribute", prefix, function() {
       modalDialogHelper.createModalDialog("Display colour by attribute",
@@ -130,7 +130,7 @@ function EdgeShaperControls(list, shaper) {
   };
   
   this.addControlOpticGradientColour = function() {
-    var prefix = "control_gradientcolour",
+    var prefix = "control_edge_gradientcolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Gradient Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Change colours for gradient",

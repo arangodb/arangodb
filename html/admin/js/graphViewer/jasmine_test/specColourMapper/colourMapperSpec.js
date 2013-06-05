@@ -1,8 +1,8 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global document */
-/*global $, d3*/
+/*global $, d3, _*/
 /*global ColourMapper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +116,34 @@
       expect(colours[0]).toEqual(cNew);
     });
     
+    it('should be able to return the colour mapping list', function() {
+      mapper.getColour("1");
+      mapper.getColour("2");
+      mapper.getColour("3");
+      
+      var colorList = mapper.getList();
+      
+      expect(_.keys(colorList).length).toEqual(3);
+      _.each(_.values(colorList), function(v) {
+        expect(v.list).toEqual(jasmine.any(Array));
+        expect(v.list.length).toEqual(1);
+      });
+      
+    });
+    
+    it('should be possible to add a change listener', function() {
+      var res = {},
+        correct = {},
+        listener = function(mapping) {
+          res = mapping;
+        };
+        
+      mapper.setChangeListener(listener);
+      mapper.getColour("1");
+      correct = mapper.getList();
+      
+      expect(res).toEqual(correct);
+    });
   });
   
 }());

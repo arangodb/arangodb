@@ -231,9 +231,13 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   assert(_socket.fileHandle > 0);
 
   do {
-    char buffer[READBUFFER_SIZE];
+    // reserve some memory for reading
+    if (stringBuffer.reserve(READBUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+      // out of memory
+      return false;
+    }
 
-    int lenRead = TRI_READ_SOCKET(_socket, buffer, READBUFFER_SIZE - 1, 0);
+    int lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred
@@ -245,7 +249,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
       break;
     }
 
-    stringBuffer.appendText(buffer, lenRead);
+    stringBuffer.increaseLength(lenRead);
   }
   while (readable());
 

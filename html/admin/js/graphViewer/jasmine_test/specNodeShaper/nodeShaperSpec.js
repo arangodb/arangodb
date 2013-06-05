@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -117,18 +117,19 @@
       expect(clicked[2]).toBeUndefined();
     });
 
-    it('should display circles by default', function() {
+    it('should have correct default values', function() {
       var node = [{_id: 1}],
         shaper = new NodeShaper(d3.select("svg"));
       shaper.drawNodes(node);
       expect($("svg .node")[0]).toBeDefined();
       expect($("svg .node").length).toEqual(1);
       expect($("svg #1")[0]).toBeDefined();
-      expect($("svg circle")[0]).toBeDefined();
-      expect($("svg circle").length).toEqual(1);
-      expect($("svg .node circle")[0]).toBeDefined();
-      expect($("svg .node circle").length).toEqual(1);
-      expect($("svg #1 circle")[0].attributes.r.value).toEqual("25");
+      expect($("svg rect")[0]).toBeDefined();
+      expect($("svg rect").length).toEqual(1);
+      expect($("svg .node rect")[0]).toBeDefined();
+      expect($("svg .node rect").length).toEqual(1);
+      expect($("svg #1 rect").attr("width")).toEqual("90");
+      expect($("svg #1 rect").attr("height")).toEqual("36");
     });
 
     describe('testing for colours', function() {
@@ -276,6 +277,92 @@
         expect(c3s).toEqual("#654321");
       });
       
+      it('should be able to receive the color <-> label mapping', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              label: "lbl2"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl3"
+            }
+          }, {
+            _id: 4,
+            _data: {
+              label: "lbl1"
+            }
+          }],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        colorList;
+        
+        shaper.drawNodes(nodes);
+        
+        colorList = shaper.getColourMapping();
+        
+        expect(_.keys(colorList).length).toEqual(3);
+        _.each(_.values(colorList), function(v) {
+          expect(v.list).toEqual(jasmine.any(Array));
+          expect(v.list.length).toEqual(1);
+        });
+      });
+      
+      it('should be possible to add a change listener for the mapping', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
+          }, {
+            _id: 2,
+            _data: {
+              label: "lbl2"
+            }
+          }, {
+            _id: 3,
+            _data: {
+              label: "lbl3"
+            }
+          }, {
+            _id: 4,
+            _data: {
+              label: "lbl1"
+            }
+          }],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        testee,
+        colorList;
+        shaper.setColourMappingListener(function(mapping) {
+          testee = mapping;
+        });
+        
+        shaper.drawNodes(nodes);
+        
+        colorList = shaper.getColourMapping();
+        
+        expect(testee).toEqual(colorList);
+      });
+      
     });
 
     describe('when nodes are already drawn', function() {
@@ -310,8 +397,8 @@
       });
       
       it('should be able to change display formats', function() {
-        expect($("svg circle").length).toEqual(3);
-        expect($("svg rect").length).toEqual(0);
+        expect($("svg circle").length).toEqual(0);
+        expect($("svg rect").length).toEqual(3);
         shaper.changeTo({shape: {type: NodeShaper.shapes.NONE}});
         expect($("svg circle").length).toEqual(0);
         expect($("svg rect").length).toEqual(0);
@@ -320,6 +407,9 @@
         expect($("svg rect").length).toEqual(3);
         shaper.changeTo({shape: {type: NodeShaper.shapes.NONE}});
         expect($("svg circle").length).toEqual(0);
+        expect($("svg rect").length).toEqual(0);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.CIRCLE}});
+        expect($("svg circle").length).toEqual(3);
         expect($("svg rect").length).toEqual(0);
       });
       
@@ -550,33 +640,48 @@
       });
       
       it('should be able to use a fixed size', function() {
-        shaper = new NodeShaper(d3.select("svg"),
-        {
-          shape: {
-            type: NodeShaper.shapes.RECT,
-            width: 15,
-            height: 10
-          }
-        });
         var nodes = [
           {_id: 1},
           {_id: 2},
           {_id: 3},
           {_id: 4},
           {_id: 5}
-        ];
-        shaper.drawNodes(nodes);
-        expect($("svg #1 rect")[0].attributes.width.value).toEqual("15");
-        expect($("svg #2 rect")[0].attributes.width.value).toEqual("15");
-        expect($("svg #3 rect")[0].attributes.width.value).toEqual("15");
-        expect($("svg #4 rect")[0].attributes.width.value).toEqual("15");
-        expect($("svg #5 rect")[0].attributes.width.value).toEqual("15");
+        ],
+        width = 15,
+        height = 10;
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.RECT,
+            width: width,
+            height: height
+          }
+        });
         
-        expect($("svg #1 rect")[0].attributes.height.value).toEqual("10");
-        expect($("svg #2 rect")[0].attributes.height.value).toEqual("10");
-        expect($("svg #3 rect")[0].attributes.height.value).toEqual("10");
-        expect($("svg #4 rect")[0].attributes.height.value).toEqual("10");
-        expect($("svg #5 rect")[0].attributes.height.value).toEqual("10");
+        shaper.drawNodes(nodes);
+        expect($("svg #1 rect").attr("width")).toEqual(String(width));
+        expect($("svg #2 rect").attr("width")).toEqual(String(width));
+        expect($("svg #3 rect").attr("width")).toEqual(String(width));
+        expect($("svg #4 rect").attr("width")).toEqual(String(width));
+        expect($("svg #5 rect").attr("width")).toEqual(String(width));
+        
+        expect($("svg #1 rect").attr("x")).toEqual(String(-(width / 2)));
+        expect($("svg #2 rect").attr("x")).toEqual(String(-(width / 2)));
+        expect($("svg #3 rect").attr("x")).toEqual(String(-(width / 2)));
+        expect($("svg #4 rect").attr("x")).toEqual(String(-(width / 2)));
+        expect($("svg #5 rect").attr("x")).toEqual(String(-(width / 2)));
+        
+        expect($("svg #1 rect").attr("height")).toEqual(String(height));
+        expect($("svg #2 rect").attr("height")).toEqual(String(height));
+        expect($("svg #3 rect").attr("height")).toEqual(String(height));
+        expect($("svg #4 rect").attr("height")).toEqual(String(height));
+        expect($("svg #5 rect").attr("height")).toEqual(String(height));
+        
+        expect($("svg #1 rect").attr("y")).toEqual(String(-(height / 2)));
+        expect($("svg #2 rect").attr("y")).toEqual(String(-(height / 2)));
+        expect($("svg #3 rect").attr("y")).toEqual(String(-(height / 2)));
+        expect($("svg #4 rect").attr("y")).toEqual(String(-(height / 2)));
+        expect($("svg #5 rect").attr("y")).toEqual(String(-(height / 2)));
         
       });
       
@@ -604,19 +709,53 @@
         });
         
         shaper.drawNodes(nodes);
-        expect($("svg #1 rect")[0].attributes.width.value).toEqual("11");
-        expect($("svg #2 rect")[0].attributes.width.value).toEqual("12");
-        expect($("svg #3 rect")[0].attributes.width.value).toEqual("13");
-        expect($("svg #4 rect")[0].attributes.width.value).toEqual("14");
-        expect($("svg #5 rect")[0].attributes.width.value).toEqual("15");
+        expect($("svg #1 rect").attr("width")).toEqual("11");
+        expect($("svg #2 rect").attr("width")).toEqual("12");
+        expect($("svg #3 rect").attr("width")).toEqual("13");
+        expect($("svg #4 rect").attr("width")).toEqual("14");
+        expect($("svg #5 rect").attr("width")).toEqual("15");
         
-        expect($("svg #1 rect")[0].attributes.height.value).toEqual("9");
-        expect($("svg #2 rect")[0].attributes.height.value).toEqual("8");
-        expect($("svg #3 rect")[0].attributes.height.value).toEqual("7");
-        expect($("svg #4 rect")[0].attributes.height.value).toEqual("6");
-        expect($("svg #5 rect")[0].attributes.height.value).toEqual("5");
+        expect($("svg #1 rect").attr("x")).toEqual(String(-(11 / 2)));
+        expect($("svg #2 rect").attr("x")).toEqual(String(-(12 / 2)));
+        expect($("svg #3 rect").attr("x")).toEqual(String(-(13 / 2)));
+        expect($("svg #4 rect").attr("x")).toEqual(String(-(14 / 2)));
+        expect($("svg #5 rect").attr("x")).toEqual(String(-(15 / 2)));
+        
+        
+        expect($("svg #1 rect").attr("height")).toEqual("9");
+        expect($("svg #2 rect").attr("height")).toEqual("8");
+        expect($("svg #3 rect").attr("height")).toEqual("7");
+        expect($("svg #4 rect").attr("height")).toEqual("6");
+        expect($("svg #5 rect").attr("height")).toEqual("5");
+        
+        expect($("svg #1 rect").attr("y")).toEqual(String(-(9 / 2)));
+        expect($("svg #2 rect").attr("y")).toEqual(String(-(8 / 2)));
+        expect($("svg #3 rect").attr("y")).toEqual(String(-(7 / 2)));
+        expect($("svg #4 rect").attr("y")).toEqual(String(-(6 / 2)));
+        expect($("svg #5 rect").attr("y")).toEqual(String(-(5 / 2)));
         
       });
+      
+      it('should add rounded corners', function() {
+        var nodes = [
+          {_id: 1},
+          {_id: 2}
+        ];
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.RECT
+          }
+        });
+        shaper.drawNodes(nodes);
+        
+        expect($("svg #1 rect").attr("rx")).toEqual("8");
+        expect($("svg #2 rect").attr("rx")).toEqual("8");
+        
+        expect($("svg #1 rect").attr("ry")).toEqual("8");
+        expect($("svg #2 rect").attr("ry")).toEqual("8");
+      });
+      
     });
     
     describe('configured for label', function () {
@@ -644,6 +783,20 @@
         expect($("svg .node text")[0]).toBeDefined();
         expect($("svg .node text").length).toEqual(1);
         expect($("svg .node text")[0].textContent).toEqual("MyLabel");
+      });
+
+      it('should set up the text element correctly', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            "label": "MyLabel"
+          }
+        }],
+        textEl;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        expect(textEl.attr("fill")).toEqual("#8AA051");
+        expect(textEl.attr("stroke")).toEqual("none");
       });
 
       it('should ignore other attributes', function () {
@@ -734,6 +887,45 @@
         expect($("svg .node text").length).toEqual(1);
         expect($("svg .node text")[0].textContent).toEqual("test");
         
+      });
+
+      it('should automatically line-break long multi-word labels', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "Label with many words"
+          }
+        }],
+        textEl,
+        spans;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        spans = $("tspan", textEl);
+        
+        expect($(spans.get(0)).text()).toEqual("Label with");
+        expect($(spans.get(0)).attr("x")).toEqual("0");
+        expect($(spans.get(0)).attr("dy")).toEqual("-4");
+        
+        expect($(spans.get(1)).text()).toEqual("many words");
+        expect($(spans.get(1)).attr("x")).toEqual("0");
+        expect($(spans.get(1)).attr("dy")).toEqual("16");
+      });
+      
+      it('should automatically cut labels with more then 20 characters', function() {
+        var node = [{
+          _id: 1,
+          _data: {
+            label: "The quick brown foxx is jumping lazy over the fence"
+          }
+        }],
+        textEl,
+        spans;
+        shaper.drawNodes(node);
+        textEl = $("svg .node text");
+        spans = $("tspan", textEl);
+        
+        expect($(spans.get(0)).text()).toEqual("The quick");
+        expect($(spans.get(1)).text()).toEqual("brown foxx...");
       });
 
     });
@@ -987,6 +1179,76 @@
         });
         expect(n.attr("transform")).toEqual("translate(10,10)scale(1)");
       });
+    });
+    
+    describe('testing community nodes', function() {
+      var shaper;
+      
+      beforeEach(function() {
+        shaper = new NodeShaper(d3.select("svg"));
+      });
+      
+      it('should render community nodes', function() {
+        var nodes = helper.createSimpleNodes([0, 1, 2]),
+          commNode = {
+            _id: "*community_42",
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          };
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        expect($("svg .node").length).toEqual(4);
+        expect($("svg #\\*community_42")[0]).toBeDefined();
+      });
+      
+      it('should render communtiy nodes as stars', function() {
+        var nodes = helper.createSimpleNodes([0, 1, 2]),
+          commNode = {
+            _id: "*community_42",
+            _size: 4,
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          star;
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        expect($("svg .communitynode").length).toEqual(1);
+        expect($("svg #\\*community_42")[0]).toBeDefined();
+        star = $("svg #\\*community_42 polygon");
+        expect(star.length).toEqual(1);
+        expect(star.attr("points")).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
+      });
+      
+      it('should print the size of the capsulated community', function() {
+        var nodes = helper.createSimpleNodes([0, 1, 2]),
+          commNode = {
+            _id: "*community_42",
+            _size: 4,
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          text;
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        text = $("svg #\\*community_42 text")[0].textContent;
+        expect(text).toEqual("4");
+      });
+      
     });
 
   });

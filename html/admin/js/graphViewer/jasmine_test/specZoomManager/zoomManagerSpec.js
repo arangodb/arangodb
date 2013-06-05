@@ -214,7 +214,7 @@
           fontMax = 16;
           fontMin = 6;
           radMax = 25;
-          radMin = 1;
+          radMin = 4;
           distRBase = 100;
           minScale = radMin / radMax;
           toggleScale = fontMin / fontMax;

@@ -373,24 +373,6 @@
         return true;
     });
 
-    // set up the collection _ids
-    addTask("setupIds", "setup _ids collection", function () {
-      return createSystemCollection("_ids", { waitForSync : false });
-    });
-    
-    // create a cap constraint for _ids
-    addTask("ensureIdsCap", "ensureCapConstraint for _ids collection", function () {
-      var ids = getCollection("_ids");
-
-      if (! ids) {
-        return false;
-      }
-
-      ids.ensureCapConstraint(50);
-
-      return true;
-    });
-
     // set up the collection _trx
     addTask("setupTrx", "setup _trx collection", function () {
       return createSystemCollection("_trx", { waitForSync : false });

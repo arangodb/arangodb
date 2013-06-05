@@ -49,7 +49,7 @@
       layouter = new ForceLayouter(config);
       list = document.createElement("ul");
       document.body.appendChild(list);
-      list.id = "control_list";
+      list.id = "control_layout_list";
       layouterUI = new LayouterControls(list, layouter);
       spyOn(layouter, 'changeTo');
       this.addMatchers({
@@ -90,15 +90,15 @@
       runs(function() {
         layouterUI.addControlGravity();
       
-        expect($("#control_list #control_gravity").length).toEqual(1);
-        expect($("#control_list #control_gravity")[0]).toConformToListCSS();
+        expect($("#control_layout_list #control_layout_gravity").length).toEqual(1);
+        expect($("#control_layout_list #control_layout_gravity")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_gravity");
+        helper.simulateMouseEvent("click", "control_layout_gravity");
         
-        expect($("#control_gravity_modal").length).toEqual(1);
+        expect($("#control_layout_gravity_modal").length).toEqual(1);
         
-        $("#control_gravity_value").attr("value", 42);
-        helper.simulateMouseEvent("click", "control_gravity_submit");
+        $("#control_layout_gravity_value").attr("value", 42);
+        helper.simulateMouseEvent("click", "control_layout_gravity_submit");
       
         expect(layouter.changeTo).toHaveBeenCalledWith({
           gravity: "42"
@@ -107,7 +107,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_gravity_modal").length === 0;
+        return $("#control_layout_gravity_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");    
     });
     
@@ -115,15 +115,15 @@
       runs(function() {
         layouterUI.addControlDistance();
       
-        expect($("#control_list #control_distance").length).toEqual(1);
-        expect($("#control_list #control_distance")[0]).toConformToListCSS();
+        expect($("#control_layout_list #control_layout_distance").length).toEqual(1);
+        expect($("#control_layout_list #control_layout_distance")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_distance");
+        helper.simulateMouseEvent("click", "control_layout_distance");
         
-        expect($("#control_distance_modal").length).toEqual(1);
+        expect($("#control_layout_distance_modal").length).toEqual(1);
         
-        $("#control_distance_value").attr("value", 42);
-        helper.simulateMouseEvent("click", "control_distance_submit");
+        $("#control_layout_distance_value").attr("value", 42);
+        helper.simulateMouseEvent("click", "control_layout_distance_submit");
       
         expect(layouter.changeTo).toHaveBeenCalledWith({
           distance: "42"
@@ -132,7 +132,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_distance_modal").length === 0;
+        return $("#control_layout_distance_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");    
     });
     
@@ -140,15 +140,15 @@
       runs(function() {
         layouterUI.addControlCharge();
       
-        expect($("#control_list #control_charge").length).toEqual(1);
-        expect($("#control_list #control_charge")[0]).toConformToListCSS();
+        expect($("#control_layout_list #control_layout_charge").length).toEqual(1);
+        expect($("#control_layout_list #control_layout_charge")[0]).toConformToListCSS();
       
-        helper.simulateMouseEvent("click", "control_charge");
+        helper.simulateMouseEvent("click", "control_layout_charge");
         
-        expect($("#control_charge_modal").length).toEqual(1);
+        expect($("#control_layout_charge_modal").length).toEqual(1);
         
-        $("#control_charge_value").attr("value", 42);
-        helper.simulateMouseEvent("click", "control_charge_submit");
+        $("#control_layout_charge_value").attr("value", 42);
+        helper.simulateMouseEvent("click", "control_layout_charge_submit");
       
         expect(layouter.changeTo).toHaveBeenCalledWith({
           charge: "42"
@@ -157,16 +157,16 @@
       });
       
       waitsFor(function() {
-        return $("#control_charge_modal").length === 0;
+        return $("#control_layout_charge_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");    
     });
     
     it('should be able to add all controls to the list', function () {
       layouterUI.addAll();
       
-      expect($("#control_list #control_gravity").length).toEqual(1);
-      expect($("#control_list #control_distance").length).toEqual(1);
-      expect($("#control_list #control_charge").length).toEqual(1);
+      expect($("#control_layout_list #control_layout_gravity").length).toEqual(1);
+      expect($("#control_layout_list #control_layout_distance").length).toEqual(1);
+      expect($("#control_layout_list #control_layout_charge").length).toEqual(1);
       
     });
   });

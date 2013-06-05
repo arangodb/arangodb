@@ -67,8 +67,8 @@ function EventLibrary() {
     if (config.startCallback === undefined) {
       throw "A callback to the Start-method has to be defined";
     }
-    if (config.loadNode === undefined) {
-      throw "A callback to load a node has to be defined";
+    if (config.adapter === undefined) {
+      throw "An adapter to load data has to be defined";
     }
     if (config.reshapeNodes === undefined) {
       throw "A callback to reshape nodes has to be defined";
@@ -81,7 +81,9 @@ function EventLibrary() {
     var edges = config.edges,
     nodes = config.nodes,
     startCallback = config.startCallback,
-    loadNode = config.loadNode,
+    adapter = config.adapter,
+    loadNode = adapter.loadNode,
+    expandCom = adapter.expandCommunity,
     reshapeNodes = config.reshapeNodes,
     removeNode = function (node) {
       var i;
@@ -126,8 +128,12 @@ function EventLibrary() {
     },
   
     expandNode = function(n) {
-      n._expanded = true;
-      loadNode(n._id, startCallback);
+      if (/^\*community/.test(n._id)) {
+        expandCom(n, startCallback);
+      } else {
+        n._expanded = true;
+        loadNode(n._id, startCallback);
+      }
     };
   
     return function(n) {

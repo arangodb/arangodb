@@ -85,7 +85,7 @@ bool RestDocumentHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestDocumentHandler::queue () {
+string const& RestDocumentHandler::queue () const {
   static string const client = "STANDARD";
 
   return client;
@@ -510,7 +510,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// Use a document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReadDocument}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocument}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -527,7 +527,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// Use a document handle and an etag:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentIfNoneMatch}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentIfNoneMatch}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -545,7 +545,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// Unknown document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentUnknownHandle}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentUnknownHandle}
 ///     var url = "/_api/document/products/unknownhandle";
 /// 
 ///     var response = logCurlRequest('GET', url);
@@ -666,7 +666,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// Returns a collection.
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAll}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -685,7 +685,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// Collection does not exist.
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAllCollectionDoesNotExist}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAllCollectionDoesNotExist}
 ///     var cn = "doesnotexist";
 ///     db._drop(cn);
 ///     var url = "/_api/document/?collection=" + cn;
@@ -811,7 +811,7 @@ bool RestDocumentHandler::readAllDocuments () {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentHead}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentHead}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -962,7 +962,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Using document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocument}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocument}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -979,7 +979,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Unknown document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentUnknownHandle}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentUnknownHandle}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -997,7 +997,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Produce a revision conflict:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOther}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentIfMatchOther}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -1016,7 +1016,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Last write wins:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWriteWins}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentIfMatchOtherLastWriteWins}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -1034,7 +1034,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Alternative to header field:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentRevOther}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentRevOther}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -1151,7 +1151,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// patches an existing document with new content.
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestPatchDocument}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPatchDocument}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -1392,7 +1392,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ///
 /// Using document handle:
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDELETEDocument}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocument}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });

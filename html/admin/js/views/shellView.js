@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true, es5:true  */
+/*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
+
 var shellView = Backbone.View.extend({
   el: '#content',
   events: {
@@ -28,7 +31,7 @@ var shellView = Backbone.View.extend({
   },
   renderEditor: function () {
     var editor = ace.edit("editor");
-    editor.resize()
+    editor.resize();
   },
   editor: function () {
     var editor = ace.edit("editor");
@@ -93,13 +96,13 @@ var shellView = Backbone.View.extend({
       jqconsole.Prompt(true, handler, function(command) {
         // Continue line if can't compile the command.
         try {
-          Function(command);
-        } catch (e) {
+          var test = new Function(command);
+        }
+        catch (e) {
           if (/[\[\{\(]$/.test(command)) {
             return 1;
-          } else {
-            return 0;
           }
+            return 0;
           }
           return false;
         });

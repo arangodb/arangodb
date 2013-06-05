@@ -1,5 +1,5 @@
 {
-  "apiVersion":"1.3",
+  "apiVersion":"1.4",
   "swaggerVersion":"1.1",
   "apis":[    {
       "path": "api-docs/document",
@@ -8,6 +8,10 @@
     {
       "path": "api-docs/edges",
       "description": "Interface für Edges"
+    },
+    {
+      "path": "api-docs/edge",
+      "description": "Interface für Edge"
     },
     {
       "path": "api-docs/collection",

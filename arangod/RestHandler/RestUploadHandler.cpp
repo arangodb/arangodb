@@ -87,7 +87,7 @@ bool RestUploadHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestUploadHandler::queue () {
+string const& RestUploadHandler::queue () const {
   static string const client = "STANDARD";
 
   return client;

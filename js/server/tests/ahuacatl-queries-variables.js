@@ -343,6 +343,63 @@ function ahuacatlQueryVariablesTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect and return (should omit any temporary variables)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemporaryVariables1 : function () {
+      var data = [ 
+        { name: "baz" }, 
+        { name: "bar" } 
+      ];
+      var expected = [ 
+        { "criteria" : "bar", "g" : [ { "y" : { "test" : "test", "name" : "bar" } } ] }, 
+        { "criteria" : "baz", "g" : [ { "y" : { "test" : "test", "name" : "baz" } } ] } 
+      ];
+
+      var query = "FOR y IN (FOR x IN " + JSON.stringify(data) + " LET object = (FOR a IN [ '1', '2' ] RETURN a) RETURN { test: \"test\", name: x.name }) COLLECT criteria = y.name INTO g LIMIT 10 RETURN { criteria: criteria, g: g }";
+      
+      var actual = getQueryResults("LET result = (" + query + ") LIMIT 10 RETURN result");
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults(query);
+      assertEqual(expected, actual);
+     
+      // omit creating sub-objects 
+      query = "FOR y IN (FOR x IN " + JSON.stringify(data) + " RETURN { test: \"test\", name: x.name }) COLLECT criteria = y.name INTO g LIMIT 10 RETURN { criteria: criteria, g: g }";
+      
+      actual = getQueryResults("LET result = (" + query + ") LIMIT 10 RETURN result");
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults(query);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect and return (should omit any temporary variables)
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemporaryVariables2 : function () {
+      var data = [ 
+        { name: "baz", _id: "id1" }, 
+        { name: "bar", _id: "id2" }, 
+        { name: "foo", _id: "id3" } 
+      ];
+      var expected = [ 
+        { "criteria" : "yid3", "g" : [ { "y" : { "x" : { "name" : "foo", "_id" : "id3" } } } ] }, 
+        { "criteria" : "yid2", "g" : [ { "y" : { "x" : { "name" : "bar", "_id" : "id2" } } } ] }, 
+        { "criteria" : "yid1", "g" : [ { "y" : { "x" : { "name" : "baz", "_id" : "id1" } } } ] }
+      ];
+
+      var query = "FOR y IN (FOR x IN " + JSON.stringify(data) + " RETURN { x: x }) COLLECT criteria = CONCAT(\"y\", y.x._id) INTO g SORT MAX(g[*].y.x._id) DESC LIMIT 10 RETURN { criteria: criteria, g: g }";
+      
+      var actual = getQueryResults("LET result = (" + query + ") LIMIT 10 RETURN result");
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults(query);
+      assertEqual(expected, actual);
     }
 
   };

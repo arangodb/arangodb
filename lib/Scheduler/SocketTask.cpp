@@ -67,7 +67,6 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     ownBuffer(true),
     writeLength(0) {
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
-  tmpReadBuffer = new char[READ_BLOCK_SIZE];
 
   ConnectionStatisticsAgent::acquire();
   ConnectionStatisticsAgentSetStart(this);
@@ -101,8 +100,6 @@ SocketTask::~SocketTask () {
 #endif
 
   delete _readBuffer;
-
-  delete[] tmpReadBuffer;
 
   ConnectionStatisticsAgentSetEnd(this);
   ConnectionStatisticsAgent::release();
@@ -151,12 +148,19 @@ void SocketTask::setKeepAliveTimeout (double timeout) {
 bool SocketTask::fillReadBuffer (bool& closed) {
   closed = false;
 
+  // reserve some memory for reading
+  if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+    // out of memory
+    LOGGER_TRACE("out of memory");
 
-  int nr = TRI_READ_SOCKET(_commSocket, tmpReadBuffer, READ_BLOCK_SIZE, 0);
+    return false;
+  }
+
+  int nr = TRI_READ_SOCKET(_commSocket, _readBuffer->end(), READ_BLOCK_SIZE, 0);
 
 
   if (nr > 0) {
-    _readBuffer->appendText(tmpReadBuffer, nr);
+    _readBuffer->increaseLength(nr);
     return true;
   }
   else if (nr == 0) {

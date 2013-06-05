@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, forin: true */
+/*global require, exports, Backbone, EJS, $, window, arangoHelper, value2html */
+
 var documentView = Backbone.View.extend({
   el: '#content',
   table: '#documentTableID',
@@ -18,8 +21,8 @@ var documentView = Backbone.View.extend({
     "click #documentTableID tr"         : "clicked",
     "click #editSecondRow"              : "editSecond",
     "keydown .sorting_1"                : "listenKey",
-    "keydown"                           : "listenGlobalKey",
-    "blur textarea"                     : "checkFocus",
+    "keydown #documentviewMain"         : "listenGlobalKey",
+    "blur #documentviewMain textarea"   : "checkFocus"
   },
 
   checkFocus: function(e) {
@@ -52,22 +55,19 @@ var documentView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/documentView.ejs'}),
 
   typeCheck: function (type) {
+    var result;
     if (type === 'edge') {
-      var result = window.arangoDocumentStore.getEdge(this.colid, this.docid);
+      result = window.arangoDocumentStore.getEdge(this.colid, this.docid);
       if (result === true) {
         this.initTable();
         this.drawTable();
-      }
-      else if (result === false) {
       }
     }
     else if (type === 'document') {
-      var result = window.arangoDocumentStore.getDocument(this.colid, this.docid);
+      result = window.arangoDocumentStore.getDocument(this.colid, this.docid);
       if (result === true) {
         this.initTable();
         this.drawTable();
-      }
-      else if (result === false) {
       }
     }
   },
@@ -103,10 +103,11 @@ var documentView = Backbone.View.extend({
     window.location.hash = window.location.hash + "/source";
   },
   saveDocument: function () {
+    var model, result;
     if (this.type === 'document') {
-      var model = window.arangoDocumentStore.models[0].attributes;
+      model = window.arangoDocumentStore.models[0].attributes;
       model = JSON.stringify(model);
-      var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
+      result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Document saved');
         $('#addRow').removeClass('disabledBtn');
@@ -117,9 +118,9 @@ var documentView = Backbone.View.extend({
       }
     }
     else if (this.type === 'edge') {
-      var model = window.arangoDocumentStore.models[0].attributes;
+      model = window.arangoDocumentStore.models[0].attributes;
       model = JSON.stringify(model);
-      var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
+      result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Edge saved');
         $('#addRow').removeClass('disabledBtn');
@@ -150,7 +151,8 @@ var documentView = Backbone.View.extend({
       '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
-      '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="img/plus_icon.png"></button>'
+      '<button class="enabled" id="addRow"><img id="addDocumentLine"'+
+      'class="plusIcon" src="img/plus_icon.png"></button>'
     ]);
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
@@ -171,7 +173,8 @@ var documentView = Backbone.View.extend({
             self.value2html(value),
             JSON.stringify(value),
             '<i class="icon-edit" id="editSecondRow"></i>',
-            '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png" width="16" height="16"></button>'
+            '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
+            'width="16" height="16"></button>'
         ]);
       }
     });
@@ -196,7 +199,8 @@ var documentView = Backbone.View.extend({
         this.value2html("editme"),
         JSON.stringify("editme"),
         '<i class="icon-edit" id="editSecondRow"></i>',
-        '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png" width="16" height="16"></button>'
+        '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
+        'width="16" height="16"></button>'
       ]
     );
     this.makeEditable();
@@ -241,7 +245,7 @@ var documentView = Backbone.View.extend({
   value2html: function (value, isReadOnly) {
     var self = this;
     var typify = function (value) {
-      var checked = typeof(value);
+      var checked = typeof value;
       switch(checked) {
         case 'number':
           return ("<a class=\"sh_number\">" + value + "</a>");
@@ -253,21 +257,21 @@ var documentView = Backbone.View.extend({
           if (value instanceof Array) {
           return ("<a class=\"sh_array\">" + self.escaped(JSON.stringify(value)) + "</a>");
         }
-        else {
-          return ("<a class=\"sh_object\">"+ self.escaped(JSON.stringify(value)) + "</a>");
-        }
+        return ("<a class=\"sh_object\">"+ self.escaped(JSON.stringify(value)) + "</a>");
       }
     };
     return (isReadOnly ? "(read-only) " : "") + typify(value);
   },
 
   escaped: function (value) {
-    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   },
 
   updateLocalDocumentStorage: function () {
     var data = $(this.table).dataTable().fnGetData();
     var result = {};
+    var row;
 
     for (row in data) {
       //Exclude "add-collection" row
@@ -303,47 +307,43 @@ var documentView = Backbone.View.extend({
     });
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
-      if (aPos[1] == 0) {
-          documentEditTable.fnUpdate(self.escaped(value), aPos[0], aPos[1]);
-          self.updateLocalDocumentStorage();
-          return value;
+      if (aPos[1] === 0) {
+        documentEditTable.fnUpdate(self.escaped(value), aPos[0], aPos[1]);
+        self.updateLocalDocumentStorage();
+        return value;
       }
-      if (aPos[1] == 2) {
+      if (aPos[1] === 2) {
         var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
         var test = self.getTypedValue(value);
-        if (String(value) == String(oldContent)) {
+        if (String(value) === String(oldContent)) {
           // no change
           return self.value2html(oldContent);
         }
-        else {
-          // change update hidden row
-          documentEditTable.fnUpdate(JSON.stringify(test), aPos[0], aPos[1] + 1);
-          self.updateLocalDocumentStorage();
-          // return visible row
-          return self.value2html(test);
-        }
+        // change update hidden row
+        documentEditTable.fnUpdate(JSON.stringify(test), aPos[0], aPos[1] + 1);
+        self.updateLocalDocumentStorage();
+        // return visible row
+        return self.value2html(test);
       }
     },{
       data: function() {
-        $(".btn-success").click()
+        $(".btn-success").click();
         var aPos = documentEditTable.fnGetPosition(this);
         var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
-        if (aPos[1] == 0) {
+        if (aPos[1] === 0) {
           //check if this row was newly created
           if (value === self.currentKey) {
             return value;
           }
           return value;
         }
-        if (aPos[1] == 2) {
+        if (aPos[1] === 2) {
           var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
-          if (typeof(oldContent) == 'object') {
+          if (typeof oldContent === 'object') {
             //grep hidden row and paste in visible row
             return value2html(oldContent);
           }
-          else {
-            return oldContent;
-          }
+          return oldContent;
         }
       },
       width: "none", // if not set, each row will get bigger & bigger (Safari & Firefox)
@@ -364,7 +364,7 @@ var documentView = Backbone.View.extend({
       var currentKey2 = window.documentView.currentKey;
       var data = $('#documentTableID').dataTable().fnGetData();
       $.each(data, function(key, val) {
-        if (val[0] == currentKey2) {
+        if (val[0] === currentKey2) {
           $('#documentTableID').dataTable().fnDeleteRow(key);
           $('#addRow').removeClass('disabledBtn');
         }
@@ -381,10 +381,10 @@ var documentView = Backbone.View.extend({
       var data = $('#documentTableID').dataTable().fnGetData();
 
       if (toCheck === '') {
-          $(td).addClass('validateError');
-          arangoHelper.arangoNotification("Key is empty!");
-          returnval = false;
-          return returnval;
+        $(td).addClass('validateError');
+        arangoHelper.arangoNotification("Key is empty!");
+        returnval = false;
+        return returnval;
       }
 
       $.each(data, function(key, val) {
@@ -395,23 +395,21 @@ var documentView = Backbone.View.extend({
         }
       });
     }
-    else if ($(td).hasClass('rightCell') === true) {
-    }
     return returnval;
   },
   getTypedValue: function (value) {
     value = value.replace(/(^\s+|\s+$)/g, '');
-    if (value == 'true') {
+    if (value === 'true') {
       return true;
     }
-    if (value == 'false') {
+    if (value === 'false') {
       return false;
     }
-    if (value == 'null') {
+    if (value === 'null') {
       return null;
     }
     if (value.match(/^-?((\d+)?\.)?\d+$/)) {
-      // TODO: support exp notation
+      //support exp notation
       return parseFloat(value);
     }
 
@@ -422,8 +420,8 @@ var documentView = Backbone.View.extend({
         // value is an array
         return test;
       }
-      if (typeof(test) == 'object') {
-        // value is an object 
+      if (typeof test === 'object') {
+        // value is an object
         return test;
       }
     }
@@ -431,10 +429,12 @@ var documentView = Backbone.View.extend({
     }
 
     // fallback: value is a string
-    value = value + '';
+    value = String(value);
 
-    if (value !== '' && (value.substr(0, 1) != '"' || value.substr(-1) != '"')) {
-      arangoHelper.arangoNotification('You have entered an invalid string value. Please review and adjust it.');
+    if (value !== '' && (value.substr(0, 1) !== '"' || value.substr(-1) !== '"')) {
+      arangoHelper.arangoNotification(
+        'You have entered an invalid string value. Please review and adjust it.'
+      );
       throw "error";
     }
 
@@ -442,7 +442,9 @@ var documentView = Backbone.View.extend({
       value = JSON.parse(value);
     }
     catch (e) {
-      arangoHelper.arangoNotification('You have entered an invalid string value. Please review and adjust it.');
+      arangoHelper.arangoNotification(
+        'You have entered an invalid string value. Please review and adjust it.'
+      );
       throw e;
     }
     return value;

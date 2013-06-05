@@ -235,18 +235,14 @@ static void MoveHeader (TRI_headers_t* h,
     headers->_begin = header;
   }
   else if (headers->_begin == header) {
-    if (header->_next != NULL) {
-      headers->_begin = header->_next;
-    }
+    headers->_begin = header->_next;
   }
 
   if (old->_next == NULL) {
     headers->_end = header;
   }
   else if (headers->_end == header) {
-    if (header->_prev != NULL) {
-      headers->_end = header->_prev;
-    }
+    headers->_end = header->_prev;
   }
 
   if (header->_prev != NULL) {

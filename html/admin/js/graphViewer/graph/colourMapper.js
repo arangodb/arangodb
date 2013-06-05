@@ -32,44 +32,92 @@ function ColourMapper() {
   
   var mapCreated = false,
   mapping = {},
+  reverseMapping = {},
   colours = [],
+  listener,
+  self = this,
   nextColour = 0;
   
-  colours.push("navy");
-  colours.push("green");
-  colours.push("gold");
-  colours.push("red");
-  colours.push("saddlebrown");
-  colours.push("skyblue");
-  colours.push("olive");
-  colours.push("deeppink");
-  colours.push("orange");
-  colours.push("silver");
-  colours.push("blue");
-  colours.push("yellowgreen");
-  colours.push("firebrick");
-  colours.push("rosybrown");
-  colours.push("hotpink");
-  colours.push("purple");
-  colours.push("cyan");
-  colours.push("teal");
-  colours.push("peru");
-  colours.push("maroon");
+  colours.push({back: "navy", front: "white"});
+  colours.push({back: "green", front: "white"});
+  colours.push({back: "gold", front: "black"});
+  colours.push({back: "red", front: "black"});
+  colours.push({back: "saddlebrown", front: "white"});
+  colours.push({back: "skyblue", front: "black"});
+  colours.push({back: "olive", front: "black"});
+  colours.push({back: "deeppink", front: "black"});
+  colours.push({back: "orange", front: "black"});
+  colours.push({back: "silver", front: "black"});
+  colours.push({back: "blue", front: "white"});
+  colours.push({back: "yellowgreen", front: "black"});
+  colours.push({back: "firebrick", front: "black"});
+  colours.push({back: "rosybrown", front: "black"});
+  colours.push({back: "hotpink", front: "black"});
+  colours.push({back: "purple", front: "white"});
+  colours.push({back: "cyan", front: "black"});
+  colours.push({back: "teal", front: "black"});
+  colours.push({back: "peru", front: "black"});
+  colours.push({back: "maroon", front: "white"});
   
   this.getColour = function(value) {
     if (mapping[value] === undefined) {
       mapping[value] = colours[nextColour];
+      if (reverseMapping[colours[nextColour].back] === undefined) {
+        reverseMapping[colours[nextColour].back] = {
+          front: colours[nextColour].front,
+          list: []
+        };
+      }
+      reverseMapping[colours[nextColour].back].list.push(value);
       nextColour++;
       if (nextColour === colours.length) {
         nextColour = 0;
       }
     }
-    return mapping[value];
+    if (listener !== undefined) {
+      listener(self.getList());
+    }
+    return mapping[value].back;
   };
+
+  this.getForegroundColour = function(value) {
+    if (mapping[value] === undefined) {
+      mapping[value] = colours[nextColour];
+      if (reverseMapping[colours[nextColour].back] === undefined) {
+        reverseMapping[colours[nextColour].back] = {
+          front: colours[nextColour].front,
+          list: []
+        };
+      }
+      reverseMapping[colours[nextColour].back].list.push(value);
+      nextColour++;
+      if (nextColour === colours.length) {
+        nextColour = 0;
+      }
+    }
+    if (listener !== undefined) {
+      listener(self.getList());
+    }
+    return mapping[value].front;
+  };
+
   
   this.reset = function() {
     mapping = {};
+    reverseMapping = {};
     nextColour = 0;
+    if (listener !== undefined) {
+      listener(self.getList());
+    }
   };
   
+  this.getList = function() {
+    return reverseMapping;
+  };
+  
+  this.setChangeListener = function(callback) {
+    listener = callback;
+  }; 
+  
+  this.reset();
 }

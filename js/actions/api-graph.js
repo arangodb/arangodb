@@ -219,7 +219,17 @@ function graph_by_request (req) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-create-graph
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
+///     var url = "/_api/graph/";
+///     var response = logCurlRequest('POST', url, {"_key" : "graph", "vertices" : "vertices", "edges" : "edges"});
+/// 
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_graph (req, res) {
@@ -262,12 +272,12 @@ function post_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph properties
 ///
-/// @RESTHEADER{GET /_api/graph,get graph properties}
+/// @RESTHEADER{GET /_api/graph/{graph-name},get graph properties}
 ///
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTQUERYPARAM{rev,string,optional}
-/// Revision of a graph
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -308,8 +318,19 @@ function post_graph_graph (req, res) {
 ///
 /// get graph by name
 ///
-/// @verbinclude api-graph-get-graph
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraph}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
 ///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_graph (req, res) {
@@ -335,15 +356,12 @@ function get_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a graph
 ///
-/// @RESTHEADER{DELETE /_api/graph,delete graph}
+/// @RESTHEADER{DELETE /_api/graph/{graph-name},delete graph}
 ///
-/// @RESTQUERYPARAMETERS
-/// 
-/// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
-/// 
-/// @RESTQUERYPARAM{rev,string,optional}
-/// Revision of a graph
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -358,8 +376,13 @@ function get_graph_graph (req, res) {
 ///
 /// @RESTRETURNCODES
 /// 
-/// @RESTRETURNCODE{204}
-/// is returned if the graph was deleted
+/// @RESTRETURNCODE{200}
+/// is returned if the graph was deleted and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the graph was deleted and `waitForSync` was
+/// `false`.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the graph was not found.
@@ -371,7 +394,18 @@ function get_graph_graph (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-delete-graph
+/// delete graph by name
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteGraph}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph";
+///     var response = logCurlRequest('DELETE', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_graph (req, res) {
@@ -454,7 +488,19 @@ function delete_graph_graph (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-create-vertex
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateVertex}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph/vertex";
+///     var response = logCurlRequest('POST', url, {"_key" : "v1", "optional1" : "val1" });
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex (req, res, g) {
@@ -543,8 +589,20 @@ function post_graph_vertex (req, res, g) {
 ///
 /// get vertex properties by name
 ///
-/// @verbinclude api-graph-get-vertex
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertex}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", {"optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
 ///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_vertex (req, res, g) {
@@ -599,7 +657,12 @@ function get_graph_vertex (req, res, g) {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// is returned if the vertex was deleted
+/// is returned if the vertex was deleted and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the vertex was deleted and `waitForSync` was
+/// `false`.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the graph or the vertex was not found.
@@ -611,7 +674,20 @@ function get_graph_vertex (req, res, g) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-delete-vertex
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteVertex}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", {"optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('DELETE', url);
+/// 
+///     //assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_vertex (req, res, g) {
@@ -760,7 +836,20 @@ function update_graph_vertex (req, res, g, isPatch) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-change-vertex
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeVertex}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", {"optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('PUT', url, { "optional1" : "val2" });
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_vertex (req, res, g) {
@@ -833,7 +922,25 @@ function put_graph_vertex (req, res, g) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-changep-vertex
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepVertex}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('PATCH', url, { "optional1" : "vertexPatch" });
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     var response = logCurlRequest('PATCH', url, { "optional1" : null });
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_vertex (req, res, g) {
@@ -960,7 +1067,24 @@ function process_labels_filter (data, labels, collname) {
 ///
 /// Select all vertices
 ///
-/// @verbinclude api-graph-get-vertices
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertices}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", { "optional1" : "val1" });
+///     g.addVertex("v2", { "optional1" : "val1" });
+///     g.addVertex("v3", { "optional1" : "val1" });
+///     g.addVertex("v4", { "optional1" : "val1" });
+///     g.addVertex("v5", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertices";
+///     var response = logCurlRequest('POST', url, {"batchSize" : 100 });
+/// 
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_all_vertices (req, res, g) {
@@ -1052,13 +1176,56 @@ function post_graph_all_vertices (req, res, g) {
 ///
 /// Select all vertices
 ///
-/// @verbinclude api-graph-get-vertex-vertices
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexVertices}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1,v5, 1);
+///     g.addEdge(v1,v2, 2);
+///     g.addEdge(v1,v3, 3);
+///     g.addEdge(v2,v4, 4);
+///     var url = "/_api/graph/graph/vertices/v2";
+///     var body = '{"batchSize" : 100, "filter" : {"direction" : "any", "properties":';
+///     body += '[] }}';
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     //assert(response.code === 201);
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Select vertices by direction and property filter
 ///
-/// @verbinclude api-graph-get-vertex-vertices2
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexVertices2}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val2" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val2" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val2" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1, v5, 1);
+///     g.addEdge(v2, v1, 2);
+///     g.addEdge(v1, v3, 3);
+///     g.addEdge(v4, v2, 4);
+///     var url = "/_api/graph/graph/vertices/v2";
+///     var body = '{"batchSize" : 100, "filter" : {"direction" : "out", "properties":';
+///     body += '[ { "key": "optional1", "value": "val2", "compare" : "==" }, ] }}';
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
 ///
-///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_vertices (req, res, g) {
@@ -1175,7 +1342,22 @@ function post_graph_vertex_vertices (req, res, g) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-create-edge
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateEdge}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph/edge";
+///     g.addVertex("vert1");
+///     g.addVertex("vert2");
+///     var body = {"_key" : "edge1", "_from" : "vert2", "_to" : "vert1", "optional1" : "val1"};
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_edge (req, res, g) {
@@ -1267,7 +1449,22 @@ function post_graph_edge (req, res, g) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-get-edge
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdge}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_edge (req, res, g) {
@@ -1338,7 +1535,22 @@ function get_graph_edge (req, res, g) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-delete-edge
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteEdge}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var response = logCurlRequest('DELETE', url);
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_edge (req, res, g) {
@@ -1489,7 +1701,22 @@ function update_graph_edge (req, res, g, isPatch) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-change-edge
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeEdge}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var response = logCurlRequest('PUT', url, { "optional1" : "val2" });
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_edge (req, res, g) {
@@ -1562,7 +1789,22 @@ function put_graph_edge (req, res, g) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-graph-changep-edge
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepEdge}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var response = logCurlRequest('PATCH', url, { "optional3" : "val3" });
+/// 
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_edge (req, res, g) {
@@ -1610,7 +1852,28 @@ function patch_graph_edge (req, res, g) {
 ///
 /// Select all edges
 ///
-/// @verbinclude api-graph-get-edges
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdges}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" }); 
+///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" }); 
+///     var url = "/_api/graph/graph/edges";
+///     var response = logCurlRequest('POST', url, {"batchSize" : 100 });
+/// 
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_all_edges (req, res, g) {
@@ -1715,7 +1978,29 @@ function post_graph_all_edges (req, res, g) {
 ///
 /// Select all edges
 ///
-/// @verbinclude api-graph-get-vertex-edges
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexEdges}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" }); 
+///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" }); 
+///     var url = "/_api/graph/graph/edges/v2";
+///     var body = '{"batchSize" : 100, "filter" : { "direction" : "any" }}';
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_edges (req, res, g) {
@@ -1770,7 +2055,7 @@ function post_graph_vertex_edges (req, res, g) {
 
     // error occurred
     if (cursor instanceof Error) {
-      actions.resultException(req, res, cursor);
+      actions.resultException(req, res, cursor, undefined, false);
       return;
     }
 
@@ -2039,7 +2324,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });

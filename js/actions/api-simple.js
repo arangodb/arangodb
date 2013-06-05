@@ -115,7 +115,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -193,7 +193,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -312,7 +312,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -430,7 +430,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -522,7 +522,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -611,7 +611,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -688,7 +688,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -734,7 +734,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -828,7 +828,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -904,7 +904,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -990,7 +990,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -1083,7 +1083,7 @@ actions.defineHttp({
       }
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
