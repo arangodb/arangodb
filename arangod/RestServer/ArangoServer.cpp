@@ -1279,9 +1279,9 @@ static bool handlePrefixMapping (TRI_doc_mptr_t const* document,
     return true;
   }
   
-  string endpoint = doc.getStringValue("endpoint", "");
-  if (endpoint == "") {
-    LOG_ERROR("Endpoint string not found!");
+  string prefix = doc.getStringValue("prefix", "");
+  if (prefix == "") {
+    LOG_ERROR("Prefix string not found!");
     return true;
   }
 
@@ -1291,7 +1291,7 @@ static bool handlePrefixMapping (TRI_doc_mptr_t const* document,
     return true;
   }
 
-  VocbaseManager::manager.addPrefixMapping(endpoint, database);
+  VocbaseManager::manager.addPrefixMapping(prefix, database);
   
   return true;
 }

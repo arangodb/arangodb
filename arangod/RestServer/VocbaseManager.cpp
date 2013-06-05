@@ -153,6 +153,8 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& path) {
   // loop over all vocbases and check name and path
   
+  READ_LOCKER(_rwLock);
+  
   // system vocbase
   if (name == string(_vocbase->_name)) {
     return false;
@@ -241,13 +243,24 @@ bool VocbaseManager::addEndpoint (std::string const& name) {
 /// @brief look vocbase by http request
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpRequest* request) {
+TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (
+                                        triagens::rest::HttpRequest* request) {
   ConnectionInfo ci = request->connectionInfo();
 
   string prefix = (ci.serverPort > 0) 
-          ? "tcp://" + ci.serverAddress + ":" + basics::StringUtils::itoa(ci.serverPort)
+          ? "tcp://" + triagens::basics::StringUtils::tolower(ci.serverAddress) 
+          + ":" + basics::StringUtils::itoa(ci.serverPort)
           : "unix:///localhost";
 
+  return lookupVocbaseByPrefix(prefix);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look vocbase by prefix
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* VocbaseManager::lookupVocbaseByPrefix (
+                                                    std::string const& prefix) {
   READ_LOCKER(_rwLock);
   map<string, TRI_vocbase_s*>::iterator find = _prefix2Vocbases.find(prefix);
   if (find != _prefix2Vocbases.end()) {
@@ -262,12 +275,13 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpR
 /// @brief add prefix to database mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseManager::addPrefixMapping (std::string const& prefix, std::string const& name) {  
+void VocbaseManager::addPrefixMapping (std::string const& prefix, 
+                                       std::string const& name) {  
   TRI_vocbase_t* vocbase = lookupVocbaseByName(name);
   
   if (vocbase) {
     WRITE_LOCKER(_rwLock);
-    _prefix2Vocbases[prefix] = vocbase;
+    _prefix2Vocbases[triagens::basics::StringUtils::tolower(prefix)] = vocbase;
   }  
   
 }
@@ -317,15 +331,22 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
       }
     }
 
-    string up = StringUtils::decodeBase64(auth);
-    vector<string> split = StringUtils::split(up, ":");
+    string up = StringUtils::decodeBase64(auth);    
+//    vector<string> split = StringUtils::split(up, ":");
+//
+//    if (split.size() != 2) {
+//      return false;
+//    }
+//
+//    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, split[0].c_str(), split[1].c_str());
 
-    if (split.size() != 2) {
+    std::string::size_type n = up.find(':', 0);
+    if (n == std::string::npos || n == 0 || n+1 > up.size()) {
       return false;
     }
-
-    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, split[0].c_str(), split[1].c_str());
-
+    
+    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, up.substr(0, n).c_str(), up.substr(n+1).c_str());
+    
     if (res) {
       WRITE_LOCKER(_rwLock);
 
@@ -335,14 +356,36 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
         return false;
       }      
       
-      mapIter->second[auth] = split[0];
-      request->setUser(split[0]);
+      mapIter->second[auth] = up.substr(0, n);
+      request->setUser(up.substr(0, n));
+      
+      // TODO: create a user object for the VocbaseContext
     }
 
     return res;
   }
 
   return false;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reload auth info
+////////////////////////////////////////////////////////////////////////////////
+
+bool VocbaseManager::reloadAuthInfo (TRI_vocbase_t* vocbase) {
+  std::map<TRI_vocbase_t*, std::map<std::string, std::string> >::iterator mapIter;
+  
+  {
+    WRITE_LOCKER(_rwLock);
+
+    mapIter = _authCache.find(vocbase);
+    if (mapIter != _authCache.end()) {
+      mapIter->second.clear();
+    }
+
+  }
+  
+  return TRI_ReloadAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

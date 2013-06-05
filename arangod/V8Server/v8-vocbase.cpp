@@ -2138,7 +2138,8 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "RELOAD_AUTH()");
   }
 
-  bool result = TRI_ReloadAuthInfo(vocbase);
+  // bool result = TRI_ReloadAuthInfo(vocbase);
+  bool result = VocbaseManager::manager.reloadAuthInfo(vocbase);
 
   return scope.Close(result ? v8::True() : v8::False());
 }
@@ -6375,16 +6376,77 @@ static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief save a document
+///
+/// Returns the document id, the revision and the key or v8::ThrowException
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase, 
+        std::string const& collectionName, v8::Handle<v8::Object> newDoc) {
+  v8::HandleScope scope;
+  
+  TRI_vocbase_col_t* col = 
+          TRI_LookupCollectionByNameVocBase(vocbase, collectionName.c_str());
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+  }
+
+  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+    ResourceHolder holder;
+    TRI_primary_collection_t* primary = trx.primaryCollection();
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(newDoc, primary->_shaper);
+
+    if (!holder.registerShapedJson(primary->_shaper, shaped)) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), 
+              "<data> cannot be converted into JSON shape");
+    }
+
+    TRI_doc_mptr_t document;
+    TRI_voc_key_t key = 0;
+    res = trx.createDocument(key, &document, shaped, true);
+
+    res = trx.finish(res);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+    }
+
+    assert(document._key != 0);
+
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8g->_IdKey, V8DocumentId(
+                        resolver.getCollectionName(col->_cid), document._key));
+    result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+    result->Set(v8g->_KeyKey, v8::String::New(document._key));
+
+    // return OK
+    return scope.Close(result);
+  }
+  
+  TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document into collection.");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a new user database
 ///
-/// @FUN{@FA{db}._isSystem()}
+/// @FUN{CREATE_DATABASE}
 ///
-/// Returns the database type.
+/// Returns the document id, the revision and the key.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  bool result = false;
 
   if (argv.Length() < 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<database name>, <database path>, <database options>)");
@@ -6479,92 +6541,130 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
 
   VocbaseManager::manager.initializeFoxx(userVocbase, v8::Context::GetCurrent());
 
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, "_databases");
+  // add a database document
+  v8::Handle<v8::Object> newDoc = v8::Object::New();
+  newDoc->Set(keyName, TRI_V8_SYMBOL(name.c_str()));
+  newDoc->Set(keyPath, TRI_V8_SYMBOL(path.c_str()));
+  newDoc->Set(keyRemoveOnDrop, v8::Boolean::New(defaults.removeOnDrop));
+  newDoc->Set(keyRemoveOnCompacted, v8::Boolean::New(defaults.removeOnCompacted));
+  newDoc->Set(keyDefaultMaximalSize, v8::Integer::New(defaults.defaultMaximalSize));
+  newDoc->Set(keyDefaultWaitForSync, v8::Boolean::New(defaults.defaultWaitForSync));
+  newDoc->Set(keyForceSyncShapes, v8::Boolean::New(defaults.forceSyncShapes));
+  newDoc->Set(keyForceSyncProperties, v8::Boolean::New(defaults.forceSyncProperties));
+  newDoc->Set(keyRequireAuthentication, v8::Boolean::New(defaults.requireAuthentication));
+  
+  // exceptions must be caught in the following part because we have
+  // unload the userVocbase
+  v8::TryCatch tryCatch;
+  v8::Handle<v8::Value> result;
 
-  if (col == 0) {
+  try {
+    result = saveToCollection(vocbase, "_databases", newDoc);
+  }
+  catch (...) {
+  }
+
+  if (tryCatch.HasCaught()) {
     // unload vocbase
     TRI_DestroyVocBase(userVocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
     userVocbase = 0;
+    
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+  
+  VocbaseManager::manager.addUserVocbase(userVocbase);
+  
+  return scope.Close(result);
+}
 
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a new endpoint
+///
+/// @FUN{ADD_ENDPOINT}
+///
+/// Returns the document id, the revision and the key.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "ADD_ENDPOINT(<endpoint>)");
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // unload vocbase
-    TRI_DestroyVocBase(userVocbase);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
-    userVocbase = 0;
-
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+  if (!vocbase->_isSystem) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "current database is not the system database");
   }
 
-  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    v8::Handle<v8::Object> newDoc = v8::Object::New();
-    newDoc->Set(keyName, TRI_V8_SYMBOL(name.c_str()));
-    newDoc->Set(keyPath, TRI_V8_SYMBOL(path.c_str()));
-    newDoc->Set(keyRemoveOnDrop, v8::Boolean::New(defaults.removeOnDrop));
-    newDoc->Set(keyRemoveOnCompacted, v8::Boolean::New(defaults.removeOnCompacted));
-    newDoc->Set(keyDefaultMaximalSize, v8::Integer::New(defaults.defaultMaximalSize));
-    newDoc->Set(keyDefaultWaitForSync, v8::Boolean::New(defaults.defaultWaitForSync));
-    newDoc->Set(keyForceSyncShapes, v8::Boolean::New(defaults.forceSyncShapes));
-    newDoc->Set(keyForceSyncProperties, v8::Boolean::New(defaults.forceSyncProperties));
-    newDoc->Set(keyRequireAuthentication, v8::Boolean::New(defaults.requireAuthentication));
+  string endpoint = TRI_ObjectToString(argv[0]);
 
-    ResourceHolder holder;
-    TRI_primary_collection_t* primary = trx.primaryCollection();
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(newDoc, primary->_shaper);
+  // check endpoint string
+  bool ok = VocbaseManager::manager.addEndpoint(endpoint);
 
-    if (!holder.registerShapedJson(primary->_shaper, shaped)) {
-      // unload vocbase
-      TRI_DestroyVocBase(userVocbase);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
-      userVocbase = 0;
-
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
-    }
-
-    TRI_doc_mptr_t document;
-    TRI_voc_key_t key = 0;
-    res = trx.createDocument(key, &document, shaped, true);
-
-    res = trx.finish(res);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // unload vocbase
-      TRI_DestroyVocBase(userVocbase);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
-      userVocbase = 0;
-
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
-    }
-
-    assert(document._key != 0);
-
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-    v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-    result->Set(v8g->_RevKey, V8RevisionId(document._rid));
-    result->Set(v8g->_KeyKey, v8::String::New(document._key));
-
-    VocbaseManager::manager.addUserVocbase(userVocbase);
-
-    // return OK
-    return scope.Close(result);
+  if (!ok) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot open endpoint");
   }
 
-  // unload vocbase
-  TRI_DestroyVocBase(userVocbase);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
-  userVocbase = 0;
+  v8::Local<v8::String> keyEndpoint = v8::String::New("endpoint");
 
-  // return with error
-  TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document into collection.");
+  // add endpoint document
+  v8::Handle<v8::Object> newDoc = v8::Object::New();
+  newDoc->Set(keyEndpoint, TRI_V8_SYMBOL(endpoint.c_str()));
+  
+  return saveToCollection(vocbase, "_endpoints", newDoc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a new prefix to database mapping
+///
+/// @FUN{ADD_PREFIX}
+///
+/// Returns the document id, the revision and the key.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AddPrefixMapping (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "ADD_PREFIX(<prefix>, <database name>)");
+  }
+
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+
+  if (!vocbase->_isSystem) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "current database is not the system database");
+  }
+
+  string prefix = TRI_ObjectToString(argv[0]);
+  string databaseName = TRI_ObjectToString(argv[1]);
+
+  v8::Local<v8::String> keyPrefix = v8::String::New("prefix");
+  v8::Local<v8::String> keyDatabase = v8::String::New("database");
+
+  // add endpoint document
+  v8::Handle<v8::Object> newDoc = v8::Object::New();
+  newDoc->Set(keyPrefix, TRI_V8_SYMBOL(prefix.c_str()));
+  newDoc->Set(keyDatabase, TRI_V8_SYMBOL(databaseName.c_str()));
+  
+  v8::TryCatch tryCatch;
+  v8::Handle<v8::Value> result;
+
+  try {
+    result = saveToCollection(vocbase, "_prefixes", newDoc);
+  }
+  catch (...) {
+  }
+
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+  
+  VocbaseManager::manager.addPrefixMapping(prefix, databaseName);
+  
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7348,7 +7448,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase);  
   TRI_AddGlobalFunctionVocbase(context, "SHOW_DATABASES", JS_ListVocbases);  
   TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase);
-
+  TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint);
+  TRI_AddGlobalFunctionVocbase(context, "ADD_PREFIX", JS_AddPrefixMapping);
+  
   // .............................................................................
   // create global variables
   // .............................................................................
