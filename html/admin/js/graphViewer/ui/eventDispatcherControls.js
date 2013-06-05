@@ -136,17 +136,17 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   });
   
   this.addControlNewNode = function() {
-    var prefix = "control_event_newnode",
+    var prefix = "control_event_new_node",
       idprefix = prefix + "_",
       icon = "plus-sign",
       createCallback = function(n) {
-        modalDialogHelper.createModalEditDialog(
+        modalDialogHelper.createModalCreateDialog(
           "Create New Node",
-          "control_event_new_node_",
+          idprefix,
           {},
           function(data) {
             dispatcher.events.CREATENODE(data, function() {
-              $("#control_event_new_node_modal").modal('hide');
+              $("#" + idprefix + "modal").modal('hide');
             })();
           }
         );
@@ -157,7 +157,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
         rebindEdges();
         rebindSVG({click: createCallback});
       };
-    createIcon(icon, "newnode", callback);
+    createIcon(icon, "new_node", callback);
   };
   
   

@@ -38,9 +38,9 @@
 (function () {
   "use strict";
 
-  describe('Arango Adapter', function () {
+  describe('Foxx Adapter', function () {
     
-    describeInterface(new ArangoAdapter([], [], {
+    describeInterface(new FoxxAdapter([], [], {
       nodeCollection: "",
       edgeCollection: ""
     }));
@@ -558,7 +558,7 @@
       
           waitsFor(function() {
             return callbackCheck;
-          }, 1000);
+          });
       
           runs(function() {
             existNodes([c0, c1, c2, c3, c4]);
@@ -619,7 +619,7 @@
       
           waitsFor(function() {
             return callbackCheck;
-          }, 1000);
+          });
       
           runs(function() {
             expect(nodes[0]._data).toEqual({
@@ -793,7 +793,7 @@
           
           waitsFor(function() {
             return callbackCheck;
-          }, 1000);
+          });
           
           runs(function() {
             var callNodesIds = _.map(callNodes, function(n) {
@@ -858,7 +858,7 @@
           
           waitsFor(function() {
             return callbackCheck;
-          }, 1000);
+          });
           
           runs(function() {
             var callNodesIds = _.map(callNodes, function(n) {
@@ -1005,7 +1005,7 @@
       
             waitsFor(function() {
               return callbackCheck;
-            }, 1000);
+            });
       
             runs(function() {
               existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
@@ -1027,7 +1027,7 @@
         
             waitsFor(function() {
               return callbackCheck;
-            }, 1000);
+            });
         
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
@@ -1050,7 +1050,7 @@
         
             waitsFor(function() {
               return callbackCheck;
-            }, 1000);
+            });
         
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
@@ -1073,7 +1073,7 @@
         
             waitsFor(function() {
               return callbackCheck;
-            }, 1000);
+            });
         
             runs(function() {
               expect($.ajax).toHaveBeenCalledWith(
@@ -1097,7 +1097,7 @@
         
             waitsFor(function() {
               return callbackCheck;
-            }, 1000);
+            });
         
             runs(function() {
               expect($.ajax).toHaveBeenCalledWith(
@@ -1152,7 +1152,7 @@
               
               waitsFor(function() {
                 return callbackCheck;
-              }, 1000);
+              });
               
               runs(function() {
                 var commId = getCommunityNodesIds()[0];
@@ -1177,7 +1177,7 @@
             
               waitsFor(function() {
                 return callbackCheck;
-              }, 1000);
+              });
       
               runs(function() {
                 var commId = getCommunityNodesIds()[0];
@@ -1236,7 +1236,7 @@
                 
                 waitsFor(function() {
                   return called === 2;
-                }, 1000);
+                });
                 
                 runs(function() {
                   adapter.loadNode(v2, counterCallback);
@@ -1245,7 +1245,7 @@
                 
                 waitsFor(function() {
                   return called === 3;
-                }, 1000);
+                });
                 
                 runs(function() {
                   var commId = commNode._id;
@@ -1264,7 +1264,7 @@
                 
                 waitsFor(function() {
                   return called === 4;
-                }, 1000);
+                });
                 
                 runs(function() {
                   existNodes([v0, v1, v2, v3, v4]);
@@ -1320,7 +1320,7 @@
                 
                 waitsFor(function() {
                   return called === 2;
-                }, 1000);
+                });
                 
                 runs(function() {
                   adapter.loadNode(v2, counterCallback);
@@ -1329,7 +1329,7 @@
                 
                 waitsFor(function() {
                   return called === 3;
-                }, 1000);
+                });
                 
                 runs(function() {
                   adapter.setNodeLimit(20);
@@ -1338,7 +1338,7 @@
                 
                 waitsFor(function() {
                   return called === 4;
-                }, 1000);
+                });
                 
                 runs(function() {
                   var checkNodeWithInAndOut = function(id, inbound, outbound) {
@@ -1413,7 +1413,7 @@
                 
                 waitsFor(function() {
                   return callbackCheck;
-                }, 1000);
+                });
                 
                 runs(function() {
                   var newCommId = getCommunityNodesIds()[0];
@@ -1476,7 +1476,7 @@
                 
                 waitsFor(function() {
                   return callbackCheck;
-                }, 1000);
+                });
                 
                 runs(function() {
                   existEdge(c3, firstCommId);
@@ -1523,7 +1523,7 @@
       
               waitsFor(function() {
                 return callbackCheck;
-              }, 1000);  
+              });  
         
               runs(function() {
                 existNodes([c0, c1, c2, c3, c4, c8, c9]);
@@ -1557,7 +1557,7 @@
         
               waitsFor(function() {
                 return callbackCheck;
-              }, 1000);
+              });
         
               runs(function() {
                 expect($.ajax).toHaveBeenCalledWith(
@@ -1666,7 +1666,7 @@
         
             waitsFor(function() {
               return callbackCheck;
-            }, 1000);
+            });
         
             runs(function() {
               callbackCheck = false;
@@ -1709,7 +1709,5 @@
       });
       
   });
-  
-  
   
 }());

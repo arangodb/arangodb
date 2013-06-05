@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Event Dispatcher UI', function () {
-    var svg, dispatcherUI, list,
+    var svg, dispatcherUI, list, $list,
     nodeShaper, edgeShaper, layouter,
     nodes, edges, adapter,
     mousePointerbox,
@@ -133,7 +133,7 @@
       list = document.createElement("ul");
       document.body.appendChild(list);
       list.id = "control_event_list";
-      
+      $list = $(list);
       mousePointerbox = document.createElement("svg");
       mousePointerbox.id = "mousepointer";
       mousePointerbox.className = "mousepointer";
@@ -212,9 +212,9 @@
       runs(function() {
         dispatcherUI.addControlNewNode();
       
-        expect($("#control_event_list #control_event_newnode").length).toEqual(1);
+        expect($("#control_event_new_node", $list).length).toEqual(1);
       
-        helper.simulateMouseEvent("click", "control_event_newnode");
+        helper.simulateMouseEvent("click", "control_event_new_node");
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -235,6 +235,8 @@
         expect($("#control_event_new_node_modal").length).toEqual(1);
       
         //$("#control_event_node_edit_name_value").val("Bob");
+        
+        expect($("#control_event_new_node_submit").text()).toEqual("Create");
         
         helper.simulateMouseEvent("click", "control_event_new_node_submit");
         
@@ -528,7 +530,7 @@
       expect($("#control_event_list #control_event_expand").length).toEqual(1);
       expect($("#control_event_list #control_event_delete").length).toEqual(1);
       expect($("#control_event_list #control_event_connect").length).toEqual(1);
-      expect($("#control_event_list #control_event_newnode").length).toEqual(1);
+      expect($("#control_event_list #control_event_new_node").length).toEqual(1);
     });
   });
 
