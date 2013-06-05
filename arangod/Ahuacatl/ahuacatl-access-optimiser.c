@@ -2351,6 +2351,32 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if two attribute access nodes refer to the same base variable
+/// e.g. FILTER a.x == a.y
+////////////////////////////////////////////////////////////////////////////////
+     
+static bool IsSameAttributeAccess (const TRI_aql_node_t* const lhs,
+                                   const TRI_aql_node_t* const rhs) {
+  assert(lhs != NULL);
+  assert(rhs != NULL);
+
+  if (lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS &&
+      rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
+
+    TRI_aql_node_t* lNode = TRI_AQL_NODE_MEMBER(lhs, 0);
+    TRI_aql_node_t* rNode = TRI_AQL_NODE_MEMBER(rhs, 0);
+
+    if (lNode->_type == TRI_AQL_NODE_REFERENCE && 
+        rNode->_type == TRI_AQL_NODE_REFERENCE &&
+        TRI_EqualString(TRI_AQL_NODE_STRING(lNode), TRI_AQL_NODE_STRING(rNode))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief process a condition node and recurse into its subnodes
 ///
 /// if an impossible range is found underneath and AND or OR operator, the
@@ -2437,6 +2463,11 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node2 = rhs;
       operator = node->_type;
 
+      if (IsSameAttributeAccess(lhs, rhs)) {
+        // we must not optimise something like FILTER a.x == a.x
+        return NULL;
+      }
+
       if (rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL) {
         // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
         useBoth = true;
@@ -2448,6 +2479,12 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
+      
+      if (IsSameAttributeAccess(lhs, rhs)) {
+        // we must not optimise something like FILTER a.x == a.x
+        return NULL;
+      }
+      
     
       TRI_ASSERT_MAINTAINER(operator != TRI_AQL_NODE_NOP);
 

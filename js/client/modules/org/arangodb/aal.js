@@ -329,7 +329,7 @@ function processGithubRepository (source) {
   var tempFile = fs.getTempFile("downloads", false); 
 
   try {
-    var result = internal.download(url, "get", tempFile);
+    var result = internal.download(url, "", { method: "get", followRedirects: true, timeout: 30 }, tempFile);
 
     if (result.code >= 200 && result.code <= 299) {
       source.filename = tempFile;
@@ -471,7 +471,7 @@ function updateFishbowl () {
   var path = fs.getTempFile("zip", false); 
 
   try {
-    var result = internal.download(url, "get", filename);
+    var result = internal.download(url, "", { method: "get", followRedirects: true, timeout: 30 }, filename);
 
     if (result.code < 200 || result.code > 299) {
       throw "github download failed";
