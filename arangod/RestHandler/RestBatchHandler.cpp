@@ -87,7 +87,7 @@ bool RestBatchHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestBatchHandler::queue () {
+string const& RestBatchHandler::queue () const {
   static string const client = "STANDARD";
 
   return client;

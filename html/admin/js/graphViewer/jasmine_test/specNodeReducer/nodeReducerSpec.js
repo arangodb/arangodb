@@ -98,6 +98,12 @@
           expect(reducer.getCommunity.length).toEqual(2);
         });
         
+        it('should offer a function for bucket sort of nodes', function() {
+          expect(reducer.bucketNodes).toBeDefined();
+          expect(reducer.bucketNodes).toEqual(jasmine.any(Function));
+          expect(reducer.bucketNodes.length).toEqual(2);
+        });
+        
       });
       
       describe('checking community identification', function() {
@@ -149,7 +155,147 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 7));
           
           var com = reducer.getCommunity(6);
-          expect(com).toContainNodes([0, 1, 2]);
+          expect(com).toContainNodes([0, 1, 2, 3]);
+        });
+        
+      });
+      
+      describe('checking bucket sort of nodes', function() {
+        var allNodes, buckets;
+        
+        beforeEach(function() {
+          allNodes = [];
+          
+          this.addMatchers({
+            toContainAll: function(objs) {
+              var bucket = this.actual,
+                passed = true;
+              _.each(bucket, function(n) {
+                var i;
+                for (i = 0; i < objs.length; i++) {
+                  if (objs[i] === n) {
+                    return;
+                  }
+                }
+                passed = false;
+              });
+              this.message = function() {
+                return JSON.stringify(bucket)
+                  + " should contain all of "
+                  + JSON.stringify(objs);
+              };
+              return passed;
+            }
+          });
+        });
+        
+        it('should not bucket anything if #nodes <= #buckets', function() {
+          buckets = 5;
+          allNodes.push({a: 1});
+          allNodes.push({a: 1});
+          allNodes.push({a: 1});
+          allNodes.push({a: 1});
+          allNodes.push({a: 1});
+          var res = reducer.bucketNodes(allNodes, buckets);
+          expect(res.length).toEqual(5);
+          expect(res[0].length).toEqual(1);
+          expect(res[1].length).toEqual(1);
+          expect(res[2].length).toEqual(1);
+          expect(res[3].length).toEqual(1);
+          expect(res[4].length).toEqual(1);
+        });
+        
+        it('should create at most the given amount of buckets', function() {
+          buckets = 3;
+          allNodes.push({a: 1});
+          allNodes.push({b: 2});
+          allNodes.push({c: 3});
+          allNodes.push({d: 4});
+          allNodes.push({e: 5});
+          allNodes.push({f: 6});
+          
+          var res = reducer.bucketNodes(allNodes, buckets);
+          expect(res.length).toEqual(3);
+        });
+        
+        it('should uniformly distribute dissimilar nodes', function() {
+          buckets = 3;
+          allNodes.push({a: 1});
+          allNodes.push({b: 2});
+          allNodes.push({c: 3});
+          allNodes.push({d: 4});
+          allNodes.push({e: 5});
+          allNodes.push({f: 6});
+          allNodes.push({g: 7});
+          allNodes.push({h: 8});
+          allNodes.push({i: 9});
+          
+          var res = reducer.bucketNodes(allNodes, buckets);
+          expect(res[0].length).toEqual(3);
+          expect(res[1].length).toEqual(3);
+          expect(res[2].length).toEqual(3);
+        });
+        
+        it('should bucket clearly similar nodes together', function() {
+          buckets = 3;
+          var a1, a2 ,a3,
+            b1, b2, b3,
+            c1, c2, c3,
+            resArray,
+            res1,
+            res2,
+            res3;
+            
+          a1 = {a: 1};
+          a2 = {a: 1};
+          a3 = {a: 1};
+          
+          b1 = {b: 2};
+          b2 = {b: 2};
+          b3 = {b: 2};
+          
+          c1 = {c: 3};
+          c2 = {c: 3};
+          c3 = {c: 3};
+          
+          allNodes.push(a1);
+          allNodes.push(a2);
+          allNodes.push(a3);
+          allNodes.push(b1);
+          allNodes.push(b2);
+          allNodes.push(b3);
+          allNodes.push(c1);
+          allNodes.push(c2);
+          allNodes.push(c3);
+          
+          resArray = reducer.bucketNodes(allNodes, buckets);
+          res1 = resArray[0];
+          res2 = resArray[1];
+          res3 = resArray[2];
+          
+          if (res1[0].a !== undefined) {
+            expect(res1).toContainAll([a1, a2, a3]);
+          } else if (res2[0].a !== undefined) {
+            expect(res2).toContainAll([a1, a2, a3]);
+          } else {
+            expect(res3).toContainAll([a1, a2, a3]);
+          }
+          
+          if (res1[0].b !== undefined) {
+            expect(res1).toContainAll([b1, b2, b3]);
+          } else if (res2[0].b !== undefined) {
+            expect(res2).toContainAll([b1, b2, b3]);
+          } else {
+            expect(res3).toContainAll([b1, b2, b3]);
+          }
+          
+          if (res1[0].c !== undefined) {
+            expect(res1).toContainAll([c1, c2, c3]);
+          } else if (res2[0].c !== undefined) {
+            expect(res2).toContainAll([c1, c2, c3]);
+          } else {
+            expect(res3).toContainAll([c1, c2, c3]);
+          }
         });
         
       });

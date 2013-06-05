@@ -1,3 +1,5 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Backbone, window, arangoDocument, $, arangoHelper */
 window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocument,
@@ -139,8 +141,6 @@ window.arangoDocument = Backbone.Collection.extend({
       processData: false,
       success: function(data) {
         window.arangoDocumentStore.add(data);
-        //TODO: move this to view!
-        //window.documentSourceView.fillSourceBox();
         result = true;
       },
       error: function(data) {
