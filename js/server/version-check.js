@@ -160,6 +160,25 @@
           
           return true;
         });
+        
+      // set up the collection _prefix
+      addTask("setupPrefixMappings", "setup _prefixes collection", function () {
+        return createSystemCollection("_prefixes", { waitForSync : true });
+      });
+    
+      // create a unique index on "endpoint" attribute in _prefixes
+      addTask("createEndpointsIndex", 
+            "create index on 'endpoint' attribute in _endpoints collection",
+        function () {
+          var databases = getCollection("_prefixes");
+          if (! databases) {
+            return false;
+          }
+
+          databases.ensureUniqueConstraint("endpoint");
+          
+          return true;
+        });
     }
 
     // set up the collection _users 
