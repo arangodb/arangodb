@@ -375,6 +375,10 @@ extern "C" {
 ///   Will be raised when an attempt to remove a document from a skiplist index
 ///   fails due to the fact that the document to be removed was inserted in a
 ///   transaction post this removal transaction.
+/// - 3317: @LIT{skiplist index remove failure - item removed prior this transaction in the index}
+///   Will be raised when an attempt to remove a document from a skiplist index
+///   fails due to the fact that the document to be removed was removed in a
+///   transaction prior this removal transaction.
 /// - 3400: @LIT{bitarray index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   is caused by in the document not having one or more attributes which are
@@ -405,6 +409,10 @@ extern "C" {
 ///   Will be returned if the key was not found in the structure.
 /// - 10003: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
+/// - 11000: @LIT{the index garbage collector has shutdown and no further entries can be processed}
+///   Will be raised when an attempt to add an item to the index garbage
+///   collector fails due to the fact that the state of the collector is in
+///   shutdown mode.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2007,6 +2015,19 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED       (3315)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 3317: WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED
+///
+/// skiplist index remove failure - item removed prior this transaction in the
+/// index
+///
+/// Will be raised when an attempt to remove a document from a skiplist index
+/// fails due to the fact that the document to be removed was removed in a
+/// transaction prior this removal transaction.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED       (3317)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 3400: WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING
 ///
 /// bitarray index insertion warning - attribute missing in document
@@ -2118,6 +2139,19 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 11000: WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN
+///
+/// the index garbage collector has shutdown and no further entries can be
+/// processed
+///
+/// Will be raised when an attempt to add an item to the index garbage
+/// collector fails due to the fact that the state of the collector is in
+/// shutdown mode.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN               (11000)
 
 
 ////////////////////////////////////////////////////////////////////////////////
