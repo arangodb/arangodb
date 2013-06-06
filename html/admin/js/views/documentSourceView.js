@@ -87,6 +87,7 @@ var documentSourceView = Backbone.View.extend({
     });
     var editor = ace.edit("sourceEditor");
     editor.setValue(arangoHelper.FormatJSON(data));
+    editor.clearSelection();
   },
   stateReplace: function (value) {
     var inString = false;

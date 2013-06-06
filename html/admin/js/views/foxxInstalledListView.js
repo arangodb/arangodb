@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global Backbone, EJS, $, window, _ */
+
 var FoxxInstalledListView = Backbone.View.extend({
   el: '#content',
   template: new EJS({url: 'js/templates/foxxListView.ejs'}),
