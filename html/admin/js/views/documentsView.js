@@ -35,7 +35,7 @@ var documentsView = Backbone.View.extend({
 
   returnPressedHandler: function(event) {
     if (event.keyCode === 13) {
-      if (!!$("#confirmDeleteBtn").attr("disabled") === false) {
+      if ($("#confirmDeleteBtn").attr("disabled") === false) {
         this.confirmDelete();
       }
     } 
@@ -142,14 +142,20 @@ var documentsView = Backbone.View.extend({
 
   },
   confirmDelete: function () {
-    $("#confirmDeleteBtn").attr("disabled", true);	
-    this.reallyDelete();
+    $("#confirmDeleteBtn").attr("disabled", true);
+    var hash = window.location.hash.split("/");
+    var check = hash[3];
+    //todo - find wrong event handler
+    if (check !== 'source') {
+      this.reallyDelete();
+    }
   },
   reallyDelete: function () {
     var self = this;
     var row = $(self.target).closest("tr").get(0);
     var hash = window.location.hash.split("/");
     var page = hash[3];
+
     var deleted = false;
     this.docid = $(self.idelement).next().text();
 
