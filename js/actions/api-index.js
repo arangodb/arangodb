@@ -591,19 +591,19 @@ function POST_api_index_fulltext (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute names: " + fields);
     return;
   }
 
   if (fields.length != 1 || typeof fields[0] !== 'string') {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must contain exactly one attribute name");
     return;
   }
 
   if (body.hasOwnProperty("unique") && body.unique) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "unique fulltext indexes are not supported");
     return;
   }
@@ -768,9 +768,8 @@ function POST_api_index_bitarray (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
-
   if (req.suffix.length !== 0) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expecting POST /" + API + "?collection=<collection-name>");
     return;
   }
