@@ -144,39 +144,10 @@ char const* HttpRequest::requestPath () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::write (TRI_string_buffer_t* buffer) const {
-  switch (_type) {
-    case HTTP_REQUEST_GET:
-      TRI_AppendString2StringBuffer(buffer, "GET ", 4);
-      break;
+  const string& method = translateMethod(_type);
 
-    case HTTP_REQUEST_POST:
-      TRI_AppendString2StringBuffer(buffer, "POST ", 5);
-      break;
-
-    case HTTP_REQUEST_PUT:
-      TRI_AppendString2StringBuffer(buffer, "PUT ", 4);
-      break;
-
-    case HTTP_REQUEST_DELETE:
-      TRI_AppendString2StringBuffer(buffer, "DELETE ", 7);
-      break;
-
-    case HTTP_REQUEST_HEAD:
-      TRI_AppendString2StringBuffer(buffer, "HEAD ", 5);
-      break;
-
-    case HTTP_REQUEST_OPTIONS:
-      TRI_AppendString2StringBuffer(buffer, "OPTIONS ", 8);
-      break;
-
-    case HTTP_REQUEST_PATCH:
-      TRI_AppendString2StringBuffer(buffer, "PATCH ", 6);
-      break;
-
-    default:
-      TRI_AppendString2StringBuffer(buffer, "UNKNOWN ", 8);
-      break;
-  }
+  TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
+  TRI_AppendCharStringBuffer(buffer, ' ');
 
   // do NOT url-encode the path, we need to distingush between
   // "/document/a/b" and "/document/a%2fb"
@@ -1195,37 +1166,75 @@ void HttpRequest::addSuffix (char const* part) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief translate an enum value into an HTTP method string
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpRequest::translateMethod (const HttpRequestType method) {
+  if (method == HTTP_REQUEST_DELETE) {
+    return "DELETE";
+  }
+  else if (method == HTTP_REQUEST_GET) {
+    return "GET";
+  }
+  else if (method == HTTP_REQUEST_HEAD) {
+    return "HEAD";
+  }
+  else if (method == HTTP_REQUEST_OPTIONS) {
+    return "OPTIONS";
+  }
+  else if (method == HTTP_REQUEST_PATCH) {
+    return "PATCH";
+  }
+  else if (method == HTTP_REQUEST_POST) {
+    return "POST";
+  }
+  else if (method == HTTP_REQUEST_PUT) {
+    return "PUT";
+  }
+
+  LOGGER_WARNING("illegal http request method encountered in switch");
+  return "UNKNOWN";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate an HTTP method string into an enum value
+////////////////////////////////////////////////////////////////////////////////
+
+HttpRequest::HttpRequestType HttpRequest::translateMethod (const string& method) {
+  const string methodString = StringUtils::toupper(method);
+
+  if (methodString == "DELETE") {
+    return HTTP_REQUEST_DELETE;
+  }
+  else if (methodString == "GET") {
+    return HTTP_REQUEST_GET;
+  }
+  else if (methodString == "HEAD") {
+    return HTTP_REQUEST_HEAD;
+  }
+  else if (methodString == "OPTIONS") {
+    return HTTP_REQUEST_OPTIONS;
+  }
+  else if (methodString == "PATCH") {
+    return HTTP_REQUEST_PATCH;
+  }
+  else if (methodString == "POST") {
+    return HTTP_REQUEST_POST;
+  }
+  else if (methodString == "PUT") {
+    return HTTP_REQUEST_PUT;
+  }
+
+  return HTTP_REQUEST_ILLEGAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief append the request method string to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
-  switch (method) {
-    case HTTP_REQUEST_GET:
-      buffer->appendText("GET ");
-      break;
-    case HTTP_REQUEST_POST:
-      buffer->appendText("POST ");
-      break;
-    case HTTP_REQUEST_PUT:
-      buffer->appendText("PUT ");
-      break;
-    case HTTP_REQUEST_DELETE:
-      buffer->appendText("DELETE ");
-      break;
-    case HTTP_REQUEST_OPTIONS:
-      buffer->appendText("OPTIONS ");
-      break;
-    case HTTP_REQUEST_PATCH:
-      buffer->appendText("PATCH ");
-      break;
-    case HTTP_REQUEST_HEAD:
-      buffer->appendText("HEAD ");
-      break;
-    case HTTP_REQUEST_ILLEGAL:
-      buffer->appendText("UNKNOWN ");
-      LOGGER_WARNING("illegal http request method encountered in switch");
-      break;
-  }
+  buffer->appendText(translateMethod(method));
+  buffer->appendChar(' ');
 }
 
 ////////////////////////////////////////////////////////////////////////////////

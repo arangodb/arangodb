@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global Backbone, EJS, $, window, _ */
+
 window.foxxEditView = Backbone.View.extend({
   el: '#modalPlaceholder',
   initialize: function () {

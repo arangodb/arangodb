@@ -4218,7 +4218,7 @@ static v8::Handle<v8::Value> JS_EnsureGeoConstraintVocbaseCol (v8::Arguments con
 /// uniqueness is violated. If any attribute value is null for a document, this
 /// document is ignored by the index.
 ///
-/// Note that non-existing attribute paths in a document are treat as if the
+/// Note that non-existing attribute paths in a document are treated as if the
 /// value were @LIT{null}.
 ///
 /// In case that the index was successfully created, the index identifier is
@@ -4246,10 +4246,10 @@ static v8::Handle<v8::Value> JS_LookupUniqueConstraintVocbaseCol (v8::Arguments 
 ///
 /// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
 ///
-/// Creates a unique hash index on all documents using @FA{field1}, @FA{field2},
+/// Creates a non-unique hash index on all documents using @FA{field1}, @FA{field2},
 /// ... as attribute paths. At least one attribute path must be given.
 ///
-/// Note that non-existing attribute paths in a document are treat as if the
+/// Note that non-existing attribute paths in a document are treated as if the
 /// value were @LIT{null}.
 ///
 /// In case that the index was successfully created, the index identifier
