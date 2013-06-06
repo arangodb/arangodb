@@ -186,6 +186,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _dispatcherThreads(8),
+    _multipleDatabases(false),
     _databasePath(),
     _removeOnDrop(true),
     _removeOnCompacted(true),
@@ -379,6 +380,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
+    ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
   ;
 
 
@@ -1146,7 +1148,9 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
   }
-  
+
+  LOGGER_INFO("loaded user database '" << dbName << "' ('" << dbPath << "')");    
+
   return true;
 }
 
@@ -1355,7 +1359,7 @@ void ArangoServer::openDatabases () {
   defaults.forceSyncProperties = _forceSyncProperties;
   defaults.requireAuthentication = !_applicationEndpointServer->isAuthenticationDisabled();
   
-  // open/load the system database
+  // open/load the first database
   _vocbase = TRI_OpenVocBase(_databasePath.c_str(), "_system", &defaults);
 
   if (! _vocbase) {
@@ -1363,18 +1367,17 @@ void ArangoServer::openDatabases () {
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
-  _vocbase->_isSystem = true; // TODO: get true/false from config file
+    LOGGER_INFO("loaded database ('" << _databasePath << "')");    
+  
+  // first database is the system database
+  _vocbase->_isSystem = _multipleDatabases;
   
   VocbaseManager::manager.addSystemVocbase(_vocbase);
   
   if (_vocbase->_isSystem) {
-    LOGGER_INFO("loaded system database ('" << _databasePath << "')");
     loadUserDatabases(&defaults);
     loadEndpoints();
     loadPrefixMappings();
-  }
-  else {
-    LOGGER_INFO("loaded database ('" << _databasePath << "')");    
   }
 }
 

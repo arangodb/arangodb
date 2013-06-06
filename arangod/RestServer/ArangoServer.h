@@ -287,6 +287,18 @@ namespace triagens {
         int _dispatcherThreads;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief start in multiple database mode
+///
+/// @CMDOPT{\--server.multiple-databases @CA{flag}}
+///
+/// If @LIT{true} the server can start more than one database.
+///
+/// The default is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _multipleDatabases;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
 ///
 /// @CMDOPT{\--database.directory @CA{directory}}
