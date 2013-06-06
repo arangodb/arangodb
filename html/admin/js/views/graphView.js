@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, forin: true */
+/*global Backbone, $, window, EJS, GraphViewerUI */
+
 window.graphView = Backbone.View.extend({
   el: '#content',
   
@@ -38,11 +41,11 @@ window.graphView = Backbone.View.extend({
         nodeShaper: {
           label: label
         }
-      }
+      };
     }
 
     $("#background").remove();
-    ui = new GraphViewerUI(document.getElementById("content"), aaconfig, 940, 680, config);
+    var ui = new GraphViewerUI($("#content"), aaconfig, 940, 680, config);
   },
 
 
