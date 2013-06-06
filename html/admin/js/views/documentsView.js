@@ -35,7 +35,7 @@ var documentsView = Backbone.View.extend({
 
   returnPressedHandler: function(event) {
     if (event.keyCode === 13) {
-      if (!!$("#confirmDeleteBtn").attr("disabled") === false) {
+      if ($("#confirmDeleteBtn").attr("disabled") === false) {
         this.confirmDelete();
       }
     } 
