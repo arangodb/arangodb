@@ -5,7 +5,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global describeInterface*/
-/*global ArangoAdapter*/
+/*global FoxxAdapter*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -40,19 +40,16 @@
 
   describe('Foxx Adapter', function () {
     
-    describeInterface(new FoxxAdapter([], [], {
-      nodeCollection: "",
-      edgeCollection: ""
-    }));
+    describeInterface(new FoxxAdapter([], [], "foxx/route"));
+    
+    describeIntegeration(new FoxxAdapter([], [], "foxx/route"));
     
     var adapter,
       nodes,
       edges,
       arangodb = "http://localhost:8529",
       nodesCollection,
-      altNodesCollection,
       edgesCollection,
-      altEdgesCollection,
       mockCollection,
       callbackCheck,
       checkCallbackFunction = function() {
@@ -163,11 +160,6 @@
       beforeEach(function() {
         nodes = [];
         edges = [];
-        mockCollection = {};
-        nodesCollection = "TestNodes321";
-        edgesCollection = "TestEdges321";
-        altNodesCollection = "TestNodes654";
-        altEdgesCollection = "TestEdges654";
         
         this.addMatchers({
           toHaveCorrectCoordinates: function() {
@@ -193,7 +185,7 @@
       it('should throw an error if no nodes are given', function() {
         expect(
           function() {
-            var t = new ArangoAdapter();
+            var t = new FoxxAdapter();
           }
         ).toThrow("The nodes have to be given.");
       });
@@ -201,90 +193,61 @@
       it('should throw an error if no edges are given', function() {
         expect(
           function() {
-            var t = new ArangoAdapter([]);
+            var t = new FoxxAdapter([]);
           }
         ).toThrow("The edges have to be given.");
       });
       
-      it('should throw an error if no nodeCollection is given', function() {
+      it('should throw an error if no route is given', function() {
         expect(
           function() {
-            var t = new ArangoAdapter([], [], {
+            var t = new FoxxAdapter([], [], {
               edgeCollection: ""
             });
           }
-        ).toThrow("The nodeCollection has to be given.");
+        ).toThrow("The route has to be given.");
       });
-      
-      it('should throw an error if no edgeCollection is given', function() {
-        expect(
-          function() {
-            var t = new ArangoAdapter([], [], {
-              nodeCollection: ""
-            });
-          }
-        ).toThrow("The edgeCollection has to be given.");
-      });
-    
-      it('should not throw an error if everything is given', function() {
-        expect(
-          function() {
-            var t = new ArangoAdapter([], [], {
-              nodeCollection: "",
-              edgeCollection: ""
-            });
-          }
-        ).not.toThrow();
-      });
-    
-      it('should automatically determine the host of not given', function() {
-        var adapter = new ArangoAdapter(
+          
+      it('should automatically determine the host of relative route is given', function() {
+        var route = "foxx/route"
+        adapter = new FoxxAdapter(
           nodes,
           edges,
-          {
-            nodeCollection: nodesCollection,
-            edgeCollection: edgesCollection,
-            width: 100,
-            height: 40
-          }
+          route
         ),
           args,
           host;
         spyOn($, "ajax");
         adapter.createNode({}, function() {});
         args = $.ajax.mostRecentCall.args[0];
-        host = window.location.protocol + "//" + window.location.host;
+        host = window.location.protocol + "//" + window.location.host + "/" + route;
         expect(args.url).toContain(host);
       });
       
       it('should create a nodeReducer instance', function() {
         spyOn(window, "NodeReducer");
-        var adapter = new ArangoAdapter(
+        var adapter = new FoxxAdapter(
           nodes,
           edges,
-          {
-            nodeCollection: nodesCollection,
-            edgeCollection: edgesCollection,
-            width: 100,
-            height: 40
-          }
+          "foxx/route"
         );
         expect(window.NodeReducer).wasCalledWith(nodes, edges);
       });
     
       describe('setup correctly', function() {
         
-        var traversalQuery,
-          filterQuery,
-          childrenQuery,
+        var edgeRoute,
+          nodeRoute,
+          queryRoute,
           loadGraph,
           requests;
         
         beforeEach(function() {  
           var self = this,
-           host = window.location.protocol + "//" + window.location.host,
-           apibase = host + "/_api/",
-           apiCursor = apibase + 'cursor';
+            route = "foxx/route"
+            host = window.location.protocol + "//"
+              + window.location.host + "/"
+              + route;
           self.fakeReducerRequest = function() {};
           self.fakeReducerBucketRequest = function() {};
           spyOn(window, "NodeReducer").andCallFake(function(v, e) {
@@ -300,73 +263,23 @@
               }
             };
           });
-          adapter = new ArangoAdapter(
+          adapter = new FoxxAdapter(
             nodes,
             edges,
-            {
-              nodeCollection: nodesCollection,
-              edgeCollection: edgesCollection,
-              width: 100,
-              height: 40
-            }
+            route
           );
-          traversalQuery = function(id, nods, edgs, undirected) {
-            var dir;
-            if (undirected === true) {
-              dir = "any";
-            } else {
-              dir = "outbound";
-            }
-            return JSON.stringify({
-              query: "RETURN TRAVERSAL(@@nodes, @@edges, @id, @dir,"
-                + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
-              bindVars: {
-                id: id,
-                "@nodes": nods,
-                dir: dir,
-                "@edges": edgs
-              }
-            });
-          };
-          filterQuery = function(v, nods, edgs, undirected) {
-            var dir;
-            if (undirected === true) {
-              dir = "any";
-            } else {
-              dir = "outbound";
-            }
-            return JSON.stringify({
-              query: "FOR n IN @@nodes FILTER n.id == @value"
-                + " RETURN TRAVERSAL(@@nodes, @@edges, n._id, @dir,"
-                + " {strategy: \"depthfirst\",maxDepth: 1,paths: true})",
-              bindVars: {
-                value: v,
-                "@nodes": nods,
-                dir: dir,
-                "@edges": edgs 
-              }
-            });
-          };
-          childrenQuery = function(id, nods, edgs) {
-            return JSON.stringify({
-              query: "FOR u IN @@nodes FILTER u._id == @id"
-               + " LET g = ( FOR l in @@edges FILTER l._from == u._id RETURN 1 )" 
-               + " RETURN length(g)",
-              bindVars: {
-                id: id,
-                "@nodes": nods,
-                "@edges": edgs
-              }
-            });
-          };          
-          loadGraph = function(vars) {
-            var nid = vars.id,
-             ncol = vars["@nodes"],
-             ecol = vars["@edges"],
-             res = [],
-             inner = [],
-             first = {},
-             node1 = readNode(ncol, nid);
+          edgeRoute = host + "/edges";
+          nodeRoute = host + "/nodes";
+          queryRoute = host + "/query";
+    
+          loadGraph = function(data) {
+            var res = [],
+              nid,
+              ncol = nodesCollection,
+              ecol = edgesCollection,
+              inner = [],
+              first = {},
+              node1 = readNode(ncol, nid);
             res.push(inner);
             first.vertex = node1;
             first.path = {
@@ -386,10 +299,10 @@
           
           
           requests = {};
-          requests.cursor = function(data) {
+          requests.query = function(data) {
             return {
               type: 'POST',
-              url: apiCursor,
+              url: queryRoute,
               data: data,
               contentType: 'application/json',
               dataType: 'json',
@@ -398,98 +311,62 @@
               processData: false
             };
           };
-          requests.node = function(col) {
-            var read = apibase + "document?collection=" + col,
-              write = apibase + "document/",
-              base = {
-                cache: false,
-                dataType: "json",
-                contentType: "application/json",
-                processData: false,
-                success: jasmine.any(Function),
-                error: jasmine.any(Function)
-              };
+          requests.node = function() {
+            var base = {
+              cache: false,
+              dataType: "json",
+              contentType: "application/json",
+              processData: false,
+              success: jasmine.any(Function),
+              error: jasmine.any(Function)
+            };
             return {
               create: function(data) {
-                return $.extend(base, {url: read, type: "POST", data: JSON.stringify(data)});
+                return $.extend(base, {url: nodeRoute, type: "POST", data: JSON.stringify(data)});
               },
               patch: function(id, data) {
-                return $.extend(base, {url: write + id, type: "PUT", data: JSON.stringify(data)});
+                return $.extend(base, {url: nodeRoute + "/" + id, type: "PUT", data: JSON.stringify(data)});
               },
               del: function(id) {
-                return $.extend(base, {url: write + id, type: "DELETE"});
+                return $.extend(base, {url: nodeRoute + "/" + id, type: "DELETE"});
               }
             };
           };
           requests.edge = function(col) {
-            var create = apibase + "edge?collection=" + col,
-              base = {
-                cache: false,
-                dataType: "json",
-                contentType: "application/json",
-                processData: false,
-                success: jasmine.any(Function),
-                error: jasmine.any(Function)
-              };
+            var base = {
+              cache: false,
+              dataType: "json",
+              contentType: "application/json",
+              processData: false,
+              success: jasmine.any(Function),
+              error: jasmine.any(Function)
+            };
             return {
               create: function(from, to, data) {
+                data = $.extend(data, {_from: from, _to: to});
                 return $.extend(base, {
-                  url: create + "&from=" + from + "&to=" + to,
+                  url: edgeRoute,
                   type: "POST",
                   data: JSON.stringify(data)
                 });
+              },
+              patch: function(id, data) {
+                return $.extend(base, {url: edgeRoute + "/" + id, type: "PUT", data: JSON.stringify(data)});
+              },
+              del: function(id) {
+                return $.extend(base, {url: edgeRoute + "/" + id, type: "DELETE"});
               }
             };
           };
         });
         
-        it('should offer lists of available collections', function() {
-          var collections = [],
-          sys1 = {id: "1", name: "_sys1", status: 3, type: 2},
-          sys2 = {id: "2", name: "_sys2", status: 2, type: 2},
-          doc1 = {id: "3", name: "doc1", status: 3, type: 2},
-          doc2 = {id: "4", name: "doc2", status: 2, type: 2},
-          doc3 = {id: "5", name: "doc3", status: 3, type: 2},
-          edge1 = {id: "6", name: "edge1", status: 3, type: 3},
-          edge2 = {id: "7", name: "edge2", status: 2, type: 3};
-
-          collections.push(sys1);
-          collections.push(sys2);
-          collections.push(doc1);
-          collections.push(doc2);
-          collections.push(doc3);
-          collections.push(edge1);
-          collections.push(edge2);
-          
-          spyOn($, "ajax").andCallFake(function(request) {
-            request.success({collections: collections});
-          });
-          
-          adapter.getCollections(function(docs, edge) {
-            expect(docs).toContain("doc1");
-            expect(docs).toContain("doc2");
-            expect(docs).toContain("doc3");
-            
-            expect(docs.length).toEqual(3);
-            
-            expect(edge).toContain("edge1");
-            expect(edge).toContain("edge2");
-            
-            expect(edge.length).toEqual(2);
-          });
-        });
-        
-        it('should be able to load a tree node from ' 
-        + 'ArangoDB by internal _id attribute', function() {
+        it('should be able to load by internal _id attribute', function() {
       
           var c0, c1, c2, c3, c4;
       
           runs(function() {
             spyOn($, "ajax").andCallFake(function(request) {
-              var vars = JSON.parse(request.data).bindVars;
-              if (vars !== undefined) {
-                request.success({result: loadGraph(vars)});
-              }
+              request.success({result: loadGraph(JSON.parse(request.data))});
             });
             
             c0 = insertNode(nodesCollection, 0);
@@ -504,7 +381,7 @@
             insertEdge(edgesCollection, c0, c4);
         
             callbackCheck = false;
-            adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+            adapter.loadNode(c0, checkCallbackFunction);
           });
       
           waitsFor(function() {
