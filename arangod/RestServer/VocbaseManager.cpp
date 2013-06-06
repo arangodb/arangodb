@@ -280,8 +280,10 @@ void VocbaseManager::addPrefixMapping (std::string const& prefix,
   TRI_vocbase_t* vocbase = lookupVocbaseByName(name);
   
   if (vocbase) {
+    LOGGER_INFO("added prefix mapping '" << prefix << "' -> '" << name << "'");    
+    
     WRITE_LOCKER(_rwLock);
-    _prefix2Vocbases[triagens::basics::StringUtils::tolower(prefix)] = vocbase;
+    _prefix2Vocbases[triagens::basics::StringUtils::tolower(prefix)] = vocbase;    
   }  
   
 }
