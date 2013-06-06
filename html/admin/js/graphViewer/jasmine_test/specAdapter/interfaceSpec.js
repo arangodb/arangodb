@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global it, expect */
+/*global it, expect, describe*/
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +33,7 @@
 var describeInterface = function (testee) {
   "use strict";
     
+  describe('checking the interface', function() {
     it('should comply to the Adapter Interface', function() {
       this.addMatchers({
         toHaveFunction: function(func, argCounter) {
@@ -69,7 +70,13 @@ var describeInterface = function (testee) {
       expect(testee).toHaveFunction("setNodeLimit", 2);
       expect(testee).toHaveFunction("setChildLimit", 1);
       expect(testee).toHaveFunction("expandCommunity", 2);
-      
     });
+  });
     
+    
+};
+
+var describeIntegeration = function(testee) {
+  "use strict";
+  
 };
