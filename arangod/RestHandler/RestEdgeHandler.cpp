@@ -111,8 +111,6 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// Create an edge and reads it back:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgeCreateEdge}
-///     db._drop("edges");
-///     db._drop("vertices");
 ///     var Graph = require("org/arangodb/graph").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex(1);
@@ -131,6 +129,9 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ///     assert(response2.code === 200);
 ///
 ///     logJsonResponse(response2);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 

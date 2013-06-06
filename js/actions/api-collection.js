@@ -591,13 +591,13 @@ function get_api_collection (req, res) {
     }
 
     else {
-      actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND,
+      actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
                              "expecting one of the resources 'count',"
                              +" 'figures', 'properties', 'parameter'");
     }
   }
   else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<collection-name>/<method>");
   }
 }
@@ -880,7 +880,7 @@ function put_api_collection_rename (req, res, collection) {
 
 function put_api_collection (req, res) {
   if (req.suffix.length !== 2) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expected PUT /" + API + "/<collection-name>/<action>");
     return;
   }
@@ -958,7 +958,7 @@ function put_api_collection (req, res) {
 
 function delete_api_collection (req, res) {
   if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expected DELETE /" + API + "/<collection-name>");
   }
   else {
