@@ -49,6 +49,10 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
 	`find @srcdir@/html/admin/js/models -name "*.js"` \
+	`find @srcdir@/html/admin/js/views -name "*.js"` \
+	`find @srcdir@/html/admin/js/collections -name "*.js"` \
+	`find @srcdir@/html/admin/js/routers -name "*.js"` \
+	`find @srcdir@/html/admin/js/arango -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
