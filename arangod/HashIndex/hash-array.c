@@ -196,14 +196,6 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief size of a cache line, in bytes
-/// the memory acquired for the hash table is aligned to a multiple of this
-/// value
-////////////////////////////////////////////////////////////////////////////////
-
-#define CACHE_LINE_SIZE (64)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initial preallocation size of the hash table when the table is
 /// first created
 /// setting this to a high value will waste memory but reduce the number of
@@ -273,7 +265,7 @@ static int AllocateTable (TRI_hash_array_t* array, size_t numElements) {
   TRI_hash_index_element_t* table;
 
   table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                       CACHE_LINE_SIZE + (sizeof(TRI_hash_index_element_t) * numElements),
+                       sizeof(TRI_hash_index_element_t) * numElements,
                        true);
 
   if (table == NULL) {
