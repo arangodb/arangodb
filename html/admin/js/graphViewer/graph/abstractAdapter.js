@@ -124,10 +124,10 @@ function AbstractAdapter(nodes, edges) {
       source = findNode(data._from);
       target = findNode(data._to);
       if (!source) {
-        throw "Unable to insert Edge, source node not existing " + edge._from;
+        throw "Unable to insert Edge, source node not existing " + data._from;
       }
       if (!target) {
-        throw "Unable to insert Edge, target node not existing " + edge._to;
+        throw "Unable to insert Edge, target node not existing " + data._to;
       }
       edge.source = source;
       edge.target = target;
@@ -323,9 +323,8 @@ function AbstractAdapter(nodes, edges) {
     },
     
     checkSizeOfInserted = function (inserted) {
-      var buckets;
       if (_.size(inserted) > childLimit) {
-        buckets = reducer.bucketNodes(_.values(inserted), childLimit);
+        var buckets = reducer.bucketNodes(_.values(inserted), childLimit);
         _.each(buckets, function(b) {
           if (b.length > 1) {
             var ids = _.map(b, function(n) {

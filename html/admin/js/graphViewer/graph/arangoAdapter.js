@@ -367,7 +367,7 @@ function ArangoAdapter(nodes, edges, config) {
       processData: false,
       success: function() {
         absAdapter.removeEdgesForNode(nodeToRemove);
-        permanentlyRemoveEdgesOfNode(nodeToRemove._id);    
+        permanentlyRemoveEdgesOfNode(nodeToRemove._id);
         absAdapter.removeNode(nodeToRemove);
         if (callback !== undefined && _.isFunction(callback)) {
           callback();
