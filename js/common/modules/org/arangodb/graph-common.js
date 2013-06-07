@@ -573,6 +573,18 @@ Graph.prototype._prepareEdgeData = function (data, label) {
   return edgeData;
 };
 
+Graph.prototype._prepareVertexData = function (data) {
+  var vertexData;
+
+  if (is.notExisty(data) || is.noObject(data)) {
+    vertexData = {};
+  } else {
+    vertexData = data._shallowCopy || {};
+  }
+
+  return vertexData;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -656,15 +668,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addVertex = function (id, data, waitForSync) {
-  var params;
-
-  if (data === null || typeof data !== "object") {
-    params = {};
-  } else {
-    params = data._shallowCopy || {};
-  }
-
-  return this._saveVertex(id, params, waitForSync);
+  return this._saveVertex(id, this._prepareVertexData(data), waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
