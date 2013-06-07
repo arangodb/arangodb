@@ -639,60 +639,17 @@ Graph.prototype.drop = function (waitForSync) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an edge to the graph
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id})}
-///
-/// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
-/// identifier @FA{id} must be a unique identifier or null.
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
-///
-/// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
-/// edge object.
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
-///
-/// Creates a new edge and returns the edge object. The edge contains the
-/// properties defined in @FA{data}.
-///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
-///
-/// Creates a new edge and returns the edge object. The edge has the
-/// label @FA{label} and contains the properties defined in @FA{data}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-add-edge
-///
-/// @verbinclude graph-graph-add-edge2
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
-  var ref;
-  var shallow;
-
+Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitForSync) {
   this.emptyCachedPredecessors();
-
-  if (data === null || typeof data !== "object") {
-    shallow = {};
-  }
-  else {
-    shallow = data._shallowCopy || {};
-  }
 
   if (id !== undefined && id !== null) {
     shallow._key = String(id);
   }
 
-  shallow.$label = label;
-
-  if (is.notExisty(shallow.$label) && is.existy(data) && is.existy(data.$label)) {
-    shallow.$label = data.$label;
-  }
-
-  ref = this._edges.save(out_vertex._properties._id, 
+  ref = this._edges.save(out_vertex._properties._id,
                          in_vertex._properties._id, shallow, waitForSync);
-
   return this.constructEdge(ref._id);
 };
 
