@@ -291,7 +291,7 @@ static int ResizeHashArray (TRI_hash_array_t* array) {
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  res = AllocateTable(array, 2 * array->_nrAlloc + 1);
+  res = AllocateTable(array, (size_t) (2 * oldAlloc + 1));
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -344,6 +344,8 @@ int TRI_InitHashArray (TRI_hash_array_t* array,
 
   array->_numFields = numFields;
   array->_table = NULL;
+  array->_nrUsed = 0;
+  array->_nrAlloc = 0;
 
   if (initialDocumentCount > 0) {
     // use initial document count provided as initial size

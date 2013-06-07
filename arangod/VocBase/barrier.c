@@ -238,7 +238,7 @@ TRI_barrier_t* TRI_CreateBarrierDropDatafile (TRI_barrier_list_t* container,
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_drop_cb_t), false);
 
-  if (!element) {
+  if (element == NULL) {
     return NULL;
   }
 
@@ -267,8 +267,6 @@ TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_datafile_rename_cb_t), false);
 
   if (element == NULL) {
-    TRI_Free(TRI_CORE_MEM_ZONE, data);
-
     return NULL;
   }
 

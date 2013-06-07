@@ -70,7 +70,6 @@ TRI_fulltext_wordlist_t;
 /// @brief create a wordlist
 /// the words passed to the wordlist will be owned by the wordlist and will be
 /// freed when the wordlist is freed
-/// TODO: make memory zone configurable
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char**,
