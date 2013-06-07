@@ -1499,6 +1499,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
                                TRI_skiplist_index_element_t* skiplistElement,
                                const TRI_doc_mptr_t* document) {
   TRI_shaped_json_t shapedObject;
+  TRI_shaped_json_t shapedJson;
   TRI_shape_access_t const* acc;
   char const* ptr;
   size_t j;
@@ -1507,15 +1508,23 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   // Assign the document to the SkiplistIndexElement structure so that it can 
   // be retrieved later.
   // ..........................................................................
+    
+  assert(document != NULL); 
+  assert(document->_data != NULL); 
+    
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+
+  if (shapedJson._sid == 0) {
+    LOG_WARNING("encountered invalid marker with shape id 0");
+    
+    return TRI_ERROR_INTERNAL;
+  }
 
   skiplistElement->_document = CONST_CAST(document);
   ptr = (char const*) skiplistElement->_document->_data;
     
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
-    TRI_shaped_json_t shapedJson;
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
-      
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
 
     // ..........................................................................
     // Determine if document has that particular shape 
@@ -1765,7 +1774,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
     if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) { 
       return TRI_ERROR_NO_ERROR;
     }
-    
+
     return res;  
   }
   

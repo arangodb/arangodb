@@ -78,7 +78,7 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyDatafile (TRI_associative_pointer_t* array, void const* key) {
-  TRI_voc_tick_t const* k = key;
+  TRI_voc_fid_t const* k = key;
 
   return *k;
 }
@@ -98,7 +98,7 @@ static uint64_t HashElementDatafile (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_voc_tick_t const* k = key;
+  TRI_voc_fid_t const* k = key;
   TRI_doc_datafile_info_t const* e = element;
 
   return *k == e->_fid;
@@ -114,18 +114,18 @@ static void DebugDatafileInfoDatafile (TRI_primary_collection_t* primary,
   
   printf("FILE '%s'\n", datafile->getName(datafile));
 
-  dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
+  dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid, false);
 
   if (dfi == NULL) {
     printf(" no info\n\n");
     return;
   }
 
-  printf("  number alive: %ld\n", (long) dfi->_numberAlive);
-  printf("  size alive:   %ld\n", (long) dfi->_sizeAlive);
-  printf("  number dead:  %ld\n", (long) dfi->_numberDead);
-  printf("  size dead:    %ld\n", (long) dfi->_sizeDead);
-  printf("  deletion:     %ld\n\n", (long) dfi->_numberDeletion);
+  printf("  number alive:        %ld\n", (long) dfi->_numberAlive);
+  printf("  size alive:          %ld\n", (long) dfi->_sizeAlive);
+  printf("  number dead:         %ld\n", (long) dfi->_numberDead);
+  printf("  size dead:           %ld\n", (long) dfi->_sizeDead);
+  printf("  deletion:            %ld\n\n", (long) dfi->_numberDeletion);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -497,9 +497,11 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     if (d != NULL) {
       info->_numberAlive += d->_numberAlive;
       info->_numberDead += d->_numberDead;
+      info->_numberTransaction += d->_numberTransaction; // not used here (only in compaction)
+      info->_numberDeletion += d->_numberDeletion;
       info->_sizeAlive += d->_sizeAlive;
       info->_sizeDead += d->_sizeDead;
-      info->_numberDeletion += d->_numberDeletion;
+      info->_sizeTransaction += d->_sizeTransaction; // not used here (only in compaction)
     }
   }
 
@@ -508,7 +510,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   for (i = 0; i < base->_datafiles._length; ++i) {
     TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
 
-    info->_datafileSize += df->_maximalSize;
+    info->_datafileSize += (int64_t) df->_maximalSize;
     ++info->_numberDatafiles;
   }
 
@@ -554,13 +556,14 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 
 int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
-  primary->_shaper          = shaper;
-  primary->_capConstraint   = NULL;
-  primary->_keyGenerator    = NULL;
-  primary->_numberDocuments = 0;
+  primary->_shaper             = shaper;
+  primary->_capConstraint      = NULL;
+  primary->_keyGenerator       = NULL;
+  primary->_numberDocuments    = 0;
 
-  primary->figures          = Figures;
-  primary->size             = Count;
+  primary->figures             = Figures;
+  primary->size                = Count;
+
 
   TRI_InitBarrierList(&primary->_barrierList, primary);
 
@@ -576,9 +579,10 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                              HashKeyHeader,
                              HashElementDocument,
                              IsEqualKeyDocument,
-                             0);
+                             NULL);
 
   TRI_InitReadWriteLock(&primary->_lock);
+  TRI_InitReadWriteLock(&primary->_compactionLock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -594,6 +598,7 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
     TRI_FreeKeyGenerator(primary->_keyGenerator);
   }
 
+  TRI_DestroyReadWriteLock(&primary->_compactionLock);
   TRI_DestroyReadWriteLock(&primary->_lock);
   TRI_DestroyAssociativePointer(&primary->_primaryIndex);
 
@@ -631,11 +636,21 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a datafile description
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary,
+                                              TRI_voc_fid_t fid) {
+  TRI_RemoveKeyAssociativePointer(&primary->_datafileInfo, &fid);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary,
-                                                                TRI_voc_fid_t fid) {
+                                                                TRI_voc_fid_t fid,
+                                                                bool create) {
   TRI_doc_datafile_info_t const* found;
   TRI_doc_datafile_info_t* dfi;
 
@@ -643,6 +658,10 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
 
   if (found != NULL) {
     return CONST_CAST(found);
+  }
+
+  if (! create) {
+    return NULL;
   }
 
   // allocate and set to 0
