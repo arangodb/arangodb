@@ -632,6 +632,42 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a vertex to the graph
+///
+/// @FUN{@FA{graph}.addVertex(@FA{id})}
+///
+/// Creates a new vertex and returns the vertex object. The identifier
+/// @FA{id} must be a unique identifier or null.
+///
+/// @FUN{@FA{graph}.addVertex(@FA{id}, @FA{data})}
+///
+/// Creates a new vertex and returns the vertex object. The vertex contains
+/// the properties defined in @FA{data}.
+///
+/// @EXAMPLES
+///
+/// Without any properties:
+///
+/// @verbinclude graph-graph-add-vertex
+///
+/// With given properties:
+///
+/// @verbinclude graph-graph-add-vertex2
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.addVertex = function (id, data, waitForSync) {
+  var params;
+
+  if (data === null || typeof data !== "object") {
+    params = {};
+  } else {
+    params = data._shallowCopy || {};
+  }
+
+  return this._saveVertex(id, params, waitForSync);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
