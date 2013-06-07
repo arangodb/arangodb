@@ -30,6 +30,7 @@ module.define("org/arangodb/graph-common", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb"),
+  is = require("org/arangodb/is"),
   Edge,
   Graph,
   Vertex,
@@ -567,6 +568,59 @@ Graph.prototype.getOrAddVertex = function (id) {
   }
 
   return v;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an edge to the graph
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id})}
+///
+/// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
+/// identifier @FA{id} must be a unique identifier or null.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
+///
+/// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
+/// edge object.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
+///
+/// Creates a new edge and returns the edge object. The edge contains the
+/// properties defined in @FA{data}.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge and returns the edge object. The edge has the
+/// label @FA{label} and contains the properties defined in @FA{data}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-graph-add-edge
+///
+/// @verbinclude graph-graph-add-edge2
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
+  var params;
+  
+  if (is.notExisty(data) && typeof label === 'object') {
+    data = label;
+    label = null;
+  }
+
+  if (is.notExisty(label) && is.existy(data) && is.existy(data.$label)) {
+    label = data.$label;
+  }
+
+  if (data === null || typeof data !== "object") {
+    params = {};
+  } else {
+    params = data._shallowCopy || {};
+  }
+
+  params.$label = label;
+
+  return this._saveEdge(id, out_vertex, in_vertex, params, waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

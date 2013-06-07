@@ -648,8 +648,8 @@ Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitFor
     shallow._key = String(id);
   }
 
-  ref = this._edges.save(out_vertex._properties._id,
-                         in_vertex._properties._id, shallow, waitForSync);
+  var ref = this._edges.save(out_vertex._properties._id,
+                             in_vertex._properties._id, shallow, waitForSync);
   return this.constructEdge(ref._id);
 };
 

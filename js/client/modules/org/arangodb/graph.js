@@ -429,7 +429,7 @@ Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
 
-  requestResult = this._connection.POST("/_api/graph/"
+  var requestResult = this._connection.POST("/_api/graph/"
     + encodeURIComponent(this._properties._key) + "/edge",
     JSON.stringify(params));
 
