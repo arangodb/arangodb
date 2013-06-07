@@ -547,6 +547,33 @@ Graph = function (name, vertices, edges, waitForSync) {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+Graph.prototype._prepareEdgeData = function (data, label) {
+  var edgeData;
+
+  if (is.notExisty(data) && is.object(label)) {
+    data = label;
+    label = null;
+  }
+
+  if (is.notExisty(label) && is.existy(data) && is.existy(data.$label)) {
+    label = data.$label;
+  }
+
+  if (is.notExisty(data) || is.noObject(data)) {
+    edgeData = {};
+  } else {
+    edgeData = data._shallowCopy || {};
+  }
+
+  edgeData.$label = label;
+
+  return edgeData;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -554,6 +581,7 @@ Graph = function (name, vertices, edges, waitForSync) {
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a vertex from the graph, create it if it doesn't exist
@@ -600,26 +628,7 @@ Graph.prototype.getOrAddVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
-  var params;
-  
-  if (is.notExisty(data) && is.object(label)) {
-    data = label;
-    label = null;
-  }
-
-  if (is.notExisty(label) && is.existy(data) && is.existy(data.$label)) {
-    label = data.$label;
-  }
-
-  if (is.notExisty(data) || is.noObject(data)) {
-    params = {};
-  } else {
-    params = data._shallowCopy || {};
-  }
-
-  params.$label = label;
-
-  return this._saveEdge(id, out_vertex, in_vertex, params, waitForSync);
+  return this._saveEdge(id, out_vertex, in_vertex, this._prepareEdgeData(data, label), waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
