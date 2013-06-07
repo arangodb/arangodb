@@ -484,17 +484,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readAll (TRI_transaction_collection_t* trxCollection,
-                     vector<string>& ids) {
+                     vector<string>& ids, 
+                     bool lock) {
 
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+          if (lock) {
+            // READ-LOCK START
+            int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
           
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
           }
-
+          
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
             void** end = ptr + primary->_primaryIndex._nrAlloc;
@@ -510,8 +513,10 @@ namespace triagens {
             }
           }
 
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
+          if (lock) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+          }
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -560,7 +565,7 @@ namespace triagens {
           void** ptr = beg;
           void** end = ptr + primary->_primaryIndex._nrAlloc;
           uint32_t count = 0;
-          // TODO: this is not valid in MVCC context
+          
           *total = (uint32_t) primary->_primaryIndex._nrUsed;
 
           // apply skip
@@ -791,7 +796,7 @@ namespace triagens {
             return res;
           }
           
-          res = readAll(trxCollection, ids);
+          res = readAll(trxCollection, ids, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
@@ -806,7 +811,7 @@ namespace triagens {
             const string& id = ids[i];
           
             res = primary->remove(trxCollection,
-                                  (TRI_voc_key_t) id.c_str(), 
+                                  (const TRI_voc_key_t) id.c_str(), 
                                   &updatePolicy, 
                                   false,
                                   forceSync);
