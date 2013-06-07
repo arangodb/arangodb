@@ -602,7 +602,7 @@ Graph.prototype.getOrAddVertex = function (id) {
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
   var params;
   
-  if (is.notExisty(data) && typeof label === 'object') {
+  if (is.notExisty(data) && is.object(label)) {
     data = label;
     label = null;
   }
@@ -611,7 +611,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
     label = data.$label;
   }
 
-  if (data === null || typeof data !== "object") {
+  if (is.notExisty(data) || is.noObject(data)) {
     params = {};
   } else {
     params = data._shallowCopy || {};
