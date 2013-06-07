@@ -30,6 +30,7 @@
 
 var arangodb = require("org/arangodb");
 var arangosh = require("org/arangodb/arangosh");
+var is = require("org/arangodb/is");
 
 var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
 
@@ -438,8 +439,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
 
   if (data === null || typeof data !== "object") {
     params = {};
-  }
-  else {
+  } else {
     params = data._shallowCopy || {};
   }
 
@@ -447,6 +447,10 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
   params.$label = label;
+
+  if (is.notExisty(params.$label) && is.existy(data) && is.existy(data.$label)) {
+    params.$label = data.$label;
+  }
 
   requestResult = this._connection.POST("/_api/graph/"
     + encodeURIComponent(this._properties._key) + "/edge",
