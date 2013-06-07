@@ -141,9 +141,12 @@ typedef struct TRI_doc_datafile_info_s {
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _sizeAlive;
-  TRI_voc_ssize_t _sizeDead;
   TRI_voc_ssize_t _numberDeletion;
+  TRI_voc_ssize_t _numberTransaction; // populated only during compaction
+
+  int64_t         _sizeAlive;
+  int64_t         _sizeDead;
+  int64_t         _sizeTransaction;   // populated only during compaction
 }
 TRI_doc_datafile_info_t;
 
@@ -157,10 +160,15 @@ typedef struct TRI_doc_collection_info_s {
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _sizeAlive;
-  TRI_voc_ssize_t _sizeDead;
   TRI_voc_ssize_t _numberDeletion;
-  TRI_voc_ssize_t _datafileSize;
+  TRI_voc_ssize_t _numberTransaction; // populated only during compaction
+
+  int64_t         _sizeAlive;
+  int64_t         _sizeDead;
+  int64_t         _sizeTransaction;   // populated only during compaction
+
+  int64_t         _datafileSize;
+
   TRI_voc_ssize_t _journalfileSize;
 
   TRI_voc_ssize_t _numberShapes;
@@ -295,6 +303,7 @@ typedef struct TRI_primary_collection_s {
   struct TRI_cap_constraint_s* _capConstraint;
 
   int64_t _numberDocuments;
+  TRI_read_write_lock_t _compactionLock;
 
   int (*beginRead) (struct TRI_primary_collection_s*);
   int (*endRead) (struct TRI_primary_collection_s*);
@@ -415,11 +424,19 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a datafile description
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveDatafileInfoPrimaryCollection (TRI_primary_collection_t*,
+                                              TRI_voc_fid_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t*,
-                                                                TRI_voc_fid_t);
+                                                                TRI_voc_fid_t,
+                                                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
