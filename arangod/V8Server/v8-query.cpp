@@ -1681,7 +1681,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects all elements, acquiring all required locks
+/// @brief selects all documents from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
@@ -1755,7 +1755,86 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects any element, acquiring all required locks
+/// @brief selects documents from a collection, using an offset into the
+/// primary index. this can be used for incremental access
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // expecting two arguments
+  if (argv.Length() != 4) {
+    TRI_V8_EXCEPTION_USAGE(scope, "OFFSET(<internalSkip>, <batchSize>, <skip>, <limit>)");
+  }
+
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_voc_size_t internalSkip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[0]);
+  TRI_voc_size_t batchSize = (TRI_voc_size_t) TRI_ObjectToDouble(argv[1]);
+
+  // extract skip and limit
+  TRI_voc_ssize_t skip;
+  TRI_voc_size_t limit;
+  ExtractSkipAndLimit(argv, 2, skip, limit);
+
+  TRI_barrier_t* barrier = 0;
+  uint32_t total = 0;
+  vector<TRI_doc_mptr_t> docs;
+
+  CollectionNameResolver resolver(col->_vocbase);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+  }
+
+  res = trx.readOffset(docs, &barrier, internalSkip, batchSize, skip, &total);
+  res = trx.finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+  }
+
+  const size_t n = docs.size();
+  uint32_t count = 0;
+  
+  if (n > 0) {
+    TRI_ASSERT_MAINTAINER(barrier != 0);
+  }
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Array> documents = v8::Array::New(n);
+  // reserve full capacity in one go
+  result->Set(v8::String::New("documents"), documents);
+
+  for (size_t i = 0; i < n; ++i) {
+    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i], barrier);
+
+    if (document.IsEmpty()) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+    else {
+      documents->Set(count++, document);
+    }
+  }
+
+  result->Set(v8::String::New("total"), v8::Number::New(total));
+  result->Set(v8::String::New("count"), v8::Number::New(count));
+  result->Set(v8::String::New("skip"), v8::Number::New(internalSkip));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects a random document
 ///
 /// @FUN{@FA{collection}.any()}
 ///
@@ -1821,7 +1900,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example (not using any index)
+/// @brief selects documents by example (not using any index)
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
@@ -1948,7 +2027,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example using a hash index
+/// @brief selects documents by example using a hash index
 ///
 /// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
@@ -2059,7 +2138,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example using a hash index
+/// @brief selects documents by example using a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
@@ -2101,7 +2180,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by condition using a skiplist index
+/// @brief selects documents by condition using a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
@@ -2111,7 +2190,7 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example using a skiplist index
+/// @brief selects documents by example using a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
@@ -2121,7 +2200,7 @@ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by example using a bitarray index
+/// @brief selects documents by example using a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
@@ -2131,7 +2210,7 @@ static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects elements by condition using a bitarray index
+/// @brief selects documents by condition using a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) {
@@ -2675,6 +2754,10 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
+
+  // internal method. not intended to be used by end-users
+  TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true); 
+
   TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
   TRI_AddMethodVocbase(rt, "TOP", JS_TopQuery);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
