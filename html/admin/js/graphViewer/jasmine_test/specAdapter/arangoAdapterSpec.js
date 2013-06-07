@@ -4,7 +4,7 @@
 /*global runs, spyOn, waitsFor, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global describeInterface*/
+/*global describeInterface, describeIntegeration*/
 /*global ArangoAdapter*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +45,59 @@
       edgeCollection: ""
     }));
     
+    describeIntegeration(function() {
+      spyOn($, "ajax").andCallFake(function(req) {
+        var node1 = {_id: 1},
+          node2 = {_id: 2},
+          edge = {_id: "1-2", _from: 1, _to: 2};
+          
+        switch(req.type) {
+          case "DELETE": 
+            req.success();
+            break;
+          case "POST":
+            if (req.url.match(/_api\/cursor$/)) {
+              req.success({result:
+              [
+                [{
+                  vertex: node1,
+                  path: {
+                    edges: [],
+                    vertices: [
+                     node1
+                    ]
+                  }
+            
+                },{
+                  vertex: node2,
+                  path: {
+                    edges: [
+                      edge
+                    ],
+                    vertices: [
+                      node1,
+                      node2
+                    ]
+                  }
+                }]
+              ]});
+            } else if (req.url.match(/_api\/edge/)) {
+              req.success({_id: "1-2"});
+            } else {
+              req.success({_id: 1});
+            }
+            break;
+          default:
+            req.success();
+        }
+      });
+      
+      return new ArangoAdapter([], [], {
+        nodeCollection: "",
+        edgeCollection: ""
+      });
+    });
+
     var adapter,
       nodes,
       edges,
@@ -1707,7 +1760,7 @@
         
         
       });
-      
+
   });
   
   
