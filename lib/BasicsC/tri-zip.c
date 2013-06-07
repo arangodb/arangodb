@@ -226,7 +226,7 @@ int TRI_ZipFile (const char* filename,
                  TRI_vector_string_t const* files,
                  const char* password) {
   void* buffer;
-  size_t bufferSize;
+  int bufferSize;
   zipFile zf;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -239,7 +239,7 @@ int TRI_ZipFile (const char* filename,
   }
 
   bufferSize = 16384;
-  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) bufferSize, false);
 
   if (buffer == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
