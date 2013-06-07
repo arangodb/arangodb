@@ -250,8 +250,8 @@ static bool ValidateAttributeName (const char* attributeName,
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static const bool ExtractForceSync (v8::Arguments const& argv,
-                                    const int index) {
+static bool ExtractForceSync (v8::Arguments const& argv,
+                              const int index) {
   assert(index > 0);
 
   const bool forceSync = (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
@@ -263,8 +263,8 @@ static const bool ExtractForceSync (v8::Arguments const& argv,
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static const TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
-                                                          const int index) {
+static TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
+                                                    const int index) {
   assert(index > 0);
 
   // default value
@@ -298,7 +298,6 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 
   if (result.IsEmpty()) {
     // error
-    // TODO check for empty results
     return scope.Close(result);
   }
 
@@ -697,7 +696,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   TRI_json_t* json = idx->json(idx, primary);
 
-  if (! json) {
+  if (json == 0) {
     ReleaseCollection(collection);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -804,7 +803,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 
   TRI_json_t* json = idx->json(idx, primary);
 
-  if (! json) {
+  if (json == 0) {
     ReleaseCollection(collection);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -1498,7 +1497,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot create collection");
   }
 
-  return scope.Close(TRI_WrapCollection(collection));
+  v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
+
+  if (result.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1742,7 +1747,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   // return the result as a cursor object
   TRI_json_t* json = TRI_ObjectToJson(result);
 
-  if (! json) {
+  if (json == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -1754,16 +1759,21 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
-  if (! cursor) {
+  if (cursor == 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  assert(cursor);
+  assert(cursor != 0);
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
 
-  return scope.Close(WrapGeneralCursor(cursor));
+  v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+  if (cursorObject.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(cursorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1822,7 +1832,6 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
 
   if (cursorObject.IsEmpty()) {
     // error
-    // TODO check for empty results
     return scope.Close(cursorObject);
   }
 
@@ -2192,7 +2201,13 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   }
 
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
-  return scope.Close(WrapGeneralCursor(cursor));
+  
+  v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+  if (cursorObject.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(cursorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2596,7 +2611,12 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
   }
 
-  return scope.Close(WrapGeneralCursor(cursor));
+  v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+  if (cursorObject.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(cursorObject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5653,6 +5673,25 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_vocbase_t
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl,
+                                            WRP_VOCBASE_TYPE,
+                                            const_cast<TRI_vocbase_t*>(database));
+  
+  if (! result.IsEmpty()) {
+    result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a collection from the vocbase
 ///
 /// @FUN{db.@FA{collection-name}}
@@ -5721,6 +5760,10 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   }
 
   v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
+
+  if (result.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
   // TODO: when this line is uncommented, the collection names are cached.
   // but this causes problems and confusion somewhere else. Need to find the reason!
@@ -5804,7 +5847,13 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
     return scope.Close(v8::Null());
   }
 
-  return scope.Close(TRI_WrapCollection(collection));
+  v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
+
+  if (result.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5830,6 +5879,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
 
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
+  bool error = false;
   uint32_t n = (uint32_t) colls._length;
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(n);
@@ -5837,10 +5887,21 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
-    result->Set(i, TRI_WrapCollection(collection));
+    v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+
+    if (c.IsEmpty()) {
+      error = true;
+      break;
+    }
+    
+    result->Set(i, c);
   }
 
   TRI_DestroyVectorPointer(&colls);
+      
+  if (error) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
   return scope.Close(result);
 }
@@ -6678,23 +6739,6 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_vocbase_t
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
-  v8::HandleScope scope;
-
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl,
-                                            WRP_VOCBASE_TYPE,
-                                            const_cast<TRI_vocbase_t*>(database));
-
-  result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6705,8 +6749,10 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
   v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseColTempl,
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
-
-  result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+  
+  if (! result.IsEmpty()) {
+    result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+  }
 
   return scope.Close(result);
 }
@@ -6810,7 +6856,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
 ////////////////////////////////////////////////////////////////////////////////
 
-const int32_t TRI_GetVocBaseColType () {
+int32_t TRI_GetVocBaseColType () {
   return WRP_VOCBASE_COL_TYPE;
 }
 
@@ -7024,7 +7070,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create global variables
   // .............................................................................
   
-  TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
+  v8::Handle<v8::Value> v = WrapVocBase(vocbase);
+  if (v.IsEmpty()) {
+    // TODO: raise an error here
+    LOG_ERROR("out of memory when initialising VocBase");
+  }
+  else {
+    TRI_AddGlobalVariableVocbase(context, "db", v);
+  }
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);

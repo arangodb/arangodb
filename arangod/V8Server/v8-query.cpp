@@ -479,7 +479,7 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
   // Client mucked something up?
   // ........................................................................
 
-  if (!attributeValues->IsObject()) {
+  if (! attributeValues->IsObject()) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     return 0;
   }
@@ -516,8 +516,11 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
 
       v8::Handle<v8::Value> value = attributeValues->Get(key);
       json = TRI_ObjectToJson(value);
-
-      // TODO: check return value!
+      
+      if (json == 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+        return 0;
+      }
 
 
       // ....................................................................
@@ -542,6 +545,13 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
       // renamed to 'unknown' or 'undefined').
       // ....................................................................
       json = (TRI_json_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t), true);
+
+      if (json == 0) {
+        // OOM
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+        return 0;
+      }
+
       json->_type = TRI_JSON_UNUSED;
     }
 
@@ -550,11 +560,7 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
     // Check and ensure we have a json object defined before we store it.
     // ......................................................................
 
-    if (json == 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-      return 0;
-    }
-
+    assert(json != 0);
 
     // ......................................................................
     // store it in an list json object -- eventually wil be stored as part
@@ -1436,12 +1442,24 @@ static int StoreGeoResult (ReadTransactionType& trx,
   }
 
   // copy the documents
+  bool error = false;
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
-    documents->Set(i, WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) gtr->_data, barrier));
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) gtr->_data, barrier);
+
+    if (doc.IsEmpty()) {
+      error = true;
+      break;
+    }
+
+    documents->Set(i, doc);
     distances->Set(i, v8::Number::New(gtr->_distance));
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
+
+  if (error) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1720,13 +1738,13 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i], barrier);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i], barrier);
 
-    if (document.IsEmpty()) {
+    if (doc.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
     else {
-      documents->Set(count++, document);
+      documents->Set(count++, doc);
     }
   }
 
@@ -1794,7 +1812,12 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     return scope.Close(v8::Null());
   }
 
-  return scope.Close(WRAP_SHAPED_JSON(trx, col->_cid, &document, barrier));
+  v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &document, barrier);
+  if (doc.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(doc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2232,11 +2255,24 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
+  bool error = false;
+
   for (uint32_t i = 0; i < queryResult->_numDocuments; ++i) {
-    documents->Set(i, WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) queryResult->_documents[i], barrier));
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) queryResult->_documents[i], barrier);
+
+    if (doc.IsEmpty()) {
+      error = true;
+      break;
+    }
+
+    documents->Set(i, doc);
   }
 
   TRI_FreeResultFulltextIndex(queryResult);
+
+  if (error) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
   return scope.Close(result);
 }
@@ -2483,6 +2519,11 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, elms->_elements);
 
   trx.finish(res);
+
+  if (result.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
   return scope.Close(result);
 }
 
