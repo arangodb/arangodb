@@ -1,6 +1,8 @@
 v1.4
 ------
 
+* changed AQL COLLECT to use a stable sort, so any previous SORT order is preserved
+
 * issue #547: Javascript error in the web interface
 
 * issue #550: Make AQL graph functions support key in addition to id

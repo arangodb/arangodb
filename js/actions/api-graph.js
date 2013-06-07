@@ -682,7 +682,7 @@ function get_graph_vertex (req, res, g) {
 ///     var url = "/_api/graph/graph/vertex/v1";
 ///     var response = logCurlRequest('DELETE', url);
 /// 
-///     //assert(response.code === 202);
+///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     db._drop("edges");
@@ -1194,7 +1194,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     body += '[] }}';
 ///     var response = logCurlRequest('POST', url, body);
 /// 
-///     //assert(response.code === 201);
+///     assert(response.code === 201);
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");

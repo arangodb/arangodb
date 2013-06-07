@@ -538,7 +538,8 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
 
 static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* const generator,
                                                       const TRI_aql_node_t* const node,
-                                                      const size_t elementIndex) {
+                                                      const size_t elementIndex,
+                                                      const bool stable) {
   TRI_aql_node_t* list;
   TRI_aql_codegen_scope_t* scope;
   TRI_aql_codegen_register_t functionIndex = IncFunction(generator);
@@ -561,12 +562,22 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* element = TRI_AQL_NODE_MEMBER(list, i);
 
-    scope->_prefix = "l";
+    if (stable) {
+      scope->_prefix = "l[1]";
+    }
+    else {
+      scope->_prefix = "l";
+    }
     ScopeOutput(generator, "lhs = ");
     ProcessNode(generator, TRI_AQL_NODE_MEMBER(element, elementIndex));
     ScopeOutput(generator, ";\n");
 
-    scope->_prefix = "r";
+    if (stable) {
+      scope->_prefix = "r[1]";
+    }
+    else {
+      scope->_prefix = "r";
+    }
     ScopeOutput(generator, "rhs = ");
     ProcessNode(generator, TRI_AQL_NODE_MEMBER(element, elementIndex));
     ScopeOutput(generator, ";\n");
@@ -584,9 +595,16 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
     }
     ScopeOutput(generator, "}\n");
   }
+  
+  if (stable) {
+    // sort order determined by previous index position (stable sort)
+    ScopeOutput(generator, "return l[0] - r[0];\n");
+  }
+  else {
+    // return 0 if all elements are equal
+    ScopeOutput(generator, "return 0;\n");
+  }
 
-  // return 0 if all elements are equal
-  ScopeOutput(generator, "return 0;\n");
   ScopeOutput(generator, "}\n");
 
   // finish scope
@@ -2019,7 +2037,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   // }
   CloseLoops(generator);
 
-  functionIndex = CreateSortFunction(generator, node, 0);
+  functionIndex = CreateSortFunction(generator, node, 0, false);
 
   // now apply actual sorting
   ScopeOutput(generator, "aql.SORT(");
@@ -2080,7 +2098,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   CloseLoops(generator);
 
   // sort function
-  sortFunctionIndex = CreateSortFunction(generator, node, 1);
+  sortFunctionIndex = CreateSortFunction(generator, node, 1, true);
 
   // group function
   groupFunctionIndex = CreateGroupFunction(generator, node);
