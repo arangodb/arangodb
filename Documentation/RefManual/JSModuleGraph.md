@@ -32,7 +32,7 @@ examples assume
 @verbinclude graph-setup
 
 @anchor JSModuleGraphGraphConstructor
-@copydetails JSF_Graph
+@copydetails JSF_Graph_prototype_initialize
 
 @CLEARPAGE
 @anchor JSModuleGraphGraphAddEdge
