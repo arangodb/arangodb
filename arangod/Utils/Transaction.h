@@ -628,6 +628,84 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit and an internal
+/// offset into the primary index. this can be used for incremental access to
+/// the documents without restarting the index scan at the begin
+////////////////////////////////////////////////////////////////////////////////
+
+        int readIncremental (TRI_transaction_collection_t* trxCollection,
+                             vector<TRI_doc_mptr_t>& docs,
+                             TRI_barrier_t** barrier,
+                             TRI_voc_size_t& internalSkip,
+                             TRI_voc_size_t batchSize,
+                             TRI_voc_ssize_t skip,
+                             uint32_t* total) {
+          
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (primary->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
+          if (*barrier == 0) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = primary->_primaryIndex._table;
+          void** end = beg + primary->_primaryIndex._nrAlloc;
+
+          if (internalSkip > 0) {
+            beg += internalSkip;
+          }
+
+          void** ptr = beg;
+          uint32_t count = 0;
+          *total = (uint32_t) primary->_primaryIndex._nrUsed;
+
+          // fetch documents, taking limit into account
+          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (d->_validTo == 0) {
+                if (skip > 0) {
+                  --skip;
+                }
+                else {
+                  docs.push_back(*d);
+                  ++count;
+                }
+              }
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          if (count == 0) {
+            // barrier not needed, kill it
+            TRI_FreeBarrier(*barrier);
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document, using JSON
 ////////////////////////////////////////////////////////////////////////////////
 

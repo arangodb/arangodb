@@ -714,6 +714,66 @@ function GET_DOCUMENTS (collection, offset, limit) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all documents from the specified collection, incrementally
+/// this is the init function for incremental access
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_DOCUMENTS_INCREMENTAL_INIT (collection, offset, limit) {
+  "use strict";
+
+  if (offset === undefined) {
+    offset = 0;
+  }
+  if (limit === undefined) {
+    limit = null;
+  }
+
+  var batchSize = 2000;
+  var c = COLLECTION(collection);
+  var state = c.OFFSET(0, batchSize, offset, null);
+  state.collection = c;
+  state.batchSize  = batchSize;
+  state.offset     = 0;
+  state.limit      = limit;
+  state.length     = state.total - offset;
+
+  if (state.limit !== null) {
+    state.length = state.limit; 
+  }
+  
+  state.remain = state.length - state.documents.length;
+  if (state.remain < 0) {
+    state.remain = 0;
+  }
+ 
+  return state;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all documents from the specified collection, incrementally
+/// this is the continuation function for incremental access
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_DOCUMENTS_INCREMENTAL_CONT (oldState) {
+  "use strict";
+
+  var state = oldState.collection.OFFSET(oldState.skip, oldState.batchSize, 0, null);
+  state.collection = oldState.collection;
+  state.batchSize = oldState.batchSize;
+  state.offset = oldState.offset + oldState.batchSize;
+  state.limit = oldState.limit;
+  state.length = oldState.length;
+  state.remain = oldState.remain;
+  
+  if (state.documents.length > state.remain) {
+    state.documents = state.documents.slice(0, state.remain);
+  }
+
+  state.remain -= state.documents.length;
+  return state;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get documents from the specified collection using the primary index
 /// (single index value)
 ////////////////////////////////////////////////////////////////////////////////
@@ -3760,6 +3820,8 @@ exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.LIST = LIST;
 exports.DOCUMENT = DOCUMENT;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
+exports.GET_DOCUMENTS_INCREMENTAL_INIT = GET_DOCUMENTS_INCREMENTAL_INIT;
+exports.GET_DOCUMENTS_INCREMENTAL_CONT = GET_DOCUMENTS_INCREMENTAL_CONT;
 exports.GET_DOCUMENTS_PRIMARY = GET_DOCUMENTS_PRIMARY;
 exports.GET_DOCUMENTS_PRIMARY_LIST = GET_DOCUMENTS_PRIMARY_LIST;
 exports.GET_DOCUMENTS_HASH = GET_DOCUMENTS_HASH;
