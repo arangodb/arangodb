@@ -506,7 +506,14 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             }
 
             if (collection != 0) {
-              valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+              v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+
+              if (c.IsEmpty()) {
+                // TODO: raise exception here
+              }
+              else {
+                valuesObject->Set(v8::String::New(k.c_str()), c);
+              }
             }
           }
 
@@ -517,7 +524,14 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, v.c_str());
 
           if (collection != 0) {
-            valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+            
+            if (c.IsEmpty()) {
+              // TODO: raise exception here
+            }
+            else {
+              valuesObject->Set(v8::String::New(k.c_str()), c);
+            }
           }
 
           break;
@@ -529,7 +543,14 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             TRI_UInt64String(v.c_str()));
 
           if (collection != 0) {
-            valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+            
+            if (c.IsEmpty()) {
+              // TODO: raise exception here
+            }
+            else {
+              valuesObject->Set(v8::String::New(k.c_str()), c);
+            }
           }
 
           break;
