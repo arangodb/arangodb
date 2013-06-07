@@ -204,7 +204,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
-/// the filename must look like this: /.*type-XXX\.ending$/, where XXX is
+/// the filename must look like this: /.*type-abc\.ending$/, where abc is
 /// a number, and type and ending are arbitrary letters
 ////////////////////////////////////////////////////////////////////////////////
 

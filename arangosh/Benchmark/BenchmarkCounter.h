@@ -102,7 +102,7 @@ namespace triagens {
 /// @brief get the failures value
 ////////////////////////////////////////////////////////////////////////////////
 
-        const size_t failures () {
+        size_t failures () {
           MUTEX_LOCKER(this->_mutex);
           return _failures;
         }
