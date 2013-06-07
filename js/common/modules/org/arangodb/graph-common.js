@@ -28,13 +28,11 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var graph = require("org/arangodb/graph");
-var arangodb = require("org/arangodb");
-
-var Edge = graph.Edge;
-var Graph = graph.Graph;
-var Vertex = graph.Vertex;
-var GraphArray;
+var arangodb = require("org/arangodb"),
+  Edge,
+  Graph,
+  Vertex,
+  GraphArray;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -57,7 +55,7 @@ var GraphArray;
 /// @brief constructs a graph arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.GraphArray = GraphArray = function (len) {
+GraphArray = function (len) {
   if (len !== undefined) {
     this.length = len;
   }
@@ -224,6 +222,12 @@ GraphArray.prototype.properties = function () {
 // --SECTION--                                                              Edge
 // -----------------------------------------------------------------------------
 
+Edge = function (graph, properties) {
+  this._graph = graph;
+  this._id = properties._key;
+  this._properties = properties;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -354,6 +358,12 @@ Edge.prototype._PRINT = function (context) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Vertex
 // -----------------------------------------------------------------------------
+
+Vertex = function (graph, properties) {
+  this._graph = graph;
+  this._id = properties._key;
+  this._properties = properties;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -531,6 +541,10 @@ Vertex.prototype._PRINT = function (context) {
 // --SECTION--                                                             Graph
 // -----------------------------------------------------------------------------
 
+Graph = function (name, vertices, edges, waitForSync) {
+  this.initialize(name, vertices, edges, waitForSync);
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -574,6 +588,24 @@ Graph.prototype.getOrAddVertex = function (id) {
 Graph.prototype._PRINT = function (context) {
   context.output += "Graph(\"" + this._properties._key + "\")";
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+exports.Edge = Edge;
+exports.Graph = Graph;
+exports.Vertex = Vertex;
+exports.GraphArray = GraphArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
