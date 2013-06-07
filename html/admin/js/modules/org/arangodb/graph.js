@@ -29,12 +29,15 @@ module.define("org/arangodb/graph", function(exports, module) {
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var arangosh = require("org/arangodb/arangosh");
-
-var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
-
-var GraphArray;
+var arangodb = require("org/arangodb"),
+  arangosh = require("org/arangodb/arangosh"),
+  is = require("org/arangodb/is"),
+  ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor,
+  common = require("org/arangodb/graph-common"),
+  Edge = common.Edge,
+  Graph = common.Graph,
+  Vertex = common.Vertex,
+  GraphArray = common.GraphArray;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -57,11 +60,6 @@ var GraphArray;
 /// @brief constructs a new edge object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Edge (graph, properties) {
-  this._graph = graph;
-  this._id = properties._key;
-  this._properties = properties;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -152,11 +150,6 @@ Edge.prototype.setProperty = function (name, value) {
 /// @brief constructs a new vertex object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Vertex (graph, properties) {
-  this._graph = graph;
-  this._id = properties._key;
-  this._properties = properties;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -378,7 +371,7 @@ Vertex.prototype.outDegree = function () {
 /// @brief constructs a new graph object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (name, vertices, edges) {
+Graph.prototype.initialize = function (name, vertices, edges) {
   var requestResult;
 
   if (vertices === undefined && edges === undefined) {
@@ -400,7 +393,7 @@ function Graph (name, vertices, edges) {
   this._connection = arangodb.arango;
 
   return this;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -439,8 +432,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
 
   if (data === null || typeof data !== "object") {
     params = {};
-  }
-  else {
+  } else {
     params = data._shallowCopy || {};
   }
 
@@ -448,6 +440,10 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
   params.$label = label;
+
+  if (is.notExisty(params.$label) && is.existy(data) && is.existy(data.$label)) {
+    params.$label = data.$label;
+  }
 
   requestResult = this._connection.POST("/_api/graph/"
     + encodeURIComponent(this._properties._key) + "/edge",
@@ -688,10 +684,6 @@ exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
-
-var common = require("org/arangodb/graph-common");
-
-exports.GraphArray = GraphArray = common.GraphArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
