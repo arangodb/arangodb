@@ -28,8 +28,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-"use strict";
-
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb").ArangoError;
@@ -84,6 +82,8 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 function NORMALIZE_FNAME (functionName) {
+  "use strict";
+
   var p = functionName.indexOf(':');
 
   if (p === -1) {
@@ -97,8 +97,9 @@ function NORMALIZE_FNAME (functionName) {
 /// @brief filter using a list of examples
 ////////////////////////////////////////////////////////////////////////////////
 
-function FILTER (list, 
-                 examples) {
+function FILTER (list, examples) {
+  "use strict";
+
   var result = [ ], i;
 
   if (examples === undefined || examples === null) {
@@ -121,6 +122,8 @@ function FILTER (list,
 ////////////////////////////////////////////////////////////////////////////////
 
 function THROW (error, data) {
+  "use strict";
+
   var err = new ArangoError();
 
   err.errorNum = error.code;
@@ -139,6 +142,8 @@ function THROW (error, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function INDEX_FULLTEXT (collection, attribute) {
+  "use strict";
+
   var indexes = collection.getIndexes(), i;
 
   for (i = 0; i < indexes.length; ++i) {
@@ -156,6 +161,8 @@ function INDEX_FULLTEXT (collection, attribute) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function INDEX (collection, indexTypes) {
+  "use strict";
+
   var indexes = collection.getIndexes(), i, j;
 
   for (i = 0; i < indexes.length; ++i) {
@@ -176,6 +183,8 @@ function INDEX (collection, indexTypes) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function COLLECTION (name) {
+  "use strict";
+
   if (typeof name !== 'string') {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "INTERNAL");
   }
@@ -194,6 +203,8 @@ function COLLECTION (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NORMALIZE (value) {
+  "use strict";
+
   if (value === null || value === undefined) {
     return null;
   }
@@ -233,6 +244,8 @@ function NORMALIZE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CLONE (obj) {
+  "use strict";
+
   if (obj === null || typeof(obj) !== "object") {
     return obj;
   }
@@ -261,6 +274,8 @@ function CLONE (obj) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FIX_VALUE (value) {
+  "use strict";
+
   var type = typeof(value), i;
 
   if (value === undefined || 
@@ -299,6 +314,8 @@ function FIX_VALUE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TYPEWEIGHT (value) {
+  "use strict";
+
   if (value === undefined || value === null) {
     return TYPEWEIGHT_NULL;
   }
@@ -330,6 +347,8 @@ function TYPEWEIGHT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARG_CHECK (actualValue, expectedType, functionName) {
+  "use strict";
+
   if (TYPEWEIGHT(actualValue) !== expectedType) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
           NORMALIZE_FNAME(functionName));
@@ -341,6 +360,8 @@ function ARG_CHECK (actualValue, expectedType, functionName) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
+  "use strict";
+
   var i, n = regex.length;
   var escaped = false;
   var pattern = '';
@@ -400,6 +421,8 @@ function COMPILE_REGEX (regex, modifiers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FCALL (name, parameters) {
+  "use strict";
+
   return name.apply(null, parameters);
 }
 
@@ -408,6 +431,8 @@ function FCALL (name, parameters) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FCALL_USER (name, parameters) {
+  "use strict";
+
   if (UserFunctions.hasOwnProperty(name)) {
     var result = UserFunctions[name].func.apply(null, parameters);
 
@@ -422,6 +447,8 @@ function FCALL_USER (name, parameters) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMERIC_VALUE (value) {
+  "use strict";
+
   if (isNaN(value) || ! isFinite(value)) {
     return null;
   }
@@ -434,6 +461,8 @@ function NUMERIC_VALUE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FIX (value) {
+  "use strict";
+
   if (value === undefined) {
     return null;
   }
@@ -446,6 +475,8 @@ function FIX (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VALUES (value) {
+  "use strict";
+
   var values = [ ], a;
   
   for (a in value) {
@@ -462,6 +493,8 @@ function VALUES (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EXTRACT_KEYS (args, startArgument, functionName) {
+  "use strict";
+
   var keys = { }, i, j, key, key2;
 
   for (i = startArgument; i < args.length; ++i) {
@@ -491,6 +524,8 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function KEYS (value, doSort) {
+  "use strict";
+
   var keys = [ ];
   
   if (Array.isArray(value)) {
@@ -521,6 +556,8 @@ function KEYS (value, doSort) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function KEYLIST (lhs, rhs) {
+  "use strict";
+
   var keys = [ ];
   
   if (Array.isArray(lhs)) {
@@ -562,6 +599,8 @@ function KEYLIST (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_INDEX (value, index) {
+  "use strict";
+
   if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
     return null;
   }
@@ -596,6 +635,8 @@ function GET_INDEX (value, index) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT_MEMBER (value, attributeName) {
+  "use strict";
+
   if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
     return null;
   }
@@ -618,6 +659,8 @@ function DOCUMENT_MEMBER (value, attributeName) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LIST (value) {
+  "use strict";
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
     THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
@@ -630,6 +673,8 @@ function LIST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT (collection, id) {
+  "use strict";
+
   if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
     var c = COLLECTION(collection);
 
@@ -657,6 +702,8 @@ function DOCUMENT (collection, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS (collection, offset, limit) {
+  "use strict";
+
   if (offset === undefined) {
     offset = 0;
   }
@@ -672,6 +719,8 @@ function GET_DOCUMENTS (collection, offset, limit) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_PRIMARY (collection, idx, id) {
+  "use strict";
+
   try {
     return [ COLLECTION(collection).document(id) ];
   }
@@ -686,6 +735,8 @@ function GET_DOCUMENTS_PRIMARY (collection, idx, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
+  "use strict";
+
   var result = [ ], c;
 
   c = COLLECTION(collection);
@@ -707,6 +758,8 @@ function GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_HASH (collection, idx, example) {
+  "use strict";
+
   return COLLECTION(collection).BY_EXAMPLE_HASH(idx, example).documents;
 }
 
@@ -716,6 +769,8 @@ function GET_DOCUMENTS_HASH (collection, idx, example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
+  "use strict";
+
   var result = [ ], c;
   
   c = COLLECTION(collection);
@@ -740,6 +795,8 @@ function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_EDGE (collection, att, id) {
+  "use strict";
+
   var result;
 
   try {
@@ -763,6 +820,8 @@ function GET_DOCUMENTS_EDGE (collection, att, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
+  "use strict";
+
   var docs = { }, result = [ ], c, a;
 
   c = COLLECTION(collection);
@@ -799,6 +858,8 @@ function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_BITARRAY (collection, idx, example) {
+  "use strict";
+
   return COLLECTION(collection).BY_CONDITION_BITARRAY(idx, example).documents;
 }
 
@@ -808,6 +869,8 @@ function GET_DOCUMENTS_BITARRAY (collection, idx, example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
+  "use strict";
+
   var result = [ ], c;
 
   c = COLLECTION(collection);
@@ -831,6 +894,8 @@ function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
+  "use strict";
+
   return COLLECTION(collection).BY_CONDITION_SKIPLIST(idx, example).documents;
 }
 
@@ -840,6 +905,8 @@ function GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
+  "use strict";
+
   var result = [ ], c;
 
   c = COLLECTION(collection);
@@ -862,6 +929,8 @@ function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function COLLECTIONS () {
+  "use strict";
+
   var result = [ ], collections = INTERNAL.db._collections();
 
   collections.forEach(function (c) {
@@ -892,6 +961,8 @@ function COLLECTIONS () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TERNARY_OPERATOR (condition, truePart, falsePart) {
+  "use strict";
+
   if (TYPEWEIGHT(condition) !== TYPEWEIGHT_BOOL) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
@@ -910,6 +981,8 @@ function TERNARY_OPERATOR (condition, truePart, falsePart) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_AND (lhs, rhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_BOOL ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_BOOL) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
@@ -930,6 +1003,8 @@ function LOGICAL_AND (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_OR (lhs, rhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_BOOL ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_BOOL) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
@@ -949,6 +1024,8 @@ function LOGICAL_OR (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LOGICAL_NOT (lhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_BOOL) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
@@ -976,6 +1053,8 @@ function LOGICAL_NOT (lhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_EQUAL (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
 
@@ -1019,6 +1098,8 @@ function RELATIONAL_EQUAL (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_UNEQUAL (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1061,6 +1142,8 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATER_REC (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1113,6 +1196,8 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATER (lhs, rhs) {
+  "use strict";
+
   var result = RELATIONAL_GREATER_REC(lhs, rhs);
 
   if (result === null) {
@@ -1127,6 +1212,8 @@ function RELATIONAL_GREATER (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1179,6 +1266,8 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_GREATEREQUAL (lhs, rhs) {
+  "use strict";
+
   var result = RELATIONAL_GREATEREQUAL_REC(lhs, rhs);
 
   if (result === null) {
@@ -1193,6 +1282,8 @@ function RELATIONAL_GREATEREQUAL (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESS_REC (lhs, rhs) {
+  "use strict";
+  
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1245,6 +1336,8 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESS (lhs, rhs) {
+  "use strict";
+
   var result = RELATIONAL_LESS_REC(lhs, rhs);
 
   if (result === null) {
@@ -1259,6 +1352,8 @@ function RELATIONAL_LESS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1311,6 +1406,8 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_LESSEQUAL (lhs, rhs) {
+  "use strict";
+
   var result = RELATIONAL_LESSEQUAL_REC(lhs, rhs);
 
   if (result === null) {
@@ -1328,6 +1425,8 @@ function RELATIONAL_LESSEQUAL (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_CMP (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1384,6 +1483,8 @@ function RELATIONAL_CMP (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RELATIONAL_IN (lhs, rhs) {
+  "use strict";
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
@@ -1421,6 +1522,8 @@ function RELATIONAL_IN (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNARY_PLUS (value) {
+  "use strict";
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
@@ -1440,6 +1543,8 @@ function UNARY_PLUS (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNARY_MINUS (value) {
+  "use strict";
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
@@ -1459,6 +1564,8 @@ function UNARY_MINUS (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_PLUS (lhs, rhs) { 
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
@@ -1479,6 +1586,8 @@ function ARITHMETIC_PLUS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MINUS (lhs, rhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
@@ -1499,6 +1608,8 @@ function ARITHMETIC_MINUS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_TIMES (lhs, rhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
@@ -1519,6 +1630,8 @@ function ARITHMETIC_TIMES (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_DIVIDE (lhs, rhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
@@ -1543,6 +1656,8 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MODULUS (lhs, rhs) {
+  "use strict";
+
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
@@ -1580,6 +1695,8 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_CONCAT () {
+  "use strict";
+
   var result = '', i;
 
   for (i in arguments) {
@@ -1603,6 +1720,8 @@ function STRING_CONCAT () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_CONCAT_SEPARATOR () {
+  "use strict";
+
   var separator, found = false, result = '', i;
 
   for (i in arguments) {
@@ -1638,6 +1757,8 @@ function STRING_CONCAT_SEPARATOR () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CHAR_LENGTH (value) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CHAR_LENGTH");
 
   return value.length;
@@ -1650,6 +1771,8 @@ function CHAR_LENGTH (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_LOWER (value) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "LOWER");
 
   return value.toLowerCase();
@@ -1662,6 +1785,8 @@ function STRING_LOWER (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_UPPER (value) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "UPPER");
 
   return value.toUpperCase();
@@ -1674,6 +1799,8 @@ function STRING_UPPER (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_SUBSTRING (value, offset, count) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "SUBSTRING");
   ARG_CHECK(offset, TYPEWEIGHT_NUMBER, "SUBSTRING");
 
@@ -1687,6 +1814,8 @@ function STRING_SUBSTRING (value, offset, count) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_CONTAINS (value, search, returnIndex) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CONTAINS");
   ARG_CHECK(search, TYPEWEIGHT_STRING, "CONTAINS");
 
@@ -1712,6 +1841,8 @@ function STRING_CONTAINS (value, search, returnIndex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_LIKE (value, regex, caseInsensitive) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "LIKE");
 
   var modifiers = '';
@@ -1736,6 +1867,8 @@ function STRING_LIKE (value, regex, caseInsensitive) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_LEFT (value, length) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "LEFT");
   ARG_CHECK(length, TYPEWEIGHT_NUMBER, "LEFT");
 
@@ -1756,6 +1889,8 @@ function STRING_LEFT (value, length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_RIGHT (value, length) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "RIGHT");
   ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
   
@@ -1780,6 +1915,8 @@ function STRING_RIGHT (value, length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_TRIM (value, type) {
+  "use strict";
+
   ARG_CHECK(value, TYPEWEIGHT_STRING, "TRIM");
 
   if (type !== undefined) {
@@ -1830,6 +1967,8 @@ function STRING_TRIM (value, type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CAST_BOOL (value) {
+  "use strict";
+
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
       return false;
@@ -1853,6 +1992,8 @@ function CAST_BOOL (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CAST_NUMBER (value) {
+  "use strict";
+
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
     case TYPEWEIGHT_LIST:
@@ -1875,6 +2016,8 @@ function CAST_NUMBER (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CAST_STRING (value) {
+  "use strict";
+
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_STRING:
       return value;
@@ -1896,6 +2039,8 @@ function CAST_STRING (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CAST_LIST (value) {
+  "use strict";
+
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_LIST:
       return value;
@@ -1930,6 +2075,8 @@ function CAST_LIST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IS_NULL (value) {
+  "use strict";
+
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NULL);
 }
 
@@ -1940,6 +2087,8 @@ function IS_NULL (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IS_BOOL (value) {
+  "use strict";
+
   return (TYPEWEIGHT(value) === TYPEWEIGHT_BOOL);
 }
 
@@ -1950,6 +2099,8 @@ function IS_BOOL (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IS_NUMBER (value) {
+  "use strict";
+
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NUMBER);
 }
 
@@ -1960,6 +2111,8 @@ function IS_NUMBER (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IS_STRING (value) {
+  "use strict";
+
   return (TYPEWEIGHT(value) === TYPEWEIGHT_STRING);
 }
 
@@ -1970,6 +2123,8 @@ function IS_STRING (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IS_LIST (value) {
+  "use strict";
+
   return (TYPEWEIGHT(value) === TYPEWEIGHT_LIST);
 }
 
@@ -1980,6 +2135,8 @@ function IS_LIST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function IS_DOCUMENT (value) {
+  "use strict";
+
   return (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT);
 }
 
@@ -2001,6 +2158,8 @@ function IS_DOCUMENT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_FLOOR (value) {
+  "use strict";
+
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
@@ -2013,6 +2172,8 @@ function NUMBER_FLOOR (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_CEIL (value) {
+  "use strict";
+
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
@@ -2025,6 +2186,8 @@ function NUMBER_CEIL (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_ROUND (value) {
+  "use strict";
+
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
@@ -2037,6 +2200,8 @@ function NUMBER_ROUND (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_ABS (value) {
+  "use strict";
+
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
@@ -2049,6 +2214,8 @@ function NUMBER_ABS (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_RAND () {
+  "use strict";
+
   return Math.random();
 }
 
@@ -2057,6 +2224,8 @@ function NUMBER_RAND () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_SQRT (value) {
+  "use strict";
+
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SQRT");
   }
@@ -2082,6 +2251,8 @@ function NUMBER_SQRT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SORT (value, sortFunction) {
+  "use strict";
+
   LIST(value);
  
   var n = value.length;
@@ -2097,6 +2268,8 @@ function SORT (value, sortFunction) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GROUP (value, sortFunction, groupFunction, into) {
+  "use strict";
+
   LIST(value);
 
   var n = value.length;
@@ -2147,6 +2320,8 @@ function GROUP (value, sortFunction, groupFunction, into) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LIMIT (value, offset, count) {
+  "use strict";
+
   LIST(value);
 
   // check value type for offset and count parameters
@@ -2180,6 +2355,8 @@ function LIMIT (value, offset, count) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LENGTH (value) {
+  "use strict";
+
   var result, typeWeight = TYPEWEIGHT(value);
   
   if (typeWeight === TYPEWEIGHT_LIST || typeWeight === TYPEWEIGHT_STRING) {
@@ -2200,6 +2377,8 @@ function LENGTH (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FIRST (value) {
+  "use strict";
+
   LIST(value);
 
   if (value.length === 0) {
@@ -2214,6 +2393,8 @@ function FIRST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function LAST (value) {
+  "use strict";
+
   LIST(value);
 
   if (value.length === 0) {
@@ -2228,6 +2409,8 @@ function LAST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function REVERSE (value) {
+  "use strict";
+
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
     return value.split("").reverse().join(""); 
   }
@@ -2242,6 +2425,8 @@ function REVERSE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNIQUE (values) {
+  "use strict";
+
   LIST(values);
 
   var keys = { }, result = [ ], a;
@@ -2265,6 +2450,8 @@ function UNIQUE (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNION () {
+  "use strict";
+
   var result = [ ], i, a;
 
   for (i in arguments) {
@@ -2291,6 +2478,8 @@ function UNION () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MAX (values) {
+  "use strict";
+
   LIST(values);
 
   var value, result = null;
@@ -2313,6 +2502,8 @@ function MAX (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MIN (values) {
+  "use strict";
+
   LIST(values);
 
   var value, result = null;
@@ -2335,6 +2526,8 @@ function MIN (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SUM (values) {
+  "use strict";
+
   LIST(values);
 
   var i, n;
@@ -2361,6 +2554,8 @@ function SUM (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AVERAGE (values) {
+  "use strict";
+
   LIST(values);
 
   var current, typeWeight, sum = 0;
@@ -2392,6 +2587,8 @@ function AVERAGE (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MEDIAN (values) {
+  "use strict";
+
   LIST(values);
   
   var copy = [ ], current, typeWeight;
@@ -2429,6 +2626,8 @@ function MEDIAN (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VARIANCE (values) {
+  "use strict";
+
   LIST(values);
 
   var mean = 0, m2 = 0, current, typeWeight, delta;
@@ -2460,6 +2659,8 @@ function VARIANCE (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VARIANCE_SAMPLE (values) {
+  "use strict";
+
   var result = VARIANCE(values);
 
   if (result.n < 2) {
@@ -2474,6 +2675,8 @@ function VARIANCE_SAMPLE (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VARIANCE_POPULATION (values) {
+  "use strict";
+
   var result = VARIANCE(values);
 
   if (result.n < 1) {
@@ -2488,6 +2691,8 @@ function VARIANCE_POPULATION (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STDDEV_SAMPLE (values) {
+  "use strict";
+
   var result = VARIANCE(values);
 
   if (result.n < 2) {
@@ -2502,6 +2707,8 @@ function STDDEV_SAMPLE (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STDDEV_POPULATION (values) {
+  "use strict";
+
   var result = VARIANCE(values);
 
   if (result.n < 1) {
@@ -2529,6 +2736,8 @@ function STDDEV_POPULATION (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
+  "use strict";
+
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
@@ -2560,6 +2769,8 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
+  "use strict";
+
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
@@ -2599,6 +2810,8 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
 ////////////////////////////////////////////////////////////////////////////////
 
 function FULLTEXT (collection, attribute, query) {
+  "use strict";
+
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
@@ -2630,6 +2843,8 @@ function FULLTEXT (collection, attribute, query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NOT_NULL () {
+  "use strict";
+
   var i;
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -2653,6 +2868,8 @@ function NOT_NULL () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FIRST_LIST () {
+  "use strict";
+
   var i;
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -2676,6 +2893,8 @@ function FIRST_LIST () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FIRST_DOCUMENT () {
+  "use strict";
+
   var i;
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -2695,6 +2914,8 @@ function FIRST_DOCUMENT () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function HAS (element, name) {
+  "use strict";
+
   if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
     return false;
   }
@@ -2711,6 +2932,8 @@ function HAS (element, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ATTRIBUTES (element, removeInternal, sort) {
+  "use strict";
+
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ATTRIBUTES");
   }
@@ -2737,6 +2960,8 @@ function ATTRIBUTES (element, removeInternal, sort) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNSET (value) {
+  "use strict";
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNSET");
   }
@@ -2761,6 +2986,8 @@ function UNSET (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function KEEP (value) {
+  "use strict";
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "KEEP");
   }
@@ -2785,6 +3012,8 @@ function KEEP (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MERGE () {
+  "use strict";
+
   var result = { }, i, a;
 
   for (i in arguments) {
@@ -2811,6 +3040,8 @@ function MERGE () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MERGE_RECURSIVE () {
+  "use strict";
+
   var result = { }, i, recurse;
       
   recurse = function (old, element) {
@@ -2851,6 +3082,8 @@ function MERGE_RECURSIVE () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MATCHES (element, examples, returnIndex) {
+  "use strict";
+
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
     return false;
   }
@@ -2901,6 +3134,8 @@ function MATCHES (element, examples, returnIndex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function PASSTHRU (value) {
+  "use strict";
+
   return value;
 }
 
@@ -2911,6 +3146,8 @@ function PASSTHRU (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SLEEP (duration) {
+  "use strict";
+
   if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
   }
@@ -2926,6 +3163,8 @@ function SLEEP (duration) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function FAIL (message) {
+  "use strict";
+
   if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
     THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
   }
@@ -2951,6 +3190,8 @@ function FAIL (message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
+  "use strict";
+
   var result = [ ];
 
   if (level >= searchAttributes.minLength) {
@@ -3037,6 +3278,8 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
 ////////////////////////////////////////////////////////////////////////////////
 
 function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
+  "use strict";
+
   var searchDirection;
   
   direction      = direction || "outbound";
@@ -3093,6 +3336,8 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 ////////////////////////////////////////////////////////////////////////////////
 
 function TRAVERSAL_VISITOR (config, result, vertex, path) {
+  "use strict";
+
   if (config.trackPaths) {
     result.push(CLONE({ vertex: vertex, path: path }));
   }
@@ -3106,6 +3351,8 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
+  "use strict";
+
   if (result.length === 0) {
     result.push({ }); 
   }
@@ -3137,6 +3384,8 @@ function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TRAVERSAL_FILTER (config, vertex, edge, path) {
+  "use strict";
+
   return MATCHES(edge, config.expandEdgeExamples);
 }
 
@@ -3145,6 +3394,8 @@ function TRAVERSAL_FILTER (config, vertex, edge, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, direction, params) {
+  "use strict";
+
   if (startVertex.indexOf('/') === -1) {
     startVertex = vertexCollection + '/' + startVertex;
   }
@@ -3282,6 +3533,8 @@ function GRAPH_TRAVERSAL (vertexCollection,
                           startVertex, 
                           direction, 
                           params) {
+  "use strict";
+
   params.visitor  = TRAVERSAL_VISITOR;
 
   return TRAVERSAL_FUNC("TRAVERSAL", 
@@ -3304,6 +3557,8 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
                                direction, 
                                connectName, 
                                params) {
+  "use strict";
+
   if (connectName === "") {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSAL_TREE");
   }
@@ -3334,6 +3589,8 @@ function GRAPH_EDGES (edgeCollection,
                       vertex, 
                       direction, 
                       examples) {
+  "use strict";
+
   var c = COLLECTION(edgeCollection), result;
 
   // validate arguments
@@ -3362,6 +3619,8 @@ function GRAPH_NEIGHBORS (vertexCollection,
                           vertex, 
                           direction,
                           examples) {
+  "use strict";
+
   var c = COLLECTION(vertexCollection);
 
   if (vertex.indexOf('/') === -1) {
@@ -3420,6 +3679,8 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 function resetRegexCache () {
+  "use strict";
+
   RegexCache = { 'i' : { }, '' : { } };
 }
 
@@ -3428,6 +3689,8 @@ function resetRegexCache () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function reloadUserFunctions () {
+  "use strict";
+
   var c;
 
   UserFunctions = { };
@@ -3470,6 +3733,8 @@ function reloadUserFunctions () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resetEngine () {
+  "use strict";
+
   resetRegexCache();
   reloadUserFunctions();
 }
