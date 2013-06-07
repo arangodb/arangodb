@@ -424,25 +424,10 @@ Graph.prototype.drop = function () {
 /// @brief adds an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
-  var requestResult;
-  var params;
-  var key;
-
-  if (data === null || typeof data !== "object") {
-    params = {};
-  } else {
-    params = data._shallowCopy || {};
-  }
-
+Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
   params._key = id;
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
-  params.$label = label;
-
-  if (is.notExisty(params.$label) && is.existy(data) && is.existy(data.$label)) {
-    params.$label = data.$label;
-  }
 
   requestResult = this._connection.POST("/_api/graph/"
     + encodeURIComponent(this._properties._key) + "/edge",
