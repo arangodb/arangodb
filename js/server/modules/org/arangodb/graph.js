@@ -28,10 +28,15 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-
-var db = arangodb.db;
-var ArangoCollection = arangodb.ArangoCollection;
+var arangodb = require("org/arangodb"),
+  is = require("org/arangodb/is"),
+  db = arangodb.db,
+  ArangoCollection = arangodb.ArangoCollection,
+  common = require("org/arangodb/graph-common"),
+  Edge = common.Edge,
+  Graph = common.Graph,
+  Vertex = common.Vertex,
+  GraphArray = common.GraphArray;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -108,11 +113,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new edge object
 ////////////////////////////////////////////////////////////////////////////////
-
-function Edge (graph, properties) {
-  this._graph = graph;
-  this._properties = properties;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -244,11 +244,6 @@ Edge.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new vertex object
 ////////////////////////////////////////////////////////////////////////////////
-
-function Vertex (graph, properties) {
-  this._graph = graph;
-  this._properties = properties;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -495,7 +490,7 @@ Vertex.prototype.outDegree = function () {
 /// @verbinclude graph-constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (name, vertices, edges, waitForSync) {
+Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   var gdb = db._collection("_graphs");
   var graphProperties;
   var graphPropertiesId;
@@ -610,7 +605,7 @@ function Graph (name, vertices, edges, waitForSync) {
   // and store the cashes
   this.predecessors = {};
   this.distances = {};
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -678,15 +673,6 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 
   this.emptyCachedPredecessors();
 
-  if (typeof label === 'object') {
-    data = label;
-    label = undefined;
-  }
-
-  if (label === undefined) {
-    label = null;
-  }
-
   if (data === null || typeof data !== "object") {
     shallow = {};
   }
@@ -698,7 +684,11 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
     shallow._key = String(id);
   }
 
-  shallow.$label = label || null;
+  shallow.$label = label;
+
+  if (is.notExisty(shallow.$label) && is.existy(data) && is.existy(data.$label)) {
+    shallow.$label = data.$label;
+  }
 
   ref = this._edges.save(out_vertex._properties._id, 
                          in_vertex._properties._id, shallow, waitForSync);
@@ -1115,8 +1105,9 @@ Graph.prototype.constructEdge = function (data) {
 exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;
+exports.GraphArray = GraphArray;
 
-require("org/arangodb/graph-common");
+// TODO: Remove Monkey Patch
 require("org/arangodb/graph/algorithms");
 
 ////////////////////////////////////////////////////////////////////////////////
