@@ -310,7 +310,8 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile, void* data) {
   if (ok) {
     TRI_doc_datafile_info_t* dfi;
     size_t i;
-    
+   
+    // must acquire a write-lock as we're about to change the datafiles vector 
     TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
     if (! LocateDatafile(&primary->base._datafiles, datafile->_fid, &i)) {
@@ -546,8 +547,8 @@ static void CompactifyDatafile (TRI_document_collection_t* document,
   TRI_datafile_t* compactor;
   TRI_primary_collection_t* primary;
   compaction_context_t context;
-  bool ok;
   size_t i;
+  bool ok;
 
   primary = &document->base;
 
@@ -598,23 +599,27 @@ static void CompactifyDatafile (TRI_document_collection_t* document,
   }
   
   // locate the compactor
-  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+  // must acquire a write-lock as we're about to change the datafiles vector 
+  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
   if (! LocateDatafile(&primary->base._compactors, compactor->_fid, &i)) {
     // not found
-    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
     LOG_ERROR("logic error in CompactifyDatafile: could not find compactor");
     return;
   }
 
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
-  
   if (! TRI_CloseCompactorPrimaryCollection(primary, i)) {
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+
     LOG_ERROR("could not close compactor file");
     // TODO: how do we recover from this state?
     return;
   }
+  
+  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+
   
   if (context._dfi._numberAlive == 0 &&
       context._dfi._numberDead == 0 &&
@@ -643,6 +648,7 @@ static void CompactifyDatafile (TRI_document_collection_t* document,
     memcpy(copy, &context, sizeof(compaction_context_t));
     
     b = TRI_CreateBarrierRenameDatafile(&primary->_barrierList, df, RenameDatafileCallback, copy);
+
     if (b == NULL) {
       LOG_ERROR("out of memory when creating datafile-rename barrier");
       TRI_Free(TRI_CORE_MEM_ZONE, copy);
