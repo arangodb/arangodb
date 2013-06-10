@@ -42,7 +42,10 @@ var actions = require("org/arangodb/actions");
 ///
 /// @RESTHEADER{POST /_api/transaction,executes a transaction}
 ///
-/// @REST{POST /_api/transaction}
+/// @RESTBODYPARAM{body,string,required}
+/// Contains the `collections` and `action`.
+///
+/// @RESTDESCRIPTION
 ///
 /// The transaction description must be passed in the body of the POST request.
 ///
@@ -105,28 +108,110 @@ var actions = require("org/arangodb/actions");
 /// If a transaction fails to commit, either by an exception thrown in the 
 /// `action` code, or by an internal error, the server will respond with 
 /// an error. 
-///
-/// Exceptions thrown by users will make the server respond with a return code of 
-/// `HTTP 500`. Any other errors will be returned with any of the return codes
+/// Any other errors will be returned with any of the return codes
 /// `HTTP 400`, `HTTP 409`, or `HTTP 500`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the transaction is fully executed and committed on the server, 
+/// `HTTP 200` will be returned.
+///
+/// @RESTRETURNCODE{400}
+/// If the transaction specification is either missing or malformed, the server
+/// will respond with `HTTP 400`.
+///
+/// @RESTRETURNCODE{500}
+/// Exceptions thrown by users will make the server respond with a return code of 
+/// `HTTP 500` 
 ///
 /// @EXAMPLES
 ///
 /// Executing a transaction on a single collection:
 ///
-/// @verbinclude api-transaction-single
+/// @EXAMPLE_ARANGOSH_RUN{RestTransactionSingle}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn);
+///     var url = "/_api/transaction";
+///     var body = '{ "collections": { "write" : "products" }, ';
+///         body += '"action" : "function () { ';
+///         body += 'var db = require(\\"internal\\").db;';
+///         body += 'db.products.save({});';
+///         body += 'return db.products.count(); }" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Executing a transaction using multiple collections:
 ///
-/// @verbinclude api-transaction-multi
+/// @EXAMPLE_ARANGOSH_RUN{RestTransactionMulti}
+///     var cn1 = "materials";
+///     db._drop(cn1);
+///     var materials = db._create(cn1);
+///     var cn2 = "products";
+///     db._drop(cn2);
+///     var products = db._create(cn2);
+///     products.save({ "a": 1});
+///     materials.save({"b": 1});
+///     var url = "/_api/transaction";
+///     var body = '{ "collections": { "write" : ["products", ';
+///         body += '"materials" ] }, ';
+///         body += '"action" : "function () { ';
+///         body += 'var db = require(\\"internal\\").db;';
+///         body += 'db.products.save({});';
+///         body += 'db.materials.save({});';
+///         body += 'return \\"worked!\\"; }" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn1);
+///     db._drop(cn2);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Aborting a transaction due to an internal error:
 ///
-/// @verbinclude api-transaction-abort-internal
+/// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbortInternal}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn);
+///     var url = "/_api/transaction";
+///     var body = '{ "collections": { "write" : "products" }, ';
+///         body += '"action" : "function () { ';
+///         body += 'var db = require(\\"internal\\").db;';
+///         body += 'db.products.save({_key: \\"abc\\"});';
+///         body += 'db.products.save({_key: \\"abc\\"});';
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 400);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Aborting a transaction by throwing an exception:
 ///
-/// @verbinclude api-transaction-abort
+/// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbort}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": 1});
+///     var url = "/_api/transaction";
+///     var body = '{ "collections": { "read" : "products" }, ';
+///         body += '"action" : "function () { throw \\"doh!\\"; }" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 500);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_transaction(req, res) {

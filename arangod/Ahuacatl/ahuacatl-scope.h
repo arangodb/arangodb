@@ -106,6 +106,7 @@ TRI_aql_scope_t;
 
 typedef struct TRI_aql_for_hint_s {
   TRI_aql_limit_t _limit;
+  bool            _isIncremental;
 }
 TRI_aql_for_hint_t;
 
