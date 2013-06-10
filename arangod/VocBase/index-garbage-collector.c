@@ -92,6 +92,7 @@ typedef struct linked_list_s {
   linked_list_node_t _startNode;
   linked_list_node_t _endNode;  
   volatile uint32_t _listFlag;
+  uint64_t  _size;  
 } linked_list_t;
 
 
@@ -134,7 +135,7 @@ static int  ExciseNodeSwapPointers (linked_list_node_t* nodeToExcise, linked_lis
 static int  ExciseNodeSwapPointersUndo(linked_list_node_t* nodeToExcise, linked_list_node_t* prevNode, linked_list_node_t* nextNode, int swaped);
 
 static void InitialiseStaticLinkedList (void);
-static void InnerThreadLoop (bool*, void*);
+static void InnerThreadLoop (bool*);
 
 static int  InsertNode (linked_list_node_t*); 
 static int  InsertNodeBrick (linked_list_node_t* prevNode, linked_list_node_t* nextNode); 
@@ -215,7 +216,7 @@ void TRI_IndexGCVocBase (void* data) {
                     &((INDEX_GC_LINKED_LIST->_startNode)._next), 
                     &(INDEX_GC_LINKED_LIST->_endNode));
 
-    InnerThreadLoop (&goToSleep, vocbase); 
+    InnerThreadLoop (&goToSleep); 
     
     
     // goToSleep = true;
@@ -275,6 +276,11 @@ void TRI_IndexGCVocBase (void* data) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Adds a node to the linked list, so that eventually the GC will remove an
+// item from the given index.
+////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddToIndexGC(TRI_index_gc_t* indexData) {
 
@@ -353,8 +359,94 @@ int TRI_AddToIndexGC(TRI_index_gc_t* indexData) {
 }
                            
   
+
+////////////////////////////////////////////////////////////////////////////////
+// For the given index, all nodes which match the index will be excised from
+// the linked list.
+////////////////////////////////////////////////////////////////////////////////
   
-int TRI_ExpungeIndexGC (TRI_index_gc_t*) {
+int TRI_ExpungeIndexGC (TRI_index_gc_t* indexData) {
+  int result = TRI_ERROR_NO_ERROR;
+  linked_list_node_t* currentNode;
+  bool finished = true;
+  int casCounter = 0;
+  
+  LOG_TRACE("the index garbage collector has commenced expunging all nodes for a given index");
+  
+  CAS_LOOP: {
+  
+    result = TRI_ERROR_NO_ERROR;	
+    currentNode = &(INDEX_GC_LINKED_LIST->_startNode);
+      
+    if (casCounter > MAX_INDEX_GC_CAS_RETRIES) {
+      LOG_ERROR("max cas loop exceeded");
+      return TRI_ERROR_INTERNAL;
+    }
+	
+    ++casCounter;
+	
+    while (currentNode != NULL) {
+      linked_list_node_t* tempNode = currentNode->_next;     
+        
+      if (currentNode->_indexData == NULL) {
+        currentNode = tempNode;    
+        continue;
+      }		
+	  
+      if (indexData->_index != currentNode->_indexData->_index) {
+        currentNode = tempNode;    
+        continue;
+      }
+
+      // .......................................................................
+      // Just before we remove the data and associated data, go to the index
+      // and indicate that we are about to remove the node from the linked list
+      // .......................................................................
+          
+      indexData->_lastPass = 254;
+      result = indexData->_collectGarbage(indexData);
+      if (result != TRI_ERROR_NO_ERROR) {
+        LOG_TRACE("the index garbage collector called the callback which returend error %d", result);
+      }
+          
+          
+      // .......................................................................
+      // Actually remove the node from the linked list here
+      // .......................................................................
+          
+      result = ExciseNode(currentNode);  
+      if (result != TRI_ERROR_NO_ERROR) {
+        LOG_TRACE("the index garbage collector function ExcisENode returned with error %d", result);
+		finished = false; 
+        currentNode = tempNode;    
+        continue;
+      }
+          
+          
+      // .......................................................................
+      // Inform the index that the node has been removed from the linked list
+      // .......................................................................
+
+      indexData->_lastPass = 255;
+      result = indexData->_collectGarbage(indexData);
+      if (result != TRI_ERROR_NO_ERROR) {
+        LOG_TRACE("the index garbage collector called the callback which returend error %d", result);
+      }
+	  
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, currentNode);        
+      currentNode = tempNode;    
+	  
+    } // end of while loop
+      
+	if (!finished) {
+      goto CAS_LOOP;
+    }
+	
+  } // end of CAS_LOOP
+  
+  LOG_TRACE("the index garbage collector has completed expunging nodes for a given index");
+  
+  return result;
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,12 +461,6 @@ int TRI_ExpungeIndexGC (TRI_index_gc_t*) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-
-int ExciseNode(linked_list_node_t* nodeToExcise) {
-  int result = TRI_ERROR_NO_ERROR;
-  return result;
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,26 +692,48 @@ void RemoveLinkedList(void) {
 
 void SetForbiddenFlag(void) {
   int counter = 0;  
-  LOG_TRACE("the index garbage collector is attempting to block insertions");
+  //LOG_TRACE("the index garbage collector is attempting to block insertions");
   
-   while (counter < MAX_INDEX_GC_CAS_RETRIES) {
+  while (counter < MAX_INDEX_GC_CAS_RETRIES) {
     if (TRI_CompareAndSwapIntegerUInt32 (&(INDEX_GC_LINKED_LIST->_listFlag), 
                                          INDEX_GC_LIST_NORMAL_FLAG, 
                                          INDEX_GC_LIST_FORBIDDEN_FLAG) ) {
       counter = -1;
       break;
     }
-    usleep(1000);
+    usleep(CAS_FAILURE_SLEEP_TIME);
   }  
   
   if (counter == -1) {
-    LOG_TRACE("the index garbage collector has succeeded in blocking insertions");
+    //LOG_TRACE("the index garbage collector has succeeded in blocking insertions");
   }
   else {
     LOG_TRACE("the index garbage collector has failed in blocking insertions");
   }    
 }                                      
 
+void UnsetForbiddenFlag(void) {
+  int counter = 0;  
+  
+  //LOG_TRACE("the index garbage collector is attempting to unblock insertions");
+  
+  while (counter < MAX_INDEX_GC_CAS_RETRIES) {
+    if (TRI_CompareAndSwapIntegerUInt32 (&(INDEX_GC_LINKED_LIST->_listFlag), 
+                                         INDEX_GC_LIST_FORBIDDEN_FLAG, 
+                                         INDEX_GC_LIST_NORMAL_FLAG) ) {
+      counter = -1;
+      break;
+    }
+    usleep(CAS_FAILURE_SLEEP_TIME);
+  }  
+  
+  if (counter == -1) {
+    //LOG_TRACE("the index garbage collector has succeeded in unblocking insertions");
+  }
+  else {
+    LOG_TRACE("the index garbage collector has failed in unblocking insertions\n");
+  }    
+}                                      
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -636,7 +744,7 @@ static int InsertNode(linked_list_node_t* insertNode) {
   int casCounter = 0;
   int bricked    = 0;
   int swaped     = 0;
-
+  int result;  
   linked_list_node_t* nextNode;
   linked_list_node_t* prevNode;
   
@@ -648,9 +756,9 @@ static int InsertNode(linked_list_node_t* insertNode) {
     // ..........................................................................
     
     insertNode->_next = &(INDEX_GC_LINKED_LIST->_endNode);
-    insertNode->_prev = (insertNode->_next)->_prev;
-    
     nextNode = (linked_list_node_t*)(insertNode->_next);
+	
+    insertNode->_prev = (linked_list_node_t*)(nextNode->_prev);    
     prevNode = (linked_list_node_t*)(insertNode->_prev);  
 
     
@@ -771,9 +879,10 @@ static int ExciseNode(linked_list_node_t* nodeToExcise) {
   
   CAS_LOOP: {
   
+    result   = TRI_ERROR_NO_ERROR;
     nextNode = nodeToExcise->_next;
     prevNode = nodeToExcise->_prev;
-  
+ 
     if (casCounter > 1) {
       usleep(CAS_FAILURE_SLEEP_TIME);
     }
