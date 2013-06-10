@@ -254,7 +254,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   int fd;
   int res;
   size_t maximalSize;
-  size_t offset;
+  off_t offset;
   void* data;
   void* mmHandle;
 

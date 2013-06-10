@@ -351,6 +351,8 @@ swagger:
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
 	
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-transaction.js  > @srcdir@/html/admin/api-docs/transaction
 
 ################################################################################
 ### @brief generate examples
