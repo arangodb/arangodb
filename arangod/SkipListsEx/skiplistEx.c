@@ -3300,7 +3300,6 @@ static void DestroyBaseSkipListEx(TRI_skiplistEx_base_t* baseSkiplist) {
   // to this index are expunged, then the same process will call this function.
   // ...........................................................................
   
-  fix the GC so that we have an expunge function!
   
   TRI_skiplistEx_node_t* nextNode;
   TRI_skiplistEx_node_t* nextNextNode;
@@ -3334,7 +3333,9 @@ static void DestroySkipListExNode (TRI_skiplistEx_base_t* skiplist, TRI_skiplist
     return;
   }  
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)(node->_column));
-  IndexStaticDestroyElement(skiplist, &(node->_element));
+  // recall that the memory assigned for the node->_element is actually part of the node
+  // so we do not free that memory here - it is freed when we free the whole node  
+  IndexStaticDestroyElement(skiplist, &(node->_element)); 
 }
 
 
@@ -3367,6 +3368,14 @@ static int GrowNewNodeHeight(TRI_skiplistEx_node_t* node, uint32_t height, uint3
     return result;
   }
 
+  
+  // ............................................................................
+  // In general the height is related to the colLength via the relation
+  // height = colLength. However, we allow for the fact that node may have a
+  // height much bigger than the current column length. This of course saves us
+  // from continually allocating and deallocating memory.
+  // ............................................................................
+  
   if (colLength > height) {
     assert(0);
     return TRI_ERROR_INTERNAL;
@@ -3405,10 +3414,8 @@ static int GrowNewNodeHeight(TRI_skiplistEx_node_t* node, uint32_t height, uint3
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief joins a left node and right node together
+/// @brief joins a the start node to the end node and visa versa
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 static void JoinStartEndNodes(TRI_skiplistEx_node_t* leftNode, 
                               TRI_skiplistEx_node_t* rightNode, 
@@ -3535,7 +3542,7 @@ static int32_t RandLevel (TRI_skiplistEx_base_t* skiplist) {
     *ptr = TRI_UInt32Random();  
     ++ptr;
   }
-  ptr = skiplist->_random;
+  ptr = skiplist->_random; // go back to the begining
   
   
   // ...........................................................................
@@ -3626,7 +3633,8 @@ static int GrowStartEndNodes(TRI_skiplistEx_base_t* skiplist, uint32_t newHeight
   // ................................................................................
 
   while (true) {
-    if (TRI_CompareAndSwapIntegerUInt32(&(skiplist->_growStartEndNodesFlag), TRI_SKIPLIST_EX_FREE_TO_GROW_START_END_NODES_FLAG, 
+    if (TRI_CompareAndSwapIntegerUInt32(&(skiplist->_growStartEndNodesFlag), 
+	                                    TRI_SKIPLIST_EX_FREE_TO_GROW_START_END_NODES_FLAG, 
                                         TRI_SKIPLIST_EX_NOT_FREE_TO_GROW_START_END_NODES_FLAG) ) {
       break;
     }  
@@ -3662,7 +3670,7 @@ static int GrowStartEndNodes(TRI_skiplistEx_base_t* skiplist, uint32_t newHeight
           // should never happen
           result = TRI_WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE;
         }      
-        if (result != TRI_ERROR_NO_ERROR) {
+        if (result != TRI_ERROR_NO_ERROR) { // undo all of good work
           TRI_CompareAndSwapIntegerUInt32(&(skiplist->_startNode._colLength), newHeight, oldStartHeight);
         }  
       }  
@@ -3674,10 +3682,10 @@ static int GrowStartEndNodes(TRI_skiplistEx_base_t* skiplist, uint32_t newHeight
                                        TRI_SKIPLIST_EX_NOT_FREE_TO_GROW_START_END_NODES_FLAG, 
                                        TRI_SKIPLIST_EX_FREE_TO_GROW_START_END_NODES_FLAG) ) {
     // ..............................................................................
-    // not possible - eventually send signal to database to rebuild index
+    // failure is not a word we recognise - eventually send signal to database to rebuild index
     // ..............................................................................
     LOG_ERROR("CAS failed for GrowStartEndNodes");
-    assert(0);
+    assert(0); // remove after debugging
     if (result == TRI_ERROR_NO_ERROR) {
       return TRI_WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE;
     }
@@ -3857,7 +3865,12 @@ static int JoinNewNodeCas (TRI_skiplistEx_node_t* newNode) {
     if ( (leftNode->_towerFlag  != TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG) || 
          (rightNode->_towerFlag != TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG) ) { 
       result = UndoBricking (newNode, brickCounter);
-      return result;      
+      if (result != TRI_ERROR_NO_ERROR) {
+        LOG_ERROR("failed unbricking");
+        abort();
+        return result;      
+      }
+      return TRI_WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE;
     }
   }
       
@@ -3878,7 +3891,7 @@ static int JoinNewNodeCas (TRI_skiplistEx_node_t* newNode) {
 
 
 //////////////////////////////////////////////////////////////////////////////////
-// removal
+// removal static functions below
 //////////////////////////////////////////////////////////////////////////////////
 
 static int SelfUndoBricking(TRI_skiplistEx_node_t* node, const int counter) {
@@ -4009,6 +4022,7 @@ static int UnJoinOldNodeCas (TRI_skiplistEx_node_t* oldNode) {
   int brickCounter = 0;
   int pointerCounter = 0;
   int result = TRI_ERROR_NO_ERROR;
+  bool ok;
   
   // Pass 1: brick the nearest neighbours on the node itself.
   result = SelfBricking(oldNode, &selfBrickCounter);
@@ -4018,16 +4032,30 @@ static int UnJoinOldNodeCas (TRI_skiplistEx_node_t* oldNode) {
   
 
   // Pass 2: make the node glass  
-  if (!TRI_CompareAndSwapIntegerUInt32 (&(oldNode->_towerFlag), 
+  ok = TRI_CompareAndSwapIntegerUInt32 (&(oldNode->_towerFlag), 
                                         TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG,
-                                        TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG) ) {
-    SelfUndoBricking(oldNode,selfBrickCounter);
+                                        TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG);
+										
+  if (!ok) {
+    result = SelfUndoBricking(oldNode,selfBrickCounter);
+	if (result != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("UnJoinOldNodeCas failed ");
+      abort();
+	  return TRI_ERROR_INTERNAL;
+	} 
     return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE;              
   }
 
   // Pass 3: unbrick each nearest neigbour node here
   result = SelfUndoBricking(oldNode,selfBrickCounter);
   if (result != TRI_ERROR_NO_ERROR) {
+    // undo the glassing of the node
+    ok = TRI_CompareAndSwapIntegerUInt32(&(oldNode->_towerFlag), TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG, TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG);
+    if (!ok) {
+      LOG_ERROR("UnJoinOldNodeCas failed");
+      abort();
+	  return TRI_ERROR_INTERNAL;
+    }  
     return result;
   }
   
@@ -4035,9 +4063,15 @@ static int UnJoinOldNodeCas (TRI_skiplistEx_node_t* oldNode) {
   // Pass 4: brick each of it's nearest neighbours
   result = DoBricking(oldNode, &brickCounter);
   if (result != TRI_ERROR_NO_ERROR) {
-    TRI_CompareAndSwapIntegerUInt32 (&(oldNode->_towerFlag), 
-                                     TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG,
-                                     TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG);
+    // undo the glassing of the node
+    ok = TRI_CompareAndSwapIntegerUInt32 (&(oldNode->_towerFlag), 
+                                          TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG,
+                                          TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG);
+    if (!ok) {
+      LOG_ERROR("UnJoinOldNodeCas failed");
+      abort();
+	  return TRI_ERROR_INTERNAL;
+    }	
     if (result != TRI_ERROR_INTERNAL) {
       return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE;
     }  
@@ -4047,10 +4081,23 @@ static int UnJoinOldNodeCas (TRI_skiplistEx_node_t* oldNode) {
   // Pass 5: unjoin the old node from the list by assigning pointers
   result = DoUnjoinPointers(oldNode, &pointerCounter);
   if (result != TRI_ERROR_NO_ERROR) {
-    UndoBricking(oldNode,brickCounter);
-    TRI_CompareAndSwapIntegerUInt32 (&(oldNode->_towerFlag), 
-                                     TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG,
-                                     TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG);
+    int tempResult;
+    tempResult = UndoBricking(oldNode,brickCounter);
+    if (tempResult != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("UnJoinOldNodeCas failed");
+      abort();
+	  return TRI_ERROR_INTERNAL;
+    }	
+	
+    ok = TRI_CompareAndSwapIntegerUInt32 (&(oldNode->_towerFlag), 
+                                          TRI_SKIPLIST_EX_GLASS_TOWER_NODE_FLAG,
+                                          TRI_SKIPLIST_EX_NORMAL_TOWER_NODE_FLAG);
+    if (!ok) {
+      LOG_ERROR("UnJoinOldNodeCas failed");
+      abort();
+	  return TRI_ERROR_INTERNAL;
+    }
+	
     if (result != TRI_ERROR_INTERNAL) {
       return TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE;
     }  
