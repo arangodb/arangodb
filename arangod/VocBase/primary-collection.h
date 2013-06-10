@@ -124,7 +124,6 @@ struct TRI_primary_collection_s;
 typedef struct TRI_doc_mptr_s {
   TRI_voc_rid_t          _rid;      // this is the revision identifier
   TRI_voc_fid_t          _fid;      // this is the datafile identifier
-  TRI_voc_tick_t         _validTo;  // this is the deletion time (0 if document is not yet deleted)
   void const*            _data;     // this is the pointer to the beginning of the raw marker
   char*                  _key;      // this is the document identifier (string)
   struct TRI_doc_mptr_s* _prev;     // previous master pointer
