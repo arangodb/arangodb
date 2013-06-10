@@ -156,6 +156,7 @@ static int CopyMarker (TRI_document_collection_t* document,
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
@@ -386,7 +387,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
-    deleted = (found == NULL || found->_validTo != 0 || found->_rid > marker->_tick);
+    deleted = (found == NULL || found->_rid > marker->_tick);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
@@ -406,7 +407,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
-    deleted = found == NULL || found->_validTo != 0;
+    deleted = found == NULL;
 
     if (deleted) {
       context->_dfi._numberDead += 1;

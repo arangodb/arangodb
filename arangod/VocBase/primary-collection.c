@@ -754,10 +754,8 @@ size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t* primary,
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-        if (d->_validTo == 0) {
-          if (! callback(d, data)) {
-            break;
-          }
+        if (! callback(d, data)) {
+          break;
         }
       }
     }
