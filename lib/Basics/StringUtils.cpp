@@ -375,15 +375,6 @@ namespace triagens {
 
 
 
-      void erase (char*& source, size_t length) {
-        if (source != 0) {
-          delete[] source;
-          source = 0;
-        }
-      }
-
-
-
       void erase (blob_t& source) {
         if (source.data != 0) {
           delete[] source.data;

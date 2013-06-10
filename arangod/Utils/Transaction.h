@@ -484,17 +484,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readAll (TRI_transaction_collection_t* trxCollection,
-                     vector<string>& ids) {
+                     vector<string>& ids, 
+                     bool lock) {
 
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+          if (lock) {
+            // READ-LOCK START
+            int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
           
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
           }
-
+          
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
             void** end = ptr + primary->_primaryIndex._nrAlloc;
@@ -510,8 +513,10 @@ namespace triagens {
             }
           }
 
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
+          if (lock) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+          }
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -560,7 +565,7 @@ namespace triagens {
           void** ptr = beg;
           void** end = ptr + primary->_primaryIndex._nrAlloc;
           uint32_t count = 0;
-          // TODO: this is not valid in MVCC context
+          
           *total = (uint32_t) primary->_primaryIndex._nrUsed;
 
           // apply skip
@@ -607,6 +612,84 @@ namespace triagens {
               if (d->_validTo == 0) {
                 docs.push_back(*d);
                 ++count;
+              }
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          if (count == 0) {
+            // barrier not needed, kill it
+            TRI_FreeBarrier(*barrier);
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit and an internal
+/// offset into the primary index. this can be used for incremental access to
+/// the documents without restarting the index scan at the begin
+////////////////////////////////////////////////////////////////////////////////
+
+        int readIncremental (TRI_transaction_collection_t* trxCollection,
+                             vector<TRI_doc_mptr_t>& docs,
+                             TRI_barrier_t** barrier,
+                             TRI_voc_size_t& internalSkip,
+                             TRI_voc_size_t batchSize,
+                             TRI_voc_ssize_t skip,
+                             uint32_t* total) {
+          
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (primary->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+
+          if (*barrier == 0) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = primary->_primaryIndex._table;
+          void** end = beg + primary->_primaryIndex._nrAlloc;
+
+          if (internalSkip > 0) {
+            beg += internalSkip;
+          }
+
+          void** ptr = beg;
+          uint32_t count = 0;
+          *total = (uint32_t) primary->_primaryIndex._nrUsed;
+
+          // fetch documents, taking limit into account
+          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (d->_validTo == 0) {
+                if (skip > 0) {
+                  --skip;
+                }
+                else {
+                  docs.push_back(*d);
+                  ++count;
+                }
               }
             }
           }
@@ -791,7 +874,7 @@ namespace triagens {
             return res;
           }
           
-          res = readAll(trxCollection, ids);
+          res = readAll(trxCollection, ids, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
@@ -806,7 +889,7 @@ namespace triagens {
             const string& id = ids[i];
           
             res = primary->remove(trxCollection,
-                                  (TRI_voc_key_t) id.c_str(), 
+                                  (const TRI_voc_key_t) id.c_str(), 
                                   &updatePolicy, 
                                   false,
                                   forceSync);

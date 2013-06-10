@@ -2339,7 +2339,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
       return NULL;
     }
 
-    // name of generated attribute is XXX.FUNC(), e.g. for LENGTH(users.friends) => users.friends.LENGTH()
+    // name of generated attribute is abc.FUNC(), e.g. for LENGTH(users.friends) => users.friends.LENGTH()
     TRI_AppendCharStringBuffer(&field->_name, '.');
     TRI_AppendStringStringBuffer(&field->_name, function->_externalName);
     TRI_AppendStringStringBuffer(&field->_name, "()");

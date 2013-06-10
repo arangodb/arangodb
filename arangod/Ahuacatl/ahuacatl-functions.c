@@ -378,10 +378,10 @@ static bool CheckPathRestriction (TRI_aql_field_access_t* fieldAccess,
     // we'll now patch the collection hint
     TRI_aql_collection_hint_t* hint;
 
-    // field name is collection.source.XXX, e.g. users.source._id
+    // field name is collection.source.abc, e.g. users.source._id
     LOG_DEBUG("optimising PATHS() field access %s", fieldAccess->_fullName);
 
-    // we can now modify this fieldaccess in place to collection.XXX, e.g. users._id
+    // we can now modify this fieldaccess in place to collection.abc, e.g. users._id
     // copy trailing \0 byte as well
     memmove(name, name + len - 1, n - fieldAccess->_variableNameLength - len + 2);
 
