@@ -128,7 +128,6 @@
       
     });
     
-    
     describe('checking the interface', function() {
       var testee;
       
@@ -273,6 +272,17 @@
         expect(newNode.y).toBeLessThan(3 * height / 4);
       });
       
+      it('should encapsulate all attributes in _data', function() {
+        var data = {
+            _id: 1,
+            name: "Alice",
+            age: 42
+          },
+          newNode = adapter.insertNode(data);
+        expect(newNode).toBeDefined();
+        expect(newNode._data).toEqual(data);
+      });
+      
       it('should be able to delete a node', function() {
         var toDelete = {_id: 1},
         nodeToDelete = adapter.insertNode(toDelete);
@@ -362,6 +372,19 @@
         expect(source._inboundCounter).toEqual(0);
         expect(target._outboundCounter).toEqual(0);
         expect(target._inboundCounter).toEqual(1);
+      });
+      
+      it('should encapsulate all attributes in _data', function() {
+        var data = {
+          _id: "1-2",
+          _from: sourceid,
+          _to: targetid,
+          label: "MyLabel",
+          color: "black"
+        },
+          edge = adapter.insertEdge(data);
+        expect(edge._data).toBeDefined();
+        expect(edge._data).toEqual(data);
       });
       
       it('should be able to delete an edge', function() {
