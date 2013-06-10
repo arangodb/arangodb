@@ -50,6 +50,10 @@
       "description": "Interface for Queries"
     },
     {
+      "path": "api-docs/transaction",
+      "description": "Interface for Transactions"
+    },
+    {
       "path": "api-docs/structure",
       "description": "Interface for Structures"
     }]

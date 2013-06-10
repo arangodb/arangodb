@@ -1,6 +1,11 @@
 v1.4
 ------
 
+* allow incremental access to the documents in a collection from out of AQL
+  this allows reading documents from a collection chunks when a full collection scan
+  is required. memory usage might be must lower in this case and queries might finish
+  earlier if there is an additional LIMIT statement
+
 * changed AQL COLLECT to use a stable sort, so any previous SORT order is preserved
 
 * issue #547: Javascript error in the web interface

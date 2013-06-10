@@ -97,7 +97,7 @@ static int PriorityQueueFromJson (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsVisible (TRI_doc_mptr_t const* header) {
-  return (header != NULL && header->_validTo == 0);
+  return (header != NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,11 +145,6 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   TRI_ASSERT_MAINTAINER(header != NULL);
   TRI_ASSERT_MAINTAINER(header->_key != NULL);
   
-  if (header->_validTo != 0) {
-    // don't insert in case the document is deleted
-    return TRI_ERROR_NO_ERROR;
-  }
-
   primary = &document->base;
 
   // add a new header
@@ -165,10 +160,9 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
     IncreaseDocumentCount(primary);
 
     return TRI_ERROR_NO_ERROR;
-  }
-
-  // we found a previous revision in the index
-  if (found->_validTo == 0) {
+  } 
+  else {
+    // we found a previous revision in the index
     // the found revision is still alive
     LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
               header->_key,
@@ -177,14 +171,6 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
-
-  // a deleted document was found in the index. now insert again and overwrite
-  // this should be an exceptional case
-  found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, (void*) header, true);
-  IncreaseDocumentCount(primary);
-
-  // overwriting does not change the size of the index and should always succeed
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,9 +230,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
-  if (found->_validTo == 0) { 
-    DecreaseDocumentCount(primary);
-  }
+  DecreaseDocumentCount(primary);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -547,7 +531,6 @@ static int CreateHeader (TRI_document_collection_t* document,
 
   header->_rid       = tick;
   header->_fid       = fid;
-  header->_validTo   = 0;        // document deletion time, 0 means "infinitely valid"
   header->_data      = marker;
   header->_key       = ((char*) marker) + marker->_offsetKey;
 
@@ -831,11 +814,11 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
     header->_key  = ((char*) result) + marker->_offsetKey;  
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid, true);
 
     if (dfi != NULL) {
       dfi->_numberAlive++;
-      dfi->_sizeAlive += marker->base._size;
+      dfi->_sizeAlive += (int64_t) marker->base._size;
     }
   }
 
@@ -955,21 +938,21 @@ static int WriteRemoveMarker (TRI_document_collection_t* document,
     TRI_doc_datafile_info_t* dfi;
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, header->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, header->_fid, true);
 
     if (dfi != NULL) {
       TRI_ASSERT_MAINTAINER(header->_data != NULL);
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (TRI_voc_ssize_t) ((TRI_df_marker_t*) (header->_data))->_size;
+      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) (header->_data))->_size;
+      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
     }
 
     if (header->_fid != fid) {
       // only need to look up datafile if it is not the same
-      dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid, true);
     }
 
     if (dfi != NULL) {
@@ -1027,7 +1010,7 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("deleting document from indexes failed");
-   
+
     // deletion failed. roll back
     InsertSecondaryIndexes(document, header, true);
 
@@ -1094,8 +1077,6 @@ static void UpdateHeader (TRI_voc_fid_t fid,
   newHeader->_fid     = fid;
   newHeader->_data    = marker;
   newHeader->_key     = ((char*) marker) + marker->_offsetKey;
-
-  newHeader->_validTo = oldHeader->_validTo; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1124,19 +1105,19 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
     header->_key  = ((char*) result) + marker->_offsetKey;  
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid, true);
 
     if (dfi != NULL) {
       dfi->_numberAlive++;
-      dfi->_sizeAlive += marker->base._size;
+      dfi->_sizeAlive += (int64_t) marker->base._size;
     }
 
     if (oldHeader->_fid != fid) {
-      dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, oldHeader->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, oldHeader->_fid, true);
     }
 
     if (dfi != NULL) {
-      size_t length = (size_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
+      int64_t length = (int64_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= length;
@@ -1374,11 +1355,10 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
     if (*ptr) {
       TRI_doc_mptr_t const* d = *ptr;
 
-      printf("fid %llu, key %s, rid %llu, validTo %llu\n",
+      printf("fid %llu, key %s, rid %llu\n",
              (unsigned long long) d->_fid,
              (char*) d->_key,
-             (unsigned long long) d->_rid,
-             (unsigned long long) d->_validTo);
+             (unsigned long long) d->_rid);
     }
   }
 }
@@ -1871,7 +1851,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
-    state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid);
+    state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid, true);
   }
   
   SetRevision(document, marker->_tick);
@@ -1936,7 +1916,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // update the datafile info
     if (state->_dfi != NULL) {
       state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += marker->_size;
+      state->_dfi->_sizeAlive += (int64_t) marker->_size;
     }
   }
 
@@ -1950,12 +1930,10 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // save the old data
     oldData = *found;
 
-    // TODO: this will be identical for non-transactional collections only
     newHeader = CONST_CAST(found);
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    newHeader->_validTo = 0;
     document->_headers->moveBack(document->_headers, newHeader);
       
     // update the datafile info
@@ -1963,37 +1941,23 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       dfi = state->_dfi;
     }
     else {
-      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, oldData._fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, oldData._fid, true);
     }
 
     if (dfi != NULL && found->_data != NULL) {
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
     }
 
     if (state->_dfi != NULL) {
       state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += marker->_size;
+      state->_dfi->_sizeAlive += (int64_t) marker->_size;
     }
-
-    if (oldData._validTo > 0) {
-      // TODO: remove this
-      LOG_WARNING("encountered wrong document marker order when loading collection. did not expect old.validTo > 0");
-      // we resurrected a deleted marker
-      // increase the count by one now because we did not count the document previously
-      IncreaseDocumentCount(primary);
-    }
-  }
-
-  // it is a delete
-  else if (found->_validTo != 0) {
-    // TODO: remove this
-    LOG_WARNING("encountered wrong document marker order when loading collection. did not expect found.validTo > 0");
   }
 
   // it is a stale update
@@ -2002,7 +1966,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       state->_dfi->_numberDead++;
-      state->_dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      state->_dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
     }
   }
 
@@ -2032,7 +1996,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
-    state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid);
+    state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid, true);
   }
 
   key = ((char*) d) + d->_offsetKey;
@@ -2058,7 +2022,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   }
 
   // it is a real delete
-  else if (found->_validTo == 0) {
+  else {
     TRI_doc_datafile_info_t* dfi;
 
     // update the datafile info
@@ -2066,17 +2030,17 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
       dfi = state->_dfi;
     }
     else {
-      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid, true);
     }
 
     if (dfi != NULL) {
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
     }
 
     if (state->_dfi != NULL) {
@@ -2087,11 +2051,6 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
 
     // free the header
     document->_headers->release(document->_headers, CONST_CAST(found));
-  }
-
-  // it is a double delete
-  else {
-    LOG_TRACE("skipping deletion of already deleted document: %s", (char*) key);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2306,8 +2265,9 @@ static int OpenIteratorHandleDocumentMarker (TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing 
-      LOG_WARNING("logic error in %s. found tid: %llu, expected tid: %llu", 
+      LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
                   __FUNCTION__,
+                  (unsigned long long) datafile->_fid,
                   (unsigned long long) d->_tid,
                   (unsigned long long) state->_tid);
       OpenIteratorAbortTransaction(state);
@@ -2335,8 +2295,9 @@ static int OpenIteratorHandleDeletionMarker (TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing 
-      LOG_WARNING("logic error in %s. found tid: %llu, expected tid: %llu", 
+      LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
                   __FUNCTION__,
+                  (unsigned long long) datafile->_fid,
                   (unsigned long long) d->_tid,
                   (unsigned long long) state->_tid);
 
@@ -2363,8 +2324,9 @@ static int OpenIteratorHandleBeginMarker (TRI_df_marker_t const* marker,
 
   if (m->_tid != state->_tid && state->_tid != 0) {
     // some incomplete transaction was going on before us...
-    LOG_WARNING("logic error in %s. found tid: %llu, expected tid: %llu", 
+    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
                 __FUNCTION__,
+                (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
     OpenIteratorAbortTransaction(state);
@@ -2387,8 +2349,9 @@ static int OpenIteratorHandleCommitMarker (TRI_df_marker_t const* marker,
   
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker beforehand. strange
-    LOG_WARNING("logic error in %s. found tid: %llu, expected tid: %llu", 
+    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
                 __FUNCTION__,
+                (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
     OpenIteratorAbortTransaction(state);
@@ -2415,8 +2378,9 @@ static int OpenIteratorHandlePrepareMarker (TRI_df_marker_t const* marker,
   
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker beforehand. strange
-    LOG_WARNING("logic error in %s. found tid: %llu, expected tid: %llu", 
+    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
                 __FUNCTION__,
+                (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
     OpenIteratorAbortTransaction(state);
@@ -2440,8 +2404,9 @@ static int OpenIteratorHandleAbortMarker (TRI_df_marker_t const* marker,
   
   if (m->_tid != state->_tid) {
     // we found an abort marker, but we did not find any begin marker beforehand. strange
-    LOG_WARNING("logic error in %s. found tid: %llu, expected tid: %llu", 
+    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
                 __FUNCTION__,
+                (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
   }
@@ -3074,12 +3039,18 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
   }
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    assert(oldHeader == NULL);
+    assert(newHeader != NULL);
     res = WriteInsertMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, totalSize, waitForSync);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    assert(oldHeader != NULL);
+    assert(newHeader != NULL);
     res = WriteUpdateMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, oldHeader, totalSize, waitForSync);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    assert(oldHeader != NULL);
+    assert(newHeader == NULL);
     res = WriteRemoveMarker(document, (TRI_doc_deletion_key_marker_t*) marker, oldHeader, totalSize, waitForSync);
   }
   else {

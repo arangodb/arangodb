@@ -116,7 +116,7 @@ namespace triagens {
 /// @brief return whether context is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline const bool valid () const {
+        inline bool valid () const {
           return _context != 0;
         }
 

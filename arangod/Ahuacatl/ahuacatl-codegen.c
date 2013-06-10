@@ -855,13 +855,39 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   }
 
   // var rx = listx[keyx];
-  ScopeOutput(generator, "var ");
-  ScopeOutputRegister(generator, forScope->_ownRegister);
-  ScopeOutput(generator, " = ");
-  ScopeOutputRegister(generator, forScope->_listRegister);
-  ScopeOutput(generator, "[");
-  ScopeOutputRegister(generator, forScope->_keyRegister);
-  ScopeOutput(generator, "];\n");
+  if (hint != NULL && hint->_isIncremental) {
+    ScopeOutput(generator, "if (");
+    ScopeOutputRegister(generator, forScope->_keyRegister);
+    ScopeOutput(generator, " % ");
+    ScopeOutputRegister(generator, forScope->_listRegister);
+    ScopeOutput(generator, ".batchSize == 0 && ");
+    ScopeOutputRegister(generator, forScope->_keyRegister);
+    ScopeOutput(generator, " > 0) {\n");
+    ScopeOutputRegister(generator, forScope->_listRegister);
+    ScopeOutput(generator, " = aql.GET_DOCUMENTS_INCREMENTAL_CONT(");
+    ScopeOutputRegister(generator, forScope->_listRegister);
+    ScopeOutput(generator, ");\n");
+    ScopeOutput(generator, "}\n");
+    
+    ScopeOutput(generator, "var ");
+    ScopeOutputRegister(generator, forScope->_ownRegister);
+    ScopeOutput(generator, " = ");
+    ScopeOutputRegister(generator, forScope->_listRegister);
+    ScopeOutput(generator, ".documents[");
+    ScopeOutputRegister(generator, forScope->_keyRegister);
+    ScopeOutput(generator, " - ");
+    ScopeOutputRegister(generator, forScope->_listRegister);
+    ScopeOutput(generator, ".offset];\n");
+  }
+  else {
+    ScopeOutput(generator, "var ");
+    ScopeOutputRegister(generator, forScope->_ownRegister);
+    ScopeOutput(generator, " = ");
+    ScopeOutputRegister(generator, forScope->_listRegister);
+    ScopeOutput(generator, "[");
+    ScopeOutputRegister(generator, forScope->_keyRegister);
+    ScopeOutput(generator, "];\n");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1526,11 +1552,17 @@ static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCollectionFull (TRI_aql_codegen_js_t* const generator,
-                                   const TRI_aql_node_t* const node) {
+                                   const TRI_aql_node_t* const node,
+                                   bool incremental) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
-  ScopeOutput(generator, "aql.GET_DOCUMENTS(");
+  if (incremental) {
+    ScopeOutput(generator, "aql.GET_DOCUMENTS_INCREMENTAL_INIT(");
+  }
+  else {
+    ScopeOutput(generator, "aql.GET_DOCUMENTS(");
+  }
   ProcessNode(generator, nameNode);
 
   if (hint != NULL && hint->_limit._status == TRI_AQL_LIMIT_USE) {
@@ -1598,13 +1630,14 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCollection (TRI_aql_codegen_js_t* const generator,
-                               const TRI_aql_node_t* const node) {
+                               const TRI_aql_node_t* const node,
+                               bool incremental) {
   TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(node));
 
   assert(hint);
 
   if (hint->_index == NULL) {
-    ProcessCollectionFull(generator, node);
+    ProcessCollectionFull(generator, node, incremental);
   }
   else {
     ProcessCollectionHinted(generator, node);
@@ -2003,7 +2036,23 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, " = ");
-  ProcessNode(generator, expressionNode);
+
+  if (expressionNode->_type == TRI_AQL_NODE_COLLECTION) {
+    TRI_aql_collection_hint_t* h = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(expressionNode);
+
+    if (h != NULL && h->_index == NULL) {
+      // no index, process incrementally
+      ProcessCollection(generator, expressionNode, true);
+      hint->_isIncremental = true;
+    }
+    else {
+      ProcessNode(generator, expressionNode);
+    }
+  }
+  else {
+    ProcessNode(generator, expressionNode);
+  }
+
   ScopeOutput(generator, ";\n");
 
   StartFor(generator, buffer, sourceRegister, isList, TRI_AQL_NODE_STRING(nameNode), hint);
@@ -2388,7 +2437,7 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
       ProcessArrayElement(generator, node);
       break;
     case TRI_AQL_NODE_COLLECTION:
-      ProcessCollection(generator, node);
+      ProcessCollection(generator, node, false);
       break;
     case TRI_AQL_NODE_REFERENCE:
       ProcessReference(generator, node);
