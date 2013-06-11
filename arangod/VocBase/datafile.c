@@ -1540,7 +1540,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
       /*
       res = ftruncate(datafile->_fd, datafile->_currentSize);
       Linux centric problems:
-        Under windows can not reduce size of the memory mapped file without unmappping it!
+        Under windows can not reduce size of the memory mapped file without unmapping it!
         However, apparently we may have users
       */
     #else
@@ -1557,6 +1557,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
     datafile->_isSealed = true;
     datafile->_state = TRI_DF_STATE_READ;
+    datafile->_maximalSize = datafile->_currentSize;
   }
 
   if (! ok) {
