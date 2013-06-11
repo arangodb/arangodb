@@ -39,6 +39,8 @@
 
 #include "build.h"
 
+#include "Utils/DocumentWrapper.h"
+
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -76,6 +78,8 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
+
+#include "RestServer/VocbaseManager.h"
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -182,6 +186,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _dispatcherThreads(8),
+    _multipleDatabases(false),
     _databasePath(),
     _removeOnDrop(true),
     _removeOnCompacted(true),
@@ -375,6 +380,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
+    ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
   ;
 
 
@@ -400,7 +406,8 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationDispatcher,
                                                              "arangodb",
                                                              TRI_CheckAuthenticationAuthInfo,
-                                                             TRI_FlushAuthenticationAuthInfo);
+                                                             TRI_FlushAuthenticationAuthInfo,
+                                                             VocbaseManager::setRequestContext);
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -553,7 +560,7 @@ int ArangoServer::startupServer () {
   // open the database
   // .............................................................................
 
-  openDatabase();
+  openDatabases();
 
 
   // .............................................................................
@@ -644,7 +651,7 @@ int ArangoServer::startupServer () {
 
   _applicationServer->stop();
 
-  closeDatabase();
+  closeDatabases();
 
   return 0;
 }
@@ -670,10 +677,11 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   bool ok;
 
   // open the database
-  openDatabase();
+  openDatabases();
+  TRI_vocbase_t* vocbase = _vocbase;
 
   // load authentication
-  TRI_LoadAuthInfoVocBase(_vocbase);
+  TRI_LoadAuthInfoVocBase(vocbase);
 
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
@@ -699,7 +707,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->start();
 
   // enter V8 context
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
 
   // .............................................................................
   // execute everything with a global scope
@@ -901,7 +909,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->stop();
 
 
-  closeDatabase();
+  closeDatabases();
   Random::shutdown();
 
   if (!ok) {
@@ -996,7 +1004,7 @@ int ArangoServer::executeRubyConsole () {
   bool ok;
 
   // open the database
-  openDatabase();
+  openDatabases();
 
   // load authentication
   TRI_LoadAuthInfoVocBase(_vocbase);
@@ -1072,7 +1080,7 @@ int ArangoServer::executeRubyConsole () {
   console.close();
 
   // close the database
-  closeDatabase();
+  closeDatabases();
 
   Random::shutdown();
 
@@ -1082,36 +1090,309 @@ int ArangoServer::executeRubyConsole () {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read database name and configuration from document and
+///        load database
+////////////////////////////////////////////////////////////////////////////////
+
+static bool handleUserDatabase (TRI_doc_mptr_t const* document, 
+        TRI_primary_collection_t* primary, void* data) {
+  
+  DocumentWrapper doc(document, primary);
+  
+  if (!doc.isArrayDocument()) {
+    // wrong document type
+    return true;
+  }
+
+  string dbName = doc.getStringValue("name", "");
+  if (dbName == "") {
+    // database name not found
+    LOG_ERROR("Database name not found. User database not loaded!");
+    return true;
+  }
+
+  string dbPath = doc.getStringValue("path", "");
+  if (dbPath == "") {
+    // database path not found
+    LOG_ERROR("Database path not found. User database not loaded!");
+    return true;
+  }
+
+  if (!VocbaseManager::manager.canAddVocbase(dbName, dbPath)) {
+    LOG_ERROR("Cannot add database. (Wrong name or path)");
+    return true;    
+  }
+  
+  TRI_vocbase_defaults_t* systemDefaults = (TRI_vocbase_defaults_t*) data;
+
+  TRI_vocbase_defaults_t defaults;
+  defaults.removeOnDrop = doc.getBooleanValue("removeOnDrop", 
+          systemDefaults->removeOnDrop);
+  defaults.removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
+          systemDefaults->removeOnCompacted);
+  defaults.defaultMaximalSize = (uint64_t) doc.getNumericValue("defaultMaximalSize", 
+          systemDefaults->defaultMaximalSize);
+  defaults.defaultWaitForSync = doc.getBooleanValue("waitForSync", 
+          systemDefaults->defaultWaitForSync);
+  defaults.forceSyncShapes = doc.getBooleanValue("forceSyncShapes", 
+          systemDefaults->forceSyncShapes);
+  defaults.forceSyncProperties = doc.getBooleanValue("forceSyncProperties", 
+          systemDefaults->forceSyncProperties);
+  defaults.requireAuthentication = doc.getBooleanValue("requireAuthentication", 
+          systemDefaults->requireAuthentication);
+  
+  // open/load database
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), 
+        dbName.c_str(), &defaults);
+  
+  if (userVocbase) {
+    VocbaseManager::manager.addUserVocbase(userVocbase);
+  }
+
+  LOGGER_INFO("loaded user database '" << dbName << "' ('" << dbPath << "')");    
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads user databases found in collection '_databases'
+////////////////////////////////////////////////////////////////////////////////
+
+bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_databases");
+
+  if (collection == NULL) {
+    LOG_INFO("collection '_databases' does not exist, no other databases available");
+    return false;
+  }
+
+  TRI_UseCollectionVocBase(_vocbase, collection);
+
+  primary = collection->_collection;
+
+  if (primary == NULL) {
+    LOG_FATAL_AND_EXIT("collection '_databases' cannot be loaded");
+  }
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
+    TRI_ReleaseCollectionVocBase(_vocbase, collection);
+    LOG_FATAL_AND_EXIT("collection '_databases' has an unknown collection type");
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+    
+  TRI_DocumentIteratorPrimaryCollection(primary, data, handleUserDatabase);
+
+  // .............................................................................
+  // outside a read transaction
+  // .............................................................................
+
+  TRI_ReleaseCollectionVocBase(_vocbase, collection);
+
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a tcp endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static bool handleEnpoint (TRI_doc_mptr_t const* document, 
+        TRI_primary_collection_t* primary, void*) {
+  
+  DocumentWrapper doc(document, primary);
+  
+  if (!doc.isArrayDocument()) {
+    // wrong document type
+    return true;
+  }
+  
+  string endpoint = doc.getStringValue("endpoint", "");
+  if (endpoint == "") {
+    // endpoint string not found
+    LOG_ERROR("Endpoint string not found!");
+    return true;
+  }
+
+  VocbaseManager::manager.addEndpoint(endpoint);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start server endpoints found in collection '_endpoints'
+////////////////////////////////////////////////////////////////////////////////
+
+bool ArangoServer::loadEndpoints () {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+
+  VocbaseManager::manager.setApplicationEndpointServer(_applicationEndpointServer);
+  
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_endpoints");
+
+  if (collection == NULL) {
+    // collection '_endpoints' not found
+    return false;
+  }
+
+  TRI_UseCollectionVocBase(_vocbase, collection);
+
+  primary = collection->_collection;
+
+  if (primary == NULL) {
+    LOG_FATAL_AND_EXIT("collection '_endpoints' cannot be loaded");
+  }
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
+    TRI_ReleaseCollectionVocBase(_vocbase, collection);
+    LOG_FATAL_AND_EXIT("collection '_endpoints' has an unknown collection type");
+  }  
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+    
+  TRI_DocumentIteratorPrimaryCollection(primary, 0, handleEnpoint);
+
+  // .............................................................................
+  // outside a read transaction
+  // .............................................................................
+
+  TRI_ReleaseCollectionVocBase(_vocbase, collection);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a tcp endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static bool handlePrefixMapping (TRI_doc_mptr_t const* document, 
+        TRI_primary_collection_t* primary, void* data) {
+  
+  DocumentWrapper doc(document, primary);
+  
+  if (!doc.isArrayDocument()) {
+    // wrong document type
+    return true;
+  }
+  
+  string prefix = doc.getStringValue("prefix", "");
+  if (prefix == "") {
+    LOG_ERROR("Prefix string not found!");
+    return true;
+  }
+
+  string database = doc.getStringValue("database", "");
+  if (database == "") {
+    LOG_ERROR("Database string not found!");
+    return true;
+  }
+
+  VocbaseManager::manager.addPrefixMapping(prefix, database);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start server endpoints found in collection '_endpoints'
+////////////////////////////////////////////////////////////////////////////////
+
+bool ArangoServer::loadPrefixMappings () {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_prefixes");
+
+  if (collection == NULL) {
+    // collection '_prefixes' not found
+    return false;
+  }
+
+  TRI_UseCollectionVocBase(_vocbase, collection);
+
+  primary = collection->_collection;
+
+  if (primary == NULL) {
+    LOG_FATAL_AND_EXIT("collection '_prefixes' cannot be loaded");
+  }
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
+    TRI_ReleaseCollectionVocBase(_vocbase, collection);
+    LOG_FATAL_AND_EXIT("collection '_prefixes' has an unknown collection type");
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+    
+  TRI_DocumentIteratorPrimaryCollection(primary, 0, handlePrefixMapping);
+
+  // .............................................................................
+  // outside a read transaction
+  // .............................................................................
+
+  TRI_ReleaseCollectionVocBase(_vocbase, collection);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabase () {
+void ArangoServer::openDatabases () {
   TRI_InitialiseVocBase();
 
-  _vocbase = TRI_OpenVocBase(_databasePath.c_str());
+  TRI_vocbase_defaults_t defaults;  
+  defaults.removeOnDrop = _removeOnDrop;
+  defaults.removeOnCompacted = _removeOnCompacted;
+  defaults.defaultMaximalSize = _defaultMaximalSize;
+  defaults.defaultWaitForSync = _defaultWaitForSync;
+  defaults.forceSyncShapes = _forceSyncShapes;
+  defaults.forceSyncProperties = _forceSyncProperties;
+  defaults.requireAuthentication = !_applicationEndpointServer->isAuthenticationDisabled();
+  
+  // open/load the first database
+  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), "_system", &defaults);
 
   if (! _vocbase) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
-  _vocbase->_removeOnDrop = _removeOnDrop;
-  _vocbase->_removeOnCompacted = _removeOnCompacted;
-  _vocbase->_defaultMaximalSize = _defaultMaximalSize;
-  _vocbase->_defaultWaitForSync = _defaultWaitForSync;
-  _vocbase->_forceSyncShapes = _forceSyncShapes;
-  _vocbase->_forceSyncProperties = _forceSyncProperties;
+    LOGGER_INFO("loaded database ('" << _databasePath << "')");    
+  
+  // first database is the system database
+  _vocbase->_isSystem = _multipleDatabases;
+  
+  VocbaseManager::manager.addSystemVocbase(_vocbase);
+  
+  if (_vocbase->_isSystem) {
+    loadUserDatabases(&defaults);
+    loadEndpoints();
+    loadPrefixMappings();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::closeDatabase () {
+void ArangoServer::closeDatabases () {
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
+  
+  VocbaseManager::manager.closeUserVocbases();
+  
   TRI_ShutdownVocBase();
 
   Nonce::destroy();

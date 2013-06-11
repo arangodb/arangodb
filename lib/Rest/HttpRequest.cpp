@@ -56,7 +56,7 @@ static char const* EMPTY_STR = "";
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest (char const* header, size_t length)
+HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t length)
   : _requestPath(EMPTY_STR),
     _headers(5),
     _values(10),
@@ -66,12 +66,13 @@ HttpRequest::HttpRequest (char const* header, size_t length)
     _body(0),
     _bodySize(0),
     _freeables(),
-    _connectionInfo(),
+    _connectionInfo(info),
     _type(HTTP_REQUEST_ILLEGAL),
     _prefix(),
     _suffix(),
     _version(HTTP_1_0),
-    _user() {
+    _user(),
+    _requestContext(0) {
 
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
@@ -101,7 +102,8 @@ HttpRequest::HttpRequest ()
     _prefix(),
     _suffix(),
     _version(HTTP_1_0),
-    _user() {
+    _user(),
+    _requestContext(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,6 +126,10 @@ HttpRequest::~HttpRequest () {
 
   for (vector<char*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
+  }
+  
+  if (_requestContext) {
+    delete _requestContext;
   }
 }
 
@@ -1160,6 +1166,22 @@ void HttpRequest::addSuffix (char const* part) {
     _suffix.push_back(decoded);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add request context
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::addRequestContext (RequestContext* requestContext) {
+  if (_requestContext) {
+    delete _requestContext;
+  }
+
+  _requestContext = requestContext;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
