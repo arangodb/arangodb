@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, TRANSACTION */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction actions
 ///
@@ -214,7 +217,7 @@ var actions = require("org/arangodb/actions");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_transaction(req, res) {
+function post_api_transaction(req, res) {
   var json = actions.getJsonBody(req, res);
 
   if (json === undefined) {
@@ -224,7 +227,7 @@ function POST_api_transaction(req, res) {
 
   var result = TRANSACTION(json);
 
-  actions.resultOk(req, res, actions.HTTP_OK, { "result" : result });
+  actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,8 +249,8 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case (actions.POST) : 
-          POST_api_transaction(req, res); 
+        case actions.POST: 
+          post_api_transaction(req, res); 
           break;
 
         default:

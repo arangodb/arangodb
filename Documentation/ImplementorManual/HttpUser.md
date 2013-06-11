@@ -21,20 +21,20 @@ and extra privilege and security security checks may be introduced in the
 future for this interface.
 
 @anchor HttpUserSave
-@copydetails JSF_POST_api_user
+@copydetails JSF_post_api_user
 
 @CLEARPAGE
 @anchor HttpUserReplace
-@copydetails JSF_PUT_api_user
+@copydetails JSF_put_api_user
 
 @CLEARPAGE
 @anchor HttpUserUpdate
-@copydetails JSF_PATCH_api_user
+@copydetails JSF_patch_api_user
 
 @CLEARPAGE
 @anchor HttpUserRemove
-@copydetails JSF_DELETE_api_user
+@copydetails JSF_delete_api_user
 
 @CLEARPAGE
 @anchor HttpUserDocument
-@copydetails JSF_GET_api_user
+@copydetails JSF_get_api_user

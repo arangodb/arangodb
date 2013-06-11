@@ -1,12 +1,13 @@
-HTTP Interface for Transactions {#HttpTransactions}
-===================================================
+HTTP Interface for Traversals {#HttpTraversals}
+===============================================
 
-@NAVIGATE_HttpTransactions
-@EMBEDTOC{HttpTransactionsTOC}
+@NAVIGATE_HttpTraversals
+@EMBEDTOC{HttpTraversalsTOC}
 
-Transactions {#HttpTransactionsIntro}
-=====================================
+Traverals {#HttpTraversalsIntro}
+================================
 
+TODO: FIXME
 ArangoDB's transactions are executed on the server. Transactions can be 
 initiated by clients by sending the transaction description for execution to
 the server.
@@ -23,9 +24,9 @@ rolled back.
 For a more detailed description of how transactions work in ArangoDB please
 refer to @ref Transactions. 
 
-Executing Transactions via HTTP {#HttpTransactionsHttp}
+Executing Traversals via HTTP {#HttpTraversalsHttp}
 =======================================================
 
-@anchor HttpTransactionsPost
-@copydetails JSF_post_api_transaction
+@anchor HttpTraversalsPost
+@copydetails JSF_post_api_traversal
 
