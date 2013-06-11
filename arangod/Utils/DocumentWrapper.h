@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase authentication and authorisation
+/// @brief document wrapper utility functions
 ///
 /// @file
 ///
@@ -21,117 +21,148 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_AUTH_H
-#define TRIAGENS_VOC_BASE_AUTH_H 1
+#ifndef TRIAGENS_UTILS_DOCUMENT_WRAPPER_HELPER_H
+#define TRIAGENS_UTILS_DOCUMENT_WRAPPER_HELPER_H 1
 
-#include "BasicsC/common.h"
+#include "Logger/Logger.h"
+#include "BasicsC/json.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-struct TRI_vocbase_s;
+namespace triagens {
+  namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                              class DocumentHelper
+// -----------------------------------------------------------------------------
+
+    class DocumentWrapper {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+      private:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief authentication and authorisation
-////////////////////////////////////////////////////////////////////////////////
+        DocumentWrapper (const DocumentWrapper&);
+        DocumentWrapper& operator= (const DocumentWrapper&);
+        
+      public:
 
-typedef struct TRI_vocbase_auth_s {
-  char* _username;
-  char* _password;
-  bool _active;
-}
-TRI_vocbase_auth_t;
+        DocumentWrapper (TRI_doc_mptr_t const* document, TRI_primary_collection_t* primary) {
+          TRI_shaped_json_t shapedJson;
+
+          TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+    
+          // get document as json
+          _json = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
+          _zone = primary->_shaper->_memoryZone;
+        }
+
+        ~DocumentWrapper () {
+          if (_json) {
+            TRI_FreeJson(_zone, _json);
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads the authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the default authentication info
+/// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DefaultAuthInfo (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reload the authentication info
-/// this must be executed after the underlying _users collection is modified
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ReloadAuthInfo (struct TRI_vocbase_s*);
+        
+        bool isArrayDocument () {
+          return _json != 0 && _json->_type == TRI_JSON_ARRAY;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the default authentication info
+/// @brief returns then value of a boolean attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyAuthInfo (struct TRI_vocbase_s*);
+      bool getBooleanValue (string const& name, bool defaultValue) {
+        TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
+        if (b != 0 && b->_type == TRI_JSON_BOOLEAN)
+        {
+          return b->_value._boolean;
+        }
+
+        return defaultValue;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether some externally cached authentication info 
-/// should be flushed, by querying the internal flush flag
-/// checking the information may also change the state of the flag
+/// @brief returns then value of a numeric attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_FlushAuthenticationAuthInfo (void);
+      double getNumericValue (string const& name, double defaultValue) {
+        TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
+        if (b != 0 && b->_type == TRI_JSON_NUMBER)
+        {
+          return b->_value._number;
+        }
+
+        return defaultValue;
+      }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns then value of a string attribute or a default value
+////////////////////////////////////////////////////////////////////////////////
+
+      string getStringValue (string const& name, string const& defaultValue) {
+        TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
+        if (b != 0 && b->_type == TRI_JSON_STRING)
+        {
+          return string(b->_value._string.data, b->_value._string.length-1);
+        }
+
+        return defaultValue;
+      }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+        
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           private 
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
+/// @addtogroup ArangoDB
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckAuthenticationAuthInfo (char const* username,
-                                      char const* password);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo2 (struct TRI_vocbase_s*,
-                                       char const* username,
-                                       char const* password);
-
+    private:
+      
+      TRI_json_t* _json;
+      TRI_memory_zone_t* _zone;
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __cplusplus
+    };
+  }
 }
-#endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 #endif
 

@@ -42,6 +42,8 @@
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
+#include "RestServer/VocbaseManager.h"
+#include "Actions/actions.h"
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -257,7 +259,7 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
+ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, bool initialise) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -297,6 +299,11 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
                                 false);
   }
 
+  // set the current database
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  v8g->_vocbase = vocbase;
+  
   return context;
 }
 
@@ -758,56 +765,71 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   // load all init files
   for (size_t j = 0;  j < files.size();  ++j) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
-
+    
     if (! ok) {
-      LOGGER_FATAL_AND_EXIT("cannot load JavaScript utilities from file '" << files[j] << "'");
+      LOGGER_FATAL_AND_EXIT("cannot load JavaScript utilities from file '" 
+              << files[j] << "'");
     }
   }
-
+  
+  vector<TRI_vocbase_t*> vocbases = VocbaseManager::manager.vocbases();
+  
   // run upgrade script
   if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG("running database version check");
-
-    // special check script to be run just once in first thread (not in all)
-    v8::HandleScope scope;
-    v8::Handle<v8::Value> result = _startupLoader.executeGlobalScript(context->_context, "server/version-check.js");
-
-    if (! TRI_ObjectToBoolean(result)) {
-      if (_performUpgrade) {
-        LOGGER_FATAL_AND_EXIT("Database upgrade failed. Please inspect the logs from the upgrade procedure");
+    
+    VocbaseManager::manager.setStartupLoader(&_startupLoader);
+    
+    vector<TRI_vocbase_t*>::iterator vocbaseIterator = vocbases.begin();    
+    for (; vocbaseIterator != vocbases.end(); ++vocbaseIterator) {
+      
+      // special check script to be run just once in first thread (not in all) 
+      // but for all vocbases
+      
+      bool ok = VocbaseManager::manager.runVersionCheck(*vocbaseIterator, context->_context);
+      
+      if (!ok) {
+        if (_performUpgrade) {
+          LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" + string((*vocbaseIterator)->_path) + "'. Please inspect the logs from the upgrade procedure");
+        }
+        else {
+          LOGGER_FATAL_AND_EXIT("Database version check failed for '" + string((*vocbaseIterator)->_path) + "'. Please start the server with the --upgrade option");
+        }
       }
-      else {
-        LOGGER_FATAL_AND_EXIT("Database version check failed. Please start the server with the --upgrade option");
-      }
+
+      LOGGER_DEBUG("database version check passed for " + string((*vocbaseIterator)->_path));
     }
-
-    LOGGER_DEBUG("database version check passed");
   }
 
   if (_performUpgrade) {
     // issue #391: when invoked with --upgrade, the server will not always shut down
-    LOGGER_INFO("database version check passed");
+    LOGGER_INFO("database upgrade passed");
     context->_context->Exit();
     context->_isolate->Exit();
     delete context->_locker;
 
     // regular shutdown... wait for all threads to finish
-    _vocbase->_state = 2;
-    TRI_JoinThread(&_vocbase->_synchroniser);
-    TRI_JoinThread(&_vocbase->_compactor);
-    _vocbase->_state = 3;
-    TRI_JoinThread(&_vocbase->_cleanup);
-
+    
+    vector<TRI_vocbase_t*>::iterator vocbaseIterator = vocbases.begin();    
+    for (; vocbaseIterator != vocbases.end(); ++vocbaseIterator) {
+      TRI_vocbase_t* vocbase = *vocbaseIterator;
+      vocbase->_state = 2;
+      TRI_JoinThread(&vocbase->_synchroniser);
+      TRI_JoinThread(&vocbase->_compactor);
+      vocbase->_state = 3;
+      TRI_JoinThread(&vocbase->_cleanup);
+    }
+    
+    LOGGER_INFO("finished");
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // scan for foxx applications
   if (i == 0) {
-    v8::HandleScope scope;
-    TRI_ExecuteJavaScriptString(context->_context,
-                                v8::String::New("require(\"internal\").initializeFoxx()"),
-                                v8::String::New("initialize foxx"),
-                                false);
+    vector<TRI_vocbase_t*>::iterator vocbaseIterator = vocbases.begin();    
+    for (; vocbaseIterator != vocbases.end(); ++vocbaseIterator) {
+      VocbaseManager::manager.initializeFoxx(*vocbaseIterator, context->_context);
+    }
   }
 
   // load all actions
@@ -827,6 +849,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
                                   v8::String::New("action loaded"),
                                   false);
     }
+  
   }
 
   // and return from the context
