@@ -571,8 +571,6 @@ namespace triagens {
             // skip from the beginning
             for (;  ptr < end && 0 < skip;  ++ptr) {
               if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
                 --skip;
               }
             }

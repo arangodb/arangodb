@@ -418,8 +418,10 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           else {
             int res;
 
+            // this should fail, but shouldn't do any harm either...
             TRI_UnlinkFile(newName);
 
+            // rename the compactor to a datafile
             res = TRI_RenameFile(filename, newName);
 
             if (res != TRI_ERROR_NO_ERROR) {

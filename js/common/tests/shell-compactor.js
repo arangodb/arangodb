@@ -42,7 +42,210 @@ function CompactionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read by name
+/// @brief test figures after truncate and rotate
+////////////////////////////////////////////////////////////////////////////////
+
+    testFiguresTruncate : function () {
+      var maxWait;
+      var waited;
+      var cn = "example";
+      var n = 400;
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
+
+      for (var i = 0; i < 5; ++i) {
+        payload += payload;
+      }
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+
+      for (var i = 0; i < n; ++i) {
+        c1.save({ _key: "test" + i, value : i, payload : payload });
+      }
+      
+      c1.unload();
+      internal.wait(5);
+
+      var fig = c1.figures();
+      assertEqual(n, c1.count());
+      assertEqual(n, fig["alive"]["count"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      c1.truncate();
+      c1.rotate();
+
+      var fig = c1.figures();
+
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertTrue(0 < fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["size"]);
+      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      // wait for compactor to run
+      require("console").log("waiting for compactor to run");
+
+      // set max wait time
+      if (internal.valgrind) {
+        maxWait = 750;
+      }
+      else {
+        maxWait = 90;
+      }
+
+      waited = 0;
+
+      while (waited < maxWait) {
+        internal.wait(5);
+        waited += 5;
+      
+        fig = c1.figures();
+        if (fig["dead"]["deletion"] == 0 && fig["dead"]["count"] == 0) {
+          break;
+        }
+      }
+      
+            
+      fig = c1.figures();
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertEqual(0, fig["alive"]["size"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document presence after compaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentPresence : function () {
+      var maxWait;
+      var waited;
+      var cn = "example";
+      var n = 400;
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
+
+      for (var i = 0; i < 5; ++i) {
+        payload += payload;
+      }
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+
+      for (var i = 0; i < n; ++i) {
+        c1.save({ _key: "test" + i, value : i, payload : payload });
+      }
+      
+      for (var i = 0; i < n; i += 2) {
+        c1.remove("test" + i);
+      }
+     
+      // this will create a barrier that will block compaction
+      var doc = c1.document("test1"); 
+
+      c1.rotate();
+      
+      var fig = c1.figures();
+      assertEqual(n / 2, c1.count());
+      assertEqual(n / 2, fig["alive"]["count"]);
+      assertEqual(n / 2, fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["size"]);
+      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      // trigger GC
+      doc = null;
+      internal.wait(0);
+
+      // wait for compactor to run
+      require("console").log("waiting for compactor to run");
+
+      // set max wait time
+      if (internal.valgrind) {
+        maxWait = 750;
+      }
+      else {
+        maxWait = 90;
+      }
+
+      waited = 0;
+      var lastValue = fig["dead"]["deletion"];
+
+      while (waited < maxWait) {
+        internal.wait(5);
+        waited += 5;
+      
+        fig = c1.figures();
+        if (fig["dead"]["deletion"] == lastValue) {
+          break;
+        }
+        lastValue = fig["dead"]["deletion"];
+      }
+
+      var doc;
+      for (var i = 0; i < n; i++) {
+
+        // will throw if document does not exist
+        if (i % 2 == 0) {
+          try {
+            doc = c1.document("test" + i);
+            fail();
+          }
+          catch (err) {
+          }
+        }
+        else {
+          doc = c1.document("test" + i);
+        }
+      }
+
+      // trigger GC
+      doc = null;
+      internal.wait(0);
+
+      c1.truncate();
+      c1.rotate();
+
+      waited = 0;
+
+      while (waited < maxWait) {
+        internal.wait(5);
+        waited += 5;
+      
+        fig = c1.figures();
+        if (fig["dead"]["deletion"] == 0) {
+          break;
+        }
+      }
+      
+      var fig = c1.figures();
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates documents, rotates the journal and truncates all documents
+/// 
+/// this will fully compact the 1st datafile (with the data), but will leave
+/// the journal with the delete markers untouched
 ////////////////////////////////////////////////////////////////////////////////
 
     testCompactAfterTruncate : function () {
@@ -63,9 +266,6 @@ function CompactionSuite () {
 
       for (var i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
-        if ((i > 0) && (i % 100 == 0)) {
-          internal.wait(2);
-        }
       }
 
       var fig = c1.figures();
@@ -73,14 +273,17 @@ function CompactionSuite () {
       assertEqual(n, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);
       assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
-      assertTrue(0 < fig["journals"]["count"]);
+      
+      // truncation will go fully into the journal...
+      c1.rotate();
 
       c1.truncate();
       c1.unload();
+      
+      // trigger GC
       internal.wait(2);
-
-      c1 = null;
       
       // wait for compactor to run
       require("console").log("waiting for compactor to run");
@@ -99,24 +302,19 @@ function CompactionSuite () {
         internal.wait(5);
         waited += 5;
       
-        c1 = internal.db[cn];
-        c1.load();
-
         fig = c1.figures();
-        if (fig["dead"]["deletion"] >= n && fig["dead"]["count"] >= n) {
+        if (fig["dead"]["count"] == 0) {
           break;
         }
-
-        c1.unload();
       }
       
             
-      c1 = internal.db[cn];
-      c1.load();
       fig = c1.figures();
       assertEqual(0, c1.count());
+      // all alive & dead markers should be gone
       assertEqual(0, fig["alive"]["count"]);
-      assertEqual(n, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["count"]);
+      // we should still have all the deletion markers
       assertEqual(n, fig["dead"]["deletion"]);
 
       internal.db._drop(cn);
