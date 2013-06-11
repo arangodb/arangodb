@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query explain actions
 ///
@@ -115,7 +118,10 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
-///     body = '{ "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.name", "bindVars": { "id" : 3 } }';
+///     body = '{ ' +
+///       '"query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.name", ' +
+///       '"bindVars": { "id" : 3 } ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -163,9 +169,12 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_explain (req, res) {
-  if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, ERRORS.errors.ERROR_HTTP_NOT_FOUND.code, ERRORS.errors.ERROR_HTTP_NOT_FOUND.message);
+function post_api_explain (req, res) {
+  if (req.suffix.length !== 0) {
+    actions.resultNotFound(req, 
+                           res, 
+                           ERRORS.errors.ERROR_HTTP_NOT_FOUND.code, 
+                           ERRORS.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 
@@ -201,8 +210,8 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case (actions.POST) : 
-          POST_api_explain(req, res); 
+        case actions.POST: 
+          post_api_explain(req, res); 
           break;
 
         default:
