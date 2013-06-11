@@ -746,7 +746,8 @@ void TRI_DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary) 
 
 size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t* primary,
                                               void* data,
-                                              bool (*callback)(TRI_doc_mptr_t const*, void*)) {
+                                              bool (*callback)(TRI_doc_mptr_t const*, 
+                                              TRI_primary_collection_t*, void*)) {
   if (primary->_primaryIndex._nrUsed > 0) {
     void** ptr = primary->_primaryIndex._table;
     void** end = ptr + primary->_primaryIndex._nrAlloc;
@@ -755,7 +756,7 @@ size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t* primary,
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-        if (! callback(d, data)) {
+        if (! callback(d, primary, data)) {
           break;
         }
       }

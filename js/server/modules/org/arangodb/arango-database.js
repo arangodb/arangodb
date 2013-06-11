@@ -83,7 +83,7 @@ ArangoDatabase.prototype._PRINT = function(context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype.toString = function(seen, path, names, level) {
-  return "[ArangoDatabase \"" + this._path + "\"]";
+  return "[ArangoDatabase \"" + this._path() + "\"]";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
