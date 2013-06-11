@@ -39,6 +39,7 @@ var actions = require("org/arangodb/actions");
 var simple = require("org/arangodb/simple-query");
 var db = require("org/arangodb").db;
 var internal = require("internal");
+var arangodb = require("org/arangodb");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
