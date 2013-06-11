@@ -557,6 +557,43 @@ static int CreateHeader (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief closes a journal, and triggers creation of a new one
+/// this is used internally for testing
+////////////////////////////////////////////////////////////////////////////////
+
+static int RotateJournal (TRI_document_collection_t* document) {
+  TRI_collection_t* base;
+  int res;
+
+  base = &document->base.base;
+  res = TRI_ERROR_ARANGO_NO_JOURNAL;
+
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
+  if (base->_state == TRI_COL_STATE_WRITE) {
+    size_t n;
+
+    n = base->_journals._length;
+
+    if (n > 0) {
+      TRI_datafile_t* datafile;
+
+      datafile = base->_journals._buffer[0];
+      datafile->_full = true;
+    
+      TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
+      TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
+
+      res = TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a journal, possibly waits until a journal appears
 ///
 /// Note that the function grabs a lock. We have to release this lock, in order
@@ -2265,7 +2302,8 @@ static int OpenIteratorHandleDocumentMarker (TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing 
-      LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
+      LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu. "
+                  "this may also be the result of an aborted transaction",
                   __FUNCTION__,
                   (unsigned long long) datafile->_fid,
                   (unsigned long long) d->_tid,
@@ -2295,7 +2333,8 @@ static int OpenIteratorHandleDeletionMarker (TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing 
-      LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
+      LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu. "
+                  "this may also be the result of an aborted transaction",
                   __FUNCTION__,
                   (unsigned long long) datafile->_fid,
                   (unsigned long long) d->_tid,
@@ -2324,7 +2363,8 @@ static int OpenIteratorHandleBeginMarker (TRI_df_marker_t const* marker,
 
   if (m->_tid != state->_tid && state->_tid != 0) {
     // some incomplete transaction was going on before us...
-    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
+    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu. " 
+                "this may also be the result of an aborted transaction",
                 __FUNCTION__,
                 (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
@@ -2349,7 +2389,7 @@ static int OpenIteratorHandleCommitMarker (TRI_df_marker_t const* marker,
   
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker beforehand. strange
-    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu", 
+    LOG_WARNING("logic error in %s, fid %llu. found tid: %llu, expected tid: %llu",
                 __FUNCTION__,
                 (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
@@ -5888,6 +5928,15 @@ void TRI_SetRevisionDocumentCollection (TRI_document_collection_t* document,
                                         TRI_voc_tick_t tick) {
   TRI_col_info_t* info = &document->base.base._info;
   info->_tick = tick;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate the current journal of the collection
+/// use this for testing only
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RotateJournalDocumentCollection (TRI_document_collection_t* document) {
+  return RotateJournal(document);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
