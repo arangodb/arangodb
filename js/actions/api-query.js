@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query actions
 ///
@@ -96,9 +99,12 @@ var PARSE = require("internal").AQL_PARSE;
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_query (req, res) {
-  if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+function post_api_query (req, res) {
+  if (req.suffix.length !== 0) {
+    actions.resultNotFound(req, 
+                           res, 
+                           arangodb.ERROR_HTTP_NOT_FOUND, 
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 
@@ -135,8 +141,8 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case (actions.POST) : 
-          POST_api_query(req, res); 
+        case actions.POST: 
+          post_api_query(req, res); 
           break;
 
         default:

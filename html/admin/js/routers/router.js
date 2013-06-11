@@ -18,6 +18,7 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
+      "api"                                 : "api",
       "application/installed/:key"          : "applicationEdit",
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
@@ -126,6 +127,13 @@ $(document).ready(function() {
       }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
+    },
+    api: function() {
+      if (!this.apiView) {
+        this.apiView = new window.apiView();
+      }
+      this.apiView.render();
+      this.naviView.selectMenuItem('api-menu');
     },
     about: function() {
       if (!this.aboutView) {

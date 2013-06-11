@@ -18,6 +18,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{IndexFulltextHttp}
 @CHAPTER_REF{HttpTransactions}
 @CHAPTER_REF{HttpGraph}
+@CHAPTER_REF{HttpTraversals}
 @CHAPTER_REF{HttpImport}
 @CHAPTER_REF{HttpBatch}
 @CHAPTER_REF{HttpSystem}
