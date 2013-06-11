@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
 ///
@@ -76,19 +79,19 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_api_aqlfunction (req, res) {
-  if (req.suffix.length != 0) {
+function get_api_aqlfunction (req, res) {
+  if (req.suffix.length !== 0) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
-  var namespace = undefined;
+  var namespace;
   if (req.parameters.hasOwnProperty('namespace')) {
     namespace = req.parameters.namespace;
   }
 
   var result = aqlfunctions.toArray(namespace);
-  actions.resultOk(req, res, actions.HTTP_OK, result)
+  actions.resultOk(req, res, actions.HTTP_OK, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +153,10 @@ function GET_api_aqlfunction (req, res) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionCreate}
 ///     var url = "/_api/aqlfunction";
-///     var body = '{ "name" : "myfunctions:temperature:celsiustofahrenheit", "code" : "function (celsius) { return celsius * 1.8 + 32; }" }';
+///     var body = '{ ' + 
+///       '"name" : "myfunctions:temperature:celsiustofahrenheit", ' +
+///       '"code" : "function (celsius) { return celsius * 1.8 + 32; }" ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -160,7 +166,7 @@ function GET_api_aqlfunction (req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_aqlfunction (req, res) {
+function post_api_aqlfunction (req, res) {
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -253,7 +259,7 @@ function POST_api_aqlfunction (req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function DELETE_api_aqlfunction (req, res) {
+function delete_api_aqlfunction (req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -261,7 +267,7 @@ function DELETE_api_aqlfunction (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   try {
-    var g = req.parameters['group'];
+    var g = req.parameters.group;
     if (g === 'true' || g === 'yes' || g === 'y' || g === 'on' || g === '1') {
       aqlfunctions.unregisterGroup(name);
     }
@@ -296,15 +302,15 @@ actions.defineHttp({
     try {
       switch (req.requestType) {
         case actions.GET: 
-          GET_api_aqlfunction(req, res); 
+          get_api_aqlfunction(req, res); 
           break;
 
         case actions.POST: 
-          POST_api_aqlfunction(req, res); 
+          post_api_aqlfunction(req, res); 
           break;
 
         case actions.DELETE:  
-          DELETE_api_aqlfunction(req, res); 
+          delete_api_aqlfunction(req, res); 
           break;
 
         default:
