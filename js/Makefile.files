@@ -41,6 +41,7 @@ BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
 ################################################################################
 
 JAVASCRIPT_JSLINT = \
+	`find @srcdir@/js/actions -name "*.js"` \
 	`find @srcdir@/js/common/bootstrap -name "*.js"` \
 	`find @srcdir@/js/client/bootstrap -name "*.js"` \
 	`find @srcdir@/js/server/bootstrap -name "*.js"` \
@@ -57,11 +58,7 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/html/admin/js/shell/browser.js \
-	\
-	@srcdir@/js/actions/api-collection.js \
-	@srcdir@/js/actions/api-structure.js \
-	@srcdir@/js/actions/api-system.js
+	@srcdir@/html/admin/js/shell/browser.js 
 
 ################################################################################
 ### @brief executes jslint

@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief querying and managing indexes
 ///
@@ -75,7 +78,7 @@ var API = "_api/index";
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_api_indexes (req, res) {
+function get_api_indexes (req, res) {
   var name = req.parameters.collection;
   var collection = arangodb.db._collection(name);
   
@@ -84,11 +87,9 @@ function GET_api_indexes (req, res) {
     return;
   }
 
-  var list = [];
-  var ids = {};
-  var indexes = collection.getIndexes();
+  var list = [], ids = {}, indexes = collection.getIndexes(), i;
 
-  for (var i = 0;  i < indexes.length;  ++i) {
+  for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
     
     list.push(index);
@@ -147,14 +148,14 @@ function GET_api_indexes (req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_api_index (req, res) {
+function get_api_index (req, res) {
 
   // .............................................................................
   // /_api/index?collection=<collection-name>
   // .............................................................................
 
   if (req.suffix.length === 0) {
-    GET_api_indexes(req, res);
+    get_api_indexes(req, res);
   }
 
   // .............................................................................
@@ -253,7 +254,7 @@ function GET_api_index (req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index_cap (req, res, collection, body) {
+function post_api_index_cap (req, res, collection, body) {
   if (! body.hasOwnProperty("size")) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expecting a size");
@@ -370,7 +371,7 @@ function POST_api_index_cap (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index_geo (req, res, collection, body) {
+function post_api_index_geo (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
@@ -536,7 +537,7 @@ function POST_api_index_geo (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index_hash (req, res, collection, body) {
+function post_api_index_hash (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
@@ -624,7 +625,7 @@ function POST_api_index_hash (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index_skiplist (req, res, collection, body) {
+function post_api_index_skiplist (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
@@ -711,7 +712,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index_fulltext (req, res, collection, body) {
+function post_api_index_fulltext (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
@@ -720,7 +721,7 @@ function POST_api_index_fulltext (req, res, collection, body) {
     return;
   }
 
-  if (fields.length != 1 || typeof fields[0] !== 'string') {
+  if (fields.length !== 1 || typeof fields[0] !== 'string') {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must contain exactly one attribute name");
     return;
@@ -789,7 +790,11 @@ function POST_api_index_fulltext (req, res, collection, body) {
 ///     db._create(cn, { waitForSync: true });
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type" : "bitarray", "unique" : false, "fields" : [ "x", [0,1,[]], "y", ["a","b",[]] ] }';
+///     var body = '{ ' + 
+///       '"type" : "bitarray", ' + 
+///       '"unique" : false, ' + 
+///       '"fields" : [ "x", [0,1,[]], "y", ["a","b",[]] ] ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -799,7 +804,7 @@ function POST_api_index_fulltext (req, res, collection, body) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index_bitarray (req, res, collection, body) {
+function post_api_index_bitarray (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
@@ -815,9 +820,8 @@ function POST_api_index_bitarray (req, res, collection, body) {
                       "Bitarray indexes can not be unique");
     return;
   }
-  else {
-    index = collection.ensureBitarray.apply(collection, fields);
-  }
+  
+  index = collection.ensureBitarray.apply(collection, fields);
 
   if (index.isNewlyCreated) {
     actions.resultOk(req, res, actions.HTTP_CREATED, index);
@@ -882,7 +886,7 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_index (req, res) {
+function post_api_index (req, res) {
   if (req.suffix.length !== 0) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expecting POST /" + API + "?collection=<collection-name>");
@@ -904,22 +908,22 @@ function POST_api_index (req, res) {
   }
   
   if (body.type === "cap") {
-    POST_api_index_cap(req, res, collection, body);
+    post_api_index_cap(req, res, collection, body);
   }
   else if (body.type === "geo") {
-    POST_api_index_geo(req, res, collection, body);
+    post_api_index_geo(req, res, collection, body);
   }
   else if (body.type === "hash") {
-    POST_api_index_hash(req, res, collection, body);
+    post_api_index_hash(req, res, collection, body);
   }
   else if (body.type === "skiplist") {
-    POST_api_index_skiplist(req, res, collection, body);
+    post_api_index_skiplist(req, res, collection, body);
   }
   else if (body.type === "fulltext") {
-    POST_api_index_fulltext(req, res, collection, body);
+    post_api_index_fulltext(req, res, collection, body);
   }
   else if (body.type === "bitarray") {
-    POST_api_index_bitarray(req, res, collection, body);
+    post_api_index_bitarray(req, res, collection, body);
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
@@ -966,7 +970,7 @@ function POST_api_index (req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function DELETE_api_index (req, res) {
+function delete_api_index (req, res) {
   if (req.suffix.length !== 2) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expect DELETE /" + API + "/<index-handle>");
@@ -981,7 +985,7 @@ function DELETE_api_index (req, res) {
     return;
   }
 
-  var iid = parseInt(decodeURIComponent(req.suffix[1]));
+  var iid = parseInt(decodeURIComponent(req.suffix[1]), 10);
   var dropped = collection.dropIndex(name + "/" + iid);
 
   if (dropped) {
@@ -1003,13 +1007,13 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       if (req.requestType === actions.GET) {
-        GET_api_index(req, res);
+        get_api_index(req, res);
       }
       else if (req.requestType === actions.DELETE) {
-        DELETE_api_index(req, res);
+        delete_api_index(req, res);
       }
       else if (req.requestType === actions.POST) {
-        POST_api_index(req, res);
+        post_api_index(req, res);
       }
       else {
         actions.resultUnsupported(req, res);
