@@ -278,26 +278,23 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
+      TRI_vocbase_auth_t* auth;
       TRI_doc_mptr_t const* d;
       TRI_shaped_json_t shapedJson;
 
       d = (TRI_doc_mptr_t const*) *ptr;
 
-      if (d->_validTo == 0) {
-        TRI_vocbase_auth_t* auth;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-        TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
+      auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
 
-        auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
+      if (auth != NULL) {
+        TRI_vocbase_auth_t* old;
 
-        if (auth != NULL) {
-          TRI_vocbase_auth_t* old;
+        old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
 
-          old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
-
-          if (old != NULL) {
-            FreeAuthInfo(old);
-          }
+        if (old != NULL) {
+          FreeAuthInfo(old);
         }
       }
     }

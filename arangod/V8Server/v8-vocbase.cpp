@@ -5192,6 +5192,48 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rotates the current journal of a collection
+///
+/// @FUN{@FA{collection}.rotate()}
+///
+/// Rotates the current journal of a collection (i.e. makes the journal a 
+/// datafile and creates a new, empty datafile).
+/// This function is used during testing to force certain states and 
+/// conditions. It is not intended to be used publicly
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_primary_collection_t* primary = collection->_collection;
+  TRI_collection_t* base = &primary->base;
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
+    ReleaseCollection(collection);
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
+  }
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+
+  int res = TRI_RotateJournalDocumentCollection(document);
+
+  ReleaseCollection(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "could not rotate journal");
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
 /// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})}
@@ -7131,6 +7173,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
   TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
+  TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(rt, "truncate", JS_TruncateVocbaseCol);
