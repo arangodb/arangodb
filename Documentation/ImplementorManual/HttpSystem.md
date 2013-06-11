@@ -12,16 +12,16 @@ monitoring of the server.
 
 @CLEARPAGE
 @anchor HttpSystemFlushServerModules
-@copydetails JSF_GET_admin_modules_flush
+@copydetails JSF_get_admin_modules_flush
 
 @CLEARPAGE
 @anchor HttpSystemRoutingReloads
-@copydetails JSF_GET_admin_routing_reloads
+@copydetails JSF_get_admin_routing_reloads
 
 @CLEARPAGE
 @anchor HttpSystemAdminStatistics
-@copydetails JSF_GET_admin_statistics
+@copydetails JSF_get_admin_statistics
 
 @CLEARPAGE
 @anchor HttpSystemAdminStatisticsDescription
-@copydetails JSF_GET_admin_statistics_description
+@copydetails JSF_get_admin_statistics_description
