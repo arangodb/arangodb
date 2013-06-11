@@ -6445,7 +6445,12 @@ static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
   if (vocbase) {
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
     v8g->_vocbase = vocbase;
-    return scope.Close(TRI_WrapVocBase(vocbase));
+    
+    v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl,
+                                    WRP_VOCBASE_TYPE,
+                                    const_cast<TRI_vocbase_t*>(vocbase));
+
+    return scope.Close(result);
   }
     
   return scope.Close(v8::Boolean::New(false));
@@ -7200,23 +7205,6 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
   }
 
   return idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_vocbase_t
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
-  v8::HandleScope scope;
-
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl,
-                                            WRP_VOCBASE_TYPE,
-                                            const_cast<TRI_vocbase_t*>(database));
-
-  //result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
-
-  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
