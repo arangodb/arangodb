@@ -835,7 +835,7 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
 
     if (dfi != NULL) {
       dfi->_numberAlive++;
-      dfi->_sizeAlive += marker->base._size;
+      dfi->_sizeAlive += (int64_t) marker->base._size;
     }
   }
 
@@ -961,10 +961,10 @@ static int WriteRemoveMarker (TRI_document_collection_t* document,
       TRI_ASSERT_MAINTAINER(header->_data != NULL);
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (TRI_voc_ssize_t) ((TRI_df_marker_t*) (header->_data))->_size;
+      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) (header->_data))->_size;
+      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
     }
 
     if (header->_fid != fid) {
@@ -1128,7 +1128,7 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
 
     if (dfi != NULL) {
       dfi->_numberAlive++;
-      dfi->_sizeAlive += marker->base._size;
+      dfi->_sizeAlive += (int64_t) marker->base._size;
     }
 
     if (oldHeader->_fid != fid) {
@@ -1136,7 +1136,7 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
     }
 
     if (dfi != NULL) {
-      size_t length = (size_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
+      int64_t length = (int64_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= length;
@@ -1936,7 +1936,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // update the datafile info
     if (state->_dfi != NULL) {
       state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += marker->_size;
+      state->_dfi->_sizeAlive += (int64_t) marker->_size;
     }
   }
 
@@ -1970,15 +1970,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
     }
 
     if (state->_dfi != NULL) {
       state->_dfi->_numberAlive++;
-      state->_dfi->_sizeAlive += marker->_size;
+      state->_dfi->_sizeAlive += (int64_t) marker->_size;
     }
 
     if (oldData._validTo > 0) {
@@ -2002,7 +2002,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       state->_dfi->_numberDead++;
-      state->_dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      state->_dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
     }
   }
 
@@ -2073,10 +2073,10 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (TRI_voc_ssize_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
     }
 
     if (state->_dfi != NULL) {

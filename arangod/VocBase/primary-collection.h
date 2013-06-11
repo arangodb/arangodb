@@ -141,9 +141,10 @@ typedef struct TRI_doc_datafile_info_s {
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _sizeAlive;
-  TRI_voc_ssize_t _sizeDead;
   TRI_voc_ssize_t _numberDeletion;
+
+  int64_t         _sizeAlive;
+  int64_t         _sizeDead;
 }
 TRI_doc_datafile_info_t;
 
@@ -157,11 +158,12 @@ typedef struct TRI_doc_collection_info_s {
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _sizeAlive;
-  TRI_voc_ssize_t _sizeDead;
   TRI_voc_ssize_t _numberDeletion;
-  TRI_voc_ssize_t _datafileSize;
-  TRI_voc_ssize_t _journalfileSize;
+
+  int64_t         _sizeAlive;
+  int64_t         _sizeDead;
+  int64_t         _datafileSize;
+  int64_t         _journalfileSize;
 
   TRI_voc_ssize_t _numberShapes;
   TRI_voc_ssize_t _numberAttributes;

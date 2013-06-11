@@ -484,15 +484,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readAll (TRI_transaction_collection_t* trxCollection,
-                     vector<string>& ids) {
+                     vector<string>& ids,
+                     bool lock) {
 
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+          if (lock) {
+            // READ-LOCK START
+            int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
           
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
           }
 
           if (primary->_primaryIndex._nrUsed > 0) {
@@ -510,8 +513,10 @@ namespace triagens {
             }
           }
 
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
+          if (lock) {
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+          }
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -791,7 +796,7 @@ namespace triagens {
             return res;
           }
           
-          res = readAll(trxCollection, ids);
+          res = readAll(trxCollection, ids, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             this->unlock(trxCollection, TRI_TRANSACTION_WRITE);

@@ -1557,6 +1557,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
     datafile->_isSealed = true;
     datafile->_state = TRI_DF_STATE_READ;
+    datafile->_maximalSize = datafile->_currentSize;
   }
 
   if (! ok) {

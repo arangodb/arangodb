@@ -497,8 +497,8 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     if (d != NULL) {
       info->_numberAlive += d->_numberAlive;
       info->_numberDead += d->_numberDead;
-      info->_sizeAlive += d->_sizeAlive;
-      info->_sizeDead += d->_sizeDead;
+      info->_sizeAlive += (int64_t) d->_sizeAlive;
+      info->_sizeDead += (int64_t) d->_sizeDead;
       info->_numberDeletion += d->_numberDeletion;
     }
   }
@@ -508,14 +508,14 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   for (i = 0; i < base->_datafiles._length; ++i) {
     TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
 
-    info->_datafileSize += df->_maximalSize;
+    info->_datafileSize += (int64_t) df->_maximalSize;
     ++info->_numberDatafiles;
   }
 
   for (i = 0; i < base->_journals._length; ++i) {
     TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
 
-    info->_journalfileSize += df->_maximalSize;
+    info->_journalfileSize += (int64_t) df->_maximalSize;
     ++info->_numberJournalfiles;
   }
 

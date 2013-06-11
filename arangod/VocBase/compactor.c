@@ -405,7 +405,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     if (deleted) {
       context->_dfi._numberDead += 1;
-      context->_dfi._sizeDead += marker->_size;
+      context->_dfi._sizeDead += (int64_t) marker->_size;
       
       TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
@@ -425,7 +425,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // update datafile info
     context->_dfi._numberAlive += 1;
-    context->_dfi._sizeAlive += marker->_size;
+    context->_dfi._sizeAlive += (int64_t) marker->_size;
 
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
@@ -608,23 +608,24 @@ static void CompactifyDatafile (TRI_document_collection_t* document,
   }
   
   // locate the compactor
-  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
   if (! LocateDatafile(&primary->base._compactors, compactor->_fid, &i)) {
     // not found
-    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
     LOG_ERROR("logic error in CompactifyDatafile: could not find compactor");
     return;
   }
 
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
-  
   if (! TRI_CloseCompactorPrimaryCollection(primary, i)) {
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
     LOG_ERROR("could not close compactor file");
     // TODO: how do we recover from this state?
     return;
   }
+
+  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   
   if (context._dfi._numberAlive == 0 &&
       context._dfi._numberDead == 0 &&
@@ -687,7 +688,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     df = primary->base._datafiles._buffer[i];
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, df->_fid);
     
-    if (dfi->_numberDead == 0 || dfi->_sizeDead < COMPACTOR_DEAD_SIZE_THRESHOLD) {
+    if (dfi->_numberDead == 0 || dfi->_sizeDead < (int64_t) COMPACTOR_DEAD_SIZE_THRESHOLD) {
       continue;
     }
 
