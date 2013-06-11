@@ -46,6 +46,7 @@ DOXYGEN = \
 	Doxygen/js/actions/api-simple.c \
 	Doxygen/js/actions/api-system.c \
 	Doxygen/js/actions/api-transaction.c \
+	Doxygen/js/actions/api-traversal.c \
 	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
@@ -102,6 +103,7 @@ WIKI = \
 	HttpSimple \
 	HttpSystem \
 	HttpTransactions \
+	HttpTraversals \
 	HttpUser \
 	ImpManual \
 	ImpManualBasics \
@@ -353,6 +355,9 @@ swagger:
 	
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-transaction.js  > @srcdir@/html/admin/api-docs/transaction
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-traversal.js  > @srcdir@/html/admin/api-docs/traversal
 
 ################################################################################
 ### @brief generate examples

@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user management
 ///
@@ -74,8 +77,8 @@ var ArangoError = arangodb.ArangoError;
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_api_user (req, res) {
-  if (req.suffix.length != 1) {
+function get_api_user (req, res) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -83,7 +86,7 @@ function GET_api_user (req, res) {
   var username = decodeURIComponent(req.suffix[0]);
   try {
     var result = users.document(username);
-    actions.resultOk(req, res, actions.HTTP_OK, result)
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
   catch (err) {
     if (err.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
@@ -153,7 +156,7 @@ function GET_api_user (req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_user (req, res) {
+function post_api_user (req, res) {
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -228,8 +231,8 @@ function POST_api_user (req, res) {
 /// The specified user does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_user (req, res) {
-  if (req.suffix.length != 1) {
+function put_api_user (req, res) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -322,8 +325,8 @@ function PUT_api_user (req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function PATCH_api_user (req, res) {
-  if (req.suffix.length != 1) {
+function patch_api_user (req, res) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -394,8 +397,8 @@ function PATCH_api_user (req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function DELETE_api_user (req, res) {
-  if (req.suffix.length != 1) {
+function delete_api_user (req, res) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -432,23 +435,23 @@ actions.defineHttp({
     try {
       switch (req.requestType) {
         case actions.GET: 
-          GET_api_user(req, res); 
+          get_api_user(req, res); 
           break;
 
         case actions.POST: 
-          POST_api_user(req, res); 
+          post_api_user(req, res); 
           break;
 
         case actions.PUT:  
-          PUT_api_user(req, res); 
+          put_api_user(req, res); 
           break;
         
         case actions.PATCH:  
-          PATCH_api_user(req, res); 
+          patch_api_user(req, res); 
           break;
 
         case actions.DELETE:  
-          DELETE_api_user(req, res); 
+          delete_api_user(req, res); 
           break;
 
         default:

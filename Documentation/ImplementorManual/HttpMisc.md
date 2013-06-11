@@ -12,9 +12,9 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 
 @CLEARPAGE
 @anchor HttpMiscTime
-@copydetails JSF_GET_admin_time
+@copydetails JSF_get_admin_time
 
 @CLEARPAGE
 @anchor HttpMiscEcho
-@copydetails JSF_GET_admin_echo
+@copydetails JSF_get_admin_echo
 
