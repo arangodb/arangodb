@@ -199,6 +199,7 @@ TRI_aql_for_hint_t* TRI_CreateForHintScopeAql (TRI_aql_context_t* const context)
   hint->_limit._offset = 0;
   hint->_limit._limit  = 0;
   hint->_limit._status = TRI_AQL_LIMIT_UNDEFINED;
+  hint->_isIncremental = false;
 
   return hint;
 }

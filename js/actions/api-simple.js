@@ -785,7 +785,7 @@ actions.defineHttp({
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
-///     //assert(response.code === 201);
+///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -806,7 +806,7 @@ actions.defineHttp({
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
-///     //assert(response.code === 201);
+///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -827,7 +827,7 @@ actions.defineHttp({
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
-///     //assert(response.code === 201);
+///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -936,7 +936,7 @@ actions.defineHttp({
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
-///     //assert(response.code === 201);
+///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -957,7 +957,7 @@ actions.defineHttp({
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
-///     //assert(response.code === 201);
+///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);

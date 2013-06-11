@@ -28,13 +28,12 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var graph = require("org/arangodb/graph");
-var arangodb = require("org/arangodb");
-
-var Edge = graph.Edge;
-var Graph = graph.Graph;
-var Vertex = graph.Vertex;
-var GraphArray;
+var arangodb = require("org/arangodb"),
+  is = require("org/arangodb/is"),
+  Edge,
+  Graph,
+  Vertex,
+  GraphArray;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -57,7 +56,7 @@ var GraphArray;
 /// @brief constructs a graph arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.GraphArray = GraphArray = function (len) {
+GraphArray = function (len) {
   if (len !== undefined) {
     this.length = len;
   }
@@ -224,6 +223,12 @@ GraphArray.prototype.properties = function () {
 // --SECTION--                                                              Edge
 // -----------------------------------------------------------------------------
 
+Edge = function (graph, properties) {
+  this._graph = graph;
+  this._id = properties._key;
+  this._properties = properties;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -354,6 +359,12 @@ Edge.prototype._PRINT = function (context) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Vertex
 // -----------------------------------------------------------------------------
+
+Vertex = function (graph, properties) {
+  this._graph = graph;
+  this._id = properties._key;
+  this._properties = properties;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -531,6 +542,10 @@ Vertex.prototype._PRINT = function (context) {
 // --SECTION--                                                             Graph
 // -----------------------------------------------------------------------------
 
+Graph = function (name, vertices, edges, waitForSync) {
+  this.initialize(name, vertices, edges, waitForSync);
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -555,6 +570,59 @@ Graph.prototype.getOrAddVertex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an edge to the graph
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id})}
+///
+/// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
+/// identifier @FA{id} must be a unique identifier or null.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
+///
+/// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
+/// edge object.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
+///
+/// Creates a new edge and returns the edge object. The edge contains the
+/// properties defined in @FA{data}.
+///
+/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge and returns the edge object. The edge has the
+/// label @FA{label} and contains the properties defined in @FA{data}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-graph-add-edge
+///
+/// @verbinclude graph-graph-add-edge2
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
+  var params;
+  
+  if (is.notExisty(data) && typeof label === 'object') {
+    data = label;
+    label = null;
+  }
+
+  if (is.notExisty(label) && is.existy(data) && is.existy(data.$label)) {
+    label = data.$label;
+  }
+
+  if (data === null || typeof data !== "object") {
+    params = {};
+  } else {
+    params = data._shallowCopy || {};
+  }
+
+  params.$label = label;
+
+  return this._saveEdge(id, out_vertex, in_vertex, params, waitForSync);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -574,6 +642,24 @@ Graph.prototype.getOrAddVertex = function (id) {
 Graph.prototype._PRINT = function (context) {
   context.output += "Graph(\"" + this._properties._key + "\")";
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+exports.Edge = Edge;
+exports.Graph = Graph;
+exports.Vertex = Vertex;
+exports.GraphArray = GraphArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
