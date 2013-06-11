@@ -121,11 +121,12 @@ static void DebugDatafileInfoDatafile (TRI_primary_collection_t* primary,
     return;
   }
 
-  printf("  number alive:        %ld\n", (long) dfi->_numberAlive);
-  printf("  size alive:          %ld\n", (long) dfi->_sizeAlive);
-  printf("  number dead:         %ld\n", (long) dfi->_numberDead);
-  printf("  size dead:           %ld\n", (long) dfi->_sizeDead);
-  printf("  deletion:            %ld\n\n", (long) dfi->_numberDeletion);
+  printf("  number alive:        %llu\n", (unsigned long long) dfi->_numberAlive);
+  printf("  size alive:          %llu\n", (unsigned long long) dfi->_sizeAlive);
+  printf("  number dead:         %llu\n", (unsigned long long) dfi->_numberDead);
+  printf("  size dead:           %llu\n", (unsigned long long) dfi->_sizeDead);
+  printf("  deletion:            %llu\n", (unsigned long long) dfi->_numberDeletion);
+  printf("\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -517,7 +518,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   for (i = 0; i < base->_journals._length; ++i) {
     TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
 
-    info->_journalfileSize += df->_maximalSize;
+    info->_journalfileSize += (int64_t) df->_maximalSize;
     ++info->_numberJournalfiles;
   }
 
