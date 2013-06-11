@@ -42,12 +42,20 @@
       "description": "Interface for Indexes"
     },
     {
+      "path": "api-docs/aqlfunction",
+      "description": "Interface for AQL user functions"
+    },
+    {
       "path": "api-docs/simple",
       "description": "Interface for SimpleQueries"
     },
     {
       "path": "api-docs/query",
       "description": "Interface for Queries"
+    },
+    {
+      "path": "api-docs/transaction",
+      "description": "Interface for Transactions"
     },
     {
       "path": "api-docs/structure",

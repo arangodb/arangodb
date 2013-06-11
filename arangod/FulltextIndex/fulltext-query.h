@@ -69,7 +69,7 @@ extern "C" {
 typedef enum {
   TRI_FULLTEXT_COMPLETE,
   TRI_FULLTEXT_PREFIX,
-  TRI_FULLTEXT_SUBSTRING   // TODO: currently not implemented
+  TRI_FULLTEXT_SUBSTRING   // currently not implemented, maybe later
 }
 TRI_fulltext_query_match_e;
 

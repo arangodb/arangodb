@@ -344,6 +344,9 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 ///
 /// - @LIT{followRedirects}: whether or not to follow redirects
 ///
+/// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
+///   error
+///
 /// - @LIT{headers}: an optional array of headers to be sent for the first
 ///   (non-redirect) request.
 ///
@@ -429,6 +432,11 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       (method == HttpRequest::HTTP_REQUEST_GET ||
        method == HttpRequest::HTTP_REQUEST_HEAD)) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "should not provide a body value for this request method");
+  }
+
+  bool returnBodyOnError = false;
+  if (options->Has(TRI_V8_SYMBOL("returnBodyOnError"))) {
+    returnBodyOnError = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("returnBodyOnError")));
   }
 
 
@@ -550,7 +558,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       result->Set(v8::String::New("headers"), headers);
 
 
-      if (returnCode >= 200 && returnCode <= 299) {
+      if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
           if (outfile.size() > 0) {
             // save outfile

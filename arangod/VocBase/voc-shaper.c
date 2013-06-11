@@ -248,7 +248,7 @@ static void setAttributeWeight (voc_shaper_t* shaper,
                                 attribute_weight_t* item,
                                 int64_t* searchResult,
                                 bool* weighted) {
-  uint64_t itemWeight;
+  int64_t itemWeight;
   attribute_weight_t* leftItem;  // nearest neighbour items
   attribute_weight_t* rightItem; // nearest neighbour items
   const int64_t resolution = 100;
@@ -263,7 +263,8 @@ static void setAttributeWeight (voc_shaper_t* shaper,
 
   *searchResult = sortedIndexOf(shaper, item);
 
-  if (*searchResult < 0 || *searchResult > shaper->_sortedAttributes._length) { // oops
+  if (*searchResult < 0 || 
+      *searchResult > (int64_t) shaper->_sortedAttributes._length) { // oops
     assert(false);
     return;
   }
@@ -296,7 +297,7 @@ static void setAttributeWeight (voc_shaper_t* shaper,
         item->_weight = rightItem->_weight - resolution;
         *weighted = true;
       }
-      else if (*searchResult == (shaper->_sortedAttributes)._length) {
+      else if (*searchResult == (int64_t) (shaper->_sortedAttributes)._length) {
         leftItem  = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), (shaper->_sortedAttributes)._length - 1));
         item->_weight = leftItem->_weight + resolution;
         *weighted = true;
@@ -306,7 +307,8 @@ static void setAttributeWeight (voc_shaper_t* shaper,
         rightItem = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), *searchResult));
         itemWeight = (rightItem->_weight + leftItem->_weight) / 2;
 
-        if (leftItem->_weight != itemWeight && rightItem->_weight != itemWeight) {
+        if (leftItem->_weight != itemWeight && 
+            rightItem->_weight != itemWeight) {
           item->_weight = itemWeight;
           *weighted = true;
         }
@@ -346,7 +348,7 @@ static void setAttributeWeight (voc_shaper_t* shaper,
 static void fullSetAttributeWeight (voc_shaper_t* shaper) {
   int64_t startWeight;
   attribute_weight_t* item;
-  int j;
+  size_t j;
 
   startWeight = 0;
 

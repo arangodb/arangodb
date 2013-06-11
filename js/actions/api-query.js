@@ -71,11 +71,29 @@ var PARSE = require("internal").AQL_PARSE;
 ///
 /// Valid query:
 ///
-/// @verbinclude api-query-valid
+/// @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
+///     var url = "/_api/query";
+///     var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Invalid query:
 ///
-/// @verbinclude api-query-invalid
+/// @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
+///     var url = "/_api/query";
+///     var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 400);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_query (req, res) {
