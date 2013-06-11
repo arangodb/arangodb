@@ -1,0 +1,36 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "Creates a new document in the collection <em>collection</em>. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "structure",
+                            "description": "The structure definition. "
+                        }
+                    ],
+                    "notes": "<br><br>Creates a new document in the collection identified by the <em>collection-identifier</em>.  A JSON representation of the document must be passed as the body of the POST request. The document must fullfill the requirements of the structure definition, see @ref ArangoStructures. <br><br>In all other respects the function is identical to the  @ref triagens::arango::RestDocumentHandler::createDocument \"POST /_api/structure\". ",
+                    "summary": "creates a structured document",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "createsAStructuredDocument"
+                }
+            ],
+            "path": "/_api/structure"
+        }
+    ]
+}
