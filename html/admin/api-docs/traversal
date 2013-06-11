@@ -1,0 +1,29 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "body",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "TODO ",
+                    "summary": "executes a traversal",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "executesATraversal"
+                }
+            ],
+            "path": "/_api/traversal"
+        }
+    ]
+}
