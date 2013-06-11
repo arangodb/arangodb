@@ -69,6 +69,12 @@
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 
+#include "unicode/timezone.h"
+#include "unicode/utypes.h"
+#include "unicode/datefmt.h"
+#include "unicode/smpdtfmt.h"
+#include "unicode/dtfmtsym.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -2108,6 +2114,125 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
 
   return scope.Close(v8::Integer::New(result));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get list of timezones
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_getIcuTimezones (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "TIMEZONES()");
+  }
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+  
+  UErrorCode status = U_ZERO_ERROR;
+  
+  StringEnumeration* timeZones = TimeZone::createEnumeration();
+  if (timeZones) {  
+    int32_t idsCount = timeZones->count(status);
+    
+    for (int32_t i = 0; i < idsCount && U_ZERO_ERROR == status; ++i) {
+      int32_t resultLength;
+      const char* str = timeZones->next(&resultLength, status);
+      result->Set(i, v8::String::New(str, resultLength));    
+    }
+    
+    delete timeZones;
+  }
+  
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get list of locales
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_getIcuLocales (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "LOCALES()");
+  }
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+  
+  UErrorCode status = U_ZERO_ERROR;
+  
+  int32_t count = 0;
+  const Locale* locales = Locale::getAvailableLocales(count);
+  if (locales) { 
+    
+    for (int32_t i = 0; i < count; ++i) {
+      const Locale* l = locales + i;      
+      const char* str = l->getBaseName();
+      
+      result->Set(i, v8::String::New(str, strlen(str)));    
+    }
+  }
+  
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief format datetime
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_formatDatetime (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "FORMAT_DATETIME(<datetime in sec>, <pattern>, [<timezone>, [<locale>]])");
+  }
+
+  int64_t datetime = TRI_ObjectToInt64(argv[0]);
+  v8::String::Value pattern(argv[1]);
+
+  TimeZone* tz = 0;
+  if (argv.Length() > 2) {
+    v8::String::Value value(argv[2]);
+    
+    // ..........................................................................
+    // Take note here: we are assuming that the ICU type UChar is two bytes.
+    // There is no guarantee that this will be the case on all platforms and
+    // compilers.
+    // ..........................................................................
+
+    UnicodeString ts((const UChar *) *value, value.length());            
+    tz = TimeZone::createTimeZone(ts);
+  }
+  else {
+    tz = TimeZone::createDefault();  
+  }
+  
+  Locale locale;
+  if (argv.Length() > 3) {
+    string name = TRI_ObjectToString(argv[3]);     
+    locale = Locale::createFromName(name.c_str());
+  }
+  else {
+    // use language of default collator
+    string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+    locale = Locale::createFromName(name.c_str());
+  }
+  
+  UnicodeString formattedString;
+  UErrorCode status = U_ZERO_ERROR;
+  UnicodeString aPattern((const UChar *) *pattern, pattern.length());
+  DateFormatSymbols* ds = new DateFormatSymbols(locale, status);
+  SimpleDateFormat* s = new SimpleDateFormat(aPattern, ds, status);
+  s->setTimeZone(*tz);
+  s->format(datetime * 1000, formattedString);
+    
+  string resultString;
+  formattedString.toUTF8String(resultString);
+  delete s;
+  delete tz;
+  
+  return scope.Close(v8::String::New(resultString.c_str(), resultString.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7062,6 +7187,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
+  TRI_AddGlobalFunctionVocbase(context, "TIMEZONES", JS_getIcuTimezones);
+  TRI_AddGlobalFunctionVocbase(context, "LOCALES", JS_getIcuLocales);
+  TRI_AddGlobalFunctionVocbase(context, "FORMAT_DATETIME", JS_formatDatetime);
 
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
