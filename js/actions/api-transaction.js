@@ -227,7 +227,7 @@ function post_api_transaction(req, res) {
 
   var result = TRANSACTION(json);
 
-  actions.resultOk(req, res, actions.HTTP_OK, { "result" : result });
+  actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

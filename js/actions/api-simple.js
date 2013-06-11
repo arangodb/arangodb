@@ -45,7 +45,7 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_all
+/// @fn JSA_put_api_simple_all
 /// @brief returns all documents of a collection
 ///
 /// @RESTHEADER{PUT /_api/simple/all,executes simple query ALL}
@@ -176,7 +176,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_any
+/// @fn JSA_put_api_simple_any
 /// @brief returns a random document of a collection
 ///
 /// @RESTHEADER{PUT /_api/simple/any,executes simple query ANY}
@@ -270,7 +270,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_near
+/// @fn JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
 /// @RESTHEADER{PUT /_api/simple/near,executes simple query NEAR}
@@ -452,7 +452,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_within
+/// @fn JSA_put_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
 /// @RESTHEADER{PUT /_api/simple/within,executes simple query WITHIN}
@@ -628,7 +628,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_fulltext
+/// @fn JSA_put_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
 /// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query FULLTEXT}
@@ -751,7 +751,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_by_example
+/// @fn JSA_put_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example,executes simple query by-example}
@@ -905,7 +905,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_first_example
+/// @fn JSA_put_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
 /// @RESTHEADER{PUT /_api/simple/first-example,executes simple query first-example}
@@ -1076,7 +1076,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_range
+/// @fn JSA_put_api_simple_range
 /// @brief returns all documents of a collection within a range
 ///
 /// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
@@ -1202,7 +1202,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_remove_by_example
+/// @fn JSA_put_api_simple_remove_by_example
 /// @brief removes all documents of a collection that match an example
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
@@ -1309,7 +1309,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_replace_by_example
+/// @fn JSA_put_api_simple_replace_by_example
 /// @brief replaces the body of all documents of a collection that match an 
 /// example
 ///
@@ -1431,7 +1431,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_update_by_example
+/// @fn JSA_put_api_simple_update_by_example
 /// @brief partially updates the body of all documents of a collection that
 /// match an example
 ///

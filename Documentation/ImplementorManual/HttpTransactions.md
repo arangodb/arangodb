@@ -27,5 +27,5 @@ Executing Transactions via HTTP {#HttpTransactionsHttp}
 =======================================================
 
 @anchor HttpTransactionsPost
-@copydetails JSF_POST_api_transaction
+@copydetails JSF_post_api_transaction
 
