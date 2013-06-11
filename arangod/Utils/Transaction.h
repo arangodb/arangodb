@@ -581,8 +581,6 @@ namespace triagens {
 
             for (; beg <= ptr; --ptr) {
               if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
                 ++skip;
 
                 if (skip == 0) {
