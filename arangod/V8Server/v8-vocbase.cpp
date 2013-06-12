@@ -2180,8 +2180,6 @@ static v8::Handle<v8::Value> JS_getIcuLocales (v8::Arguments const& argv) {
 
   v8::Handle<v8::Array> result = v8::Array::New();
   
-  UErrorCode status = U_ZERO_ERROR;
-  
   int32_t count = 0;
   const Locale* locales = Locale::getAvailableLocales(count);
   if (locales) { 
