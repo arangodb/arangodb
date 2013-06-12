@@ -1335,7 +1335,11 @@ function reloadRouting () {
             }
           }
 
-          installRoute(RoutingCache[arangodb.db._name()][key], urlPrefix, modulePrefix, context, r[i]);
+          installRoute(RoutingCache[arangodb.db._name()][key], 
+                       urlPrefix, 
+                       modulePrefix, 
+                       context, 
+                       r[i]);
         }
       }
     }
@@ -1443,7 +1447,7 @@ function firstRouting (type, parts) {
 
   var url = parts;
   
-  if (undefined == RoutingCache[arangodb.db._name()]) {
+  if (undefined === RoutingCache[arangodb.db._name()]) {
     reloadRouting();
   }
   
