@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query explain actions
 ///
@@ -45,6 +48,11 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///
 /// @RESTHEADER{POST /_api/explain,explains a query}
 ///
+/// @RESTBODYPARAM{body,json,required}
+/// The query string needs to be passed in the attribute `query` of a JSON
+/// object as the body of the POST request. If the query references any bind 
+/// variables, these must also be passed in the attribute `bindVars`.
+///
 /// @RESTDESCRIPTION
 ///
 /// To explain how an AQL query would be executed on the server, the query string 
@@ -55,40 +63,6 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// probable performance of an AQL query. Though the actual performance will depend
 /// on many different factors, the execution plan normally can give some good hint
 /// on the amount of work the server needs to do in order to actually run the query. 
-///
-/// The query string needs to be passed in the attribute `query` of a JSON
-/// object as the body of the POST request. If the query references any bind 
-/// variables, these must also be passed in the attribute `bindVars`.
-///
-/// If the query is valid, the server will respond with `HTTP 200` and
-/// return a list of the individual query execution steps in the `"plan"`
-/// attribute of the response.
-///
-/// The server will respond with `HTTP 400` in case of a malformed request,
-/// or if the query contains a parse error. The body of the response will
-/// contain the error details embedded in a JSON object.
-/// Omitting bind variables if the query references any will result also result
-/// in an `HTTP 400` error.
-///
-/// @EXAMPLES
-///
-/// Valid query:
-///
-/// @verbinclude api-explain-valid
-///
-/// Invalid query:
-///
-/// @verbinclude api-explain-invalid
-///
-/// The data returned in the `plan` attribute of the result contains one
-/// element per AQL top-level statement (i.e. `FOR`, `RETURN`, 
-/// `FILTER` etc.). If the query optimiser removed some unnecessary statements,
-/// the result might also contain less elements than there were top-level
-/// statements in the AQL query.
-/// The following example shows a query with a non-sensible filter condition that
-/// the optimiser has removed so that there are less top-level statements:
-///
-/// @verbinclude api-explain-empty
 ///
 /// The top-level statements will appear in the result in the same order in which
 /// they have been used in the original query. Each result element has at most the 
@@ -120,11 +94,87 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// Please note that the structure of the explain result data might change in future
 /// versions of ArangoDB without further notice and without maintaining backwards
 /// compatibility. 
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the query is valid, the server will respond with `HTTP 200` and
+/// return a list of the individual query execution steps in the `"plan"`
+/// attribute of the response.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with `HTTP 400` in case of a malformed request,
+/// or if the query contains a parse error. The body of the response will
+/// contain the error details embedded in a JSON object.
+/// Omitting bind variables if the query references any will result also result
+/// in an `HTTP 400` error.
+///
+/// @EXAMPLES
+///
+/// Valid query:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainValid}
+///     var url = "/_api/explain";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     body = '{ ' +
+///       '"query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.name", ' +
+///       '"bindVars": { "id" : 3 } ' +
+///     '}';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Invalid query:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainInvalid}
+///     var url = "/_api/explain";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     body = '{ "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 400);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// The data returned in the `plan` attribute of the result contains one
+/// element per AQL top-level statement (i.e. `FOR`, `RETURN`, 
+/// `FILTER` etc.). If the query optimiser removed some unnecessary statements,
+/// the result might also contain less elements than there were top-level
+/// statements in the AQL query.
+/// The following example shows a query with a non-sensible filter condition that
+/// the optimiser has removed so that there are less top-level statements:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainEmpty}
+///     var url = "/_api/explain";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     body = '{ "query" : "FOR i IN [ 1, 2, 3 ] FILTER 1 == 2 RETURN i" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_explain (req, res) {
-  if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, ERRORS.errors.ERROR_HTTP_NOT_FOUND.code, ERRORS.errors.ERROR_HTTP_NOT_FOUND.message);
+function post_api_explain (req, res) {
+  if (req.suffix.length !== 0) {
+    actions.resultNotFound(req, 
+                           res, 
+                           ERRORS.errors.ERROR_HTTP_NOT_FOUND.code, 
+                           ERRORS.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 
@@ -160,8 +210,8 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case (actions.POST) : 
-          POST_api_explain(req, res); 
+        case actions.POST: 
+          post_api_explain(req, res); 
           break;
 
         default:

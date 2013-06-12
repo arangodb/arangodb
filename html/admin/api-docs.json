@@ -1,60 +1,66 @@
 {
   "apiVersion":"1.4",
   "swaggerVersion":"1.1",
-  "apis":[    {
-      "path": "api-docs/document",
-      "description": "Interface for Documents"
-    },
+  "apis":[
     {
-      "path": "api-docs/edges",
-      "description": "Interface für Edges"
-    },
-    {
-      "path": "api-docs/edge",
-      "description": "Interface für Edge"
+      "path": "api-docs/aqlfunction",
+      "description": "Interface for AQL user functions"
     },
     {
       "path": "api-docs/collection",
       "description": "Interface for Collections"
     },
     {
-      "path": "api-docs/graph",
-      "description": "Interface for Graphs"
-    },
-    {
       "path": "api-docs/cursor",
       "description": "Interface for Cursors"
     },
     {
-      "path": "api-docs/user",
-      "description": "Interface for Users"
+      "path": "api-docs/document",
+      "description": "Interface for Documents"
     },
     {
-      "path": "api-docs/system",
-      "description": "Interface for System"
+      "path": "api-docs/edge",
+      "description": "Interface für Edge"
+    },
+    {
+      "path": "api-docs/edges",
+      "description": "Interface für Edges"
     },
     {
       "path": "api-docs/explain",
       "description": "Interface for Explain"
     },
     {
-      "path": "api-docs/index",
-      "description": "Interface for Indexes"
+      "path": "api-docs/graph",
+      "description": "Interface for Graphs"
     },
     {
-      "path": "api-docs/simple",
-      "description": "Interface for SimpleQueries"
+      "path": "api-docs/index",
+      "description": "Interface for Indexes"
     },
     {
       "path": "api-docs/query",
       "description": "Interface for Queries"
     },
     {
-      "path": "api-docs/transaction",
-      "description": "Interface for Transactions"
+      "path": "api-docs/simple",
+      "description": "Interface for Simple Queries"
     },
     {
       "path": "api-docs/structure",
       "description": "Interface for Structures"
-    }]
+    },
+    {
+      "path": "api-docs/system",
+      "description": "Interface for System"
+    },
+    {
+      "path": "api-docs/transaction",
+      "description": "Interface for Transactions"
+    },
+    {
+      "path": "api-docs/user",
+      "description": "Interface for Users"
+    }
+  ]
   }

@@ -22,13 +22,13 @@ system collection `_aqlfunctions`. Documents in this collection should not
 be accessed directly, but only via the dedicated interfaces.
 
 @anchor HttpAqlFunctionsSave
-@copydetails JSF_POST_api_aqlfunction
+@copydetails JSF_post_api_aqlfunction
 
 @CLEARPAGE
 @anchor HttpAqlFunctionsRemove
-@copydetails JSF_DELETE_api_aqlfunction
+@copydetails JSF_delete_api_aqlfunction
 
 @CLEARPAGE
 @anchor HttpAqlFunctionsList
-@copydetails JSF_GET_api_aqlfunction
+@copydetails JSF_get_api_aqlfunction
 

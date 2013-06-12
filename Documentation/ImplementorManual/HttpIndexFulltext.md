@@ -9,8 +9,8 @@ If a fulltext index exists, then @ref HttpSimpleFulltext
 fulltext query.
 
 @anchor IndexFulltextHttpEnsureFulltextIndex
-@copydetails JSF_POST_api_index_fulltext
+@copydetails JSF_post_api_index_fulltext
 
 @CLEARPAGE
 @anchor IndexFulltextHttpFulltext
-@copydetails JSA_PUT_api_simple_fulltext
+@copydetails JSA_put_api_simple_fulltext

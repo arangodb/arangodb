@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief managing edges
 ///
@@ -133,15 +136,18 @@ var API = "/_api/edges";
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_edges (req, res) {
+function get_edges (req, res) {
   if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /" + API + "/<collection-identifer>?vertex=<vertex-handle>&direction=<direction>");
+    actions.resultBad(req, 
+                      res, 
+                      arangodb.ERROR_HTTP_BAD_PARAMETER,
+                      "expect GET /" + API + 
+                      "/<collection-identifer>?vertex=<vertex-handle>&direction=<direction>");
     return;
   }
 
   var name = decodeURIComponent(req.suffix[0]);
-  var id = parseInt(name) || name;
+  var id = parseInt(name, 10) || name;
   var collection = arangodb.db._collection(id);
 
   if (collection === null) {
@@ -149,8 +155,8 @@ function GET_edges (req, res) {
     return;
   }
 
-  var vertex = req.parameters['vertex'];
-  var direction = req.parameters['direction'];
+  var vertex = req.parameters.vertex;
+  var direction = req.parameters.direction;
   var e;
 
   if (direction === null || direction === undefined || direction === "" || direction === "any") {
@@ -184,7 +190,7 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       if (req.requestType === actions.GET) {
-        GET_edges(req, res);
+        get_edges(req, res);
       }
       else {
         actions.resultUnsupported(req, res);

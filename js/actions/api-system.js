@@ -174,7 +174,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_routing_reloads
+/// @fn JSF_get_admin_routing_reloads
 /// @brief reloads the routing information
 ///
 /// @RESTHEADER{POST /_admin/routing/reload,reloads the routing collection}
@@ -217,7 +217,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_modules_flush
+/// @fn JSF_get_admin_modules_flush
 /// @brief flushes the modules cache
 ///
 /// @RESTHEADER{POST /_admin/modules/flush,flushs the module cache}
@@ -247,7 +247,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_time
+/// @fn JSF_get_admin_time
 /// @brief returns the system time
 ///
 /// @RESTHEADER{GET /_admin/time,returns the system time}
@@ -275,7 +275,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_echo
+/// @fn JSF_get_admin_echo
 /// @brief returns the request
 ///
 /// @RESTHEADER{GET /_admin/echo,returns the current request}
@@ -310,7 +310,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_statistics
+/// @fn JSF_get_admin_statistics
 /// @brief returns system status information for the server
 ///
 /// @RESTHEADER{GET /_admin/statistics,reads the statistics}
@@ -368,7 +368,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_statistics_description
+/// @fn JSF_get_admin_statistics_description
 /// @brief returns statistics description
 ///
 /// @RESTHEADER{GET /_admin/statistics-description,statistics description}
@@ -617,7 +617,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_execute
+/// @fn JSF_get_admin_execute
 /// @brief executes a JavaScript program on the server
 ///
 /// @RESTHEADER{POST /_admin/execute,executes a program}

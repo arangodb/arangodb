@@ -278,26 +278,23 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
+      TRI_vocbase_auth_t* auth;
       TRI_doc_mptr_t const* d;
       TRI_shaped_json_t shapedJson;
 
       d = (TRI_doc_mptr_t const*) *ptr;
 
-      if (d->_validTo == 0) {
-        TRI_vocbase_auth_t* auth;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-        TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
+      auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
 
-        auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
+      if (auth != NULL) {
+        TRI_vocbase_auth_t* old;
 
-        if (auth != NULL) {
-          TRI_vocbase_auth_t* old;
+        old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
 
-          old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
-
-          if (old != NULL) {
-            FreeAuthInfo(old);
-          }
+        if (old != NULL) {
+          FreeAuthInfo(old);
         }
       }
     }
@@ -460,6 +457,89 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
   }
 
   TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the authentication
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
+                                       char const* username,
+                                       char const* password) {
+  TRI_vocbase_auth_t* auth;
+  bool res;
+  char* hex;
+  char* sha256;
+  size_t hexLen;
+  size_t len;
+  size_t sha256Len;
+
+  assert(vocbase);
+
+  // lockup username
+  TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
+  auth = TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username);
+
+  if (auth == 0) {
+    TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
+    return false;
+  }
+
+  if (! auth->_active) {
+    TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
+    return false;
+  }
+
+  // convert password
+  res = false;
+
+  if (TRI_IsPrefixString(auth->_password, "$1$")) {
+    if (strlen(auth->_password) < 12 || auth->_password[11] != '$') {
+      LOG_WARNING("found corrupted password for user '%s'", username);
+    }
+    else {
+      char* salted;
+
+      len = 8 + strlen(password);
+      salted = TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false);
+      memcpy(salted, auth->_password + 3, 8);
+      memcpy(salted + 8, password, len - 8);
+      salted[len] = '\0';
+
+      sha256 = TRI_SHA256String(salted, len, &sha256Len);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, salted);
+
+      hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
+
+      LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
+                username,
+                auth->_password + 12,
+                hex);
+
+      res = TRI_EqualString(auth->_password + 12, hex);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+    }
+  }
+  else {
+    len = strlen(password);
+    sha256 = TRI_SHA256String(password, len, &sha256Len);
+
+    hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
+
+    LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
+              username,
+              auth->_password + 12,
+              hex);
+
+    res = TRI_EqualString(auth->_password, hex);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+  }
+
+  TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   return res;
 }

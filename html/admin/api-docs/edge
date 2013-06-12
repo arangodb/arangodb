@@ -1,0 +1,59 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the edge was created successfully. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the edge collection was not found. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "Creates a new edge in the collection identified by <em>collection</em> name. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "from",
+                            "description": "The document handle of the start point must be passed in <em>from</em> handle. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "to",
+                            "description": "The document handle of the end point must be passed in <em>to</em> handle. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "edge-document",
+                            "description": "A JSON representation of the edge document must be passed as the body of the POST request. This JSON object may contain the edge's document key in the <em>_key</em> attribute if needed. "
+                        }
+                    ],
+                    "notes": "<em>from</em> handle and <em>to</em> handle are immutable once the edge has been created. <br><br>In all other respects the method works like <em>POST /document</em>, see @ref RestDocument for details. <br><br>",
+                    "summary": "creates an edge",
+                    "httpMethod": "POST",
+                    "examples": "Create an edge and reads it back: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2\n{\"name\":\"Emil\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"193427982\"\nlocation: /_api/document/edges/193427982\n\n{ \n  \"error\" : false, \n  \"_id\" : \"edges/193427982\", \n  \"_rev\" : \"193427982\", \n  \"_key\" : \"193427982\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/edge/edges/193427982\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"193427982\"\n\n{ \n  \"name\" : \"Emil\", \n  \"_id\" : \"edges/193427982\", \n  \"_rev\" : \"193427982\", \n  \"_key\" : \"193427982\", \n  \"_from\" : \"vertices/1\", \n  \"_to\" : \"vertices/2\" \n}\n\n</code></pre><br>",
+                    "nickname": "createsAnEdge"
+                }
+            ],
+            "path": "/_api/edge"
+        }
+    ]
+}

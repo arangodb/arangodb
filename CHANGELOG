@@ -1,6 +1,10 @@
 v1.4
 ------
 
+* added "API" link in web interface, pointing to REST API generated with Swagger
+
+* moved "About" link in web interface into "links" menu
+
 * allow incremental access to the documents in a collection from out of AQL
   this allows reading documents from a collection chunks when a full collection scan
   is required. memory usage might be must lower in this case and queries might finish
@@ -23,6 +27,10 @@ v1.4
 
 v1.3.2 (2013-XX-XX)
 -------------------
+
+* fixed a locking issue in collection.truncate()
+
+* fixed value overflow in accumulated filesizes reported by collection.figures()
 
 * issue #545: AQL FILTER unnecessary (?) loop
 
