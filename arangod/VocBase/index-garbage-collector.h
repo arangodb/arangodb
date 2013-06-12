@@ -46,22 +46,25 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s;
 struct TRI_transaction_context_s;
 
 typedef struct TRI_index_gc_s {
-  struct TRI_index_s* _index; // index which requires rubbish collection
-  uint8_t _passes;            // the number of passes to complete the rubbish collection
-  uint8_t _lastPass;          // the last pass performed (_lastPass = 0, implies no passes performed)
-  uint64_t _transID;          // the transaction id which must have completed before the current pass can come into effect
-  void* _data;                // storage of data which may be required by the index
+  void* _index;                                    // struct TRI_index_s* index which requires rubbish collection
+  uint8_t _passes;                                 // the number of passes to complete the rubbish collection
+  uint8_t _lastPass;                               // the last pass performed (_lastPass = 0, implies no passes performed)
+  uint64_t _transID;                               // the transaction id which must have completed before the current pass can come into effect
+  void* _data;                                     // storage of data which may be required by the index
   int (*_collectGarbage) (struct TRI_index_gc_s*); // callback which actually does the work (defined where the index is defined)
 } TRI_index_gc_t;
 
 
-int TRI_AddToIndexGC (TRI_index_gc_t*); // adds an item to the rubbish collection linked list
+int TRI_AddToIndexGC (TRI_index_gc_t*);       // adds an item to the rubbish collection linked list
 
-void TRI_IndexGCVocBase (void*); // essentially a loop called by the thread and runs 'forever'
+int TRI_ExpungeIndexGC (TRI_index_gc_t*);     // removes all references of an index from the garbage collector
+
+uint64_t TRI_GetIndexGCSize (void);           // returns the number of entries in the linked list used by the garabage collector
+
+void TRI_IndexGCVocBase (void*);              // essentially a loop called by the thread and runs 'forever'
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index garbage collector event loop

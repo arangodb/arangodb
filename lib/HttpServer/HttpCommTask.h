@@ -209,7 +209,9 @@ namespace triagens {
                            << string(this->_readBuffer->c_str(), this->_readPosition));
 
               // check that we know, how to serve this request
-              this->_request = this->_server->getHandlerFactory()->createRequest(this->_readBuffer->c_str(), this->_readPosition);
+              // and update the connection information, i. e. client and server addresses and ports
+              // and create a request context for that request
+              this->_request = this->_server->getHandlerFactory()->createRequest(this->_connectionInfo, this->_readBuffer->c_str(), this->_readPosition);
 
               if (this->_request == 0) {
                 LOGGER_ERROR("cannot generate request");
@@ -223,8 +225,9 @@ namespace triagens {
               }
 
               // update the connection information, i. e. client and server addresses and ports
-              this->_request->setConnectionInfo(this->_connectionInfo);
+              //this->_request->setConnectionInfo(this->_connectionInfo);
               this->_request->setProtocol(S::protocol());
+
 
               LOGGER_TRACE("server port = " << this->_connectionInfo.serverPort << ", client port = " << this->_connectionInfo.clientPort);
 

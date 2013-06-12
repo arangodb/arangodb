@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $*/
+/*global window, document, Backbone, EJS, SwaggerUi, hljs, $ */
 
 window.apiView = Backbone.View.extend({
   el: '#content',
@@ -17,7 +17,9 @@ window.apiView = Backbone.View.extend({
         supportHeaderParams: true,
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch', 'head'],
         onComplete: function(swaggerApi, swaggerUi){
-          $('pre code').each(function(i, e) {hljs.highlightBlock(e);});
+          $('pre code').each(function(i, e) {
+            hljs.highlightBlock(e);
+          });
         },
         onFailure: function(data) {
           var div = document.createElement("div"),

@@ -36,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "skiplistExIndex.h"
+#include "VocBase/index-garbage-collector.h"
 
 
 //------------------------------------------------------------------------------
@@ -977,14 +978,98 @@ int SkiplistExIndex_insert(SkiplistExIndex* skiplistExIndex, SkiplistExIndexElem
 /// @brief removes an entry from the skip list
 //////////////////////////////////////////////////////////////////////////////////
 
+static int CollectSkiplistExGarbage(TRI_index_gc_t* indexGCData) {
+  int result = TRI_ERROR_NO_ERROR;
+  SkiplistExIndex* skiplistIndex;
+  TRI_skiplistEx_node_t* passNode;    
+  TRI_skiplistEx_t* skiplist;
+
+  if (indexGCData == NULL) {
+    abort(); // remove after debugging
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  skiplistIndex = (SkiplistExIndex*)(indexGCData->_index);  
+  if (skiplistIndex == NULL) {
+    abort(); // remove after debugging
+    return TRI_ERROR_INTERNAL;
+  }  
+  
+  skiplist = (skiplistIndex->_skiplistEx).uniqueSkiplistEx;
+  
+  passNode = (TRI_skiplistEx_node_t*)(indexGCData->_data);    
+  if (passNode == NULL) {
+    abort(); // remove after debugging
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  
+  switch (indexGCData->_lastPass) {
+    case 1: { // the first call from the garbage collector
+      result = TRI_RemoveElementSkipListEx (skiplist, NULL, NULL, 2, passNode->_delTransID, &passNode);
+      break;
+    }
+    
+    case 2: {
+      result = TRI_RemoveElementSkipListEx (skiplist, NULL, NULL, 3, passNode->_delTransID, &passNode);
+      break;
+    }
+
+    case 254: { // just before the node is excised from the skiplist
+      result = TRI_ERROR_NO_ERROR;
+      break;
+    }
+    
+    case 255: { // just AFTER the node is excised from the skiplist
+      result = TRI_ERROR_NO_ERROR;
+      break;
+    }
+    
+    default : {
+      abort();
+    }
+  
+  } // end of switch statement
+  
+  
+  return result;
+}
+
+
 int SkiplistExIndex_remove(SkiplistExIndex* skiplistExIndex, SkiplistExIndexElement* element, uint64_t thisTransID) {
   int result;
+  TRI_skiplistEx_node_t* passNode;
+  TRI_index_gc_t indexGCData;
+
 
   // ............................................................................
   // This has been called from the database so it has a pass level of 1
   // ............................................................................
   
-  result = TRI_RemoveElementSkipListEx(skiplistExIndex->_skiplistEx.uniqueSkiplistEx, element, NULL, 1, thisTransID); 
+  result = TRI_RemoveElementSkipListEx(skiplistExIndex->_skiplistEx.uniqueSkiplistEx, element, 
+                                       NULL, 1, thisTransID, &passNode); 
+  if (result == TRI_ERROR_NO_ERROR) {
+  
+    // ..........................................................................
+    // add to garbage collection
+    // ..........................................................................
+    
+    indexGCData._index    = (void*)(skiplistExIndex);
+    indexGCData._passes   = 2;
+    indexGCData._lastPass = 0; // will be assigned correctly by the GC
+    indexGCData._transID  = 0; // will be assigned correctly by the GC
+    indexGCData._data     = passNode; // the address of the node in the linked list which will eventually be excised
+    indexGCData._collectGarbage = CollectSkiplistExGarbage;
+    
+    // ...........................................................................
+    // Adds an item to the rubbish collection linked list.
+    // This can fail if the GC is busy and the CAS statements in the GC fail.
+    // It is up to the calling procedure to determine what to do with this failure,
+    // generally a retry will suffice.
+    // ...........................................................................
+    result = TRI_AddToIndexGC(&indexGCData); 
+  } 
+  
   return result;
 }
 
@@ -1358,14 +1443,37 @@ int MultiSkiplistExIndex_insert(SkiplistExIndex* skiplistExIndex, SkiplistExInde
 /// @brief removes an entry from the skiplist
 //////////////////////////////////////////////////////////////////////////////////
 
+static int CollectSkiplistExMultiGarbage(TRI_index_gc_t* indexGCData) {
+  int result = TRI_ERROR_NO_ERROR;
+  return result;
+}
+
+
 int MultiSkiplistExIndex_remove(SkiplistExIndex* skiplistExIndex, SkiplistExIndexElement* element, uint64_t thisTransID) {
   int result;
+  TRI_skiplistEx_node_t* passNode;
+  TRI_index_gc_t indexGCData;
   
   // ............................................................................
   // This has been called from the database so it has a pass level of 1
   // ............................................................................
   
-  result = TRI_RemoveElementSkipListExMulti(skiplistExIndex->_skiplistEx.nonUniqueSkiplistEx, element, NULL, 1, thisTransID); 
+  result = TRI_RemoveElementSkipListExMulti(skiplistExIndex->_skiplistEx.nonUniqueSkiplistEx, 
+                                            element, NULL, 1, thisTransID, &passNode); 
+  if (result == TRI_ERROR_NO_ERROR) {
+  
+    // ..........................................................................
+    // add to garbage collection
+    // ..........................................................................
+    
+    indexGCData._index    = (void*)(skiplistExIndex);
+    indexGCData._passes   = 2;
+    indexGCData._lastPass = 0; // will be assigned correctly by the GC
+    indexGCData._transID  = 0; // will be assigned correctly by the GC
+    indexGCData._data     = passNode; // the address of the node in the linked list which will eventually be excised
+    indexGCData._collectGarbage = CollectSkiplistExMultiGarbage;
+    result = TRI_AddToIndexGC(&indexGCData); // adds an item to the rubbish collection linked list    
+  }  
   return result;
 }
 

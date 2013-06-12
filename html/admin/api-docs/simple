@@ -1,0 +1,352 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "Contains the query. "
+                        }
+                    ],
+                    "notes": "<br><br>Returns all documents of a collections. The call expects a JSON object as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>skip</em>: The number of documents to skip in the query (optional).<br><br>- <em>limit</em>: The maximal amount of documents to return. The <em>skip</em>  is applied before the <em>limit</em> restriction. (optional) <br><br>Returns a cursor containing the result, see @ref HttpCursor for details. <br><br>",
+                    "summary": "executes simple query ALL",
+                    "httpMethod": "PUT",
+                    "examples": "Limit the amount of documents using <em>limit</em> <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/all\n{ \"collection\": \"products\", \"skip\": 2, \"limit\" : 2 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/198716636\", \n      \"_rev\" : \"198716636\", \n      \"_key\" : \"198716636\", \n      \"Hello3\" : \"World3\" \n    }, \n    { \n      \"_id\" : \"products/198192348\", \n      \"_rev\" : \"198192348\", \n      \"_key\" : \"198192348\", \n      \"Hello1\" : \"World1\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Using a <em>batchSize</em> value <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/all\n{ \"collection\": \"products\", \"batchSize\" : 3 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/99888348\", \n      \"_rev\" : \"99888348\", \n      \"_key\" : \"99888348\", \n      \"Hello2\" : \"World2\" \n    }, \n    { \n      \"_id\" : \"products/100412636\", \n      \"_rev\" : \"100412636\", \n      \"_key\" : \"100412636\", \n      \"Hello4\" : \"World4\" \n    }, \n    { \n      \"_id\" : \"products/99429596\", \n      \"_rev\" : \"99429596\", \n      \"_key\" : \"99429596\", \n      \"Hello1\" : \"World1\" \n    } \n  ], \n  \"hasMore\" : true, \n  \"id\" : \"100805852\", \n  \"count\" : 5, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryAll"
+                }
+            ],
+            "path": "/_api/simple/all"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "Contains the query. "
+                        }
+                    ],
+                    "notes": "<br><br>Returns a random document of a collection. The call expects a JSON object as body with the following attributes: <br><br>- <em>collection</em>: The identifier or name of the collection to query.<br><br>Returns a JSON object with the document stored in the attribute <em>document</em> if the collection contains at least one document. If the collection is empty, the attrbute contains null. <br><br>",
+                    "summary": "executes simple query ANY",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/any\n{ \"collection\": \"products\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"document\" : { \n    \"_id\" : \"products/187837660\", \n    \"_rev\" : \"187837660\", \n    \"_key\" : \"187837660\", \n    \"Hello1\" : \"World1\" \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryAny"
+                }
+            ],
+            "path": "/_api/simple/any"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "Contains the query. "
+                        }
+                    ],
+                    "notes": "<br><br>The default will find at most 100 documents near a given coordinate.  The returned list is sorted according to the distance, with the nearest document coming first. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached. <br><br>In order to use the <em>near</em> operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document.  If you have more then one geo-spatial index, you can use the <em>geo</em> field to select a particular index. <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>latitude</em>: The latitude of the coordinate.<br><br>- <em>longitude</em>: The longitude of the coordinate.<br><br>- <em>distance</em>: If given, the attribute key used to store the  distance. (optional) <br><br>- <em>skip</em>: The number of documents to skip in the query. (optional)<br><br>- <em>limit</em>: The maximal amount of documents to return. The <em>skip</em> is  applied before the <em>limit</em> restriction. The default is 100. (optional) <br><br>- <em>geo</em>: If given, the identifier of the geo-index to use. (optional)<br><br>Returns a cursor containing the result, see @ref HttpCursor for details. <br><br>",
+                    "summary": "executes simple query NEAR",
+                    "httpMethod": "PUT",
+                    "examples": "Without distance: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/near\n{ \"collection\": \"products\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 2 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/236334300\", \n      \"_rev\" : \"236334300\", \n      \"_key\" : \"236334300\", \n      \"name\" : \"Name/0.002/\", \n      \"loc\" : [ \n        0.002, \n        0 \n      ] \n    }, \n    { \n      \"_id\" : \"products/236072156\", \n      \"_rev\" : \"236072156\", \n      \"_key\" : \"236072156\", \n      \"name\" : \"Name/-0.002/\", \n      \"loc\" : [ \n        -0.002, \n        0 \n      ] \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>With distance: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/near\n{ \"collection\": \"products\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 3, \"distance\" : \"distance\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/76360924\", \n      \"_rev\" : \"76360924\", \n      \"_key\" : \"76360924\", \n      \"distance\" : 222.38985328911744, \n      \"name\" : \"Name/-0.002/\", \n      \"loc\" : [ \n        -0.002, \n        0 \n      ] \n    }, \n    { \n      \"_id\" : \"products/76623068\", \n      \"_rev\" : \"76623068\", \n      \"_key\" : \"76623068\", \n      \"distance\" : 222.38985328911744, \n      \"name\" : \"Name/0.002/\", \n      \"loc\" : [ \n        0.002, \n        0 \n      ] \n    }, \n    { \n      \"_id\" : \"products/76229852\", \n      \"_rev\" : \"76229852\", \n      \"_key\" : \"76229852\", \n      \"distance\" : 444.779706578235, \n      \"name\" : \"Name/-0.004/\", \n      \"loc\" : [ \n        -0.004, \n        0 \n      ] \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 3, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryNear"
+                }
+            ],
+            "path": "/_api/simple/near"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "Contains the query. "
+                        }
+                    ],
+                    "notes": "<br><br>This will find all documents with in a given radius around the coordinate (<em>latitude</em>, <em>longitude</em>). The returned list is sorted by distance. <br><br>In order to use the <em>within</em> operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document.  If you have more then one geo-spatial index, you can use the <em>geo</em> field to select a particular index. <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>latitude</em>: The latitude of the coordinate.<br><br>- <em>longitude</em>: The longitude of the coordinate.<br><br>- <em>radius</em>: The maximal radius (in meters).<br><br>- <em>distance</em>: If given, the result attribute key used to store the  distance values (optional). If specified, distances are returned in meters. <br><br>- <em>skip</em>: The documents to skip in the query. (optional)<br><br>- <em>limit</em>: The maximal amount of documents to return. (optional)<br><br>- <em>geo</em>: If given, the identifier of the geo-index to use. (optional)<br><br>Returns a cursor containing the result, see @ref HttpCursor for details. <br><br>",
+                    "summary": "executes simple query WITHIN",
+                    "httpMethod": "PUT",
+                    "examples": "Without distance: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/near\n{ \"collection\": \"products\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 2, \"radius\" : 500 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/27471068\", \n      \"_rev\" : \"27471068\", \n      \"_key\" : \"27471068\", \n      \"name\" : \"Name/0.002/\", \n      \"loc\" : [ \n        0.002, \n        0 \n      ] \n    }, \n    { \n      \"_id\" : \"products/27208924\", \n      \"_rev\" : \"27208924\", \n      \"_key\" : \"27208924\", \n      \"name\" : \"Name/-0.002/\", \n      \"loc\" : [ \n        -0.002, \n        0 \n      ] \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>With distance: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/near\n{ \"collection\": \"products\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 3, \"distance\" : \"distance\", \"radius\" : 300 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/107031772\", \n      \"_rev\" : \"107031772\", \n      \"_key\" : \"107031772\", \n      \"distance\" : 222.38985328911744, \n      \"name\" : \"Name/-0.002/\", \n      \"loc\" : [ \n        -0.002, \n        0 \n      ] \n    }, \n    { \n      \"_id\" : \"products/107293916\", \n      \"_rev\" : \"107293916\", \n      \"_key\" : \"107293916\", \n      \"distance\" : 222.38985328911744, \n      \"name\" : \"Name/0.002/\", \n      \"loc\" : [ \n        0.002, \n        0 \n      ] \n    }, \n    { \n      \"_id\" : \"products/106900700\", \n      \"_rev\" : \"106900700\", \n      \"_key\" : \"106900700\", \n      \"distance\" : 444.779706578235, \n      \"name\" : \"Name/-0.004/\", \n      \"loc\" : [ \n        -0.004, \n        0 \n      ] \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 3, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryWithin"
+                }
+            ],
+            "path": "/_api/simple/within"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "Contains the query. "
+                        }
+                    ],
+                    "notes": "<br><br>This will find all documents from the collection that match the fulltext query specified in <em>query</em>. <br><br>In order to use the <em>fulltext</em> operator, a fulltext index must be defined  for the collection and the specified attribute. <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>attribute</em>: The attribute that contains the texts.<br><br>- <em>query</em>: The fulltext query.<br><br>- <em>skip</em>: The documents to skip in the query. (optional)<br><br>- <em>limit</em>: The maximal amount of documents to return. (optional)<br><br>- <em>index</em>: If given, the identifier of the fulltext-index to use. (optional)<br><br>Returns a cursor containing the result, see @ref HttpCursor for details. <br><br>",
+                    "summary": "executes simple query FULLTEXT",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/fulltext\n{ \"collection\": \"products\", \"attribute\" : \"text\", \"query\" : \"word\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/138620124\", \n      \"_rev\" : \"138620124\", \n      \"_key\" : \"138620124\", \n      \"text\" : \"this text contains word\" \n    }, \n    { \n      \"_id\" : \"products/138751196\", \n      \"_rev\" : \"138751196\", \n      \"_key\" : \"138751196\", \n      \"text\" : \"this text also has a word\" \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryFulltext"
+                }
+            ],
+            "path": "/_api/simple/fulltext"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": "Contains the query. "
+                        }
+                    ],
+                    "notes": "<br><br>This will find all documents matching a given example. <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>example</em>: The example.<br><br>- <em>skip</em>: The documents to skip in the query. (optional)<br><br>- <em>limit</em>: The maximal amount of documents to return. (optional)<br><br>Returns a cursor containing the result, see @ref HttpCursor for details. <br><br>",
+                    "summary": "executes simple query by-example",
+                    "httpMethod": "PUT",
+                    "examples": "Matching an attribute: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/by-example\n{ \"collection\": \"products\", \"example\" :  { \"i\" : 1 }  }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/60239068\", \n      \"_rev\" : \"60239068\", \n      \"_key\" : \"60239068\", \n      \"i\" : 1 \n    }, \n    { \n      \"_id\" : \"products/59780316\", \n      \"_rev\" : \"59780316\", \n      \"_key\" : \"59780316\", \n      \"i\" : 1, \n      \"a\" : { \n        \"k\" : 1, \n        \"j\" : 1 \n      } \n    }, \n    { \n      \"_id\" : \"products/60370140\", \n      \"_rev\" : \"60370140\", \n      \"_key\" : \"60370140\", \n      \"i\" : 1, \n      \"a\" : { \n        \"k\" : 2, \n        \"j\" : 2 \n      } \n    }, \n    { \n      \"_id\" : \"products/60042460\", \n      \"_rev\" : \"60042460\", \n      \"_key\" : \"60042460\", \n      \"i\" : 1, \n      \"a\" : { \n        \"j\" : 1 \n      } \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 4, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Matching an attribute which is a sub-document: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/by-example\n{ \"collection\": \"products\", \"example\" : { \"a.j\" : 1 } }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/117583068\", \n      \"_rev\" : \"117583068\", \n      \"_key\" : \"117583068\", \n      \"i\" : 1, \n      \"a\" : { \n        \"j\" : 1 \n      } \n    }, \n    { \n      \"_id\" : \"products/117320924\", \n      \"_rev\" : \"117320924\", \n      \"_key\" : \"117320924\", \n      \"i\" : 1, \n      \"a\" : { \n        \"k\" : 1, \n        \"j\" : 1 \n      } \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Matching an attribute within a sub-document: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/by-example\n{ \"collection\": \"products\", \"example\" : { \"a\" : { \"j\" : 1 } } }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/115354844\", \n      \"_rev\" : \"115354844\", \n      \"_key\" : \"115354844\", \n      \"i\" : 1, \n      \"a\" : { \n        \"j\" : 1 \n      } \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 1, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryBy-example"
+                }
+            ],
+            "path": "/_api/simple/by-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the return set contains at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "<br><br>This will return the first document matching a given example. <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>example</em>: The example.<br><br>Returns a result containing the document or <em>HTTP 404</em> if no document matched the example. <br><br>",
+                    "summary": "executes simple query first-example",
+                    "httpMethod": "PUT",
+                    "examples": "If a matching document was found: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/first-example\n{ \"collection\": \"products\", \"example\" :  { \"i\" : 1 }  }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"document\" : { \n    \"_id\" : \"products/137178332\", \n    \"_rev\" : \"137178332\", \n    \"_key\" : \"137178332\", \n    \"i\" : 1 \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>If no document was found: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/first-example\n{ \"collection\": \"products\", \"example\" :  { \"l\" : 1 }  }\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 404, \n  \"errorNum\" : 404, \n  \"errorMessage\" : \"no match\" \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleQueryFirst-example"
+                }
+            ],
+            "path": "/_api/simple/first-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if there are at least one document in the return range and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "<br><br>This will find all documents within a given range. You must declare a skip-list index on the attribute in order to be able to use a range query. <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to query.<br><br>- <em>attribute</em>: The attribute path to check.<br><br>- <em>left</em>: The lower bound.<br><br>- <em>right</em>: The upper bound.<br><br>- <em>closed</em>: If true, use interval including <em>left</em> and <em>right</em>,  otherwise exclude <em>right</em>, but include <em>left</em>. <br><br>- <em>skip</em>: The documents to skip in the query. (optional)<br><br>- <em>limit</em>: The maximal amount of documents to return. (optional)<br><br>Returns a cursor containing the result, see @ref HttpCursor for details. <br><br>",
+                    "summary": "executes simple range query",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/range\n{ \"collection\": \"products\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    { \n      \"_id\" : \"products/31337692\", \n      \"_rev\" : \"31337692\", \n      \"_key\" : \"31337692\", \n      \"i\" : 2 \n    }, \n    { \n      \"_id\" : \"products/31468764\", \n      \"_rev\" : \"31468764\", \n      \"_key\" : \"31468764\", \n      \"i\" : 3 \n    } \n  ], \n  \"hasMore\" : false, \n  \"count\" : 2, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "executesSimpleRangeQuery"
+                }
+            ],
+            "path": "/_api/simple/range"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if there where removed at least one document and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "<br><br>This will find all documents in the collection that match the specified  example object.  <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to remove from.<br><br>- <em>example</em>: An example object that all collection objects are compared  against. <br><br>- <em>waitForSync</em>: if set to true, then all removal operations will   instantly be synchronised to disk. If this is not specified, then the   collection's default sync behavior will be applied. <br><br>- <em>limit</em>: an optional value that determines how many documents to   delete at most. If <em>limit</em> is specified but is less than the number   of documents in the collection, it is undefined which of the documents    will be deleted. <br><br>Returns the number of documents that were deleted <br><br>",
+                    "summary": "removes documents by example",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/remove-by-example\n{ \"collection\": \"products\", \"example\" : { \"a\" : { \"j\" : 1 } } }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"deleted\" : 1, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "removesDocumentsByExample"
+                }
+            ],
+            "path": "/_api/simple/remove-by-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the documents in the collection where replaced successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "<br><br>This will find all documents in the collection that match the specified  example object, and replace the entire document body with the new value specified. Note that document meta-attributes such as <em>_id</em>, <em>_key</em>, <em>_from</em>, <em>_to</em> etc. cannot be replaced.  <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to replace within.<br><br>- <em>example</em>: An example object that all collection objects are compared  against. <br><br>- <em>newValue</em>: The replacement document that will get inserted in place  of the \"old\" documents. <br><br>- <em>waitForSync</em>: if set to true, then all removal operations will   instantly be synchronised to disk. If this is not specified, then the   collection's default sync behavior will be applied. <br><br>- <em>limit</em>: an optional value that determines how many documents to   replace at most. If <em>limit</em> is specified but is less than the number   of documents in the collection, it is undefined which of the documents    will be replaced. <br><br>Returns the number of documents that were replaced <br><br>",
+                    "summary": "replaces documents by example",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/replace-by-example\n{ \"collection\": \"products\", \"example\" : { \"a\" : { \"j\" : 1 } }, \"newValue\" : {\"foo\" : \"bar\"}, \"limit\" : 3 }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"replaced\" : 1, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "replacesDocumentsByExample"
+                }
+            ],
+            "path": "/_api/simple/replace-by-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the collection was updated successfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "<br><br>This will find all documents in the collection that match the specified  example object, and partially update the document body with the new value specified. Note that document meta-attributes such as <em>_id</em>, <em>_key</em>, <em>_from</em>, <em>_to</em> etc. cannot be replaced.  <br><br>The call expects a JSON hash array as body with the following attributes: <br><br>- <em>collection</em>: The name of the collection to update within.<br><br>- <em>example</em>: An example object that all collection objects are compared  against. <br><br>- <em>newValue</em>: The update value that will get inserted in place  of the \"old\" version of the found documents. <br><br>- <em>keepNull</em>: This parameter can be used to modify the behavior when  handling <em>null</em> values. Normally, <em>null</em> values are stored in the   database. By setting the <em>keepNull</em> parameter to <em>false</em>, this    behavior can be changed so that all attributes in <em>data</em> with <em>null</em>    values will be removed from the updated document. <br><br>- <em>waitForSync</em>: if set to true, then all removal operations will   instantly be synchronised to disk. If this is not specified, then the   collection's default sync behavior will be applied. <br><br>- <em>limit</em>: an optional value that determines how many documents to   update at most. If <em>limit</em> is specified but is less than the number   of documents in the collection, it is undefined which of the documents    will be updated. <br><br>Returns the number of documents that were updated <br><br>",
+                    "summary": "updates documents by example",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/simple/update-by-example\n{ \"collection\": \"products\", \"example\" : { \"a\" : { \"j\" : 1 } }, \"newValue\" : { \"a\" : { \"j\" : 22 } }, \"limit\" : 3 }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"updated\" : 1, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "updatesDocumentsByExample"
+                }
+            ],
+            "path": "/_api/simple/update-by-example"
+        }
+    ]
+}

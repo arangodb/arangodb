@@ -298,6 +298,8 @@ typedef struct TRI_vocbase_s {
   bool _defaultWaitForSync;
   bool _forceSyncShapes;     // force syncing of shape data to disk
   bool _forceSyncProperties; // force syncing of shape data to disk
+  
+  char* _name;
 
   TRI_voc_size_t _defaultMaximalSize;
 
@@ -337,6 +339,10 @@ typedef struct TRI_vocbase_s {
   int64_t _syncWaiters;
   
   char* _lockFile;
+  
+  bool _isSystem;
+  bool _requireAuthentication;  
+
 }
 TRI_vocbase_t;
 
@@ -377,6 +383,21 @@ typedef struct TRI_vocbase_col_s {
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
 }
 TRI_vocbase_col_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default settings
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_vocbase_defaults_s {
+  bool removeOnDrop;
+  bool removeOnCompacted;
+  uint64_t defaultMaximalSize;
+  bool defaultWaitForSync;
+  bool forceSyncShapes;
+  bool forceSyncProperties;
+  bool requireAuthentication;
+}
+TRI_vocbase_defaults_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -432,7 +453,8 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end);
 /// @brief opens an exiting database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path);
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name, 
+                                TRI_vocbase_defaults_t* defaults);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections
