@@ -22,7 +22,7 @@ describe ArangoDB do
 
       cmd = "/_api/document?collection=#{@cv}" 
       [ 
-        "World", "Nothing", "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole", 
+        "World", "Nothing", "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole", "Blackhole2", 
         "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA", "AN", 
         "London", "Paris", "Lyon", "Cologne","Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney"
       ].each do|loc|
@@ -44,7 +44,9 @@ describe ArangoDB do
         ["Asia", "TW"],
         ["America", "US"],
         ["America", "MX"],
-        ["Australia", "AU"]
+        ["Australia", "AU"],
+        ["Blackhole", "Blackhole2"],
+        ["Blackhole2", "Blackhole"]
       ].each do|pair|
         from = pair[0]
         to = pair[1]
@@ -151,7 +153,7 @@ describe ArangoDB do
       it "invalid direction" do
         body = "{ \"edgeCollection\" : \"#{@ce}\", \"startVertex\" : \"#{@cv}/World\", \"direction\" : \"foo\" }"
         doc = ArangoDB.log_post("#{prefix}-visit-invalid-direction", api, :body => body)
-
+        
         doc.code.should eq(400)
 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -174,6 +176,34 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(500)
         doc.parsed_response['errorNum'].should eq(500)
+      end
+
+################################################################################
+## traversal abortion
+################################################################################
+      
+      it "traversal abortion, few iterations" do
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"startVertex\" : \"#{@cv}/Blackhole\", \"direction\" : \"outbound\", \"uniqueness\" : { \"vertices\" : \"none\", \"edges\" : \"none\" }, \"maxIterations\" : 5 }"
+        doc = ArangoDB.log_post("#{prefix}-visit-traversal-abort1", api, :body => body)
+
+        doc.code.should eq(500)
+
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(500)
+        doc.parsed_response['errorNum'].should eq(1909)
+      end
+      
+      it "traversal abortion, many iterations" do
+        body = "{ \"edgeCollection\" : \"#{@ce}\", \"startVertex\" : \"#{@cv}/Blackhole\", \"direction\" : \"outbound\", \"uniqueness\" : { \"vertices\" : \"none\", \"edges\" : \"none\" }, \"maxIterations\" : 5000, \"maxDepth\" : 999999, \"visitor\" : \"\" }"
+        doc = ArangoDB.log_post("#{prefix}-visit-traversal-abort2", api, :body => body)
+
+        doc.code.should eq(500)
+
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(500)
+        doc.parsed_response['errorNum'].should eq(1909)
       end
 
     end

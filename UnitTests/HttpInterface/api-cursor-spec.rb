@@ -33,10 +33,10 @@ describe ArangoDB do
         body = "{ \"query\" : \"FOR u IN unknowncollection LIMIT 2 RETURN u.n\", \"count\" : true, \"bindVars\" : {}, \"batchSize\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-unknown-collection", cmd, :body => body)
         
-        doc.code.should eq(400)
+        doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(404)
         doc.parsed_response['errorNum'].should eq(1203)
       end
 

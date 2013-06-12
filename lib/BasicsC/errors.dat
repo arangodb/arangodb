@@ -198,7 +198,7 @@ ERROR_KEYVALUE_KEY_NOT_REMOVED,1805,"key value not removed","Will be raised when
 ERROR_KEYVALUE_NO_VALUE,1806,"missing value","Will be raised when the value is missing"
 
 ################################################################################
-## Graph errors
+## Graph / traversal errors
 ################################################################################
 
 ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid name is passed to the server"
@@ -209,6 +209,7 @@ ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX,1905,"could not change vertex","Will be rais
 ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edge id is passed to the server"
 ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised when the edge could not be created"
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed"
+ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations","Will be raised when too many iterations are done in a graph traversal"
 
 ################################################################################
 ## Session errors

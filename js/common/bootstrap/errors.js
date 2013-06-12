@@ -144,6 +144,7 @@
     "ERROR_GRAPH_INVALID_EDGE"     : { "code" : 1906, "message" : "invalid edge" }, 
     "ERROR_GRAPH_COULD_NOT_CREATE_EDGE" : { "code" : 1907, "message" : "could not create edge" }, 
     "ERROR_GRAPH_COULD_NOT_CHANGE_EDGE" : { "code" : 1908, "message" : "could not change edge" }, 
+    "ERROR_GRAPH_TOO_MANY_ITERATIONS" : { "code" : 1909, "message" : "too many iterations" }, 
     "ERROR_SESSION_INVALID_SESSION" : { "code" : 1951, "message" : "invalid session" }, 
     "ERROR_SESSION_COULD_NOT_CREATE_SESSION" : { "code" : 1952, "message" : "could not create session" }, 
     "ERROR_SESSION_COULD_NOT_CHANGE_SESSION" : { "code" : 1953, "message" : "could not change session" }, 
