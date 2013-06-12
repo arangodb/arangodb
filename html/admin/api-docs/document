@@ -1,0 +1,407 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document.  The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if the collection specified by <em>collection</em> is unknown.  The response body contains an error document in this case. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "document",
+                            "description": "A JSON representation of document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "createCollection",
+                            "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until document has been sync to disk. "
+                        }
+                    ],
+                    "notes": "Creates a new document in the collection named <em>collection</em>.  A JSON representation of the document must be passed as the body of the POST request. <br><br>If the document was created successfully, then the \"Location\" header contains the path to the newly created document. The \"ETag\" header field contains the revision of the document. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>_id</em> contains the document handle of the newly created document- <em>_key</em> contains the document key- <em>_rev</em> contains the document revision<br><br>If the collection parameter <em>waitForSync</em> is <em>false</em>, then the call returns as soon as the document has been accepted. It will not wait, until the documents has been sync to disk. <br><br>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document creation operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection.  Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just this specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>",
+                    "summary": "creates a document",
+                    "httpMethod": "POST",
+                    "examples": "Create a document given a collection named <em>products</em>. Note that the revision identifier might or might not by equal to the auto-generated key. <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products\n{ \"Hello\": \"World\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\netag: \"210709724\"\nlocation: /_api/document/products/210709724\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/210709724\", \n  \"_rev\" : \"210709724\", \n  \"_key\" : \"210709724\" \n}\n\n</code></pre><br>Create a document in a collection named <em>products</em> with a collection-level <em>waitForSync</em> value of <em>false</em>. <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products\n{ \"Hello\": \"World\" }\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"24849628\"\nlocation: /_api/document/products/24849628\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/24849628\", \n  \"_rev\" : \"24849628\", \n  \"_key\" : \"24849628\" \n}\n\n</code></pre><br>Create a document in a collection with a collection-level <em>waitForSync</em> value of <em>false</em>, but using the <em>waitForSync</em> URL parameter. <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products&waitForSync=true\n{ \"Hello\": \"World\" }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\netag: \"158805212\"\nlocation: /_api/document/products/158805212\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/158805212\", \n  \"_rev\" : \"158805212\", \n  \"_key\" : \"158805212\" \n}\n\n</code></pre><br>Create a document in a new, named collection <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products&createCollection=true\n{ \"Hello\": \"World\" }\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"211823836\"\nlocation: /_api/document/products/211823836\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/211823836\", \n  \"_rev\" : \"211823836\", \n  \"_key\" : \"211823836\" \n}\n\n</code></pre><br>Unknown collection name: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products\n{ \"Hello\": \"World\" }\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"collection /_api/collection/products not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1203 \n}\n\n</code></pre><br>Illegal document: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products\n{ 1: \"World\" }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"expecting attribute name\", \n  \"code\" : 400, \n  \"errorNum\" : 600 \n}\n\n</code></pre><br>",
+                    "nickname": "createsADocument"
+                }
+            ],
+            "path": "/_api/document"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was found ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the document or collection was not found ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if the \"If-None-Match\" header is given and the document has same version ",
+                            "code": "304"
+                        },
+                        {
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version ",
+                            "code": "412"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The Handle of the Document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-None-Match",
+                            "description": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a <em>HTTP 304</em> is returned. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. "
+                        }
+                    ],
+                    "notes": "Returns the document identified by <em>document-handle</em>. The returned document contains two special attributes: <em>_id</em> containing the document handle and <em>_rev</em> containing the revision. <br><br>",
+                    "summary": "reads a document",
+                    "httpMethod": "GET",
+                    "examples": "Use a document handle: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/document/products/162147548\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"162147548\"\n\n{ \n  \"hello\" : \"world\", \n  \"_id\" : \"products/162147548\", \n  \"_rev\" : \"162147548\", \n  \"_key\" : \"162147548\" \n}\n\n</code></pre><br>Use a document handle and an etag: <br><br><pre><code class=\"json\" >unix> curl --header 'If-None-Match:\"149302492\"' --dump - http://localhost:8529/_api/document/products/149302492\n\nHTTP/1.1 304 Not Modified\ncontent-type: text/plain; charset=utf-8\netag: \"149302492\"\n\n</code></pre><br>Unknown document handle: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/document/products/unknownhandle\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"collection /_api/collection/products not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1203 \n}\n\n</code></pre><br>",
+                    "nickname": "readsADocument"
+                }
+            ],
+            "path": "/_api/document/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "All went good. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The collection does not exist. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The Id of the collection. "
+                        }
+                    ],
+                    "notes": "Returns a list of all URI for all documents from the collection identified by <em>collection</em>. <br><br>",
+                    "summary": "reads all documents from collection",
+                    "httpMethod": "GET",
+                    "examples": "Returns a collection. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/document/?collection=products\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"documents\" : [ \n    \"/_api/document/products/37891292\", \n    \"/_api/document/products/37301468\", \n    \"/_api/document/products/37629148\" \n  ] \n}\n\n</code></pre><br>Collection does not exist. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/document/?collection=doesnotexist\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"collection /_api/collection/doesnotexist not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1203 \n}\n\n</code></pre><br>",
+                    "nickname": "readsAllDocumentsFromCollection"
+                }
+            ],
+            "path": "/_api/document"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was found ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the document or collection was not found ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if the \"If-None-Match\" header is given and the document has same version ",
+                            "code": "304"
+                        },
+                        {
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version ",
+                            "code": "412"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The Handle of the Document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally delete a document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing documents (see replacing documents for more details). "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally get a document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "Like <em>GET</em>, but only returns the header fields and not the body. You can use this call to get the current revision of a document or check if the document was deleted. <br><br>",
+                    "summary": "reads a document header",
+                    "httpMethod": "HEAD",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X HEAD --dump - http://localhost:8529/_api/document/products/216739036\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"216739036\"\n\n</code></pre><br>",
+                    "nickname": "readsADocumentHeader"
+                }
+            ],
+            "path": "/_api/document/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document.  The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if collection or the document was not found ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version ",
+                            "code": "412"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The Handle of the Document. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until document has been sync to disk. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally replace a document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing documents (see replacing documents for more details). "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally replace a document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "Completely updates (i.e. replaces) the document identified by <em>document-handle</em>. If the document exists and can be updated, then a <em>HTTP 201</em> is returned and the \"ETag\" header field contains the new revision of the document. <br><br>If the new document passed in the body of the request contains the <em>document-handle</em> in the attribute <em>_id</em> and the revision in <em>_rev</em>, these attributes will be ignored. Only the URI and the \"ETag\" header are relevant in order to avoid confusion when using proxies. <br><br>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document replacement operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>The body of the response contains a JSON object with the information about the handle and the revision.  The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated document, the attribute <em>_rev</em> contains the new document revision. <br><br>If the document does not exist, then a <em>HTTP 404</em> is returned and the body of the response contains an error document. <br><br>There are two ways for specifying the targeted document revision id for conditional replacements (i.e. replacements that will only be executed if the revision id found in the database matches the document revision id specified in the request): - specifying the target revision in the <em>rev</em> URL query parameter- specifying the target revision in the <em>if-match</em> HTTP header<br><br>Specifying a target revision is optional, however, if done, only one of the described mechanisms must be used (either the <em>rev</em> URL parameter or the <em>if-match</em> HTTP header). Regardless which mechanism is used, the parameter needs to contain the target document revision id as returned in the <em>_rev</em> attribute of a document or by an HTTP <em>etag</em> header. <br><br>For example, to conditionally replace a document based on a specific revision id, you the following request: <br><br>- PUT /_api/document/<em>document-handle</em>?rev=<em>etag</em><br><br>If a target revision id is provided in the request (e.g. via the <em>etag</em> value in the <em>rev</em> URL query parameter above), ArangoDB will check that the revision id of the document found in the database is equal to the target revision id provided in the request. If there is a mismatch between the revision id, then by default a <em>HTTP 412</em> conflict is returned and no replacement is performed. <br><br>The conditional update behavior can be overriden with the <em>policy</em> URL query parameter: <br><br>- PUT /_api/document/<em>document-handle</em>?policy=<em>policy</em><br><br>If <em>policy</em> is set to <em>error</em>, then the behavior is as before: replacements will fail if the revision id found in the database does not match the target revision id specified in the request. <br><br>If <em>policy</em> is set to <em>last</em>, then the replacement will succeed, even if the revision id found in the database does not match the target revision id specified in the request. You can use the <em>last</em> `policy` to force replacements. <br><br>",
+                    "summary": "replaces a document",
+                    "httpMethod": "PUT",
+                    "examples": "Using document handle: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/97922268\n{\"Hello\": \"you\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"98381020\"\nlocation: /_api/document/products/97922268\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/97922268\", \n  \"_rev\" : \"98381020\", \n  \"_key\" : \"97922268\" \n}\n\n</code></pre><br>Unknown document handle: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/201534684\n{}\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"document /_api/document/products/201534684 not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1202 \n}\n\n</code></pre><br>Produce a revision conflict: <br><br><pre><code class=\"json\" >unix> curl -X PUT --header 'If-Match:\"29699292\"' --data @- --dump - http://localhost:8529/_api/document/products/29240540\n{\"other\":\"content\"}\n\nHTTP/1.1 412 Precondition Failed\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 412, \n  \"errorNum\" : 1200, \n  \"errorMessage\" : \"precondition failed\", \n  \"_id\" : \"products/29240540\", \n  \"_rev\" : \"29240540\", \n  \"_key\" : \"29240540\" \n}\n\n</code></pre><br>Last write wins: <br><br><pre><code class=\"json\" >unix> curl -X PUT --header 'If-Match:\"95038684\"' --data @- --dump - http://localhost:8529/_api/document/products/94711004?policy=last\n{}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"95235292\"\nlocation: /_api/document/products/94711004\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/94711004\", \n  \"_rev\" : \"95235292\", \n  \"_key\" : \"94711004\" \n}\n\n</code></pre><br>Alternative to header field: <br><br><pre><code class=\"json\" >unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/150613212?rev=150940892\n{\"other\":\"content\"}\n\nHTTP/1.1 412 Precondition Failed\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 412, \n  \"errorNum\" : 1200, \n  \"errorMessage\" : \"precondition failed\", \n  \"_id\" : \"products/150613212\", \n  \"_rev\" : \"150613212\", \n  \"_key\" : \"150613212\" \n}\n\n</code></pre><br>",
+                    "nickname": "replacesADocument"
+                }
+            ],
+            "path": "/_api/document/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "is returned if the document was created sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the body does not contain a valid JSON representation of a document.  The response body contains an error document in this case. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "is returned if collection or the document was not found ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version ",
+                            "code": "412"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "The Handle of the Document. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "keepNull",
+                            "description": "If the intention is to delete existing attributes with the patch command,  the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of <em>null</em>. "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until document has been sync to disk. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally patch a document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally delete a document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "Partially updates the document identified by <em>document-handle</em>. The body of the request must contain a JSON document with the attributes to patch (the patch document). All attributes from the patch document will be added to the existing document if they do not yet exist, and overwritten in the existing document if they do exist there. <br><br>Setting an attribute value to <em>null</em> in the patch document will cause a value of <em>null</em> be saved for the attribute by default.  <br><br>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document update operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>The body of the response contains a JSON object with the information about the handle and the revision. The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated document, the attribute <em>_rev</em> contains the new document revision. <br><br>If the document does not exist, then a <em>HTTP 404</em> is returned and the body of the response contains an error document. <br><br>You can conditionally update a document based on a target revision id by using either the <em>rev</em> URL parameter or the <em>if-match</em> HTTP header. To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing documents (see replacing documents for details). <br><br>",
+                    "summary": "patches a document",
+                    "httpMethod": "PATCH",
+                    "examples": "patches an existing document with new content. <br><br><pre><code class=\"json\" >unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/92089564\n{\"hello\":\"world\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"92548316\"\nlocation: /_api/document/products/92089564\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/92089564\", \n  \"_rev\" : \"92548316\", \n  \"_key\" : \"92089564\" \n}\n\nunix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/92089564\n{\"numbers\":{\"one\":1,\"two\":2,\"three\":3,\"empty\":null}}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"93072604\"\nlocation: /_api/document/products/92089564\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/92089564\", \n  \"_rev\" : \"93072604\", \n  \"_key\" : \"92089564\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/document/products/92089564\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"93072604\"\n\n{ \n  \"one\" : \"world\", \n  \"hello\" : \"world\", \n  \"numbers\" : { \n    \"empty\" : null, \n    \"one\" : 1, \n    \"two\" : 2, \n    \"three\" : 3 \n  }, \n  \"_id\" : \"products/92089564\", \n  \"_rev\" : \"93072604\", \n  \"_key\" : \"92089564\" \n}\n\nunix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/92089564?keepNull=false\n{\"hello\":null,\"numbers\":{\"four\":4}}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"93465820\"\nlocation: /_api/document/products/92089564\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/92089564\", \n  \"_rev\" : \"93465820\", \n  \"_key\" : \"92089564\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/document/products/92089564\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"93465820\"\n\n{ \n  \"one\" : \"world\", \n  \"numbers\" : { \n    \"empty\" : null, \n    \"one\" : 1, \n    \"two\" : 2, \n    \"three\" : 3, \n    \"four\" : 4 \n  }, \n  \"_id\" : \"products/92089564\", \n  \"_rev\" : \"93465820\", \n  \"_key\" : \"92089564\" \n}\n\n</code></pre><br>",
+                    "nickname": "patchesADocument"
+                }
+            ],
+            "path": "/_api/document/{document-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the document was deleted sucessfully and <em>waitForSync</em> was <em>true</em>. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the document was deleted sucessfully and <em>waitForSync</em> was <em>false</em>. ",
+                            "code": "202"
+                        },
+                        {
+                            "reason": "is returned if the collection or the document was not found. The response body contains an error document in this case. ",
+                            "code": "404"
+                        },
+                        {
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the current document has a different version ",
+                            "code": "412"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "document-handle",
+                            "description": "Deletes the document identified by <em>document-handle</em>.  "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "rev",
+                            "description": "You can conditionally delete a document based on a target revision id by using the <em>rev</em> URL parameter. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "policy",
+                            "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing documents (see replacing documents for more details). "
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "name": "waitForSync",
+                            "description": "Wait until document has been sync to disk. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "header",
+                            "name": "If-Match",
+                            "description": "You can conditionally delete a document based on a target revision id by using the <em>if-match</em> HTTP header. "
+                        }
+                    ],
+                    "notes": "The body of the response contains a JSON object with the information about the handle and the revision.  The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated document, the attribute <em>_rev</em> contains the known document revision. <br><br>If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br>",
+                    "summary": "deletes a document",
+                    "httpMethod": "DELETE",
+                    "examples": "Using document handle: <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/document/products/53554396\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"_id\" : \"products/53554396\", \n  \"_rev\" : \"53554396\", \n  \"_key\" : \"53554396\" \n}\n\n</code></pre><br>Unknown document handle: <br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/document/products/78589148\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"document /_api/document/products/78589148 not found\", \n  \"code\" : 404, \n  \"errorNum\" : 1202 \n}\n\n</code></pre><br>Revision conflict: <br><br><pre><code class=\"json\" >unix> curl -X DELETE --header 'If-Match:\"96742620\"' --dump - http://localhost:8529/_api/document/products/96414940\n\nHTTP/1.1 412 Precondition Failed\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 412, \n  \"errorNum\" : 1200, \n  \"errorMessage\" : \"precondition failed\", \n  \"_id\" : \"products/96414940\", \n  \"_rev\" : \"96414940\", \n  \"_key\" : \"96414940\" \n}\n\n</code></pre><br>",
+                    "nickname": "deletesADocument"
+                }
+            ],
+            "path": "/_api/document/{document-handle}"
+        }
+    ]
+}

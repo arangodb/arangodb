@@ -2,11 +2,11 @@
   font-family: 'Droid Sans';
   font-style: normal;
   font-weight: 400;
-  src: local('Droid Sans'), local('DroidSans'), url(/_admin/ttf/droidsans.ttf) format('truetype');
+  src: local('Droid Sans'), local('DroidSans'), url(/_admin/html/ttf/droidsans.ttf) format('truetype');
 }
 @font-face {
   font-family: 'Droid Sans';
   font-style: normal;
   font-weight: 700;
-  src: local('Droid Sans Bold'), local('DroidSans-Bold'), url(/_admin/ttf/droidsans-bold.ttf) format('truetype');
+  src: local('Droid Sans Bold'), local('DroidSans-Bold'), url(/_admin/html/ttf/droidsans-bold.ttf) format('truetype');
 }

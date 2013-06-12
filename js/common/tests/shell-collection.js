@@ -610,6 +610,37 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate
+////////////////////////////////////////////////////////////////////////////////
+
+    testRotate : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.save({ _key: "test" });
+      var f = c1.figures(); 
+      assertEqual(0, f.datafiles.count);
+
+      if (c1.rotate) {
+        // rotate() is only present server-side...
+        c1.rotate();
+
+        f = c1.figures();
+        assertEqual(1, f.datafiles.count);
+        
+        c1.rotate();
+        f = c1.figures();
+        assertEqual(2, f.datafiles.count);
+      }
+
+      c1.unload();
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief figures
 ////////////////////////////////////////////////////////////////////////////////
 

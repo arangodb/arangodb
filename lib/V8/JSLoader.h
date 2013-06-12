@@ -90,7 +90,7 @@ namespace triagens {
 /// @brief executes a named script in the global context
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> executeGlobalScript (v8::Persistent<v8::Context> context,
+        v8::Handle<v8::Value> executeGlobalScript (v8::Handle<v8::Context> context,
                                                    string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
