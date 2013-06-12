@@ -163,6 +163,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE, "skiplist index insertion warning - CAS failure while attempting to insert document");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING, "skiplist index remove failure - item missing in index");
   REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE, "skiplist index remove warning - CAS failure while attempting to remove document");
+  REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED, "skiplist index remove failure - item inserted post this transaction in the index");
+  REG_ERROR(WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED, "skiplist index remove failure - item removed prior this transaction in the index");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING, "bitarray index insertion warning - attribute missing in document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING, "bitarray index update warning - attribute missing in revised document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING, "bitarray index remove failure - item missing in index");
@@ -173,6 +175,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
+  REG_ERROR(WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN, "the index garbage collector has shutdown and no further entries can be processed");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
