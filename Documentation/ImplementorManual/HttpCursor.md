@@ -79,17 +79,17 @@ Accessing Cursors via HTTP {#HttpCursorHttp}
 ============================================
 
 @anchor HttpCursorPost
-@copydetails JSF_POST_api_cursor
+@copydetails JSF_post_api_cursor
 
 @CLEARPAGE
 @anchor HttpCursorPostQuery
-@copydetails JSF_POST_api_query
+@copydetails JSF_post_api_query
 
 @CLEARPAGE
 @anchor HttpCursorPut
-@copydetails JSF_PUT_api_cursor
+@copydetails JSF_put_api_cursor
 
 @CLEARPAGE
 @anchor HttpCursorDelete
-@copydetails JSF_DELETE_api_cursor
+@copydetails JSF_delete_api_cursor
 

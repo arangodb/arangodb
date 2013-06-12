@@ -43,6 +43,23 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief old-style master pointer (deprecated)
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct old_doc_mptr_s {
+  TRI_voc_rid_t          _rid;      // this is the revision identifier
+  TRI_voc_fid_t          _fid;      // this is the datafile identifier
+  TRI_voc_tick_t         _validTo;  // this is the deletion time (0 if document is not yet deleted)
+  void const*            _data;     // this is the pointer to the beginning of the raw marker
+  char*                  _key;      // this is the document identifier (string)
+}
+old_doc_mptr_t;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -96,7 +113,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
                                  void* data, 
                                  TRI_datafile_t* datafile, 
                                  bool journal) {
-  TRI_doc_mptr_t const* found;
+  old_doc_mptr_t const* found;
   TRI_associative_pointer_t* primaryIndex;
   TRI_voc_key_t key = NULL;
 
@@ -113,7 +130,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
     // it is a new entry
     if (found == NULL) {
-      TRI_doc_mptr_t* header;
+      old_doc_mptr_t* header;
 
       header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t), true);
       if (header == NULL) {
@@ -133,7 +150,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
     // it is an update, but only if found has a smaller revision identifier
     else if (found->_rid < d->_rid || 
              (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
-      TRI_doc_mptr_t* newHeader;
+      old_doc_mptr_t* newHeader;
       
       newHeader = CONST_CAST(found);
 
@@ -156,7 +173,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
     // it is a new entry, so we missed the create
     if (found == NULL) {
-      TRI_doc_mptr_t* header;
+      old_doc_mptr_t* header;
 
       header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t), true);
       if (header == NULL) {
@@ -175,7 +192,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
     // it is a real delete
     else if (found->_validTo == 0) {
-      TRI_doc_mptr_t* newHeader;
+      old_doc_mptr_t* newHeader;
       
       newHeader = CONST_CAST(found);
 
@@ -401,8 +418,10 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           else {
             int res;
 
+            // this should fail, but shouldn't do any harm either...
             TRI_UnlinkFile(newName);
 
+            // rename the compactor to a datafile
             res = TRI_RenameFile(filename, newName);
 
             if (res != TRI_ERROR_NO_ERROR) {
@@ -768,11 +787,17 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
   size_t i, n;
 
   n = files->_length;
+
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* datafile;
     int result;
 
     datafile = (TRI_datafile_t*) TRI_AtVectorPointer(files, i);
+
+    LOG_TRACE("iterating over datafile '%s', fid %llu", 
+              datafile->getName(datafile), 
+              (unsigned long long) datafile->_fid);
+
     result = TRI_IterateDatafile(datafile, iterator, data, false);
 
     if (! result) {
@@ -1684,7 +1709,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
 
       // go over all documents in the index and calculate the total length
       for (i = 0; i < primaryIndex._nrAlloc; ++i) {
-        TRI_doc_mptr_t* header = primaryIndex._table[i];
+        old_doc_mptr_t* header = primaryIndex._table[i];
 
         if (header != NULL && header->_validTo == 0) {
           TRI_df_marker_t const* marker = header->_data;
@@ -1750,7 +1775,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
 
         // write all surviving documents into the datafile
         for (i = 0; i < primaryIndex._nrAlloc; ++i) {
-          TRI_doc_mptr_t* mptr = primaryIndex._table[i];
+          old_doc_mptr_t* mptr = primaryIndex._table[i];
 
           if (mptr != NULL && mptr->_validTo == 0) {
             TRI_df_marker_t const* marker = mptr->_data;

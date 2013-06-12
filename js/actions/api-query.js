@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query actions
 ///
@@ -71,16 +74,37 @@ var PARSE = require("internal").AQL_PARSE;
 ///
 /// Valid query:
 ///
-/// @verbinclude api-query-valid
+/// @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
+///     var url = "/_api/query";
+///     var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Invalid query:
 ///
-/// @verbinclude api-query-invalid
+/// @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
+///     var url = "/_api/query";
+///     var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 400);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_query (req, res) {
-  if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+function post_api_query (req, res) {
+  if (req.suffix.length !== 0) {
+    actions.resultNotFound(req, 
+                           res, 
+                           arangodb.ERROR_HTTP_NOT_FOUND, 
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 
@@ -117,8 +141,8 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case (actions.POST) : 
-          POST_api_query(req, res); 
+        case actions.POST: 
+          post_api_query(req, res); 
           break;
 
         default:

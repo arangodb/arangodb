@@ -160,8 +160,10 @@ function CollectionVolatileSuite () {
       assertEqual(10000, c.count());
       
       c.unload();
+      c = null;
       
-      internal.wait(4);
+      internal.wait(5);
+      c = internal.db[cn];
       assertEqual(true, c.properties().isVolatile);
       assertEqual(0, c.count());
       assertEqual([ ], c.toArray());

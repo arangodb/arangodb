@@ -448,7 +448,7 @@ namespace triagens {
             size_t pos = TRI_UInt32Random() % total;
             void** beg = primary->_primaryIndex._table;
 
-            while (beg[pos] == 0 || (((TRI_doc_mptr_t*) beg[pos])->_validTo != 0)) {
+            while (beg[pos] == 0) {
               pos = (pos + 1) % total;
             }
 
@@ -506,9 +506,7 @@ namespace triagens {
               if (*ptr) {
                 TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-                if (d->_validTo == 0) {
-                  ids.push_back(d->_key);
-                }
+                ids.push_back(d->_key);
               }
             }
           }
@@ -573,11 +571,7 @@ namespace triagens {
             // skip from the beginning
             for (;  ptr < end && 0 < skip;  ++ptr) {
               if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-                if (d->_validTo == 0) {
-                  --skip;
-                }
+                --skip;
               }
             }
           }
@@ -587,14 +581,10 @@ namespace triagens {
 
             for (; beg <= ptr; --ptr) {
               if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+                ++skip;
 
-                if (d->_validTo == 0) {
-                  ++skip;
-
-                  if (skip == 0) {
-                    break;
-                  }
+                if (skip == 0) {
+                  break;
                 }
               }
             }
@@ -609,10 +599,8 @@ namespace triagens {
             if (*ptr) {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
 
-              if (d->_validTo == 0) {
-                docs.push_back(*d);
-                ++count;
-              }
+              docs.push_back(*d);
+              ++count;
             }
           }
 
@@ -682,14 +670,12 @@ namespace triagens {
             if (*ptr) {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
 
-              if (d->_validTo == 0) {
-                if (skip > 0) {
-                  --skip;
-                }
-                else {
-                  docs.push_back(*d);
-                  ++count;
-                }
+              if (skip > 0) {
+                --skip;
+              }
+              else {
+                docs.push_back(*d);
+                ++count;
               }
             }
           }

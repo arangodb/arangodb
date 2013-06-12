@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*global require, CREATE_CURSOR */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries
 ///
@@ -42,7 +45,7 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_all
+/// @fn JSA_put_api_simple_all
 /// @brief returns all documents of a collection
 ///
 /// @RESTHEADER{PUT /_api/simple/all,executes simple query ALL}
@@ -139,7 +142,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -173,7 +176,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_any
+/// @fn JSA_put_api_simple_any
 /// @brief returns a random document of a collection
 ///
 /// @RESTHEADER{PUT /_api/simple/any,executes simple query ANY}
@@ -242,12 +245,12 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
         var name = body.collection;
-        var id = parseInt(name) || name;
+        var id = parseInt(name, 10) || name;
         var collection = db._collection(id);
 
         if (collection === null) {
@@ -267,7 +270,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_near
+/// @fn JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
 /// @RESTHEADER{PUT /_api/simple/near,executes simple query NEAR}
@@ -335,8 +338,13 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 2 }';
-///
+///     var body = '{ ' + 
+///       '"collection": "products", ' +
+///       '"latitude" : 0, ' +
+///       '"longitude" : 0, ' +
+///       '"skip" : 1, ' +
+///       '"limit" : 2 ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -358,7 +366,14 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance" }';
+///     var body = '{ ' + 
+///       '"collection": "products", ' + 
+///       '"latitude" : 0, ' +
+///       '"longitude" : 0, ' +
+///       '"skip" : 1, ' +
+///       '"limit" : 3, ' +
+///       '"distance" : "distance" ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -381,7 +396,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -414,11 +429,11 @@ actions.defineHttp({
             result = collection.geo({ id : geo }).near(latitude, longitude);
           }
 
-          if (skip !== null && skip != undefined) {
+          if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
 
-          if (limit !== null && limit != undefined) {
+          if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
 
@@ -437,7 +452,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_within
+/// @fn JSA_put_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
 /// @RESTHEADER{PUT /_api/simple/within,executes simple query WITHIN}
@@ -504,8 +519,14 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 2, "radius" : 500 }';
-///
+///     var body = '{ ' +
+///       '"collection": "products", ' +
+///       '"latitude" : 0, ' +
+///       '"longitude" : 0, ' +
+///       '"skip" : 1, ' +
+///       '"limit" : 2, ' +
+///       '"radius" : 500 ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -551,7 +572,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -607,7 +628,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_fulltext
+/// @fn JSA_put_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
 /// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query FULLTEXT}
@@ -687,7 +708,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -730,7 +751,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_by_example
+/// @fn JSA_put_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example,executes simple query by-example}
@@ -846,7 +867,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -884,7 +905,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_first_example
+/// @fn JSA_put_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
 /// @RESTHEADER{PUT /_api/simple/first-example,executes simple query first-example}
@@ -976,7 +997,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1024,7 +1045,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1055,7 +1076,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_range
+/// @fn JSA_put_api_simple_range
 /// @brief returns all documents of a collection within a range
 ///
 /// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
@@ -1136,7 +1157,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1181,7 +1202,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_remove_by_example
+/// @fn JSA_put_api_simple_remove_by_example
 /// @brief removes all documents of a collection that match an example
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
@@ -1260,7 +1281,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1288,7 +1309,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_replace_by_example
+/// @fn JSA_put_api_simple_replace_by_example
 /// @brief replaces the body of all documents of a collection that match an 
 /// example
 ///
@@ -1350,7 +1371,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/replace-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "newValue" : {"foo" : "bar"}, "limit" : 3 }';
+///     var body = '{ ' +
+///       '"collection": "products", ' +
+///       '"example" : { "a" : { "j" : 1 } }, ' +
+///       '"newValue" : {"foo" : "bar"}, ' +
+///       '"limit" : 3 ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1373,7 +1399,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1405,7 +1431,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_update_by_example
+/// @fn JSA_put_api_simple_update_by_example
 /// @brief partially updates the body of all documents of a collection that
 /// match an example
 ///
@@ -1473,7 +1499,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "newValue" : { "a" : { "j" : 22 } }, "limit" : 3 }';
+///     var body = '{ ' + 
+///       '"collection": "products", ' +
+///       '"example" : { "a" : { "j" : 1 } }, ' +
+///       '"newValue" : { "a" : { "j" : 22 } }, ' +
+///       '"limit" : 3 ' +
+///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1496,7 +1527,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1517,7 +1548,11 @@ actions.defineHttp({
           actions.badParameter(req, res, "newValue");
         }
         else {
-          var result = collection.updateByExample(example, newValue, keepNull, body.waitForSync, limit);
+          var result = collection.updateByExample(example, 
+                                                  newValue, 
+                                                  keepNull, 
+                                                  body.waitForSync, 
+                                                  limit);
           actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
         }
       }
