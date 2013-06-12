@@ -66,32 +66,6 @@ function notFound (req, res, code, message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validate and translate the argument given in value
-////////////////////////////////////////////////////////////////////////////////
-  
-function validateArg (value, map) {
-  if (value === null || value === undefined) {
-    var m;
-    // use first key from map
-    for (m in map) {
-      if (map.hasOwnProperty(m)) {
-        value = m;
-        break;
-      }
-    }
-  }
-
-  if (typeof value === 'string') {
-    value = value.toLowerCase().replace(/-/, "");
-    if (map[value] !== null) {
-      return map[value];
-    }
-  }
-
-  return undefined;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a server-side traversal
 ///
 /// @RESTHEADER{POST /_api/traversal,executes a traversal}
@@ -133,6 +107,11 @@ function validateArg (value, map) {
 ///            can be "forward" or "backward"
 /// uniqueness: specifies uniqueness for vertices and edges visited, optional
 ///             if set, must be an object like this: "uniqueness": { "vertices": "none"|"global"|path", "edges": "none"|"global"|"path" } 
+///
+/// maxIterations: Maximum number of iterations in each traversal. This number can be
+///                set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
+///                as many iterations as the `maxIterations` value, the traversal will abort with an
+///                error. If `maxIterations` is not set, a server-defined value may be used.
 ///
 /// the "result" object will be returned by the traversal
 ///
@@ -181,7 +160,8 @@ function post_api_traversal(req, res) {
   catch (err2) {
   }
 
-  if (edgeCollection === undefined || edgeCollection == null) {
+  if (edgeCollection === undefined || 
+      edgeCollection === null) {
     return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "invalid edgeCollection");
   }
   
@@ -232,11 +212,7 @@ function post_api_traversal(req, res) {
   var expander;
 
   if (json.direction !== undefined) {
-    expander = validateArg(json.direction, {
-      'outbound': traversal.outboundExpander,
-      'inbound': traversal.inboundExpander,
-      'any': traversal.anyExpander
-    });
+    expander = json.direction;
   }
   else if (json.expander !== undefined) {
     try {
@@ -259,35 +235,16 @@ function post_api_traversal(req, res) {
     params: json,
     edgeCollection: edgeCollection,
     datasource: traversal.collectionDatasourceFactory(edgeCollection),
-    strategy: validateArg(json.strategy, {
-      'depthfirst': Traverser.DEPTH_FIRST,
-      'breadthfirst': Traverser.BREADTH_FIRST
-    }),
-    order: validateArg(json.order, {
-      'preorder': Traverser.PRE_ORDER,
-      'postorder': Traverser.POST_ORDER
-    }),
-    itemOrder: validateArg(json.itemOrder, {
-      'forward': Traverser.FORWARD,
-      'backward': Traverser.BACKWARD
-    }),
+    strategy: json.strategy, 
+    order: json.order,
+    itemOrder: json.itemOrder,
     expander: expander,
     visitor: visitor,
     filter: filters,
-    minDepth: json.minDepth || 0,
+    minDepth: json.minDepth,
     maxDepth: json.maxDepth,
-    uniqueness: {
-      vertices: validateArg(json.uniqueness && json.uniqueness.vertices, {
-        'global': Traverser.UNIQUE_GLOBAL,
-        'none': Traverser.UNIQUE_NONE,
-        'path': Traverser.UNIQUE_PATH
-      }),
-      edges: validateArg(json.uniqueness && json.uniqueness.edges, {
-        'global': Traverser.UNIQUE_GLOBAL,
-        'none': Traverser.UNIQUE_NONE,
-        'path': Traverser.UNIQUE_PATH
-      })
-    }
+    maxIterations: json.maxIterations,
+    uniqueness: json.uniqueness
   };
   
   // assemble result object
@@ -313,12 +270,17 @@ function post_api_traversal(req, res) {
   // run the traversal
   // -----------------------------------------
 
-  var traverser = new Traverser(config);
+  var traverser;
   try {
+    traverser = new Traverser(config);
     traverser.traverse(result, doc);
     actions.resultOk(req, res, actions.HTTP_OK, { result : result });
   }
   catch (err7) {
+    if (traverser === undefined) {
+      // error during traversal setup
+      return badParam(req, res, err7);
+    }
     actions.resultException(req, res, err7, undefined, false);
   }
 }
