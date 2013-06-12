@@ -55,6 +55,17 @@ function badParam (req, res, message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a "not found" error
+////////////////////////////////////////////////////////////////////////////////
+    
+function notFound (req, res, code, message) {
+  actions.resultNotFound(req, 
+                         res, 
+                         code,
+                         message);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validate and translate the argument given in value
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -152,7 +163,7 @@ function post_api_traversal(req, res) {
     doc = db._document(json.startVertex);
   }
   catch (err) {
-    return badParam(req, res, "invalid startVertex");
+    return notFound(req, res, arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "invalid startVertex");
   }
   
   // check edge collection
@@ -168,7 +179,10 @@ function post_api_traversal(req, res) {
     edgeCollection = db._collection(json.edgeCollection);
   }
   catch (err2) {
-    return badParam(req, res, "invalid edgeCollection");
+  }
+
+  if (edgeCollection === undefined || edgeCollection == null) {
+    return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "invalid edgeCollection");
   }
   
   // set up filters
