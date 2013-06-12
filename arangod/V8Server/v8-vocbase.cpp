@@ -1443,7 +1443,11 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
-  // expecting at least one arguments
+  
+  // ...........................................................................
+  // We require exactly 1 or exactly 2 arguments -- anything else is an error
+  // ...........................................................................
+
   if (argv.Length() < 1 || argv.Length() > 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
   }

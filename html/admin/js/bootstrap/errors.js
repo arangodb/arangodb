@@ -167,6 +167,8 @@
     "WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE" : { "code" : 3304, "message" : "skiplist index insertion warning - CAS failure while attempting to insert document" }, 
     "WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING" : { "code" : 3311, "message" : "skiplist index remove failure - item missing in index" }, 
     "WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE" : { "code" : 3313, "message" : "skiplist index remove warning - CAS failure while attempting to remove document" }, 
+    "WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED" : { "code" : 3315, "message" : "skiplist index remove failure - item inserted post this transaction in the index" }, 
+    "WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED" : { "code" : 3317, "message" : "skiplist index remove failure - item removed prior this transaction in the index" }, 
     "WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 3400, "message" : "bitarray index insertion warning - attribute missing in document" }, 
     "WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING" : { "code" : 3402, "message" : "bitarray index update warning - attribute missing in revised document" }, 
     "WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING" : { "code" : 3411, "message" : "bitarray index remove failure - item missing in index" }, 
@@ -176,7 +178,8 @@
     "RESULT_KEY_EXISTS"            : { "code" : 10000, "message" : "element not inserted into structure, because key already exists" }, 
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10001, "message" : "element not inserted into structure, because it already exists" }, 
     "RESULT_KEY_NOT_FOUND"         : { "code" : 10002, "message" : "key not found in structure" }, 
-    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }
+    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }, 
+    "WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN" : { "code" : 11000, "message" : "the index garbage collector has shutdown and no further entries can be processed" }
   };
 }());
 

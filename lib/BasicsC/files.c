@@ -1080,7 +1080,7 @@ int TRI_VerifyLockFile (char const* filename) {
   TRI_CLOSE(fd);
 
   // file empty or pid too long
-  if (n == 0 || n == sizeof(buf)) {
+  if (n == 0 || n == sizeof(buffer)) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
