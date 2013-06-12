@@ -62,7 +62,7 @@ namespace triagens {
           
         }
 
-        ~RequestContext () {
+        virtual ~RequestContext () {
         }
         
     private:
