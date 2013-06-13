@@ -2258,6 +2258,63 @@ static v8::Handle<v8::Value> JS_formatDatetime (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parse datetime
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_parseDatetime (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "PARSE_DATETIME(<datetime string>, <pattern>, [<timezone>, [<locale>]])");
+  }
+
+  v8::String::Value datetimeString(argv[0]);
+  v8::String::Value pattern(argv[1]);
+
+  TimeZone* tz = 0;
+  if (argv.Length() > 2) {
+    v8::String::Value value(argv[2]);
+    
+    // ..........................................................................
+    // Take note here: we are assuming that the ICU type UChar is two bytes.
+    // There is no guarantee that this will be the case on all platforms and
+    // compilers.
+    // ..........................................................................
+
+    UnicodeString ts((const UChar *) *value, value.length());            
+    tz = TimeZone::createTimeZone(ts);
+  }
+  else {
+    tz = TimeZone::createDefault();  
+  }
+  
+  Locale locale;
+  if (argv.Length() > 3) {
+    string name = TRI_ObjectToString(argv[3]);     
+    locale = Locale::createFromName(name.c_str());
+  }
+  else {
+    // use language of default collator
+    string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+    locale = Locale::createFromName(name.c_str());
+  }
+  
+  UnicodeString formattedString((const UChar *) *datetimeString, datetimeString.length());
+  UErrorCode status = U_ZERO_ERROR;
+  UnicodeString aPattern((const UChar *) *pattern, pattern.length());
+  DateFormatSymbols* ds = new DateFormatSymbols(locale, status);
+  SimpleDateFormat* s = new SimpleDateFormat(aPattern, ds, status);
+  s->setTimeZone(*tz);
+  
+  UDate udate = s->parse(formattedString, status);
+  
+  delete s;
+  delete tz;
+  
+  return scope.Close(v8::Number::New(udate / 1000));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the authentication info from collection _users
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7657,6 +7714,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "TIMEZONES", JS_getIcuTimezones);
   TRI_AddGlobalFunctionVocbase(context, "LOCALES", JS_getIcuLocales);
   TRI_AddGlobalFunctionVocbase(context, "FORMAT_DATETIME", JS_formatDatetime);
+  TRI_AddGlobalFunctionVocbase(context, "PARSE_DATETIME", JS_parseDatetime);
 
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
