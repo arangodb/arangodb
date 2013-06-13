@@ -140,6 +140,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
+  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
   REG_ERROR(ERROR_SESSION_INVALID_SESSION, "invalid session");
   REG_ERROR(ERROR_SESSION_COULD_NOT_CREATE_SESSION, "could not create session");
   REG_ERROR(ERROR_SESSION_COULD_NOT_CHANGE_SESSION, "could not change session");
