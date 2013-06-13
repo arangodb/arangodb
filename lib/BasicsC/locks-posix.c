@@ -574,7 +574,7 @@ bool TRI_CompareAndSwapIntegerInt32 (volatile int32_t* theValue, int32_t oldValu
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap32Barrier(oldValue, newValue, theValue);
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
   #else
     #error No TRI_CompareAndSwapIntegerInt32 implementation defined
   #endif
@@ -584,7 +584,7 @@ bool TRI_CompareIntegerInt32 (volatile int32_t* theValue, int32_t oldValue) {
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap32Barrier(oldValue, oldValue, theValue);
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, oldValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
   #else
     #error No TRI_CompareAndSwapIntegerInt32 implementation defined
   #endif
@@ -594,7 +594,7 @@ bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldV
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap32Barrier((int32_t)(oldValue), (int32_t)(newValue), (volatile int32_t*)(theValue));
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
   #else
     #error No TRI_CompareAndSwapIntegerUInt32 implementation defined
   #endif
@@ -604,7 +604,7 @@ bool TRI_CompareIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue) {
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap32Barrier((int32_t)(oldValue), (int32_t)(oldValue), (volatile int32_t*)(theValue));
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, oldValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
   #else
     #error No TRI_CompareAndSwapIntegerUInt32 implementation defined
   #endif
@@ -618,7 +618,7 @@ bool TRI_CompareAndSwapIntegerInt64 (volatile int64_t* theValue, int64_t oldValu
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap64Barrier(oldValue, newValue, theValue);
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
   #else
     #error No TRI_CompareAndSwapIntegerInt64 implementation defined
   #endif
@@ -628,7 +628,7 @@ bool TRI_CompareIntegerInt64 (volatile int64_t* theValue, int64_t oldValue) {
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap64Barrier(oldValue, oldValue, theValue);
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, oldValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
   #else
     #error No TRI_CompareAndSwapIntegerInt64 implementation defined
   #endif
@@ -638,7 +638,7 @@ bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldV
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap64Barrier((int64_t)(oldValue), (int64_t)(newValue), (volatile  int64_t*)(theValue));
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
   #else
     #error No TRI_CompareAndSwapIntegerUInt64 implementation defined
   #endif
@@ -648,7 +648,7 @@ bool TRI_CompareIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue) {
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwap64Barrier((int64_t)(oldValue), (int64_t)(oldValue), (volatile int64_t*)(theValue));
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, oldValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
   #else
     #error No TRI_CompareAndSwapIntegerUInt64 implementation defined
   #endif
@@ -662,7 +662,7 @@ bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* n
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwapPtrBarrier(oldValue, newValue, theValue);
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
   #else
     #error No TRI_CompareAndSwapPointer implementation defined
   #endif
@@ -672,7 +672,7 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
   #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
     return OSAtomicCompareAndSwapPtrBarrier(oldValue, oldValue, theValue);
   #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_val_compare_and_swap(theValue, oldValue, oldValue);
+    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
   #else
     #error No TRI_CompareAndSwapPointer implementation defined
   #endif

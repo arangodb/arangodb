@@ -3478,27 +3478,6 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
     });
   }
 
-  function validate (value, map) {
-    if (value === null || value === undefined) {
-      var m;
-      // use first key from map
-      for (m in map) {
-        if (map.hasOwnProperty(m)) {
-          value = m;
-          break;
-        }
-      }
-    }
-    if (typeof value === 'string') {
-      value = value.toLowerCase().replace(/-/, "");
-      if (map[value] !== null) {
-        return map[value];
-      }
-    }
-
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-  }
-
   if (typeof params.visitor !== "function") {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
   }
@@ -3508,55 +3487,16 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
     params.maxDepth = 256;
   }
 
-  // prepare an array of filters
-  var filters = [ ];
-  if (params.minDepth !== undefined) {
-    filters.push(TRAVERSAL.minDepthFilter);
-  }
-  if (params.maxDepth !== undefined) {
-    filters.push(TRAVERSAL.maxDepthFilter);
-  }
-  if (filters.length === 0) {
-    filters.push(TRAVERSAL.visitAllFilter);
-  }
-
   var config = {
     connect: params.connect,
     datasource: TRAVERSAL.collectionDatasourceFactory(edgeCollection),
-    strategy: validate(params.strategy, {
-      'depthfirst': TRAVERSAL.Traverser.DEPTH_FIRST,
-      'breadthfirst': TRAVERSAL.Traverser.BREADTH_FIRST
-    }),
-    order: validate(params.order, {
-      'preorder': TRAVERSAL.Traverser.PRE_ORDER,
-      'postorder': TRAVERSAL.Traverser.POST_ORDER
-    }),
-    itemOrder: validate(params.itemOrder, {
-      'forward': TRAVERSAL.Traverser.FORWARD,
-      'backward': TRAVERSAL.Traverser.BACKWARD
-    }),
     trackPaths: params.paths || false,
     visitor: params.visitor,
     maxDepth: params.maxDepth,
     minDepth: params.minDepth,
-    filter: filters,
-    uniqueness: {
-      vertices: validate(params.uniqueness && params.uniqueness.vertices, {
-        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
-        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
-        'path': TRAVERSAL.Traverser.UNIQUE_PATH
-      }),
-      edges: validate(params.uniqueness && params.uniqueness.edges, {
-        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
-        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
-        'path': TRAVERSAL.Traverser.UNIQUE_PATH
-      })
-    },
-    expander: validate(direction, {
-      'outbound': TRAVERSAL.outboundExpander,
-      'inbound': TRAVERSAL.inboundExpander,
-      'any': TRAVERSAL.anyExpander
-    })
+    maxIterations: params.maxIterations,
+    uniqueness: params.uniqueness,
+    expander: direction
   };
 
   if (params.followEdges) {

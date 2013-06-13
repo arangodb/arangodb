@@ -377,13 +377,14 @@ examples:
 		@srcdir@/arangod/RestHandler/*.cpp \
 		> /tmp/arangosh.examples
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
 
 	@builddir@/bin/arangosh \
 		-s \
 		-c @srcdir@/etc/relative/arangosh.conf \
 		--server.password "" \
-		--server.endpoint unix://$(VOCDIR)/arango.sock \
+		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
 		--javascript.execute /tmp/arangosh.examples
 
 ## -----------------------------------------------------------------------------

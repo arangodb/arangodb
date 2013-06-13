@@ -1,5 +1,20 @@
 v1.4
-------
+----
+
+* changed the HTTP return code from 400 to 404 for some cases when there is a referral 
+  to a non-existing collection or document.
+
+* introduced error code 1909 `too many iterations` that is thrown when graph traversals
+  hit the `maxIterations` threshold.
+
+* optionally limit traversals to a certain number of iterations
+  the limitation can be achieved via the traversal API by setting the `maxIterations` 
+  attribute, and also via the AQL `TRAVERSAL` and `TRAVERSAL_TREE` functions by setting
+  the same attribute. If traversals are not limited by the end user, a server-defined
+  limit for `maxIterations` may be used to prevent server-side traversals from running
+  endlessly.
+
+* added graph traversal API at `/_api/traversal`
 
 * added "API" link in web interface, pointing to REST API generated with Swagger
 
