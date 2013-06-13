@@ -136,6 +136,10 @@ var QUERY = internal.AQL_QUERY;
 /// is returned if the JSON representation is malformed or the query specification is
 /// missing from the request.
 ///
+/// @RESTRETURNCODE{404}
+/// The server will respond with `HTTP 404` in case a non-existing collection is
+/// accessed in the query.
+///
 /// @EXAMPLES
 ///
 /// Executes a query and extract the result in a single go:
