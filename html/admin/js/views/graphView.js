@@ -3,9 +3,9 @@
 
 window.graphView = Backbone.View.extend({
   el: '#content',
-  
+
   template: new EJS({url: 'js/templates/graphView.ejs'}),
-  
+
   initialize: function () {
     var self = this;
 
@@ -17,25 +17,24 @@ window.graphView = Backbone.View.extend({
 
   createViewer: function() {
     var ecol,
-      ncol,
-      aaconfig,
-      undirected,
-      label,
-      config;
-    
-    
+    ncol,
+    aaconfig,
+    undirected,
+    label,
+    config;
+
     ecol = $("#edgeCollection").val();
     ncol = $("#nodeCollection").val();
     undirected = !!$("#undirected").attr("checked");
     label = $("#nodeLabel").val();
-    
+
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
       edgeCollection: ecol,
       undirected: undirected
     };
-    
+
     if (label !== undefined && label !== "") {
       config = {
         nodeShaper: {
@@ -51,7 +50,7 @@ window.graphView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
-    
+
     return this;
   }
 
