@@ -31,7 +31,7 @@
 var arangodb = require("org/arangodb");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 number formatters
+// --SECTION--                                                         formatter
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +71,232 @@ exports.number = function (value, info, lang) {
 
   return result;
 };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief format a float value
+////////////////////////////////////////////////////////////////////////////////
+
+exports.formatFloat = function (value, args) {
+  if (undefined === value) {
+    return null;
+  }
+    
+  if (undefined === args) {
+    args = {};
+  }
+  
+  var decPlaces = isNaN(args.decPlaces = Math.abs(args.decPlaces)) ? 2 : args.decPlaces;
+  var decSeparator = 
+            args.decSeparator === undefined ? "." : args.decSeparator;
+  var thouSeparator = 
+            args.thouSeparator === undefined ? "," : args.thouSeparator;
+  
+  var sign = value < 0 ? "-" : "";
+  var i = '';
+  i += parseInt(value = Math.abs(+value || 0).toFixed(decPlaces), 10);
+  var j = i.length;
+  j = (j > 3) ? (j % 3) : 0;
+  
+  return sign + (j ? i.substr(0, j) + thouSeparator : "") + 
+          i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + thouSeparator) + 
+          (decPlaces ? decSeparator + Math.abs(value - i).toFixed(decPlaces).slice(2) : "");  
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief format a datetime value
+////////////////////////////////////////////////////////////////////////////////
+
+exports.formatDatetime = function (value, args) {
+  if (undefined === value) {
+    return null;
+  }
+
+  if (undefined === args) {
+    args = {};
+  }
+  
+  if (undefined === args.pattern) {
+    args.pattern = "yyyy-MM-dd'T'HH:mm:ssZ";
+  }
+  
+  if (undefined === args.timezone) {
+    args.timezone = null;
+  }
+
+  if (undefined === args.lang) {
+    args.lang = null;
+  }
+
+  return FORMAT_DATETIME(value, args.pattern, args.timezone, args.lang);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief join array
+////////////////////////////////////////////////////////////////////////////////
+
+exports.joinNumbers = function (value, args) {
+  if (undefined === value) {
+    return null;
+  }
+
+  return value.join();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            parser
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStructures
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a number
+////////////////////////////////////////////////////////////////////////////////
+
+exports.parseFloat = function (value, args) {
+  if (undefined === value) {
+    return null;
+  }
+    
+  if (undefined === args) {
+    args = {};
+  }
+  
+  var decPlaces = isNaN(args.decPlaces = Math.abs(args.decPlaces)) ? 2 : args.decPlaces;
+  var decSeparator = args.decSeparator === undefined ? "." : args.decSeparator;
+  var thouSeparator = args.thouSeparator === undefined ? "," : args.thouSeparator;
+
+  var str = "";
+  str += value;
+  str = str.replace(thouSeparator, "");
+  
+  if ("." !== decSeparator) {
+    str = str.replace(decSeparator, ".");
+  }
+  
+  if (decPlaces > 0) {
+    return parseFloat(str);
+  }
+  
+  return parseFloat(str);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief format a datetime value
+////////////////////////////////////////////////////////////////////////////////
+
+exports.parseDatetime = function (value, args) {
+  if (undefined === value) {
+    return null;
+  }
+
+  if (undefined === args) {
+    args = {};
+  }
+  
+  if (undefined === args.pattern) {
+    args.pattern = "yyyy-MM-dd'T'HH:mm:ssZ";
+  }
+  
+  if (undefined === args.timezone) {
+    args.timezone = null;
+  }
+
+  if (undefined === args.lang) {
+    args.lang = null;
+  }
+
+  return PARSE_DATETIME(value, args.pattern, args.timezone, args.lang);
+};
+//
+////////////////////////////////////////////////////////////////////////////////
+/// @brief split array
+////////////////////////////////////////////////////////////////////////////////
+
+exports.splitNumbers = function (value, args) {
+  var result = [];
+  var i;
+
+  if (undefined === value) {
+    return null;
+  }
+
+  var values = value.split(",");
+  
+  for (i = 0; i < values.length; ++i) {
+    result[i] = parseFloat(values[i]);
+  }
+  
+  return result;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        validators
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStructures
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate >
+////////////////////////////////////////////////////////////////////////////////
+
+exports.validateNotNull = function (value, args) {
+  if (undefined === value || null === value) {
+    return false;
+  }
+    
+  return true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate >
+////////////////////////////////////////////////////////////////////////////////
+
+exports.validateGT = function (value, args) {
+  if (undefined === value) {
+    return false;
+  }
+    
+  if (undefined === args) {
+    args = {};
+  }
+  
+  var cmpValue = args.compareValue;
+  
+  return value > cmpValue;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate >
+////////////////////////////////////////////////////////////////////////////////
+
+exports.validateEQ = function (value, args) {
+  if (undefined === value) {
+    return false;
+  }
+    
+  if (undefined === args) {
+    args = {};
+  }
+  
+  var cmpValue = args.compareValue;
+  
+  return value === cmpValue;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
