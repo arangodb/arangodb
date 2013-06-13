@@ -884,7 +884,6 @@ function get_api_structure(req, res)  {
 function post_api_structure (req, res) {
   // POST /_api/structure
   var body;
-  var collection;
   var structure;
 
   var collection = getCollectionByRequest(req, res);
