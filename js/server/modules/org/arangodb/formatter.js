@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, FORMAT_DATETIME, PARSE_DATETIME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief formatter functions
