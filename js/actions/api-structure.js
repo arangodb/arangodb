@@ -201,6 +201,78 @@ function saveDocument(req, res, collection, document)  {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a document
+////////////////////////////////////////////////////////////////////////////////
+
+function replaceDocument(req, res, collection, oldDocument, newDocument)  {
+  var doc;
+  var waitForSync = collection.properties().waitForSync;
+  
+  if (req.parameters.waitForSync) {
+    waitForSync = true;
+  }
+  
+  try {
+    doc = collection.replace(oldDocument, newDocument, true, waitForSync);
+  }
+  catch(err) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        err);
+    return;
+  }
+
+  var headers = {
+    "Etag" :  doc._rev
+  };
+
+  var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
+  
+  resultOk(req, res, returnCode, doc, headers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document
+////////////////////////////////////////////////////////////////////////////////
+
+function updateDocument(req, res, collection, oldDocument, newDocument)  {
+  var doc;
+  var waitForSync = collection.properties().waitForSync;
+  var overwrite = false;
+  var keepNull = true;
+  
+  if (req.parameters.waitForSync) {
+    waitForSync = true;
+  }
+  
+  if (req.parameters.overwrite) {
+    overwrite = true;
+  }
+
+  if (!req.parameters.keepNull) {
+    keepNull = true;
+  }
+  
+  try {
+    doc = collection.update(oldDocument, newDocument, overwrite, keepNull, waitForSync);
+  }
+  catch(err) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        err);
+    return;
+  }
+
+  var headers = {
+    "Etag" :  doc._rev
+  };
+
+  var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
+  
+  resultOk(req, res, returnCode, doc, headers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -762,12 +834,13 @@ function resultStructure (req, res, doc, structure, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the document
+/// @brief parse body and return the parsed document
+/// @throws exception
 ////////////////////////////////////////////////////////////////////////////////
 
-function saveDocumentByStructure(req, res, collection, structure, body) {
+function parseDocumentByStructure(req, res, structure, body) {
   var document = {};
-  
+
   var key;
   var value;
   var types = getTypes(structure);
@@ -777,27 +850,37 @@ function saveDocumentByStructure(req, res, collection, structure, body) {
   if (undefined !== req.parameters.format) {
     format = stringToBoolean(req.parameters.format);
   }
-  
+
   // TODO check type of body
-  
-  try {
-    for (key in structure.attributes) {
-      if (structure.attributes.hasOwnProperty(key)) {
-        value = body[key];
-        
-        if (format) {
-          value = parseValue(value, structure.attributes[key], types, lang);
-        }
-          
-        console.warn("validate key: " + key);    
-        if (validateValue(value, structure.attributes[key], types)) {
-          document[key] = value;
-        }
-        else {
-          throw("value of attribute '" + key + "' is not valid.");
-        }
-      }      
+
+  for (key in structure.attributes) {
+    if (structure.attributes.hasOwnProperty(key)) {
+      value = body[key];
+
+      if (format) {
+        value = parseValue(value, structure.attributes[key], types, lang);
+      }
+
+      console.warn("validate key: " + key);
+      if (validateValue(value, structure.attributes[key], types)) {
+        document[key] = value;
+      }
+      else {
+        throw("value of attribute '" + key + "' is not valid.");
+      }
     }
+  }
+  return document;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the parsed document
+////////////////////////////////////////////////////////////////////////////////
+
+function saveDocumentByStructure(req, res, collection, structure, body) {
+  try {
+    var document = parseDocumentByStructure(req, res, structure, body);
+    saveDocument(req, res, collection, document);
   }
   catch(err) {
     resultError(req, res, actions.HTTP_BAD, 
@@ -805,12 +888,39 @@ function saveDocumentByStructure(req, res, collection, structure, body) {
         err);
     return;
   }
-  
-  saveDocument(req, res, collection, document);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the document
+/// @brief replace the parsed document
+////////////////////////////////////////////////////////////////////////////////
+
+function replaceDocumentByStructure(req, res, collection, structure, oldDocument, body) {
+  try {
+    var document = parseDocumentByStructure(req, res, structure, body);
+    replaceDocument(req, res, collection, oldDocument, document);
+  }
+  catch(err) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        err);
+    return;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a document
+///
+/// @RESTHEADER{GET /_api/structure/`document`,get a structured document}
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_structure(req, res)  {
@@ -847,15 +957,90 @@ function get_api_structure(req, res)  {
   resultStructure(req, res,  doc,  structure, headers);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a document
+///
+/// @RESTHEADER{DELETE /_api/structure/`document`,deletes a structured document}
+///
+////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+function delete_api_structure (req, res) {
+  
+  var collection = getCollectionByRequest(req, res);
+  if (undefined === collection) {
+    return;
+  }
+
+  var doc = getDocumentByRequest(req, res, collection);
+  if (undefined === doc) {
+    return;
+  }
+
+  if (matchError(req, res, doc)) {
+    return;
+  }
+
+  var waitForSync = collection.properties().waitForSync;
+  
+  if (req.parameters.waitForSync) {
+    waitForSync = true;
+  }
+
+  try {
+    collection.remove( doc, true, waitForSync);
+    resultOk(req, res, 
+      waitForSync ? actions.HTTP_OK : actions.HTTP_ACCEPTED, 
+      { "deleted" : true });    
+  }
+  catch(err) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        err);
+    return;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
+/// @brief replace a document
+///
+/// @RESTHEADER{PUT /_api/structure/`document`,replace a structured document}
+///
 ////////////////////////////////////////////////////////////////////////////////
+
+function put_api_structure (req, res) {
+  var body;
+  var structure;
+  
+  var collection = getCollectionByRequest(req, res);
+  if (undefined === collection) {
+    return;
+  }
+
+  var doc = getDocumentByRequest(req, res, collection);
+  if (undefined === doc) {
+    return;
+  }
+
+  if (matchError(req, res, doc)) {
+    return;
+  }
+
+  body = actions.getJsonBody(req, res);
+
+  if (body === undefined) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, "no body data");
+    return;
+  }
+
+  try {
+    structure = db._collection("_structures").document(collection.name());
+    replaceDocumentByStructure(req, res, collection, structure, doc, body);
+  }
+  catch (err) {
+    replaceDocument(req, res, collection, doc, body);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection
@@ -924,12 +1109,15 @@ actions.defineHttp({
       else if (req.requestType === actions.POST) {
         post_api_structure(req, res);
       }
-/*      
       else if (req.requestType === actions.DELETE) {
         delete_api_structure(req, res);
       }
       else if (req.requestType === actions.PUT) {
         put_api_structure(req, res);
+      }
+/*      
+      else if (req.requestType === actions.PATCH) {
+        patch_api_structure(req, res);
       }
 */      
       else {
