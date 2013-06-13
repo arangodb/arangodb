@@ -81,4 +81,4 @@ See @ref RestDocument for details.
 See @ref RestDocument for details.
 
 @anchor RestEdgeEdges
-@copydetails JSF_GET_edges
+@copydetails JSF_get_edges

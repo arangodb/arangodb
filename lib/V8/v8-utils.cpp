@@ -344,6 +344,12 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 ///
 /// - @LIT{followRedirects}: whether or not to follow redirects
 ///
+/// - @LIT{maxRedirects}: maximum number of redirects to follow, only useful
+///   if @LIT{followRedirects} is @LIT{true}.
+///
+/// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
+///   error
+///
 /// - @LIT{headers}: an optional array of headers to be sent for the first
 ///   (non-redirect) request.
 ///
@@ -364,77 +370,97 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
   const string signature = "download(<url>, <body>, <options>, <outfile>)";
 
-  if (argv.Length() < 3) {
+  if (argv.Length() < 1) {
     TRI_V8_EXCEPTION_USAGE(scope, signature);
   }
 
   string url = TRI_ObjectToString(argv[0]);
 
   string body;
-  if (argv[1]->IsString() || argv[1]->IsStringObject()) {
-    body = TRI_ObjectToString(argv[1]);
+  if (argv.Length() > 1) {
+    if (argv[1]->IsString() || argv[1]->IsStringObject()) {
+      body = TRI_ObjectToString(argv[1]);
+    }
   }
 
   // options
   // ------------------------------------------------------------------------
-
-  if (! argv[2]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, signature);
-  }
-
-  v8::Handle<v8::Array> options = v8::Handle<v8::Array>::Cast(argv[2]);
-  if (options.IsEmpty()) {
-    TRI_V8_EXCEPTION_USAGE(scope, signature);
-  }
-
-  // method
-  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
-  if (options->Has(TRI_V8_SYMBOL("method"))) {
-    string methodString = TRI_ObjectToString(options->Get(TRI_V8_SYMBOL("method")));
   
-    method = HttpRequest::translateMethod(methodString);
-  }
-
-  // headers
   map<string, string> headerFields;
-  if (options->Has(TRI_V8_SYMBOL("headers"))) {
-    v8::Handle<v8::Object> v8Headers = options->Get(TRI_V8_SYMBOL("headers")).As<v8::Object> ();
-    if (v8Headers->IsObject()) {
-      v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+  double timeout = 10.0;
+  bool followRedirects = true;
+  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
+  bool returnBodyOnError = false;
+  int maxRedirects = 5;
 
-      for (uint32_t i = 0; i < props->Length(); i++) {
-        v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
-        headerFields[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
+  if (argv.Length() > 2) {
+    if (! argv[2]->IsObject()) {
+      TRI_V8_EXCEPTION_USAGE(scope, signature);
+    }
+
+    v8::Handle<v8::Array> options = v8::Handle<v8::Array>::Cast(argv[2]);
+    if (options.IsEmpty()) {
+      TRI_V8_EXCEPTION_USAGE(scope, signature);
+    }
+
+    // method
+    if (options->Has(TRI_V8_SYMBOL("method"))) {
+      string methodString = TRI_ObjectToString(options->Get(TRI_V8_SYMBOL("method")));
+
+      method = HttpRequest::translateMethod(methodString);
+    }
+
+    // headers
+    if (options->Has(TRI_V8_SYMBOL("headers"))) {
+      v8::Handle<v8::Object> v8Headers = options->Get(TRI_V8_SYMBOL("headers")).As<v8::Object> ();
+      if (v8Headers->IsObject()) {
+        v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+
+        for (uint32_t i = 0; i < props->Length(); i++) {
+          v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
+          headerFields[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
+        }
       }
     }
-  }
 
-  // timeout
-  double timeout = 10.0;
-  if (options->Has(TRI_V8_SYMBOL("timeout"))) {
-    if (! options->Get(TRI_V8_SYMBOL("timeout"))->IsNumber()) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "invalid option value for timeout");
+    // timeout
+    if (options->Has(TRI_V8_SYMBOL("timeout"))) {
+      if (! options->Get(TRI_V8_SYMBOL("timeout"))->IsNumber()) {
+        TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "invalid option value for timeout");
+      }
+
+      timeout = TRI_ObjectToDouble(options->Get(TRI_V8_SYMBOL("timeout")));
     }
 
-    timeout = TRI_ObjectToDouble(options->Get(TRI_V8_SYMBOL("timeout")));
-  }
+    // follow redirects
+    if (options->Has(TRI_V8_SYMBOL("followRedirects"))) {
+      followRedirects = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("followRedirects")));
+    }
+    
+    // max redirects
+    if (options->Has(TRI_V8_SYMBOL("maxRedirects"))) {
+      if (! options->Get(TRI_V8_SYMBOL("maxRedirects"))->IsNumber()) {
+        TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "invalid option value for maxRedirects");
+      }
 
-  // follow redirects
-  bool followRedirects = true;
-  if (options->Has(TRI_V8_SYMBOL("followRedirects"))) {
-    followRedirects = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("followRedirects")));
-  }
+      maxRedirects = (int) TRI_ObjectToInt64(options->Get(TRI_V8_SYMBOL("maxRedirects")));
+    }
 
-  if (body.size() > 0 &&
-      (method == HttpRequest::HTTP_REQUEST_GET ||
-       method == HttpRequest::HTTP_REQUEST_HEAD)) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "should not provide a body value for this request method");
+    if (body.size() > 0 &&
+        (method == HttpRequest::HTTP_REQUEST_GET ||
+         method == HttpRequest::HTTP_REQUEST_HEAD)) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "should not provide a body value for this request method");
+    }
+
+    if (options->Has(TRI_V8_SYMBOL("returnBodyOnError"))) {
+      returnBodyOnError = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("returnBodyOnError")));
+    }
   }
 
 
   // outfile
   string outfile;
-  if (argv.Length() == 4) {
+  if (argv.Length() >= 4) {
     if (argv[3]->IsString() || argv[3]->IsStringObject()) {
       outfile = TRI_ObjectToString(argv[3]);
     }
@@ -451,7 +477,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
   int numRedirects = 0;
 
-  while (numRedirects < 5) {
+  while (numRedirects < maxRedirects) {
     string endpoint;
     string relative;
 
@@ -501,7 +527,11 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     }
 
     // send the actual request
-    SimpleHttpResult* response = client.request(method, relative, 0, 0, headerFields);
+    SimpleHttpResult* response = client.request(method, 
+                                                relative, 
+                                                (body.size() > 0 ? body.c_str() : 0), 
+                                                body.size(), 
+                                                headerFields);
 
     int returnCode;
     string returnMessage;
@@ -550,7 +580,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       result->Set(v8::String::New("headers"), headers);
 
 
-      if (returnCode >= 200 && returnCode <= 299) {
+      if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
           if (outfile.size() > 0) {
             // save outfile

@@ -2,6 +2,8 @@
 /*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 
 var shellView = Backbone.View.extend({
+  resizing: false,
+
   el: '#content',
   events: {
     'click #editor-run'     : 'submitEditor',
@@ -16,18 +18,32 @@ var shellView = Backbone.View.extend({
     this.replShell();
     this.editor();
 
-    var windowHeight = $(window).height() - 200;
-    $('#shell_workspace').height(windowHeight);
-
     $("#shell_workspace").splitter({
       dock: true
     });
 
-    $("#shell_workspace").trigger("resize", [ 200 ]);
     $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
+    this.resize();
     $.gritter.removeAll();
 
+    // evil: the resize event is globally bound to window, but there is
+    // no elegant alternative... (is there?)
+    var self = this;
+    $(window).resize(function () { 
+      self.resize();
+    });
+
     return this;
+  },
+  resize: function () {
+    // prevent endless recursion
+    if (! this.resizing) {
+      this.resizing = true;
+      var windowHeight = $(window).height() - 200;
+      $('#shell_workspace').height(windowHeight);
+      $("#shell_workspace").trigger("resize", [ 200 ]);
+      this.resizing = false;
+    }
   },
   renderEditor: function () {
     var editor = ace.edit("editor");

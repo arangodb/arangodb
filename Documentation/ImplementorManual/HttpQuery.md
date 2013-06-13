@@ -12,8 +12,8 @@ Both functionalities do not actually execute the supplied AQL query, but only
 inspect it and return meta information about it.
 
 @anchor HttpExplainPost
-@copydetails JSF_POST_api_explain
+@copydetails JSF_post_api_explain
 
 @CLEARPAGE
 @anchor HttpQueryPost
-@copydetails JSF_POST_api_query
+@copydetails JSF_post_api_query

@@ -1,0 +1,38 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the query is valid, the server will respond with <em>HTTP 200</em> and return a list of the individual query execution steps in the <em>\"plan\"</em> attribute of the response. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object. Omitting bind variables if the query references any will result also result in an <em>HTTP 400</em> error. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "body",
+                            "description": "The query string needs to be passed in the attribute <em>query</em> of a JSON object as the body of the POST request. If the query references any bind  variables, these must also be passed in the attribute <em>bindVars</em>. "
+                        }
+                    ],
+                    "notes": "<br><br>To explain how an AQL query would be executed on the server, the query string  can be sent to the server via an HTTP POST request. The server will then validate the query and create an execution plan for it, but will not execute it. <br><br>The execution plan that is returned by the server can be used to estimate the probable performance of an AQL query. Though the actual performance will depend on many different factors, the execution plan normally can give some good hint on the amount of work the server needs to do in order to actually run the query.  <br><br>The top-level statements will appear in the result in the same order in which they have been used in the original query. Each result element has at most the  following attributes: - <em>id</em>: the row number of the top-level statement, starting at 1- <em>type</em>: the type of the top-level statement (e.g. <em>for</em>, <em>return</em> ...)- <em>loopLevel</em>: the nesting level of the top-level statement, starting at 1Depending on the type of top-level statement, there might be other attributes providing additional information, for example, if and which indexed will be used. Many top-level statements will provide an <em>expression</em> attribute that contains data about the expression they operate on. This is true for <em>FOR</em>, <em>FILTER</em>, <em>SORT</em>, <em>COLLECT</em>, and <em>RETURN</em> statements. The  <em>expression</em> attribute has the following sub-attributes: - <em>type</em>: the type of the expression. Some possible values are:  - <em>collection</em>: an iteration over documents from a collection. The      <em>value</em> attribute will then contain the collection name. The <em>extra</em>     attribute will contain information about if and which index is used when     accessing the documents from the collection. If no index is used, the      <em>accessType</em> sub-attribute of the <em>extra</em> attribute will have the     value <em>all</em>, otherwise it will be <em>index</em>.   - <em>list</em>: a list of dynamic values. The <em>value</em> attribute will contain the     list elements.   - <em>const list</em>: a list of constant values. The <em>value</em> attribute will contain the     list elements.   - <em>reference</em>: a reference to another variable. The <em>value</em> attribute     will contain the name of the variable that is referenced. <br><br>Please note that the structure of the explain result data might change in future versions of ArangoDB without further notice and without maintaining backwards compatibility.  <br><br>",
+                    "summary": "explains a query",
+                    "httpMethod": "POST",
+                    "examples": "Valid query: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/explain\n{ \"query\" : \"FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.name\", \"bindVars\": { \"id\" : 3 } }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"plan\" : [ \n    { \n      \"id\" : 1, \n      \"loopLevel\" : 1, \n      \"type\" : \"for\", \n      \"resultVariable\" : \"p\", \n      \"limit\" : true, \n      \"expression\" : { \n        \"type\" : \"collection\", \n        \"value\" : \"products\", \n        \"extra\" : { \n          \"accessType\" : \"all\" \n        } \n      } \n    }, \n    { \n      \"id\" : 2, \n      \"loopLevel\" : 1, \n      \"type\" : \"filter\", \n      \"expression\" : { \n        \"type\" : \"expression\", \n        \"value\" : \"p.id == 3\" \n      } \n    }, \n    { \n      \"id\" : 3, \n      \"loopLevel\" : 1, \n      \"type\" : \"return\", \n      \"expression\" : { \n        \"type\" : \"expression\", \n        \"value\" : \"p.name\" \n      } \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>Invalid query: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/explain\n{ \"query\" : \"FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 400, \n  \"errorNum\" : 1551, \n  \"errorMessage\" : \"no value specified for declared bind parameter 'id'\" \n}\n\n</code></pre><br>The data returned in the <em>plan</em> attribute of the result contains one element per AQL top-level statement (i.e. <em>FOR</em>, <em>RETURN</em>,  <em>FILTER</em> etc.). If the query optimiser removed some unnecessary statements, the result might also contain less elements than there were top-level statements in the AQL query. The following example shows a query with a non-sensible filter condition that the optimiser has removed so that there are less top-level statements: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/explain\n{ \"query\" : \"FOR i IN [ 1, 2, 3 ] FILTER 1 == 2 RETURN i\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"plan\" : [ \n    { \n      \"id\" : 1, \n      \"loopLevel\" : 0, \n      \"type\" : \"return (empty)\", \n      \"expression\" : { \n        \"type\" : \"const list\", \n        \"value\" : \"[  ]\" \n      } \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "explainsAQuery"
+                }
+            ],
+            "path": "/_api/explain"
+        }
+    ]
+}

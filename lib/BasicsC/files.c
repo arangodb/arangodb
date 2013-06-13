@@ -130,15 +130,16 @@ static void RemoveTrailingSeparator (char* path) {
 ///         -1 when the element was not found
 ////////////////////////////////////////////////////////////////////////////////
 
-static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
+static int LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
+  size_t i;
   int idx = -1;
-  int i;
 
   TRI_ReadLockReadWriteLock(&FileNamesLock);
 
   for (i = 0;  i < vector->_length;  i++) {
     if (TRI_EqualString(element, vector->_buffer[i])) {
-      idx = i;
+      // theoretically this might cap the value of i, but it is highly unlikely
+      idx = (int) i;
       break;
     }
   }
@@ -1079,7 +1080,7 @@ int TRI_VerifyLockFile (char const* filename) {
   TRI_CLOSE(fd);
 
   // file empty or pid too long
-  if (n == 0 || n == sizeof(buf)) {
+  if (n == 0 || n == sizeof(buffer)) {
     return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
 
@@ -1582,13 +1583,13 @@ char* TRI_HomeDirectory () {
 int TRI_Crc32File (char const* path, uint32_t* crc) {
   FILE* fin;
   void* buffer;
-  size_t bufferSize;
+  int bufferSize;
   int res;
 
   *crc = TRI_InitialCrc32();
 
   bufferSize = 4096;
-  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) bufferSize, false);
 
   if (buffer == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;

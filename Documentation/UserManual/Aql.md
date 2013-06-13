@@ -1277,6 +1277,10 @@ Example calls:
   - `minDepth`: Minimum path depths for vertices to be included. This can be used to
     include only vertices in the result that are found after a certain minimum depth.
     Defaults to 0. 
+  - `maxIterations`: Maximum number of iterations in each traversal. This number can be
+    set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
+    as many iterations as the `maxIterations` value, the traversal will abort with an
+    error. If `maxIterations` is not set, a server-defined value may be used.
   - `maxDepth`: Maximum path depth for sub-edges expansion. This can be used to 
     limit the depth of the traversal to a sensible amount. This should especially be used
     for big graphs to limit the traversal to some sensible amount, and for graphs 

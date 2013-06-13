@@ -1,5 +1,31 @@
 v1.4
-------
+----
+
+* changed the HTTP return code from 400 to 404 for some cases when there is a referral 
+  to a non-existing collection or document.
+
+* introduced error code 1909 `too many iterations` that is thrown when graph traversals
+  hit the `maxIterations` threshold.
+
+* optionally limit traversals to a certain number of iterations
+  the limitation can be achieved via the traversal API by setting the `maxIterations` 
+  attribute, and also via the AQL `TRAVERSAL` and `TRAVERSAL_TREE` functions by setting
+  the same attribute. If traversals are not limited by the end user, a server-defined
+  limit for `maxIterations` may be used to prevent server-side traversals from running
+  endlessly.
+
+* added graph traversal API at `/_api/traversal`
+
+* added "API" link in web interface, pointing to REST API generated with Swagger
+
+* moved "About" link in web interface into "links" menu
+
+* allow incremental access to the documents in a collection from out of AQL
+  this allows reading documents from a collection chunks when a full collection scan
+  is required. memory usage might be must lower in this case and queries might finish
+  earlier if there is an additional LIMIT statement
+
+* changed AQL COLLECT to use a stable sort, so any previous SORT order is preserved
 
 * issue #547: Javascript error in the web interface
 
@@ -16,6 +42,10 @@ v1.4
 
 v1.3.2 (2013-XX-XX)
 -------------------
+
+* fixed a locking issue in collection.truncate()
+
+* fixed value overflow in accumulated filesizes reported by collection.figures()
 
 * issue #545: AQL FILTER unnecessary (?) loop
 

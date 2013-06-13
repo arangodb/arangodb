@@ -126,7 +126,7 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(false);
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(vocbase, false);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
@@ -506,7 +506,14 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             }
 
             if (collection != 0) {
-              valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+              v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+
+              if (c.IsEmpty()) {
+                // TODO: raise exception here
+              }
+              else {
+                valuesObject->Set(v8::String::New(k.c_str()), c);
+              }
             }
           }
 
@@ -517,7 +524,14 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, v.c_str());
 
           if (collection != 0) {
-            valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+            
+            if (c.IsEmpty()) {
+              // TODO: raise exception here
+            }
+            else {
+              valuesObject->Set(v8::String::New(k.c_str()), c);
+            }
           }
 
           break;
@@ -529,7 +543,14 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             TRI_UInt64String(v.c_str()));
 
           if (collection != 0) {
-            valuesObject->Set(v8::String::New(k.c_str()), TRI_WrapCollection(collection));
+            v8::Handle<v8::Value> c = TRI_WrapCollection(collection);
+            
+            if (c.IsEmpty()) {
+              // TODO: raise exception here
+            }
+            else {
+              valuesObject->Set(v8::String::New(k.c_str()), c);
+            }
           }
 
           break;

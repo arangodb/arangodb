@@ -1200,7 +1200,8 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
 /// @brief opens an exiting database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name,
+        TRI_vocbase_defaults_t* defaults) {
   TRI_vocbase_t* vocbase;
   char* lockFile;
   bool iterateMarkers;
@@ -1261,6 +1262,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
+  vocbase->_name = TRI_DuplicateString(name);
+  vocbase->_isSystem = false;
+  vocbase->_requireAuthentication = true;
   vocbase->_shutdownFilename = TRI_Concatenate2File(path, "SHUTDOWN");
 
   // init AQL functions
@@ -1394,6 +1398,16 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   TRI_InitThread(&(vocbase->_indexGC));
   TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
+  
+  if (defaults) {
+    vocbase->_removeOnDrop = defaults->removeOnDrop;
+    vocbase->_removeOnCompacted = defaults->removeOnCompacted;
+    vocbase->_defaultMaximalSize = defaults->defaultMaximalSize;
+    vocbase->_defaultWaitForSync = defaults->defaultWaitForSync;
+    vocbase->_forceSyncShapes = defaults->forceSyncShapes;
+    vocbase->_forceSyncProperties = defaults->forceSyncProperties;
+    vocbase->_requireAuthentication = defaults->requireAuthentication;    
+  }  
   
   // we are done
   return vocbase;
@@ -2132,11 +2146,6 @@ void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseVocBase () {
-  // TODO: these two fcalls can probably be removed because we're initialising
-  // BasicsC anyway
-  TRI_InitialiseHashes();
-  TRI_InitialiseRandom();
-
   TRI_GlobalInitStatementListAql();
 
   ServerIdentifier = TRI_UInt16Random();
@@ -2167,8 +2176,6 @@ void TRI_InitialiseVocBase () {
 void TRI_ShutdownVocBase () {
   TRI_DestroySpin(&TickLock);
 
-  TRI_ShutdownRandom();
-  TRI_ShutdownHashes();
   TRI_GlobalFreeStatementListAql();
 }
 

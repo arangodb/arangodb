@@ -52,7 +52,7 @@ var moduleExists = function(name) { return module.exists; };
 /// @brief routing cache
 ////////////////////////////////////////////////////////////////////////////////
 
-var RoutingCache;
+var RoutingCache = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all methods
@@ -1217,17 +1217,18 @@ function reloadRouting () {
   // .............................................................................
   // clear the routing cache
   // .............................................................................
-
-  RoutingCache = {};
-  RoutingCache.flat = {};
-  RoutingCache.routes = {};
-  RoutingCache.middleware = {};
+  
+  var routingCache = RoutingCache[arangodb.db._name()] = {};
+          
+  routingCache.flat = {};
+  routingCache.routes = {};
+  routingCache.middleware = {};
 
   for (i = 0;  i < ALL_METHODS.length;  ++i) {
     method = ALL_METHODS[i];
 
-    RoutingCache.routes[method] = {};
-    RoutingCache.middleware[method] = {};
+    routingCache.routes[method] = {};
+    routingCache.middleware[method] = {};
   }
 
   // .............................................................................
@@ -1334,7 +1335,11 @@ function reloadRouting () {
             }
           }
 
-          installRoute(RoutingCache[key], urlPrefix, modulePrefix, context, r[i]);
+          installRoute(RoutingCache[arangodb.db._name()][key], 
+                       urlPrefix, 
+                       modulePrefix, 
+                       context, 
+                       r[i]);
         }
       }
     }
@@ -1355,7 +1360,7 @@ function reloadRouting () {
         analyseRoute(route);
       }
       else {
-        installRoute(RoutingCache.routes, "", "", {}, route);
+        installRoute(routingCache.routes, "", "", {}, route);
       }
     }
     catch (err) {
@@ -1369,7 +1374,7 @@ function reloadRouting () {
   // compute the flat routes
   // .............................................................................
 
-  RoutingCache.flat = {};
+  routingCache.flat = {};
 
   for (i = 0;  i < ALL_METHODS.length;  ++i) {
     var a;
@@ -1377,10 +1382,10 @@ function reloadRouting () {
 
     method = ALL_METHODS[i];
 
-    a = flattenRouting(RoutingCache.routes[method], "", {}, 0, false);
-    b = flattenRouting(RoutingCache.middleware[method], "", {}, 0, false).reverse();
+    a = flattenRouting(routingCache.routes[method], "", {}, 0, false);
+    b = flattenRouting(routingCache.middleware[method], "", {}, 0, false).reverse();
 
-    RoutingCache.flat[method] = b.concat(a);
+    routingCache.flat[method] = b.concat(a);
   }
 }
 
@@ -1441,6 +1446,12 @@ function firstRouting (type, parts) {
   'use strict';
 
   var url = parts;
+  
+  if (undefined === RoutingCache[arangodb.db._name()]) {
+    reloadRouting();
+  }
+  
+  var routingCache = RoutingCache[arangodb.db._name()];
 
   if (typeof url === 'string') {
     parts = url.split("/");
@@ -1453,7 +1464,7 @@ function firstRouting (type, parts) {
     url = "/" + parts.join("/");
   }
 
-  if (! RoutingCache.flat || ! RoutingCache.flat.hasOwnProperty(type)) {
+  if (! routingCache.flat || ! routingCache.flat.hasOwnProperty(type)) {
     return {
       parts: parts,
       position: -1,
@@ -1463,7 +1474,7 @@ function firstRouting (type, parts) {
   }
 
   return nextRouting({
-    routing: RoutingCache.flat[type],
+    routing: routingCache.flat[type],
     parts: parts,
     position: -1,
     url: url,
@@ -1842,8 +1853,14 @@ function resultException (req, res, err, headers, verbose) {
     switch (num) {
       case arangodb.ERROR_INTERNAL: 
       case arangodb.ERROR_OUT_OF_MEMORY: 
+      case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS: 
         code = exports.HTTP_SERVER_ERROR; 
         break;
+      
+      case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND: 
+      case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND: 
+        code = exports.HTTP_NOT_FOUND;
+        break; 
 
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
@@ -2052,7 +2069,7 @@ exports.errorFunction            = errorFunction;
 exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
-exports.routingCache             = function() { return RoutingCache; };
+exports.routingCache             = function() { return RoutingCache[arangodb.db._name()]; };
 exports.addCookie                = addCookie;
 
 // standard HTTP responses
@@ -2127,9 +2144,6 @@ exports.HTTP_SERVER_ERROR        = 500;
 exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
-
-// load routing
-reloadRouting();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -44,7 +44,7 @@ window.graphView = Backbone.View.extend({
     }
 
     $("#background").remove();
-    var ui = new GraphViewerUI($("#content"), aaconfig, 940, 680, config);
+    var ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config);
   },
 
 

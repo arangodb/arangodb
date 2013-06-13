@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, CURSOR, DELETE_CURSOR */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query results cursor actions
 ///
@@ -133,6 +136,10 @@ var QUERY = internal.AQL_QUERY;
 /// is returned if the JSON representation is malformed or the query specification is
 /// missing from the request.
 ///
+/// @RESTRETURNCODE{404}
+/// The server will respond with `HTTP 404` in case a non-existing collection is
+/// accessed in the query.
+///
 /// @EXAMPLES
 ///
 /// Executes a query and extract the result in a single go:
@@ -146,7 +153,11 @@ var QUERY = internal.AQL_QUERY;
 ///     db.products.save({"hello2":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ "query" : "FOR p IN products LIMIT 2 RETURN p", "count" : true, "batchSize" : 2 }';
+///     var body = '{ ' +
+///       '"query" : "FOR p IN products LIMIT 2 RETURN p", ' +
+///       '"count" : true, ' + 
+///       '"batchSize" : 2 ' +
+///     '}';
 /// 
 ///     var response = logCurlRequest('POST', url, body);
 /// 
@@ -169,7 +180,11 @@ var QUERY = internal.AQL_QUERY;
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ "query" : "FOR p IN products LIMIT 5 RETURN p", "count" : true, "batchSize" : 2 }';
+///     var body = '{ ' +
+///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' +
+///       '"count" : true, ' +
+///       '"batchSize" : 2 ' +
+///     '}';
 /// 
 ///     var response = logCurlRequest('POST', url, body);
 /// 
@@ -196,18 +211,22 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
-///     var body = '{ "query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }';
+///     var body = '{ ' + 
+///       '"query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", ' +
+///       '"count" : true, ' + 
+///       '"batchSize" : 2 ' +
+///     '}';
 /// 
 ///     var response = logCurlRequest('POST', url, body);
 /// 
-///     assert(response.code === 400);
+///     assert(response.code === 404);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_cursor(req, res) {
-  if (req.suffix.length != 0) {
+function post_api_cursor(req, res) {
+  if (req.suffix.length !== 0) {
     actions.resultNotFound(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
     return;
   }
@@ -221,12 +240,12 @@ function POST_api_cursor(req, res) {
 
   var cursor;
 
-  if (json.query != undefined) {
+  if (json.query !== undefined) {
     cursor = QUERY(json.query, 
                    json.bindVars, 
-                   (json.count != undefined ? json.count : false),
+                   (json.count !== undefined ? json.count : false),
                    json.batchSize, 
-                   (json.batchSize == undefined));  
+                   (json.batchSize === undefined));  
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
@@ -240,7 +259,11 @@ function POST_api_cursor(req, res) {
   }
 
   // this might dispose or persist the cursor
-  actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });
+  actions.resultCursor(req, 
+                       res, 
+                       cursor, 
+                       actions.HTTP_CREATED, 
+                       { countRequested: json.count ? true : false });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +304,33 @@ function POST_api_cursor(req, res) {
 ///
 /// Valid request for next batch:
 ///
-/// @verbinclude api-cursor-create-for-limit-return-cont
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorForLimitReturnCont}
+///     var url = "/_api/cursor";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///     db.products.save({"hello3":"world1"});
+///     db.products.save({"hello4":"world1"});
+///     db.products.save({"hello5":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = '{ ' +
+///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' +
+///       '"count" : true, ' +
+///       '"batchSize" : 2 ' +
+///     '}';
+///     var response = logCurlRequest('POST', url, body);
+///
+///     var body = response.body.replace(/\\/g, '');
+///     var _id = JSON.parse(body).id;
+///     response = logCurlRequest('PUT', url + '/' + _id, '');
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Missing identifier
 ///
@@ -308,8 +357,8 @@ function POST_api_cursor(req, res) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_cursor (req, res) {
-  if (req.suffix.length != 1) {
+function put_api_cursor (req, res) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -367,11 +416,38 @@ function PUT_api_cursor (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-cursor-delete
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorDelete}
+///     var url = "/_api/cursor";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///     db.products.save({"hello3":"world1"});
+///     db.products.save({"hello4":"world1"});
+///     db.products.save({"hello5":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = '{ ' +
+///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' + 
+///       '"count" : true, ' +
+///       '"batchSize" : 2 ' +
+///     '}';
+///     var response = logCurlRequest('POST', url, body);
+///     logJsonResponse(response);
+///     var body = response.body.replace(/\\/g, '');
+///     var _id = JSON.parse(body).id;
+///     response = logCurlRequest('DELETE', url + '/' + _id);
+/// 
+///     assert(response.code === 202);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-function DELETE_api_cursor(req, res) {
-  if (req.suffix.length != 1) {
+function delete_api_cursor(req, res) {
+  if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -403,16 +479,16 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case (actions.POST) : 
-          POST_api_cursor(req, res); 
+        case actions.POST: 
+          post_api_cursor(req, res); 
           break;
 
-        case (actions.PUT) :  
-          PUT_api_cursor(req, res); 
+        case actions.PUT:  
+          put_api_cursor(req, res); 
           break;
 
-        case (actions.DELETE) :  
-          DELETE_api_cursor(req, res); 
+        case actions.DELETE:  
+          delete_api_cursor(req, res); 
           break;
 
         default:

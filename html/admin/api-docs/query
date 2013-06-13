@@ -1,0 +1,38 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the query is valid, the server will respond with <em>HTTP 200</em> and return the names of the bind parameters it found in the query (if any) in the <em>\"bindVars\"</em> attribute of the response. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object. ",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "query",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>To validate a query string without executing it, the query string can be passed to the server via an HTTP POST request. <br><br>These query string needs to be passed in the attribute <em>query</em> of a JSON object as the body of the POST request. <br><br>",
+                    "summary": "parses a query",
+                    "httpMethod": "POST",
+                    "examples": "Valid query: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/query\n{ \"query\" : \"FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"bindVars\" : [ \n    \"name\" \n  ], \n  \"collections\" : [ \n    \"products\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>Invalid query: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/query\n{ \"query\" : \"FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 400, \n  \"errorNum\" : 1501, \n  \"errorMessage\" : \"1:33 syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n'\" \n}\n\n</code></pre><br>",
+                    "nickname": "parsesAQuery"
+                }
+            ],
+            "path": "/_api/query"
+        }
+    ]
+}

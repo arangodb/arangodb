@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, module */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief graph api
@@ -32,6 +32,7 @@
 var actions = require("org/arangodb/actions");
 var graph = require("org/arangodb/graph");
 var internal = require("internal");
+var arangodb = require("org/arangodb");
 
 var ArangoError = require("org/arangodb").ArangoError;
 var QUERY = require("internal").AQL_QUERY;
@@ -137,7 +138,7 @@ function graph_by_request (req) {
 
   function matchError (req, res, doc, errorCode) {  
 
-    if (req.headers["if-none-match"] != undefined) {
+    if (req.headers["if-none-match"] !== undefined) {
       if (doc._rev === req.headers["if-none-match"]) {
         // error      
         res.responseCode = actions.HTTP_NOT_MODIFIED;
@@ -148,19 +149,29 @@ function graph_by_request (req) {
       }
     }  
     
-    if (req.headers["if-match"] != undefined) {
+    if (req.headers["if-match"] !== undefined) {
       if (doc._rev !== req.headers["if-match"]) {
         // error
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, errorCode, "wrong revision", {});
+        actions.resultError(req, 
+                            res, 
+                            actions.HTTP_PRECONDITION_FAILED, 
+                            errorCode, 
+                            "wrong revision", 
+                            {});
         return true;
       }
     }  
     
-    var rev = req.parameters['rev'];
-    if (rev != undefined) {
+    var rev = req.parameters.rev;
+    if (rev !== undefined) {
       if (doc._rev !== rev) {
         // error
-      actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, errorCode, "wrong revision", {});
+      actions.resultError(req, 
+                          res, 
+                          actions.HTTP_PRECONDITION_FAILED, 
+                          errorCode, 
+                          "wrong revision", 
+                          {});
       return true;
     }
   }  
@@ -221,7 +232,9 @@ function graph_by_request (req) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
 ///     var url = "/_api/graph/";
-///     var response = logCurlRequest('POST', url, {"_key" : "graph", "vertices" : "vertices", "edges" : "edges"});
+///     var response = logCurlRequest('POST', 
+///                                   url, 
+///                                   {_key : "graph", vertices : "vertices", edges : "edges"});
 /// 
 ///     assert(response.code === 201);
 ///
@@ -234,7 +247,7 @@ function graph_by_request (req) {
 
 function post_graph_graph (req, res) {
   try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
 
     if (json === undefined) {
       return;
@@ -245,7 +258,7 @@ function post_graph_graph (req, res) {
     var edges = json.edges;
 
     var waitForSync = false;
-    if (req.parameters['waitForSync']) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
 
@@ -256,8 +269,8 @@ function post_graph_graph (req, res) {
     }
 
     var headers = {
-      "Etag" :  g._properties._rev
-    }
+      "Etag" : g._properties._rev
+    };
 
     waitForSync = waitForSync || g._gdb.properties().waitForSync;
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
@@ -265,7 +278,7 @@ function post_graph_graph (req, res) {
     actions.resultOk(req, res, returnCode, { "graph" : g._properties }, headers );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, err);
   }
 }
 
@@ -337,18 +350,18 @@ function get_graph_graph (req, res) {
   try {
     var g = graph_by_request(req);
     
-    if (matchError(req, res, g._properties, actions.ERROR_GRAPH_INVALID_GRAPH)) {
+    if (matchError(req, res, g._properties, arangodb.ERROR_GRAPH_INVALID_GRAPH)) {
       return;
     } 
     
     var headers = {
-      "Etag" :  g._properties._rev
-    }
+      "Etag" : g._properties._rev
+    };
 
     actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties}, headers );
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
     return;
   }
 }
@@ -409,23 +422,25 @@ function get_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_graph (req, res) {
+  var g;
+
   try {
-    var g = graph_by_request(req);
+    g = graph_by_request(req);
     if (g === null || g === undefined) {
       throw "graph not found";
     }
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
     return;
   }
     
-  if (matchError(req, res, g._properties, actions.ERROR_GRAPH_INVALID_GRAPH)) {
+  if (matchError(req, res, g._properties, arangodb.ERROR_GRAPH_INVALID_GRAPH)) {
     return;
   } 
     
   var waitForSync = g._gdb.properties().waitForSync;
-  if (req.parameters['waitForSync']) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
     
@@ -513,7 +528,7 @@ function post_graph_vertex (req, res, g) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -524,15 +539,15 @@ function post_graph_vertex (req, res, g) {
     }
 
     var headers = {
-      "Etag" :  v._properties._rev
-    }
+      "Etag" : v._properties._rev
+    };
     
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
     
     actions.resultOk(req, res, returnCode, { "vertex" : v._properties }, headers );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
   }
 }
 
@@ -606,21 +621,23 @@ function post_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_vertex (req, res, g) {
+  var v;
+
   try {
-    var v = vertex_by_request(req, g);
+    v = vertex_by_request(req, g);
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
     return;
   }
  
-  if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
+  if (matchError(req, res, v._properties, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
     return;
   } 
  
   var headers = {
-    "Etag" :  v._properties._rev
-  }
+    "Etag" : v._properties._rev
+  };
     
   actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties}, headers);
 }
@@ -681,7 +698,7 @@ function get_graph_vertex (req, res, g) {
 ///     var url = "/_api/graph/graph/vertex/v1";
 ///     var response = logCurlRequest('DELETE', url);
 /// 
-///     //assert(response.code === 202);
+///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     db._drop("edges");
@@ -691,20 +708,22 @@ function get_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_vertex (req, res, g) {
+  var v;
+
   try {
-    var v = vertex_by_request(req, g);
+    v = vertex_by_request(req, g);
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
     return;
   }
     
-  if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
+  if (matchError(req, res, v._properties, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
     return;
   } 
 
   var waitForSync = g._vertices.properties().waitForSync;
-  if (req.parameters['waitForSync']) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
 
@@ -726,24 +745,27 @@ function update_graph_vertex (req, res, g, isPatch) {
     v = vertex_by_request(req, g);
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
     return;
   }
 
-  if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
+  if (matchError(req, res, v._properties, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
     return;
   } 
 
   try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
 
     if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "error in request body");
+      actions.resultBad(req, 
+                        res, 
+                        arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, 
+                        "error in request body");
       return;
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -751,8 +773,8 @@ function update_graph_vertex (req, res, g, isPatch) {
 
     var id2 = null;
     if (isPatch) {
-      var keepNull = req.parameters['keepNull'];
-      if (keepNull != undefined || keepNull == "false") {
+      var keepNull = req.parameters.keepNull;
+      if (keepNull !== undefined || keepNull === "false") {
         keepNull = false;
       }
       else {
@@ -768,15 +790,15 @@ function update_graph_vertex (req, res, g, isPatch) {
     var result = g._vertices.document(id2);
 
     var headers = {
-      "Etag" :  result._rev
-    }
+      "Etag" : result._rev
+    };
 
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
     
     actions.resultOk(req, res, returnCode, { "vertex" : result }, headers );
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+  catch (err2) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err2);
   }
 }
 
@@ -1102,7 +1124,7 @@ function post_graph_all_vertices (req, res, g) {
 
     var limit = "";
     if (json.limit !== undefined) {
-      limit = " LIMIT " + parseInt(json.limit);
+      limit = " LIMIT " + parseInt(json.limit, 10);
     }
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
@@ -1129,7 +1151,7 @@ function post_graph_all_vertices (req, res, g) {
                          { countRequested: json.count ? true : false });
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
   }
 }
 
@@ -1193,7 +1215,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     body += '[] }}';
 ///     var response = logCurlRequest('POST', url, body);
 /// 
-///     //assert(response.code === 201);
+///     assert(response.code === 201);
 ///     logJsonResponse(response);
 ///     db._drop("edges");
 ///     db._drop("vertices");
@@ -1249,7 +1271,7 @@ function post_graph_vertex_vertices (req, res, g) {
 
     var limit = "";
     if (json.limit !== undefined) {
-      limit = " LIMIT " + parseInt(json.limit);
+      limit = " LIMIT " + parseInt(json.limit, 10);
     }
 
     var direction = "any";
@@ -1294,7 +1316,7 @@ function post_graph_vertex_vertices (req, res, g) {
                          { countRequested: json.count ? true : false });
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
   }
 }
 
@@ -1362,15 +1384,18 @@ function post_graph_vertex_vertices (req, res, g) {
 
 function post_graph_edge (req, res, g) {
   try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
 
     if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "error in request body");
+      actions.resultBad(req, 
+                        res, 
+                        arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, 
+                        "error in request body");
       return;
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -1386,15 +1411,15 @@ function post_graph_edge (req, res, g) {
     }
 
     var headers = {
-      "Etag" :  e._properties._rev
-    }
+      "Etag" : e._properties._rev
+    };
     
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
 
     actions.resultOk(req, res, returnCode, { "edge" : e._properties }, headers);
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
   }
 }
 
@@ -1468,21 +1493,23 @@ function post_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_edge (req, res, g) {
-  try {
-    var e = edge_by_request(req, g);
+  var e;
 
-    if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
+  try {
+    e = edge_by_request(req, g);
+
+    if (matchError(req, res, e._properties, arangodb.ERROR_GRAPH_INVALID_EDGE)) {
       return;
     } 
  
     var headers = {
-      "Etag" :  e._properties._rev
-    }
+      "Etag" : e._properties._rev
+    };
  
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties}, headers);
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_EDGE, err);
   }
 }
 
@@ -1554,20 +1581,22 @@ function get_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_edge (req, res, g) {
+  var e;
+
   try {
-    var e = edge_by_request(req, g);
+    e = edge_by_request(req, g);
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_EDGE, err);
     return;
   }
 
-  if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
+  if (matchError(req, res, e._properties, arangodb.ERROR_GRAPH_INVALID_EDGE)) {
     return;
   } 
  
   var waitForSync = g._edges.properties().waitForSync;
-  if (req.parameters['waitForSync']) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
     
@@ -1589,24 +1618,27 @@ function update_graph_edge (req, res, g, isPatch) {
     e = edge_by_request(req, g);
   }
   catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+    actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
     return;
   }
 
-  if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
+  if (matchError(req, res, e._properties, arangodb.ERROR_GRAPH_INVALID_EDGE)) {
     return;
   } 
   
   try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
 
     if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "error in request body");
+      actions.resultBad(req, 
+                        res, 
+                        arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, 
+                        "error in request body");
       return;
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -1615,8 +1647,8 @@ function update_graph_edge (req, res, g, isPatch) {
     
     var id2 = null;
     if (isPatch) {
-      var keepNull = req.parameters['keepNull'];
-      if (keepNull != undefined || keepNull == "false") {
+      var keepNull = req.parameters.keepNull;
+      if (keepNull !== undefined || keepNull === "false") {
         keepNull = false;
       }
       else {
@@ -1632,15 +1664,15 @@ function update_graph_edge (req, res, g, isPatch) {
     var result = g._edges.document(id2);
 
     var headers = {
-      "Etag" :  result._rev
-    }
+      "Etag" : result._rev
+    };
  
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
     
     actions.resultOk(req, res, returnCode, { "edge" : result}, headers );
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+  catch (err2) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err2);
   }  
 }
 
@@ -1894,7 +1926,7 @@ function post_graph_all_edges (req, res, g) {
 
     var limit = "";
     if (json.limit !== undefined) {
-      limit = " LIMIT " + parseInt(json.limit);
+      limit = " LIMIT " + parseInt(json.limit, 10);
     }
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
@@ -1927,7 +1959,7 @@ function post_graph_all_edges (req, res, g) {
                          { countRequested: json.count ? true : false });
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
   }
 }
 
@@ -2023,7 +2055,7 @@ function post_graph_vertex_edges (req, res, g) {
 
     var limit = "";
     if (json.limit !== undefined) {
-      limit = " LIMIT " + parseInt(json.limit);
+      limit = " LIMIT " + parseInt(json.limit, 10);
     }
 
     var direction = "any";
@@ -2067,7 +2099,7 @@ function post_graph_vertex_edges (req, res, g) {
                          { countRequested: json.count ? true : false });
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
   }
 }
 
@@ -2107,12 +2139,14 @@ function post_graph (req, res) {
     post_graph_graph(req, res);
   }
   else if (req.suffix.length > 1) {
+    var g;
+
     // POST /_api/graph/<key>/...
     try {
-      var g = graph_by_request(req);
+      g = graph_by_request(req);
     }
     catch (err) {
-      actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+      actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
       return;
     }
 
@@ -2157,12 +2191,14 @@ function get_graph (req, res) {
     get_graph_graph(req, res);
   }
   else {
+    var g;
+
     // GET /_api/graph/<key>/...
     try {
-      var g = graph_by_request(req);
+      g = graph_by_request(req);
     }
     catch (err) {
-      actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+      actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
       return;
     }
 
@@ -2191,12 +2227,14 @@ function put_graph (req, res) {
     actions.resultUnsupported(req, res);
   }
   else {
+    var g;
+
     // PUT /_api/graph/<key>/...
     try {
-      var g = graph_by_request(req);
+      g = graph_by_request(req);
     }
     catch (err) {
-      actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+      actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
       return;
     }
 
@@ -2225,12 +2263,14 @@ function patch_graph (req, res) {
     actions.resultUnsupported(req, res);
   }
   else {
+    var g;
+
     // PATCH /_api/graph/<key>/...
     try {
-      var g = graph_by_request(req);
+      g = graph_by_request(req);
     }
     catch (err) {
-      actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+      actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
       return;
     }
 
@@ -2263,12 +2303,14 @@ function delete_graph (req, res) {
     delete_graph_graph(req, res);
   }
   else {
+    var g;
+
     // DELETE /_api/graph/<key>/...
     try {
-      var g = graph_by_request(req);
+      g = graph_by_request(req);
     }
     catch (err) {
-      actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+      actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
       return;
     }
 
