@@ -385,6 +385,9 @@
     <ClInclude Include="..\..\lib\BasicsC\tri-zip.h">
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\debugging.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">
@@ -649,6 +652,9 @@
       <Filter>BasicsCSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\tri-zip.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\debugging.c">
       <Filter>BasicsCSource</Filter>
     </ClCompile>
   </ItemGroup>

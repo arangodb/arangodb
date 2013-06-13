@@ -1264,6 +1264,7 @@ static int UseCollections (TRI_transaction_t* const trx,
   // process collections in forward order
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection;
+    bool shouldLock;
 
     trxCollection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
 
@@ -1273,20 +1274,19 @@ static int UseCollections (TRI_transaction_t* const trx,
     }
       
     if (trxCollection->_collection == NULL) {
+      // open the collection
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
+        // use and usage-lock
         LOG_TRX(trx, nestingLevel, "using collection %llu", (unsigned long long) trxCollection->_cid);
         trxCollection->_collection = TRI_UseCollectionByIdVocBase(trx->_context->_vocbase, trxCollection->_cid);
       }
       else {
+        // use without usage-lock (lock already set externally)
         trxCollection->_collection = TRI_LookupCollectionByIdVocBase(trx->_context->_vocbase, trxCollection->_cid);
       }
 
-      if (trxCollection->_collection == NULL) {
-        // something went wrong
-        return TRI_errno();
-      }
-
-      if (trxCollection->_collection->_collection == NULL) {
+      if (trxCollection->_collection == NULL ||
+          trxCollection->_collection->_collection == NULL) {
         // something went wrong
         return TRI_errno();
       }
@@ -1298,8 +1298,19 @@ static int UseCollections (TRI_transaction_t* const trx,
     assert(trxCollection->_collection != NULL);
     assert(trxCollection->_collection->_collection != NULL);
     
-    if (! trxCollection->_locked &&
-        ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0)) {
+    if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
+      // read-lock the compaction lock
+      TRI_ReadLockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+    }
+        
+    shouldLock = ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0);
+    if (! shouldLock) {
+      shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) && 
+                   ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) == 0);
+    }
+    
+    if (shouldLock && ! trxCollection->_locked) {
+      // r/w lock the collection
       int res = LockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1332,14 +1343,19 @@ static int ReleaseCollections (TRI_transaction_t* const trx,
 
     if (trxCollection->_locked && 
         (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
-      // unlock our own locks
+      // unlock our own r/w locks
       UnlockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
+    }
+    
+    if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
+      // read-unlock the compaction lock
+      TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
     }
 
     // the top level transaction releases all collections
     if (nestingLevel == 0 && trxCollection->_collection != NULL) {
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
-        // unuse collection
+        // unuse collection, remove usage-lock
         LOG_TRX(trx, nestingLevel, "unusing collection %llu", (unsigned long long) trxCollection->_cid);
   
         TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, trxCollection->_collection);

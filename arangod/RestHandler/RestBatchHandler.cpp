@@ -175,7 +175,7 @@ Handler::status_e RestBatchHandler::execute() {
 
     // set up request object for the part
     LOGGER_TRACE("part header is " << string(headerStart, headerLength));
-    HttpRequest* request = new HttpRequest(headerStart, headerLength);
+    HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength);
 
     if (bodyLength > 0) {
       LOGGER_TRACE("part body is " << string(bodyStart, bodyLength));

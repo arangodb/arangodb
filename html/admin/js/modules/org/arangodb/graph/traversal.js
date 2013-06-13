@@ -31,6 +31,7 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 
 var graph = require("org/arangodb/graph");
 var arangodb = require("org/arangodb");
+var ArangoError = arangodb.ArangoError;
 
 var db = arangodb.db;
 
@@ -661,6 +662,7 @@ function breadthFirstSearch () {
     },
 
     run: function (config, result, startVertex) {
+      var maxIterations = config.maxIterations, visitCounter = 0;
       var toVisit = [ { edge: null, vertex: startVertex, parentIndex: -1 } ];
       var visited = { edges: { }, vertices: { } };
 
@@ -674,6 +676,13 @@ function breadthFirstSearch () {
         var vertex  = current.vertex;
         var edge    = current.edge;
         var path;
+        
+        if (visitCounter++ > maxIterations) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
+          err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
+          throw err;
+        }
 
         if (current.visit === null || current.visit === undefined) {
           current.visit = false;
@@ -757,12 +766,20 @@ function depthFirstSearch () {
     },
 
     run: function (config, result, startVertex) {
+      var maxIterations = config.maxIterations, visitCounter = 0;
       var toVisit = [ { edge: null, vertex: startVertex, visit: null } ];
       var path    = { edges: [ ], vertices: [ ] };
       var visited = { edges: { }, vertices: { } };
       var reverse = checkReverse(config);
 
       while (toVisit.length > 0) {
+        if (visitCounter++ > maxIterations) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
+          err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
+          throw err;
+        }
+
         // peek at the top of the stack
         var current = toVisit[toVisit.length - 1];
         var vertex  = current.vertex;
@@ -866,57 +883,155 @@ ArangoTraverser = function (config) {
     strategy: ArangoTraverser.DEPTH_FIRST,
     uniqueness: {
       vertices: ArangoTraverser.UNIQUE_NONE,
-      edges: ArangoTraverser.UNIQUE_NONE
+      edges: ArangoTraverser.UNIQUE_PATH
     },
     visitor: trackingVisitor,
     filter: visitAllFilter,
     expander: outboundExpander,
-    datasource: null
+    datasource: null,
+    maxIterations: 10000,
+    minDepth: 0,
+    maxDepth: 256
   }, d;
 
+  var err;
+
   if (typeof config !== "object") {
-    throw "invalid configuration";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message;
+    throw err;
   }
 
   // apply defaults
   for (d in defaults) {
     if (defaults.hasOwnProperty(d)) {
-      if (! config.hasOwnProperty(d)) {
+      if (! config.hasOwnProperty(d) || config[d] === undefined) {
         config[d] = defaults[d];
       }
     }
   }
 
-  if (typeof config.visitor !== "function") {
-    throw "invalid visitor";
-  }
-  
-  if (Array.isArray(config.filter)) {
-    config.filter.forEach( function (f) {
-      if (typeof f !== "function") {
-        throw "invalid filter";
+  function validate (value, map, param) {
+    var m;
+
+    if (value === null || value === undefined) {
+      // use first key from map
+      for (m in map) {
+        if (map.hasOwnProperty(m)) {
+          value = m;
+          break;
+        }
       }
-    });
+    }
+    if (typeof value === 'string') {
+      value = value.toLowerCase().replace(/-/, "");
+      if (map[value] !== null) {
+        return map[value];
+      }
+    }
+    for (m in map) {
+      if (map.hasOwnProperty(m)) {
+        if (map[m] === value) {
+          return value;
+        }
+      }
+    }
 
-    var innerFilters = config.filter.slice();
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "invalid value for " + param;
+    throw err;
+  }
+    
+  config.uniqueness = {
+    vertices: validate(config.uniqueness && config.uniqueness.vertices, {
+      none:   ArangoTraverser.UNIQUE_NONE,
+      global: ArangoTraverser.UNIQUE_GLOBAL,
+      path:   ArangoTraverser.UNIQUE_PATH
+    }, "uniqueness.vertices"),
+    edges: validate(config.uniqueness && config.uniqueness.edges, {
+      path:   ArangoTraverser.UNIQUE_PATH,
+      none:   ArangoTraverser.UNIQUE_NONE,
+      global: ArangoTraverser.UNIQUE_GLOBAL
+    }, "uniqueness.edges")
+  };
+  
+  config.strategy = validate(config.strategy, {
+    depthfirst: ArangoTraverser.DEPTH_FIRST,
+    breadthfirst: ArangoTraverser.BREADTH_FIRST
+  }, "strategy");
 
-    var combinedFilter = function (config, vertex, path) {
-      return combineFilters(innerFilters, config, vertex, path);
-    };
+  config.order = validate(config.order, {
+    preorder: ArangoTraverser.PRE_ORDER,
+    postorder: ArangoTraverser.POST_ORDER
+  }, "order");
 
-    config.filter = combinedFilter;
+  config.itemOrder = validate(config.itemOrder, {
+    forward: ArangoTraverser.FORWARD,
+    backward: ArangoTraverser.BACKWARD
+  }, "itemOrder");
+
+
+  if (typeof config.visitor !== "function") {
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "invalid visitor function";
+    throw err;
   }
   
-  if (typeof config.filter !== "function") {
-    throw "invalid filter";
+  // prepare an array of filters
+  var filters = [ ];
+  if (config.minDepth !== undefined && config.minDepth >= 0) {
+    filters.push(minDepthFilter);
+  }
+  if (config.maxDepth !== undefined && config.maxDepth > 0) {
+    filters.push(maxDepthFilter);
+  }
+
+  if (! Array.isArray(config.filter)) {
+    config.filter = [ config.filter ];
+  }
+
+  config.filter.forEach( function (f) {
+    if (typeof f !== "function") {
+      err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+      err.errorMessage = "invalid filter function";
+      throw err;
+    }
+
+    filters.push(f);
+  });
+
+  if (filters.length === 0) {
+    filters.push(visitAllFilter);
+  }
+
+  config.filter = function (config, vertex, path) {
+    return combineFilters(filters, config, vertex, path);
+  };
+
+  if (typeof config.expander !== "function") {
+    config.expander = validate(config.expander, {
+      outbound: outboundExpander,
+      inbound: inboundExpander,
+      any: anyExpander
+    }, "expander");
   }
 
   if (typeof config.expander !== "function") {
-    throw "invalid expander";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "invalid expander function";
+    throw err;
   }
 
   if (typeof config.datasource !== "object") {
-    throw "invalid datasource";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "invalid datasource";
+    throw err;
   }
 
   this.config = config;

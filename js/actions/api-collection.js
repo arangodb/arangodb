@@ -98,6 +98,9 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// @RESTHEADER{POST /_api/collection,creates a collection}
 ///
+/// @RESTBODYPARAM{body,json,required}
+/// the body with name, options of a collection.
+///
 /// @RESTDESCRIPTION
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
@@ -153,9 +156,34 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-create-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
+///     var url = "/_api/collection";
+///     var body = '{ "name": "testCollectionBasics" }';
 ///
-/// @verbinclude api-collection-create-keyopt
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     body = '{ "name": "testCollectionEdges", "type" : 3 }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateKeyopt}
+///     var url = "/_api/collection";
+///     var body = '{ "name": "testCollectionUsers", "keyOptions" : { "type" : "autoincrement", "increment" : 5, "allowUserKeys" : true }}';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
@@ -261,7 +289,15 @@ function post_api_collection (req, res) {
 ///
 /// Return information about all collections:
 ///
-/// @verbinclude api-collection-all-collections
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetAllCollections}
+///     var url = "/_api/collection";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collections (req, res) {
@@ -369,12 +405,34 @@ function get_api_collections (req, res) {
 ///
 /// Using an identifier:
 ///
-/// @verbinclude api-collection-get-collection-identifier
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionIdentifier}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id + "/properties";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using a name:
 ///
-/// @verbinclude api-collection-get-collection-name
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionName}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/products/properties";
 ///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////
@@ -405,8 +463,22 @@ function get_api_collections (req, res) {
 ///
 /// Using an identifier and requesting the number of documents:
 ///
-/// @verbinclude api-collection-get-collection-count
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionCount}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     for(var i=0;i<100;i++) {
+///        coll.save({"count" :  i });
+///     }
+///     var url = "/_api/collection/"+ coll._id + "/count";
 ///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////
@@ -466,7 +538,19 @@ function get_api_collections (req, res) {
 ///
 /// Using an identifier and requesting the figures of the collection:
 ///
-/// @verbinclude api-collection-get-collection-figures
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id + "/figures";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -591,13 +675,13 @@ function get_api_collection (req, res) {
     }
 
     else {
-      actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND,
+      actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
                              "expecting one of the resources 'count',"
                              +" 'figures', 'properties', 'parameter'");
     }
   }
   else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<collection-name>/<method>");
   }
 }
@@ -649,7 +733,19 @@ function get_api_collection (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-identifier-load
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierLoad}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id + "/load";
+///
+///     var response = logCurlRequest('PUT', url, '');
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_load (req, res, collection) {
@@ -708,7 +804,19 @@ function put_api_collection_load (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-identifier-unload
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierUnload}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id + "/unload";
+///
+///     var response = logCurlRequest('PUT', url, '');
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_unload (req, res, collection) {
@@ -738,7 +846,19 @@ function put_api_collection_unload (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-identifier-truncate
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierTruncate}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id + "/truncate";
+///
+///     var response = logCurlRequest('PUT', url, '');
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_truncate (req, res, collection) {
@@ -794,7 +914,19 @@ function put_api_collection_truncate (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-identifier-properties-sync
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierPropertiesSync}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id + "/properties";
+///
+///     var response = logCurlRequest('PUT', url, {"waitForSync" : true });
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_properties (req, res, collection) {
@@ -844,7 +976,17 @@ function put_api_collection_properties (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-collection-identifier-rename
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
+///     var cn = "products1";
+///     var coll = db._create(cn);
+///     var url = "/_api/collection/"+ coll._id + "/rename";
+///
+///     var response = logCurlRequest('PUT', url, { "name": "newname" });
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_rename (req, res, collection) {
@@ -880,7 +1022,7 @@ function put_api_collection_rename (req, res, collection) {
 
 function put_api_collection (req, res) {
   if (req.suffix.length !== 2) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expected PUT /" + API + "/<collection-name>/<action>");
     return;
   }
@@ -949,16 +1091,41 @@ function put_api_collection (req, res) {
 ///
 /// Using an identifier:
 ///
-/// @verbinclude api-collection-delete-collection-identifier
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionDeleteCollectionIdentifier}
+///     var cn = "products1";
+///     var coll = db._create(cn, { waitForSync: true });
+///     var url = "/_api/collection/"+ coll._id;
+///
+///     var response = logCurlRequest('DELETE', url);
+///     /* we must delete the collection from db, as we're bypassing db._drop() */
+///     db[cn] = undefined;
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using a name:
 ///
-/// @verbinclude api-collection-delete-collection-name
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionDeleteCollectionName}
+///     var cn = "products1";
+///     db._drop(cn);
+///     db._create(cn);
+///     var url = "/_api/collection/products1";
+///
+///     var response = logCurlRequest('DELETE', url);
+///     /* we must delete the collection from db, as we're bypassing db._drop() */
+///     db[cn] = undefined;
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_collection (req, res) {
   if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expected DELETE /" + API + "/<collection-name>");
   }
   else {

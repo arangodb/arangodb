@@ -158,6 +158,7 @@
     <ClInclude Include="..\..\lib\BasicsC\common.h" />
     <ClInclude Include="..\..\lib\BasicsC\conversions.h" />
     <ClInclude Include="..\..\lib\BasicsC\csv.h" />
+    <ClInclude Include="..\..\lib\BasicsC\debugging.h" />
     <ClInclude Include="..\..\lib\BasicsC\error.h" />
     <ClInclude Include="..\..\lib\BasicsC\files.h" />
     <ClInclude Include="..\..\lib\BasicsC\hashes.h" />
@@ -265,6 +266,7 @@
     <ClCompile Include="..\..\lib\BasicsC\associative.c" />
     <ClCompile Include="..\..\lib\BasicsC\conversions.c" />
     <ClCompile Include="..\..\lib\BasicsC\csv.c" />
+    <ClCompile Include="..\..\lib\BasicsC\debugging.c" />
     <ClCompile Include="..\..\lib\BasicsC\error.c" />
     <ClCompile Include="..\..\lib\BasicsC\files.c" />
     <ClCompile Include="..\..\lib\BasicsC\hashes.c" />

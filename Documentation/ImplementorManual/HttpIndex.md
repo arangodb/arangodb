@@ -44,16 +44,16 @@ Working with Indexes using HTTP {#HttpIndexHttp}
 ================================================
 
 @anchor HttpIndexRead
-@copydetails JSF_GET_api_index
+@copydetails JSF_get_api_index
 
 @CLEARPAGE
 @anchor HttpIndexCreate
-@copydetails JSF_POST_api_index
+@copydetails JSF_post_api_index
 
 @CLEARPAGE
 @anchor HttpIndexDelete
-@copydetails JSF_DELETE_api_index
+@copydetails JSF_delete_api_index
 
 @CLEARPAGE
 @anchor HttpIndexReadAll
-@copydetails JSF_GET_api_indexes
+@copydetails JSF_get_api_indexes

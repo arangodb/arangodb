@@ -46,6 +46,7 @@ DOXYGEN = \
 	Doxygen/js/actions/api-simple.c \
 	Doxygen/js/actions/api-system.c \
 	Doxygen/js/actions/api-transaction.c \
+	Doxygen/js/actions/api-traversal.c \
 	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
@@ -102,6 +103,7 @@ WIKI = \
 	HttpSimple \
 	HttpSystem \
 	HttpTransactions \
+	HttpTraversals \
 	HttpUser \
 	ImpManual \
 	ImpManualBasics \
@@ -351,6 +353,11 @@ swagger:
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
 	
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-transaction.js  > @srcdir@/html/admin/api-docs/transaction
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-traversal.js  > @srcdir@/html/admin/api-docs/traversal
 
 ################################################################################
 ### @brief generate examples
@@ -370,14 +377,24 @@ examples:
 		@srcdir@/arangod/RestHandler/*.cpp \
 		> /tmp/arangosh.examples
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
 
 	@builddir@/bin/arangosh \
 		-s \
 		-c @srcdir@/etc/relative/arangosh.conf \
 		--server.password "" \
-		--server.endpoint unix://$(VOCDIR)/arango.sock \
+		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
 		--javascript.execute /tmp/arangosh.examples
+
+################################################################################
+### @brief generate complete documentation including examples
+################################################################################
+
+.PHONY: documentation-complete
+
+documentation-complete: examples doxygen swagger
+
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

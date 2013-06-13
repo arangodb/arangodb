@@ -1,0 +1,385 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The collection name. "
+                        }
+                    ],
+                    "notes": "<br><br>Returns an object with an attribute <em>indexes</em> containing a list of all index descriptions for the given collection. The same information is also available in the <em>identifiers</em> as hash map with the index handle as keys. <br><br>",
+                    "summary": "reads all indexes of a collection",
+                    "httpMethod": "GET",
+                    "examples": "Return information about all indexes: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/index?collection=products\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"indexes\" : [ \n    { \n      \"id\" : \"products/0\", \n      \"type\" : \"primary\", \n      \"unique\" : true, \n      \"fields\" : [ \n        \"_id\" \n      ] \n    } \n  ], \n  \"identifiers\" : { \n    \"products/0\" : { \n      \"id\" : \"products/0\", \n      \"type\" : \"primary\", \n      \"unique\" : true, \n      \"fields\" : [ \n        \"_id\" \n      ] \n    } \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "readsAllIndexesOfACollection"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not exist, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "index-handle",
+                            "description": "The index-handle. "
+                        }
+                    ],
+                    "notes": "<br><br>The result is an objects describing the index. It has at least the following attributes: <br><br>- <em>id</em>: The identifier of the index.<br><br>- <em>type</em>: The type of the collection.<br><br>All other attributes are type-dependent. <br><br>",
+                    "summary": "reads an index",
+                    "httpMethod": "GET",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/index/products/0\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/0\", \n  \"type\" : \"primary\", \n  \"unique\" : true, \n  \"fields\" : [ \n    \"_id\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "readsAnIndex"
+                }
+            ],
+            "path": "/_api/index/{index-handle}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "cap-constraint",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a cap constraint (@ref IndexCapIntro) for the collection <em>collection-name</em>, if it does not already exist. Expects an object containing the index details. <br><br>- <em>type</em>: must be equal to <em>\"cap\"</em>.<br><br>- <em>size</em>: The maximal number of documents for the collection.<br><br>Note that the cap constraint does not index particular attributes of the documents in a collection, but limits the number of documents in the collection to a maximum value. The cap constraint thus does not support attribute names specified in the <em>fields</em> attribute nor uniqueness of any kind via the <em>unique</em> attribute. <br><br>",
+                    "summary": "creates a cap constraint",
+                    "httpMethod": "POST",
+                    "examples": "Creating a cap collection <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\": \"cap\", \"size\" : 10 }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/230501596\", \n  \"type\" : \"cap\", \n  \"unique\" : false, \n  \"size\" : 10, \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "createsACapConstraint"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned.   ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "index-details",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a geo-spatial index in the collection <em>collection-name</em>, if it does not already exist. Expects an object containing the index details. <br><br>- <em>type</em>: must be equal to <em>\"geo\"</em>.<br><br>- <em>fields</em>: A list with one or two attribute paths. <br><br>  If it is a list with one attribute path <em>location</em>, then a geo-spatial   index on all documents is created using <em>location</em> as path to the   coordinates. The value of the attribute must be a list with at least two   double values. The list must contain the latitude (first value) and the   longitude (second value). All documents, which do not have the attribute   path or with value that are not suitable, are ignored. <br><br>  If it is a list with two attribute paths <em>latitude</em> and <em>longitude</em>,   then a geo-spatial index on all documents is created using <em>latitude</em>   and <em>longitude</em> as paths the latitude and the longitude. The value of   the attribute <em>latitude</em> and of the attribute <em>longitude</em> must a   double. All documents, which do not have the attribute paths or which   values are not suitable, are ignored. <br><br>- <em>geoJson</em>: If a geo-spatial index on a <em>location</em> is constructed  and <em>geoJson</em> is <em>true</em>, then the order within the list is longitude   followed by latitude. This corresponds to the format described in    http://geojson.org/geojson-spec.html#positions <br><br>- <em>constraint</em>: If <em>constraint</em> is <em>true</em>, then a geo-spatial  constraint is created. The constraint is a non-unique variant of the index.    Note that it is also possible to set the <em>unique</em> attribute instead of    the <em>constraint</em> attribute. <br><br>- <em>ignoreNull</em>: If a geo-spatial constraint is created and  <em>ignoreNull</em> is true, then documents with a null in <em>location</em> or at   least one null in <em>latitude</em> or <em>longitude</em> are ignored. <br><br>",
+                    "summary": "creates a geo-spatial index",
+                    "httpMethod": "POST",
+                    "examples": "Creating a geo index with a location attribute: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\": \"geo\", \"fields\" : [ \"b\" ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/234040540\", \n  \"type\" : \"geo1\", \n  \"unique\" : false, \n  \"geoJson\" : false, \n  \"constraint\" : false, \n  \"fields\" : [ \n    \"b\" \n  ], \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Creating a geo index with latitude and longitude attributes: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\": \"geo\", \"fields\" : [ \"e\", \"f\" ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/81997020\", \n  \"type\" : \"geo2\", \n  \"unique\" : false, \n  \"constraint\" : false, \n  \"fields\" : [ \n    \"e\", \n    \"f\" \n  ], \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "createsAGeo-spatialIndex"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned.   ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "If the collection already contains documents and you try to create a unique hash index in such a way that there are documents violating the uniqueness, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection-name",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "index-details",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a hash index for the collection <em>collection-name</em>, if it does not already exist. The call expects an object containing the index details. <br><br>- <em>type</em>: must be equal to <em>\"hash\"</em>.<br><br>- <em>fields</em>: A list of attribute paths.<br><br>- <em>unique</em>: If <em>true</em>, then create a unique index.<br><br>",
+                    "summary": "creates a hash index",
+                    "httpMethod": "POST",
+                    "examples": "Creating an unique constraint: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\": \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/242560220\", \n  \"type\" : \"hash\", \n  \"unique\" : true, \n  \"fields\" : [ \n    \"a\", \n    \"b\" \n  ], \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>Creating a hash index: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\": \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/247082204\", \n  \"type\" : \"hash\", \n  \"unique\" : false, \n  \"fields\" : [ \n    \"a\", \n    \"b\" \n  ], \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "createsAHashIndex"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "If the collection already contains documents and you try to create a unique skip-list index in such a way that there are documents violating the uniqueness, then a <em>HTTP 400</em> is returned. ",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection-name",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "index-details",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a skip-list index for the collection <em>collection-name</em>, if it does not already exist. The call expects an object containing the index details. <br><br>- <em>type</em>: must be equal to <em>\"skiplist\"</em>.<br><br>- <em>fields</em>: A list of attribute paths.<br><br>- <em>unique</em>: If <em>true</em>, then create a unique index.<br><br>",
+                    "summary": "creates a skip list",
+                    "httpMethod": "POST",
+                    "examples": "Creating a skiplist: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\": \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/132525276\", \n  \"type\" : \"skiplist\", \n  \"unique\" : false, \n  \"fields\" : [ \n    \"a\", \n    \"b\" \n  ], \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "createsASkipList"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection-name",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "index-details",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a fulltext index for the collection <em>collection-name</em>, if it does not already exist. The call expects an object containing the index details. <br><br>- <em>type</em>: must be equal to <em>\"fulltext\"</em>.<br><br>- <em>fields</em>: A list of attribute names. Currently, the list is limited   to exactly one attribute, so the value of <em>fields</em> should look like   this for example: <em>[ \"text\" ]</em>. <br><br>- <em>minLength</em>: Minimum character length of words to index. Will default  to a server-defined value if unspecified. It is thus recommended to set   this value explicitly when creating the index. <br><br>",
+                    "summary": "creates a fulltext index",
+                    "httpMethod": "POST",
+                    "examples": "Creating a fulltext index: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\" : \"fulltext\", \"fields\" : [ \"text\" ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/113519836\", \n  \"type\" : \"fulltext\", \n  \"unique\" : false, \n  \"minLength\" : 2, \n  \"fields\" : [ \n    \"text\" \n  ], \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "createsAFulltextIndex"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned. ",
+                            "code": "201"
+                        },
+                        {
+                            "reason": "If the <em>collection-name</em> is unknown, then a <em>HTTP 404</em> is returned. ",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection-name",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "index-details",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a bitarray index for the collection <em>collection-name</em>, if it does not already exist. The call expects an object containing the index details. <br><br>- <em>type</em>: must be equal to <em>\"bitarray\"</em>.<br><br>- <em>fields</em>: A list of pairs. A pair consists of an attribute path followed by a list of values.<br><br>- <em>unique</em>: Must always be set to <em>false</em>.<br><br>",
+                    "summary": "creates a bitarray index",
+                    "httpMethod": "POST",
+                    "examples": "Creating a bitarray index: <br><br><pre><code class=\"json\" >unix> curl -X POST --data @- --dump - http://localhost:8529/_api/index?collection=products\n{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [ \"x\", [0,1,[]], \"y\", [\"a\",\"b\",[]] ] }\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/152251612\", \n  \"type\" : \"bitarray\", \n  \"unique\" : false, \n  \"fields\" : [ \n    [ \n      \"x\", \n      [ \n        0, \n        1, \n        [ ] \n      ] \n    ], \n    [ \n      \"y\", \n      [ \n        \"a\", \n        \"b\", \n        [ ] \n      ] \n    ] \n  ], \n  \"undefined\" : false, \n  \"isNewlyCreated\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n\n</code></pre><br>",
+                    "nickname": "createsABitarrayIndex"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index already exists, then a <em>HTTP 200</em> is returned. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "If the index does not already exist and could be created, then a <em>HTTP 201</em> is returned. ",
+                            "code": "201"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "collection-name",
+                            "description": "The collection name. "
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "index-details",
+                            "description": ""
+                        }
+                    ],
+                    "notes": "<br><br>Creates a new index in the collection <em>collection-name</em>. Expects an object containing the index details. <br><br>The type of the index to be created must specified in the <em>type</em> attribute of the index details. Depending on the index type, additional other attributes may need to specified in the request in order to create the index. <br><br>See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp,  @ref IndexFulltextHttp, and @ref IndexSkiplistHttp for details.  <br><br>Most indexes (a notable exception being the cap constraint) require the list of attributes to be indexed in the <em>fields</em> attribute of the index details. Depending on the index type, a single attribute or multiple  attributes may be indexed. <br><br>Some indexes can be created as unique or non-unique variants. Uniqueness can be controlled for most indexes by specifying the <em>unique</em> in the index details. Setting it to <em>true</em> will create a unique index.  Setting it to <em>false</em> or omitting the <em>unique</em> attribute will create a non-unique index. <br><br>Note that the following index types do not support uniqueness, and using  the <em>unique</em> attribute with these types may lead to an error: - cap constraints- fulltext indexes<br><br>",
+                    "summary": "creates an index",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "createsAnIndex"
+                }
+            ],
+            "path": "/_api/index"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the index could be deleted, then a <em>HTTP 202</em> is returned. ",
+                            "code": "202"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "required": "True",
+                            "name": "index-handle",
+                            "description": "The index handle. "
+                        }
+                    ],
+                    "notes": "<br><br>Deletes an index with <em>index-handle</em>. <br><br>",
+                    "summary": "deletes an index",
+                    "httpMethod": "DELETE",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl -X DELETE --dump - http://localhost:8529/_api/index/products/190262492\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"products/190262492\", \n  \"error\" : false, \n  \"code\" : 200 \n}\n\n</code></pre><br>",
+                    "nickname": "deletesAnIndex"
+                }
+            ],
+            "path": "/_api/index/{index-handle}"
+        }
+    ]
+}

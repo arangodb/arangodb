@@ -60,9 +60,37 @@ TODO
 TRI_*_DATAFILES_DOC_COLLECTION (R/W)
 ====================================
 
+primaryCollection->_lock
+Note: this is the same lock as DOCUMENTS_INDEXES_PRIMARY_COLLECTION
 TODO
 
 TRI_*_DOCUMENTS_INDEXES_PRIMARY_COLLECTION (R/W)
 ================================================
 
+primaryCollection->_lock
+Note: this is the same lock as DATAFILES_DOC_COLLECTION
 TODO
+
+COMPACTION LOCK (R/W)
+=====================
+
+For each document collection, there is a lock protecting the compaction.
+Though there is at most one compaction thread and thus only a single 
+compaction action going on at a time, this lock is required.
+When the compactor thread checks whether a collection needs compaction,
+it will try to acquire the collection's compaction write lock.
+If this lock cannot be acquired instantly, the collection will not be
+collected in this run.
+If the lock can be acquired, a datafile of the collection can be compacted.
+
+The compaction will modify both datafile statistics and header information,
+and these operations must be safe-guarded and cannot run in parallel with
+other that read/modify the same data.
+
+When a write-transaction is executed, it will acquire the compaction lock
+of each participating collection in read-mode. If the compaction is 
+currently going on for a collection, the transaction will wait until the
+compaction for the collection is finished.
+
+The intention is to run either the compaction or write operations in a 
+collection, but not both at the same time.

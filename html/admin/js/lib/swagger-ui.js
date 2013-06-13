@@ -564,15 +564,11 @@ helpers = helpers || Handlebars.helpers; data = data || {};
   if (stack1 = helpers.name) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
   else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
   buffer += escapeExpression(stack1)
-    + "'); return false;\">\n                List Operations\n            </a>\n        </li>\n        <li>\n            <a href='#' onclick=\"Docs.expandOperationsForResource('";
+    + "'); return false;\">\n                Collapse\n            </a>\n        </li>\n        <li>\n            <a href='#' onclick=\"Docs.expandOperationsForResource('";
   if (stack1 = helpers.name) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
   else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
   buffer += escapeExpression(stack1)
-    + "'); return false;\">\n                Expand Operations\n            </a>\n        </li>\n        <li>\n            <a href='";
-  if (stack1 = helpers.url) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
-  else { stack1 = depth0.url; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
-  buffer += escapeExpression(stack1)
-    + "'>Raw</a>\n        </li>\n    </ul>\n</div>\n<ul class='endpoints' id='";
+    + "'); return false;\">\n                Expand\n            </a>\n        </li>\n    </ul>\n</div>\n<ul class='endpoints' id='";
   if (stack1 = helpers.name) { stack1 = stack1.call(depth0, {hash:{},data:data}); }
   else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1.apply(depth0) : stack1; }
   buffer += escapeExpression(stack1)
@@ -637,7 +633,7 @@ function program11(depth0,data) {
 function program13(depth0,data) {
   
   
-  return "\n                    <div class='sandbox_header'>\n                        <input class='submit' name='commit' type='button' value='Try it out!' />\n                        <a href='#' class='response_hider' style='display:none'>Hide Response</a>\n                        <img alt='Throbber' class='response_throbber' src='images/throbber.gif' style='display:none' />\n                    </div>\n                    ";
+  return "\n                    <div class='sandbox_header'>\n                        <input class='submit' name='commit' type='button' value='Try it out!' />\n                        <a href='#' class='response_hider' style='display:none'>Hide Response</a>\n                        <img alt='Throbber' class='response_throbber' src='img/swagger/throbber.gif' style='display:none' />\n                    </div>\n                    ";
   }
 
   buffer += "\n    <ul class='operations' >\n      <li class='";

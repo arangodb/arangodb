@@ -330,7 +330,7 @@ function CheckDatafile (collection, type, datafile, issues) {
 
 function CheckCollection (collection, issues) {
   printf("Database\n");
-  printf("  path: %s\n", internal.db._path);
+  printf("  path: %s\n", internal.db._path());
   printf("\n");
 
   printf("Collection\n");

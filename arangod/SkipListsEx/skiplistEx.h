@@ -187,21 +187,6 @@ typedef struct TRI_skiplistEx_s {
 TRI_skiplistEx_t;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a skip list which only accepts unique entries and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// structure for a skiplist which allows unique entries -- with locking
-// available for its nearest neighbours.
-// TODO: implement locking for nearest neighbours rather than for all of index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplistEx_synced_s {
-  TRI_skiplistEx_t _base;
-  TRI_read_write_lock_t _lock;  
-} TRI_skiplistEx_synced_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -321,7 +306,8 @@ void* TRI_PrevNodeSkipListEx (TRI_skiplistEx_t*, void*, uint64_t thisTransID);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*, 
-                                 const int passLevel, const uint64_t thisTransID);
+                                 const int passLevel, const uint64_t thisTransID,
+                                 TRI_skiplistEx_node_t**);
 
 
 
@@ -330,7 +316,8 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t*, void*, void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveKeySkipListEx (TRI_skiplistEx_t*, void*, void*, 
-                             const int passLevel, const uint64_t thisTransID);
+                             const int passLevel, const uint64_t thisTransID,
+                             TRI_skiplistEx_node_t**);
 
 
 
@@ -359,7 +346,7 @@ void* TRI_StartNodeSkipListEx (TRI_skiplistEx_t*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a multi skiplist
+/// @brief structure used for skiplist accepting duplicate entries
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,17 +371,6 @@ typedef struct TRI_skiplistEx_multi_s {
   // ...........................................................................
   bool (*equalElementElement) (struct TRI_skiplistEx_multi_s*, void*, void*);
 } TRI_skiplistEx_multi_t;
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structure used for a multi skip list and is thread safe
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplistEx_synced_multi_s {
-  TRI_skiplistEx_t _base;
-  TRI_read_write_lock_t _lock;  
-} TRI_skiplistEx_synced_multi_t;
 
 
 
@@ -526,7 +502,8 @@ void* TRI_PrevNodeSkipListExMulti (TRI_skiplistEx_multi_t*, void*, uint64_t this
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, 
-                                      const int passLevel, const uint64_t thisTransID);
+                                      const int passLevel, const uint64_t thisTransID,
+                                      TRI_skiplistEx_node_t**);
 
 
 
@@ -535,7 +512,8 @@ int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveKeySkipListExMulti (TRI_skiplistEx_multi_t*, void*, void*, 
-                                  const int passLevel, const uint64_t thisTransID);
+                                  const int passLevel, const uint64_t thisTransID,
+                                  TRI_skiplistEx_node_t**);
 
 
 

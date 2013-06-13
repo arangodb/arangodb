@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*global require, CREATE_CURSOR */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries
 ///
@@ -42,14 +45,14 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_all
+/// @fn JSA_put_api_simple_all
 /// @brief returns all documents of a collection
 ///
 /// @RESTHEADER{PUT /_api/simple/all,executes simple query ALL}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// Returns all documents of a collections. The call expects a JSON object
@@ -64,15 +67,67 @@ var API = "_api/simple/";
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
 /// Limit the amount of documents using `limit`
 ///
-/// @verbinclude api-simple-all-skip-limit
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllSkipLimit}
+///     var cn = "products";
+///     db._drop(cn);
+///     var collection = db._create(cn, { waitForSync: true });
+///     collection.save({"Hello1" : "World1" });
+///     collection.save({"Hello2" : "World2" });
+///     collection.save({"Hello3" : "World3" });
+///     collection.save({"Hello4" : "World4" });
+///     collection.save({"Hello5" : "World5" });
+///
+///     var url = "/_api/simple/all";
+///     var body = '{ "collection": "products", "skip": 2, "limit" : 2 }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// 
 /// Using a `batchSize` value
 ///
-/// @verbinclude api-simple-all-batch
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllBatch}
+///     var cn = "products";
+///     db._drop(cn);
+///     var collection = db._create(cn);
+///     collection.save({"Hello1" : "World1" });
+///     collection.save({"Hello2" : "World2" });
+///     collection.save({"Hello3" : "World3" });
+///     collection.save({"Hello4" : "World4" });
+///     collection.save({"Hello5" : "World5" });
+///
+///     var url = "/_api/simple/all";
+///     var body = '{ "collection": "products", "batchSize" : 3 }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -87,7 +142,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -121,14 +176,14 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_any
+/// @fn JSA_put_api_simple_any
 /// @brief returns a random document of a collection
 ///
 /// @RESTHEADER{PUT /_api/simple/any,executes simple query ANY}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// Returns a random document of a collection. The call expects a JSON object
@@ -140,26 +195,42 @@ actions.defineHttp({
 /// `document` if the collection contains at least one document. If
 /// the collection is empty, the attrbute contains null.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
-/// @code
-/// > curl --data @- -X PUT --dump - http://localhost:8529/_api/simple/any
-/// { "collection" : 222186062247 }
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleAny}
+///     var cn = "products";
+///     db._drop(cn);
+///     var collection = db._create(cn);
+///     collection.save({"Hello1" : "World1" });
+///     collection.save({"Hello2" : "World2" });
+///     collection.save({"Hello3" : "World3" });
+///     collection.save({"Hello4" : "World4" });
+///     collection.save({"Hello5" : "World5" });
 ///
-/// HTTP/1.1 200 OK
-/// content-type: application/json; charset=utf-8
-/// content-length: 114
-/// 
-/// {
-///   "document": {
-///     "_id": "222186062247/223172116903",
-///     "_rev": 223172116903,
-///     "Hello": "World"
-///   },
-///   "error": false,
-///   "code":200
-/// }
-/// @endcode
+///     var url = "/_api/simple/any";
+///     var body = '{ "collection": "products" }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -174,12 +245,12 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
         var name = body.collection;
-        var id = parseInt(name) || name;
+        var id = parseInt(name, 10) || name;
         var collection = db._collection(id);
 
         if (collection === null) {
@@ -199,14 +270,14 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_near
+/// @fn JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
 /// @RESTHEADER{PUT /_api/simple/near,executes simple query NEAR}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// The default will find at most 100 documents near a given coordinate.  The
@@ -239,15 +310,78 @@ actions.defineHttp({
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
 /// Without distance:
 ///
-/// @verbinclude api-simple-near
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleNear}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     var loc = products.ensureGeoIndex("loc");
+///     var i;
+///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
+///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
+///     }
+///     var url = "/_api/simple/near";
+///     var body = '{ ' + 
+///       '"collection": "products", ' +
+///       '"latitude" : 0, ' +
+///       '"longitude" : 0, ' +
+///       '"skip" : 1, ' +
+///       '"limit" : 2 ' +
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// With distance:
 ///
-/// @verbinclude api-simple-near-distance
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleNearDistance}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     var loc = products.ensureGeoIndex("loc");
+///     var i;
+///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
+///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
+///     }
+///     var url = "/_api/simple/near";
+///     var body = '{ ' + 
+///       '"collection": "products", ' + 
+///       '"latitude" : 0, ' +
+///       '"longitude" : 0, ' +
+///       '"skip" : 1, ' +
+///       '"limit" : 3, ' +
+///       '"distance" : "distance" ' +
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -262,7 +396,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -295,11 +429,11 @@ actions.defineHttp({
             result = collection.geo({ id : geo }).near(latitude, longitude);
           }
 
-          if (skip !== null && skip != undefined) {
+          if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
 
-          if (limit !== null && limit != undefined) {
+          if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
 
@@ -318,14 +452,14 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_within
+/// @fn JSA_put_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
 /// @RESTHEADER{PUT /_api/simple/within,executes simple query WITHIN}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents with in a given radius around the coordinate
@@ -357,15 +491,73 @@ actions.defineHttp({
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
 /// Without distance:
 ///
-/// @verbinclude api-simple-within
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithin}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     var loc = products.ensureGeoIndex("loc");
+///     var i;
+///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
+///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
+///     }
+///     var url = "/_api/simple/near";
+///     var body = '{ ' +
+///       '"collection": "products", ' +
+///       '"latitude" : 0, ' +
+///       '"longitude" : 0, ' +
+///       '"skip" : 1, ' +
+///       '"limit" : 2, ' +
+///       '"radius" : 500 ' +
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// With distance:
 ///
-/// @verbinclude api-simple-within-distance
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithinDistance}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     var loc = products.ensureGeoIndex("loc");
+///     var i;
+///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
+///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
+///     }
+///     var url = "/_api/simple/near";
+///     var body = '{ "collection": "products", "latitude" : 0, "longitude" : 0, ' +
+///                '"skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -380,7 +572,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -436,14 +628,14 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_fulltext
+/// @fn JSA_put_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
 /// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query FULLTEXT}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents from the collection that match the fulltext
@@ -468,9 +660,40 @@ actions.defineHttp({
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
-/// @verbinclude api-simple-fulltext
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleFulltext}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({"text" : "this text contains word" });
+///     products.save({"text" : "this text also has a word" });
+///     products.save({"text" : "this is nothing" });
+///     var loc = products.ensureFulltextIndex("text");
+///     var url = "/_api/simple/fulltext";
+///     var body = '{ "collection": "products", "attribute" : "text", "query" : "word" }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -485,7 +708,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -528,14 +751,14 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_by_example
+/// @fn JSA_put_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example,executes simple query by-example}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
-//
+///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents matching a given example.
@@ -552,19 +775,84 @@ actions.defineHttp({
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
 /// Matching an attribute:
 ///
-/// @verbinclude api-simple-by-example1
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/by-example";
+///     var body = '{ "collection": "products", "example" :  { "i" : 1 }  }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Matching an attribute which is a sub-document:
 ///
-/// @verbinclude api-simple-by-example2
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample2}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/by-example";
+///     var body = '{ "collection": "products", "example" : { "a.j" : 1 } }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Matching an attribute within a sub-document:
 ///
-/// @verbinclude api-simple-by-example3
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample3}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/by-example";
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } } }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -579,7 +867,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -617,7 +905,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_first_example
+/// @fn JSA_put_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
 /// @RESTHEADER{PUT /_api/simple/first-example,executes simple query first-example}
@@ -638,15 +926,63 @@ actions.defineHttp({
 /// Returns a result containing the document or `HTTP 404` if no
 /// document matched the example.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the return set contains at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
 /// If a matching document was found:
 ///
-/// @verbinclude api-simple-first-example
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/first-example";
+///     var body = '{ "collection": "products", "example" :  { "i" : 1 }  }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// If no document was found:
 ///
-/// @verbinclude api-simple-first-example-not-found
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExampleNotFound}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/first-example";
+///     var body = '{ "collection": "products", "example" :  { "l" : 1 }  }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 404);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -661,7 +997,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -709,7 +1045,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -740,7 +1076,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_range
+/// @fn JSA_put_api_simple_range
 /// @brief returns all documents of a collection within a range
 ///
 /// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
@@ -772,9 +1108,41 @@ actions.defineHttp({
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if there are at least one document in the return range and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
-/// @verbinclude api-simple-range
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRange}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.ensureUniqueSkiplist("i");
+///     products.save({ "i": 1});
+///     products.save({ "i": 2});
+///     products.save({ "i": 3});
+///     products.save({ "i": 4});
+///     var url = "/_api/simple/range";
+///     var body = '{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -789,7 +1157,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -834,7 +1202,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_remove_by_example
+/// @fn JSA_put_api_simple_remove_by_example
 /// @brief removes all documents of a collection that match an example
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
@@ -865,9 +1233,40 @@ actions.defineHttp({
 ///
 /// Returns the number of documents that were deleted
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if there where removed at least one document and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
-/// @verbinclude api-simple-remove-by-example
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/remove-by-example";
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } } }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -882,7 +1281,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -910,7 +1309,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_replace_by_example
+/// @fn JSA_put_api_simple_replace_by_example
 /// @brief replaces the body of all documents of a collection that match an 
 /// example
 ///
@@ -947,9 +1346,45 @@ actions.defineHttp({
 ///
 /// Returns the number of documents that were replaced
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the documents in the collection where replaced successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
-/// @verbinclude api-simple-replace-by-example
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/replace-by-example";
+///     var body = '{ ' +
+///       '"collection": "products", ' +
+///       '"example" : { "a" : { "j" : 1 } }, ' +
+///       '"newValue" : {"foo" : "bar"}, ' +
+///       '"limit" : 3 ' +
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -964,7 +1399,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -996,7 +1431,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_PUT_api_simple_update_by_example
+/// @fn JSA_put_api_simple_update_by_example
 /// @brief partially updates the body of all documents of a collection that
 /// match an example
 ///
@@ -1039,9 +1474,45 @@ actions.defineHttp({
 ///
 /// Returns the number of documents that were updated
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the collection was updated successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
+///
 /// @EXAMPLES
 ///
-/// @verbinclude api-simple-update-by-example
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/update-by-example";
+///     var body = '{ ' + 
+///       '"collection": "products", ' +
+///       '"example" : { "a" : { "j" : 1 } }, ' +
+///       '"newValue" : { "a" : { "j" : 22 } }, ' +
+///       '"limit" : 3 ' +
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1056,7 +1527,7 @@ actions.defineHttp({
         return;
       }
 
-      if (req.requestType != actions.PUT) {
+      if (req.requestType !== actions.PUT) {
         actions.resultUnsupported(req, res);
       }
       else {
@@ -1077,7 +1548,11 @@ actions.defineHttp({
           actions.badParameter(req, res, "newValue");
         }
         else {
-          var result = collection.updateByExample(example, newValue, keepNull, body.waitForSync, limit);
+          var result = collection.updateByExample(example, 
+                                                  newValue, 
+                                                  keepNull, 
+                                                  body.waitForSync, 
+                                                  limit);
           actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
         }
       }
