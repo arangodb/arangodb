@@ -509,7 +509,11 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     }
 
     // send the actual request
-    SimpleHttpResult* response = client.request(method, relative, 0, 0, headerFields);
+    SimpleHttpResult* response = client.request(method, 
+                                                relative, 
+                                                (body.size() > 0 ? body.c_str() : 0), 
+                                                body.size(), 
+                                                headerFields);
 
     int returnCode;
     string returnMessage;
