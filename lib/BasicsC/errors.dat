@@ -198,7 +198,7 @@ ERROR_KEYVALUE_KEY_NOT_REMOVED,1805,"key value not removed","Will be raised when
 ERROR_KEYVALUE_NO_VALUE,1806,"missing value","Will be raised when the value is missing"
 
 ################################################################################
-## Graph errors
+## Graph / traversal errors
 ################################################################################
 
 ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid name is passed to the server"
@@ -209,6 +209,7 @@ ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX,1905,"could not change vertex","Will be rais
 ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edge id is passed to the server"
 ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised when the edge could not be created"
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed"
+ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations","Will be raised when too many iterations are done in a graph traversal"
 
 ################################################################################
 ## Session errors
@@ -251,6 +252,8 @@ WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING,3302,"skiplist index upda
 WARNING_ARANGO_INDEX_SKIPLIST_INSERT_CAS_FAILURE,3304,"skiplist index insertion warning - CAS failure while attempting to insert document","Will be raised when an attempt to insert a document into a skiplist index fails due to repeated CAS failures/clashes."
 WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING,3311,"skiplist index remove failure - item missing in index","Will be raised when an attempt to remove a document from a skiplist index fails when document can not be located within that index."
 WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_CAS_FAILURE,3313,"skiplist index remove warning - CAS failure while attempting to remove document","Will be raised when an attempt to remove a document into a skiplist index fails due to repeated CAS failures/clashes."
+WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_POST_INSERTED,3315,"skiplist index remove failure - item inserted post this transaction in the index","Will be raised when an attempt to remove a document from a skiplist index fails due to the fact that the document to be removed was inserted in a transaction post this removal transaction."
+WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_PRIOR_REMOVED,3317,"skiplist index remove failure - item removed prior this transaction in the index","Will be raised when an attempt to remove a document from a skiplist index fails due to the fact that the document to be removed was removed in a transaction prior this removal transaction."
 
 
 WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING,3400,"bitarray index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a bitarray index is caused by in the document not having one or more attributes which are required by the bitarray index."
@@ -269,3 +272,9 @@ RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key alread
 RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
 RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
 RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."
+
+################################################################################
+## WARNING when a thread is in a state of shutdown
+################################################################################
+
+WARNING_ARANGO_INDEX_GARBAGE_COLLECTOR_SHUTDOWN,11000,"the index garbage collector has shutdown and no further entries can be processed","Will be raised when an attempt to add an item to the index garbage collector fails due to the fact that the state of the collector is in shutdown mode."
