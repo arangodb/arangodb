@@ -306,6 +306,8 @@ extern "C" {
 ///   Will be raised when the edge could not be created
 /// - 1908: @LIT{could not change edge}
 ///   Will be raised when the edge could not be changed
+/// - 1909: @LIT{too many iterations}
+///   Will be raised when too many iterations are done in a graph traversal
 /// - 1951: @LIT{invalid session}
 ///   Will be raised when an invalid session id is passed to the server
 /// - 1952: @LIT{could not create session}
@@ -1750,6 +1752,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             (1908)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1909: ERROR_GRAPH_TOO_MANY_ITERATIONS
+///
+/// too many iterations
+///
+/// Will be raised when too many iterations are done in a graph traversal
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_TOO_MANY_ITERATIONS                               (1909)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1951: ERROR_SESSION_INVALID_SESSION
