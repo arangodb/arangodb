@@ -116,7 +116,11 @@ function notFound (req, res, code, message) {
 ///            can be `"forward"` or `"backward"`
 /// - `uniqueness` (optional): specifies uniqueness for vertices and edges visited
 ///             if set, must be an object like this:
-///             `"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}` 
+///             `"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}`
+/// - `maxIterations` (optional): Maximum number of iterations in each traversal. This number can be
+///                set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
+///                as many iterations as the `maxIterations` value, the traversal will abort with an
+///                error. If `maxIterations` is not set, a server-defined value may be used.
 ///
 ///
 /// If the Traversal is successfully executed `HTTP 200` will be returned.
@@ -609,6 +613,40 @@ function notFound (req, res, code, message) {
 ///         body += '"edgeCollection" : "' + knows.name() + '", ';
 ///         body += '"direction" : "any", ';
 ///         body += '"uniqueness" : {"vertices": "none", "edges": "global"}}';
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cv);
+///     db._drop(ce);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// If the underlying graph is cyclic, `maxIterations` should be set:
+///
+/// The underlying graph has two vertices `Alice` and `Bob`.
+/// With the directed edges:
+/// - `Alice` knows `Bob`
+/// _ `Bob` knows `Alice`
+///
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxIterations}
+///     var cv = "persons";
+///     var ce = "knows";
+///     db._drop(cv);
+///     db._drop(ce);
+///     var users = db._create(cv);
+///     var knows = db._createEdgeCollection(ce);
+///     var a = users.save({name: "Alice"})._id;
+///     var b = users.save({name: "Bob"})._id;
+///     knows.save(a, b, {});
+///     knows.save(b, a, {});
+///     var url = "/_api/traversal";
+///     var body = '{ "startVertex": "' + a + '", ';
+///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"direction" : "any", ';
+///         body += '"uniqueness" : {"vertices": "none", "edges": "none"}, '
+///         body += '"maxIterations" : 5}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
