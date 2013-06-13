@@ -215,7 +215,7 @@ var QUERY = internal.AQL_QUERY;
 /// 
 ///     var response = logCurlRequest('POST', url, body);
 /// 
-///     assert(response.code === 400);
+///     assert(response.code === 404);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
