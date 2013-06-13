@@ -163,6 +163,14 @@ function notFound (req, res, code, message) {
 /// If the traversal specification is either missing or malformed, the server
 /// will respond with `HTTP 400`.
 ///
+/// @RESTRETURNCODE{404}
+/// The server will responded with `HTTP 404` if the specified edge collection 
+/// does not exist, or the specified start vertex cannot be found.
+///
+/// @RESTRETURNCODE{500}
+/// The server will responded with `HTTP 500` when an error occurs inside the
+/// traversal or if a traversal performs more than `maxIterations` iterations.
+///
 /// @EXAMPLES
 ///
 /// In the following examples the underlying graph will contain five persons
@@ -260,11 +268,17 @@ function notFound (req, res, code, message) {
 ///     knows.save(e, a, {});
 ///     knows.save(e, b, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"direction" : "any"}';
+///     var body = { 
+///       startVertex: a,
+///       edgeCollection: knows.name(),
+///       direction: "any",
+///       uniqueness: {
+///         vertices: "none",
+///         edges: "global"
+///       }
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -509,12 +523,14 @@ function notFound (req, res, code, message) {
 ///     knows.save(e, a, {});
 ///     knows.save(e, b, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"direction" : "any", ';
-///         body += '"strategy" : "depthfirst"}';
+///     var body = { 
+///       startVertex: a, 
+///       edgeCollection: knows.name(),
+///       direction: "any",
+///       strategy: "depthfirst"
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -642,14 +658,19 @@ function notFound (req, res, code, message) {
 ///     knows.save(a, b, {});
 ///     knows.save(b, a, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"direction" : "any", ';
-///         body += '"uniqueness" : {"vertices": "none", "edges": "none"}, '
-///         body += '"maxIterations" : 5}';
+///     var body = {
+///       startVertex: a,
+///       edgeCollection: knows.name(),
+///       direction: "any",
+///       uniqueness: {
+///         vertices: "none",
+///         edges: "none"
+///       },
+///       maxIterations: 5
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
-///     assert(response.code === 200);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     assert(response.code === 500);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cv);

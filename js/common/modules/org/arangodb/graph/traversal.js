@@ -882,7 +882,7 @@ ArangoTraverser = function (config) {
     strategy: ArangoTraverser.DEPTH_FIRST,
     uniqueness: {
       vertices: ArangoTraverser.UNIQUE_NONE,
-      edges: ArangoTraverser.UNIQUE_NONE
+      edges: ArangoTraverser.UNIQUE_PATH
     },
     visitor: trackingVisitor,
     filter: visitAllFilter,
@@ -945,14 +945,14 @@ ArangoTraverser = function (config) {
     
   config.uniqueness = {
     vertices: validate(config.uniqueness && config.uniqueness.vertices, {
-      global: ArangoTraverser.UNIQUE_GLOBAL,
       none:   ArangoTraverser.UNIQUE_NONE,
+      global: ArangoTraverser.UNIQUE_GLOBAL,
       path:   ArangoTraverser.UNIQUE_PATH
     }, "uniqueness.vertices"),
     edges: validate(config.uniqueness && config.uniqueness.edges, {
-      global: ArangoTraverser.UNIQUE_GLOBAL,
+      path:   ArangoTraverser.UNIQUE_PATH,
       none:   ArangoTraverser.UNIQUE_NONE,
-      path:   ArangoTraverser.UNIQUE_PATH
+      global: ArangoTraverser.UNIQUE_GLOBAL
     }, "uniqueness.edges")
   };
   
