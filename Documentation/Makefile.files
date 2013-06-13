@@ -393,10 +393,7 @@ examples:
 
 .PHONY: documentation-complete
 
-documentation-complete:
-  examples
-  doxygen
-  swagger
+documentation-complete: examples doxygen swagger
 
 
 ## -----------------------------------------------------------------------------
