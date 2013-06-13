@@ -153,13 +153,13 @@ var QUERY = internal.AQL_QUERY;
 ///     db.products.save({"hello2":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 2 RETURN p", ' +
-///       '"count" : true, ' + 
-///       '"batchSize" : 2 ' +
-///     '}';
+///     var body = {
+///       query: "FOR p IN products LIMIT 2 RETURN p",
+///       count: true, 
+///       batchSize: 2
+///     };
 /// 
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
 ///     assert(response.code === 201);
 /// 
@@ -180,13 +180,13 @@ var QUERY = internal.AQL_QUERY;
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' +
-///       '"count" : true, ' +
-///       '"batchSize" : 2 ' +
-///     '}';
+///     var body = { 
+///       query: "FOR p IN products LIMIT 5 RETURN p",
+///       count: true,
+///       batchSize: 2
+///     };
 /// 
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
 ///     assert(response.code === 201);
 /// 
@@ -211,13 +211,13 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
-///     var body = '{ ' + 
-///       '"query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", ' +
-///       '"count" : true, ' + 
-///       '"batchSize" : 2 ' +
-///     '}';
+///     var body = { 
+///       query: "FOR u IN unknowncoll LIMIT 2 RETURN u", 
+///       count: true, 
+///       batchSize: 2 
+///     };
 /// 
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
 ///     assert(response.code === 404);
 /// 
@@ -317,12 +317,12 @@ function post_api_cursor(req, res) {
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' +
-///       '"count" : true, ' +
-///       '"batchSize" : 2 ' +
-///     '}';
-///     var response = logCurlRequest('POST', url, body);
+///     var body = {
+///       query: "FOR p IN products LIMIT 5 RETURN p", 
+///       count: true, 
+///       batchSize: 2 
+///     };
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;
@@ -429,12 +429,12 @@ function put_api_cursor (req, res) {
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' + 
-///       '"count" : true, ' +
-///       '"batchSize" : 2 ' +
-///     '}';
-///     var response = logCurlRequest('POST', url, body);
+///     var body = {
+///       query: "FOR p IN products LIMIT 5 RETURN p", 
+///       count: true,
+///       batchSize: 2
+///     };
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     logJsonResponse(response);
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;
