@@ -91,8 +91,10 @@ function notFound (req, res, code, message) {
 ///         - `Array` -> containing any combination of the above.
 ///             If there is at least one `"exclude"` or `"prune"` respectivly
 ///             is contained, it's effect will occur.
-/// - `minDepth` (optional, ANDed with any existing filters): visits only nodes in at least the given depth
-/// - `maxDepth` (optional, ANDed with any existing filters): visits only nodes in at most the given depth
+/// - `minDepth` (optional, ANDed with any existing filters): 
+///    visits only nodes in at least the given depth
+/// - `maxDepth` (optional, ANDed with any existing filters): 
+///    visits only nodes in at most the given depth
 /// - `visitor` (optional): body (JavaScript) code of custom visitor function
 ///          function signature: (config, result, vertex, path) -> void
 ///          visitor function can do anything, but its return value is ignored. To 
@@ -118,9 +120,9 @@ function notFound (req, res, code, message) {
 ///             if set, must be an object like this:
 ///             `"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}`
 /// - `maxIterations` (optional): Maximum number of iterations in each traversal. This number can be
-///                set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
-///                as many iterations as the `maxIterations` value, the traversal will abort with an
-///                error. If `maxIterations` is not set, a server-defined value may be used.
+///    set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
+///    as many iterations as the `maxIterations` value, the traversal will abort with an
+///    error. If `maxIterations` is not set, a server-defined value may be used.
 ///
 ///
 /// If the Traversal is successfully executed `HTTP 200` will be returned.
@@ -149,9 +151,6 @@ function notFound (req, res, code, message) {
 /// - `errorNum`: the server error number
 ///
 /// - `errorMessage`: a descriptive error message
-///
-/// example:
-/// POST {"edgeCollection": "e", "expander": "var connections = [ ]; config.edgeCollection.outEdges(vertex).forEach(function (e) { connections.push({ vertex: e._to, edge: e }); }); return connections;", "startVertex" : "v/jan", "filter": "return undefined;", "minDepth": 0 }
 ///
 /// @RESTRETURNCODES
 ///
@@ -479,23 +478,30 @@ function notFound (req, res, code, message) {
 ///     knows.save(e, a, {});
 ///     knows.save(e, b, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"expander" : ';
-///         body += '"var connections = [ ];';
-///         body += 'if (vertex.name === \\"Alice\\") {';
-///         body += 'config.edgeCollection.inEdges(vertex).forEach(function (e) {';
-///         body += 'connections.push({ vertex: require(\\"internal\\").db._document(e._from), edge: e });';
-///         body += '});';
-///         body += '}';
-///         body += 'if (vertex.name === \\"Eve\\") {';
-///         body += 'config.edgeCollection.outEdges(vertex).forEach(function (e) {';
-///         body += 'connections.push({ vertex: require(\\"internal\\").db._document(e._to), edge: e });';
-///         body += '});';
-///         body += '}';
-///         body += 'return connections;"}';
+///     var body = { 
+///       startVertex: a,
+///       edgeCollection: knows.name(),
+///       expander: "var connections = [ ];" +
+///                 "if (vertex.name === \"Alice\") {" +
+///                 "config.edgeCollection.inEdges(vertex).forEach(function (e) {" +
+///                 "connections.push({ " + 
+///                 "vertex: require(\"internal\").db._document(e._from), " + 
+///                 "edge: e" +
+///                 "});" +
+///                 "});" + 
+///                 "}" +
+///                 "if (vertex.name === \"Eve\") {" +
+///                 "config.edgeCollection.outEdges(vertex).forEach(function (e) {" + 
+///                 "connections.push({" +
+///                 "vertex: require(\"internal\").db._document(e._to), " +
+///                 "edge: e" +
+///                 "});" + 
+///                 "});" + 
+///                 "}" +
+///                 "return connections;"
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -558,12 +564,14 @@ function notFound (req, res, code, message) {
 ///     knows.save(e, a, {});
 ///     knows.save(e, b, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"direction" : "any", ';
-///         body += '"order" : "postorder"}';
+///     var body = { 
+///       startVertex: a,
+///       edgeCollection: knows.name(),
+///       direction: "any",
+///       order: "postorder"
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -591,12 +599,14 @@ function notFound (req, res, code, message) {
 ///     knows.save(e, a, {});
 ///     knows.save(e, b, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"direction" : "any", ';
-///         body += '"itemOrder" : "backward"}';
+///     var body = { 
+///       startVertex: a,
+///       edgeCollection: knows.name(),
+///       direction: "any",
+///       itemOrder: "backward"
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -625,12 +635,17 @@ function notFound (req, res, code, message) {
 ///     knows.save(e, a, {});
 ///     knows.save(e, b, {});
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
-///         body += '"direction" : "any", ';
-///         body += '"uniqueness" : {"vertices": "none", "edges": "global"}}';
+///     var body = { 
+///       startVertex: a,
+///       edgeCollection: knows.name(),
+///       direction: "any",
+///       uniqueness: {
+///         vertices: "none", 
+///         edges: "global"
+///       }
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
