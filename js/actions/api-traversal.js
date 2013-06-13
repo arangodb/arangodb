@@ -493,12 +493,12 @@ function validateArg (value, map) {
 ///         body += '"var connections = [ ];';
 ///         body += 'if (vertex.name === \\"Alice\\") {';
 ///         body += 'config.edgeCollection.inEdges(vertex).forEach(function (e) {';
-///         body += 'connections.push({ vertex: db.document(e._from), edge: e });';
+///         body += 'connections.push({ vertex: require(\\"internal\\").db._document(e._from), edge: e });';
 ///         body += '});';
 ///         body += '}';
 ///         body += 'if (vertex.name === \\"Eve\\") {';
 ///         body += 'config.edgeCollection.outEdges(vertex).forEach(function (e) {';
-///         body += 'connections.push({ vertex: db.document(e._to), edge: e });';
+///         body += 'connections.push({ vertex: require(\\"internal\\").db._document(e._to), edge: e });';
 ///         body += '});';
 ///         body += '}';
 ///         body += 'return connections;"}';
