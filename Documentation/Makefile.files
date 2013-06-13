@@ -387,6 +387,18 @@ examples:
 		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
 		--javascript.execute /tmp/arangosh.examples
 
+################################################################################
+### @brief generate complete documentation including examples
+################################################################################
+
+.PHONY: documentation-complete
+
+documentation-complete:
+  examples
+  doxygen
+  swagger
+
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
