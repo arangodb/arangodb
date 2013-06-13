@@ -109,7 +109,7 @@ function byExample (collection, example, skip, limit) {
     // invalid datatype for example
     var err1 = new ArangoError();
     err1.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-    err1.errorMessage = "invaldi document type";
+    err1.errorMessage = "invalid document type";
     throw err1;
   }
 
@@ -149,7 +149,11 @@ function byExample (collection, example, skip, limit) {
     catch (e) {
     }
 
-    return { "total" : doc ? 1 : 0, "count" : doc ? 1 : 0, "documents" : doc ? [ doc ] : [ ] };
+    return { 
+      total: doc ? 1 : 0, 
+      count: doc ? 1 : 0, 
+      documents: doc ? [ doc ] : [ ] 
+    };
   }
 
   var idx = null;
@@ -344,7 +348,8 @@ SimpleQueryNear.prototype.execute = function () {
     distances = result.distances;
 
     if (this._distance !== null) {
-      for (i = this._skip;  i < documents.length;  ++i) {
+      var n = documents.length;
+      for (i = this._skip;  i < n;  ++i) {
         documents[i][this._distance] = distances[i];
       }
     }
@@ -388,7 +393,8 @@ SimpleQueryWithin.prototype.execute = function () {
     distances = result.distances;
 
     if (this._distance !== null) {
-      for (i = this._skip;  i < documents.length;  ++i) {
+      var n = documents.length;
+      for (i = this._skip;  i < n;  ++i) {
         documents[i][this._distance] = distances[i];
       }
     }
