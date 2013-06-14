@@ -148,7 +148,6 @@ var collectionsView = Backbone.View.extend({
     var searchPhrase = $('#searchInput').val();
 
     if (searchPhrase === searchOptions.searchPhrase) {
-      console.log("same");
       return;
     }
     searchOptions.searchPhrase = searchPhrase;
