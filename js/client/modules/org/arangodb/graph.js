@@ -36,7 +36,48 @@ var arangodb = require("org/arangodb"),
   Edge = common.Edge,
   Graph = common.Graph,
   Vertex = common.Vertex,
-  GraphArray = common.GraphArray;
+  GraphArray = common.GraphArray,
+  request;
+
+request = {
+  send: function (method, graph, path, data) {
+    var results = graph._connection[method]("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) +
+      path,
+      data);
+
+    arangosh.checkRequestResult(results);
+    return results;
+  },
+
+  postEdge: function (graph, edge, data) {
+    var results = this.send("POST",
+      graph,
+      "/edges/" + encodeURIComponent(edge._properties._key),
+      data);
+
+    return results;
+  },
+
+  putEdge: function (graph, edge, data) {
+    var results = this.send("PUT",
+      graph,
+      "/edge/" + encodeURIComponent(edge._properties._key),
+      data);
+
+    return results;
+  },
+
+  putVertex: function (graph, vertex, data) {
+    var results = this.send("PUT",
+      graph,
+      "/vertex/" + encodeURIComponent(vertex._properties._key),
+      data);
+
+    return results;
+  }
+};
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -109,19 +150,14 @@ Edge.prototype.getPeerVertex = function (vertex) {
 /// @brief changes a property of an edge
 ////////////////////////////////////////////////////////////////////////////////
 
+
 Edge.prototype.setProperty = function (name, value) {
   var requestResult;
   var update = this._properties;
 
   update[name] = value;
 
-  requestResult = this._graph._connection.PUT("/_api/graph/" +
-    encodeURIComponent(this._graph._properties._key) +
-    "/edge/" +
-    encodeURIComponent(this._properties._key),
-    JSON.stringify(update));
-
-  arangosh.checkRequestResult(requestResult);
+  requestResult = request.putEdge(this._graph, this, JSON.stringify(update));
 
   this._properties = requestResult.edge;
 
@@ -173,13 +209,9 @@ Vertex.prototype.edges = function () {
   var edges;
   var cursor;
 
-  requestResult = graph._connection.POST("/_api/graph/" +
-    encodeURIComponent(graph._properties._key) +
-    "/edges/" +
-    encodeURIComponent(this._properties._key),
-  '{ "filter" : { "direction" : "any" } }');
-
-  arangosh.checkRequestResult(requestResult);
+  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+    filter: { direction: "any" }
+  }));
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -204,13 +236,9 @@ Vertex.prototype.getInEdges = function () {
   var edges;
   var cursor;
 
-  requestResult = graph._connection.POST("/_api/graph/" +
-    encodeURIComponent(graph._properties._key) +
-    "/edges/" +
-    encodeURIComponent(this._properties._key),
-    JSON.stringify({ filter : { direction : "in", labels: labels } }));
-
-  arangosh.checkRequestResult(requestResult);
+  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+    filter : { direction : "in", labels: labels }
+  }));
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -235,13 +263,9 @@ Vertex.prototype.getOutEdges = function () {
   var edges;
   var cursor;
 
-  requestResult = graph._connection.POST("/_api/graph/" +
-    encodeURIComponent(graph._properties._key) +
-    "/edges/" +
-    encodeURIComponent(this._properties._key),
-    JSON.stringify({ filter : { direction : "out", labels: labels } }));
-
-  arangosh.checkRequestResult(requestResult);
+  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+    filter : { direction : "out", labels: labels }
+  }));
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -266,13 +290,9 @@ Vertex.prototype.getEdges = function () {
   var edges;
   var cursor;
 
-  requestResult = graph._connection.POST("/_api/graph/" +
-    encodeURIComponent(graph._properties._key) +
-    "/edges/" +
-    encodeURIComponent(this._properties._key),
-    JSON.stringify({ filter : { labels: labels } }));
-
-  arangosh.checkRequestResult(requestResult);
+  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+    filter : { labels: labels }
+  }));
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -312,13 +332,7 @@ Vertex.prototype.setProperty = function (name, value) {
 
   update[name] = value;
 
-  requestResult = this._graph._connection.PUT("/_api/graph/" +
-    encodeURIComponent(this._graph._properties._key) +
-    "/vertex/" +
-    encodeURIComponent(this._properties._key),
-    JSON.stringify(update));
-
-  arangosh.checkRequestResult(requestResult);
+  requestResult = request.putVertex(this._graph, this, JSON.stringify(update));
 
   this._properties = requestResult.vertex;
 
