@@ -38,7 +38,7 @@ var arangodb = require("org/arangodb"),
   Vertex = common.Vertex,
   GraphArray = common.GraphArray,
   Iterator,
-  request;
+  GraphAPI;
 
 Iterator = function (graph, cursor, MyPrototype, stringRepresentation) {
   this.next = function next() {
@@ -58,8 +58,7 @@ Iterator = function (graph, cursor, MyPrototype, stringRepresentation) {
   };
 };
 
-
-request = {
+GraphAPI = {
   send: function (method, graph, path, data) {
     var results = arangodb.arango[method]("/_api/graph/" +
       encodeURIComponent(graph._properties._key) +
@@ -70,26 +69,47 @@ request = {
     return results;
   },
 
-  postEdges: function (graph, edge, data) {
-    var results = this.send("POST",
-      graph,
-      "/edges/" + encodeURIComponent(edge._properties._key),
-      data);
-
-    return new ArangoQueryCursor(graph._vertices._database, results);
+  // Graph
+  getGraph: function (name) {
+    var results = arangodb.arango.GET("/_api/graph/" + encodeURIComponent(name));
+    arangosh.checkRequestResult(results);
+    return results;
   },
 
-  putEdge: function (graph, edge, data) {
-    var results = this.send("PUT",
-      graph,
-      "/edge/" + encodeURIComponent(edge._properties._key),
-      data);
+  postGraph: function (data) {
+    var results = arangodb.arango.POST("/_api/graph", JSON.stringify(data));
+    arangosh.checkRequestResult(results);
+    return results;
+  },
 
+  deleteGraph: function (graph) {
+    var results = arangodb.arango.DELETE("/_api/graph/" +
+      encodeURIComponent(graph._properties._key));
+
+    arangosh.checkRequestResult(results);
+  },
+
+  // Vertex
+  getVertex: function (graph, id) {
+    var results = arangodb.arango.GET("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) +
+      "/vertex/" +
+      encodeURIComponent(id));
+
+    if (results.error === true && results.code === 404) {
+      return null;
+    }
+
+    if (results.vertex === null) {
+      return null;
+    }
+
+    arangosh.checkRequestResult(results);
     return results;
   },
 
   putVertex: function (graph, vertex, data) {
-    var results = this.send("PUT",
+    var results = GraphAPI.send("PUT",
       graph,
       "/vertex/" + encodeURIComponent(vertex._properties._key),
       data);
@@ -97,114 +117,97 @@ request = {
     return results;
   },
 
-  getGraph: function (name) {
-    var requestResult = arangodb.arango.GET("/_api/graph/" + encodeURIComponent(name));
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
-  },
-
-  postGraph: function (data) {
-    var requestResult = arangodb.arango.POST("/_api/graph", JSON.stringify(data));
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
-
-  },
-
-  deleteGraph: function (graph) {
-    var requestResult = arangodb.arango.DELETE("/_api/graph/" +
-      encodeURIComponent(graph._properties._key));
-
-    arangosh.checkRequestResult(requestResult);
-  },
-
-  postEdge: function(graph, params) {
-    var requestResult = arangodb.arango.POST("/_api/graph/" +
-      encodeURIComponent(graph._properties._key) + "/edge",
-      JSON.stringify(params));
-
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
-  },
-
   postVertex: function(graph, params) {
-    var requestResult = arangodb.arango.POST("/_api/graph/" +
+    var results = arangodb.arango.POST("/_api/graph/" +
       encodeURIComponent(graph._properties._key) + "/vertex",
       JSON.stringify(params));
 
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
-  },
-
-  getVertex: function (graph, id) {
-    var requestResult = arangodb.arango.GET("/_api/graph/" +
-      encodeURIComponent(graph._properties._key) +
-      "/vertex/" +
-      encodeURIComponent(id));
-
-    if (requestResult.error === true && requestResult.code === 404) {
-      return null;
-    }
-
-    if (requestResult.vertex === null) {
-      return null;
-    }
-
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
-  },
-
-  getVertices: function (graph, params) {
-    var requestResult = arangodb.arango.POST("/_api/graph/" +
-      encodeURIComponent(graph._properties._key) + "/vertices",
-      JSON.stringify(params));
-
-    arangosh.checkRequestResult(requestResult);
-    return new ArangoQueryCursor(graph._vertices._database, requestResult);
-  },
-
-  getEdge: function (graph, id) {
-    var requestResult = arangodb.arango.GET("/_api/graph/" +
-      encodeURIComponent(graph._properties._key) +
-      "/edge/" +
-      encodeURIComponent(id));
-
-    if (requestResult.error === true && requestResult.code === 404) {
-      return null;
-    }
-
-    if (requestResult.edge === null) {
-      return null;
-    }
-
-    arangosh.checkRequestResult(requestResult);
-    return requestResult;
-  },
-
-  getEdges: function (graph, params) {
-    var requestResult = arangodb.arango.POST("/_api/graph/" +
-      encodeURIComponent(graph._properties._key) + "/edges",
-      JSON.stringify(params));
-
-    arangosh.checkRequestResult(requestResult);
-    return new ArangoQueryCursor(graph._vertices._database, requestResult);
+    arangosh.checkRequestResult(results);
+    return results;
   },
 
   deleteVertex: function (graph, vertex) {
-    var requestResult = arangodb.arango.DELETE("/_api/graph/" +
+    var results = arangodb.arango.DELETE("/_api/graph/" +
       encodeURIComponent(graph._properties._key) +
       "/vertex/" +
       encodeURIComponent(vertex._properties._key));
 
-    arangosh.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(results);
+  },
+
+  // Vertices
+  getVertices: function (graph, params) {
+    var results = arangodb.arango.POST("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) + "/vertices",
+      JSON.stringify(params));
+
+    arangosh.checkRequestResult(results);
+    return new ArangoQueryCursor(graph._vertices._database, results);
+  },
+
+  // Edge
+  getEdge: function (graph, id) {
+    var results = arangodb.arango.GET("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) +
+      "/edge/" +
+      encodeURIComponent(id));
+
+    if (results.error === true && results.code === 404) {
+      return null;
+    }
+
+    if (results.edge === null) {
+      return null;
+    }
+
+    arangosh.checkRequestResult(results);
+    return results;
+  },
+
+  putEdge: function (graph, edge, data) {
+    var results = GraphAPI.send("PUT",
+      graph,
+      "/edge/" + encodeURIComponent(edge._properties._key),
+      data);
+
+    return results;
+  },
+
+  postEdge: function(graph, params) {
+    var results = arangodb.arango.POST("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) + "/edge",
+      JSON.stringify(params));
+
+    arangosh.checkRequestResult(results);
+    return results;
+  },
+
+  postEdges: function (graph, edge, data) {
+    var results = GraphAPI.send("POST",
+      graph,
+      "/edges/" + encodeURIComponent(edge._properties._key),
+      data);
+
+    return new ArangoQueryCursor(graph._vertices._database, results);
   },
 
   deleteEdge: function (graph, edge) {
-    var requestResult = arangodb.arango.DELETE("/_api/graph/" +
+    var results = arangodb.arango.DELETE("/_api/graph/" +
       encodeURIComponent(graph._properties._key) +
       "/edge/" +
       encodeURIComponent(edge._properties._key));
 
-    arangosh.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(results);
+  },
+
+  // Edges
+  getEdges: function (graph, params) {
+    var results = arangodb.arango.POST("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) + "/edges",
+      JSON.stringify(params));
+
+    arangosh.checkRequestResult(results);
+    return new ArangoQueryCursor(graph._vertices._database, results);
   }
 };
 
@@ -280,14 +283,14 @@ Edge.prototype.getPeerVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var requestResult,
+  var results,
     update = this._properties;
 
   update[name] = value;
 
-  requestResult = request.putEdge(this._graph, this, update);
+  results = GraphAPI.putEdge(this._graph, this, update);
 
-  this._properties = requestResult.edge;
+  this._properties = results.edge;
 
   return name;
 };
@@ -336,7 +339,7 @@ Vertex.prototype.edges = function (direction, labels) {
     edges = new GraphArray(),
     cursor;
 
-  cursor = request.postEdges(this._graph, this, {
+  cursor = GraphAPI.postEdges(this._graph, this, {
     filter : { direction : direction, labels: labels }
   });
 
@@ -396,14 +399,14 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var requestResult,
+  var results,
     update = this._properties;
 
   update[name] = value;
 
-  requestResult = request.putVertex(this._graph, this, update);
+  results = GraphAPI.putVertex(this._graph, this, update);
 
-  this._properties = requestResult.vertex;
+  this._properties = results.vertex;
 
   return name;
 };
@@ -454,19 +457,19 @@ Vertex.prototype.outDegree = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges) {
-  var requestResult;
+  var results;
 
   if (vertices === undefined && edges === undefined) {
-    requestResult = request.getGraph(name);
+    results = GraphAPI.getGraph(name);
   } else {
-    requestResult = request.postGraph({
+    results = GraphAPI.postGraph({
       _key: name,
       vertices: vertices,
       edges: edges
     });
   }
 
-  this._properties = requestResult.graph;
+  this._properties = results.graph;
   this._vertices = arangodb.db._collection(this._properties.vertices);
   this._edges = arangodb.db._collection(this._properties.edges);
 
@@ -490,7 +493,7 @@ Graph.prototype.initialize = function (name, vertices, edges) {
 /// @brief drops the graph, the vertices, and the edges
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype.drop = function () {
-  request.deleteGraph(this);
+  GraphAPI.deleteGraph(this);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,14 +501,14 @@ Graph.prototype.drop = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
-  var requestResult;
+  var results;
 
   params._key = id;
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
 
-  requestResult = request.postEdge(this, params);
-  return new Edge(this, requestResult.edge);
+  results = GraphAPI.postEdge(this, params);
+  return new Edge(this, results.edge);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,14 +516,14 @@ Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._saveVertex = function (id, params) {
-  var requestResult;
+  var results;
 
   if (is.existy(id)) {
     params._key = id;
   }
 
-  requestResult = request.postVertex(this, params);
-  return new Vertex(this, requestResult.vertex);
+  results = GraphAPI.postVertex(this, params);
+  return new Vertex(this, results.vertex);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -528,13 +531,13 @@ Graph.prototype._saveVertex = function (id, params) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
-  var requestResult = request.getVertex(this, id);
+  var results = GraphAPI.getVertex(this, id);
 
-  if (requestResult === null) {
+  if (results === null) {
     return null;
   }
 
-  return new Vertex(this, requestResult.vertex);
+  return new Vertex(this, results.vertex);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -542,7 +545,7 @@ Graph.prototype.getVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var cursor = request.getVertices(this, {});
+  var cursor = GraphAPI.getVertices(this, {});
   return new Iterator(this, cursor, Vertex, "[vertex iterator]");
 };
 
@@ -551,13 +554,13 @@ Graph.prototype.getVertices = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdge = function (id) {
-  var requestResult = request.getVertex(this, id);
+  var results = GraphAPI.getVertex(this, id);
 
-  if (requestResult === null) {
+  if (results === null) {
     return null;
   }
 
-  return new Edge(this, requestResult.edge);
+  return new Edge(this, results.edge);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,7 +568,7 @@ Graph.prototype.getEdge = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var cursor = request.getEdges(this, {});
+  var cursor = GraphAPI.getEdges(this, {});
   return new Iterator(this, cursor, Edge, "[edge iterator]");
 };
 
@@ -574,7 +577,7 @@ Graph.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex) {
-  request.deleteVertex(this, vertex);
+  GraphAPI.deleteVertex(this, vertex);
   vertex._properties = undefined;
 };
 
@@ -583,7 +586,7 @@ Graph.prototype.removeVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeEdge = function (edge) {
-  request.deleteEdge(this, edge);
+  GraphAPI.deleteEdge(this, edge);
   edge._properties = undefined;
 };
 
