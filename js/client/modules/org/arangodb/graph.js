@@ -75,9 +75,15 @@ request = {
       data);
 
     return results;
+  },
+
+  deleteGraph: function (graph) {
+    var requestResult = graph._connection.DELETE("/_api/graph/" +
+      encodeURIComponent(graph._properties._key));
+
+    arangosh.checkRequestResult(requestResult);
   }
 };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -368,14 +374,8 @@ Graph.prototype.initialize = function (name, vertices, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the graph, the vertices, and the edges
 ////////////////////////////////////////////////////////////////////////////////
-
 Graph.prototype.drop = function () {
-  var requestResult;
-
-  requestResult = this._connection.DELETE("/_api/graph/" +
-    encodeURIComponent(this._properties._key));
-
-  arangosh.checkRequestResult(requestResult);
+  request.deleteGraph(this);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
