@@ -1097,7 +1097,6 @@ function put_api_collection (req, res) {
 ///     var url = "/_api/collection/"+ coll._id;
 ///
 ///     var response = logCurlRequest('DELETE', url);
-///     /* we must delete the collection from db, as we're bypassing db._drop() */
 ///     db[cn] = undefined;
 ///
 ///     assert(response.code === 200);
@@ -1114,7 +1113,6 @@ function put_api_collection (req, res) {
 ///     var url = "/_api/collection/products1";
 ///
 ///     var response = logCurlRequest('DELETE', url);
-///     /* we must delete the collection from db, as we're bypassing db._drop() */
 ///     db[cn] = undefined;
 ///
 ///     assert(response.code === 200);

@@ -547,6 +547,45 @@ Graph = function (name, vertices, edges, waitForSync) {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+Graph.prototype._prepareEdgeData = function (data, label) {
+  var edgeData;
+
+  if (is.notExisty(data) && is.object(label)) {
+    data = label;
+    label = null;
+  }
+
+  if (is.notExisty(label) && is.existy(data) && is.existy(data.$label)) {
+    label = data.$label;
+  }
+
+  if (is.notExisty(data) || is.noObject(data)) {
+    edgeData = {};
+  } else {
+    edgeData = data._shallowCopy || {};
+  }
+
+  edgeData.$label = label;
+
+  return edgeData;
+};
+
+Graph.prototype._prepareVertexData = function (data) {
+  var vertexData;
+
+  if (is.notExisty(data) || is.noObject(data)) {
+    vertexData = {};
+  } else {
+    vertexData = data._shallowCopy || {};
+  }
+
+  return vertexData;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -554,6 +593,7 @@ Graph = function (name, vertices, edges, waitForSync) {
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a vertex from the graph, create it if it doesn't exist
@@ -600,26 +640,35 @@ Graph.prototype.getOrAddVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
-  var params;
-  
-  if (is.notExisty(data) && typeof label === 'object') {
-    data = label;
-    label = null;
-  }
+  return this._saveEdge(id, out_vertex, in_vertex, this._prepareEdgeData(data, label), waitForSync);
+};
 
-  if (is.notExisty(label) && is.existy(data) && is.existy(data.$label)) {
-    label = data.$label;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a vertex to the graph
+///
+/// @FUN{@FA{graph}.addVertex(@FA{id})}
+///
+/// Creates a new vertex and returns the vertex object. The identifier
+/// @FA{id} must be a unique identifier or null.
+///
+/// @FUN{@FA{graph}.addVertex(@FA{id}, @FA{data})}
+///
+/// Creates a new vertex and returns the vertex object. The vertex contains
+/// the properties defined in @FA{data}.
+///
+/// @EXAMPLES
+///
+/// Without any properties:
+///
+/// @verbinclude graph-graph-add-vertex
+///
+/// With given properties:
+///
+/// @verbinclude graph-graph-add-vertex2
+////////////////////////////////////////////////////////////////////////////////
 
-  if (data === null || typeof data !== "object") {
-    params = {};
-  } else {
-    params = data._shallowCopy || {};
-  }
-
-  params.$label = label;
-
-  return this._saveEdge(id, out_vertex, in_vertex, params, waitForSync);
+Graph.prototype.addVertex = function (id, data, waitForSync) {
+  return this._saveVertex(id, this._prepareVertexData(data), waitForSync);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
