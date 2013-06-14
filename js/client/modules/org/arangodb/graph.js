@@ -97,6 +97,19 @@ request = {
     return results;
   },
 
+  getGraph: function (name) {
+    var requestResult = arangodb.arango.GET("/_api/graph/" + encodeURIComponent(name));
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
+  },
+
+  postGraph: function (data) {
+    var requestResult = arangodb.arango.POST("/_api/graph", JSON.stringify(data));
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
+
+  },
+
   deleteGraph: function (graph) {
     var requestResult = graph._connection.DELETE("/_api/graph/" +
       encodeURIComponent(graph._properties._key));
@@ -266,10 +279,9 @@ Edge.prototype.getPeerVertex = function (vertex) {
 /// @brief changes a property of an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-
 Edge.prototype.setProperty = function (name, value) {
-  var requestResult;
-  var update = this._properties;
+  var requestResult,
+    update = this._properties;
 
   update[name] = value;
 
@@ -445,17 +457,14 @@ Graph.prototype.initialize = function (name, vertices, edges) {
   var requestResult;
 
   if (vertices === undefined && edges === undefined) {
-    requestResult = arangodb.arango.GET("/_api/graph/" + encodeURIComponent(name));
-  }
-  else {
-    requestResult = arangodb.arango.POST("/_api/graph", JSON.stringify({
+    requestResult = request.getGraph(name);
+  } else {
+    requestResult = request.postGraph({
       _key: name,
       vertices: vertices,
       edges: edges
-    }));
+    });
   }
-
-  arangosh.checkRequestResult(requestResult);
 
   this._properties = requestResult.graph;
   this._vertices = arangodb.db._collection(this._properties.vertices);
