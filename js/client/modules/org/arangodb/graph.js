@@ -203,22 +203,20 @@ Edge.prototype.setProperty = function (name, value) {
 /// @brief inbound and outbound edges
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype.edges = function () {
-  var graph = this._graph;
-  var requestResult;
-  var edges;
-  var cursor;
+Vertex.prototype.edges = function (direction, labels) {
+  var requestResult,
+    edge,
+    edges = new GraphArray(),
+    cursor;
 
   requestResult = request.postEdge(this._graph, this, {
-    filter: { direction: "any" }
+    filter : { direction : direction, labels: labels }
   });
 
-  cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = new GraphArray();
+  cursor = new ArangoQueryCursor(this._graph._vertices._database, requestResult);
 
   while (cursor.hasNext()) {
-    var edge = new Edge(graph, cursor.next());
-
+    edge = new Edge(this._graph, cursor.next());
     edges.push(edge);
   }
 
@@ -231,25 +229,7 @@ Vertex.prototype.edges = function () {
 
 Vertex.prototype.getInEdges = function () {
   var labels = Array.prototype.slice.call(arguments);
-  var graph = this._graph;
-  var requestResult;
-  var edges;
-  var cursor;
-
-  requestResult = request.postEdge(this._graph, this, {
-    filter : { direction : "in", labels: labels }
-  });
-
-  cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = new GraphArray();
-
-  while (cursor.hasNext()) {
-    var edge = new Edge(graph, cursor.next());
-
-    edges.push(edge);
-  }
-
-  return edges;
+  return this.edges("in", labels);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,25 +238,7 @@ Vertex.prototype.getInEdges = function () {
 
 Vertex.prototype.getOutEdges = function () {
   var labels = Array.prototype.slice.call(arguments);
-  var graph = this._graph;
-  var requestResult;
-  var edges;
-  var cursor;
-
-  requestResult = request.postEdge(this._graph, this, {
-    filter : { direction : "out", labels: labels }
-  });
-
-  cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = new GraphArray();
-
-  while (cursor.hasNext()) {
-    var edge = new Edge(graph, cursor.next());
-
-    edges.push(edge);
-  }
-
-  return edges;
+  return this.edges("out", labels);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,25 +247,7 @@ Vertex.prototype.getOutEdges = function () {
 
 Vertex.prototype.getEdges = function () {
   var labels = Array.prototype.slice.call(arguments);
-  var graph = this._graph;
-  var requestResult;
-  var edges;
-  var cursor;
-
-  requestResult = request.postEdge(this._graph, this, {
-    filter : { labels: labels }
-  });
-
-  cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = new GraphArray();
-
-  while (cursor.hasNext()) {
-    var edge = new Edge(graph, cursor.next());
-
-    edges.push(edge);
-  }
-
-  return edges;
+  return this.edges("any", labels);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,8 +387,8 @@ Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
 
-  var requestResult = this._connection.POST("/_api/graph/"
-    + encodeURIComponent(this._properties._key) + "/edge",
+  var requestResult = this._connection.POST("/_api/graph/" +
+    encodeURIComponent(this._properties._key) + "/edge",
     JSON.stringify(params));
 
   arangosh.checkRequestResult(requestResult);
