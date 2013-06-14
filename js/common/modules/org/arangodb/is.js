@@ -53,6 +53,27 @@ var falsy = function (x) {
   return !truthy(x);
 };
 
+// is.object, is.noObject, is.array, is.noArray...
+[
+  'Object',
+  'Array',
+  'Boolean',
+  'Date',
+  'Function',
+  'Number',
+  'String',
+  'RegExp'
+].forEach(function(type) {
+  "use strict";
+  exports[type.toLowerCase()] = function(obj) {
+    return Object.prototype.toString.call(obj) === '[object '+type+']';
+  };
+
+  exports["no" + type] = function(obj) {
+    return Object.prototype.toString.call(obj) !== '[object '+type+']';
+  };
+});
+
 exports.existy = existy;
 exports.notExisty = notExisty;
 exports.truthy = truthy;
