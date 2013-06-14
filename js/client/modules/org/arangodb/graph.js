@@ -37,7 +37,27 @@ var arangodb = require("org/arangodb"),
   Graph = common.Graph,
   Vertex = common.Vertex,
   GraphArray = common.GraphArray,
+  Iterator,
   request;
+
+Iterator = function (graph, cursor, MyPrototype, stringRepresentation) {
+  this.next = function next() {
+    if (cursor.hasNext()) {
+      return new MyPrototype(graph, cursor.next());
+    }
+
+    return undefined;
+  };
+
+  this.hasNext = function hasNext() {
+    return cursor.hasNext();
+  };
+
+  this._PRINT = function (context) {
+    context.output += stringRepresentation;
+  };
+};
+
 
 request = {
   send: function (method, graph, path, data) {
@@ -514,31 +534,8 @@ Graph.prototype.getVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var that = this,
-    cursor,
-    Iterator;
-
-  cursor = request.getVertices(this, {});
-
-  Iterator = function () {
-    this.next = function next() {
-      if (cursor.hasNext()) {
-        return new Vertex(that, cursor.next());
-      }
-
-      return undefined;
-    };
-
-    this.hasNext = function hasNext() {
-      return cursor.hasNext();
-    };
-
-    this._PRINT = function (context) {
-      context.output += "[vertex iterator]";
-    };
-  };
-
-  return new Iterator();
+  var cursor = request.getVertices(this, {});
+  return new Iterator(this, cursor, Vertex, "[vertex iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,31 +557,8 @@ Graph.prototype.getEdge = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var that = this,
-    cursor,
-    Iterator;
-
-  cursor = request.getEdges(this, {});
-
-  Iterator = function () {
-    this.next = function next() {
-      if (cursor.hasNext()) {
-        return new Edge(that, cursor.next());
-      }
-
-      return undefined;
-    };
-
-    this.hasNext = function hasNext() {
-      return cursor.hasNext();
-    };
-
-    this._PRINT = function (context) {
-      context.output += "[edge iterator]";
-    };
-  };
-
-  return new Iterator();
+  var cursor = request.getEdges(this, {});
+  return new Iterator(this, cursor, Edge, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
