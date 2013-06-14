@@ -44,7 +44,7 @@ request = {
     var results = graph._connection[method]("/_api/graph/" +
       encodeURIComponent(graph._properties._key) +
       path,
-      data);
+      JSON.stringify(data));
 
     arangosh.checkRequestResult(results);
     return results;
@@ -157,7 +157,7 @@ Edge.prototype.setProperty = function (name, value) {
 
   update[name] = value;
 
-  requestResult = request.putEdge(this._graph, this, JSON.stringify(update));
+  requestResult = request.putEdge(this._graph, this, update);
 
   this._properties = requestResult.edge;
 
@@ -209,9 +209,9 @@ Vertex.prototype.edges = function () {
   var edges;
   var cursor;
 
-  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+  requestResult = request.postEdge(this._graph, this, {
     filter: { direction: "any" }
-  }));
+  });
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -236,9 +236,9 @@ Vertex.prototype.getInEdges = function () {
   var edges;
   var cursor;
 
-  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+  requestResult = request.postEdge(this._graph, this, {
     filter : { direction : "in", labels: labels }
-  }));
+  });
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -263,9 +263,9 @@ Vertex.prototype.getOutEdges = function () {
   var edges;
   var cursor;
 
-  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+  requestResult = request.postEdge(this._graph, this, {
     filter : { direction : "out", labels: labels }
-  }));
+  });
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -290,9 +290,9 @@ Vertex.prototype.getEdges = function () {
   var edges;
   var cursor;
 
-  requestResult = request.postEdge(this._graph, this, JSON.stringify({
+  requestResult = request.postEdge(this._graph, this, {
     filter : { labels: labels }
-  }));
+  });
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
   edges = new GraphArray();
@@ -332,7 +332,7 @@ Vertex.prototype.setProperty = function (name, value) {
 
   update[name] = value;
 
-  requestResult = request.putVertex(this._graph, this, JSON.stringify(update));
+  requestResult = request.putVertex(this._graph, this, update);
 
   this._properties = requestResult.vertex;
 
