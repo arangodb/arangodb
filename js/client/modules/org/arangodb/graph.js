@@ -56,7 +56,7 @@ request = {
       "/edges/" + encodeURIComponent(edge._properties._key),
       data);
 
-    return results;
+    return new ArangoQueryCursor(graph._vertices._database, results);
   },
 
   putEdge: function (graph, edge, data) {
@@ -126,7 +126,7 @@ request = {
       JSON.stringify(params));
 
     arangosh.checkRequestResult(requestResult);
-    return requestResult;
+    return new ArangoQueryCursor(graph._vertices._database, requestResult);
   },
 
   getEdge: function (graph, id) {
@@ -153,7 +153,7 @@ request = {
       JSON.stringify(params));
 
     arangosh.checkRequestResult(requestResult);
-    return requestResult;
+    return new ArangoQueryCursor(graph._vertices._database, requestResult);
   },
 
   deleteVertex: function (graph, vertex) {
@@ -300,16 +300,13 @@ Edge.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function (direction, labels) {
-  var requestResult,
-    edge,
+  var edge,
     edges = new GraphArray(),
     cursor;
 
-  requestResult = request.postEdges(this._graph, this, {
+  cursor = request.postEdges(this._graph, this, {
     filter : { direction : direction, labels: labels }
   });
-
-  cursor = new ArangoQueryCursor(this._graph._vertices._database, requestResult);
 
   while (cursor.hasNext()) {
     edge = new Edge(this._graph, cursor.next());
@@ -518,12 +515,10 @@ Graph.prototype.getVertex = function (id) {
 
 Graph.prototype.getVertices = function () {
   var that = this,
-    requestResult,
     cursor,
     Iterator;
 
-  requestResult = request.getVertices(this, {});
-  cursor = new ArangoQueryCursor(this._vertices._database, requestResult);
+  cursor = request.getVertices(this, {});
 
   Iterator = function () {
     this.next = function next() {
@@ -566,12 +561,10 @@ Graph.prototype.getEdge = function (id) {
 
 Graph.prototype.getEdges = function () {
   var that = this,
-    requestResult,
     cursor,
     Iterator;
 
-  requestResult = request.getEdges(this, {});
-  cursor = new ArangoQueryCursor(this._vertices._database, requestResult);
+  cursor = request.getEdges(this, {});
 
   Iterator = function () {
     this.next = function next() {
