@@ -271,8 +271,8 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var requestResult;
-  var update = this._properties;
+  var requestResult,
+    update = this._properties;
 
   update[name] = value;
 
