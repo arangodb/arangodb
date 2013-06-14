@@ -50,7 +50,7 @@ request = {
     return results;
   },
 
-  postEdge: function (graph, edge, data) {
+  postEdges: function (graph, edge, data) {
     var results = this.send("POST",
       graph,
       "/edges/" + encodeURIComponent(edge._properties._key),
@@ -82,8 +82,27 @@ request = {
       encodeURIComponent(graph._properties._key));
 
     arangosh.checkRequestResult(requestResult);
+  },
+
+  postEdge: function(graph, params) {
+    var requestResult = graph._connection.POST("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) + "/edge",
+      JSON.stringify(params));
+
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
+  },
+
+  postVertex: function(graph, params) {
+    var requestResult = graph._connection.POST("/_api/graph/" +
+      encodeURIComponent(graph._properties._key) + "/vertex",
+      JSON.stringify(params));
+
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
   }
 };
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -215,7 +234,7 @@ Vertex.prototype.edges = function (direction, labels) {
     edges = new GraphArray(),
     cursor;
 
-  requestResult = request.postEdge(this._graph, this, {
+  requestResult = request.postEdges(this._graph, this, {
     filter : { direction : direction, labels: labels }
   });
 
@@ -383,16 +402,13 @@ Graph.prototype.drop = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, params) {
+  var requestResult;
+
   params._key = id;
   params._from = out_vertex._properties._key;
   params._to = in_vertex._properties._key;
 
-  var requestResult = this._connection.POST("/_api/graph/" +
-    encodeURIComponent(this._properties._key) + "/edge",
-    JSON.stringify(params));
-
-  arangosh.checkRequestResult(requestResult);
-
+  requestResult = request.postEdge(this, params);
   return new Edge(this, requestResult.edge);
 };
 
@@ -407,12 +423,7 @@ Graph.prototype._saveVertex = function (id, params) {
     params._key = id;
   }
 
-  requestResult = this._connection.POST("/_api/graph/" +
-    encodeURIComponent(this._properties._key) + "/vertex",
-    JSON.stringify(params));
-
-  arangosh.checkRequestResult(requestResult);
-
+  requestResult = request.postVertex(this, params);
   return new Vertex(this, requestResult.vertex);
 };
 
