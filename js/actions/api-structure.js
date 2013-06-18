@@ -908,10 +908,7 @@ function parseDocumentByStructure(req, res, structure, body, isPatch) {
     if (structure.attributes.hasOwnProperty(key)) {
       value = body[key];
 
-      if (isPatch && undefined === value) {
-        // ignore 
-      }
-      else {
+      if (!isPatch || undefined !== value) {
         if (format) {
           value = parseValue(value, structure.attributes[key], types, lang);
         }
@@ -928,13 +925,13 @@ function parseDocumentByStructure(req, res, structure, body, isPatch) {
   }
 
   if (undefined !== body._id) {
-    document['_id'] = body._id;
+    document._id = body._id;
   }
   if (undefined !== body._rev) {
-    document['_rev'] = body._rev;
+    document._rev = body._rev;
   }
   if (undefined !== body._key) {
-    document['_key'] = body._key;
+    document._key = body._key;
   }  
   
   return document;
@@ -1662,7 +1659,7 @@ function post_api_structure (req, res) {
     structure = db._collection("_structures").document(collection.name());
     saveDocumentByStructure(req, res, collection, structure, body);
   }
-  catch (err) {
+  catch (err3) {
     saveDocument(req, res, collection, body);
   }
 }
