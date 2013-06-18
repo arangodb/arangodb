@@ -59,6 +59,22 @@ var API = "_api/structures";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to boolean
+////////////////////////////////////////////////////////////////////////////////
+
+function stringToBoolean(string){
+  if (undefined === string) {
+    return false;
+  }
+  
+	switch(string.toLowerCase()){
+		case "true": case "yes": case "1": return true;
+		case "false": case "no": case "0": case null: return false;
+		default: return Boolean(string);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a (OK) result 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -67,7 +83,10 @@ function resultOk (req, res, httpReturnCode, keyvals, headers) {
 
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
-  res.body = JSON.stringify(keyvals);
+  
+  if (undefined !== keyvals) {
+    res.body = JSON.stringify(keyvals);
+  }
 
   if (headers !== undefined && headers !== null) {
     res.headers = headers;    
@@ -98,8 +117,19 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, keyvals,
 
   result.error        = true;
   result.code         = httpReturnCode;
-  result.errorNum     = errorNum;
-  result.errorMessage = errorMessage;
+  if (undefined !== errorMessage.errorNum) {
+    result.errorNum = errorMessage.errorNum;
+  }
+  else {
+    result.errorNum     = errorNum;    
+  }
+  if (undefined !== errorMessage.errorMessage) {
+    result.errorMessage = errorMessage.errorMessage;
+  }
+  else {
+    result.errorMessage = errorMessage;    
+  }
+  
   
   res.body = JSON.stringify(result);
 
@@ -169,16 +199,47 @@ function getCollectionByRequest(req, res)  {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the overwite policy
+////////////////////////////////////////////////////////////////////////////////
+
+function getOverwritePolicy(req)  {
+  
+  var policy = req.parameters.policy;
+  
+  if (undefined !== policy && "error" === policy) {
+    return false;
+  }
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the overwite policy
+////////////////////////////////////////////////////////////////////////////////
+
+function getKeepNull(req)  {  
+  return stringToBoolean(req.parameters.keepNull);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns wait for sync
+////////////////////////////////////////////////////////////////////////////////
+
+function getWaitForSync(req, collection)  {  
+  if (collection.properties().waitForSync) {
+    return true;
+  }
+  
+  return stringToBoolean(req.parameters.waitForSync);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief save a document
 ////////////////////////////////////////////////////////////////////////////////
 
 function saveDocument(req, res, collection, document)  {
   var doc;
-  var waitForSync = collection.properties().waitForSync;
-  
-  if (req.parameters.waitForSync) {
-    waitForSync = true;
-  }
+  var waitForSync = getWaitForSync(req, collection);
     
   try {
     doc = collection.save(document, waitForSync);
@@ -197,6 +258,8 @@ function saveDocument(req, res, collection, document)  {
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
   
+  doc.error = false;
+  
   resultOk(req, res, returnCode, doc, headers);
 }
 
@@ -206,12 +269,18 @@ function saveDocument(req, res, collection, document)  {
 
 function replaceDocument(req, res, collection, oldDocument, newDocument)  {
   var doc;
-  var waitForSync = collection.properties().waitForSync;
+  var waitForSync = getWaitForSync(req, collection);
+  var overwrite = getOverwritePolicy(req);
   
-  if (req.parameters.waitForSync) {
-    waitForSync = true;
+  if (!overwrite && 
+      undefined !== newDocument._rev && 
+      oldDocument._rev !== newDocument._rev) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        "wrong version");
+    return;    
   }
-  
+
   try {
     doc = collection.replace(oldDocument, newDocument, true, waitForSync);
   }
@@ -235,26 +304,23 @@ function replaceDocument(req, res, collection, oldDocument, newDocument)  {
 /// @brief update a document
 ////////////////////////////////////////////////////////////////////////////////
 
-function updateDocument(req, res, collection, oldDocument, newDocument)  {
+function patchDocument(req, res, collection, oldDocument, newDocument)  {
   var doc;
-  var waitForSync = collection.properties().waitForSync;
-  var overwrite = false;
-  var keepNull = true;
+  var waitForSync = getWaitForSync(req, collection);
+  var overwrite = getOverwritePolicy(req);
+  var keepNull = getKeepNull(req);
   
-  if (req.parameters.waitForSync) {
-    waitForSync = true;
-  }
-  
-  if (req.parameters.overwrite) {
-    overwrite = true;
-  }
-
-  if (!req.parameters.keepNull) {
-    keepNull = true;
+  if (!overwrite && 
+      undefined !== newDocument._rev && 
+      oldDocument._rev !== newDocument._rev) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        "wrong version");
+    return;    
   }
   
   try {
-    doc = collection.update(oldDocument, newDocument, overwrite, keepNull, waitForSync);
+    doc = collection.update(oldDocument, newDocument, true, keepNull, waitForSync);
   }
   catch(err) {
     resultError(req, res, actions.HTTP_BAD, 
@@ -425,9 +491,7 @@ function formatValue (value, structure, types, lang) {
   try {
     var type = types.predefinedTypes[structure.type];
     if (type) {
-      console.warn("predefined type found: " + structure.type);    
-      
-      // TODO check type of value
+      //console.warn("predefined type found: " + structure.type);    
       
       section = selectFormatter(structure.formatter, 
           types.predefinedTypes[structure.type].formatter, lang);
@@ -445,9 +509,7 @@ function formatValue (value, structure, types, lang) {
     // array types
     type = types.arrayTypes[structure.type];
     if (type) {
-      console.warn("array type found: " + structure.type);
-      
-      // TODO check type of value
+      //console.warn("array type found: " + structure.type);
       
       // check for array formatter
       section = selectFormatter(structure.formatter, undefined, lang);        
@@ -460,8 +522,11 @@ function formatValue (value, structure, types, lang) {
       
       // format each element
       result = [];
-      for (key = 0; key < value.length; ++key) {
-        result[key] = formatValue(value[key], type, types, lang);
+      
+      if(value instanceof Array) {
+        for (key = 0; key < value.length; ++key) {
+          result[key] = formatValue(value[key], type, types, lang);
+        }
       }
       return result;
     }
@@ -469,7 +534,7 @@ function formatValue (value, structure, types, lang) {
     // object types    
     type = types.objectTypes[structure.type];
     if (type) {
-      console.warn("object type found: " + structure.type);
+      //console.warn("object type found: " + structure.type);
 
       // TODO check type of value
 
@@ -512,7 +577,7 @@ function formatValue (value, structure, types, lang) {
     }
   }
   catch (err) {
-    console.warn("error = " + err);
+    //console.warn("error = " + err);
   }
 
   return value;  
@@ -540,7 +605,7 @@ function parseValue (value, structure, types, lang) {
           types.predefinedTypes[structure.type].parser, lang);
 
       if (undefined === section) {
-        console.warn("section is undefined");
+        //console.warn("section is undefined");
         return value;
       }
 
@@ -557,9 +622,7 @@ function parseValue (value, structure, types, lang) {
     // array types
     type = types.arrayTypes[structure.type];
     if (type) {
-      console.warn("array type found: " + structure.type);
-      
-      // TODO check type of value
+      //console.warn("array type found: " + structure.type);
       
       // check for array formatter
       section = selectParser(structure.parser, undefined, lang);        
@@ -572,8 +635,10 @@ function parseValue (value, structure, types, lang) {
       
       // parse each element
       result = [];
-      for (key = 0; key < value.length; ++key) {
-        result[key] = parseValue(value[key], type, types, lang);
+      if(value instanceof Array) {
+        for (key = 0; key < value.length; ++key) {
+          result[key] = parseValue(value[key], type, types, lang);
+        }
       }
       return result;
     }
@@ -581,7 +646,7 @@ function parseValue (value, structure, types, lang) {
     // object types    
     type = types.objectTypes[structure.type];
     if (type) {
-      console.warn("object type found: " + structure.type);
+      //console.warn("object type found: " + structure.type);
 
       // TODO check type of value
 
@@ -626,7 +691,7 @@ function parseValue (value, structure, types, lang) {
     }
   }
   catch (err) {
-    console.warn("error = " + err);
+    //console.warn("error = " + err);
   }
 
   return value;  
@@ -641,11 +706,13 @@ function validateValue (value, structure, types, lang) {
   var key;
   var validators;
   var v;
+  
+  //console.warn("in validateValue(): " + structure.type);    
 
   try {
     var type = types.predefinedTypes[structure.type];
     if (type) {
-      console.warn("predefined type found: " + structure.type);    
+      //console.warn("predefined type found: " + structure.type);    
       
       // TODO check type of value
       
@@ -653,7 +720,7 @@ function validateValue (value, structure, types, lang) {
       if (undefined !== validators) {        
         for (key = 0; key < validators.length; ++key) {
 
-          console.warn("call function: " + validators[key]['do']);    
+          //console.warn("call function: " + validators[key]['do']);    
           
           result = callModuleFunction(value, 
               validators[key].module, 
@@ -670,7 +737,7 @@ function validateValue (value, structure, types, lang) {
       if (undefined !== validators) {        
         for (key = 0; key < validators.length; ++key) {
 
-          console.warn("call function: " + validators[key]['do']);    
+          //console.warn("call function: " + validators[key]['do']);    
           
           result = callModuleFunction(value, 
               validators[key].module, 
@@ -689,7 +756,7 @@ function validateValue (value, structure, types, lang) {
     // array types
     type = types.arrayTypes[structure.type];
     if (type) {
-      console.warn("array type found: " + structure.type);
+      //console.warn("array type found: " + structure.type);
       
       // TODO check type of value
       
@@ -709,7 +776,7 @@ function validateValue (value, structure, types, lang) {
         }
         return true;
       }
-      
+
       // validate each element
       for (key = 0; key < value.length; ++key) {
         var valid = validateValue(value[key], type, types);
@@ -723,7 +790,7 @@ function validateValue (value, structure, types, lang) {
     // object types    
     type = types.objectTypes[structure.type];
     if (type) {
-      console.warn("object type found: " + structure.type);
+      //console.warn("object type found: " + structure.type);
 
       // TODO check type of value
 
@@ -748,9 +815,7 @@ function validateValue (value, structure, types, lang) {
         // no attributes
         return true;
       }
-      
-      // TODO check type of attribute
-      
+            
       // validate each property
       for (key in attributes) {
         if (attributes.hasOwnProperty(key)) {
@@ -765,7 +830,7 @@ function validateValue (value, structure, types, lang) {
           var subStructure = attributes[key];
         
           if (undefined !== subStructure) {
-            if (!parseValue(v, subStructure, types, lang)) {
+            if (!validateValue(v, subStructure, types, lang)) {
               return false;
             }
           }
@@ -776,22 +841,10 @@ function validateValue (value, structure, types, lang) {
     }
   }
   catch (err) {
-    console.warn("error = " + err);
+    //console.warn("error = " + err);
   }
 
   return false;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to boolean
-////////////////////////////////////////////////////////////////////////////////
-
-function stringToBoolean(string){
-	switch(string.toLowerCase()){
-		case "true": case "yes": case "1": return true;
-		case "false": case "no": case "0": case null: return false;
-		default: return Boolean(string);
-	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,7 +883,7 @@ function resultStructure (req, res, doc, structure, headers) {
   result._rev = doc._rev;
   result._key = doc._key;
   
-  resultOk(req, res, actions.HTTP_OK, result, headers);    
+  resultOk(req, res, actions.HTTP_OK, result, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -838,7 +891,7 @@ function resultStructure (req, res, doc, structure, headers) {
 /// @throws exception
 ////////////////////////////////////////////////////////////////////////////////
 
-function parseDocumentByStructure(req, res, structure, body) {
+function parseDocumentByStructure(req, res, structure, body, isPatch) {
   var document = {};
 
   var key;
@@ -850,26 +903,40 @@ function parseDocumentByStructure(req, res, structure, body) {
   if (undefined !== req.parameters.format) {
     format = stringToBoolean(req.parameters.format);
   }
-
-  // TODO check type of body
-
+    
   for (key in structure.attributes) {
     if (structure.attributes.hasOwnProperty(key)) {
       value = body[key];
 
-      if (format) {
-        value = parseValue(value, structure.attributes[key], types, lang);
-      }
-
-      console.warn("validate key: " + key);
-      if (validateValue(value, structure.attributes[key], types)) {
-        document[key] = value;
+      if (isPatch && undefined === value) {
+        // ignore 
       }
       else {
-        throw("value of attribute '" + key + "' is not valid.");
+        if (format) {
+          value = parseValue(value, structure.attributes[key], types, lang);
+        }
+
+        //console.warn("validate key: " + key);
+        if (validateValue(value, structure.attributes[key], types)) {
+          document[key] = value;
+        }
+        else {
+          throw("value of attribute '" + key + "' is not valid.");
+        }
       }
     }
   }
+
+  if (undefined !== body._id) {
+    document['_id'] = body._id;
+  }
+  if (undefined !== body._rev) {
+    document['_rev'] = body._rev;
+  }
+  if (undefined !== body._key) {
+    document['_key'] = body._key;
+  }  
+  
   return document;
 }
 
@@ -879,7 +946,7 @@ function parseDocumentByStructure(req, res, structure, body) {
 
 function saveDocumentByStructure(req, res, collection, structure, body) {
   try {
-    var document = parseDocumentByStructure(req, res, structure, body);
+    var document = parseDocumentByStructure(req, res, structure, body, false);
     saveDocument(req, res, collection, document);
   }
   catch(err) {
@@ -896,8 +963,25 @@ function saveDocumentByStructure(req, res, collection, structure, body) {
 
 function replaceDocumentByStructure(req, res, collection, structure, oldDocument, body) {
   try {
-    var document = parseDocumentByStructure(req, res, structure, body);
+    var document = parseDocumentByStructure(req, res, structure, body, false);
     replaceDocument(req, res, collection, oldDocument, document);
+  }
+  catch(err) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, 
+        err);
+    return;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief patch the parsed document
+////////////////////////////////////////////////////////////////////////////////
+
+function patchDocumentByStructure(req, res, collection, structure, oldDocument, body) {
+  try {
+    var document = parseDocumentByStructure(req, res, structure, body, true);
+    patchDocument(req, res, collection, oldDocument, document);
   }
   catch(err) {
     resultError(req, res, actions.HTTP_BAD, 
@@ -917,9 +1001,58 @@ function replaceDocumentByStructure(req, res, collection, structure, oldDocument
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document
+/// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/structure/`document`,get a structured document}
+/// @RESTHEADER{GET /_api/structures/`document-handle`,reads a document}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally select a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{lang,string,optional}
+/// Language of the data.
+///
+/// @RESTQUERYPARAM{format,boolean,optional}
+/// False for unformated values (default: true).
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has a different revision than the
+/// given etag. Otherwise a `HTTP 304` is returned.
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Returns the document identified by `document-handle`. The returned
+/// document contains two special attributes: `_id` containing the document
+/// handle and `_rev` containing the revision.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the document was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the document or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the document has
+/// same version
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -949,7 +1082,6 @@ function get_api_structure(req, res)  {
   }
   catch (err) {
     // return the doc
-    console.warn("error = " + err);
     resultOk(req, res, actions.HTTP_OK, doc, headers);
     return;
   }
@@ -958,9 +1090,131 @@ function get_api_structure(req, res)  {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a single document head
+///
+/// @RESTHEADER{HEAD /_api/structures/`document-handle`,reads a document header}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally select a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally get a document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// Like `GET`, but only returns the header fields and not the body. You
+/// can use this call to get the current revision of a document or check if
+/// the document was deleted.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the document was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the document or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the document has
+/// same version
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version
+///
+////////////////////////////////////////////////////////////////////////////////
+
+function head_api_structure(req, res)  {
+  var collection = getCollectionByRequest(req, res);
+  if (undefined === collection) {
+    return;
+  }
+
+  var doc = getDocumentByRequest(req, res, collection);
+  if (undefined === doc) {
+    return;
+  }
+
+  if (matchError(req, res, doc)) {
+    return;
+  }
+
+  var headers = {
+    "Etag" :  doc._rev
+  };
+
+  resultOk(req, res, actions.HTTP_OK, undefined, headers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/structure/`document`,deletes a structured document}
+/// @RESTHEADER{DELETE /_api/structures/`document-handle`,deletes a document}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// Deletes the document identified by `document-handle`. 
+/// 
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for more details).
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
+/// contains the known document revision.
+///
+/// If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection or the document was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the current
+/// document has a different version
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -980,11 +1234,7 @@ function delete_api_structure (req, res) {
     return;
   }
 
-  var waitForSync = collection.properties().waitForSync;
-  
-  if (req.parameters.waitForSync) {
-    waitForSync = true;
-  }
+  var waitForSync = getWaitForSync(req, collection);
 
   try {
     collection.remove( doc, true, waitForSync);
@@ -1001,9 +1251,251 @@ function delete_api_structure (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document
+/// @brief updates a document
 ///
-/// @RESTHEADER{PUT /_api/structure/`document`,replace a structured document}
+/// @RESTHEADER{PATCH /_api/structures/`document-handle`,patches a document}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{keepNull,string,optional}
+/// If the intention is to delete existing attributes with the patch command, 
+/// the URL query parameter `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document with an
+/// attribute value of `null`.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally patch a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally delete a document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// Partially updates the document identified by `document-handle`.
+/// The body of the request must contain a JSON document with the attributes
+/// to patch (the patch document). All attributes from the patch document will
+/// be added to the existing document if they do not yet exist, and overwritten
+/// in the existing document if they do exist there.
+///
+/// Setting an attribute value to `null` in the patch document will cause a
+/// value of `null` be saved for the attribute by default. 
+///
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the document update operation to disk even in case
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
+///
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision. The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
+/// contains the new document revision.
+///
+/// If the document does not exist, then a `HTTP 404` is returned and the
+/// body of the response contains an error document.
+///
+/// You can conditionally update a document based on a target revision id by
+/// using either the `rev` URL parameter or the `if-match` HTTP header.
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for details).
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if collection or the document was not found
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version
+///
+////////////////////////////////////////////////////////////////////////////////
+
+function patch_api_structure (req, res) {
+  var body;
+  var structure;
+  
+  var collection = getCollectionByRequest(req, res);
+  if (undefined === collection) {
+    return;
+  }
+
+  var doc = getDocumentByRequest(req, res, collection);
+  if (undefined === doc) {
+    return;
+  }
+
+  if (matchError(req, res, doc)) {
+    return;
+  }
+
+  body = actions.getJsonBody(req, res);
+
+  if (body === undefined) {
+    resultError(req, res, actions.HTTP_BAD, 
+        arangodb.ERROR_FAILED, "no body data");
+    return;
+  }
+
+  try {
+    structure = db._collection("_structures").document(collection.name());
+    patchDocumentByStructure(req, res, collection, structure, doc, body);
+  }
+  catch (err) {
+    patchDocument(req, res, collection, doc, body);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document
+///
+/// @RESTHEADER{PUT /_api/structures/`document-handle`,replaces a document}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{document-handle,string,required}
+/// The Handle of the Document.
+/// 
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// You can conditionally replace a document based on a target revision id by
+/// using the `rev` URL parameter.
+/// 
+/// @RESTQUERYPARAM{policy,string,optional}
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the `policy` parameter. This is the same as when replacing
+/// documents (see replacing documents for more details).
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// You can conditionally replace a document based on a target revision id by
+/// using the `if-match` HTTP header.
+/// 
+/// @RESTDESCRIPTION
+/// Completely updates (i.e. replaces) the document identified by `document-handle`.
+/// If the document exists and can be updated, then a `HTTP 201` is returned
+/// and the "ETag" header field contains the new revision of the document.
+///
+/// If the new document passed in the body of the request contains the
+/// `document-handle` in the attribute `_id` and the revision in `_rev`,
+/// these attributes will be ignored. Only the URI and the "ETag" header are
+/// relevant in order to avoid confusion when using proxies.
+///
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the document replacement operation to disk even in case
+/// that the `waitForSync` flag had been disabled for the entire collection.
+/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the `waitForSync` parameter
+/// to `true`. If the `waitForSync` parameter is not specified or set to
+/// `false`, then the collection's default `waitForSync` behavior is
+/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// synchronisation for collections that have a default `waitForSync` value
+/// of `true`.
+///
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute `_id` contains the known
+/// `document-handle` of the updated document, the attribute `_rev`
+/// contains the new document revision.
+///
+/// If the document does not exist, then a `HTTP 404` is returned and the
+/// body of the response contains an error document.
+///
+/// There are two ways for specifying the targeted document revision id for
+/// conditional replacements (i.e. replacements that will only be executed if
+/// the revision id found in the database matches the document revision id specified
+/// in the request):
+/// - specifying the target revision in the `rev` URL query parameter
+/// - specifying the target revision in the `if-match` HTTP header
+///
+/// Specifying a target revision is optional, however, if done, only one of the
+/// described mechanisms must be used (either the `rev` URL parameter or the
+/// `if-match` HTTP header).
+/// Regardless which mechanism is used, the parameter needs to contain the target
+/// document revision id as returned in the `_rev` attribute of a document or
+/// by an HTTP `etag` header.
+///
+/// For example, to conditionally replace a document based on a specific revision
+/// id, you the following request:
+/// 
+/// - PUT /_api/document/`document-handle`?rev=`etag`
+///
+/// If a target revision id is provided in the request (e.g. via the `etag` value
+/// in the `rev` URL query parameter above), ArangoDB will check that
+/// the revision id of the document found in the database is equal to the target
+/// revision id provided in the request. If there is a mismatch between the revision
+/// id, then by default a `HTTP 412` conflict is returned and no replacement is
+/// performed.
+///
+/// The conditional update behavior can be overriden with the `policy` URL query parameter:
+///
+/// - PUT /_api/document/`document-handle`?policy=`policy`
+///
+/// If `policy` is set to `error`, then the behavior is as before: replacements
+/// will fail if the revision id found in the database does not match the target
+/// revision id specified in the request.
+///
+/// If `policy` is set to `last`, then the replacement will succeed, even if the
+/// revision id found in the database does not match the target revision id specified
+/// in the request. You can use the `last` `policy` to force replacements.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if collection or the document was not found
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or `rev` is given and the found
+/// document has a different version
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1043,39 +1535,121 @@ function put_api_structure (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection
+/// @brief creates a document
 ///
-/// @RESTHEADER{POST /_api/structure,creates a structured document}
+/// @RESTHEADER{POST /_api/structure,creates a document}
+///
+/// @RESTBODYPARAM{document,json,required}
+/// A JSON representation of document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{collection,string,required}
-/// Creates a new document in the collection `collection`.
+/// The collection name.
 ///
-/// @RESTBODYPARAM{structure,json,required}
-/// The structure definition.
+/// @RESTQUERYPARAM{createCollection,boolean,optional}
+/// If this parameter has a value of `true` or `yes`, then the collection is
+/// created if it does not yet exist. Other values will be ignored so the
+/// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTQUERYPARAM{lang,string,optional}
+/// Language of the send data.
+///
+/// @RESTQUERYPARAM{format,boolean,optional}
+/// True, if the document contains formatted values (default: true).
 ///
 /// @RESTDESCRIPTION
+/// Creates a new document in the collection named `collection`.  A JSON
+/// representation of the document must be passed as the body of the POST
+/// request.
 ///
-/// Creates a new document in the collection identified by the
-/// `collection-identifier`.  A JSON representation of the document must be
-/// passed as the body of the POST request. The document must fullfill the
-/// requirements of the structure definition, see @ref ArangoStructures.
+/// If the document was created successfully, then the "Location" header
+/// contains the path to the newly created document. The "ETag" header field
+/// contains the revision of the document.
 ///
-/// In all other respects the function is identical to the 
-/// @ref triagens::arango::RestDocumentHandler::createDocument "POST /_api/structure".
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `_id` contains the document handle of the newly created document
+/// - `_key` contains the document key
+/// - `_rev` contains the document revision
+///
+/// If the collection parameter `waitForSync` is `false`, then the call returns
+/// as soon as the document has been accepted. It will not wait, until the
+/// documents has been sync to disk.
+///
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the document creation operation to disk even in case that
+/// the `waitForSync` flag had been disabled for the entire collection.  Thus,
+/// the `waitForSync` URL parameter can be used to force synchronisation of just
+/// this specific operations. To use this, set the `waitForSync` parameter to
+/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
+/// then the collection's default `waitForSync` behavior is applied. The
+/// `waitForSync` URL parameter cannot be used to disable synchronisation for
+/// collections that have a default `waitForSync` value of `true`.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_structure (req, res) {
   // POST /_api/structure
   var body;
   var structure;
+  var collection;
 
-  var collection = getCollectionByRequest(req, res);
-  if (undefined === collection) {
-    return;
+  var collectionName = req.parameters.collection;
+  if (undefined === collectionName) {
+    resultError(req, res, actions.HTTP_NOT_FOUND, 
+        arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
+    return;    
   }
 
+  try {
+    collection = db._collection(collectionName);
+  }
+  catch (err) {
+  }
+  
+  if (null === collection) {
+    var createCollection = stringToBoolean(req.parameters.createCollection);
+    if (createCollection) {
+      try {
+        db._create(collectionName);
+        collection = db._collection(collectionName);
+      }
+      catch(err2) {        
+        resultError(req, res, actions.HTTP_NOT_FOUND, 
+          arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, err2);
+        return;             
+      }
+    }    
+  } 
+  
+  if (undefined === collection || null === collection) {
+    resultError(req, res, actions.HTTP_NOT_FOUND, 
+        arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
+    return;    
+  }
+  
   body = actions.getJsonBody(req, res);
 
   if (body === undefined) {
@@ -1103,23 +1677,24 @@ actions.defineHttp({
 
   callback : function (req, res) {
     try {
-      if (req.requestType === actions.GET) {
+      if (req.requestType === actions.DELETE) {
+        delete_api_structure(req, res);
+      }
+      else if (req.requestType === actions.GET) {
         get_api_structure(req, res);
+      }
+      else if (req.requestType === actions.HEAD) {
+        head_api_structure(req, res);
+      }
+      else if (req.requestType === actions.PATCH) {
+        patch_api_structure(req, res);
       }
       else if (req.requestType === actions.POST) {
         post_api_structure(req, res);
       }
-      else if (req.requestType === actions.DELETE) {
-        delete_api_structure(req, res);
-      }
       else if (req.requestType === actions.PUT) {
         put_api_structure(req, res);
       }
-/*      
-      else if (req.requestType === actions.PATCH) {
-        patch_api_structure(req, res);
-      }
-*/      
       else {
         actions.resultUnsupported(req, res);
       }
