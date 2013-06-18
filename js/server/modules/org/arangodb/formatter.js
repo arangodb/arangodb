@@ -76,7 +76,7 @@ exports.number = function (value, info, lang) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.formatFloat = function (value, args) {
-  if (undefined === value) {
+  if (undefined === value || null === value) {
     return null;
   }
     
@@ -106,7 +106,7 @@ exports.formatFloat = function (value, args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.formatDatetime = function (value, args) {
-  if (undefined === value) {
+  if (undefined === value || null === value) {
     return null;
   }
 
@@ -134,7 +134,7 @@ exports.formatDatetime = function (value, args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.joinNumbers = function (value, args) {
-  if (undefined === value) {
+  if (undefined === value || null === value) {
     return null;
   }
 
@@ -159,7 +159,7 @@ exports.joinNumbers = function (value, args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.parseFloat = function (value, args) {
-  if (undefined === value) {
+  if (undefined === value || null === value) {
     return null;
   }
     
@@ -191,7 +191,7 @@ exports.parseFloat = function (value, args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.parseDatetime = function (value, args) {
-  if (undefined === value) {
+  if (undefined === value || null === value) {
     return null;
   }
 
