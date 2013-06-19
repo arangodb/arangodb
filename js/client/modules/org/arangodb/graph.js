@@ -37,26 +37,8 @@ var arangodb = require("org/arangodb"),
   Graph = common.Graph,
   Vertex = common.Vertex,
   GraphArray = common.GraphArray,
-  Iterator,
+  Iterator = common.Iterator,
   GraphAPI;
-
-Iterator = function (graph, cursor, MyPrototype, stringRepresentation) {
-  this.next = function next() {
-    if (cursor.hasNext()) {
-      return new MyPrototype(graph, cursor.next());
-    }
-
-    return undefined;
-  };
-
-  this.hasNext = function hasNext() {
-    return cursor.hasNext();
-  };
-
-  this._PRINT = function (context) {
-    context.output += stringRepresentation;
-  };
-};
 
 GraphAPI = {
   send: function (method, graphKey, path, data) {
@@ -478,8 +460,11 @@ Graph.prototype.getVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var cursor = GraphAPI.getVertices(this._vertices._database, this._properties._key, {});
-  return new Iterator(this, cursor, Vertex, "[vertex iterator]");
+  var cursor = GraphAPI.getVertices(this._vertices._database, this._properties._key, {}),
+    graph = this,
+    wrapper = function(object) {
+      return new Vertex(graph, object);
+    };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,8 +486,12 @@ Graph.prototype.getEdge = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var cursor = GraphAPI.getEdges(this._vertices._database, this._properties._key, {});
-  return new Iterator(this, cursor, Edge, "[edge iterator]");
+  var cursor = GraphAPI.getEdges(this._vertices._database, this._properties._key, {}),
+    graph = this,
+    wrapper = function(object) {
+      return new Edge(graph, object);
+    };
+  return new Iterator(wrapper, cursor, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////

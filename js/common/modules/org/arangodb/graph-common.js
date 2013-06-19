@@ -33,11 +33,31 @@ var arangodb = require("org/arangodb"),
   Edge,
   Graph,
   Vertex,
-  GraphArray;
+  GraphArray,
+  Iterator;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
 // -----------------------------------------------------------------------------
+
+Iterator = function (wrapper, cursor, stringRepresentation) {
+  this.next = function next() {
+    if (cursor.hasNext()) {
+      return wrapper(cursor.next());
+    }
+
+    return undefined;
+  };
+
+  this.hasNext = function hasNext() {
+    return cursor.hasNext();
+  };
+
+  this._PRINT = function (context) {
+    context.output += stringRepresentation;
+  };
+};
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        GraphArray
@@ -777,6 +797,7 @@ exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
+exports.Iterator = Iterator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
