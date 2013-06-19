@@ -1080,32 +1080,6 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
-                                TRI_df_marker_t* marker,
-                                TRI_voc_size_t markerSize,
-                                void const* body,
-                                TRI_voc_size_t bodySize) {
-  marker->_crc = 0;
-
-  // crc values only need to be generated for physical files
-  if (datafile->isPhysical(datafile)) {
-    TRI_voc_crc_t crc;
-
-    crc = TRI_InitialCrc32();
-    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
-
-    if (body != NULL && 0 < bodySize) {
-      crc = TRI_BlockCrc32(crc, body, bodySize);
-    }
-
-    marker->_crc = TRI_FinalCrc32(crc);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a CRC and writes that into the header
 /// @deprecated this function is deprecated. do not use for new code
 ////////////////////////////////////////////////////////////////////////////////
 
