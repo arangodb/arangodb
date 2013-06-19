@@ -163,10 +163,10 @@ typedef enum {
 
   TRI_COL_MARKER_HEADER              = 2000,
 
-  TRI_DOC_MARKER_HEADER              = 3000,
-  TRI_DOC_MARKER_DOCUMENT            = 3001,
-  TRI_DOC_MARKER_DELETION            = 3002,
-  TRI_DOC_MARKER_EDGE                = 3006,
+  TRI_DOC_MARKER_HEADER              = 3000, // deprecated. do not use 
+  TRI_DOC_MARKER_DOCUMENT            = 3001, // deprecated. do not use
+  TRI_DOC_MARKER_DELETION            = 3002, // deprecated. do not use
+  TRI_DOC_MARKER_EDGE                = 3006, // deprecated. do not use
 
   TRI_DOC_MARKER_KEY_DOCUMENT        = 3007, // new marker with key values
   TRI_DOC_MARKER_KEY_EDGE            = 3008, // new marker with key values
