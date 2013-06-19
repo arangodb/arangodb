@@ -1,6 +1,9 @@
 v1.4
 ----
 
+* added "doCompact" attribute when creating collections and to collection.properties().
+  The attribute controls whether collection datafiles are compacted.
+
 * changed the HTTP return code from 400 to 404 for some cases when there is a referral 
   to a non-existing collection or document.
 

@@ -226,6 +226,7 @@ typedef struct TRI_col_info_s {
 
   // flags
   bool               _deleted : 1;     // if true, collection has been deleted
+  bool               _doCompact: 1;    // if true, collection will be compacted 
   bool               _isSystem : 1;    // if true, this is a system collection
   bool               _isVolatile : 1;  // if true, collection is memory-only
   bool               _waitForSync : 1; // if true, wait for msync

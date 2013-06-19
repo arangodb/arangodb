@@ -862,6 +862,7 @@ void TRI_CompactorVocBase (void* data) {
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
       TRI_primary_collection_t* primary;
+      bool doCompact;
 
       collection = collections._buffer[i];
 
@@ -878,14 +879,15 @@ void TRI_CompactorVocBase (void* data) {
         continue;
       }
 
-      worked = false;
-      type = primary->base._info._type;
+      worked    = false;
+      doCompact = primary->base._info._doCompact;
+      type      = primary->base._info._type;
 
       // for document collection, compactify datafiles
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-        if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
+        if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
           TRI_barrier_t* ce;
-
+          
           // check whether someone else holds a read-lock on the compaction lock
           if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
             // someone else is holding the compactor lock, we'll not compact
