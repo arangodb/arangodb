@@ -60,8 +60,7 @@ var findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = db._create(name);
-  } 
-  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
+  } else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -81,8 +80,7 @@ var findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = db._createEdgeCollection(name);
-  }
-  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
+  } else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
@@ -98,27 +96,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                              Edge
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new edge object
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -126,74 +103,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the to vertex
-///
-/// @FUN{@FA{edge}.getInVertex()}
-///
-/// Returns the vertex at the head of the @FA{edge}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-in-vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getInVertex = function () {
-  return this._graph.constructVertex(this._properties._to);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the from vertex
-///
-/// @FUN{@FA{edge}.getOutVertex()}
-///
-/// Returns the vertex at the tail of the @FA{edge}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-out-vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getOutVertex = function () {
-  return this._graph.constructVertex(this._properties._from);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the other vertex
-///
-/// @FUN{@FA{edge}.getPeerVertex(@FA{vertex})}
-///
-/// Returns the peer vertex of the @FA{edge} and the @FA{vertex}.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arango> v1 = g.addVertex("1");
-/// Vertex("1")
-///
-/// arango> v2 = g.addVertex("2");
-/// Vertex("2")
-///
-/// arango> e = g.addEdge(v1, v2, "1->2", "knows");
-/// Edge("1->2")
-///
-/// arango> e.getPeerVertex(v1);
-/// Vertex(2)
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getPeerVertex = function (vertex) {
-  if (vertex._properties._id === this._properties._to) {
-    return this._graph.constructVertex(this._properties._from);
-  }
-
-  if (vertex._properties._id === this._properties._from) {
-    return this._graph.constructVertex(this._properties._to);
-  }
-
-  return null;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of an edge
