@@ -523,7 +523,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 #ifdef DEBUG_DATAFILE
     LOG_TRACE("MARKER: size %lu, tick %lx, crc %lx, type %u",
               (unsigned long) marker->_size,
-              (unsigned long) marker->_tick,
+              (unsigned long long) marker->_tick,
               (unsigned long) marker->_crc,
               (unsigned int) marker->_type);
 #endif
@@ -1186,6 +1186,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
                               bool forceSync) {
+  assert(markerSize > 0);
 
   if (markerSize != marker->_size) {
     LOG_ERROR("marker size is %lu, but size is %lu",
