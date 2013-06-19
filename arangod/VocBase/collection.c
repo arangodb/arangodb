@@ -895,6 +895,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_tick          = 0;
 
   parameter->_deleted       = false;
+  parameter->_doCompact     = true;
   parameter->_isVolatile    = false;
   parameter->_isSystem      = false;
   parameter->_maximalSize   = (maximalSize / PageSize) * PageSize;
@@ -921,6 +922,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_tick          = src->_tick;
 
   dst->_deleted       = src->_deleted;
+  dst->_doCompact     = src->_doCompact;
   dst->_isSystem      = src->_isSystem;
   dst->_isVolatile    = src->_isVolatile;
   dst->_maximalSize   = src->_maximalSize;
@@ -1146,6 +1148,8 @@ int TRI_LoadCollectionInfo (char const* path,
   size_t n;
 
   memset(parameter, 0, sizeof(TRI_col_info_t));
+  parameter->_doCompact  = true;
+  parameter->_isVolatile = false;
 
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
@@ -1227,6 +1231,9 @@ int TRI_LoadCollectionInfo (char const* path,
       if (TRI_EqualString(key->_value._string.data, "deleted")) {
         parameter->_deleted = value->_value._boolean;
       }
+      else if (TRI_EqualString(key->_value._string.data, "doCompact")) {
+        parameter->_doCompact = value->_value._boolean;
+      }
       else if (TRI_EqualString(key->_value._string.data, "isVolatile")) {
         parameter->_isVolatile = value->_value._boolean;
       }
@@ -1281,6 +1288,7 @@ int TRI_SaveCollectionInfo (char const* path,
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
@@ -1324,6 +1332,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
   }
 
   if (parameter != 0) {
+    collection->_info._doCompact   = parameter->_doCompact;
     collection->_info._maximalSize = parameter->_maximalSize;
     collection->_info._waitForSync = parameter->_waitForSync;
 

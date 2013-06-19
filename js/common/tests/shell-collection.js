@@ -309,6 +309,7 @@ function CollectionSuite () {
 
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -333,6 +334,7 @@ function CollectionSuite () {
 
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -394,6 +396,7 @@ function CollectionSuite () {
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
       assertEqual(1048576, p.journalSize);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -419,6 +422,7 @@ function CollectionSuite () {
       assertEqual(true, p.waitForSync);
       assertEqual(false, p.isVolatile);
       assertEqual(1048576, p.journalSize);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -431,7 +435,7 @@ function CollectionSuite () {
       var cn = "example";
 
       db._drop(cn);
-      var c1 = db._create(cn, { isVolatile : true });
+      var c1 = db._create(cn, { isVolatile : true, doCompact: false });
 
       assertTypeOf("string", c1._id);
       assertEqual(cn, c1.name());
@@ -443,6 +447,7 @@ function CollectionSuite () {
 
       assertEqual(true, p.isVolatile);
       assertEqual(1048576, p.journalSize);
+      assertEqual(false, p.doCompact);
       db._drop(cn);
     },
 

@@ -136,7 +136,7 @@ TRI_doc_mptr_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_datafile_info_s {
-  TRI_voc_fid_t _fid;
+  TRI_voc_fid_t   _fid;
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
@@ -283,25 +283,25 @@ TRI_doc_collection_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_primary_collection_s {
-  TRI_collection_t base;
+  TRI_collection_t             base;
 
   // .............................................................................
   // this lock protects the _primaryIndex plus the _allIndexes
   // and _headers attributes in derived types
   // .............................................................................
 
-  TRI_read_write_lock_t _lock;
+  TRI_read_write_lock_t        _lock;
 
-  TRI_shaper_t* _shaper;
-  TRI_barrier_list_t _barrierList;
-  TRI_associative_pointer_t _datafileInfo;
+  TRI_shaper_t*                _shaper;
+  TRI_barrier_list_t           _barrierList;
+  TRI_associative_pointer_t    _datafileInfo;
 
-  TRI_associative_pointer_t _primaryIndex;
-  struct TRI_key_generator_s* _keyGenerator;
+  TRI_associative_pointer_t    _primaryIndex;
+  struct TRI_key_generator_s*  _keyGenerator;
   struct TRI_cap_constraint_s* _capConstraint;
 
-  int64_t _numberDocuments;
-  TRI_read_write_lock_t _compactionLock;
+  int64_t                      _numberDocuments;
+  TRI_read_write_lock_t        _compactionLock;
 
   int (*beginRead) (struct TRI_primary_collection_s*);
   int (*endRead) (struct TRI_primary_collection_s*);

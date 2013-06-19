@@ -1495,6 +1495,14 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
     }
 
+    if (p->Has(v8g->DoCompactKey)) {
+      parameter._doCompact = TRI_ObjectToBoolean(p->Get(v8g->DoCompactKey));
+    }
+    else {
+      // default value for compaction
+      parameter._doCompact = true;
+    }
+
     if (p->Has(v8g->IsSystemKey)) {
       parameter._isSystem = TRI_ObjectToBoolean(p->Get(v8g->IsSystemKey));
     }
@@ -5023,10 +5031,16 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       // get the old values
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-      bool waitForSync = base->_info._waitForSync;
       size_t maximalSize = base->_info._maximalSize;
+      bool doCompact     = base->_info._doCompact;
+      bool waitForSync   = base->_info._waitForSync;
 
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
+      // extract doCompact flag
+      if (po->Has(v8g->DoCompactKey)) {
+        doCompact = TRI_ObjectToBoolean(po->Get(v8g->DoCompactKey));
+      }
 
       // extract sync flag
       if (po->Has(v8g->WaitForSyncKey)) {
@@ -5059,6 +5073,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       // update collection
       TRI_col_info_t newParameter;
 
+      newParameter._doCompact   = doCompact;
       newParameter._maximalSize = maximalSize;
       newParameter._waitForSync = waitForSync;
 
@@ -5078,8 +5093,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   if (TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
     TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
 
-    result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
+    result->Set(v8g->DoCompactKey, base->_info._doCompact ? v8::True() : v8::False());
     result->Set(v8g->IsSystemKey, base->_info._isSystem ? v8::True() : v8::False());
+    result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
     if (keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
