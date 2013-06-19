@@ -53,7 +53,197 @@ var API = "_api/structures";
 /// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+/*
 
+Configuration example document:
+
+{
+ "_key" : "a_collection_name",      <- name of the collection with structure
+
+ "attributes": {                    <- List of all attributes
+  "number": {                       <- Name of the attribute
+   "type": "number",                <- Type of the attribute
+   "formatter": {                   <- Output formatter configuration
+    "default": {
+     "args": {
+      "decPlaces": 4,
+      "decSeparator": ".",
+      "thouSeparator": ","
+     },
+     "module": "org/arangodb/formatter",
+     "do": "formatFloat"
+    },
+    "de": {
+     "args": {
+      "decPlaces": 4,
+      "decSeparator": ",",
+      "thouSeparator": "."
+     },
+     "module": "org/arangodb/formatter",
+     "do": "formatFloat"
+    }
+   },
+   "parser": {                      <- Input parser configuration
+    "default": {
+     "args": {
+      "decPlaces": 4,
+      "decSeparator": ".",
+      "thouSeparator": ","
+     },
+     "module": "org/arangodb/formatter",
+     "do": "parseFloat"
+    },
+    "de": {
+     "args": {
+      "decPlaces": 4,
+      "decSeparator": ",",
+      "thouSeparator": "."
+     },
+     "module": "org/arangodb/formatter",
+     "do": "parseFloat"
+    }
+   },
+   "validators":                    <- List of input validators
+      [ { "module": "org/arangodb/formatter", "do": "validateNotNull" } ]
+  },
+  "string": {                       <- Name of the attribute
+   "type": "string",                <- Type of the attribute
+   "formatter": {},
+   "validators": []
+  },
+  "zahlen": {                       <- Name of the attribute
+   "type": "number_list_type"       <- Type of the attribute
+  },
+  "number2": {                      <- Name of the attribute
+   "type": "number",                <- Type of the attribute
+   "formatter": {
+    "default": {
+     "args": {
+      "decPlaces": 0,
+      "decSeparator": ".",
+      "thouSeparator": ","
+     },
+     "module": "org/arangodb/formatter",
+     "do": "formatFloat"
+    }
+   },
+   "validators": []
+  },
+  "no_structure": {                    <- Name of the attribute
+   "type": "mixed"                     <- Type of the attribute
+  },
+  "timestamp": {
+   "type": "number",
+   "formatter": {
+    "default": {
+     "module": "org/arangodb/formatter",
+     "do": "formatDatetime",
+     "args": {
+      "lang": "en",
+      "timezone": "GMT",
+      "pattern": "yyyy-MM-dd'T'HH:mm:ssZ"
+     }
+    },
+    "de": {
+     "module": "org/arangodb/formatter",
+     "do": "formatDatetime",
+     "args": {
+      "lang": "de",
+      "timezone": "Europe/Berlin",
+      "pattern": "yyyy.MM.dd HH:mm:ss zzz"
+     }
+    }
+   },
+   "parser": {
+    "default": {
+     "module": "org/arangodb/formatter",
+     "do": "parseDatetime",
+     "args": {
+      "lang": "en",
+      "timezone": "GMT",
+      "pattern": "yyyy-MM-dd'T'HH:mm:ssZ"
+     }
+    },
+    "de": {
+     "module": "org/arangodb/formatter",
+     "do": "parseDatetime",
+     "args": {
+      "lang": "de",
+      "timezone": "Europe/Berlin",
+      "pattern": "yyyy.MM.dd HH:mm:ss zzz"
+     }
+    }
+   },
+   "validators": []
+  },
+  "object1": {                         <- Name of the attribute
+   "type": "complex_type1"             <- Type of the attribute
+  }
+ },
+
+
+ "arrayTypes": {                       <- Array type definitions
+  "number_list_type": {                <- Name of type
+   "type": "number",                  
+   "formatter": {
+    "default": {
+     "args": {
+      "decPlaces": 2,
+      "decSeparator": ".",
+      "thouSeparator": ","
+     },
+     "module": "org/arangodb/formatter",
+     "do": "formatFloat"
+    },
+    "de": {
+     "args": {
+      "decPlaces": 2,
+      "decSeparator": ",",
+      "thouSeparator": "."
+     },
+     "module": "org/arangodb/formatter",
+     "do": "formatFloat"
+    }
+   },
+   "parser": {
+    "default": {
+     "args": {
+      "decPlaces": 2,
+      "decSeparator": ".",
+      "thouSeparator": ","
+     },
+     "module": "org/arangodb/formatter",
+     "do": "parseFloat"
+    },
+    "de": {
+     "args": {
+      "decPlaces": 2,
+      "decSeparator": ",",
+      "thouSeparator": "."
+     },
+     "module": "org/arangodb/formatter",
+     "do": "parseFloat"
+    }
+   }
+  }
+ },
+
+
+ "objectTypes": {                       <- Object type definitions
+  "complex_type1": {                    <- Name of type
+   "attributes": {                      <- Attributes of the object type
+    "aNumber": {                        
+     "type": "number"
+    },
+    "aList": {
+     "type": "number_list_type"         <- reference to array type
+    }
+   }
+  }
+ }
+}
+
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1277,6 +1467,12 @@ function delete_api_structure (req, res) {
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter.
 ///
+/// @RESTQUERYPARAM{lang,string,optional}
+/// Language of the data.
+///
+/// @RESTQUERYPARAM{format,boolean,optional}
+/// False for unformated values (default: true).
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
@@ -1399,6 +1595,12 @@ function patch_api_structure (req, res) {
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter. This is the same as when replacing
 /// documents (see replacing documents for more details).
+///
+/// @RESTQUERYPARAM{lang,string,optional}
+/// Language of the data.
+///
+/// @RESTQUERYPARAM{format,boolean,optional}
+/// False for unformated values (default: true).
 ///
 /// @RESTHEADERPARAMETERS
 ///
