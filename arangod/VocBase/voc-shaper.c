@@ -665,10 +665,11 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
 
   if (found != 0) {
+    TRI_UnlockMutex(&s->_shapeLock);
+
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
-    TRI_UnlockMutex(&s->_shapeLock);
     return found;
   }
 
@@ -678,11 +679,12 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
-
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
+  
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+
     return NULL;
   }
 
@@ -696,6 +698,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   assert(f == NULL);
 
   TRI_UnlockMutex(&s->_shapeLock);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+
   return l;
 }
 
