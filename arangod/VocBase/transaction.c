@@ -1762,7 +1762,7 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
 
     // the tick value of a marker must always be greater than the tick value of any other
     // existing marker in the collection 
-    TRI_SetRevisionDocumentCollection((TRI_document_collection_t*) primary, rid);
+    TRI_SetRevisionDocumentCollection((TRI_document_collection_t*) primary, (TRI_voc_tick_t) rid);
   }
 
   return res;

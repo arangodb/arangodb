@@ -355,7 +355,8 @@ ArangoCollection.prototype.properties = function (properties) {
   var result = { 
     waitForSync : requestResult.waitForSync,
     journalSize : requestResult.journalSize,
-    isVolatile : requestResult.isVolatile
+    isVolatile : requestResult.isVolatile,
+    doCompact : requestResult.doCompact
   };
     
   if (requestResult.keyOptions !== undefined) {
