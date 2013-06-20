@@ -1349,7 +1349,48 @@ function DatabaseDocumentSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document too big for a journal 
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentTooLarge : function () {
+      // create a very big and silly document, just to blow up the datafiles
+      var doc = { };
+      for (var i = 0; i < 50000; ++i) {
+        var val = "thequickbrownfoxjumpsoverthelazydog" + i;
+        doc[val] = val;
+      }
+
+      assertEqual(0, collection.count());
+      try {
+        collection.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_NO_JOURNAL.code, err.errorNum);
+      }
+      assertEqual(0, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document bigger than shape file size
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigShape : function () {
+      // create a very big and silly document, just to blow up the datafiles
+      var doc = { _key : "mydoc" };
+      for (var i = 0; i < 50000; ++i) {
+        doc["thequickbrownfox" + i] = 1;
+      }
+
+      assertEqual(0, collection.count());
+      collection.save(doc);
+      assertEqual(1, collection.count());
+      assertEqual("mydoc", collection.document("mydoc")._key);
     }
+
   };
 }
 
