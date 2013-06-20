@@ -396,7 +396,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
-    deleted = (found == NULL || found->_rid > marker->_tick);
+    deleted = (found == NULL || found->_rid > d->_rid);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 

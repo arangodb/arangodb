@@ -137,7 +137,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
         return false;
       }
 
-      header->_rid = marker->_tick;
+      header->_rid = d->_rid;
       header->_fid = datafile->_fid;
       header->_validTo = 0;
       header->_data = marker;
@@ -1766,7 +1766,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         TRI_df_footer_marker_t footer;
 
         // datafile header
-        TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
+        TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
         header._version     = TRI_DF_VERSION;
         header._maximalSize = actualSize;
         header._fid         = TRI_NewTickVocBase();
@@ -1775,7 +1775,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         written += TRI_WRITE(fdout, &header.base, header.base._size);
 
         // col header
-        TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
+        TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
         cm._type     = (TRI_col_type_t) info->_type;
         cm._cid      = info->_cid;
         cm.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
@@ -1824,7 +1824,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         }
 
         // datafile footer
-        TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
+        TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
         footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
         written += TRI_WRITE(fdout, &footer.base, footer.base._size);
 

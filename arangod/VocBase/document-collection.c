@@ -283,7 +283,9 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
    
-  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_KEY_DELETION, *totalSize, TRI_NewTickVocBase());
+  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_KEY_DELETION, *totalSize);
+  assert(marker->_rid == 0);
+  marker->_rid = TRI_NewTickVocBase();
   
   // note: the transaction id is 0 for standalone operations 
   marker->_tid = tid;
@@ -352,9 +354,13 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 
   tick = TRI_NewTickVocBase();
   // copy non-changed data (e.g. key(s)) from old marker into new marker
-  TRI_CloneMarker(&marker->base, original, baseLength, *totalSize, tick);
+  TRI_CloneMarker(&marker->base, original, baseLength, *totalSize);
+  assert(marker->_rid != 0);
+  // the new revision must be greater than the old one
+  assert((TRI_voc_rid_t) tick > marker->_rid);
 
-  marker->_rid   = tick;
+  // give the marker a new revision id
+  marker->_rid   = (TRI_voc_rid_t) tick;
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
@@ -469,8 +475,9 @@ static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
   }
 
   // set the marker type, size, revision id etc. 
-  TRI_InitMarker(&marker->base, markerType, *totalSize, tick);
-  marker->_rid   = tick; 
+  TRI_InitMarker(&marker->base, markerType, *totalSize);
+  assert(marker->_rid == 0);
+  marker->_rid   = (TRI_voc_rid_t) tick; 
   marker->_tid   = tid;
   marker->_shape = shaped->_sid;
 
@@ -514,11 +521,10 @@ static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CreateHeader (TRI_document_collection_t* document,
-                         TRI_doc_document_key_marker_t* marker,
+                         const TRI_doc_document_key_marker_t* marker,
                          TRI_voc_fid_t fid,
                          TRI_doc_mptr_t** result) {
   TRI_doc_mptr_t* header;
-  TRI_voc_tick_t tick;
 
   // get a new header pointer
   header = document->_headers->request(document->_headers);
@@ -527,9 +533,7 @@ static int CreateHeader (TRI_document_collection_t* document,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  tick = marker->base._tick;
-
-  header->_rid       = tick;
+  header->_rid       = marker->_rid;
   header->_fid       = fid;
   header->_data      = marker;
   header->_key       = ((char*) marker) + marker->_offsetKey;
@@ -918,6 +922,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                                               NULL, 
                                               &marker->base, 
                                               totalSize, 
+                                              marker->_rid,
                                               forceSync, 
                                               &directOperation);
   if (! directOperation) {
@@ -1075,6 +1080,7 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
                                               header, 
                                               &marker->base, 
                                               totalSize, 
+                                              marker->_rid,
                                               forceSync, 
                                               &directOperation);
 
@@ -1242,6 +1248,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
                                               &oldData, 
                                               &marker->base, 
                                               totalSize, 
+                                              marker->_rid,
                                               forceSync, 
                                               &directOperation);
 
