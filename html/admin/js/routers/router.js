@@ -156,6 +156,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('logs-menu');
     },
     dashboard: function() {
+      this.naviView.selectMenuItem('dashboard-menu');
       /*
       var self = this;
       window.arangoCollectionsStore.fetch({
