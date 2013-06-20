@@ -53,10 +53,10 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds one assets of an app
+/// @brief builds one asset of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function buildAssetContent (app, assets) {
+function buildAssetContent (app, assets, basePath) {
   var files;
   var i;
   var j;
@@ -66,7 +66,6 @@ function buildAssetContent (app, assets) {
 
   var reSub = /(.*)\/\*\*$/;
   var reAll = /(.*)\/\*$/;
-  var rootDir = fs.join(app._root, app._path);
 
   files = [];
 
@@ -76,7 +75,7 @@ function buildAssetContent (app, assets) {
     match = reSub.exec(asset);
 
     if (match !== null) {
-      m = fs.listTree(fs.join(rootDir, match[1]));
+      m = fs.listTree(fs.join(basePath, match[1]));
   
       // files are sorted in file-system order. 
       // this makes the order non-portable
@@ -85,7 +84,7 @@ function buildAssetContent (app, assets) {
       m.sort();
 
       for (i = 0; i < m.length; ++i) {
-        var filename = fs.join(rootDir, match[1], m[i]);
+        var filename = fs.join(basePath, match[1], m[i]);
 
         if (fs.isFile(filename)) {
           files.push(filename);
@@ -99,7 +98,7 @@ function buildAssetContent (app, assets) {
         throw new Error("not implemented");
       }
       else {
-        files.push(fs.join(rootDir, asset));
+        files.push(fs.join(basePath, asset));
       }
     }
   }
@@ -140,10 +139,15 @@ function installAssets (app, routes) {
   if (desc.hasOwnProperty('assets')) {
     for (path in desc.assets) {
       if (desc.assets.hasOwnProperty(path)) {
-        var asset = desc.assets[path];
+        var asset = desc.assets[path], 
+          basePath = fs.join(app._root, app._path);
+
+        if (asset.hasOwnProperty('basePath')) {
+          basePath = asset.basePath;
+        }
 
         if (asset.hasOwnProperty('files')) {
-          var content = buildAssetContent(app, asset.files);
+          var content = buildAssetContent(app, asset.files, basePath);
 
           normalized = arangodb.normalizeURL("/" + path);
           type = arangodb.guessContentType(normalized);

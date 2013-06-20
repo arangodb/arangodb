@@ -230,6 +230,9 @@ static void InitDatafile (TRI_datafile_t* datafile,
 
   datafile->_synced      = data;
   datafile->_written     = NULL;
+  
+  datafile->_tickMin     = 0;
+  datafile->_tickMax     = 0;
 
   // initialise function pointers
   datafile->isPhysical   = &IsPhysicalDatafile;
@@ -817,7 +820,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   datafile->_state = TRI_DF_STATE_WRITE;
 
   // create the header
-  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
+  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+  header.base._tick = (TRI_voc_tick_t) fid;
 
   header._version     = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
@@ -970,7 +974,6 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
     LOG_ERROR("out of memory");
     return NULL;
   }
-
 
   InitDatafile(datafile,
                TRI_DuplicateString(filename),
@@ -1179,6 +1182,7 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker to the datafile
+/// this function will write the marker as-is, without any CRC or tick updates
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
@@ -1186,6 +1190,39 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
                               bool forceSync) {
+  TRI_voc_tick_t tick = marker->_tick;
+   
+  assert(tick > 0);
+
+  if (marker->_type != TRI_DF_MARKER_HEADER && 
+      marker->_type != TRI_DF_MARKER_FOOTER &&
+      marker->_type != TRI_COL_MARKER_HEADER) {
+
+    // check _tick value of marker and set min/max values for datafile
+    if (tick <= datafile->_tickMin || tick <= (TRI_voc_tick_t) datafile->_fid) {
+      LOG_WARNING("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+          "expected tick value > tickMin %llu",
+          (unsigned long long) tick,
+          (int) marker->_type,
+          datafile->getName(datafile),
+          (unsigned long long) datafile->_tickMin);
+    }
+
+    if (tick <= datafile->_tickMax) {
+      LOG_WARNING("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+          "expected tick value > tickMax %llu",
+          (unsigned long long) tick,
+          (int) marker->_type,
+          datafile->getName(datafile),
+          (unsigned long long) datafile->_tickMax);
+    }
+  }
+
+  if (datafile->_tickMin == 0) {
+    datafile->_tickMin = tick;
+  }
+  datafile->_tickMax = tick;
+   
   assert(markerSize > 0);
 
   if (markerSize != marker->_size) {
@@ -1236,6 +1273,8 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checksums and writes a marker to the datafile
+/// this function will also assign a new tick value for the marker (so that
+/// the tick values are increasing)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
@@ -1243,6 +1282,11 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  TRI_df_marker_t* marker,
                                  TRI_voc_size_t markerSize,
                                  bool forceSync) {
+  if (marker->_tick == 0) {
+    // set a tick value for the marker
+    marker->_tick = TRI_NewTickVocBase();
+  }
+
   if (datafile->isPhysical(datafile)) {
     TRI_voc_crc_t crc = TRI_InitialCrc32();
   
@@ -1466,7 +1510,9 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
 
   // create the footer
-  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
+  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+  // set a proper tick value
+  footer.base._tick = datafile->_tickMax;
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;

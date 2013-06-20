@@ -398,7 +398,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   }
 
   // init attribute marker
-  TRI_InitMarker(&marker->base, TRI_DF_MARKER_ATTRIBUTE, totalSize, TRI_NewTickVocBase());
+  TRI_InitMarker(&marker->base, TRI_DF_MARKER_ATTRIBUTE, totalSize);
   
   // copy attribute name into marker
   memcpy(((char*) marker) + sizeof(TRI_df_attribute_marker_t), name, n);
@@ -653,7 +653,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
     return NULL;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DF_MARKER_SHAPE, totalSize, TRI_NewTickVocBase());
+  TRI_InitMarker(&marker->base, TRI_DF_MARKER_SHAPE, totalSize);
   
   // copy shape into the marker
   memcpy(((char*) marker) + sizeof(TRI_df_shape_marker_t), shape, shape->_size);

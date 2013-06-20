@@ -48,21 +48,22 @@ namespace triagens {
 
         struct Options {
           Options ()
-            : allowSymbolicLink(false) {
+            : allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
           Options (string const& path)
-            : path(path), contentType("text/html"), allowSymbolicLink(false) {
+            : path(path), contentType("text/html"), allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
           Options (string const& path, string const& contentType)
-            : path(path), contentType(contentType), allowSymbolicLink(false) {
+            : path(path), contentType(contentType), allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
           string path;
           string contentType;
           bool allowSymbolicLink;
           string defaultFile;
+          int64_t cacheMaxAge;
         };
 
       public:
@@ -106,12 +107,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleError (basics::TriagensError const&);
-
+      
       private:
         string path;
         string contentType;
         bool allowSymbolicLink;
         string defaultFile;
+        int64_t cacheMaxAge;
+        string maxAgeHeader; 
     };
   }
 }

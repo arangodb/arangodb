@@ -240,7 +240,8 @@ static TRI_datafile_t* CreateCompactor (TRI_primary_collection_t* primary,
   }
 
 
-  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
+  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
 
@@ -275,7 +276,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
   collection = &primary->base;
 
-  fid = TRI_NewTickVocBase();
+  fid = (TRI_voc_fid_t) TRI_NewTickVocBase();
 
   if (collection->_info._isVolatile) {
     // in-memory collection
@@ -327,7 +328,8 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
   }
 
 
-  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
+  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
 
