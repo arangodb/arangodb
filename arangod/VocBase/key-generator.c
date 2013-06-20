@@ -167,7 +167,7 @@ static void TraditionalFree (TRI_key_generator_t* const generator) {
 
 static int TraditionalGenerate (TRI_key_generator_t* const generator,
                                 const size_t maxLength,
-                                const TRI_voc_rid_t rid,
+                                const TRI_voc_tick_t tick,
                                 const char* const userKey,
                                 char* const outBuffer,
                                 size_t* const outLength) {
@@ -207,8 +207,8 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
     current += userKeyLength;
   }
   else {
-    // user has not specified a key, generate one based on rid
-    current += TRI_StringUInt64InPlace(rid, outBuffer);
+    // user has not specified a key, generate one based on tick
+    current += TRI_StringUInt64InPlace(tick, outBuffer);
   }
 
   // add 0 byte
@@ -423,7 +423,7 @@ static uint64_t AutoIncrementNext (const uint64_t lastValue,
 
 static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
                                   const size_t maxLength,
-                                  const TRI_voc_rid_t rid,
+                                  const TRI_voc_tick_t tick,
                                   const char* const userKey,
                                   char* const outBuffer,
                                   size_t* const outLength) {
@@ -466,7 +466,7 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
     }
   }
   else {
-    // user has not specified a key, generate one based on rid
+    // user has not specified a key, generate one based on algorithm
     uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
 
     // bounds and sanity checks
