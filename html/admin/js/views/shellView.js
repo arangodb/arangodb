@@ -44,9 +44,6 @@ var shellView = Backbone.View.extend({
       $("#shell_workspace").trigger("resize", [ 200 ]);
       this.resizing = false;
     }
-    else {
-      console.log("test");
-    }
   },
   renderEditor: function () {
     var editor = ace.edit("editor");
