@@ -47,7 +47,8 @@
 /// @brief creates a journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateJournal (TRI_shape_collection_t* collection) {
+static int CreateJournal (TRI_shape_collection_t* collection,
+                          TRI_voc_size_t size) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
@@ -55,6 +56,17 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   char* filename;
   int res;
   bool isVolatile;
+  
+  // sanity check for minimum marker size
+  if (size >= (TRI_voc_size_t) TRI_MARKER_MAXIMAL_SIZE) {
+    LOG_ERROR("too big journal requested for shape-collection. "
+              "requested size: %llu. "
+              "maximum allowed size: %llu.", 
+              (unsigned long long) size,
+              (unsigned long long) TRI_MARKER_MAXIMAL_SIZE);
+
+    return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
+  }
 
   tick = (TRI_voc_tick_t) TRI_NewTickVocBase();
   isVolatile = collection->base._info._isVolatile;
@@ -69,7 +81,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
     number = TRI_StringUInt64(tick);
     if (number == NULL) {
-      return false;
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     jname = TRI_Concatenate3String("temp-", number, ".db");
@@ -79,7 +91,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
   }
 
-  journal = TRI_CreateDatafile(filename, (TRI_voc_fid_t) tick, collection->base._info._maximalSize);
+  journal = TRI_CreateDatafile(filename, (TRI_voc_fid_t) tick, size);
 
   if (filename != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -96,7 +108,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
       collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     }
 
-    return false;
+    return collection->base._lastError;
   }
 
   LOG_TRACE("created a new shape journal '%s'", journal->getName(journal));
@@ -123,7 +135,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
       TRI_FreeDatafile(journal);
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-      return false;
+      return journal->_lastError;
     }
     LOG_TRACE("renamed journal to '%s'", filename);
 
@@ -132,7 +144,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
 
   // create a collection header
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, 0);
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, TRI_SHAPER_DATAFILE_SIZE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create document header in journal '%s': %s",
@@ -141,7 +153,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
     TRI_FreeDatafile(journal);
 
-    return false;
+    return res;
   }
 
   // create the header marker
@@ -160,22 +172,22 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
     TRI_FreeDatafile(journal);
 
-    return false;
+    return res;
   }
 
   TRI_PushBackVectorPointer(&collection->base._journals, journal);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* journal) {
+static int CloseJournal (TRI_shape_collection_t* collection, 
+                         TRI_datafile_t* journal) {
+  size_t i, n;
   int res;
-  size_t i;
-  size_t n;
 
   // remove datafile from list of journals
   n = collection->base._journals._length;
@@ -191,8 +203,7 @@ static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* jo
   }
 
   if (i == n) {
-    TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-    return false;
+    return TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
   }
 
   // seal datafile
@@ -200,7 +211,7 @@ static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* jo
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
-    return false;
+    return res;
   }
 
   // rename datafile
@@ -222,7 +233,7 @@ static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* jo
 
     if (! ok) {
       collection->base._state = TRI_COL_STATE_WRITE_ERROR;
-      return false;
+      return journal->_lastError;
     }
   }
 
@@ -231,30 +242,48 @@ static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* jo
   TRI_RemoveVectorPointer(&collection->base._journals, i);
   TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
-                                      TRI_voc_size_t size,
-                                      TRI_df_marker_t** result) {
+static int SelectJournal (TRI_shape_collection_t* collection,
+                          TRI_voc_size_t size,
+                          TRI_datafile_t** journal,
+                          TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
-  bool ok;
-  int res;
+  TRI_voc_size_t targetSize;
   size_t n;
+  int res;
+
+  *journal = NULL;
+
+  // calculate the journal size
+  // we'll use the default size first, and double it until the requested size fits in
+  targetSize = collection->base._info._maximalSize;
+  // add some overhead for datafile header/footer
+  while (size + 2048 > targetSize) {
+    targetSize *= 2;
+  }
+
+  assert(targetSize >= size);
 
   // need to create a new journal?
   n = collection->base._journals._length;
 
   if (n == 0) {
-    ok = CreateJournal(collection);
-    n = collection->base._journals._length;
+    int res2;
 
-    if (! ok || n == 0) {
-      return NULL;
+    res2 = CreateJournal(collection, targetSize);
+    if (res2 != TRI_ERROR_NO_ERROR) {
+      return res2;
+    }
+
+    n = collection->base._journals._length;
+    if (n == 0) {
+      return TRI_ERROR_INTERNAL;
     }
   }
 
@@ -262,34 +291,45 @@ static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
   datafile = collection->base._journals._buffer[0];
 
   // try to reserve space
-  res = TRI_ReserveElementDatafile(datafile, size, result, 0);
+  res = TRI_ReserveElementDatafile(datafile, size, result, targetSize);
 
   while (res == TRI_ERROR_ARANGO_DATAFILE_FULL) {
-    ok = CloseJournal(collection, datafile);
+    int res2;
 
-    if (! ok) {
-      return NULL;
+    res2 = CloseJournal(collection, datafile);
+    if (res2 != TRI_ERROR_NO_ERROR) {
+      return res2;
+     }
+
+    res2 = CreateJournal(collection, targetSize);
+    if (res2 != TRI_ERROR_NO_ERROR) {
+      return res2;
     }
 
-    ok = CreateJournal(collection);
     n = collection->base._journals._length;
-
-    if (! ok || n == 0) {
-      return NULL;
+    if (n == 0) {
+      return TRI_ERROR_INTERNAL;
     }
 
     datafile = collection->base._journals._buffer[0];
 
-    res = TRI_ReserveElementDatafile(datafile, size, result, 0);
+    res = TRI_ReserveElementDatafile(datafile, size, result, targetSize);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->base._state = TRI_COL_STATE_WRITE_ERROR;
-    return NULL;
+    // check if we can reject just the one too large document, 
+    // but do not need to render the complete collection unusable
+    if (res != TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE) {
+      collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+    }
+
+    return res;
   }
 
   // we got enough space
-  return datafile;
+  *journal = datafile;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,13 +474,16 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   }
 
   // find and select a journal
-  journal = SelectJournal(collection, markerSize, result);
+  journal = NULL;
+  res = SelectJournal(collection, markerSize, &journal, result);
 
-  if (journal == NULL) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&collection->_lock);
 
-    return TRI_ERROR_ARANGO_NO_JOURNAL;
+    return res;
   }
+
+  assert(journal != NULL);
 
   // write marker and shape
   res = WriteElement(collection, journal, *result, marker, markerSize);

@@ -38,7 +38,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
-  REG_ERROR(ERROR_ARANGO_SHAPER_FAILED, "illegal shaper");
+  REG_ERROR(ERROR_ARANGO_SHAPER_FAILED, "could not shape document");
   REG_ERROR(ERROR_ARANGO_DATAFILE_SEALED, "datafile sealed");
   REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "read only");
