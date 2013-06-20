@@ -52,7 +52,9 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testName : function () {
-      assertEqual("_system", internal.db._name());
+      if (internal.db.hasOwnProperty('_name')) {
+        assertEqual("_system", internal.db._name());
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +62,10 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPath : function () {
-      assertTrue(typeof internal.db._path() === "string");
-      assertTrue(internal.db._path() !== "");
+      if (internal.db.hasOwnProperty('_path')) {
+        assertTrue(typeof internal.db._path() === "string");
+        assertTrue(internal.db._path() !== "");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
