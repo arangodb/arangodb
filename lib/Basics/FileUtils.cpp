@@ -122,6 +122,12 @@ namespace triagens {
         if (fd == -1) {
           THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
         }
+        
+        // reserve space in the output buffer
+        off_t fileSize = size(filename);
+        if (fileSize > 0) {
+          result.reserve((size_t) fileSize);
+        }
 
         char buffer[10240];
 

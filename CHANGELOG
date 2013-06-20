@@ -1,6 +1,15 @@
 v1.4
 ----
 
+* ensure a proper order of tick values in datafiles/journals/compactors.
+  any new files written will have the _tick values of their markers in order. for
+  older files, there are edge cases at the beginning and end of the datafiles when
+  _tick values are not properly in order.
+
+* prevent caching of static pages in PathHandler. 
+  whenever a static page is requested that is served by the general PathHandler, the
+  server will respond to HTTP GET requests with a "Cache-Control: max-age=86400" header.
+
 * added "doCompact" attribute when creating collections and to collection.properties().
   The attribute controls whether collection datafiles are compacted.
 

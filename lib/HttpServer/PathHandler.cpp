@@ -164,6 +164,12 @@ namespace triagens {
         return HANDLER_DONE;
       }
 
+      // check if this is an HTTP GET request
+      if (_request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
+        // yes, then set a pro-caching header
+        _response->setHeader("cache-control", strlen("cache-control"), "max-age=86400");
+      }
+
       string::size_type d = last.find_last_of('.');
 
       if (d != string::npos) {
