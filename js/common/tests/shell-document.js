@@ -1369,7 +1369,8 @@ function DatabaseDocumentSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_NO_JOURNAL.code, err.errorNum);
+        assertTrue(ERRORS.ERROR_ARANGO_NO_JOURNAL.code === err.errorNum ||
+                   ERRORS.ERROR_INTERNAL.code === err.errorNum);
       }
       assertEqual(0, collection.count());
     },
