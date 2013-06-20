@@ -7527,6 +7527,7 @@ int32_t TRI_GetVocBaseColType () {
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                           TRI_vocbase_t* vocbase,
+                          const string& adminDirectory,
                           const size_t threadNumber) {
   v8::HandleScope scope;
 
@@ -7756,6 +7757,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
+  context->Global()->Set(TRI_V8_SYMBOL("ADMIN_DIRECTORY"), v8::String::New(adminDirectory.c_str(), adminDirectory.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
