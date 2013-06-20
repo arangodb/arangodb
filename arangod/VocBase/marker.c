@@ -84,19 +84,19 @@ char* TRI_NameMarker (TRI_df_marker_t const* marker) {
 void TRI_CloneMarker (TRI_df_marker_t* dst,
                       TRI_df_marker_t const* src,
                       TRI_voc_size_t copyLength,
-                      TRI_voc_size_t newSize,
-                      TRI_voc_tick_t tick) {
+                      TRI_voc_size_t newSize) {
   TRI_ASSERT_MAINTAINER(src != NULL);
   TRI_ASSERT_MAINTAINER(dst != NULL);
   TRI_ASSERT_MAINTAINER(copyLength > 0);
   TRI_ASSERT_MAINTAINER(newSize > 0);
-  TRI_ASSERT_MAINTAINER(tick > 0);
 
   memcpy(dst, src, copyLength);
 
   dst->_size = newSize;
+
+  // these values will be set later, so wipe them
   dst->_crc  = 0;
-  dst->_tick = tick;
+  dst->_tick = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,21 +105,20 @@ void TRI_CloneMarker (TRI_df_marker_t* dst,
 
 void TRI_InitMarker (TRI_df_marker_t* marker,
                      TRI_df_marker_type_e type,
-                     TRI_voc_size_t size,
-                     TRI_voc_tick_t tick) {
+                     TRI_voc_size_t size) {
 
   TRI_ASSERT_MAINTAINER(marker != NULL);
   TRI_ASSERT_MAINTAINER(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
   TRI_ASSERT_MAINTAINER(size > 0);
-  TRI_ASSERT_MAINTAINER(tick > 0);
 
   // initialise the basic bytes
   memset(marker, 0, size);
 
   marker->_size = size;
-  marker->_crc  = 0;
   marker->_type = type;
-  marker->_tick = tick;
+  // not needed because of memset above
+  // marker->_crc  = 0;
+  // marker->_tick = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

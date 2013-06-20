@@ -51,12 +51,12 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
-  TRI_voc_fid_t fid;
+  TRI_voc_tick_t tick;
   char* filename;
   int res;
   bool isVolatile;
 
-  fid = TRI_NewTickVocBase();
+  tick = (TRI_voc_tick_t) TRI_NewTickVocBase();
   isVolatile = collection->base._info._isVolatile;
 
   if (isVolatile) {
@@ -67,7 +67,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     char* jname;
     char* number;
 
-    number = TRI_StringUInt64(fid);
+    number = TRI_StringUInt64(tick);
     if (number == NULL) {
       return false;
     }
@@ -79,7 +79,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
   }
 
-  journal = TRI_CreateDatafile(filename, fid, collection->base._info._maximalSize);
+  journal = TRI_CreateDatafile(filename, (TRI_voc_fid_t) tick, collection->base._info._maximalSize);
 
   if (filename != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -101,7 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   LOG_TRACE("created a new shape journal '%s'", journal->getName(journal));
 
-  assert(fid == journal->_fid);
+  assert((TRI_voc_fid_t) tick == journal->_fid);
 
   if (journal->isPhysical(journal)) {
     char* jname;
@@ -109,7 +109,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     bool ok;
 
     // and use the correct name
-    number = TRI_StringUInt64(fid);
+    number = TRI_StringUInt64(tick);
     jname = TRI_Concatenate3String("journal-", number, ".db");
     filename = TRI_Concatenate2File(collection->base._directory, jname);
 
@@ -145,8 +145,8 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   }
 
   // create the header marker
-  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
-
+  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  cm.base._tick = tick;
   cm._cid  = collection->base._info._cid;
   cm._type = TRI_COL_TYPE_SHAPE;
 
