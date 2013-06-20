@@ -319,7 +319,7 @@ var dashboardView = Backbone.View.extend({
   renderCharts: function () {
     var self = this;
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
-    self.renderCollectionsChart();
+    //self.renderCollectionsChart();
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
