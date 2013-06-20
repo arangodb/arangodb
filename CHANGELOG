@@ -1,6 +1,14 @@
 v1.3.2 (2013-XX-XX)
 -------------------
 
+* made the shape-collection journal size adaptive:
+  if too big shapes come in, a shape journal will be created with a big-enough size
+  automatically. the maximum size of a shape journal is still restricted, but to a 
+  very big value that should never be reached in practice.
+
+* fixed a segfault that occurred when inserting documents with a shape size bigger
+  than the default shape journal size (2MB)
+
 * fixed a locking issue in collection.truncate()
 
 * fixed value overflow in accumulated filesizes reported by collection.figures()

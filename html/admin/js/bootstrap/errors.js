@@ -42,7 +42,7 @@
     "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" }, 
     "ERROR_HTTP_SUPERFLUOUS_SUFFICES" : { "code" : 601, "message" : "superfluous URL suffices" }, 
     "ERROR_ARANGO_ILLEGAL_STATE"   : { "code" : 1000, "message" : "illegal state" }, 
-    "ERROR_ARANGO_SHAPER_FAILED"   : { "code" : 1001, "message" : "illegal shaper" }, 
+    "ERROR_ARANGO_SHAPER_FAILED"   : { "code" : 1001, "message" : "could not shape document" }, 
     "ERROR_ARANGO_DATAFILE_SEALED" : { "code" : 1002, "message" : "datafile sealed" }, 
     "ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE" : { "code" : 1003, "message" : "unknown type" }, 
     "ERROR_ARANGO_READ_ONLY"       : { "code" : 1004, "message" : "ready only" }, 
