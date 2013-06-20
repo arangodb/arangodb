@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "BasicsC/mimetypes.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -50,13 +51,17 @@ namespace triagens {
         path(options->path),
         contentType(options->contentType),
         allowSymbolicLink(options->allowSymbolicLink),
-        defaultFile(options->defaultFile) {
+        defaultFile(options->defaultFile),
+        cacheMaxAge(options->cacheMaxAge),
+        maxAgeHeader("max-age=") {
 
       string::size_type pos = path.size();
 
       while (1 < pos && path[pos - 1] == '/') {
         path.erase(--pos);
       }
+
+      maxAgeHeader += StringUtils::itoa(cacheMaxAge);
     }
 
 // -----------------------------------------------------------------------------
@@ -164,10 +169,11 @@ namespace triagens {
         return HANDLER_DONE;
       }
 
-      // check if this is an HTTP GET request
-      if (_request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
+      // check if we should use caching and this is an HTTP GET request
+      if (cacheMaxAge > 0 && 
+          _request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
         // yes, then set a pro-caching header
-        _response->setHeader("cache-control", strlen("cache-control"), "max-age=86400");
+        _response->setHeader("cache-control", strlen("cache-control"), maxAgeHeader);
       }
 
       string::size_type d = last.find_last_of('.');

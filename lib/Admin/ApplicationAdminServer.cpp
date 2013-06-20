@@ -219,6 +219,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
+    reinterpret_cast<PathHandler::Options*>(_pathOptions)->cacheMaxAge = 86400;
 
     factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
   }
