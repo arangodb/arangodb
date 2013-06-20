@@ -66,8 +66,8 @@ extern "C" {
 /// - 1000: @LIT{illegal state}
 ///   Internal error that will be raised when the datafile is not in the
 ///   required state.
-/// - 1001: @LIT{illegal shaper}
-///   Internal error that will be raised when the shaper encountered a porblem.
+/// - 1001: @LIT{could not shape document}
+///   Internal error that will be raised when the shaper encountered a problem.
 /// - 1002: @LIT{datafile sealed}
 ///   Internal error that will be raised when trying to write to a datafile.
 /// - 1003: @LIT{unknown type}
@@ -708,9 +708,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1001: ERROR_ARANGO_SHAPER_FAILED
 ///
-/// illegal shaper
+/// could not shape document
 ///
-/// Internal error that will be raised when the shaper encountered a porblem.
+/// Internal error that will be raised when the shaper encountered a problem.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_SHAPER_FAILED                                    (1001)

@@ -368,6 +368,8 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       return false;
     }
 
+    assert(found != 0);
+
     dst->_type = found->_type;
     dst->_sid = found->_sid;
 
@@ -383,7 +385,6 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      TRI_Free(shaper->_memoryZone, shape);
 
       return false;
     }
@@ -437,6 +438,8 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       return false;
     }
 
+    assert(found != 0);
+
     dst->_type = found->_type;
     dst->_sid = found->_sid;
 
@@ -454,7 +457,6 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      TRI_Free(shaper->_memoryZone, shape);
 
       return false;
     }
