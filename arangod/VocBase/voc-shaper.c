@@ -631,8 +631,6 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
 
   if (marker == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }

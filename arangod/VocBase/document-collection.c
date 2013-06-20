@@ -1898,7 +1898,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid, true);
   }
   
-  SetRevision(document, marker->_tick);
+  SetRevision(document, (TRI_voc_tick_t) d->_rid);
 
 #ifdef TRI_ENABLE_LOGGER
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
@@ -2036,6 +2036,8 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   
   marker = operation->_marker;
   d = (TRI_doc_deletion_key_marker_t const*) marker;
+  
+  SetRevision(document, (TRI_voc_tick_t) d->_rid);
   
   if (state->_fid != operation->_fid) {
     // update the state
