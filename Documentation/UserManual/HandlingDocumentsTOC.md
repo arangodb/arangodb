@@ -7,6 +7,7 @@ TOC {#HandlingDocumentsTOC}
    - @ref HandlingDocumentsShell
      - @ref HandlingDocumentsCollectionMethods
        - @ref HandlingDocumentsRead "collection.document"
+       - @ref HandlingDocumentsExists "collection.exists"
        - @ref HandlingDocumentsAny "collection.any"
        - @ref HandlingDocumentsCreate "collection.save"
        - @ref HandlingDocumentsReplace "collection.replace"
@@ -17,6 +18,7 @@ TOC {#HandlingDocumentsTOC}
        - @ref HandlingDocumentsUpdateByExample "collection.updateByExample"
      - @ref HandlingDocumentsDatabaseMethods
        - @ref HandlingDocumentsDbRead "db._document"
+       - @ref HandlingDocumentsDbExists "db._exists"
        - @ref HandlingDocumentsDbReplace "db._replace"
        - @ref HandlingDocumentsDbUpdate "db._update"
        - @ref HandlingDocumentsDbRemove "db._remove"
