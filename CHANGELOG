@@ -1,4 +1,4 @@
-v1.3.2 (2013-XX-XX)
+v1.3.2 (2013-06-21)
 -------------------
 
 * fixed memleak in internal.download()
@@ -22,8 +22,6 @@ v1.3.2 (2013-XX-XX)
 
 v1.3.1 (2013-05-24)
 -------------------
-
-* fixed usage of --temp-path in aranogd and arangosh
 
 * removed currently unused _ids collection
 

@@ -73,7 +73,7 @@
       }
 
       this.message = this.toString();
-    }
+    };
 
     exports.ArangoError.prototype = Error.prototype;
   }
