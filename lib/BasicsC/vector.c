@@ -834,7 +834,6 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
 int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
                               TRI_vector_string_t* dst,
                               TRI_vector_string_t* src) {
-  int res;
   char** ptr;
   char** end;
   char** qtr;
@@ -842,6 +841,8 @@ int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
   TRI_ClearVectorString(dst);
 
   if (0 < src->_length) {
+    int res;
+
     res = TRI_ResizeVectorString (dst, src->_length);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -871,7 +872,6 @@ int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
 int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t* zone,
                                                TRI_vector_string_t* dst,
                                                TRI_vector_pointer_t* src) {
-  int res;
   void** ptr;
   void** end;
   char** qtr;
@@ -879,6 +879,8 @@ int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t* zone,
   TRI_ClearVectorString(dst);
 
   if (0 < src->_length) {
+    int res;
+
     res = TRI_ResizeVectorString (dst, src->_length);
 
     if (res != TRI_ERROR_NO_ERROR) {

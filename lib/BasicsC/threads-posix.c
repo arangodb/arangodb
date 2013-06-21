@@ -86,18 +86,17 @@ static void* ThreadStarter (void* data) {
 
   d = data;
 
+  assert(d != NULL);
+
 #ifdef TRI_HAVE_SYS_PRCTL_H
   prctl(PR_SET_NAME, d->_name, 0, 0, 0);
 #endif
 
-  // TODO: (error) Possible null pointer dereference: d - otherwise it is redundant to check if d is null at line 96
   d->starter(d->_data);
 
-  if (d) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
-    TRI_Free(TRI_CORE_MEM_ZONE, d);
-    d = NULL;
-  }
+  TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
+  TRI_Free(TRI_CORE_MEM_ZONE, d);
+  d = NULL;
 
   return 0;
 }

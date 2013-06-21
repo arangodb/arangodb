@@ -541,21 +541,27 @@ static int GenerateMessage (char* buffer,
 /// @brief write to stderr
 ////////////////////////////////////////////////////////////////////////////////
 
-void writeStderr (char const* line, ssize_t len) {
+static bool WriteStderr (char const* line, ssize_t len) {
   ssize_t n;
 
   while (0 < len) {
     n = TRI_WRITE(STDERR_FILENO, line, len);
 
     if (n <= 0) {
-      return;
+      return false;
     }
 
     line += n;
     len -= n;
   }
 
-  TRI_WRITE(STDERR_FILENO, "\n", 1);
+  // if write() fails, we do not care
+  n = TRI_WRITE(STDERR_FILENO, "\n", 1);
+  if (n <= 0) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -569,7 +575,7 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t offset,
                            bool copy) {
   if (! LoggingActive) {
-    writeStderr(message, (ssize_t) length);
+    WriteStderr(message, (ssize_t) length);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
@@ -588,7 +594,7 @@ static void OutputMessage (TRI_log_level_e level,
   TRI_LockSpin(&AppendersLock);
 
   if (Appenders._length == 0) {
-    writeStderr(message, (ssize_t) length);
+    WriteStderr(message, (ssize_t) length);
     
     TRI_UnlockSpin(&AppendersLock);
 
