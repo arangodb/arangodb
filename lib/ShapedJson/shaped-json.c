@@ -1541,6 +1541,7 @@ static bool StringifyJsonShapeDataNumber (TRI_shaper_t* shaper,
   v = * (TRI_shape_number_t const*) data;
   // check for special values
 
+  // yes, this is intentional
   if (v != v) {
     // NaN
     res = TRI_AppendString2StringBuffer(buffer, "null", 4);
