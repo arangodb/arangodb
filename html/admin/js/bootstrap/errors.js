@@ -38,6 +38,7 @@
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 
     "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" }, 
     "ERROR_HTTP_METHOD_NOT_ALLOWED" : { "code" : 405, "message" : "method not supported" }, 
+    "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" }, 
     "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" }, 
     "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" }, 
     "ERROR_HTTP_SUPERFLUOUS_SUFFICES" : { "code" : 601, "message" : "superfluous URL suffices" }, 

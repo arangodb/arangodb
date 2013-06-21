@@ -57,6 +57,8 @@ extern "C" {
 ///   Will be raised when an URI is unknown.
 /// - 405: @LIT{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
+/// - 412: @LIT{precondition failed}
+///   Will be raised when a precondition for an HTTP request is not met.
 /// - 500: @LIT{internal server error}
 ///   Will be raised when an internal server is encountered.
 /// - 600: @LIT{invalid JSON object}
@@ -663,6 +665,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 412: ERROR_HTTP_PRECONDITION_FAILED
+///
+/// precondition failed
+///
+/// Will be raised when a precondition for an HTTP request is not met.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_PRECONDITION_FAILED                                (412)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 500: ERROR_HTTP_SERVER_ERROR

@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
+
 * added API `/_api/current-database` to retrieve information about the database the
   client is currently connected to.
 

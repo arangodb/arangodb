@@ -860,6 +860,43 @@ ArangoCollection.prototype.document = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a specific document exists
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.exists = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev === null) {
+    requestResult = this._database._connection.HEAD(this._documenturl(id));
+  }
+  else {
+    requestResult = this._database._connection.HEAD(this._documenturl(id),
+      {'if-match' : JSON.stringify(rev) });
+  }
+
+  if (requestResult !== null && 
+      requestResult.error === true &&
+      (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code)) {
+    return false;
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a random element from the collection
 ////////////////////////////////////////////////////////////////////////////////
 
