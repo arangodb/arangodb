@@ -906,10 +906,10 @@ void TRI_CompactorVocBase (void* data) {
 
             TRI_FreeBarrier(ce);
           }
+        
+          // read-unlock the compaction lock
+          TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
         }
-          
-        // read-unlock the compaction lock
-        TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
       }
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

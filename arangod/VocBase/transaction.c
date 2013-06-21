@@ -1087,6 +1087,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_operations       = NULL;
   trxCollection->_originalRevision = 0;
   trxCollection->_locked           = false;
+  trxCollection->_compactionLocked = false;
   trxCollection->_waitForSync      = false;
 
   return trxCollection;
@@ -1300,7 +1301,10 @@ static int UseCollections (TRI_transaction_t* const trx,
     
     if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
       // read-lock the compaction lock
-      TRI_ReadLockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+      if (! trxCollection->_compactionLocked) {
+        TRI_ReadLockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+        trxCollection->_compactionLocked = true;
+      }
     }
         
     shouldLock = ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0);
@@ -1350,9 +1354,11 @@ static int ReleaseCollections (TRI_transaction_t* const trx,
     // the top level transaction releases all collections
     if (nestingLevel == 0 && trxCollection->_collection != NULL) {
 
-      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
+      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE && 
+          trxCollection->_compactionLocked) {
         // read-unlock the compaction lock
         TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+        trxCollection->_compactionLocked = false;
       }
 
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
