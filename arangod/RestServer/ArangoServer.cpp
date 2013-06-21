@@ -1369,7 +1369,7 @@ void ArangoServer::openDatabases () {
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
-    LOGGER_INFO("loaded database ('" << _databasePath << "')");    
+  LOGGER_INFO("loaded database ('" << _databasePath << "')");    
   
   // first database is the system database
   _vocbase->_isSystem = _multipleDatabases;
