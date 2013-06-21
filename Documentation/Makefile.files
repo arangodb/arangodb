@@ -36,6 +36,7 @@ dist_man_MANS += \
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
+	Doxygen/js/actions/api-current-database.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
 	Doxygen/js/actions/api-explain.c \
@@ -94,6 +95,7 @@ WIKI = \
 	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
+	HttpCurrentDatabase \
 	HttpCursor \
 	HttpGraph \
 	HttpImport \
