@@ -268,7 +268,10 @@ char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen);
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLength);
+char* TRI_EscapeControlsCString (char const* in, 
+                                 size_t inLength, 
+                                 size_t* outLength, 
+                                 bool appendNewline);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using C escapes
