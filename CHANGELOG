@@ -1,6 +1,8 @@
 v1.3.2 (2013-XX-XX)
 -------------------
 
+* fixed memleak in internal.download()
+
 * made the shape-collection journal size adaptive:
   if too big shapes come in, a shape journal will be created with a big-enough size
   automatically. the maximum size of a shape journal is still restricted, but to a 

@@ -404,33 +404,42 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
     LOGGER_TRACE("downloading file. endpoint: " << endpoint << ", relative URL: " << url);
 
-    GeneralClientConnection* connection = GeneralClientConnection::factory(Endpoint::clientFactory(endpoint), timeout, timeout, 3);
+    Endpoint* ep = Endpoint::clientFactory(endpoint);
+    if (ep == 0) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "invalid URL");
+    }
+
+    GeneralClientConnection* connection = GeneralClientConnection::factory(ep, timeout, timeout, 3);
 
     if (connection == 0) {
+      delete ep;
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
 
-    SimpleHttpClient client(connection, timeout, false);
+    SimpleHttpClient* client = new SimpleHttpClient(connection, timeout, false);
 
     v8::Handle<v8::Object> result = v8::Object::New();
 
     // connect to server and get version number
     map<string, string> headerFields;
-    SimpleHttpResult* response = client.request(method, relative, 0, 0, headerFields);
+    SimpleHttpResult* response = client->request(method, relative, 0, 0, headerFields);
 
     int returnCode;
     string returnMessage;
 
     if (! response || ! response->isComplete()) {
       // save error message
-      returnMessage = client.getErrorMessage();
+      returnMessage = client->getErrorMessage();
       returnCode = 500;
+      delete client;
 
       if (response && response->getHttpReturnCode() > 0) {
         returnCode = response->getHttpReturnCode();
       }
     }
     else {
+      delete client;
+
       returnMessage = response->getHttpReturnMessage();
       returnCode = response->getHttpReturnCode();
 
@@ -440,6 +449,8 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
         delete response;
         delete connection;
+        connection = 0;
+        delete ep;
 
         if (! found) {
           TRI_V8_EXCEPTION_INTERNAL(scope, "caught invalid redirect URL");
@@ -476,8 +487,12 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     if (response) {
       delete response;
     }
+ 
+    if (connection) {
+      delete connection;
+    }
+    delete ep;
 
-    delete connection;
     return scope.Close(result);
   }
 
