@@ -1200,8 +1200,9 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
 /// @brief opens an exiting database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name,
-        TRI_vocbase_defaults_t* defaults) {
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, 
+                                char const* name,
+                                TRI_vocbase_defaults_t* defaults) {
   TRI_vocbase_t* vocbase;
   char* lockFile;
   bool iterateMarkers;
@@ -1354,6 +1355,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name,
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_shutdownFilename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_path);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
     TRI_DestroyReadWriteLock(&vocbase->_lock);
@@ -1506,6 +1508,8 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // free the filename path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_shutdownFilename);
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
+
+  TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1347,13 +1347,14 @@ static int ReleaseCollections (TRI_transaction_t* const trx,
       UnlockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
     }
     
-    if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
-      // read-unlock the compaction lock
-      TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
-    }
-
     // the top level transaction releases all collections
     if (nestingLevel == 0 && trxCollection->_collection != NULL) {
+
+      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
+        // read-unlock the compaction lock
+        TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+      }
+
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
         // unuse collection, remove usage-lock
         LOG_TRX(trx, nestingLevel, "unusing collection %llu", (unsigned long long) trxCollection->_cid);
