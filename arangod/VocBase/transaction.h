@@ -347,6 +347,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_vector_t*                        _operations;        // buffered CRUD operations
   TRI_voc_tick_t                       _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
+  bool                                 _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool                                 _waitForSync;       // whether or not the collection has waitForSync
 }
 TRI_transaction_collection_t;
