@@ -541,7 +541,7 @@ static int GenerateMessage (char* buffer,
 /// @brief write to stderr
 ////////////////////////////////////////////////////////////////////////////////
 
-void writeStderr (char const* line, size_t len) {
+void writeStderr (char const* line, ssize_t len) {
   ssize_t n;
 
   while (0 < len) {
@@ -554,6 +554,8 @@ void writeStderr (char const* line, size_t len) {
     line += n;
     len -= n;
   }
+
+  TRI_WRITE(STDERR_FILENO, "\n", 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,8 +569,7 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t offset,
                            bool copy) {
   if (! LoggingActive) {
-    writeStderr(message, length);
-    writeStderr("\n", 1);
+    writeStderr(message, (ssize_t) length);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
@@ -587,14 +588,14 @@ static void OutputMessage (TRI_log_level_e level,
   TRI_LockSpin(&AppendersLock);
 
   if (Appenders._length == 0) {
-    writeStderr(message, length);
-    writeStderr("\n", 1);
+    writeStderr(message, (ssize_t) length);
+    
+    TRI_UnlockSpin(&AppendersLock);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
     }
 
-    TRI_UnlockSpin(&AppendersLock);
     return;
   }
 
@@ -663,6 +664,8 @@ static void MessageQueueWorker (void* data) {
       size_t m;
       size_t i;
 
+      assert(buffer._length == 0);
+
       // move message from queue into temporary buffer
       m = LogMessageQueue._length;
 
@@ -675,6 +678,8 @@ static void MessageQueueWorker (void* data) {
       TRI_UnlockMutex(&LogMessageQueueLock);
 
       // output messages using the appenders
+      m = buffer._length;
+
       for (j = 0;  j < m;  ++j) {
         log_message_t* msg;
 
@@ -1346,10 +1351,9 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
     return;
   }
 
-  escaped = TRI_EscapeControlsCString(msg, length, &escapedLength);
+  escaped = TRI_EscapeControlsCString(msg, length, &escapedLength, true);
 
-  WriteLogFile(fd, escaped, escapedLength);
-  WriteLogFile(fd, "\n", 1);
+  WriteLogFile(fd, escaped, (ssize_t) escapedLength);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, escaped);
 }
