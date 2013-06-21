@@ -55,7 +55,7 @@ var ArangoCollection;
 function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
-  this._type = ArangoCollection.TYPE_DOCUMENT;
+  this._properties = null;
 
   this._registerCollection = function (name, obj) {
     // store the collection in our own list
@@ -260,10 +260,6 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collentions to object
     for (i = 0;  i < collections.length;  ++i) {
-      // only include collections of the "correct" type
-      // if (collections[i]["type"] != this._type) {
-      //   continue;
-      // }
       var collection = new this._collectionConstructor(this, collections[i]);
       this._registerCollection(collection._name, collection);
       result.push(collection);
@@ -316,37 +312,18 @@ ArangoDatabase.prototype._collection = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type) {
-  // document collection is the default type
-  // but if the containing object has the _type attribute (it should!), then use it
   var body = {
     "name" : name,
-    "type" : this._type || ArangoCollection.TYPE_DOCUMENT
+    "type" : ArangoCollection.TYPE_DOCUMENT
   };
 
   if (properties !== undefined) {
-    if (properties.hasOwnProperty("waitForSync")) {
-      body.waitForSync = properties.waitForSync;
-    }
-
-    if (properties.hasOwnProperty("journalSize")) {
-      body.journalSize = properties.journalSize;
-    }
-
-    if (properties.hasOwnProperty("isSystem")) {
-      body.isSystem = properties.isSystem;
-    }
-
-    if (properties.hasOwnProperty("isVolatile")) {
-      body.isVolatile = properties.isVolatile;
-    }
-    
-    if (properties.hasOwnProperty("doCompact")) {
-      body.doCompact = properties.doCompact;
-    }
-
-    if (properties.hasOwnProperty("keyOptions")) {
-      body.keyOptions = properties.keyOptions;
-    }
+    [ "waitForSync", "journalSize", "isSystem", "isVolatile", 
+      "doCompact", "keyOptions" ].forEach(function(p) {
+      if (properties.hasOwnProperty(p)) {
+        body[p] = properties[p];
+      }
+    });
   }
 
   if (type !== undefined) {
@@ -426,6 +403,45 @@ ArangoDatabase.prototype._drop = function (id) {
   }
 
   return undefined;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query the database properties
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._queryProperties = function () {
+  if (this._properties === null) {
+    var requestResult = this._connection.GET("/_api/current-database");
+
+    arangosh.checkRequestResult(requestResult);
+    this._properties = requestResult.result;
+  }
+
+  return this._properties;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether or not the current database is the system database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._isSystem = function () {
+  return this._queryProperties().isSystem;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name of the current database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._name = function () {
+  return this._queryProperties().name;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the path of the current database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._path = function () {
+  return this._queryProperties().path;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

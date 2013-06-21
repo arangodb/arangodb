@@ -1,6 +1,9 @@
 v1.4
 ----
 
+* added API `/_api/current-database` to retrieve information about the database the
+  client is currently connected to.
+
 * ensure a proper order of tick values in datafiles/journals/compactors.
   any new files written will have the _tick values of their markers in order. for
   older files, there are edge cases at the beginning and end of the datafiles when
