@@ -1750,9 +1750,10 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
   // execute code
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
   trx.finish(TRI_ERROR_NO_ERROR);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
   // return the result as a javascript array
   return scope.Close(result);
