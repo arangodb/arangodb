@@ -170,7 +170,7 @@ static int CompareElementElement (TRI_skiplist_index_element_t* left,
   // boolean: false < true
   // number: natural order
   // strings: lexicographical
-  // lists: lexicorgraphically and within each slot according to these rules.
+  // lists: lexicographically and within each slot according to these rules.
   // ............................................................................
 
   if (left == NULL && right == NULL) {
@@ -194,7 +194,7 @@ static int CompareElementElement (TRI_skiplist_index_element_t* left,
                                  rightShaper);
   
   // ............................................................................
-  // In the above function CompareShaeTypes we use strcmp which may return
+  // In the above function CompareShapeTypes we use strcmp which may return
   // an integer greater than 1 or less than -1. From this function we only
   // need to know whether we have equality (0), less than (-1)  or greater than (1)
   // ............................................................................
