@@ -511,9 +511,15 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 
     LOGGER_TRACE("downloading file. endpoint: " << endpoint << ", relative URL: " << url);
 
-    GeneralClientConnection* connection = GeneralClientConnection::factory(Endpoint::clientFactory(endpoint), timeout, timeout, 3);
+    Endpoint* ep = Endpoint::clientFactory(endpoint);
+    if (ep == 0) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER, "invalid URL");
+    }
+
+    GeneralClientConnection* connection = GeneralClientConnection::factory(ep, timeout, timeout, 3);
 
     if (connection == 0) {
+      delete ep;
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
 
@@ -562,6 +568,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
         delete response;
         delete connection;
         connection = 0;
+        delete ep;
 
         if (! found) {
           TRI_V8_EXCEPTION_INTERNAL(scope, "caught invalid redirect URL");
@@ -612,6 +619,8 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     if (connection) {
       delete connection;
     }
+    delete ep;
+
     return scope.Close(result);
   }
 
