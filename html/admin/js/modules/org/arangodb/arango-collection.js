@@ -583,10 +583,14 @@ ArangoCollection.prototype.ensureBitarray = function () {
 /// @brief adds a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.ensureCapConstraint = function (size) {
+ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
   var body;
 
-  body = { type : "cap", size : size };
+  body = { 
+    type : "cap", 
+    size : size || undefined,
+    byteSize: byteSize || undefined 
+  };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 

@@ -373,6 +373,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*, TRI_idx_iid_t)
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
                                                         size_t,
+                                                        int64_t,
                                                         bool*);
 
 ////////////////////////////////////////////////////////////////////////////////

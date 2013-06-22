@@ -64,7 +64,10 @@ static void FreeDataBarrier (TRI_barrier_t* element) {
 /// of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LinkBarrierElement (TRI_barrier_t* element, TRI_barrier_list_t* container) {
+static void LinkBarrierElement (TRI_barrier_t* element, 
+                                TRI_barrier_list_t* container) {
+  assert(container != NULL);
+
   element->_container = container;
 
   TRI_LockSpin(&container->_lock);
@@ -188,6 +191,8 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
                                           char const* filename) {
   TRI_barrier_blocker_t* element;
 
+  assert(container != NULL);
+
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_blocker_t), false);
 
   if (element == NULL) {
@@ -299,7 +304,6 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
     return NULL;
   }
 
-
   element->base._type = TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK;
 
   element->_collection = collection;
@@ -308,7 +312,6 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
   element->callback = callback;
 
   LinkBarrierElement(&element->base, container);
-
 
   return &element->base;
 }
@@ -348,7 +351,9 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 void TRI_FreeBarrier (TRI_barrier_t* element) {
   TRI_barrier_list_t* container;
 
+  assert(element != NULL);
   container = element->_container;
+  assert(container != NULL);
 
   TRI_LockSpin(&container->_lock);
 
