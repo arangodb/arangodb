@@ -384,7 +384,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
     LOG_TRACE("adding barrier for collection '%s'", collection->_name);
 
     ce = TRI_CreateBarrierElement(&primaryCollection->_barrierList);
-    if (!ce) {
+    if (! ce) {
       // couldn't create the barrier
       result = false;
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
