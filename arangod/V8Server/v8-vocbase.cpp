@@ -43,6 +43,7 @@
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
@@ -4027,17 +4028,20 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ///
-/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size})}
+/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size}, {byteSize})}
 ///
-/// Creates a size restriction aka cap for the collection of @FA{size}.  If the
-/// restriction is in place and the (@FA{size} plus one) document is added to
-/// the collection, then the least recently created or updated document is
-/// removed.
+/// Creates a size restriction aka cap for the collection of @FA{size}
+/// documents and/or @FA{byteSize} data size. If the restriction is in place 
+/// and the (@FA{size} plus one) document is added to the collection, or the
+/// total active data size in the collection exceeds @FA{byteSize}, then the 
+/// least recently created or updated documents are removed until all 
+/// constraints are satisfied.
+///
+/// It is allowed to specify either @FA{size} or @FA{byteSize}, or both at
+/// the same time. If both are specified, then the automatic document removal
+/// will be triggered by the first non-met constraint.
 ///
 /// Note that at most one cap constraint is allowed per collection.
-///
-/// Note that the collection should be empty. Otherwise the behavior is
-/// undefined, i. e., it is undefined which documents will be removed first.
 ///
 /// Note that this does not imply any restriction of the number of revisions
 /// of documents.
@@ -4072,25 +4076,36 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   TRI_index_t* idx = 0;
   bool created;
 
-  if (argv.Length() == 1) {
-    size_t size = (size_t) TRI_ObjectToDouble(argv[0]);
+  size_t count = 0;
+  int64_t size = 0;
+  
+  if (argv.Length() > 0) {
+    int64_t v = TRI_ObjectToInt64(argv[0]);
 
-    if (size <= 0) {
+    if (v < 0 || v > UINT32_MAX) {
       ReleaseCollection(collection);
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be at least 1");
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be a valid number")
     }
-
-    idx = TRI_EnsureCapConstraintDocumentCollection(document, size, &created);
+    count = (size_t) v;
   }
 
-  // .............................................................................
-  // error case
-  // .............................................................................
+  if (argv.Length() > 1) {
+    size = (int64_t) TRI_ObjectToInt64(argv[1]);
+  }
 
-  else {
+  if (count == 0 && size <= 0) {
     ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>, <byteSize>)");
   }
+
+  if (size < 0 || (size > 0 && size < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
+    ReleaseCollection(collection);
+    TRI_V8_EXCEPTION_PARAMETER(scope, 
+                               "<size> must be at least 1 or <byteSize> must be at least " 
+                               TRI_CAP_CONSTRAINT_MIN_SIZE_STR);
+  }
+
+  idx = TRI_EnsureCapConstraintDocumentCollection(document, count, size, &created);
 
   if (idx == 0) {
     ReleaseCollection(collection);

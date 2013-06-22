@@ -1,6 +1,17 @@
 v1.4
 ----
 
+* extended cap constraints to optionally limit the active data size in a collection to
+  a specific number of bytes.
+
+  The arguments for creating a cap constraint are now:
+  `collection.ensureCapConstraint(<count>, <byteSize>);`
+
+  It is supported to specify just a count as in ArangoDB 1.3 and before, to specify 
+  just a fileSize, or both. The first met constraint will trigger the automated
+  document removal.
+
+
 * added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
 
 * added API `/_api/current-database` to retrieve information about the database the

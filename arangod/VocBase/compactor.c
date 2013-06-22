@@ -430,6 +430,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     found2 = CONST_CAST(found);
+    assert(found2->_data != NULL);
+    assert(((TRI_df_marker_t*) found2->_data)->_size > 0);
+
     // the fid won't change
 
     // let marker point to the new position
