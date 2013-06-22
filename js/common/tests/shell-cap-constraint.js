@@ -311,7 +311,7 @@ function CapConstraintSuite() {
 /// @brief test: updates
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdates : function () {
+    testUpdates1 : function () {
       var idx = collection.ensureCapConstraint(5);
       var fun = function(d) { return d.n; };
 
@@ -355,7 +355,7 @@ function CapConstraintSuite() {
 /// @brief test: updates
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdates : function () {
+    testUpdates2 : function () {
       var idx = collection.ensureCapConstraint(3);
       var fun = function(d) { return d._key; };
 
