@@ -96,7 +96,7 @@ static size_t GetBlockSize (const size_t blockNumber) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clears an header
+/// @brief clears a header
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClearHeader (TRI_headers_t* h,
@@ -172,6 +172,8 @@ static void MoveBackHeader (TRI_headers_t* h,
   // we must adjust the size of the collection
   headers->_totalSize += (int64_t) (((TRI_df_marker_t*) header->_data)->_size); 
   headers->_totalSize -= (int64_t) (((TRI_df_marker_t*) old->_data)->_size); 
+  
+  TRI_ASSERT_MAINTAINER(headers->_totalSize > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +426,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
   headers->_nrAllocated++;
   headers->_nrLinked++;
   headers->_totalSize += (int64_t) size;
-  
+
   return result;
 }
 
@@ -433,14 +435,17 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ReleaseHeader (TRI_headers_t* h, 
-                           TRI_doc_mptr_t* header) {
+                           TRI_doc_mptr_t* header,
+                           bool unlink) {
   simple_headers_t* headers = (simple_headers_t*) h;
   
   if (header == NULL) {
     return;
   }
 
-  UnlinkHeader(h, header);
+  if (unlink) {
+    UnlinkHeader(h, header);
+  }
   ClearHeader(h, header);
 
   header->_data = headers->_freelist;
@@ -504,6 +509,8 @@ static void DumpHeaders (TRI_headers_t const* h) {
 
   printf("number of allocated headers: %lu\n", (unsigned long) headers->_nrAllocated);
   printf("number of linked headers: %lu\n", (unsigned long) headers->_nrLinked);
+  printf("total size: %lld\n", (long long) headers->_totalSize);
+  
   printf("begin ptr: %p\n", headers->_begin);
   printf("end ptr: %p\n", headers->_end);
 
@@ -575,7 +582,7 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
   headers->base.dump      = DumpHeaders;
 #endif
 
-  TRI_InitVectorPointer(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer2(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE, 8);
 
   return &headers->base;
 }

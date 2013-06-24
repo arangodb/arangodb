@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* protect collections against unloading when there are still document barriers around.
+
 * extended cap constraints to optionally limit the active data size in a collection to
   a specific number of bytes.
 
