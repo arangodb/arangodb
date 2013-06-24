@@ -238,6 +238,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
