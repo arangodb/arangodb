@@ -1271,7 +1271,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (directOperation) {
-      document->_headers->moveBack(document->_headers, oldHeader);
+      document->_headers->moveBack(document->_headers, newHeader, &oldData);
     }
 
     // write new header into result  
@@ -1991,7 +1991,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_headers->moveBack(document->_headers, newHeader);
+    document->_headers->moveBack(document->_headers, newHeader, &oldData);
       
     // update the datafile info
     if (oldData._fid == state->_fid) {
