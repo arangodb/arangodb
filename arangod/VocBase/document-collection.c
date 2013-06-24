@@ -765,7 +765,7 @@ static int RollbackInsert (TRI_document_collection_t* document,
   DeleteSecondaryIndexes(document, newHeader, true);
 
   // release the header. nobody else should point to it now
-  document->_headers->release(document->_headers, newHeader);
+  document->_headers->release(document->_headers, newHeader, true);
 
   res = TRI_ERROR_NO_ERROR;
 
@@ -901,7 +901,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insert has failed
-    document->_headers->release(document->_headers, header);
+    document->_headers->release(document->_headers, header, true);
     return res;
   }
 
@@ -911,7 +911,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
   if (res != TRI_ERROR_NO_ERROR) {
     // insertion into secondary indexes failed
     DeletePrimaryIndex(document, header, true);
-    document->_headers->release(document->_headers, header);
+    document->_headers->release(document->_headers, header, true);
 
     return res;
   }
@@ -1099,7 +1099,7 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
   if (res == TRI_ERROR_NO_ERROR) {
     if (directOperation) {
       // release the header pointer
-      document->_headers->release(document->_headers, header);
+      document->_headers->release(document->_headers, header, true);
     }
 
     return TRI_ERROR_NO_ERROR;
@@ -1965,7 +1965,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     if (res != TRI_ERROR_NO_ERROR) {
       // insertion failed
       LOG_ERROR("inserting document into indexes failed");
-      document->_headers->release(document->_headers, header);
+      document->_headers->release(document->_headers, header, true);
 
       return res;
     }
@@ -2116,7 +2116,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     DeletePrimaryIndex(document, found, false);
 
     // free the header
-    document->_headers->release(document->_headers, CONST_CAST(found));
+    document->_headers->release(document->_headers, CONST_CAST(found), true);
   }
 
   return TRI_ERROR_NO_ERROR;
