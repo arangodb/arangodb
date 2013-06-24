@@ -89,7 +89,7 @@ function ForceLayouter(config) {
   };
   
   self.drag = force.drag;
-  
+
   self.setCombinedUpdateFunction = function(nodeShaper, edgeShaper, additional) {
     if (additional !== undefined) {
       onUpdate = function() {
