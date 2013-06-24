@@ -172,7 +172,8 @@ TRI_barrier_list_t;
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitBarrierList (TRI_barrier_list_t* container, struct TRI_primary_collection_s* collection);
+void TRI_InitBarrierList (TRI_barrier_list_t* container, 
+                          struct TRI_primary_collection_s* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a barrier list
@@ -184,7 +185,8 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container);
 /// @brief check whether the barrier list contains an element of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e type);
+bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, 
+                              TRI_barrier_type_e type);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new barrier element

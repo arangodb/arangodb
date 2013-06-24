@@ -977,7 +977,7 @@ static void FreeCollectionOperations (TRI_transaction_collection_t* trxCollectio
     
     if (wasCommitted) {
       if (trxOperation->_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-        document->_headers->release(document->_headers, trxOperation->_oldHeader);
+        document->_headers->release(document->_headers, trxOperation->_oldHeader, false);
       }
     }
     
@@ -1866,7 +1866,6 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx,
   if (nestingLevel == 0) {
     if (trx->_hasOperations) {
       res = WriteOperations(trx);
-      FreeOperations(trx);
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1875,6 +1874,10 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx,
     }
     else {
       res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    }
+
+    if (trx->_hasOperations) {
+      FreeOperations(trx);
     }
   }
 
@@ -1898,10 +1901,12 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx,
   if (nestingLevel == 0) {
     if (trx->_hasOperations) {
       RollbackOperations(trx);
-      FreeOperations(trx);
     }
 
     res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+    if (trx->_hasOperations) {
+      FreeOperations(trx);
+    }
   }
   else {
     res = TRI_ERROR_NO_ERROR;

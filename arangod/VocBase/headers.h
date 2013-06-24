@@ -58,7 +58,7 @@ typedef struct TRI_headers_s {
   struct TRI_doc_mptr_s* (*request) (struct TRI_headers_s*, size_t);
 
   // release/free an existing header, putting it back onto the freelist
-  void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
+  void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, bool unlink);
 
   // move an existing header to the end of the linked list
   void (*moveBack) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, struct TRI_doc_mptr_s*);
