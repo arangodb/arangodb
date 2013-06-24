@@ -240,7 +240,8 @@
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerWidget(config);
+          ui = new GraphViewerWidget(config),
+          pointerBox = $("#mousepointer");
         expect($(toolboxSelector).length).toEqual(0);
         expect(pointerBox.length).toEqual(0);
       });
@@ -265,7 +266,8 @@
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerWidget(config);
+          ui = new GraphViewerWidget(config),
+          pointerBox = $("#mousepointer");
         expect($(toolboxSelector).length).toEqual(0);
         expect(pointerBox.length).toEqual(0);
       });
@@ -283,10 +285,63 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
+      it('should be able to add the drag button', function() {
+        var toolboxConf = {
+            drag: true
+          },
+          config = {
+            toolbox: toolboxConf
+          },
+          ui = new GraphViewerWidget(config);
+          
+        expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
+        expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
+      
+      it('should be able to add the new buttons', function() {
+        var toolboxConf = {
+            "new": true
+          },
+          config = {
+            toolbox: toolboxConf
+          },
+          ui = new GraphViewerWidget(config);
+        
+        expect($(toolboxSelector + " #control_event_new_node").length).toEqual(1);  
+        expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
+        expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
+      
+      it('should be able to add the edit button', function() {
+        var toolboxConf = {
+            edit: true
+          },
+          config = {
+            toolbox: toolboxConf
+          },
+          ui = new GraphViewerWidget(config);
+          
+        expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
+        expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
+      
+      it('should be able to add the delete button', function() {
+        var toolboxConf = {
+            "delete": true
+          },
+          config = {
+            toolbox: toolboxConf
+          },
+          ui = new GraphViewerWidget(config);
+          
+        expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
+        expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
       
       it('should not add buttons configured as false', function() {
         var toolboxConf = {
-            expand: false
+            expand: false,
+            drag: true
           },
           config = {
             toolbox: toolboxConf

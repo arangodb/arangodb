@@ -62,21 +62,53 @@ function GraphViewerWidget(viewerConfig, startNode) {
     },
     
     createToolbox = function(config) {
-      var toolbox = document.createElement("div"),
-        dispatcherUI = new EventDispatcherControls(
-          toolbox,
-          mousePointerBox,
-          viewer.nodeShaper,
-          viewer.edgeShaper,
-          viewer.dispatcherConfig
-        );
+      var counter = 0,
+        toolbox,
+        dispatcherUI;
+      _.each(config, function(v, k) {
+        if (v === false) {
+          delete config[k];
+        } else {
+          counter++;
+        }
+      });
+      if (counter === 0) {
+        return;
+      }
+      toolbox = document.createElement("div");
+      dispatcherUI = new EventDispatcherControls(
+        toolbox,
+        mousePointerBox,
+        viewer.nodeShaper,
+        viewer.edgeShaper,
+        viewer.dispatcherConfig
+      );
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
       mousePointerBox.id = "mousepointer";
       mousePointerBox.className = "mousepointer";
       container.appendChild(toolbox);
       container.appendChild(mousePointerBox);
-      dispatcherUI.addAll();
+      _.each(config, function(v, k) {
+        switch(k) {
+          case "expand":
+            dispatcherUI.addControlExpand();
+            break;
+          case "new":
+            dispatcherUI.addControlNewNode();
+            dispatcherUI.addControlConnect();
+            break;
+          case "drag":
+            dispatcherUI.addControlDrag();
+            break;
+          case "edit":
+            dispatcherUI.addControlEdit();
+            break;
+          case "delete":
+            dispatcherUI.addControlDelete();
+            break;
+        }
+      });
     },
     
     
