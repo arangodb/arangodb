@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn, waits */
 /*global document, window, helper */
 /*global $, _, d3*/
-/*global GraphViewerWidget*/
+/*global GraphViewerWidget, mocks*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -158,10 +158,62 @@
     });
   
     describe('testing mouse actions', function() {
+      var disp;
       
-    });
-  
-    describe('testing search bar', function() {
+      beforeEach(function() {
+        var OrigDisp = window.EventDispatcher;
+        spyOn(window, "EventDispatcher").andCallFake(function(ns, es, conf) {
+          disp = new OrigDisp(ns, es, conf);
+          spyOn(disp, "rebind");
+          return disp;
+        });
+      });
+      
+      it('should be able to allow zoom', function() {
+        spyOn(window, "ZoomManager");
+        var config = {
+            zoom: true
+          },
+          ui = new GraphViewerWidget(config);
+        expect(window.ZoomManager).wasCalled();
+      });
+      
+      it('should not configure zoom if it is undefined', function() {
+        spyOn(window, "ZoomManager");
+        var ui = new GraphViewerWidget();
+        expect(window.ZoomManager).wasNotCalled();
+      });
+      
+      it('should not configure zoom if it is forbidden', function() {
+        spyOn(window, "ZoomManager");
+        var config = {
+            zoom: false
+          },
+          ui = new GraphViewerWidget(config);
+        expect(window.ZoomManager).wasNotCalled();
+      });
+      
+      it('should be able to bind drag initially', function() {
+        var OrigLayouter = window.ForceLayouter,
+          layouter,
+          actions = {
+            drag: true
+          },
+          config = {
+            actions: actions
+          },
+          ui;
+        spyOn(window, "ForceLayouter").andCallFake(function(c) {
+          layouter = new OrigLayouter(c);
+          spyOn(layouter, "drag");
+          return layouter;
+        });
+
+        ui = new GraphViewerWidget(config);
+        expect(disp.rebind).wasCalledWith("nodes", {drag: layouter.drag});
+        expect(disp.rebind).wasCalledWith("edges", {});
+        expect(disp.rebind).wasCalledWith("svg", {});
+      });
       
     });
     
@@ -196,6 +248,34 @@
           ui = new GraphViewerWidget(config);
         expect($(toolboxSelector).length).toEqual(1);
       });
+      
+      it('should reduce the size of the svg', function() {
+        var toolboxConf = {
+            expand: true
+          },
+          config = {
+            toolbox: toolboxConf
+          },
+          b,
+          ui;
+
+        spyOn(window, "GraphViewer").andCallThrough();
+        b = document.body;
+        ui = new GraphViewerWidget(config);
+        expect(window.GraphViewer).wasCalledWith(
+          jasmine.any(Object),
+          b.offsetWidth - 43,
+          b.offsetHeight,
+          {
+          	type: "foxx",
+          	route: ".",
+            width: width - 43,
+            height: height
+          },
+          jasmine.any(Object)
+        );
+      });
+      
       
       it('should create the additional mouse-icon box', function() {
         var toolboxConf = {
