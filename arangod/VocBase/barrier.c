@@ -107,7 +107,8 @@ static void LinkBarrierElement (TRI_barrier_t* element, TRI_barrier_list_t* cont
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitBarrierList (TRI_barrier_list_t* container, TRI_primary_collection_t* collection) {
+void TRI_InitBarrierList (TRI_barrier_list_t* container, 
+                          TRI_primary_collection_t* collection) {
   container->_collection = collection;
 
   TRI_InitSpin(&container->_lock);
@@ -158,7 +159,8 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 /// @brief check whether the barrier list contains an element of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e type) {
+bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,  
+                              TRI_barrier_type_e type) {
   TRI_barrier_t* ptr;
 
   TRI_LockSpin(&container->_lock);
@@ -171,6 +173,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e 
 
       return true;
     }
+
     ptr = ptr->_next;
   }
 

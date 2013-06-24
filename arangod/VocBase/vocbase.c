@@ -301,6 +301,12 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return false;
   }
+  
+  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT)) {
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+    return false;
+  }
 
   document = (TRI_document_collection_t*) collection->_collection;
 
