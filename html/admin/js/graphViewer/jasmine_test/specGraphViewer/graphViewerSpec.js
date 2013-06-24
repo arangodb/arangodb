@@ -113,6 +113,19 @@ describe("Graph Viewer", function() {
       ).not.toThrow();
     });
     
+    it('should be able to be setup with a foxx adapter', function() {
+      var route = "foxx/route",
+        adapterConfig = {type: "foxx", route: route},
+        gv;
+      spyOn(window, "FoxxAdapter");
+      gv = new GraphViewer(svg, 10, 10, adapterConfig);
+      expect(window.FoxxAdapter).wasCalledWith(
+        jasmine.any(Array),
+        jasmine.any(Array),
+        route,
+        jasmine.any(Object)
+      );
+    });
     
     
   });
