@@ -604,7 +604,8 @@ function CapConstraintSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code, err.errorNum);
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code ||
+                   err.errorNum === ERRORS.ERROR_INTERNAL.code);
       }
     }
 
