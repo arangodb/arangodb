@@ -216,6 +216,22 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx,
 static int InsertCapConstraint (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 const bool isRollback) {
+  TRI_cap_constraint_t* cap;
+
+  cap = (TRI_cap_constraint_t*) idx;
+
+  if (cap->_size > 0) {
+    // there is a size restriction
+    TRI_df_marker_t* marker;
+    
+    marker = (TRI_df_marker_t*) doc->_data;
+
+    // check if the document would be too big
+    if ((int64_t) marker->_size > (int64_t) cap->_size) {
+      return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 

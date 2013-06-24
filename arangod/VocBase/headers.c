@@ -113,10 +113,12 @@ static void ClearHeader (TRI_headers_t* h,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moves an existing header to the end of the list
+/// this is called when there is an update operation on a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static void MoveBackHeader (TRI_headers_t* h, 
-                            TRI_doc_mptr_t* header) {
+                            TRI_doc_mptr_t* header, 
+                            TRI_doc_mptr_t* old) {
   simple_headers_t* headers = (simple_headers_t*) h;
 
   if (header == NULL) {
@@ -132,6 +134,9 @@ static void MoveBackHeader (TRI_headers_t* h,
   TRI_ASSERT_MAINTAINER(headers->_end != NULL);
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
+  
+  TRI_ASSERT_MAINTAINER(old != NULL);
+  TRI_ASSERT_MAINTAINER(old->_data != NULL);
 
   if (headers->_end == header) {
     // header is already at the end
@@ -163,6 +168,10 @@ static void MoveBackHeader (TRI_headers_t* h,
   TRI_ASSERT_MAINTAINER(headers->_end != NULL);
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
+
+  // we must adjust the size of the collection
+  headers->_totalSize += (int64_t) (((TRI_df_marker_t*) header->_data)->_size); 
+  headers->_totalSize -= (int64_t) (((TRI_df_marker_t*) old->_data)->_size); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,10 +219,12 @@ static void UnlinkHeader (TRI_headers_t* h,
   if (headers->_nrLinked == 0) {
     TRI_ASSERT_MAINTAINER(headers->_begin == NULL);
     TRI_ASSERT_MAINTAINER(headers->_end == NULL);
+    TRI_ASSERT_MAINTAINER(headers->_totalSize == 0);
   }
   else {
     TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
     TRI_ASSERT_MAINTAINER(headers->_end != NULL);
+    TRI_ASSERT_MAINTAINER(headers->_totalSize > 0);
   }
   
   TRI_ASSERT_MAINTAINER(header->_prev != header);
@@ -239,6 +250,11 @@ static void MoveHeader (TRI_headers_t* h,
   TRI_ASSERT_MAINTAINER(header->_next != header);
   TRI_ASSERT_MAINTAINER(header->_data != NULL);
   TRI_ASSERT_MAINTAINER(((TRI_df_marker_t*) header->_data)->_size > 0);
+  TRI_ASSERT_MAINTAINER(old != NULL);
+  TRI_ASSERT_MAINTAINER(old->_data != NULL);
+
+  headers->_totalSize -= (int64_t) (((TRI_df_marker_t*) header->_data)->_size);
+  headers->_totalSize += (int64_t) (((TRI_df_marker_t*) old->_data)->_size);
 
   // adjust list start and end pointers
   if (old->_prev == NULL) {

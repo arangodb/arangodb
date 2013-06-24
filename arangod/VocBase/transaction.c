@@ -525,7 +525,7 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
   if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
-    document->_headers->moveBack(document->_headers, oldHeader);
+    document->_headers->moveBack(document->_headers, newHeader, oldData);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
