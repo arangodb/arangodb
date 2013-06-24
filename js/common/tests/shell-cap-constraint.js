@@ -585,6 +585,27 @@ function CapConstraintSuite() {
       }
 
       assertTrue(collection.count() < 1000);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: too large document
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentTooLarge : function () {
+      collection.ensureCapConstraint(1000, 16384);
+      var doc = { };
+
+      for (var i = 0; i < 1000; ++i) {
+        doc["test" + i] = "this is a test for the too large document";
+      }
+
+      try {
+        collection.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code, err.errorNum);
+      }
     }
 
   };

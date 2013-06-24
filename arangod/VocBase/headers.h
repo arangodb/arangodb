@@ -61,7 +61,7 @@ typedef struct TRI_headers_s {
   void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
 
   // move an existing header to the end of the linked list
-  void (*moveBack) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
+  void (*moveBack) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, struct TRI_doc_mptr_s*);
 
   // move an existing header to another position in the linked list
   void (*move) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, struct TRI_doc_mptr_s*);
