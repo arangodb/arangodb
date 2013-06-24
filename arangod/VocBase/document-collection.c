@@ -890,6 +890,10 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT_MAINTAINER(*freeMarker == true);
   TRI_ASSERT_MAINTAINER(header != NULL);
+  TRI_ASSERT_MAINTAINER(marker != NULL);
+  TRI_ASSERT_MAINTAINER(totalSize > 0);
+  TRI_ASSERT_MAINTAINER(marker->base._size == totalSize);
+
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
   // .............................................................................
@@ -1147,6 +1151,7 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
   TRI_voc_fid_t fid;
   int res;
 
+  assert(totalSize == marker->base._size);
   res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, &result, waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
