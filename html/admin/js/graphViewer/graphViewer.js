@@ -120,6 +120,16 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       );
       self.adapter.setChildLimit(5);
       break;
+    case "foxx":
+      adapterConfig.width = width;
+      adapterConfig.height = height;
+      self.adapter = new FoxxAdapter(
+        nodes,
+        edges,
+        adapterConfig.route,
+        adapterConfig
+      );
+      break;
     case "json":
       self.adapter = new JSONAdapter(
         adapterConfig.path,
