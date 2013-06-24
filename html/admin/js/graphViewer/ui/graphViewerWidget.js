@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 /*global d3, window*/
-/*global GraphViewer, EventDispatcherControls */
+/*global GraphViewer, EventDispatcherControls, EventDispatcher */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -47,6 +47,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
     width,
     height,
     viewer,
+    createTB,
     adapterConfig,
     mousePointerBox = document.createElement("div"),
     
@@ -61,10 +62,8 @@ function GraphViewerWidget(viewerConfig, startNode) {
         .attr("style", "width:" + width + "px;height:" + height + ";");
     },
     
-    createToolbox = function(config) {
-      var counter = 0,
-        toolbox,
-        dispatcherUI;
+    shouldCreateToolbox = function(config) {
+      var counter = 0;
       _.each(config, function(v, k) {
         if (v === false) {
           delete config[k];
@@ -72,9 +71,35 @@ function GraphViewerWidget(viewerConfig, startNode) {
           counter++;
         }
       });
-      if (counter === 0) {
+      return counter > 0;
+    },
+    
+    parseActions = function(config) {
+      if (!config) {
         return;
       }
+      var dispatcher = new EventDispatcher(
+          viewer.nodeShaper,
+          viewer.edgeShaper,
+          viewer.dispatcherConfig
+        ),
+        nodeActions = {},
+        edgeActions = {},
+        svgActions = {};
+      
+      nodeActions.drag = dispatcher.events.DRAG;
+      
+      dispatcher.rebind("nodes", nodeActions);
+      dispatcher.rebind("edges", edgeActions);
+      dispatcher.rebind("svg", svgActions);
+       
+      
+      
+    },
+    
+    createToolbox = function(config) {
+      var toolbox,
+        dispatcherUI;
       toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
         toolbox,
@@ -130,15 +155,18 @@ function GraphViewerWidget(viewerConfig, startNode) {
   };
   
   viewerConfig = viewerConfig || {};
-  
+  createTB = shouldCreateToolbox(viewerConfig.toolbox);
+  if (createTB) {
+    width -= 43;
+  }
   svg = createSVG();
   viewer = createViewer();
-  if (viewerConfig.toolbox) {
+  if (createTB) {
     createToolbox(viewerConfig.toolbox);
   }
   if (startNode) {
     viewer.loadGraph(startNode);
   }
-  
+  parseActions(viewerConfig.actions);
   
 }
