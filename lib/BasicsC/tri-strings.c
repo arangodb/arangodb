@@ -666,6 +666,39 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2String (char const* a, 
+                                   size_t na, 
+                                   char const* b, 
+                                   size_t nb) {
+  return TRI_ConcatenateSized2StringZ(TRI_CORE_MEM_ZONE, a, na, b, nb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths, using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t* zone, 
+                                    char const* a, 
+                                    size_t na, 
+                                    char const* b, 
+                                    size_t nb) {
+  char* result;
+
+  result = TRI_Allocate(zone, na + nb + 1, false);
+  if (result != NULL) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+
+    result[na + nb] = '\0';
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
 ////////////////////////////////////////////////////////////////////////////////
 
