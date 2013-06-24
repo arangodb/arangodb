@@ -436,16 +436,17 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
 
 static void ReleaseHeader (TRI_headers_t* h, 
                            TRI_doc_mptr_t* header,
-                           bool unlink) {
+                           bool unlinkHeader) {
   simple_headers_t* headers = (simple_headers_t*) h;
   
   if (header == NULL) {
     return;
   }
 
-  if (unlink) {
+  if (unlinkHeader) {
     UnlinkHeader(h, header);
   }
+
   ClearHeader(h, header);
 
   header->_data = headers->_freelist;
