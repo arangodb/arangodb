@@ -1835,15 +1835,22 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
 
   // generate code
-  char* code = TRI_GenerateCodeAql(context);
-  if (! code || context->_error._code != TRI_ERROR_NO_ERROR) {
+  size_t codeLength = 0;
+  char* code = TRI_GenerateCodeAql(context, &codeLength);
+
+  if (code == 0 || 
+      context->_error._code != TRI_ERROR_NO_ERROR) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
 
+  assert(codeLength > 0);
   // execute code
-  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
+  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), 
+                                                             v8::String::New(code, codeLength), 
+                                                             TRI_V8_SYMBOL("query"), 
+                                                             false);
 
   trx.finish(TRI_ERROR_NO_ERROR);
   
