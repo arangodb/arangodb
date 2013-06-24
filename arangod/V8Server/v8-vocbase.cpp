@@ -1884,7 +1884,8 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     return scope.Close(result);
   }
 
-  // return the result as a cursor object
+  // return the result as a cursor object. 
+  // transform the result in JSON first
   TRI_json_t* json = TRI_ObjectToJson(result);
 
   if (json == 0) {
@@ -1893,7 +1894,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
-  if (! cursorResult) {
+  if (cursorResult == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -2737,7 +2738,7 @@ static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv)
 
       for (uint32_t i = 0; i < max; ++i) {
         TRI_general_cursor_row_t row = cursor->next(cursor);
-        if (!row) {
+        if (row == 0) {
           break;
         }
         rows->Set(i, TRI_ObjectJson((TRI_json_t*) row));
