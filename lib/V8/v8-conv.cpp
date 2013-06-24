@@ -88,7 +88,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = shaper->_sidBoolean;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -110,7 +110,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = shaper->_sidBoolean;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+  dst->_value = (char*)(ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -132,7 +132,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = shaper->_sidNumber;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -154,7 +154,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = shaper->_sidNumber;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+  dst->_value = (char*)(ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -266,7 +266,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
     if (dst->_value == NULL) {
       return false;
@@ -375,7 +375,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t) + total;
-    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+    dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
     if (dst->_value == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -1258,7 +1258,7 @@ static v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
-  return v8::String::New(json->_value._string.data);
+  return v8::String::New(json->_value._string.data, json->_value._string.length - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1396,7 +1396,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
     return 0;
   }
 
-  TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), true);
+  TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false);
 
   if (shaped == NULL) {
     return NULL;
@@ -1454,7 +1454,17 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
-    return TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
+    // move the string pointer into the JSON object
+    if (*str != 0) {
+      TRI_json_t* j = TRI_CreateString2Json(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
+      // this passes ownership for the utf8 string to the JSON object
+      str.disown();
+    
+      // the Utf8ValueNFC dtor won't free the string now
+      return j;
+    }
+
+    return 0;
   }
 
   if (parameter->IsArray()) {
@@ -1463,7 +1473,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
     TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
 
-    if (listJson != 0) {
+    if (listJson != 0 && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_ObjectToJson(item);
@@ -1483,14 +1493,23 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
     TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
 
-    if (arrayJson != 0) {
+    if (arrayJson != 0 && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key  = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = TRI_ObjectToJson(item);
-
+    
         if (result != 0) {
-          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
+          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
+
+          if (*str != 0) {
+            // move the string pointer into the JSON object
+            TRI_Insert4ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, *str, str.length(), result);
+            // this passes ownership for the utf8 string to the JSON object
+            str.disown();
+          }
+
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
         }
       }
     }
