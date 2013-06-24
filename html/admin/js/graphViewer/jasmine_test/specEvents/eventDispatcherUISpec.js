@@ -134,7 +134,7 @@
       document.body.appendChild(list);
       list.id = "control_event_list";
       $list = $(list);
-      mousePointerbox = document.createElement("svg");
+      mousePointerbox = document.createElement("div");
       mousePointerbox.id = "mousepointer";
       mousePointerbox.className = "mousepointer";
       
