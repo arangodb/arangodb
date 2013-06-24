@@ -610,6 +610,7 @@ namespace triagens {
           if (count == 0) {
             // barrier not needed, kill it
             TRI_FreeBarrier(*barrier);
+            *barrier = 0;
           }
 
           return TRI_ERROR_NO_ERROR;
@@ -686,6 +687,7 @@ namespace triagens {
           if (count == 0) {
             // barrier not needed, kill it
             TRI_FreeBarrier(*barrier);
+            *barrier = 0;
           }
 
           return TRI_ERROR_NO_ERROR;

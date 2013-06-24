@@ -21,8 +21,8 @@ class ArangoDB
   # expect json as output/response format
   format :json
 
-  # set timeout to 60 seconds
-  default_timeout 60 
+  # set timeout to 120 seconds
+  default_timeout 120 
 
 ################################################################################
 ## create a collection

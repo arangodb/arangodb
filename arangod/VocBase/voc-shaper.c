@@ -36,25 +36,6 @@
 #include "BasicsC/utf8-helper.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile size
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_voc_size_t const SHAPER_DATAFILE_SIZE = (2 * 1024 * 1204);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
@@ -428,6 +409,9 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_attributeLock);
+
+    LOG_ERROR("an error occurred while writing attribute data into shapes collection: %s", 
+              TRI_errno_string(res));
     return 0;
   }
     
@@ -647,8 +631,6 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
 
   if (marker == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
@@ -681,8 +663,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
+
+    LOG_ERROR("an error occurred while writing shape data into shapes collection: %s", 
+              TRI_errno_string(res));
   
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
     return NULL;
@@ -699,8 +683,8 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   TRI_UnlockMutex(&s->_shapeLock);
   
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
   return l;
 }
@@ -1166,7 +1150,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   int res;
   bool ok;
 
-  TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE, 0);
+  TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, TRI_SHAPER_DATAFILE_SIZE, 0);
   // set waitForSync and isVolatile for shapes collection
   parameter._isVolatile  = isVolatile;
   parameter._waitForSync = waitForSync;

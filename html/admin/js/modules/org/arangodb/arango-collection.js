@@ -356,7 +356,8 @@ ArangoCollection.prototype.properties = function (properties) {
   var result = { 
     waitForSync : requestResult.waitForSync,
     journalSize : requestResult.journalSize,
-    isVolatile : requestResult.isVolatile
+    isVolatile : requestResult.isVolatile,
+    doCompact : requestResult.doCompact
   };
     
   if (requestResult.keyOptions !== undefined) {
@@ -582,10 +583,14 @@ ArangoCollection.prototype.ensureBitarray = function () {
 /// @brief adds a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.ensureCapConstraint = function (size) {
+ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
   var body;
 
-  body = { type : "cap", size : size };
+  body = { 
+    type : "cap", 
+    size : size || undefined,
+    byteSize: byteSize || undefined 
+  };
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -851,6 +856,43 @@ ArangoCollection.prototype.document = function (id) {
       && requestResult.error === true 
       && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a specific document exists
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.exists = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev === null) {
+    requestResult = this._database._connection.HEAD(this._documenturl(id));
+  }
+  else {
+    requestResult = this._database._connection.HEAD(this._documenturl(id),
+      {'if-match' : JSON.stringify(rev) });
+  }
+
+  if (requestResult !== null && 
+      requestResult.error === true &&
+      (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code)) {
+    return false;
   }
 
   arangosh.checkRequestResult(requestResult);

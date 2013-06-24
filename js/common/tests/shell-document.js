@@ -62,9 +62,11 @@ function CollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      collection.unload();
-      collection.drop();
-      collection = null;
+      if (collection) {
+        collection.unload();
+        collection.drop();
+        collection = null;
+      }
       wait(0.0);
     },
 
@@ -615,6 +617,62 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief exists
+////////////////////////////////////////////////////////////////////////////////
+
+    testExistsDocument : function () {
+      var d1 = collection.save({ _key : "baz" });
+
+      // string keys
+      assertFalse(collection.exists("foo"));
+      assertFalse(collection.exists("bar"));
+      assertTrue(collection.exists("baz"));
+
+      assertFalse(collection.exists(cn + "/foo"));
+      assertFalse(collection.exists(cn + "/bar"));
+      assertTrue(collection.exists(cn + "/baz"));
+
+      // object key
+      assertTrue(collection.exists(d1));
+      
+      var d2 = collection.save({ _key : "2" });
+      // string keys
+      assertFalse(collection.exists("1"));
+      assertTrue(collection.exists("2"));
+
+      assertFalse(collection.exists(cn + "/1"));
+      assertTrue(collection.exists(cn + "/2"));
+
+      // object key
+      assertTrue(collection.exists(d2));
+
+      // check with revision
+      var d3 = collection.replace("2", { });
+      // d2 is gone now...
+      assertFalse(collection.exists(d2));
+      // d3 is still there
+      assertTrue(collection.exists(d3));
+
+      // cross-collection query
+      try {
+        collection.exists("UnitTestsNonExistingCollection/1");
+        fail();
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err1.errorNum);
+      }
+
+      // invalid key pattern
+      try {
+        collection.exists("foo bar");
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1139,6 +1197,48 @@ function DatabaseDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief exists
+////////////////////////////////////////////////////////////////////////////////
+
+    testExistsDocument : function () {
+      var d1 = collection.save({ _key : "baz" });
+
+      // string keys
+      assertFalse(db._exists(cn + "/foo"));
+      assertFalse(db._exists(cn + "/bar"));
+      assertTrue(db._exists(cn + "/baz"));
+      // object key
+      assertTrue(db._exists(d1));
+      
+      var d2 = collection.save({ _key : "2" });
+      // string keys
+      assertFalse(db._exists(cn + "/1"));
+      assertTrue(db._exists(cn + "/2"));
+      // object key
+      assertTrue(db._exists(d2));
+
+      // check with revision
+      var d3 = collection.replace("2", { });
+      // d2 is gone now...
+      assertFalse(db._exists(d2));
+      // d3 is still there
+      assertTrue(db._exists(d3));
+
+
+      // non existing collection
+      assertFalse(db._exists("UnitTestsNonExistingCollection/1"));
+
+      // invalid key pattern
+      try {
+        db._exists(cn + "/foo bar");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1349,7 +1449,49 @@ function DatabaseDocumentSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document too big for a journal 
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentTooLarge : function () {
+      // create a very big and silly document, just to blow up the datafiles
+      var doc = { };
+      for (var i = 0; i < 50000; ++i) {
+        var val = "thequickbrownfoxjumpsoverthelazydog" + i;
+        doc[val] = val;
+      }
+
+      assertEqual(0, collection.count());
+      try {
+        collection.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertTrue(ERRORS.ERROR_ARANGO_NO_JOURNAL.code === err.errorNum ||
+                   ERRORS.ERROR_INTERNAL.code === err.errorNum);
+      }
+      assertEqual(0, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document bigger than shape file size
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigShape : function () {
+      // create a very big and silly document, just to blow up the datafiles
+      var doc = { _key : "mydoc" };
+      for (var i = 0; i < 50000; ++i) {
+        doc["thequickbrownfox" + i] = 1;
+      }
+
+      assertEqual(0, collection.count());
+      collection.save(doc);
+      assertEqual(1, collection.count());
+      assertEqual("mydoc", collection.document("mydoc")._key);
     }
+
   };
 }
 

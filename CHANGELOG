@@ -1,6 +1,22 @@
 v1.4
 ----
 
+* extended cap constraints to optionally limit the active data size in a collection to
+  a specific number of bytes.
+
+  The arguments for creating a cap constraint are now:
+  `collection.ensureCapConstraint(<count>, <byteSize>);`
+
+  It is supported to specify just a count as in ArangoDB 1.3 and before, to specify 
+  just a fileSize, or both. The first met constraint will trigger the automated
+  document removal.
+
+
+* added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
+
+* added API `/_api/current-database` to retrieve information about the database the
+  client is currently connected to.
+
 * ensure a proper order of tick values in datafiles/journals/compactors.
   any new files written will have the _tick values of their markers in order. for
   older files, there are edge cases at the beginning and end of the datafiles when
@@ -54,6 +70,16 @@ v1.4
 
 v1.3.2 (2013-XX-XX)
 -------------------
+
+* fixed memleak in internal.download()
+
+* made the shape-collection journal size adaptive:
+  if too big shapes come in, a shape journal will be created with a big-enough size
+  automatically. the maximum size of a shape journal is still restricted, but to a 
+  very big value that should never be reached in practice.
+
+* fixed a segfault that occurred when inserting documents with a shape size bigger
+  than the default shape journal size (2MB)
 
 * fixed a locking issue in collection.truncate()
 

@@ -54,19 +54,29 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
                      TRI_transaction_collection_t* trxCollection) {
   TRI_document_collection_t* document;
   TRI_headers_t* headers;
-  size_t count;
+  int64_t currentSize;
+  size_t currentCount;
   int res;
 
   document = (TRI_document_collection_t*) primary;
   headers = document->_headers;
-  count = headers->count(headers);
+  currentCount = headers->count(headers);
+  currentSize = headers->size(headers);
 
   res = TRI_ERROR_NO_ERROR;
 
-  while (count > cap->_size) {
+  while ((cap->_count > 0 && currentCount > cap->_count) || 
+         (cap->_size > 0 && currentSize > cap->_size)) {
     TRI_doc_mptr_t* oldest = headers->front(headers);
 
     if (oldest != NULL) {
+      size_t oldSize;
+     
+      assert(oldest->_data != NULL);
+      oldSize = ((TRI_df_marker_t*) (oldest->_data))->_size;
+
+      assert(oldSize > 0);
+
       if (trxCollection != NULL) {
         res = TRI_DeleteDocumentDocumentCollection(trxCollection, NULL, oldest);
         
@@ -78,8 +88,9 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
       else {
         headers->unlink(headers, oldest);
       }
-
-      count--;
+      
+      currentCount--;
+      currentSize -= (int64_t) oldSize;
     }
     else {
       // we should not get here
@@ -91,19 +102,26 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
   return res;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
 static int InitialiseCap (TRI_cap_constraint_t* cap, 
                           TRI_primary_collection_t* primary) { 
   TRI_document_collection_t* document;
   TRI_headers_t* headers;
-  size_t count;
+  size_t currentCount;
+  int64_t currentSize;
   
-  TRI_ASSERT_MAINTAINER(cap->_size > 0);
+  TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
   
   document = (TRI_document_collection_t*) primary;
   headers = document->_headers;
-  count = headers->count(headers);
+  currentCount = headers->count(headers);
+  currentSize = headers->size(headers);
   
-  if (count <= cap->_size) {
+  if ((cap->_count >0 && currentCount <= cap->_count) &&
+      (cap->_size > 0 && currentSize <= cap->_size)) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
   }
@@ -176,7 +194,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
   // create json object and fill it
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_count));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "byteSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
 
   return json;
 }
@@ -211,7 +230,7 @@ static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
 
   cap = (TRI_cap_constraint_t*) idx;
 
-  TRI_ASSERT_MAINTAINER(cap->_size > 0);
+  TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
 
   return ApplyCap(cap, trxCollection->_collection->_collection, trxCollection);
 }
@@ -244,7 +263,8 @@ static int RemoveCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
-                                      size_t size) {
+                                      size_t count,
+                                      int64_t size) {
   TRI_cap_constraint_t* cap;
   TRI_index_t* idx;
 
@@ -260,7 +280,8 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   idx->postInsert  = PostInsertCapConstraint;
   idx->remove      = RemoveCapConstraint;
 
-  cap->_size = size;
+  cap->_count      = count;
+  cap->_size       = size;
 
   InitialiseCap(cap, primary);
 

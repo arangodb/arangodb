@@ -85,6 +85,7 @@ SERVER_OPT := \
 	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/npm\;@top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
+        --log.file "" \
 	--ruby.action-directory @top_srcdir@/mr/actions \
 	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
 	--server.threads 4 \
