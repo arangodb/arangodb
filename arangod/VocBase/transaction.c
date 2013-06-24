@@ -1713,13 +1713,15 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                            TRI_doc_mptr_t* oldHeader,
                                            TRI_doc_mptr_t* oldData,
                                            TRI_df_marker_t* marker,
-                                           size_t totalSize,
+                                           TRI_voc_size_t totalSize,
                                            TRI_voc_rid_t rid,
                                            bool syncRequested,
                                            bool* directOperation) {
   TRI_transaction_t* trx;
   TRI_primary_collection_t* primary;
   int res;
+
+  assert(totalSize == marker->_size);
   
   trx = trxCollection->_transaction;
   primary = trxCollection->_collection->_collection;
