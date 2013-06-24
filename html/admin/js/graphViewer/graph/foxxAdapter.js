@@ -40,9 +40,7 @@ function FoxxAdapter(nodes, edges, route, config) {
   if (route === undefined) {
     throw "The route has to be given.";
   }
-  
 
-  
   var self = this,
     absAdapter = new AbstractAdapter(nodes, edges),
     routes = {},
