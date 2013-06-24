@@ -519,9 +519,7 @@
       });
       
     });
-    
-    
-            
+          
     it('should be able to add all controls to the list', function () {
       dispatcherUI.addAll();
       
@@ -531,6 +529,57 @@
       expect($("#control_event_list #control_event_delete").length).toEqual(1);
       expect($("#control_event_list #control_event_connect").length).toEqual(1);
       expect($("#control_event_list #control_event_new_node").length).toEqual(1);
+    });
+    
+    describe('checking the raw functions', function() {
+      
+      it('should offer drag rebinds', function() {
+        expect(dispatcherUI.dragRebinds()).toEqual({
+          nodes: {
+            drag: jasmine.any(Function)
+          }
+        });
+      });
+      
+      it('should offer new node rebinds', function() {
+        expect(dispatcherUI.newNodeRebinds()).toEqual({
+          svg: {
+            click: jasmine.any(Function)
+          }
+        });
+      });
+      
+      it('should offer connect nodes rebinds', function() {
+        expect(dispatcherUI.connectNodesRebinds()).toEqual({
+          nodes: {
+            mouseup: jasmine.any(Function),
+            mousedown: jasmine.any(Function)
+          },
+          svg: {
+            mouseup: jasmine.any(Function)
+          }
+        });
+      });
+      
+      it('should offer edit rebinds', function() {
+        expect(dispatcherUI.editRebinds()).toEqual({
+          nodes: {
+            click: jasmine.any(Function)
+          },
+          edges: {
+            click: jasmine.any(Function)
+          }
+        });
+      });
+      
+      it('should offer expand rebinds', function() {
+        expect(dispatcherUI.expandRebinds()).toEqual({
+          nodes: {
+            click: jasmine.any(Function)
+          }
+        });
+      });
+      
     });
   });
 
