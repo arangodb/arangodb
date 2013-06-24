@@ -55,7 +55,7 @@ struct TRI_doc_mptr_s;
 
 typedef struct TRI_headers_s {
   // request a new header
-  struct TRI_doc_mptr_s* (*request) (struct TRI_headers_s*);
+  struct TRI_doc_mptr_s* (*request) (struct TRI_headers_s*, size_t);
 
   // release/free an existing header, putting it back onto the freelist
   void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
@@ -80,6 +80,9 @@ typedef struct TRI_headers_s {
 
   // return the number of headers currently present in the linked list
   size_t (*count) (struct TRI_headers_s const*);
+  
+  // return the total size of headers currently present in the linked list
+  int64_t (*size) (struct TRI_headers_s const*);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE 
   void (*dump) (struct TRI_headers_s const*);

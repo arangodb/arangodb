@@ -43,6 +43,7 @@
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
@@ -843,11 +844,7 @@ static TRI_vocbase_t* UnwrapVocBase (v8::Handle<v8::Object> vocbaseObject) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
-///
-/// it is the caller's responsibility to acquire and release the required locks
-/// the collection must also have the correct status already. don't use this
-/// function if you're unsure about it!
+/// @brief looks up a document and returns it
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
@@ -878,7 +875,6 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._document()
-    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
     vocbase = UnwrapVocBase(argv.Holder());
   }
 
@@ -951,6 +947,105 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document and returns whether it exists
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
+                                               v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // first and only argument should be a document idenfifier
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "exists(<document-handle>)");
+  }
+
+  ResourceHolder holder;
+
+  TRI_voc_key_t key = 0;
+  TRI_voc_rid_t rid;
+  TRI_vocbase_t* vocbase;
+  TRI_vocbase_col_t const* col = 0;
+
+  if (useCollection) {
+    // called as db.collection.exists()
+    col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+    if (col == 0) {
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    }
+
+    vocbase = col->_vocbase;
+  }
+  else {
+    // called as db._exists()
+    vocbase = UnwrapVocBase(argv.Holder());
+  }
+
+  assert(vocbase);
+
+  CollectionNameResolver resolver(vocbase);
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(resolver, col, key, rid, argv[0]);
+
+  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  if (! err.IsEmpty()) {
+    // check if we got an error object in return
+    if (err->IsObject()) {
+      // yes
+      v8::Handle<v8::Array> e = v8::Handle<v8::Array>::Cast(err);
+
+      // get the error object's error code
+      if (e->HasOwnProperty(v8::String::New("errorNum"))) {
+        // if error code is "collection not found", we'll return false
+        if ((int) TRI_ObjectToInt64(e->Get(v8::String::New("errorNum"))) == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          return scope.Close(v8::False());
+        }
+      }
+    }
+
+    // for any other error that happens, we'll rethrow it
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  assert(col);
+  assert(key);
+
+  ReadTransactionType trx(vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");;
+  }
+
+  v8::Handle<v8::Value> result;
+  TRI_doc_mptr_t document;
+  res = trx.read(&document, key);
+  res = trx.finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    }
+  }
+
+  if (res == TRI_ERROR_NO_ERROR && rid != 0 && document._rid != rid) {
+    res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::True());
+  }
+  else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    return scope.Close(v8::False());
+  }
+
+  TRI_V8_EXCEPTION(scope, res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1387,7 +1482,6 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._remove()
-    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
     vocbase = UnwrapVocBase(argv.Holder());
   }
 
@@ -1750,9 +1844,10 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
   // execute code
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
   trx.finish(TRI_ERROR_NO_ERROR);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
 
   // return the result as a javascript array
   return scope.Close(result);
@@ -3768,12 +3863,12 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ///
 /// @FUN{@FA{collection}.document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given it's identifier.  It returns
+/// The @FN{document} method finds a document given its identifier.  It returns
 /// the document. Note that the returned document contains two
 /// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
 /// document-handle and @LIT{_rev} the revision of the document.
 ///
-/// An error is thrown if there @LIT{_rev} does not longer match the current
+/// An error is thrown if the @LIT{_rev} does not longer match the current
 /// revision of the document.
 ///
 /// An error is also thrown if the document does not exist.
@@ -3933,17 +4028,20 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 ///
-/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size})}
+/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size}, {byteSize})}
 ///
-/// Creates a size restriction aka cap for the collection of @FA{size}.  If the
-/// restriction is in place and the (@FA{size} plus one) document is added to
-/// the collection, then the least recently created or updated document is
-/// removed.
+/// Creates a size restriction aka cap for the collection of @FA{size}
+/// documents and/or @FA{byteSize} data size. If the restriction is in place 
+/// and the (@FA{size} plus one) document is added to the collection, or the
+/// total active data size in the collection exceeds @FA{byteSize}, then the 
+/// least recently created or updated documents are removed until all 
+/// constraints are satisfied.
+///
+/// It is allowed to specify either @FA{size} or @FA{byteSize}, or both at
+/// the same time. If both are specified, then the automatic document removal
+/// will be triggered by the first non-met constraint.
 ///
 /// Note that at most one cap constraint is allowed per collection.
-///
-/// Note that the collection should be empty. Otherwise the behavior is
-/// undefined, i. e., it is undefined which documents will be removed first.
 ///
 /// Note that this does not imply any restriction of the number of revisions
 /// of documents.
@@ -3978,25 +4076,36 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   TRI_index_t* idx = 0;
   bool created;
 
-  if (argv.Length() == 1) {
-    size_t size = (size_t) TRI_ObjectToDouble(argv[0]);
+  size_t count = 0;
+  int64_t size = 0;
+  
+  if (argv.Length() > 0) {
+    int64_t v = TRI_ObjectToInt64(argv[0]);
 
-    if (size <= 0) {
+    if (v < 0 || v > UINT32_MAX) {
       ReleaseCollection(collection);
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be at least 1");
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<size> must be a valid number")
     }
-
-    idx = TRI_EnsureCapConstraintDocumentCollection(document, size, &created);
+    count = (size_t) v;
   }
 
-  // .............................................................................
-  // error case
-  // .............................................................................
+  if (argv.Length() > 1) {
+    size = (int64_t) TRI_ObjectToInt64(argv[1]);
+  }
 
-  else {
+  if (count == 0 && size <= 0) {
     ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "ensureCapConstraint(<size>, <byteSize>)");
   }
+
+  if (size < 0 || (size > 0 && size < TRI_CAP_CONSTRAINT_MIN_SIZE)) {
+    ReleaseCollection(collection);
+    TRI_V8_EXCEPTION_PARAMETER(scope, 
+                               "<size> must be at least 1 or <byteSize> must be at least " 
+                               TRI_CAP_CONSTRAINT_MIN_SIZE_STR);
+  }
+
+  idx = TRI_EnsureCapConstraintDocumentCollection(document, count, size, &created);
 
   if (idx == 0) {
     ReleaseCollection(collection);
@@ -4720,6 +4829,37 @@ static v8::Handle<v8::Value> JS_LookupFulltextIndexVocbaseCol (v8::Arguments con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a document exists
+///
+/// @FUN{@FA{collection}.exists(@FA{document})}
+///
+/// The @FN{exists} method determines whether a document exists given its 
+/// identifier.  Instead of returning the found document or an error, this
+/// method will return either @LIT{true} or @LIT{false}. It can thus be used 
+/// for easy existence checks.
+///
+/// The @FN{document} method finds a document given its identifier.  It returns
+/// the document. Note that the returned document contains two
+/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
+/// document-handle and @LIT{_rev} the revision of the document.
+///
+/// No error will be thrown if the sought document or collection does not 
+/// exist.
+/// Still this method will throw an error if used improperly, e.g. when called
+/// with a non-document handle, a non-document, or when a cross-collection
+/// request is performed.
+///
+/// @FUN{@FA{collection}.exists(@FA{document-handle})}
+///
+/// As before. Instead of document a @FA{document-handle} can be passed as
+/// first argument.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
+  return ExistsVocbaseCol(true, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
 ///
 /// @FUN{@FA{collection}.figures()}
@@ -4739,6 +4879,8 @@ static v8::Handle<v8::Value> JS_LookupFulltextIndexVocbaseCol (v8::Arguments con
 /// - @LIT{journals.fileSize}: The total filesize of the journal files.
 /// - @LIT{shapes.count}: The total number of shapes used in the collection
 ///   (this includes shapes that are not in use anymore)
+/// - @LIT{attributes.count}: The total number of attributes used in the 
+///   collection (this includes attributes that are not in use anymore)
 ///
 /// @EXAMPLES
 ///
@@ -6214,6 +6356,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
   result->Set(j++, v8::String::New("_drop()"));
+  result->Set(j++, v8::String::New("_exists()"));
   result->Set(j++, v8::String::New("_query()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
@@ -6426,16 +6569,17 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
+/// @brief looks up a document and returns it
 ///
 /// @FUN{@FA{db}._document(@FA{document})}
 ///
-/// The @FN{document} method finds a document given it's identifier.  It returns
-/// the document. Note that the returned document contains two
-/// pseudo-attributes, namely @LIT{_id} and @LIT{_rev}. @LIT{_id} contains the
-/// document handle and @LIT{_rev} the revision of the document.
+/// This method finds a document given its identifier.  It returns the document. 
+/// Note that the returned document contains some pseudo-attributes, namely 
+/// @LIT{_id}, @LIT{_key}, and @LIT{_rev}. @LIT{_id} and @LIT{_key} contain the 
+/// document handle and key, and @LIT{_rev} contains the revision of the 
+/// document.
 ///
-/// An error is thrown if there @LIT{_rev} does not longer match the current
+/// An error is thrown if the @LIT{_rev} does not longer match the current
 /// revision of the document.
 ///
 /// @FUN{@FA{db}._document(@FA{document-handle})}
@@ -6452,6 +6596,28 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
   return DocumentVocbaseCol(false, argv);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a document exists
+///
+/// @FUN{@FA{db}._exists(@FA{document})}
+///
+/// This method determines whether a document exists given its identifier.  
+/// Instead of returning the found document or an error, this method will 
+/// return either @LIT{true} or @LIT{false}. It can thus be used 
+/// for easy existence checks.
+///
+/// No error will be thrown if the sought document or collection does not 
+/// exist.
+/// Still this method will throw an error if used improperly, e.g. when called
+/// with a non-document handle.
+///
+/// @FUN{@FA{db}._exists(@FA{document-handle})}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExistsVocbase (v8::Arguments const& argv) {
+  return ExistsVocbaseCol(false, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7589,6 +7755,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_createDocumentCollection", JS_CreateDocumentCollectionVocbase);
   TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(rt, "_document", JS_DocumentVocbase);
+  TRI_AddMethodVocbase(rt, "_exists", JS_ExistsVocbase);
   TRI_AddMethodVocbase(rt, "_remove", JS_RemoveVocbase);
   TRI_AddMethodVocbase(rt, "_replace", JS_ReplaceVocbase);
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
@@ -7658,6 +7825,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
+  TRI_AddMethodVocbase(rt, "exists", JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);

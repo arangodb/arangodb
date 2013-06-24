@@ -373,6 +373,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*, TRI_idx_iid_t)
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
                                                         size_t,
+                                                        int64_t,
                                                         bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,7 +677,7 @@ int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetRevisionDocumentCollection (TRI_document_collection_t*,
-                                        TRI_voc_rid_t);
+                                        TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection

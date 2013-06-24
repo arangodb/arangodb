@@ -434,12 +434,15 @@ bool IsSameReference (const TRI_aql_field_access_t* const lhs,
   if (lhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE &&
       rhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
 
-    return TRI_EqualString(lhs->_value._reference._ref._name, rhs->_value._reference._ref._name);
+    return TRI_EqualString(lhs->_value._reference._ref._name, 
+                           rhs->_value._reference._ref._name);
   }
 
   if (lhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS &&
       rhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS) {
-    return TRI_EqualString(lhs->_fullName, rhs->_fullName);
+
+    return TRI_EqualString(lhs->_fullName, 
+                           rhs->_fullName);
   }
 
   return false;
@@ -509,7 +512,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
 
     TRI_FreeAccessAql(rhs);
 
-    if (!isSame) {
+    if (! isSame) {
       // lhs and rhs values are non-identical, return impossible
       FreeAccessMembers(lhs);
       lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
@@ -524,7 +527,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
 
     TRI_FreeAccessAql(rhs);
 
-    if (!inList) {
+    if (! inList) {
       // lhs value is not in rhs list, return impossible
       FreeAccessMembers(lhs);
       lhs->_type = TRI_AQL_ACCESS_IMPOSSIBLE;
@@ -542,7 +545,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
         (rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
         (rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
 
-    if (!contained) {
+    if (! contained) {
       // lhs value is not contained in rhs range, return impossible
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -568,7 +571,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     contained = ((rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
         (rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0));
 
-    if (!contained) {
+    if (! contained) {
       // lhs value is not contained in rhs range, return impossible
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -583,7 +586,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     contained = ((rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
         (rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
 
-    if (!contained) {
+    if (! contained) {
       // lhs value is not contained in rhs range, return impossible
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -628,7 +631,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
   if (rhs->_type == TRI_AQL_ACCESS_LIST) {
     // make a list of both
     TRI_json_t* merged = TRI_IntersectListsJson(lhs->_value._value, rhs->_value._value, true);
-    if (!merged) {
+    if (! merged) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return lhs;
@@ -669,7 +672,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
           rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_INCLUDED);
     }
 
-    if (!listInRange) {
+    if (! listInRange) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       FreeAccessMembers(rhs);
@@ -702,7 +705,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
         rhs->_value._between._upper._value,
         rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED);
 
-    if (!listInRange) {
+    if (! listInRange) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       FreeAccessMembers(rhs);
@@ -1170,10 +1173,11 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
     TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
     bool isSameAttribute = IsSameReference(lhs, rhs);
     bool possible;
-
-    if (!isSameAttribute) {
+    
+    if (! isSameAttribute) {
       // different attribute names are referred to. we can return either
       TRI_FreeAccessAql(rhs);
+
       return lhs;
     }
 
@@ -1187,13 +1191,15 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       return lhs;
     }
 
-    if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
+    if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && 
+        rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
       // < && <=, merge to <
       TRI_FreeAccessAql(rhs);
 
       return lhs;
     }
-    if (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
+    if (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && 
+        lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
       // <= && <, merge to <
       TRI_FreeAccessAql(lhs);
 
@@ -1215,7 +1221,8 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       possible = false;
     }
     else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT &&
-        (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE || rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
+        (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE || 
+         rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
       // lhs < ref && (lhs >= ref || lhs > ref) => impossible
       possible = false;
     }
@@ -1225,7 +1232,8 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       possible = false;
     }
     else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT &&
-             (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE || rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT)) {
+             (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE || 
+              rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT)) {
       // lhs > ref && (lhs <= ref || lhs < ref) => impossible
       possible = false;
     }
@@ -1234,8 +1242,8 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       // lhs >= ref && lhs < ref => impossible
       possible = false;
     }
-
-    if (!possible) {
+    
+    if (! possible) {
       // return the impossible range
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -1246,11 +1254,13 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
 
     // everything else results in lhs
     TRI_FreeAccessAql(rhs);
+
     return lhs;
   }
 
   if (rhs->_type == TRI_AQL_ACCESS_ALL) {
     TRI_FreeAccessAql(rhs);
+
     return lhs;
   }
 
@@ -1364,7 +1374,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
         (rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
         (rhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
 
-    if (!contained) {
+    if (! contained) {
       // lhs value is not contained in rhs range, return all
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -1390,7 +1400,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     contained = ((rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
         (rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0));
 
-    if (!contained) {
+    if (! contained) {
       // lhs value is not contained in rhs range, return all
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -1405,7 +1415,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     contained = ((rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
         (rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
 
-    if (!contained) {
+    if (! contained) {
       // lhs value is not contained in rhs range, return all
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -1453,7 +1463,7 @@ static TRI_aql_field_access_t* MergeOrList (TRI_aql_context_t* const context,
   if (rhs->_type == TRI_AQL_ACCESS_LIST) {
     // make a list of both
     TRI_json_t* merged = TRI_UnionizeListsJson(lhs->_value._value, rhs->_value._value, true);
-    if (!merged) {
+    if (! merged) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return lhs;
@@ -1672,7 +1682,7 @@ static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const contex
     TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
     bool isSameAttribute = IsSameReference(lhs, rhs);
 
-    if (!isSameAttribute) {
+    if (! isSameAttribute) {
       // references refer to different attributes
       TRI_FreeAccessAql(rhs);
       FreeAccessMembers(lhs);
@@ -2161,6 +2171,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 
     return NULL;
   }
+
   SetNameLength(fieldAccess);
 
   if (operator == TRI_AQL_NODE_OPERATOR_BINARY_NE) {
@@ -2175,6 +2186,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     // create the reference access
     fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE;
     fieldAccess->_value._reference._operator = operator;
+
     if (node->_type == TRI_AQL_NODE_REFERENCE) {
       fieldAccess->_value._reference._type = TRI_AQL_REFERENCE_VARIABLE;
       fieldAccess->_value._reference._ref._name = TRI_AQL_NODE_STRING(node);
@@ -2861,7 +2873,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
     break;
   }
 
-  if (!found) {
+  if (! found) {
     // not found, now add this candidate
     TRI_PushBackVectorPointer(accesses, TRI_CloneAccessAql(context, candidate));
   }

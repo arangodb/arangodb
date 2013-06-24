@@ -5,6 +5,8 @@
 ARANGOD="@SBINDIR@/arangod"
 DATABASE="@DATABASEDIR@"
 MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules;@PKGDATADIR@/js/node"
+PACKAGEPATH="@PKGDATADIR@/js/npm"
+APPPATH="@PKGDATADIR@/js/apps"
 STARTUPPATH="@PKGDATADIR@/js"
 SCRIPT="@PKGDATADIR@/js/server/arango-dfdb.js"
 
@@ -12,6 +14,8 @@ if [ "$1" == "--relative" ] ;  then
   shift
   ARANGOD="./bin/arangod"
   MODULESPATH="./js/server/modules;./js/common/modules;./js/node"
+  PACKAGEPATH="./js/npm"
+  APPPATH="./js/apps"
   STARTUPPATH="./js"
   SCRIPT="./js/server/arango-dfdb.js"
 fi
@@ -38,4 +42,6 @@ $ARANGOD \
     --database.directory "$DATABASE" \
     --javascript.startup-directory "$STARTUPPATH" \
     --javascript.modules-path "$MODULESPATH" \
+    --javascript.package-path "$PACKAGEPATH" \
+    --javascript.app-path "$APPPATH" \
     --javascript.script "$SCRIPT"

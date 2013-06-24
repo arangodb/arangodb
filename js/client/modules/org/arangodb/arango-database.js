@@ -54,7 +54,7 @@ var ArangoCollection;
 function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
-  this._type = ArangoCollection.TYPE_DOCUMENT;
+  this._properties = null;
 
   this._registerCollection = function (name, obj) {
     // store the collection in our own list
@@ -87,6 +87,12 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief key regex
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-])+$/;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the waitForSync parameter to a URL
@@ -138,6 +144,15 @@ ArangoDatabase.prototype._documenturl = function (id, expectedName) {
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
       errorNum: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code,
       errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+    });
+  }
+
+  if (ArangoDatabase.keyRegex.exec(s[1]) === null) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
   }
 
@@ -200,7 +215,6 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
   '  _collections()                   list all collections             ' + "\n" +
   '  _collection(<identifier>)        get collection by identifier/name' + "\n" +
   '  _create(<name>, <props>)         creates a new collection         ' + "\n" +
-  '  _truncate(<name>)                delete all documents             ' + "\n" +
   '  _drop(<name>)                    delete a collection              ' + "\n" +
   '                                                                    ' + "\n" +
   'Document Functions:                                                 ' + "\n" +
@@ -210,13 +224,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
   '  _update(<id>, <data>,            update document                  ' + "\n" +
   '          <overwrite>, <keepNull>)                                  ' + "\n" +
   '  _remove(<id>)                    delete document                  ' + "\n" +
+  '  _truncate()                      delete all documents             ' + "\n" +
   '                                                                    ' + "\n" +
   'Query Functions:                                                    ' + "\n" +
-  '  _createStatement(<data>);        create and return select query   ' + "\n" +
-  '  _query(<query>);                 create, execute and return query ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  <collection names>               collection with the given name   ';
+  '  _query(<query>);                 execute AQL query                ' + "\n" +
+  '  _createStatement(<data>);        create and return AQL query      ';
 
 ArangoDatabase.prototype._help = function () {  
   internal.print(helpArangoDatabase);
@@ -259,10 +271,6 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collentions to object
     for (i = 0;  i < collections.length;  ++i) {
-      // only include collections of the "correct" type
-      // if (collections[i]["type"] != this._type) {
-      //   continue;
-      // }
       var collection = new this._collectionConstructor(this, collections[i]);
       this._registerCollection(collection._name, collection);
       result.push(collection);
@@ -315,33 +323,18 @@ ArangoDatabase.prototype._collection = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type) {
-  // document collection is the default type
-  // but if the containing object has the _type attribute (it should!), then use it
   var body = {
     "name" : name,
-    "type" : this._type || ArangoCollection.TYPE_DOCUMENT
+    "type" : ArangoCollection.TYPE_DOCUMENT
   };
 
   if (properties !== undefined) {
-    if (properties.hasOwnProperty("waitForSync")) {
-      body.waitForSync = properties.waitForSync;
-    }
-
-    if (properties.hasOwnProperty("journalSize")) {
-      body.journalSize = properties.journalSize;
-    }
-
-    if (properties.hasOwnProperty("isSystem")) {
-      body.isSystem = properties.isSystem;
-    }
-
-    if (properties.hasOwnProperty("isVolatile")) {
-      body.isVolatile = properties.isVolatile;
-    }
-
-    if (properties.hasOwnProperty("keyOptions")) {
-      body.keyOptions = properties.keyOptions;
-    }
+    [ "waitForSync", "journalSize", "isSystem", "isVolatile", 
+      "doCompact", "keyOptions" ].forEach(function(p) {
+      if (properties.hasOwnProperty(p)) {
+        body[p] = properties[p];
+      }
+    });
   }
 
   if (type !== undefined) {
@@ -421,6 +414,45 @@ ArangoDatabase.prototype._drop = function (id) {
   }
 
   return undefined;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query the database properties
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._queryProperties = function () {
+  if (this._properties === null) {
+    var requestResult = this._connection.GET("/_api/current-database");
+
+    arangosh.checkRequestResult(requestResult);
+    this._properties = requestResult.result;
+  }
+
+  return this._properties;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether or not the current database is the system database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._isSystem = function () {
+  return this._queryProperties().isSystem;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name of the current database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._name = function () {
+  return this._queryProperties().name;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the path of the current database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._path = function () {
+  return this._queryProperties().path;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,6 +546,43 @@ ArangoDatabase.prototype._document = function (id) {
       && requestResult.error === true 
       && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a document exists, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._exists = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev === null) {
+    requestResult = this._connection.HEAD(this._documenturl(id));
+  }
+  else {
+    requestResult = this._connection.HEAD(this._documenturl(id),
+      {'if-match' : JSON.stringify(rev) });
+  }
+
+  if (requestResult !== null && 
+      requestResult.error === true &&
+      (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code)) {
+    return false;
   }
 
   arangosh.checkRequestResult(requestResult);
@@ -680,8 +749,13 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (data) {  
-  return new ArangoStatement(this, { query: data }).execute();
+ArangoDatabase.prototype._query = function (query, bindVars) {  
+  var payload = {
+    query: query,
+    bindVars: bindVars || undefined 
+  };
+  
+  return new ArangoStatement(this, payload).execute();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

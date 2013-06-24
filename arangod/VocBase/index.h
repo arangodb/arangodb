@@ -261,8 +261,8 @@ TRI_fulltext_index_t;
 typedef struct TRI_cap_constraint_s {
   TRI_index_t base;
 
-  TRI_linked_array_t _array;
-  size_t _size;
+  size_t _count;
+  int64_t _size;
 }
 TRI_cap_constraint_t;
 

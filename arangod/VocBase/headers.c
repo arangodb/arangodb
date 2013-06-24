@@ -66,6 +66,7 @@ typedef struct simple_headers_s {
   TRI_doc_mptr_t*        _end;         // end pointer to list of allocated headers
   size_t                 _nrAllocated; // number of allocated headers
   size_t                 _nrLinked;    // number of linked headers
+  int64_t                _totalSize;   // total size of markers for linked headers
 
   TRI_vector_pointer_t   _blocks;
 }
@@ -124,6 +125,7 @@ static void MoveBackHeader (TRI_headers_t* h,
 
   TRI_ASSERT_MAINTAINER(headers->_nrAllocated > 0);
   TRI_ASSERT_MAINTAINER(headers->_nrLinked > 0);
+  TRI_ASSERT_MAINTAINER(headers->_totalSize > 0);
   
   // we have at least one element in the list
   TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
@@ -170,10 +172,15 @@ static void MoveBackHeader (TRI_headers_t* h,
 static void UnlinkHeader (TRI_headers_t* h,
                           TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
+  int64_t size;
 
   TRI_ASSERT_MAINTAINER(header != NULL); 
+  TRI_ASSERT_MAINTAINER(header->_data != NULL);
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
+  
+  size = (int64_t) ((TRI_df_marker_t*) header->_data)->_size;
+  TRI_ASSERT_MAINTAINER(size > 0);
 
   // unlink the header
   if (header->_prev != NULL) {
@@ -198,6 +205,7 @@ static void UnlinkHeader (TRI_headers_t* h,
   
   TRI_ASSERT_MAINTAINER(headers->_nrLinked > 0);
   headers->_nrLinked--;
+  headers->_totalSize -= size;
 
   if (headers->_nrLinked == 0) {
     TRI_ASSERT_MAINTAINER(headers->_begin == NULL);
@@ -229,6 +237,8 @@ static void MoveHeader (TRI_headers_t* h,
   TRI_ASSERT_MAINTAINER(headers->_nrAllocated > 0);
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
+  TRI_ASSERT_MAINTAINER(header->_data != NULL);
+  TRI_ASSERT_MAINTAINER(((TRI_df_marker_t*) header->_data)->_size > 0);
 
   // adjust list start and end pointers
   if (old->_prev == NULL) {
@@ -294,16 +304,24 @@ static void RelinkHeader (TRI_headers_t* h,
                           TRI_doc_mptr_t* header,
                           TRI_doc_mptr_t* old) {
   simple_headers_t* headers = (simple_headers_t*) h;
+  int64_t size;
 
   if (header == NULL) {
     return;
   }
+
+  TRI_ASSERT_MAINTAINER(header->_data != NULL);
+
+  size = (int64_t) ((TRI_df_marker_t*) header->_data)->_size;
+  TRI_ASSERT_MAINTAINER(size > 0);
 
   TRI_ASSERT_MAINTAINER(headers->_begin != header);
   TRI_ASSERT_MAINTAINER(headers->_end != header);
  
   MoveHeader(h, header, old);
   headers->_nrLinked++;
+  headers->_totalSize += size;
+  TRI_ASSERT_MAINTAINER(headers->_totalSize > 0);
 
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
@@ -313,10 +331,13 @@ static void RelinkHeader (TRI_headers_t* h,
 /// @brief requests a new header
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h) {
+static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
+                                      size_t size) {
   simple_headers_t* headers = (simple_headers_t*) h;
   char const* header;
   TRI_doc_mptr_t* result;
+
+  assert(size > 0);
   
   if (headers->_freelist == NULL) {
     char* begin;
@@ -362,6 +383,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h) {
   if (headers->_begin == NULL) {
     // list of headers is empty
     TRI_ASSERT_MAINTAINER(headers->_nrLinked == 0);
+    TRI_ASSERT_MAINTAINER(headers->_totalSize == 0);
 
     headers->_begin = result;
     headers->_end   = result;
@@ -372,6 +394,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h) {
   else {
     // list is not empty
     TRI_ASSERT_MAINTAINER(headers->_nrLinked > 0);
+    TRI_ASSERT_MAINTAINER(headers->_totalSize > 0);
     TRI_ASSERT_MAINTAINER(headers->_nrAllocated > 0);
     TRI_ASSERT_MAINTAINER(headers->_begin != NULL);
     TRI_ASSERT_MAINTAINER(headers->_end != NULL);
@@ -384,6 +407,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h) {
 
   headers->_nrAllocated++;
   headers->_nrLinked++;
+  headers->_totalSize += (int64_t) size;
   
   return result;
 }
@@ -439,6 +463,16 @@ static size_t CountHeaders (TRI_headers_t const* h) {
   simple_headers_t* headers = (simple_headers_t*) h;
 
   return headers->_nrLinked;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the total size of linked headers
+////////////////////////////////////////////////////////////////////////////////
+
+static int64_t TotalSizeHeaders (TRI_headers_t const* h) {
+  simple_headers_t* headers = (simple_headers_t*) h;
+
+  return (int64_t) headers->_totalSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,24 +537,26 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
     return NULL;
   }
 
-  headers->_freelist    = NULL;
+  headers->_freelist      = NULL;
 
-  headers->_begin       = NULL;
-  headers->_end         = NULL;
-  headers->_nrAllocated = 0;
-  headers->_nrLinked    = 0;
+  headers->_begin         = NULL;
+  headers->_end           = NULL;
+  headers->_nrAllocated   = 0;
+  headers->_nrLinked      = 0;
+  headers->_totalSize     = 0;
 
-  headers->base.request  = RequestHeader;
-  headers->base.release  = ReleaseHeader;
-  headers->base.moveBack = MoveBackHeader;
-  headers->base.move     = MoveHeader;
-  headers->base.relink   = RelinkHeader;
-  headers->base.unlink   = UnlinkHeader;
-  headers->base.front    = FrontHeaders;
-  headers->base.back     = BackHeaders;
-  headers->base.count    = CountHeaders;
+  headers->base.request   = RequestHeader;
+  headers->base.release   = ReleaseHeader;
+  headers->base.moveBack  = MoveBackHeader;
+  headers->base.move      = MoveHeader;
+  headers->base.relink    = RelinkHeader;
+  headers->base.unlink    = UnlinkHeader;
+  headers->base.front     = FrontHeaders;
+  headers->base.back      = BackHeaders;
+  headers->base.count     = CountHeaders;
+  headers->base.size      = TotalSizeHeaders;
 #ifdef TRI_ENABLE_MAINTAINER_MODE  
-  headers->base.dump     = DumpHeaders;
+  headers->base.dump      = DumpHeaders;
 #endif
 
   TRI_InitVectorPointer(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE);
@@ -542,6 +578,7 @@ void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
 
   headers->_nrAllocated = 0;
   headers->_nrLinked    = 0;
+  headers->_totalSize   = 0;
 
   TRI_DestroyVectorPointer(&headers->_blocks);
 }

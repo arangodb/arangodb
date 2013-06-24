@@ -57,6 +57,8 @@ extern "C" {
 ///   Will be raised when an URI is unknown.
 /// - 405: @LIT{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
+/// - 412: @LIT{precondition failed}
+///   Will be raised when a precondition for an HTTP request is not met.
 /// - 500: @LIT{internal server error}
 ///   Will be raised when an internal server is encountered.
 /// - 600: @LIT{invalid JSON object}
@@ -66,8 +68,8 @@ extern "C" {
 /// - 1000: @LIT{illegal state}
 ///   Internal error that will be raised when the datafile is not in the
 ///   required state.
-/// - 1001: @LIT{illegal shaper}
-///   Internal error that will be raised when the shaper encountered a porblem.
+/// - 1001: @LIT{could not shape document}
+///   Internal error that will be raised when the shaper encountered a problem.
 /// - 1002: @LIT{datafile sealed}
 ///   Internal error that will be raised when trying to write to a datafile.
 /// - 1003: @LIT{unknown type}
@@ -665,6 +667,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 412: ERROR_HTTP_PRECONDITION_FAILED
+///
+/// precondition failed
+///
+/// Will be raised when a precondition for an HTTP request is not met.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_PRECONDITION_FAILED                                (412)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 500: ERROR_HTTP_SERVER_ERROR
 ///
 /// internal server error
@@ -708,9 +720,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1001: ERROR_ARANGO_SHAPER_FAILED
 ///
-/// illegal shaper
+/// could not shape document
 ///
-/// Internal error that will be raised when the shaper encountered a porblem.
+/// Internal error that will be raised when the shaper encountered a problem.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_SHAPER_FAILED                                    (1001)
