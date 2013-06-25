@@ -300,8 +300,8 @@ function NodeShaper(parent, flags, idfunc) {
               img.attr("href", source);
             } else {
               img.attr("href", function(d) {
-                if (d[source]) {
-                  return d[source];
+                if (d._data[source]) {
+                  return d._data[source];
                 }
                 return fallback;
               });
