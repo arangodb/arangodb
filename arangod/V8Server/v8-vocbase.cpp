@@ -7204,9 +7204,6 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
     TRI_V8_EXCEPTION_INTERNAL(scope, "corrupted shaped json");
   }
 
-  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_primary_collection_t* collection = barrier->_container->_collection;
-
   // convert the JavaScript string to a string
   const string key = TRI_ObjectToString(name);
 
@@ -7220,6 +7217,10 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   if (ckey[0] == '_' || strchr(ckey, '.') != 0) {
     return scope.Close(v8::Handle<v8::Value>());
   }
+
+  // get the underlying collection
+  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
+  TRI_primary_collection_t* collection = barrier->_container->_collection;
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
@@ -7297,7 +7298,6 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   TRI_shape_size_t i;
   TRI_shape_size_t n;
   char const* qtr;
-  uint32_t count = 0;
 
   // shape is an array
   s = (TRI_array_shape_t const*) shape;
@@ -7305,12 +7305,13 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   // number of entries
   n = s->_fixedEntries + s->_variableEntries;
 
-  // calculation position of attribute ids
+  // calculate position of attribute ids
   qtr = (char const*) shape;
   qtr += sizeof(TRI_array_shape_t);
   qtr += n * sizeof(TRI_shape_sid_t);
   aids = (TRI_shape_aid_t const*) qtr;
 
+  uint32_t count = 0;
   for (i = 0;  i < n;  ++i, ++aids) {
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
@@ -7347,9 +7348,6 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
-  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_primary_collection_t* collection = barrier->_container->_collection;
-
   // convert the JavaScript string to a string
   string key = TRI_ObjectToString(name);
 
@@ -7362,6 +7360,10 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
       return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
     }
   }
+
+  // get underlying collection
+  TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
+  TRI_primary_collection_t* collection = barrier->_container->_collection;
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
