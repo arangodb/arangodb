@@ -666,6 +666,39 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2String (char const* a, 
+                                   size_t na, 
+                                   char const* b, 
+                                   size_t nb) {
+  return TRI_ConcatenateSized2StringZ(TRI_CORE_MEM_ZONE, a, na, b, nb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths, using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t* zone, 
+                                    char const* a, 
+                                    size_t na, 
+                                    char const* b, 
+                                    size_t nb) {
+  char* result;
+
+  result = TRI_Allocate(zone, na + nb + 1, false);
+  if (result != NULL) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+
+    result[na + nb] = '\0';
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1336,9 +1369,9 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
 
   if (qtr != NULL) {
     memcpy(qtr, buffer, *outLength + 1);
-  
-    TRI_Free(zone, buffer);
   }
+
+  TRI_Free(zone, buffer);
     
   return qtr;
 }
@@ -1465,21 +1498,6 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
       TRI_Free(zone, buffer);
       return utf8_nfc;
     }
-  }
-
-  // we might have wasted some space if the unescaped string is shorter than the
-  // escaped one. this is the case if the string contained escaped characters
-  if (((ptr - in) > 0) && (*outLength < (size_t)(ptr - in))) {
-    // result string is shorter than original string
-    qtr = TRI_Allocate(zone, *outLength + 1, false);
-
-    if (qtr != NULL) {
-      memcpy(qtr, buffer, *outLength + 1);
-      TRI_Free(zone, buffer);
-
-      return qtr;
-    }
-
     // intentional fall-through
   }
 
