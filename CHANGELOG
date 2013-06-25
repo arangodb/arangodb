@@ -1,3 +1,9 @@
+v1.3.3 (XXXX-XX-XX)
+-------------------
+
+* added missing error reporting for errors that happened during import of edges
+
+
 v1.3.2 (2013-06-21)
 -------------------
 

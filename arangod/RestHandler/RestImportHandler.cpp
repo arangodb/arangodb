@@ -305,6 +305,9 @@ bool RestImportHandler::createByDocumentsLines () {
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
           res = trx.createEdge(&document, values, waitForSync, &edge);
         }
+        else {
+          res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
+        }
 
         if (edge._fromKey != 0) {
           TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -478,6 +481,9 @@ bool RestImportHandler::createByDocumentsList () {
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
           res = trx.createEdge(&document, values, waitForSync, &edge);
+        }
+        else {
+          res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
         }
 
         if (edge._fromKey != 0) {
@@ -719,6 +725,9 @@ bool RestImportHandler::createByKeyValueList () {
 
         if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
           res = trx.createEdge(&document, json, waitForSync, &edge);
+        }
+        else {
+          res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
         }
 
         if (edge._fromKey != 0) {
