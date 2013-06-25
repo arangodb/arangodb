@@ -1785,6 +1785,8 @@ bool TRI_ShutdownLogging () {
   if (! Initialised) {
     return ThreadedLogging;
   }
+  
+  Initialised = false;
 
   // logging is now inactive (this will terminate the logging thread)
   LoggingActive = 0;
@@ -1828,8 +1830,6 @@ bool TRI_ShutdownLogging () {
   TRI_DestroySpin(&OutputPrefixLock);
   TRI_DestroySpin(&AppendersLock);
   TRI_DestroyMutex(&BufferLock);
-
-  Initialised = false;
 
   return ThreadedLogging;
 }
