@@ -629,7 +629,7 @@
       });
 
       it('should draw image elements', function () {
-        var node = [{_id: 1}];
+        var node = [{_id: 1, _data:{}}];
         shaper.drawNodes(node);
         expect($("svg .node").length).toEqual(1);
         expect($("svg image").length).toEqual(1);
@@ -646,11 +646,11 @@
           }
         });
         var nodes = [
-          {_id: 1},
-          {_id: 2},
-          {_id: 3},
-          {_id: 4},
-          {_id: 5}
+          {_id: 1, _data:{}},
+          {_id: 2, _data:{}},
+          {_id: 3, _data:{}},
+          {_id: 4, _data:{}},
+          {_id: 5, _data:{}}
         ];
         shaper.drawNodes(nodes);
         expect($("svg #1 image").attr("width")).toEqual("15");
@@ -675,11 +675,11 @@
             return 10 - node._id;
           },
           nodes = [
-            {_id: 1},
-            {_id: 2},
-            {_id: 3},
-            {_id: 4},
-            {_id: 5}
+            {_id: 1, _data:{}},
+            {_id: 2, _data:{}},
+            {_id: 3, _data:{}},
+            {_id: 4, _data:{}},
+            {_id: 5, _data:{}}
           ];
           shaper = new NodeShaper(d3.select("svg"),
           {
@@ -706,11 +706,11 @@
     
       it('should display each node exactly once if an event is added', function() {
         var nodes = [
-          {_id: 1},
-          {_id: 2},
-          {_id: 3},
-          {_id: 4},
-          {_id: 5}
+          {_id: 1, _data:{}},
+          {_id: 2, _data:{}},
+          {_id: 3, _data:{}},
+          {_id: 4, _data:{}},
+          {_id: 5, _data:{}}
         ];
         shaper.drawNodes(nodes);
         
@@ -740,7 +740,9 @@
         var nodes = [
           {
             _id: 1,
-            img: "source.png"
+            _data: {
+              img: "source.png"
+            }
           }
         ];
         shaper.drawNodes(nodes);
@@ -751,18 +753,22 @@
         var nodes = [
             {
               _id: 1,
-              img: "source.png"
+              _data: {
+                img: "source.png"
+              }
             },{
               _id: 2,
-              alt: "alt.png"
+              _data: {
+                alt: "alt.png"
+              }
             }
           ],
           imgFunction = function(d) {
             if (d._id === 1) {
-              return d.img;
+              return d._data.img;
             }
             if (d._id === 2) {
-              return d.alt;
+              return d._data.alt;
             }
           };
         shaper = new NodeShaper(d3.select("svg"),
@@ -789,9 +795,15 @@
         var nodes = [
           {
             _id: 1,
-            img: "source.png"
+            _data: {
+              img: "source.png"
+            }
+            
           },{
-            _id: 2
+            _id: 2,
+            _data: {
+            
+            }
           }
         ];
         shaper.drawNodes(nodes);
