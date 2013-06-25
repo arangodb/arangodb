@@ -230,7 +230,8 @@ function NodeShaper(parent, flags, idfunc) {
     },
 
     parseShapeFlag = function (shape) {
-      var radius, width, height, translateX, translateY;
+      var radius, width, height, translateX, translateY,
+        fallback, source;
       switch (shape.type) {
         case NodeShaper.shapes.NONE:
           addShape = noop;
@@ -273,6 +274,8 @@ function NodeShaper(parent, flags, idfunc) {
         case NodeShaper.shapes.IMAGE:
           width = shape.width || 32;
           height = shape.height || 32;
+          fallback = shape.fallback || "";
+          source = shape.source || fallback;
           if (_.isFunction(width)) {
             translateX = function(d) {
               return -(width(d) / 2);
@@ -288,12 +291,21 @@ function NodeShaper(parent, flags, idfunc) {
             translateY = -(height / 2);
           }
           addShape = function(node) {
-            node.append("image") // Display nodes as rectangles
+            var img = node.append("image") // Display nodes as rectangles
               .attr("width", width) // Set width
               .attr("height", height) // Set height
               .attr("x", translateX)
-              .attr("y", translateY)
-              .attr("xlink:href", "8");
+              .attr("y", translateY);
+            if (_.isFunction(source)) {
+              img.attr("href", source);
+            } else {
+              img.attr("href", function(d) {
+                if (d[source]) {
+                  return d[source];
+                }
+                return fallback;
+              });
+            }
           };
           break;
         case undefined:
