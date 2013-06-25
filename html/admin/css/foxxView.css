@@ -23,3 +23,20 @@
 .badge-foxx {
   bottom: 0px;
 }
+
+li.applicationList {
+  margin-left:-10px;
+  background-color: transparent;
+  border: none;
+}
+
+.applicationListHeader {
+  margin-bottom: 25px;
+  color: #FFF;
+  text-align: center;
+  padding: 1px 0px;
+}
+
+.toggle-icon {
+  margin: 10px;
+}

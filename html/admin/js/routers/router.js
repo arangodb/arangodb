@@ -23,6 +23,7 @@ $(document).ready(function() {
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
+      "applications"                        : "applications",
       "application/documentation/:key"     : "appDocumentation",
       "graph"                               : "graph"
       
@@ -188,6 +189,19 @@ $(document).ready(function() {
     graph: function() {
       this.graphView.render();
       this.naviView.selectMenuItem('graph-menu'); 
+    },
+
+    applications: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsView === undefined) {
+        this.applicationsView = new ApplicationsView({
+          collection: this.foxxList
+        });
+      }
+      this.applicationsView.reload();
+      this.naviView.selectMenuItem('applications-menu');
     },
 
     applicationsAvailable: function() {
