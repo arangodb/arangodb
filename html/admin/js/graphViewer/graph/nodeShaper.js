@@ -59,6 +59,22 @@
 *   },
 *   update: function(node)
 * }
+*
+* <image x="0" y="0" height="1140" width="1040" xlink:href="like_a_sir_original.svg"/>
+*
+* {
+*   shape: {
+*     type: NodeShaper.shapes.IMAGE,
+*     width: value || function(node),
+*     height: value || function(node),
+*   },
+*   actions: {
+*     "click": function(node),
+*     "drag": function(node)
+*   },
+*   update: function(node)
+* }
+*
 */
 function NodeShaper(parent, flags, idfunc) {
   "use strict";
@@ -252,6 +268,32 @@ function NodeShaper(parent, flags, idfunc) {
               .attr("y", translateY)
               .attr("rx", "8")
               .attr("ry", "8");
+          };
+          break;
+        case NodeShaper.shapes.IMAGE:
+          width = shape.width || 32;
+          height = shape.height || 32;
+          if (_.isFunction(width)) {
+            translateX = function(d) {
+              return -(width(d) / 2);
+            };
+          } else {
+            translateX = -(width / 2);
+          }
+          if (_.isFunction(height)) {
+            translateY = function(d) {
+              return -(height(d) / 2);
+            };
+          } else {
+            translateY = -(height / 2);
+          }
+          addShape = function(node) {
+            node.append("image") // Display nodes as rectangles
+              .attr("width", width) // Set width
+              .attr("height", height) // Set height
+              .attr("x", translateX)
+              .attr("y", translateY)
+              .attr("xlink:href", "8");
           };
           break;
         case undefined:
@@ -485,5 +527,6 @@ function NodeShaper(parent, flags, idfunc) {
 NodeShaper.shapes = Object.freeze({
   "NONE": 0,
   "CIRCLE": 1,
-  "RECT": 2
+  "RECT": 2,
+  "IMAGE": 3
 });
