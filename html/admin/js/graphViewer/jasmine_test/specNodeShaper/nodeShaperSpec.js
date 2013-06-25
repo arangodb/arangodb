@@ -728,6 +728,77 @@
         }});
         expect($("svg image").length).toEqual(5);
       });
+      
+      it('should display an image stored in a given attribute', function() {
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            source: "img"
+          }
+        });
+        var nodes = [
+          {
+            _id: 1,
+            img: "source.png"
+          }
+        ];
+        shaper.drawNodes(nodes);
+        expect($("svg #1 image").attr("href")).toEqual("source.png");
+      });
+      
+      it('should be able to use a function to determine the image', function() {
+        var nodes = [
+            {
+              _id: 1,
+              img: "source.png"
+            },{
+              _id: 2,
+              alt: "alt.png"
+            }
+          ],
+          imgFunction = function(d) {
+            if (d._id === 1) {
+              return d.img;
+            }
+            if (d._id === 2) {
+              return d.alt;
+            }
+          };
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            source: imgFunction
+          }
+        });
+        shaper.drawNodes(nodes);
+        expect($("svg #1 image").attr("href")).toEqual("source.png");
+        expect($("svg #2 image").attr("href")).toEqual("alt.png");
+      });
+      
+      it('should be able to fallback to a given default image', function() {
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            source: "img",
+            fallback: "default.png"
+          }
+        });
+        var nodes = [
+          {
+            _id: 1,
+            img: "source.png"
+          },{
+            _id: 2
+          }
+        ];
+        shaper.drawNodes(nodes);
+        expect($("svg #1 image").attr("href")).toEqual("source.png");
+        expect($("svg #2 image").attr("href")).toEqual("default.png");
+      });
+      
     });
     
     describe('configured for rectangle', function () {
