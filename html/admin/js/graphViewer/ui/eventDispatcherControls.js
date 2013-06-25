@@ -245,6 +245,21 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
     };
   };
   
+  this.deleteRebinds = function() {
+    return {
+      nodes: {
+        click: dispatcher.events.DELETENODE(
+          function() {}
+        )
+      },
+      edges: {
+        click: dispatcher.events.DELETEEDGE(
+          function() {}
+        )
+      }
+    };
+  };
+  
   this.rebindAll = function(obj) {
     rebindNodes(obj.nodes);
     rebindEdges(obj.edges);
@@ -296,9 +311,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlDelete = function() {
-    var prefix = "control_event_delete",
-      idprefix = prefix + "_",
-      icon = "trash",
+    var icon = "trash",
       callback = function() {
         setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
