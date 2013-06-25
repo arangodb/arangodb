@@ -13,7 +13,6 @@ v1.4
   just a fileSize, or both. The first met constraint will trigger the automated
   document removal.
 
-
 * added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
 
 * added API `/_api/current-database` to retrieve information about the database the
@@ -68,6 +67,12 @@ v1.4
 * issue #517: Foxx: Route parameters with captial letters fail
 
 * issue #512: Binded Parameters for LIMIT
+
+
+v1.3.3 (XXXX-XX-XX)
+-------------------
+
+* added missing error reporting for errors that happened during import of edges
 
 
 v1.3.2 (2013-XX-XX)
