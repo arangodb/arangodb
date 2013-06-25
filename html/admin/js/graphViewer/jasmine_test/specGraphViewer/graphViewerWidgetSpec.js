@@ -211,9 +211,74 @@
 
         ui = new GraphViewerWidget(config);
         expect(disp.rebind).wasCalledWith("nodes", {drag: layouter.drag});
-        expect(disp.rebind).wasCalledWith("edges", {});
-        expect(disp.rebind).wasCalledWith("svg", {});
+        expect(disp.rebind).wasCalledWith("edges", undefined);
+        expect(disp.rebind).wasCalledWith("svg", undefined);
       });
+      
+      it('should be able to bind edit initially', function() {
+        var actions = {
+          edit: true
+        },
+        config = {
+          actions: actions
+        },
+        ui = new GraphViewerWidget(config);
+        expect(disp.rebind).wasCalledWith("nodes", {click: jasmine.any(Function)});
+        expect(disp.rebind).wasCalledWith("edges", {click: jasmine.any(Function)});
+        expect(disp.rebind).wasCalledWith("svg", undefined);
+      });
+      
+      it('should be able to bind create initially', function() {
+        var actions = {
+          create: true
+        },
+        config = {
+          actions: actions
+        },
+        ui = new GraphViewerWidget(config);
+        expect(disp.rebind).wasCalledWith("nodes", {
+          mousedown: jasmine.any(Function),
+          mouseup: jasmine.any(Function)
+        });
+        expect(disp.rebind).wasCalledWith("edges", undefined);
+        expect(disp.rebind).wasCalledWith("svg", {
+          click: jasmine.any(Function),
+          mouseup: jasmine.any(Function)
+        });
+      });
+      
+      it('should be able to bind remove initially', function() {
+        var actions = {
+          remove: true
+        },
+        config = {
+          actions: actions
+        },
+        ui = new GraphViewerWidget(config);
+        expect(disp.rebind).wasCalledWith("nodes", {
+          click: jasmine.any(Function)
+        });
+        expect(disp.rebind).wasCalledWith("edges", {
+          click: jasmine.any(Function)
+        });
+        expect(disp.rebind).wasCalledWith("svg", undefined);
+      });
+      
+      it('should be able to bind expand initially', function() {
+        var actions = {
+          expand: true
+        },
+        config = {
+          actions: actions
+        },
+        ui = new GraphViewerWidget(config);
+        expect(disp.rebind).wasCalledWith("nodes", {
+          click: jasmine.any(Function)
+        });
+        expect(disp.rebind).wasCalledWith("edges", undefined);
+        expect(disp.rebind).wasCalledWith("svg", undefined);
+      });
+      
       
     });
     
@@ -378,9 +443,9 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
-      it('should be able to add the new buttons', function() {
+      it('should be able to add the create buttons', function() {
         var toolboxConf = {
-            "new": true
+            create: true
           },
           config = {
             toolbox: toolboxConf
@@ -405,9 +470,9 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
-      it('should be able to add the delete button', function() {
+      it('should be able to add the remove button', function() {
         var toolboxConf = {
-            "delete": true
+            remove: true
           },
           config = {
             toolbox: toolboxConf

@@ -49,6 +49,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
     viewer,
     createTB,
     adapterConfig,
+    dispatcherUI,
     mousePointerBox = document.createElement("div"),
     
     
@@ -74,33 +75,41 @@ function GraphViewerWidget(viewerConfig, startNode) {
       return counter > 0;
     },
     
+    addRebindsToList = function(list, rebinds) {
+      _.each(rebinds, function(acts, obj) {
+        list[obj] = list[obj] || {};
+        _.each(acts, function(func, trigger) {
+          list[obj][trigger] = func;
+        });
+      });
+    },
+    
     parseActions = function(config) {
       if (!config) {
         return;
       }
-      var dispatcher = new EventDispatcher(
-          viewer.nodeShaper,
-          viewer.edgeShaper,
-          viewer.dispatcherConfig
-        ),
-        nodeActions = {},
-        edgeActions = {},
-        svgActions = {};
-      
-      nodeActions.drag = dispatcher.events.DRAG;
-      
-      dispatcher.rebind("nodes", nodeActions);
-      dispatcher.rebind("edges", edgeActions);
-      dispatcher.rebind("svg", svgActions);
-       
-      
-      
+      var allActions = {};
+      if (config.drag) {
+        addRebindsToList(allActions, dispatcherUI.dragRebinds());
+      }
+      if (config.create) {
+        addRebindsToList(allActions, dispatcherUI.newNodeRebinds());
+        addRebindsToList(allActions, dispatcherUI.connectNodesRebinds());
+      }
+      if (config.remove) {
+        addRebindsToList(allActions, dispatcherUI.deleteRebinds());
+      }
+      if (config.expand) {
+        addRebindsToList(allActions, dispatcherUI.expandRebinds());
+      }
+      if (config.edit) {
+        addRebindsToList(allActions, dispatcherUI.editRebinds());
+      }
+      dispatcherUI.rebindAll(allActions);      
     },
     
     createToolbox = function(config) {
-      var toolbox,
-        dispatcherUI;
-      toolbox = document.createElement("div");
+      var toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
         toolbox,
         mousePointerBox,
@@ -119,7 +128,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
           case "expand":
             dispatcherUI.addControlExpand();
             break;
-          case "new":
+          case "create":
             dispatcherUI.addControlNewNode();
             dispatcherUI.addControlConnect();
             break;
@@ -129,13 +138,23 @@ function GraphViewerWidget(viewerConfig, startNode) {
           case "edit":
             dispatcherUI.addControlEdit();
             break;
-          case "delete":
+          case "remove":
             dispatcherUI.addControlDelete();
             break;
         }
       });
     },
     
+    createDispatcherOnly = function(config) {
+      var toolbox = document.createElement("div");
+      dispatcherUI = new EventDispatcherControls(
+        toolbox,
+        mousePointerBox,
+        viewer.nodeShaper,
+        viewer.edgeShaper,
+        viewer.dispatcherConfig
+      );
+    },
     
     createViewer = function() {
       return new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
@@ -163,6 +182,8 @@ function GraphViewerWidget(viewerConfig, startNode) {
   viewer = createViewer();
   if (createTB) {
     createToolbox(viewerConfig.toolbox);
+  } else {
+    createDispatcherOnly();
   }
   if (startNode) {
     viewer.loadGraph(startNode);
