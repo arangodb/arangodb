@@ -272,6 +272,8 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case NodeShaper.shapes.IMAGE:
+          // Make the html aware of xmlns:xlink
+          $("html").attr("xmlns:xlink", "http://www.w3.org/1999/xlink");
           width = shape.width || 32;
           height = shape.height || 32;
           fallback = shape.fallback || "";
@@ -297,9 +299,9 @@ function NodeShaper(parent, flags, idfunc) {
               .attr("x", translateX)
               .attr("y", translateY);
             if (_.isFunction(source)) {
-              img.attr("href", source);
+              img.attr("xlink:href", source);
             } else {
-              img.attr("href", function(d) {
+              img.attr("xlink:href", function(d) {
                 if (d._data[source]) {
                   return d._data[source];
                 }

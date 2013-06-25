@@ -798,7 +798,6 @@
             _data: {
               img: "source.png"
             }
-            
           },{
             _id: 2,
             _data: {
