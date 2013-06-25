@@ -408,7 +408,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   // copy prefix
   string path = request->prefix();
 
-  req->Set(v8g->PrefixKey, v8::String::New(path.c_str()));
+  req->Set(v8g->PrefixKey, v8::String::New(path.c_str(), path.size()));
 
   // copy suffix
   v8::Handle<v8::Array> suffixArray = v8::Array::New();
@@ -427,7 +427,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   req->Set(v8g->SuffixKey, suffixArray);
 
   // copy full path
-  req->Set(v8g->PathKey, v8::String::New(path.c_str()));
+  req->Set(v8g->PathKey, v8::String::New(path.c_str(), path.size()));
 
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
@@ -436,7 +436,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   map<string, string>::const_iterator iter = headers.begin();
 
   for (; iter != headers.end(); ++iter) {
-    headerFields->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
+    headerFields->Set(v8::String::New(iter->first.c_str(), iter->first.size()), 
+                      v8::String::New(iter->second.c_str(), iter->second.size()));
   }
 
   req->Set(v8g->HeadersKey, headerFields);
@@ -445,17 +446,17 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   switch (request->requestType()) {
     case HttpRequest::HTTP_REQUEST_POST:
       req->Set(v8g->RequestTypeKey, v8g->PostConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PUT:
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_PATCH:
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
-      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body(), request->bodySize()));
       break;
 
     case HttpRequest::HTTP_REQUEST_OPTIONS:
@@ -487,7 +488,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     map<string, TRI_action_parameter_type_e>::const_iterator p = action->_parameters.find(k);
 
     if (p == action->_parameters.end()) {
-      valuesObject->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+      valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+                        v8::String::New(v.c_str(), v.size()));
     }
     else {
       TRI_action_parameter_type_e const& ap = p->second;
@@ -512,7 +514,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
                 // TODO: raise exception here
               }
               else {
-                valuesObject->Set(v8::String::New(k.c_str()), c);
+                valuesObject->Set(v8::String::New(k.c_str(), k.size()), c);
               }
             }
           }
@@ -530,7 +532,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
               // TODO: raise exception here
             }
             else {
-              valuesObject->Set(v8::String::New(k.c_str()), c);
+              valuesObject->Set(v8::String::New(k.c_str(), k.size()), c);
             }
           }
 
@@ -549,7 +551,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
               // TODO: raise exception here
             }
             else {
-              valuesObject->Set(v8::String::New(k.c_str()), c);
+              valuesObject->Set(v8::String::New(k.c_str(), k.size()), c);
             }
           }
 
@@ -557,11 +559,13 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         }
 
         case TRI_ACT_NUMBER:
-          valuesObject->Set(v8::String::New(k.c_str()), v8::Number::New(TRI_DoubleString(v.c_str())));
+          valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+                            v8::Number::New(TRI_DoubleString(v.c_str())));
           break;
 
         case TRI_ACT_STRING: {
-          valuesObject->Set(v8::String::New(k.c_str()), v8::String::New(v.c_str()));
+          valuesObject->Set(v8::String::New(k.c_str(), k.size()), 
+                            v8::String::New(v.c_str()));
           break;
         }
       }
@@ -581,7 +585,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       list->Set(i, v8::String::New(v->at(i)));
     }
 
-    valuesObject->Set(v8::String::New(k.c_str()), list);
+    valuesObject->Set(v8::String::New(k.c_str(), k.size()), list);
   }
 
   req->Set(v8g->ParametersKey, valuesObject);
@@ -593,7 +597,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   iter = cookies.begin();
 
   for (; iter != cookies.end(); ++iter) {
-    cookiesObject->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
+    cookiesObject->Set(v8::String::New(iter->first.c_str(), iter->first.size()), 
+                       v8::String::New(iter->second.c_str(), iter->second.size()));
   }
 
   req->Set(v8g->CookiesKey, cookiesObject);
@@ -685,7 +690,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       else {
         string msg = string("cannot read file '") + *filename + "': " + TRI_last_error();
 
-        response->body().appendText(msg.c_str());
+        response->body().appendText(msg.c_str(), msg.size());
         response->setResponseCode(HttpResponse::SERVER_ERROR);
       }
     }

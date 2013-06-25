@@ -187,7 +187,7 @@ describe ArangoDB do
       doc.parsed_response['errorNum'].should eq(1)
     end
 
-    it "insert document in unknow collection" do
+    it "insert document in unknown collection" do
       p = "#{prefix}-create-3"
       insert_structure1(p);
 
