@@ -123,7 +123,8 @@ TRI_aql_codegen_js_t;
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (TRI_aql_context_t* const);
+char* TRI_GenerateCodeAql (TRI_aql_context_t* const, 
+                           size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

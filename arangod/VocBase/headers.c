@@ -137,7 +137,11 @@ static void MoveBackHeader (TRI_headers_t* h,
   
   TRI_ASSERT_MAINTAINER(old != NULL);
   TRI_ASSERT_MAINTAINER(old->_data != NULL);
-
+  
+  // we must adjust the size of the collection
+  headers->_totalSize += (int64_t) (((TRI_df_marker_t*) header->_data)->_size); 
+  headers->_totalSize -= (int64_t) (((TRI_df_marker_t*) old->_data)->_size); 
+  
   if (headers->_end == header) {
     // header is already at the end
     TRI_ASSERT_MAINTAINER(header->_next == NULL);
@@ -169,10 +173,6 @@ static void MoveBackHeader (TRI_headers_t* h,
   TRI_ASSERT_MAINTAINER(header->_prev != header);
   TRI_ASSERT_MAINTAINER(header->_next != header);
 
-  // we must adjust the size of the collection
-  headers->_totalSize += (int64_t) (((TRI_df_marker_t*) header->_data)->_size); 
-  headers->_totalSize -= (int64_t) (((TRI_df_marker_t*) old->_data)->_size); 
-  
   TRI_ASSERT_MAINTAINER(headers->_totalSize > 0);
 }
 
@@ -436,16 +436,17 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
 
 static void ReleaseHeader (TRI_headers_t* h, 
                            TRI_doc_mptr_t* header,
-                           bool unlink) {
+                           bool unlinkHeader) {
   simple_headers_t* headers = (simple_headers_t*) h;
   
   if (header == NULL) {
     return;
   }
 
-  if (unlink) {
+  if (unlinkHeader) {
     UnlinkHeader(h, header);
   }
+
   ClearHeader(h, header);
 
   header->_data = headers->_freelist;
