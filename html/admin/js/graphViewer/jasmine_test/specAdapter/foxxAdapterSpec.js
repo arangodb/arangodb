@@ -61,8 +61,14 @@
             break;
           case "GET":
             req.success({
-              nodes: [{_id: 1}, {_id: 2}],
-              edges: [{_id: "1-2", _from: 1, _to: 2}]
+              first: {_id: 1},
+              nodes: {
+                "1": {_id: 1},
+                "2": {_id: 2}
+              },
+              edges: {
+                "1-2": {_id: "1-2", _from: 1, _to: 2}
+              }
             });
             break;
           default:
@@ -261,8 +267,14 @@
             id = 1;
             spyOn($, "ajax").andCallFake(function(req) {
               req.success({
-                nodes: [{_id: 1}, {_id: 2}],
-                edges: [{_id: "1-2", _from: 1, _to: 2}]
+                first: {_id: 1},
+                nodes: {
+                  "1": {_id: 1},
+                  "2": {_id: 2}
+                },
+                edges: {
+                  "1-2": {_id: "1-2", _from: 1, _to: 2}
+                }
               });
             });
             var callback = function() {
