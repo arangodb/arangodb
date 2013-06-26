@@ -12,7 +12,30 @@ window.FoxxActiveView = Backbone.View.extend({
   },
 
   initialize: function(){
+    this._show = true;
     _.bindAll(this, 'render');
+  },
+
+  toggle: function(type, shouldShow) {
+    if (this.model.get("development")) {
+      if ("devel" === type) {
+        this._show = shouldShow;
+      }
+    } else {
+      if ("active" === type && true === this.model.get("active")) {
+        this._show = shouldShow;
+      }
+      if ("inactive" === type && false === this.model.get("active")) {
+        this._show = shouldShow;
+      }
+    }
+    console.log(shouldShow);
+    console.log(this._show);
+    if (this._show) {
+      $(this.el).show();
+    } else {
+      $(this.el).hide();
+    }
   },
 
   editFoxx: function(event) {
@@ -36,7 +59,9 @@ window.FoxxActiveView = Backbone.View.extend({
   },
 
   render: function(){
-    $(this.el).html(this.template.render(this.model));
+    if (this._show) {
+      $(this.el).html(this.template.render(this.model));
+    }
     return $(this.el);
   }
 });
