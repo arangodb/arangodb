@@ -34,6 +34,9 @@ window.arangoHelper = {
       text: message,
       sticky: true,
       before_open: function(){
+        if($('.gritter-item-wrapper').length == 3) {
+          return false;
+        }
         returnVal = true;
       }
     });
