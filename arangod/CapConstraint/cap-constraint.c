@@ -58,13 +58,14 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
   size_t currentCount;
   int res;
 
-  document = (TRI_document_collection_t*) primary;
-  headers = document->_headers;
+  document     = (TRI_document_collection_t*) primary;
+  headers      = document->_headers;
   currentCount = headers->count(headers);
-  currentSize = headers->size(headers);
+  currentSize  = headers->size(headers);
 
   res = TRI_ERROR_NO_ERROR;
 
+  // delete while at least one of the constraints is violated
   while ((cap->_count > 0 && currentCount > cap->_count) || 
          (cap->_size > 0 && currentSize > cap->_size)) {
     TRI_doc_mptr_t* oldest = headers->front(headers);
@@ -135,7 +136,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     vocbase = primary->base._vocbase;
     cid = primary->base._info._cid;
 
-    trx = TRI_CreateTransaction(vocbase->_transactionContext, 0.0, false);
+    trx = TRI_CreateTransaction(vocbase->_transactionContext, true, 0.0, false);
 
     if (trx == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
