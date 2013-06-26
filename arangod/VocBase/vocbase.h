@@ -312,6 +312,7 @@ typedef struct TRI_vocbase_s {
 #endif
   bool                       _isSystem;
   bool                       _requireAuthentication;  
+  bool                       _authenticateSystemOnly;
   
   char*                      _name;               // database name
 
@@ -417,6 +418,7 @@ typedef struct TRI_vocbase_defaults_s {
   bool           forceSyncShapes;
   bool           forceSyncProperties;
   bool           requireAuthentication;
+  bool           authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
   bool           replicationEnable;
   bool           replicationWaitForSync;

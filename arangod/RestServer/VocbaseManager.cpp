@@ -106,9 +106,7 @@ void VocbaseManager::addUserVocbase (TRI_vocbase_t* vocbase) {
     _authCache[vocbase] = m;
   }
   
-  if (true) { //(vocbase->_needAuth) {
-    TRI_ReloadAuthInfo(vocbase);
-  }
+  TRI_ReloadAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +148,8 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 /// @brief check if name and path is not used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& path) {
+bool VocbaseManager::canAddVocbase (std::string const& name, 
+                                    std::string const& path) {
   // loop over all vocbases and check name and path
   
   READ_LOCKER(_rwLock);
@@ -167,6 +166,7 @@ bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& 
   std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();
   for (; i != _vocbases.end(); ++i) {
     TRI_vocbase_t* vocbase = i->second;
+
     if (name == string(vocbase->_name)) {
       return false;
     }
@@ -183,7 +183,8 @@ bool VocbaseManager::canAddVocbase (std::string const& name, std::string const& 
 /// @return bool             returns false if the version check fails
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VocbaseManager::runVersionCheck (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context) {
+bool VocbaseManager::runVersionCheck (TRI_vocbase_t* vocbase, 
+                                      v8::Handle<v8::Context> context) {
   if (! _startupLoader) {
     LOGGER_ERROR("Javascript start up loader not found.");
     return false;
@@ -205,7 +206,8 @@ bool VocbaseManager::runVersionCheck (TRI_vocbase_t* vocbase, v8::Handle<v8::Con
 /// @brief initialize foxx
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase, v8::Handle<v8::Context> context) {
+void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase, 
+                                     v8::Handle<v8::Context> context) {
   TRI_vocbase_t* orig = 0;
   {
     v8::HandleScope scope;      
@@ -240,7 +242,7 @@ bool VocbaseManager::addEndpoint (std::string const& name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look vocbase by http request
+/// @brief look up vocbase by http request
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (
@@ -259,8 +261,7 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (
 /// @brief look vocbase by prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* VocbaseManager::lookupVocbaseByPrefix (
-                                                    std::string const& prefix) {
+TRI_vocbase_t* VocbaseManager::lookupVocbaseByPrefix (std::string const& prefix) {
   READ_LOCKER(_rwLock);
   map<string, TRI_vocbase_s*>::iterator find = _prefix2Vocbases.find(prefix);
   if (find != _prefix2Vocbases.end()) {
@@ -295,11 +296,11 @@ void VocbaseManager::addPrefixMapping (std::string const& prefix,
 bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase, 
                                    triagens::rest::HttpRequest* request) {
   
-  if (!vocbase) {
+  if (! vocbase) {
     // unknown vocbase
      return false;
   }
-  
+
   std::map<TRI_vocbase_t*, std::map<std::string, std::string> >::iterator mapIter;
   
   bool found;
@@ -334,20 +335,13 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
     }
 
     string up = StringUtils::decodeBase64(auth);    
-//    vector<string> split = StringUtils::split(up, ":");
-//
-//    if (split.size() != 2) {
-//      return false;
-//    }
-//
-//    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, split[0].c_str(), split[1].c_str());
 
     std::string::size_type n = up.find(':', 0);
-    if (n == std::string::npos || n == 0 || n+1 > up.size()) {
+    if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       return false;
     }
     
-    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, up.substr(0, n).c_str(), up.substr(n+1).c_str());
+    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, up.substr(0, n).c_str(), up.substr(n + 1).c_str());
     
     if (res) {
       WRITE_LOCKER(_rwLock);
