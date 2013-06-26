@@ -41,6 +41,7 @@
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
+#include "VocBase/replication.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
 
@@ -394,7 +395,8 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 /// @brief creates a new document or edge marker in memory
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
+static int CreateDocumentMarker (TRI_primary_collection_t* primary,
+                                 TRI_voc_tid_t tid,
                                  TRI_doc_document_key_marker_t** result,
                                  TRI_voc_size_t* totalSize,
                                  char** keyBody, 
@@ -402,12 +404,10 @@ static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
                                  TRI_voc_key_t key,
                                  TRI_shaped_json_t const* shaped, 
                                  void const* data) {
-  TRI_primary_collection_t* primary;
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
   char* position;
   char keyBuffer[TRI_VOC_KEY_MAX_LENGTH + 1]; 
-  TRI_voc_tid_t tid;
   TRI_voc_size_t keyBodySize;
   TRI_voc_tick_t tick;
   size_t markerSize;
@@ -418,8 +418,6 @@ static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
 
   *result = NULL;
   tick = TRI_NewTickVocBase();
-  tid = TRI_GetMarkerIdTransaction(trxCollection->_transaction);
-  primary = trxCollection->_collection->_collection;
 
   // generate the key
   keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
@@ -1492,7 +1490,15 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
   // first create a new marker in memory
   // this does not require any locks
 
-  res = CreateDocumentMarker(trxCollection, &marker, &totalSize, &keyBody, markerType, key, shaped, data);
+  res = CreateDocumentMarker(primary, 
+                             TRI_GetMarkerIdTransaction(trxCollection->_transaction), 
+                             &marker, 
+                             &totalSize, 
+                             &keyBody, 
+                             markerType, 
+                             key, 
+                             shaped, 
+                             data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -2254,10 +2260,11 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
       // check whether the transaction was half-way committed...
 
       res = TRI_ExecuteSingleOperationTransaction(state->_vocbase, 
-                                                  TRI_TRANSACTION_COORDINATOR_COLLECTION, 
+                                                  TRI_COL_NAME_TRANSACTION,
                                                   TRI_TRANSACTION_READ, 
                                                   ReadTrxCallback, 
-                                                  state);
+                                                  state,
+                                                  false);
       if (res == TRI_ERROR_NO_ERROR) {
         size_t i, n; 
 
@@ -3869,11 +3876,11 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 /// @brief drops an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_idx_iid_t iid) {
+bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
+                                      TRI_idx_iid_t iid) {
   TRI_index_t* found;
   TRI_primary_collection_t* primary;
-  size_t n;
-  size_t i;
+  size_t i, n;
 
   if (iid == 0) {
     return true;
@@ -3924,6 +3931,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
 
     removeResult = TRI_RemoveIndexFile(primary, found);
     TRI_FreeIndex(found);
+
+    TRI_DropIndexReplication(primary->base._vocbase, primary->base._info._cid, iid);
 
     return removeResult;
   }

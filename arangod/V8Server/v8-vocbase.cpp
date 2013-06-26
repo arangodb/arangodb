@@ -63,10 +63,11 @@
 #include "V8/v8-utils.h"
 #include "VocBase/auth.h"
 #include "VocBase/datafile.h"
-#include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/general-cursor.h"
 #include "VocBase/key-generator.h"
+#include "VocBase/replication.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 #include "RestServer/VocbaseManager.h"
@@ -5234,6 +5235,10 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         ReleaseCollection(collection);
         TRI_V8_EXCEPTION(scope, res);
       }
+
+      TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
+      TRI_ChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, json); 
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
   }
 
@@ -6935,7 +6940,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   string name = TRI_ObjectToString(argv[0]);
   string path = TRI_ObjectToString(argv[1]);
 
-  if (!VocbaseManager::manager.canAddVocbase(name, path)) {
+  if (! VocbaseManager::manager.canAddVocbase(name, path)) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot create database with that name and path");
   }
 
@@ -6948,16 +6953,15 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncShapes = v8::String::New("forceSyncShapes");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
+#ifdef TRI_ENABLE_REPLICATION
+  v8::Local<v8::String> keyReplicationEnable = v8::String::New("replicationEnable");
+  v8::Local<v8::String> keyReplicationWaitForSync = v8::String::New("replicationWaitForSync");
+  v8::Local<v8::String> keyReplicationLogSize = v8::String::New("replicationLogSize");
+#endif
 
   // get database defaults from system vocbase
   TRI_vocbase_defaults_t defaults;
-  defaults.removeOnDrop = vocbase->_removeOnDrop;
-  defaults.removeOnCompacted = vocbase->_removeOnCompacted;
-  defaults.defaultMaximalSize = vocbase->_defaultMaximalSize;
-  defaults.defaultWaitForSync = vocbase->_defaultWaitForSync;
-  defaults.forceSyncShapes = vocbase->_forceSyncShapes;
-  defaults.forceSyncProperties = vocbase->_forceSyncProperties;
-  defaults.requireAuthentication = vocbase->_requireAuthentication;
+  TRI_GetDefaultsVocBase(vocbase, &defaults);
   
   // overwrite database defaults from argv[2]
   if (argv.Length() > 2 && argv[2]->IsObject()) {
@@ -6972,7 +6976,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     }
 
     if (options->Has(keyDefaultMaximalSize)) {
-      defaults.defaultMaximalSize = options->Get(keyDefaultMaximalSize)->IntegerValue();
+      defaults.defaultMaximalSize = (TRI_voc_size_t) options->Get(keyDefaultMaximalSize)->IntegerValue();
     }
 
     if (options->Has(keyDefaultWaitForSync)) {
@@ -6990,11 +6994,22 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     if (options->Has(keyRequireAuthentication)) {
       defaults.requireAuthentication = options->Get(keyRequireAuthentication)->BooleanValue();
     }
+
+#ifdef TRI_ENABLE_REPLICATION    
+    if (options->Has(keyReplicationEnable)) {
+      defaults.replicationEnable = options->Get(keyReplicationEnable)->BooleanValue();
+    }
+    if (options->Has(keyReplicationWaitForSync)) {
+      defaults.replicationWaitForSync = options->Get(keyReplicationWaitForSync)->BooleanValue();
+    }
+    if (options->Has(keyReplicationLogSize)) {
+      defaults.replicationLogSize = (int64_t) options->Get(keyReplicationLogSize)->IntegerValue();
+    }
+#endif
   }
 
   // load vocbase with defaults
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(),
-          name.c_str(), &defaults);
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(), name.c_str(), &defaults);
 
   if (!userVocbase) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database with that path");
