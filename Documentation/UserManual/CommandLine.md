@@ -75,6 +75,21 @@ start up a new database process:
 @anchor CommandLinePidFile
 @copydetails triagens::rest::AnyServer::_pidFile
 
+@CLEARPAGE
+@anchor CommandLineConsole
+@CMDOPT{\--console}
+
+Runs the server in an exclusive emergency console mode. When 
+starting the server with this option, the server is started with
+an interactive JavaScript emergency console, with all networking
+and HTTP interfaces of the server disabled.
+
+No requests can be made to the server in this mode, and the only
+way to work with the server in this mode is by using the emergency
+console. 
+Note that the server cannot be started in this mode if it is 
+already running in this or another mode. 
+
 Command-Line Options for arangod {#CommandLineArangod}
 ======================================================
 
@@ -84,6 +99,10 @@ Command-Line Options for arangod {#CommandLineArangod}
 @CLEARPAGE
 @anchor CommandLineArangoDisableAuthentication
 @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+
+@CLEARPAGE
+@anchor CommandLineArangoAuthenticateSystemOnly
+@copydetails triagens::arango::ArangoServer::_authenticateSystemOnly
 
 @CLEARPAGE
 @anchor CommandLineArangoKeepAliveTimeout
@@ -165,7 +184,14 @@ the option `--disable-figures`.
 
 @CLEARPAGE
 @anchor CommandLineArangoJsV8Options
-@copydetails triagens::arango::ApplicationV8::_v8Options;
+@copydetails triagens::arango::ApplicationV8::_v8Options
+
+@CLEARPAGE
+Command-Line Options for Development {#CommandLineDevelopment}
+==============================================================
+
+@anchor CommandLineArangoDevelopmentMode
+@copydetails triagens::arango::ArangoServer::_developmentMode
 
 @CLEARPAGE
 Command-Line Options for Communication {#CommandLineScheduler}

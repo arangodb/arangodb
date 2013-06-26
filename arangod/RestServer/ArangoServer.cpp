@@ -194,16 +194,17 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+    _authenticateSystemOnly(false),
     _dispatcherThreads(8),
-    _multipleDatabases(false),
     _databasePath(),
-    _removeOnDrop(true),
-    _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
-    _forceSyncShapes(true),
-    _forceSyncProperties(true),
     _developmentMode(false),
+    _forceSyncProperties(true),
+    _forceSyncShapes(true),
+    _multipleDatabases(false),
+    _removeOnCompacted(true),
+    _removeOnDrop(true),
 #ifdef TRI_ENABLE_REPLICATION    
     _replicationEnable(false),
     _replicationLogSize(TRI_REPLICATION_DEFAULT_LOG_SIZE),
@@ -405,6 +406,7 @@ void ArangoServer::buildApplicationServer () {
   bool disableAdminInterface = false;
 
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+    ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
     ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
   ;
@@ -1175,6 +1177,8 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->forceSyncProperties);
   defaults.requireAuthentication = doc.getBooleanValue("requireAuthentication", 
           systemDefaults->requireAuthentication);
+  defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
+          systemDefaults->authenticateSystemOnly);
 #ifdef TRI_ENABLE_REPLICATION
   defaults.replicationEnable = doc.getBooleanValue("replicationEnable", 
           systemDefaults->replicationEnable);
@@ -1394,19 +1398,20 @@ void ArangoServer::openDatabases () {
   TRI_vocbase_defaults_t defaults;  
 
   // override with command-line options 
-  defaults.defaultMaximalSize     = _defaultMaximalSize;
+  defaults.defaultMaximalSize            = _defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationLogSize     = _replicationLogSize;
+  defaults.replicationLogSize            = _replicationLogSize;
 #endif  
-  defaults.removeOnDrop           = _removeOnDrop;
-  defaults.removeOnCompacted      = _removeOnCompacted;
-  defaults.defaultWaitForSync     = _defaultWaitForSync;
-  defaults.forceSyncShapes        = _forceSyncShapes;
-  defaults.forceSyncProperties    = _forceSyncProperties;
-  defaults.requireAuthentication  = ! _applicationEndpointServer->isAuthenticationDisabled();
+  defaults.removeOnDrop                  = _removeOnDrop;
+  defaults.removeOnCompacted             = _removeOnCompacted;
+  defaults.defaultWaitForSync            = _defaultWaitForSync;
+  defaults.forceSyncShapes               = _forceSyncShapes;
+  defaults.forceSyncProperties           = _forceSyncProperties;
+  defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
+  defaults.authenticateSystemOnly        = _authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationWaitForSync = _replicationWaitForSync;
-  defaults.replicationEnable      = _replicationEnable;
+  defaults.replicationWaitForSync        = _replicationWaitForSync;
+  defaults.replicationEnable             = _replicationEnable;
 #endif  
   
   // store these settings as initial system defaults

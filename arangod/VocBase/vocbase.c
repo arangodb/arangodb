@@ -228,19 +228,20 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 
 static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
                           TRI_vocbase_defaults_t* dst) {
-  dst->defaultMaximalSize     = src->defaultMaximalSize;
+  dst->defaultMaximalSize           = src->defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationLogSize     = src->replicationLogSize;
+  dst->replicationLogSize           = src->replicationLogSize;
 #endif
-  dst->removeOnDrop           = src->removeOnDrop;
-  dst->removeOnCompacted      = src->removeOnCompacted;
-  dst->defaultWaitForSync     = src->defaultWaitForSync;
-  dst->forceSyncShapes        = src->forceSyncShapes;
-  dst->forceSyncProperties    = src->forceSyncProperties;
-  dst->requireAuthentication  = src->requireAuthentication;    
+  dst->removeOnDrop                 = src->removeOnDrop;
+  dst->removeOnCompacted            = src->removeOnCompacted;
+  dst->defaultWaitForSync           = src->defaultWaitForSync;
+  dst->forceSyncShapes              = src->forceSyncShapes;
+  dst->forceSyncProperties          = src->forceSyncProperties;
+  dst->requireAuthentication        = src->requireAuthentication;    
+  dst->authenticateSystemOnly       = src->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationEnable      = src->replicationEnable;
-  dst->replicationWaitForSync = src->replicationWaitForSync;
+  dst->replicationEnable            = src->replicationEnable;
+  dst->replicationWaitForSync       = src->replicationWaitForSync;
 #endif
 }  
 
@@ -251,19 +252,20 @@ static void CopyDefaults (TRI_vocbase_defaults_t const* src,
 static void ApplyDefaults (TRI_vocbase_t* vocbase, 
                            TRI_vocbase_defaults_t const* defaults) {
 
-  vocbase->_defaultMaximalSize     = defaults->defaultMaximalSize;
+  vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationLogSize     = defaults->replicationLogSize;
+  vocbase->_replicationLogSize           = defaults->replicationLogSize;
 #endif
-  vocbase->_removeOnDrop           = defaults->removeOnDrop;
-  vocbase->_removeOnCompacted      = defaults->removeOnCompacted;
-  vocbase->_defaultWaitForSync     = defaults->defaultWaitForSync;
-  vocbase->_forceSyncShapes        = defaults->forceSyncShapes;
-  vocbase->_forceSyncProperties    = defaults->forceSyncProperties;
-  vocbase->_requireAuthentication  = defaults->requireAuthentication;    
+  vocbase->_removeOnDrop                 = defaults->removeOnDrop;
+  vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
+  vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
+  vocbase->_forceSyncShapes              = defaults->forceSyncShapes;
+  vocbase->_forceSyncProperties          = defaults->forceSyncProperties;
+  vocbase->_requireAuthentication        = defaults->requireAuthentication;    
+  vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationEnable      = defaults->replicationEnable;
-  vocbase->_replicationWaitForSync = defaults->replicationWaitForSync;
+  vocbase->_replicationEnable            = defaults->replicationEnable;
+  vocbase->_replicationWaitForSync       = defaults->replicationWaitForSync;
 #endif
 }
 
@@ -274,19 +276,20 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
 static void GetDefaults (TRI_vocbase_t const* vocbase, 
                          TRI_vocbase_defaults_t* defaults) {
 
-  defaults->defaultMaximalSize     = vocbase->_defaultMaximalSize;
+  defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationLogSize     = vocbase->_replicationLogSize;
+  defaults->replicationLogSize          = vocbase->_replicationLogSize;
 #endif
-  defaults->removeOnDrop           = vocbase->_removeOnDrop;
-  defaults->removeOnCompacted      = vocbase->_removeOnCompacted;
-  defaults->defaultWaitForSync     = vocbase->_defaultWaitForSync;
-  defaults->forceSyncShapes        = vocbase->_forceSyncShapes;
-  defaults->forceSyncProperties    = vocbase->_forceSyncProperties;
-  defaults->requireAuthentication  = vocbase->_requireAuthentication;    
+  defaults->removeOnDrop                = vocbase->_removeOnDrop;
+  defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
+  defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
+  defaults->forceSyncShapes             = vocbase->_forceSyncShapes;
+  defaults->forceSyncProperties         = vocbase->_forceSyncProperties;
+  defaults->requireAuthentication       = vocbase->_requireAuthentication;    
+  defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationEnable      = vocbase->_replicationEnable;
-  defaults->replicationWaitForSync = vocbase->_replicationWaitForSync;
+  defaults->replicationEnable           = vocbase->_replicationEnable;
+  defaults->replicationWaitForSync      = vocbase->_replicationWaitForSync;
 #endif
 }
 
