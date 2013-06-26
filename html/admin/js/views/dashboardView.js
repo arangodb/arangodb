@@ -55,8 +55,8 @@ var dashboardView = Backbone.View.extend({
             error: function() {
               // need to flush previous values
               self.calculateSeries(true);
-              self.renderCharts();
               arangoHelper.arangoError("Lost connection to Database!");
+              self.renderCharts();
             }
           });
 
