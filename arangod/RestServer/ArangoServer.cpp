@@ -1204,10 +1204,10 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
 
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_databases");
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_DATABASES);
 
   if (collection == NULL) {
-    LOG_INFO("collection '_databases' does not exist, no other databases available");
+    LOG_INFO("collection '" TRI_COL_NAME_DATABASES "' does not exist, no other databases available");
     return false;
   }
 
@@ -1216,12 +1216,12 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
   primary = collection->_collection;
 
   if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_databases' cannot be loaded");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_DATABASES "' cannot be loaded");
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_databases' has an unknown collection type");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_DATABASES "' has an unknown collection type");
   }
 
   // .............................................................................
@@ -1275,7 +1275,7 @@ bool ArangoServer::loadEndpoints () {
 
   VocbaseManager::manager.setApplicationEndpointServer(_applicationEndpointServer);
   
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_endpoints");
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_ENDPOINTS);
 
   if (collection == NULL) {
     // collection '_endpoints' not found
@@ -1287,12 +1287,12 @@ bool ArangoServer::loadEndpoints () {
   primary = collection->_collection;
 
   if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_endpoints' cannot be loaded");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_ENDPOINTS "' cannot be loaded");
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_endpoints' has an unknown collection type");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_ENDPOINTS "' has an unknown collection type");
   }  
 
   // .............................................................................
@@ -1349,7 +1349,7 @@ bool ArangoServer::loadPrefixMappings () {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
 
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_prefixes");
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_PREFIXES);
 
   if (collection == NULL) {
     // collection '_prefixes' not found
@@ -1361,12 +1361,12 @@ bool ArangoServer::loadPrefixMappings () {
   primary = collection->_collection;
 
   if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_prefixes' cannot be loaded");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' cannot be loaded");
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_prefixes' has an unknown collection type");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' has an unknown collection type");
   }
 
   // .............................................................................
@@ -1413,14 +1413,14 @@ void ArangoServer::openDatabases () {
   TRI_SetSystemDefaultsVocBase(&defaults);
   
   // open/load the first database
-  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), "_system", &defaults);
+  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), TRI_VOC_SYSTEM_DATABASE, &defaults);
 
   if (_vocbase == NULL) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
-  LOGGER_INFO("loaded database '_system' from '" << _databasePath << "'");    
+  LOGGER_INFO("loaded database '" TRI_VOC_SYSTEM_DATABASE "' from '" << _databasePath << "'");    
   
   // first database is the system database
   _vocbase->_isSystem = _multipleDatabases;

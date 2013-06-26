@@ -133,7 +133,7 @@ void VocbaseManager::closeUserVocbases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
-  if (name == "_system") {
+  if (name == TRI_VOC_SYSTEM_DATABASE) {
     return _vocbase;
   }
   

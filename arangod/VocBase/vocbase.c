@@ -783,16 +783,29 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
   init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
   init._collection  = NULL;
-  init._canDrop     = true;
-  init._canUnload   = true;
-  init._canRename   = true;
 
-  if (TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
-      TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-      TRI_EqualString(name, TRI_COL_NAME_USERS)) {
-    init._canDrop   = false;
-    init._canUnload = false;
-    init._canRename = false;
+  // default flags: everything is allowed
+  init._canDrop     = true;
+  init._canRename   = true;
+  init._canUnload   = true;
+ 
+  // check for special system collection names 
+  if (TRI_IsSystemCollectionName(name)) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(name, TRI_COL_NAME_DATABASES) ||
+        TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
+        TRI_EqualString(name, TRI_COL_NAME_PREFIXES) ||
+        TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+        TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
+        TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+      // these collections cannot be dropped or renamed
+      init._canDrop   = false;
+      init._canRename = false;
+
+      // the replication collection cannot be unloaded manually)
+      // (this would make the server hang)
+      init._canUnload = ! TRI_EqualString(name, TRI_COL_NAME_REPLICATION);
+    }
   }
 
   TRI_CopyString(init._name, name, sizeof(init._name));
@@ -1318,6 +1331,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_vocbase_t* vocbase;
   char* lockFile;
   bool iterateMarkers;
+  bool isSystem;
   int res;
 
   assert(defaults != NULL);
@@ -1336,6 +1350,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
     return NULL;
   }
+
+  isSystem = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE); 
 
   // .............................................................................
   // check that the database is not locked and lock it
@@ -1424,29 +1440,40 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
-  // read information from last shutdown
+  // read the server id
   // .............................................................................
-  
-  if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
-    LOG_FATAL_AND_EXIT("reading/creating server id failed");
+
+  if (isSystem) { 
+    if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
+      LOG_FATAL_AND_EXIT("reading/creating server id failed");
+    }
   }
 
+  // .............................................................................
+  // read information from last shutdown
+  // .............................................................................
 
   // check if we can find a SHUTDOWN file
   // this file will contain the last tick value issued by the server
   // if we find the file, we can avoid scanning datafiles for the last used tick value
+  // note: this is done for the _system database only
 
-  iterateMarkers = true;
+  if (isSystem) {
+    iterateMarkers = true;
 
-  res = ReadShutdownInfo(vocbase->_shutdownFilename);
+    res = ReadShutdownInfo(vocbase->_shutdownFilename);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    // we found the SHUTDOWN file
-    // no need to iterate the markers
-    iterateMarkers = false;
+    if (res == TRI_ERROR_NO_ERROR) {
+      // we found the SHUTDOWN file
+      // no need to iterate the markers
+      iterateMarkers = false;
+    }
+    else if (res == TRI_ERROR_INTERNAL) {
+      LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
+    }
   }
-  else if (res == TRI_ERROR_INTERNAL) {
-    LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
+  else {
+    iterateMarkers = false;
   }
 
   // .............................................................................
@@ -1499,8 +1526,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
 #endif
     
 
-  // now remove SHUTDOWN file if it was present
-  if (! iterateMarkers) {
+  // now remove SHUTDOWN file if it was present. this is done for the _system database only
+  if (isSystem && ! iterateMarkers) {
     if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
     }
