@@ -629,7 +629,6 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
   cid = collection->_cid;
 
-  // TODO: do we need to establish a barrier against unloading the collection??
   trx = TRI_CreateTransaction(vocbase->_transactionContext, false, 0.0, false);
 
   if (trx == NULL) {
@@ -700,8 +699,6 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   res = LogEvent(logger, 0, true, OPERATION_REPLICATION_STOP, buffer); 
   
   TRI_FreeTransaction(logger->_trx);
-
-  // TODO: free barrier if we established one
   
   LOG_INFO("stopped replication logger for database '%s', last id: %llu", 
            logger->_databaseName,
