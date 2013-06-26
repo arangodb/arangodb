@@ -7044,7 +7044,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, "_databases", newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, newDoc);
   }
   catch (...) {
   }
@@ -7099,7 +7099,7 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
   v8::Handle<v8::Object> newDoc = v8::Object::New();
   newDoc->Set(keyEndpoint, TRI_V8_SYMBOL(endpoint.c_str()));
   
-  return saveToCollection(vocbase, "_endpoints", newDoc);
+  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, newDoc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7138,7 +7138,7 @@ static v8::Handle<v8::Value> JS_AddPrefixMapping (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, "_prefixes", newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_PREFIXES, newDoc);
   }
   catch (...) {
   }
