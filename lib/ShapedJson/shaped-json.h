@@ -986,6 +986,16 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*, TRI_json_t const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t const*);
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a shaped json to a string buffer, without the outer braces
+/// this can only be used to stringify shapes of type array
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringifyArrayShapedJson (struct TRI_shaper_s*,
+                                   struct TRI_string_buffer_s*,
+                                   TRI_shaped_json_t const*,
+                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer

@@ -177,6 +177,20 @@ struct TRI_df_marker_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief type containing a write operation for a transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_transaction_operation_s {
+  TRI_doc_mptr_t*               _newHeader;
+  TRI_doc_mptr_t*               _oldHeader;
+  TRI_doc_mptr_t                _oldData;
+  TRI_df_marker_t*              _marker;
+  size_t                        _markerSize;
+  TRI_voc_document_operation_e  _type;
+}
+TRI_transaction_operation_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief primary collection with global read-write lock
 ///
 /// A primary collection is a collection with a single read-write lock. This

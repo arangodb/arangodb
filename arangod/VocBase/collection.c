@@ -1129,6 +1129,38 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief jsonify a parameter info block
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
+  TRI_json_t* json;
+  char* cidString;
+   
+  cidString = TRI_StringUInt64((uint64_t) info->_cid);
+  
+  // create a json info object
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
+
+  if (info->_keyOptions) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
+
+  return json;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a parameter info block from file
@@ -1274,30 +1306,10 @@ int TRI_SaveCollectionInfo (char const* path,
                             const bool forceSync) {
   TRI_json_t* json;
   char* filename;
-  char* cidString;
   bool ok;
-
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
-  cidString = TRI_StringUInt64((uint64_t) info->_cid);
-
-  // create a json info object
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
-
-  if (info->_keyOptions) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
-  }
   
-  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
+  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  json = TRI_CreateJsonCollectionInfo(info);
 
   // save json info to file
   ok = TRI_SaveJson(filename, json, forceSync);
@@ -1330,7 +1342,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
-  if (parameter != 0) {
+  if (parameter != NULL) {
     collection->_info._doCompact   = parameter->_doCompact;
     collection->_info._maximalSize = parameter->_maximalSize;
     collection->_info._waitForSync = parameter->_waitForSync;
@@ -1369,7 +1381,8 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
+int TRI_RenameCollection (TRI_collection_t* collection, 
+                          char const* name) {
   TRI_col_info_t new;
   int res;
 

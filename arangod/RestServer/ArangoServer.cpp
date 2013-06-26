@@ -69,6 +69,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Statistics/statistics.h"
@@ -78,6 +79,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
+#include "VocBase/replication.h"
 
 #include "RestServer/VocbaseManager.h"
 
@@ -133,6 +135,13 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
+
+#ifdef TRI_ENABLE_REPLICATION
+  // add replication handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
+                            RestHandlerCreator<RestReplicationHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
+#endif  
 
   // add upload handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -195,6 +204,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _forceSyncShapes(true),
     _forceSyncProperties(true),
     _developmentMode(false),
+#ifdef TRI_ENABLE_REPLICATION    
+    _replicationEnable(false),
+    _replicationLogSize(TRI_REPLICATION_DEFAULT_LOG_SIZE),
+    _replicationWaitForSync(false),
+#endif    
     _vocbase(0) {
 
   // locate path to binary
@@ -347,6 +361,18 @@ void ArangoServer::buildApplicationServer () {
     ("jslint", &_jslint, "do not start as server, run js lint instead")
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
+  
+  // .............................................................................
+  // replication options
+  // .............................................................................
+
+#ifdef TRI_ENABLE_REPLICATION 
+  additional[ApplicationServer::OPTIONS_REPLICATION + ":help-replication"]
+    ("replication.maximal-log-size", &_replicationLogSize, "maximum size of each replication log")
+    ("replication.force-sync-logs", &_replicationWaitForSync, "force syncing of replication log files to disk")
+    ("replication.enable", &_replicationEnable, "enable replication logging")
+  ;
+#endif  
 
   // .............................................................................
   // database options
@@ -465,7 +491,7 @@ void ArangoServer::buildApplicationServer () {
   }
 
   if (disableStatistics) {
-    TRI_ENABLE_STATISTICS =  false;
+    TRI_ENABLE_STATISTICS = false;
   }
 
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
@@ -490,6 +516,10 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
+
+  // .............................................................................
+  // now run arangod
+  // .............................................................................
 
   LOGGER_INFO("using default language '" << languageName << "'");
 
@@ -1097,11 +1127,12 @@ int ArangoServer::executeRubyConsole () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool handleUserDatabase (TRI_doc_mptr_t const* document, 
-        TRI_primary_collection_t* primary, void* data) {
+                                TRI_primary_collection_t* primary, 
+                                void* data) {
   
   DocumentWrapper doc(document, primary);
   
-  if (!doc.isArrayDocument()) {
+  if (! doc.isArrayDocument()) {
     // wrong document type
     return true;
   }
@@ -1120,7 +1151,7 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
     return true;
   }
 
-  if (!VocbaseManager::manager.canAddVocbase(dbName, dbPath)) {
+  if (! VocbaseManager::manager.canAddVocbase(dbName, dbPath)) {
     LOG_ERROR("Cannot add database. (Wrong name or path)");
     return true;    
   }
@@ -1128,11 +1159,13 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
   TRI_vocbase_defaults_t* systemDefaults = (TRI_vocbase_defaults_t*) data;
 
   TRI_vocbase_defaults_t defaults;
+
+  // override defaults with data we found in system collection
   defaults.removeOnDrop = doc.getBooleanValue("removeOnDrop", 
           systemDefaults->removeOnDrop);
   defaults.removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
           systemDefaults->removeOnCompacted);
-  defaults.defaultMaximalSize = (uint64_t) doc.getNumericValue("defaultMaximalSize", 
+  defaults.defaultMaximalSize = (TRI_voc_size_t) doc.getNumericValue("defaultMaximalSize", 
           systemDefaults->defaultMaximalSize);
   defaults.defaultWaitForSync = doc.getBooleanValue("waitForSync", 
           systemDefaults->defaultWaitForSync);
@@ -1142,16 +1175,23 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->forceSyncProperties);
   defaults.requireAuthentication = doc.getBooleanValue("requireAuthentication", 
           systemDefaults->requireAuthentication);
+#ifdef TRI_ENABLE_REPLICATION
+  defaults.replicationEnable = doc.getBooleanValue("replicationEnable", 
+          systemDefaults->replicationEnable);
+  defaults.replicationWaitForSync = doc.getBooleanValue("replicationWaitForSync", 
+          systemDefaults->replicationWaitForSync);
+  defaults.replicationLogSize = (int64_t) doc.getNumericValue("replicationLogSize", 
+          systemDefaults->replicationLogSize);
+#endif
   
   // open/load database
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), 
-        dbName.c_str(), &defaults);
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), dbName.c_str(), &defaults);
   
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
   }
 
-  LOGGER_INFO("loaded user database '" << dbName << "' ('" << dbPath << "')");    
+  LOGGER_INFO("loaded user database '" << dbName << "' from '" << dbPath << "'");
 
   return true;
 }
@@ -1198,7 +1238,6 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a tcp endpoint
@@ -1353,23 +1392,35 @@ void ArangoServer::openDatabases () {
   TRI_InitialiseVocBase();
 
   TRI_vocbase_defaults_t defaults;  
-  defaults.removeOnDrop = _removeOnDrop;
-  defaults.removeOnCompacted = _removeOnCompacted;
-  defaults.defaultMaximalSize = _defaultMaximalSize;
-  defaults.defaultWaitForSync = _defaultWaitForSync;
-  defaults.forceSyncShapes = _forceSyncShapes;
-  defaults.forceSyncProperties = _forceSyncProperties;
-  defaults.requireAuthentication = !_applicationEndpointServer->isAuthenticationDisabled();
+
+  // override with command-line options 
+  defaults.defaultMaximalSize     = _defaultMaximalSize;
+#ifdef TRI_ENABLE_REPLICATION  
+  defaults.replicationLogSize     = _replicationLogSize;
+#endif  
+  defaults.removeOnDrop           = _removeOnDrop;
+  defaults.removeOnCompacted      = _removeOnCompacted;
+  defaults.defaultWaitForSync     = _defaultWaitForSync;
+  defaults.forceSyncShapes        = _forceSyncShapes;
+  defaults.forceSyncProperties    = _forceSyncProperties;
+  defaults.requireAuthentication  = ! _applicationEndpointServer->isAuthenticationDisabled();
+#ifdef TRI_ENABLE_REPLICATION  
+  defaults.replicationWaitForSync = _replicationWaitForSync;
+  defaults.replicationEnable      = _replicationEnable;
+#endif  
+  
+  // store these settings as initial system defaults
+  TRI_SetSystemDefaultsVocBase(&defaults);
   
   // open/load the first database
   _vocbase = TRI_OpenVocBase(_databasePath.c_str(), "_system", &defaults);
 
-  if (! _vocbase) {
+  if (_vocbase == NULL) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
-  LOGGER_INFO("loaded database ('" << _databasePath << "')");    
+  LOGGER_INFO("loaded database '_system' from '" << _databasePath << "'");    
   
   // first database is the system database
   _vocbase->_isSystem = _multipleDatabases;

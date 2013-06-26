@@ -1,0 +1,26 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      REPLICATION
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(replication,
+  AS_HELP_STRING([--enable-replication], [enable replication (default: no)]),
+  [tr_REPLICATION="${enableval:-yes}"],
+  [tr_REPLICATION=no]
+)
+
+if test "x$tr_REPLICATION" = "xyes";  then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_REPLICATION, 1, [true if replication support should be built])
+fi
+
+AM_CONDITIONAL(ENABLE_REPLICATION, test "x$tr_REPLICATION" = "xyes")
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+dnl End:

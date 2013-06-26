@@ -141,6 +141,7 @@ m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])
 m4_include([m4/configure.coverage])
 m4_include([m4/configure.maintainer])
+m4_include([m4/configure.replication])
 
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
