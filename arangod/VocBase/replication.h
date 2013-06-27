@@ -49,6 +49,7 @@ struct TRI_df_marker_s;
 struct TRI_document_collection_s;
 struct TRI_doc_mptr_s;
 struct TRI_json_s;
+struct TRI_string_buffer_s;
 struct TRI_transaction_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_col_s;
@@ -309,6 +310,24 @@ int TRI_DocumentReplication (struct TRI_vocbase_s*,
 #else
 
 #define TRI_DocumentReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+int TRI_DumpCollectionReplication (struct TRI_string_buffer_s*,
+                                   struct TRI_vocbase_col_s*,
+                                   TRI_voc_tick_t,
+                                   TRI_voc_tick_t,
+                                   uint64_t);
+
+#else
+
+#define TRI_DumpCollectionReplication(...)
 
 #endif
 

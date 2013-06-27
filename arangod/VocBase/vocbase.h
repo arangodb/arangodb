@@ -47,6 +47,7 @@ extern "C" {
 
 struct TRI_primary_collection_s;
 struct TRI_col_info_s;
+struct TRI_json_s;
 struct TRI_shadow_store_s;
 struct TRI_transaction_context_s;
 
@@ -518,6 +519,14 @@ void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all known (document) collections with their parameters
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_ParametersCollectionsVocBase (TRI_vocbase_t*,
+                                                     bool (*)(TRI_vocbase_col_t*, void*),
+                                                     void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id

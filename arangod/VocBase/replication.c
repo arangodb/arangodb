@@ -35,6 +35,7 @@
 #include "BasicsC/tri-strings.h"
 
 #include "VocBase/collection.h"
+#include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -130,6 +131,25 @@
 #define OPERATION_DOCUMENT_INSERT    "document-insert"
 #define OPERATION_DOCUMENT_UPDATE    "document-update"
 #define OPERATION_DOCUMENT_REMOVE    "document-remove"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+  
+typedef struct {
+  TRI_datafile_t* _data;
+  bool            _isJournal;
+}
+df_entry_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -596,6 +616,29 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
   APPEND_STRING(buffer, "]}");
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a raw marker from a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static int StringifyMarkerReplication (TRI_string_buffer_t* buffer,
+                                       TRI_document_collection_t* document,
+                                       TRI_df_marker_t const* marker) {
+  TRI_voc_document_operation_e type;
+
+  if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+    type = TRI_VOC_DOCUMENT_OPERATION_REMOVE;
+  }
+  else {
+    type = TRI_VOC_DOCUMENT_OPERATION_INSERT;
+  }
+  
+  if (! StringifyDocumentOperation(buffer, document, type, marker, NULL, true)) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1279,6 +1322,161 @@ int TRI_DocumentReplication (TRI_vocbase_t* vocbase,
 
   res = LogEvent(logger, 0, true, typeName, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DumpCollectionReplication (TRI_string_buffer_t* buffer, 
+                                   TRI_vocbase_col_t* collection,
+                                   TRI_voc_tick_t tickMin,
+                                   TRI_voc_tick_t tickMax,
+                                   uint64_t chunkSize) {
+  TRI_primary_collection_t* primary;
+  TRI_vector_t datafiles;
+  TRI_voc_tick_t firstFoundTick;
+  TRI_voc_tick_t lastFoundTick;
+  size_t i; 
+  int res;
+  bool hasMarkers;
+  bool hasMore;
+
+  primary = (TRI_primary_collection_t*) collection->_collection;
+
+  // determine the datafiles of the collection
+  TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
+
+  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+
+  for (i = 0; i < primary->base._datafiles._length; ++i) {
+    df_entry_t df = { 
+      (TRI_datafile_t*) TRI_AtVectorPointer(&primary->base._datafiles, i), 
+      false 
+    };
+    TRI_PushBackVector(&datafiles, &df);
+  }
+
+  for (i = 0; i < primary->base._journals._length; ++i) {
+    df_entry_t df = { 
+      (TRI_datafile_t*) TRI_AtVectorPointer(&primary->base._journals, i), 
+      true 
+    };
+    TRI_PushBackVector(&datafiles, &df);
+  }
+
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+
+
+
+  TRI_AppendStringStringBuffer(buffer, "{\"markers\":[");
+  
+  res            = TRI_ERROR_NO_ERROR;
+
+  hasMarkers     = false;
+  hasMore        = false;
+  firstFoundTick = 0;
+  lastFoundTick  = 0;
+
+  for (i = 0; i < datafiles._length; ++i) {
+    df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
+    TRI_datafile_t* datafile = e->_data;
+    char* ptr;
+    char* end;
+
+    // we are reading from a journal that might be modified in parallel
+    // so we must read-lock it
+    if (e->_isJournal) {
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
+     
+    ptr = datafile->_data;
+    end = ptr + datafile->_currentSize;
+
+    while (ptr < end) {
+      TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+      TRI_voc_tick_t foundTick;
+
+      if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+        // end of datafile
+        break;
+      }
+      
+      ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+
+      // get the marker's tick and check whether we should include it
+      foundTick = marker->_tick;
+      
+      // note the last tick we processed
+      if (firstFoundTick == 0) {
+        firstFoundTick = foundTick;
+      }
+      lastFoundTick = foundTick;
+
+
+      if (foundTick >= tickMin) {
+        // include the marker...
+        if (foundTick > tickMax) {
+          // we reached the absolute end
+          hasMore = ((ptr < end) || (i < datafiles._length - 1));
+          ptr = end;
+          break;
+        }
+
+        switch (marker->_type) {
+          case TRI_DOC_MARKER_KEY_DOCUMENT:
+          case TRI_DOC_MARKER_KEY_EDGE:
+          case TRI_DOC_MARKER_KEY_DELETION: {
+            if (hasMarkers) {
+              TRI_AppendCharStringBuffer(buffer, ',');
+            }
+            else {
+              hasMarkers = true;
+            }
+
+            // TODO: check if marker is part of transaction and committed etc.
+            res = StringifyMarkerReplication(buffer, (TRI_document_collection_t*) primary, marker);
+
+            if (res != TRI_ERROR_NO_ERROR || 
+                (uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
+              // abort the iteration
+              hasMore = ((ptr < end) || (i < datafiles._length - 1));
+              ptr = end;
+              i = datafiles._length;
+            }
+            break;
+          }
+
+          default: {
+            // will not care about other markers
+          }
+        }
+      }
+    }
+
+    if (e->_isJournal) {
+      // read-unlock the journal
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
+  }
+
+  
+  TRI_DestroyVector(&datafiles);
+ 
+    
+  TRI_AppendStringStringBuffer(buffer, "],");
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_AppendStringStringBuffer(buffer, "\"firstTick\":\"");
+    TRI_AppendUInt64StringBuffer(buffer, (uint64_t) firstFoundTick);
+    TRI_AppendStringStringBuffer(buffer, "\",\"lastTick\":\"");
+    TRI_AppendUInt64StringBuffer(buffer, (uint64_t) lastFoundTick);
+    TRI_AppendStringStringBuffer(buffer, "\",\"hasMore\":");
+    TRI_AppendStringStringBuffer(buffer, hasMore ? "true" : "false");
+    TRI_AppendCharStringBuffer(buffer, '}');
+  }
 
   return res;
 }
