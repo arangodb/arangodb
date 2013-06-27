@@ -1,6 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
+/*global runs, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -629,11 +630,15 @@
       });
 
       it('should draw image elements', function () {
+
         var node = [{_id: 1, _data:{}}];
         shaper.drawNodes(node);
         expect($("svg .node").length).toEqual(1);
-        expect($("svg image").length).toEqual(1);
-        expect($("svg .node image").length).toEqual(1);
+        expect($("image,img", $("svg"))[0]).toBeDefined();
+        expect($("image,img", $("svg")).length).toEqual(1);
+        expect($("image,img", $("svg .node"))[0]).toBeDefined();
+        expect($("image,img", $("svg .node")).length).toEqual(1);
+        
       });
       
       it('should be able to use a fixed size', function() {
@@ -653,17 +658,17 @@
           {_id: 5, _data:{}}
         ];
         shaper.drawNodes(nodes);
-        expect($("svg #1 image").attr("width")).toEqual("15");
-        expect($("svg #2 image").attr("width")).toEqual("15");
-        expect($("svg #3 image").attr("width")).toEqual("15");
-        expect($("svg #4 image").attr("width")).toEqual("15");
-        expect($("svg #5 image").attr("width")).toEqual("15");
+        expect($("image,img", $("svg #1")).attr("width")).toEqual("15");
+        expect($("image,img", $("svg #2")).attr("width")).toEqual("15");
+        expect($("image,img", $("svg #3")).attr("width")).toEqual("15");
+        expect($("image,img", $("svg #4")).attr("width")).toEqual("15");
+        expect($("image,img", $("svg #5")).attr("width")).toEqual("15");
         
-        expect($("svg #1 image").attr("height")).toEqual("10");
-        expect($("svg #2 image").attr("height")).toEqual("10");
-        expect($("svg #3 image").attr("height")).toEqual("10");
-        expect($("svg #4 image").attr("height")).toEqual("10");
-        expect($("svg #5 image").attr("height")).toEqual("10");
+        expect($("image,img", $("svg #1")).attr("height")).toEqual("10");
+        expect($("image,img", $("svg #2")).attr("height")).toEqual("10");
+        expect($("image,img", $("svg #3")).attr("height")).toEqual("10");
+        expect($("image,img", $("svg #4")).attr("height")).toEqual("10");
+        expect($("image,img", $("svg #5")).attr("height")).toEqual("10");
         
       });
       
@@ -690,17 +695,17 @@
             } 
           });
         shaper.drawNodes(nodes);
-        expect($("svg #1 image").attr("width")).toEqual("11");
-        expect($("svg #2 image").attr("width")).toEqual("12");
-        expect($("svg #3 image").attr("width")).toEqual("13");
-        expect($("svg #4 image").attr("width")).toEqual("14");
-        expect($("svg #5 image").attr("width")).toEqual("15");
+        expect($("image,img", $("svg #1")).attr("width")).toEqual("11");
+        expect($("image,img", $("svg #2")).attr("width")).toEqual("12");
+        expect($("image,img", $("svg #3")).attr("width")).toEqual("13");
+        expect($("image,img", $("svg #4")).attr("width")).toEqual("14");
+        expect($("image,img", $("svg #5")).attr("width")).toEqual("15");
         
-        expect($("svg #1 image").attr("height")).toEqual("9");
-        expect($("svg #2 image").attr("height")).toEqual("8");
-        expect($("svg #3 image").attr("height")).toEqual("7");
-        expect($("svg #4 image").attr("height")).toEqual("6");
-        expect($("svg #5 image").attr("height")).toEqual("5");
+        expect($("image,img", $("svg #1")).attr("height")).toEqual("9");
+        expect($("image,img", $("svg #2")).attr("height")).toEqual("8");
+        expect($("image,img", $("svg #3")).attr("height")).toEqual("7");
+        expect($("image,img", $("svg #4")).attr("height")).toEqual("6");
+        expect($("image,img", $("svg #5")).attr("height")).toEqual("5");
         
       });
     
@@ -714,19 +719,19 @@
         ];
         shaper.drawNodes(nodes);
         
-        expect($("svg image").length).toEqual(5);
+        expect($("image,img",$("svg")).length).toEqual(5);
         shaper.changeTo({actions: {
           click: function() {return 0;}
         }});
-        expect($("svg image").length).toEqual(5);
+        expect($("image,img",$("svg")).length).toEqual(5);
         shaper.changeTo({actions: {
           click: function() {return 1;}
         }});
-        expect($("svg image").length).toEqual(5);
+        expect($("image,img",$("svg")).length).toEqual(5);
         shaper.changeTo({actions: {
           click: function() {return 2;}
         }});
-        expect($("svg image").length).toEqual(5);
+        expect($("image,img",$("svg")).length).toEqual(5);
       });
       
       it('should display an image stored in a given attribute', function() {
@@ -746,7 +751,7 @@
           }
         ];
         shaper.drawNodes(nodes);
-        expect($("svg #1 image").attr("href")).toEqual("source.png");
+        expect($("svg #1 image,img").attr("href")).toEqual("source.png");
       });
       
       it('should be able to use a function to determine the image', function() {
@@ -779,8 +784,8 @@
           }
         });
         shaper.drawNodes(nodes);
-        expect($("svg #1 image").attr("href")).toEqual("source.png");
-        expect($("svg #2 image").attr("href")).toEqual("alt.png");
+        expect($("image,img", $("svg #1")).attr("href")).toEqual("source.png");
+        expect($("image,img", $("svg #2")).attr("href")).toEqual("alt.png");
       });
       
       it('should be able to fallback to a given default image', function() {
@@ -806,8 +811,8 @@
           }
         ];
         shaper.drawNodes(nodes);
-        expect($("svg #1 image").attr("href")).toEqual("source.png");
-        expect($("svg #2 image").attr("href")).toEqual("default.png");
+        expect($("image,img", $("svg #1")).attr("href")).toEqual("source.png");
+        expect($("image,img", $("svg #2")).attr("href")).toEqual("default.png");
       });
       
     });

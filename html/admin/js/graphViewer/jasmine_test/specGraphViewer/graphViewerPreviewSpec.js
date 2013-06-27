@@ -101,9 +101,10 @@
     describe('setup process', function() {
       
       it('should append an svg to the container', function() {
-        var ui = new GraphViewerPreview(cont);
-        expect(cont.children.graphViewerSVG).toBeDefined();
-        expect(cont.children.graphViewerSVG).toBeTag("svg");
+        var ui = new GraphViewerPreview(cont),
+          gsvg = $("#graphViewerSVG", $(cont));
+        expect(gsvg.length).toEqual(1);
+        expect(gsvg.get(0)).toBeTag("svg");
       });
       
       it('should create a graphViewer with container dimensions and preview adapter', function() {
