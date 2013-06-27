@@ -15,7 +15,9 @@ An application build with Foxx is written in JavaScript and deployed to ArangoDB
 
 So given you want to build an application that sends a plain-text response "Worked!" for all requests to `/my/wiese`. How would you achieve that with Foxx?
 
-First, create a directory `my_app` and save a file called `app.js` in this directory. Write the following content to this file:
+First, create a directory `apps` somewhere in your filesystem. Let's assume from now on that the absolute path for this directory is `/home/user/apps`.
+
+After that, create a sub-directory `my_app` in the `apps` directory and save the following content in a file named `app.js` there:
 
     var Foxx = require("org/arangodb/foxx");
 
@@ -40,11 +42,20 @@ This is your application. Now we need to mount it to the path `/my`. In order to
 
 You **must** specify a name and a version number for your application, otherwise it won't be loaded into ArangoDB.
 
+You should now have the following files and directories with your application (starting at `/home/user` in our example):
+
+    apps/
+         my_app/
+                manifest.json
+                app.js
+
 Now your application is done. Start ArangoDB as follows:
 
-    $ arangod --javascript.dev-app-path my_app /tmp/fancy_db
+    $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
-To include it to the list of apps running on your ArangoDB instance, start the ArangoDB shell and add your new application:
+Replace `/home/user/apps` with the apps path that you initially created. This is the path that you created the `my_app` directory in. Replace `/tmp/fancy_db` with the directory your database is located in.
+
+To include your app in the list of apps running on your ArangoDB instance, start the ArangoDB shell and add your new application:
 
     $ arangosh
     arangosh> aal = require('org/arangodb/aal');
