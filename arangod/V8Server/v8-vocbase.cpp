@@ -1217,7 +1217,6 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn SaveEdgeCol
 /// @brief saves a new edge document
 ///
 /// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
@@ -6900,8 +6899,7 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
 
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8g->_IdKey, V8DocumentId(
-                        resolver.getCollectionName(col->_cid), document._key));
+    result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
     result->Set(v8g->_RevKey, V8RevisionId(document._rid));
     result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
@@ -6949,6 +6947,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncShapes = v8::String::New("forceSyncShapes");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
+  v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
 #ifdef TRI_ENABLE_REPLICATION
   v8::Local<v8::String> keyReplicationEnable = v8::String::New("replicationEnable");
   v8::Local<v8::String> keyReplicationWaitForSync = v8::String::New("replicationWaitForSync");
@@ -6989,6 +6988,10 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
 
     if (options->Has(keyRequireAuthentication)) {
       defaults.requireAuthentication = options->Get(keyRequireAuthentication)->BooleanValue();
+    }
+    
+    if (options->Has(keyAuthenticateSystemOnly)) {
+      defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
 
 #ifdef TRI_ENABLE_REPLICATION    
@@ -7037,6 +7040,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   newDoc->Set(keyForceSyncShapes, v8::Boolean::New(defaults.forceSyncShapes));
   newDoc->Set(keyForceSyncProperties, v8::Boolean::New(defaults.forceSyncProperties));
   newDoc->Set(keyRequireAuthentication, v8::Boolean::New(defaults.requireAuthentication));
+  newDoc->Set(keyAuthenticateSystemOnly, v8::Boolean::New(defaults.authenticateSystemOnly));
   
   // exceptions must be caught in the following part because we have
   // unload the userVocbase
@@ -7044,7 +7048,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, "_databases", newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, newDoc);
   }
   catch (...) {
   }
@@ -7099,7 +7103,7 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
   v8::Handle<v8::Object> newDoc = v8::Object::New();
   newDoc->Set(keyEndpoint, TRI_V8_SYMBOL(endpoint.c_str()));
   
-  return saveToCollection(vocbase, "_endpoints", newDoc);
+  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, newDoc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7138,7 +7142,7 @@ static v8::Handle<v8::Value> JS_AddPrefixMapping (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, "_prefixes", newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_PREFIXES, newDoc);
   }
   catch (...) {
   }

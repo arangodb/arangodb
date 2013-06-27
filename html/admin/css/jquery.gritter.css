@@ -29,15 +29,29 @@
 }
 .gritter-top {
 	background:url(../img/gritter.png) no-repeat left -30px;
+  background-color: black;
 	height:10px;
+  -webkit-border-top-left-radius: 15px;
+  -webkit-border-top-right-radius: 15px;
+  -moz-border-radius-topleft: 15px;
+  -moz-border-radius-topright: 15px;
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
 }
 .hover .gritter-top {
 	background-position:right -30px;
 }
 .gritter-bottom {
 	background:url(../img/gritter.png) no-repeat left bottom;
+  background-color: black;
 	height:8px;
 	margin:0;
+  -webkit-border-bottom-right-radius: 15px;
+  -webkit-border-bottom-left-radius: 15px;
+  -moz-border-radius-bottomright: 15px;
+  -moz-border-radius-bottomleft: 15px;
+  border-bottom-right-radius: 15px;
+  border-bottom-left-radius: 15px;
 }
 .hover .gritter-bottom {
 	background-position: bottom right;
@@ -45,6 +59,7 @@
 .gritter-item {
 	display:block;
 	background:url(../img/gritter.png) no-repeat left -40px;
+  background-color: black;
 	color:#eee;
 	padding:2px 11px 8px 11px;
 	font-size: 11px;

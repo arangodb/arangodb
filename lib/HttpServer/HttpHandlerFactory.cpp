@@ -149,7 +149,8 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
   // size restrictions:
   // - header: 1 MB
   // - body: 512 MB
-  return make_pair(1 * 1024 * 1024, 512 * 1024 * 1024);
+  return make_pair(1 * 1024 * 1024, 
+                   512 * 1024 * 1024);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,20 +159,12 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
-/*
-  if (_checkAuthentication == 0) {
-    return true;
-  }
-
-  bool result = authenticate(request);
-
-  return (result || ! _requireAuthentication);
-*/
-  
   RequestContext* rc = request->getRequestContext();
-  if (!rc) {
+
+  if (! rc) {
     setRequestContext(request);
   }
+
   return rc->authenticate();
 }
 
@@ -182,7 +175,6 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
 bool HttpHandlerFactory::setRequestContext (HttpRequest * request) {
   return _setContext(request);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request, worker method
@@ -260,7 +252,8 @@ string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info, 
-          char const* ptr, size_t length) {
+                                                char const* ptr, 
+                                                size_t length) {
 #if 0
   READ_LOCKER(_maintenanceLock);
 

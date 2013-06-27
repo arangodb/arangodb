@@ -29,8 +29,6 @@ window.FoxxActiveView = Backbone.View.extend({
         this._show = shouldShow;
       }
     }
-    console.log(shouldShow);
-    console.log(this._show);
     if (this._show) {
       $(this.el).show();
     } else {
