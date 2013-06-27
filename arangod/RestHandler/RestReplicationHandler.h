@@ -31,6 +31,8 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
 
+#ifdef TRI_ENABLE_REPLICATION
+
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
@@ -188,6 +190,8 @@ namespace triagens {
      };
   }
 }
+
+#endif 
 
 #endif
 
