@@ -653,7 +653,7 @@ exports.installDevApp = function (name, mount, options) {
     appId = "dev:" + name + ":" + name;
   }
   else {
-    throw new Error("not manifest found at '" + filename + "'");
+    throw new Error("no manifest found at '" + filename + "'");
   }
 
   var app = null;
