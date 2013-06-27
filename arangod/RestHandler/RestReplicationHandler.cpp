@@ -35,6 +35,8 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/replication.h"
 
+#ifdef TRI_ENABLE_REPLICATION
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -468,6 +470,8 @@ void RestReplicationHandler::handleCommandDump () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor
