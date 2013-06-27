@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 /*global d3, window*/
-/*global GraphViewer, EventDispatcherControls, EventDispatcher */
+/*global GraphViewer, EventDispatcherControls, EventDispatcher, NodeShaper */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -155,7 +155,32 @@ function GraphViewerPreview(container, viewerConfig) {
       );
     },
     
+    changeConfigToPreviewGraph = function() {
+      if (viewerConfig) {
+        // Fix nodeShaper:
+        if (viewerConfig.nodeShaper) {
+          if (viewerConfig.nodeShaper.label) {
+            viewerConfig.nodeShaper.label = "label";
+          }
+          if (
+            viewerConfig.nodeShaper.shape
+            && viewerConfig.nodeShaper.shape.type === NodeShaper.shapes.IMAGE
+            && viewerConfig.nodeShaper.shape.source
+          ) {
+            viewerConfig.nodeShaper.shape.source = "image";
+          }
+        }
+        // Fix nodeShaper:
+        if (viewerConfig.edgeShaper) {
+          if (viewerConfig.edgeShaper.label) {
+            viewerConfig.edgeShaper.label = "label";
+          }
+        }
+      }
+    },
+    
     createViewer = function() {
+      changeConfigToPreviewGraph();
       return new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
     };
   
