@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-/*global ArangoAdapter, JSONAdapter, FoxxAdapter */
+/*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -137,6 +137,13 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         edges,
         width,
         height
+      );
+      break;
+    case "preview":
+      self.adapter = new PreviewAdapter(
+        nodes,
+        edges,
+        adapterConfig
       );
       break;
     default:
