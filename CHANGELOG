@@ -1,6 +1,21 @@
 v1.4
 ----
 
+* added server startup option `--server.authenticate-system-only`. This option can be
+  used to restrict the need for HTTP authentication to internal functionality and APIs,
+  such as `/_api/*` and `/_admin/*`. 
+  Setting this option to `true` will thus force authentication for the ArangoDB APIs 
+  and the web interface, but allow unauthenticated requests for other URLs (including
+  user defined actions and Foxx applications).
+  The default value of this option is `false`, meaning that if authentication is turned
+  on, authentication is still required for *all* incoming requests. Only by setting the
+  option to `true` this restriction is lifted and authentication becomes required for
+  URLs starting with `/_` only.
+
+  Please note that authentication still needs to be enabled regularly by setting the
+  `--server.disable-authentication` parameter to `false`. Otherwise no authentication 
+  will be required for any URLs as before.
+
 * protect collections against unloading when there are still document barriers around.
 
 * extended cap constraints to optionally limit the active data size in a collection to

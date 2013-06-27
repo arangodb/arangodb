@@ -108,13 +108,14 @@ bool VocbaseContext::authenticate () {
   }
 
   if (_vocbase->_authenticateSystemOnly) {
-    // authentication required, but only for /_api
+    // authentication required, but only for /_api, /_admin etc.
     const char* path = _request->requestPath();
 
-    if (path != 0 && 
-        ! TRI_IsPrefixString(path, "/_api/") &&
-        ! TRI_IsPrefixString(path, "/_admin/")) {
-      return true;
+    if (path != 0) {
+      // check if path starts with /_
+      if (*path == '/' && *(path + 1) == '_') {
+        return true;
+      }
     }
   }
   
