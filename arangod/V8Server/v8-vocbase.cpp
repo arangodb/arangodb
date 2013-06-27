@@ -2995,6 +2995,79 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                       REPLICATION
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the replication manually
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_StartReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_START()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  int res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication");
+  }
+
+  return scope.Close(v8::True());
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication manually
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_StopReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_STOP()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  int res = TRI_StopReplicationLogger(vocbase->_replicationLogger);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication");
+  }
+
+  return scope.Close(v8::True());
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          AHUACATL
 // -----------------------------------------------------------------------------
 
@@ -7918,6 +7991,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor);
   TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor);
   TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
+  
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_START", JS_StartReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_STOP", JS_StopReplication);
+#endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
