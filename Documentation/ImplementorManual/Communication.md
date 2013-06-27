@@ -34,6 +34,21 @@ the authentication data is wrong. This is required for handling CORS preflight
 requests (see @ref CommunicationCors). The response to an HTTP OPTIONS request
 will be generic and not expose any private data.
 
+Please note that when authentication is turned on in ArangoDB, it will by
+default affect all incoming requests. Since ArangoDB 1.4, there is an additional
+option to restrict authentication to requests to the ArangoDB internal APIs and
+the admin interface. 
+This option can be used to expose a public API built with ArangoDB to the outside
+world without the need for HTTP authentication, but to still protect the usage of the
+ArangoDB API (i.e. `/_api/*`) and the admin interface (i.e. `/_admin/*`) with
+HTTP authentication.
+
+This behavior can be controlled with the option `\-\-server.authenticate\-system\-only`
+startup parameter. It is set to `false` by default so when using authentication,
+all incoming requests need HTTP authentication. Setting the option to `false` will
+only require requests to the internal functionality require authentication but 
+will allow unauthenticated requests to all other URLs.
+
 Error Handling {#CommunicationErrors}
 =====================================
 
