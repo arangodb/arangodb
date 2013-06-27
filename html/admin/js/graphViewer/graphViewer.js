@@ -140,6 +140,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       );
       break;
     case "preview":
+      adapterConfig.width = width;
+      adapterConfig.height = height;
       self.adapter = new PreviewAdapter(
         nodes,
         edges,
