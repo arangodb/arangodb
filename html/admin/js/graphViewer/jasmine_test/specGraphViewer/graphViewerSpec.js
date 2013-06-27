@@ -127,7 +127,17 @@ describe("Graph Viewer", function() {
       );
     });
     
-    
+    it('should be able to be setup with a preview adapter', function() {
+      var adapterConfig = {type: "preview"},
+        gv;
+      spyOn(window, "PreviewAdapter");
+      gv = new GraphViewer(svg, 10, 10, adapterConfig);
+      expect(window.PreviewAdapter).wasCalledWith(
+        jasmine.any(Array),
+        jasmine.any(Array),
+        jasmine.any(Object)
+      );
+    });
   });
   
   describe('set up correctly', function() {
