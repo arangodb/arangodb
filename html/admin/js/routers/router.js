@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollection, arangoHelper, dashboardView */
-/*global FoxxInstalledListView, FoxxActiveListView, ApplicationsView */
 
 $(document).ready(function() {
 
@@ -196,7 +195,7 @@ $(document).ready(function() {
         this.foxxList = new window.FoxxCollection();
       }
       if (this.applicationsView === undefined) {
-        this.applicationsView = new ApplicationsView({
+        this.applicationsView = new window.ApplicationsView({
           collection: this.foxxList
         });
       }
@@ -209,7 +208,7 @@ $(document).ready(function() {
         this.foxxList = new window.FoxxCollection();
       }
       if (this.applicationsInstalledView === undefined) {
-        this.applicationsInstalledView = new FoxxInstalledListView({
+        this.applicationsInstalledView = new window.FoxxInstalledListView({
           collection: this.foxxList
         });
       }
@@ -222,7 +221,7 @@ $(document).ready(function() {
         this.foxxList = new window.FoxxCollection();
       }
       if (this.applicationsActiveView === undefined) {
-        this.applicationsActiveView = new FoxxActiveListView({
+        this.applicationsActiveView = new window.FoxxActiveListView({
           collection: this.foxxList
         });
       }

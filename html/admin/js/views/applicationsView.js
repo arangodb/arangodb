@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global Backbone, EJS, $, window, _ */
 
-var ApplicationsView = Backbone.View.extend({
+window.ApplicationsView = Backbone.View.extend({
   el: '#content',
 
   template: new EJS({url: 'js/templates/applicationsView.ejs'}),
@@ -98,6 +98,11 @@ var ApplicationsView = Backbone.View.extend({
     $('#checkActive').attr('checked', this._showActive);
     $('#checkInactive').attr('checked', this._showInactive);
     $('#checkDevel').attr('checked', this._showDevel);
+    _.each(this._installedSubViews, function(v) {
+      v.toggle("devel", self._showDevel);
+      v.toggle("active", self._showActive);
+      v.toggle("inactive", self._showInactive);
+    });
     return this;
   }
 });
