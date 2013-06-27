@@ -1,6 +1,9 @@
 Foxx {#UserManualFoxx}
 ======================
 
+@NAVIGATE_UserManualFoxx
+@EMBEDTOC{UserManualFoxxTOC}
+
 Foxx: Build APIs and simple web applications in ArangoDB
 ========================================================
 
