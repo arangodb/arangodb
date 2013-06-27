@@ -479,16 +479,11 @@ bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
 
   assert(vocbase);
 
-  // lockup username
+  // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   auth = TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username);
 
-  if (auth == 0) {
-    TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
-    return false;
-  }
-
-  if (! auth->_active) {
+  if (auth == 0 || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }

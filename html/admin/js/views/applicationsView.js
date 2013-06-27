@@ -17,7 +17,7 @@ var ApplicationsView = Backbone.View.extend({
     var self = this;
     this._showDevel = !this._showDevel;
     _.each(this._installedSubViews, function(v) {
-      v.toggle("devel", self._showDevel)
+      v.toggle("devel", self._showDevel);
     });
   },
   
@@ -25,7 +25,7 @@ var ApplicationsView = Backbone.View.extend({
     var self = this;
     this._showActive = !this._showActive;
     _.each(this._installedSubViews, function(v) {
-      v.toggle("active", self._showActive)
+      v.toggle("active", self._showActive);
     });
   },
   
@@ -33,7 +33,7 @@ var ApplicationsView = Backbone.View.extend({
     var self = this;
     this._showInactive = !this._showInactive;
     _.each(this._installedSubViews, function(v) {
-      v.toggle("inactive", self._showInactive)
+      v.toggle("inactive", self._showInactive);
     });
   },
   

@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollection, arangoHelper, dashboardView */
-/*global FoxxInstalledListView, FoxxActiveListView*/
+/*global FoxxInstalledListView, FoxxActiveListView, ApplicationsView */
 
 $(document).ready(function() {
 

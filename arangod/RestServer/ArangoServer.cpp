@@ -194,16 +194,17 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
+    _authenticateSystemOnly(false),
     _dispatcherThreads(8),
-    _multipleDatabases(false),
     _databasePath(),
-    _removeOnDrop(true),
-    _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
-    _forceSyncShapes(true),
-    _forceSyncProperties(true),
     _developmentMode(false),
+    _forceSyncProperties(true),
+    _forceSyncShapes(true),
+    _multipleDatabases(false),
+    _removeOnCompacted(true),
+    _removeOnDrop(true),
 #ifdef TRI_ENABLE_REPLICATION    
     _replicationEnable(false),
     _replicationLogSize(TRI_REPLICATION_DEFAULT_LOG_SIZE),
@@ -405,6 +406,7 @@ void ArangoServer::buildApplicationServer () {
   bool disableAdminInterface = false;
 
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+    ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
     ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
   ;
@@ -1175,6 +1177,8 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->forceSyncProperties);
   defaults.requireAuthentication = doc.getBooleanValue("requireAuthentication", 
           systemDefaults->requireAuthentication);
+  defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
+          systemDefaults->authenticateSystemOnly);
 #ifdef TRI_ENABLE_REPLICATION
   defaults.replicationEnable = doc.getBooleanValue("replicationEnable", 
           systemDefaults->replicationEnable);
@@ -1204,10 +1208,10 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
 
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_databases");
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_DATABASES);
 
   if (collection == NULL) {
-    LOG_INFO("collection '_databases' does not exist, no other databases available");
+    LOG_INFO("collection '" TRI_COL_NAME_DATABASES "' does not exist, no other databases available");
     return false;
   }
 
@@ -1216,12 +1220,12 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
   primary = collection->_collection;
 
   if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_databases' cannot be loaded");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_DATABASES "' cannot be loaded");
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_databases' has an unknown collection type");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_DATABASES "' has an unknown collection type");
   }
 
   // .............................................................................
@@ -1275,7 +1279,7 @@ bool ArangoServer::loadEndpoints () {
 
   VocbaseManager::manager.setApplicationEndpointServer(_applicationEndpointServer);
   
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_endpoints");
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_ENDPOINTS);
 
   if (collection == NULL) {
     // collection '_endpoints' not found
@@ -1287,12 +1291,12 @@ bool ArangoServer::loadEndpoints () {
   primary = collection->_collection;
 
   if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_endpoints' cannot be loaded");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_ENDPOINTS "' cannot be loaded");
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_endpoints' has an unknown collection type");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_ENDPOINTS "' has an unknown collection type");
   }  
 
   // .............................................................................
@@ -1349,7 +1353,7 @@ bool ArangoServer::loadPrefixMappings () {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
 
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_prefixes");
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_PREFIXES);
 
   if (collection == NULL) {
     // collection '_prefixes' not found
@@ -1361,12 +1365,12 @@ bool ArangoServer::loadPrefixMappings () {
   primary = collection->_collection;
 
   if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_prefixes' cannot be loaded");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' cannot be loaded");
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '_prefixes' has an unknown collection type");
+    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' has an unknown collection type");
   }
 
   // .............................................................................
@@ -1394,33 +1398,34 @@ void ArangoServer::openDatabases () {
   TRI_vocbase_defaults_t defaults;  
 
   // override with command-line options 
-  defaults.defaultMaximalSize     = _defaultMaximalSize;
+  defaults.defaultMaximalSize            = _defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationLogSize     = _replicationLogSize;
+  defaults.replicationLogSize            = _replicationLogSize;
 #endif  
-  defaults.removeOnDrop           = _removeOnDrop;
-  defaults.removeOnCompacted      = _removeOnCompacted;
-  defaults.defaultWaitForSync     = _defaultWaitForSync;
-  defaults.forceSyncShapes        = _forceSyncShapes;
-  defaults.forceSyncProperties    = _forceSyncProperties;
-  defaults.requireAuthentication  = ! _applicationEndpointServer->isAuthenticationDisabled();
+  defaults.removeOnDrop                  = _removeOnDrop;
+  defaults.removeOnCompacted             = _removeOnCompacted;
+  defaults.defaultWaitForSync            = _defaultWaitForSync;
+  defaults.forceSyncShapes               = _forceSyncShapes;
+  defaults.forceSyncProperties           = _forceSyncProperties;
+  defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
+  defaults.authenticateSystemOnly        = _authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationWaitForSync = _replicationWaitForSync;
-  defaults.replicationEnable      = _replicationEnable;
+  defaults.replicationWaitForSync        = _replicationWaitForSync;
+  defaults.replicationEnable             = _replicationEnable;
 #endif  
   
   // store these settings as initial system defaults
   TRI_SetSystemDefaultsVocBase(&defaults);
   
   // open/load the first database
-  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), "_system", &defaults);
+  _vocbase = TRI_OpenVocBase(_databasePath.c_str(), TRI_VOC_SYSTEM_DATABASE, &defaults);
 
   if (_vocbase == NULL) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
-  LOGGER_INFO("loaded database '_system' from '" << _databasePath << "'");    
+  LOGGER_INFO("loaded database '" TRI_VOC_SYSTEM_DATABASE "' from '" << _databasePath << "'");    
   
   // first database is the system database
   _vocbase->_isSystem = _multipleDatabases;

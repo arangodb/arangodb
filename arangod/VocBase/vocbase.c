@@ -228,19 +228,20 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 
 static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
                           TRI_vocbase_defaults_t* dst) {
-  dst->defaultMaximalSize     = src->defaultMaximalSize;
+  dst->defaultMaximalSize           = src->defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationLogSize     = src->replicationLogSize;
+  dst->replicationLogSize           = src->replicationLogSize;
 #endif
-  dst->removeOnDrop           = src->removeOnDrop;
-  dst->removeOnCompacted      = src->removeOnCompacted;
-  dst->defaultWaitForSync     = src->defaultWaitForSync;
-  dst->forceSyncShapes        = src->forceSyncShapes;
-  dst->forceSyncProperties    = src->forceSyncProperties;
-  dst->requireAuthentication  = src->requireAuthentication;    
+  dst->removeOnDrop                 = src->removeOnDrop;
+  dst->removeOnCompacted            = src->removeOnCompacted;
+  dst->defaultWaitForSync           = src->defaultWaitForSync;
+  dst->forceSyncShapes              = src->forceSyncShapes;
+  dst->forceSyncProperties          = src->forceSyncProperties;
+  dst->requireAuthentication        = src->requireAuthentication;    
+  dst->authenticateSystemOnly       = src->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationEnable      = src->replicationEnable;
-  dst->replicationWaitForSync = src->replicationWaitForSync;
+  dst->replicationEnable            = src->replicationEnable;
+  dst->replicationWaitForSync       = src->replicationWaitForSync;
 #endif
 }  
 
@@ -251,19 +252,20 @@ static void CopyDefaults (TRI_vocbase_defaults_t const* src,
 static void ApplyDefaults (TRI_vocbase_t* vocbase, 
                            TRI_vocbase_defaults_t const* defaults) {
 
-  vocbase->_defaultMaximalSize     = defaults->defaultMaximalSize;
+  vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationLogSize     = defaults->replicationLogSize;
+  vocbase->_replicationLogSize           = defaults->replicationLogSize;
 #endif
-  vocbase->_removeOnDrop           = defaults->removeOnDrop;
-  vocbase->_removeOnCompacted      = defaults->removeOnCompacted;
-  vocbase->_defaultWaitForSync     = defaults->defaultWaitForSync;
-  vocbase->_forceSyncShapes        = defaults->forceSyncShapes;
-  vocbase->_forceSyncProperties    = defaults->forceSyncProperties;
-  vocbase->_requireAuthentication  = defaults->requireAuthentication;    
+  vocbase->_removeOnDrop                 = defaults->removeOnDrop;
+  vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
+  vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
+  vocbase->_forceSyncShapes              = defaults->forceSyncShapes;
+  vocbase->_forceSyncProperties          = defaults->forceSyncProperties;
+  vocbase->_requireAuthentication        = defaults->requireAuthentication;    
+  vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationEnable      = defaults->replicationEnable;
-  vocbase->_replicationWaitForSync = defaults->replicationWaitForSync;
+  vocbase->_replicationEnable            = defaults->replicationEnable;
+  vocbase->_replicationWaitForSync       = defaults->replicationWaitForSync;
 #endif
 }
 
@@ -274,19 +276,20 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
 static void GetDefaults (TRI_vocbase_t const* vocbase, 
                          TRI_vocbase_defaults_t* defaults) {
 
-  defaults->defaultMaximalSize     = vocbase->_defaultMaximalSize;
+  defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationLogSize     = vocbase->_replicationLogSize;
+  defaults->replicationLogSize          = vocbase->_replicationLogSize;
 #endif
-  defaults->removeOnDrop           = vocbase->_removeOnDrop;
-  defaults->removeOnCompacted      = vocbase->_removeOnCompacted;
-  defaults->defaultWaitForSync     = vocbase->_defaultWaitForSync;
-  defaults->forceSyncShapes        = vocbase->_forceSyncShapes;
-  defaults->forceSyncProperties    = vocbase->_forceSyncProperties;
-  defaults->requireAuthentication  = vocbase->_requireAuthentication;    
+  defaults->removeOnDrop                = vocbase->_removeOnDrop;
+  defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
+  defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
+  defaults->forceSyncShapes             = vocbase->_forceSyncShapes;
+  defaults->forceSyncProperties         = vocbase->_forceSyncProperties;
+  defaults->requireAuthentication       = vocbase->_requireAuthentication;    
+  defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationEnable      = vocbase->_replicationEnable;
-  defaults->replicationWaitForSync = vocbase->_replicationWaitForSync;
+  defaults->replicationEnable           = vocbase->_replicationEnable;
+  defaults->replicationWaitForSync      = vocbase->_replicationWaitForSync;
 #endif
 }
 
@@ -783,16 +786,29 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
   init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
   init._collection  = NULL;
-  init._canDrop     = true;
-  init._canUnload   = true;
-  init._canRename   = true;
 
-  if (TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
-      TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-      TRI_EqualString(name, TRI_COL_NAME_USERS)) {
-    init._canDrop   = false;
-    init._canUnload = false;
-    init._canRename = false;
+  // default flags: everything is allowed
+  init._canDrop     = true;
+  init._canRename   = true;
+  init._canUnload   = true;
+ 
+  // check for special system collection names 
+  if (TRI_IsSystemCollectionName(name)) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(name, TRI_COL_NAME_DATABASES) ||
+        TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
+        TRI_EqualString(name, TRI_COL_NAME_PREFIXES) ||
+        TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+        TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
+        TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+      // these collections cannot be dropped or renamed
+      init._canDrop   = false;
+      init._canRename = false;
+
+      // the replication collection cannot be unloaded manually)
+      // (this would make the server hang)
+      init._canUnload = ! TRI_EqualString(name, TRI_COL_NAME_REPLICATION);
+    }
   }
 
   TRI_CopyString(init._name, name, sizeof(init._name));
@@ -1318,6 +1334,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_vocbase_t* vocbase;
   char* lockFile;
   bool iterateMarkers;
+  bool isSystem;
   int res;
 
   assert(defaults != NULL);
@@ -1336,6 +1353,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
     return NULL;
   }
+
+  isSystem = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE); 
 
   // .............................................................................
   // check that the database is not locked and lock it
@@ -1424,29 +1443,40 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
-  // read information from last shutdown
+  // read the server id
   // .............................................................................
-  
-  if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
-    LOG_FATAL_AND_EXIT("reading/creating server id failed");
+
+  if (isSystem) { 
+    if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
+      LOG_FATAL_AND_EXIT("reading/creating server id failed");
+    }
   }
 
+  // .............................................................................
+  // read information from last shutdown
+  // .............................................................................
 
   // check if we can find a SHUTDOWN file
   // this file will contain the last tick value issued by the server
   // if we find the file, we can avoid scanning datafiles for the last used tick value
+  // note: this is done for the _system database only
 
-  iterateMarkers = true;
+  if (isSystem) {
+    iterateMarkers = true;
 
-  res = ReadShutdownInfo(vocbase->_shutdownFilename);
+    res = ReadShutdownInfo(vocbase->_shutdownFilename);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    // we found the SHUTDOWN file
-    // no need to iterate the markers
-    iterateMarkers = false;
+    if (res == TRI_ERROR_NO_ERROR) {
+      // we found the SHUTDOWN file
+      // no need to iterate the markers
+      iterateMarkers = false;
+    }
+    else if (res == TRI_ERROR_INTERNAL) {
+      LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
+    }
   }
-  else if (res == TRI_ERROR_INTERNAL) {
-    LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
+  else {
+    iterateMarkers = false;
   }
 
   // .............................................................................
@@ -1499,8 +1529,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
 #endif
     
 
-  // now remove SHUTDOWN file if it was present
-  if (! iterateMarkers) {
+  // now remove SHUTDOWN file if it was present. this is done for the _system database only
+  if (isSystem && ! iterateMarkers) {
     if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
     }
