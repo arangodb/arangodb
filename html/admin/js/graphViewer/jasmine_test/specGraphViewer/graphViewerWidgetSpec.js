@@ -98,14 +98,22 @@
         }
       });
     });
+    
+    afterEach(function() {
+      var b = document.body;
+      while (b.firstChild) {
+          b.removeChild(b.firstChild);
+      }
+    });
   
     describe('setup process', function() {
       
       it('should append an svg to the body', function() {
         var b = document.body,
-          ui = new GraphViewerWidget();
-        expect(b.children.graphViewerSVG).toBeDefined();
-        expect(b.children.graphViewerSVG).toBeTag("svg");
+          ui = new GraphViewerWidget(),
+          gsvg = $("#graphViewerSVG", $(b));
+        expect(gsvg.length).toEqual(1);
+        expect(gsvg.get(0)).toBeTag("svg");
       });
       
       it('should create a graphViewer with body dimensions and foxx adapter', function() {
