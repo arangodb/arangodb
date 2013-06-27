@@ -369,8 +369,10 @@ function EdgeShaper(parent, flags, idfunc) {
   };
   
   self.removeCursorFollowingEdge = function() {
-    followEdge.remove();
-    followEdge = {};
+    if (followEdge.remove) {
+      followEdge.remove();
+      followEdge = {};
+    }
   };
 }
 
