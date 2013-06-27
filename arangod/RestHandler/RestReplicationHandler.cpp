@@ -33,6 +33,7 @@
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
+#include "VocBase/replication.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -103,6 +104,7 @@ Handler::status_e RestReplicationHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
+  // only POST is allowed
   if (type != HttpRequest::HTTP_REQUEST_POST) { 
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
@@ -120,13 +122,20 @@ Handler::status_e RestReplicationHandler::execute() {
   vector<string> const& suffix = _request->suffix();
   const string& command = suffix[0];
 
+  if (command == "start") {
+    handleCommandStart();
+  }
+  else if (command == "stop") {
+    handleCommandStop();
+  }
+  else if (command == "inventory") {
+    handleCommandInventory();
+  }
+/*
+  else if (command == "dump-initial-collection" && foundCollection) {
   bool foundCollection;
   char const* collection = _request->value("collection", foundCollection);
 
-  if (command == "dump-initial-start") {
-    handleInitialDumpStart();
-  }
-  else if (command == "dump-initial-collection" && foundCollection) {
     handleInitialDumpCollection(collection);
   }
   else if (command == "dump-initial-end") {
@@ -135,6 +144,7 @@ Handler::status_e RestReplicationHandler::execute() {
   else if (command == "dump-continuous") {
     handleContinuousDump();
   }
+  */
   else {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -164,6 +174,86 @@ int RestReplicationHandler::dumpCollection (TRI_voc_cid_t cid,
                                             TRI_voc_tick_t tickEnd,
                                             uint64_t chunkSize) {
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remotely start the replication
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandStart () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  int res = TRI_StartReplicationLogger(_vocbase->_replicationLogger);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remotely stop the replication
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandStop () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  int res = TRI_StopReplicationLogger(_vocbase->_replicationLogger);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the inventory (current replication and collection state)
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandInventory () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  TRI_replication_state_t state;
+
+  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state._active));
+
+    char* firstString = TRI_StringUInt64(state._firstTick);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "firstTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
+
+    char* lastString = TRI_StringUInt64(state._lastTick);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
+
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -87,6 +87,17 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief state information about replication
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_state_s {
+  bool            _active;
+  TRI_voc_tick_t  _firstTick;
+  TRI_voc_tick_t  _lastTick;
+}
+TRI_replication_state_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief context information for replication logging
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -96,8 +107,9 @@ typedef struct TRI_replication_logger_s {
   struct TRI_vocbase_s*                _vocbase;
   struct TRI_transaction_s*            _trx;
   struct TRI_transaction_collection_s* _trxCollection;
-  TRI_voc_tick_t                       _lastId;
-  bool                                 _active;
+
+  TRI_replication_state_t              _state;
+
   bool                                 _waitForSync;
   int64_t                              _logSize;
   char*                                _databaseName;
@@ -146,6 +158,13 @@ int TRI_StartReplicationLogger (TRI_replication_logger_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StopReplicationLogger (TRI_replication_logger_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current replication state
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StateReplicationLogger (TRI_replication_logger_t*,
+                                TRI_replication_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
