@@ -293,7 +293,7 @@ function NodeShaper(parent, flags, idfunc) {
             translateY = -(height / 2);
           }
           addShape = function(node) {
-            var img = node.append("image") // Display nodes as rectangles
+            var img = node.append("image") // Display nodes as images
               .attr("width", width) // Set width
               .attr("height", height) // Set height
               .attr("x", translateX)
