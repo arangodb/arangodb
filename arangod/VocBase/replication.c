@@ -272,7 +272,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
   
   // note the last id that we've logged
   TRI_LockSpin(&logger->_idLock);
-  logger->_lastId = mptr._rid;
+  logger->_state._lastTick = (TRI_voc_tick_t) mptr._rid;
   TRI_UnlockSpin(&logger->_idLock);
   
 
@@ -599,6 +599,22 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get current state from the replication logger
+/// note: must hold the lock when calling this
+////////////////////////////////////////////////////////////////////////////////
+
+static int GetStateReplicationLogger (TRI_replication_logger_t* logger,
+                                      TRI_replication_state_t* dst) {
+  assert(logger->_state._active);
+
+  TRI_LockSpin(&logger->_idLock);
+  memcpy(dst, &logger->_state, sizeof(TRI_replication_state_t));
+  TRI_UnlockSpin(&logger->_idLock);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,13 +626,13 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   TRI_voc_cid_t cid;
   int res;
   
-  if (logger->_active) {
+  if (logger->_state._active) {
     return TRI_ERROR_INTERNAL;
   }
 
   assert(logger->_trx == NULL);
   assert(logger->_trxCollection == NULL);
-  assert(logger->_lastId == 0);
+  assert(logger->_state._lastTick == 0);
 
   vocbase = logger->_vocbase;
   collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
@@ -655,14 +671,14 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   logger->_trx = trx;
 
   assert(logger->_trxCollection != NULL);
-  assert(logger->_active == false);
+  assert(logger->_state._active == false);
 
-  logger->_lastId = (TRI_voc_tick_t) ((TRI_collection_t*) collection->_collection)->_info._tick; 
-  logger->_active = true;
+  logger->_state._lastTick = (TRI_voc_tick_t) ((TRI_collection_t*) collection->_collection)->_info._tick; 
+  logger->_state._active   = true;
   
   LOG_INFO("started replication logger for database '%s', last id: %llu", 
            logger->_databaseName,
-           (unsigned long long) logger->_lastId);
+           (unsigned long long) logger->_state._lastTick);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -674,15 +690,15 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
 static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   TRI_string_buffer_t* buffer;
-  TRI_voc_tick_t lastId;
+  TRI_voc_tick_t lastTick;
   int res;
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     return TRI_ERROR_INTERNAL;
   }
 
   TRI_LockSpin(&logger->_idLock);
-  lastId = logger->_lastId;
+  lastTick = logger->_state._lastTick;
   TRI_UnlockSpin(&logger->_idLock);
 
   assert(logger->_trx != NULL);
@@ -690,7 +706,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 
   buffer = GetBuffer(logger);
   
-  if (! StringifyStopReplication(buffer, lastId)) {
+  if (! StringifyStopReplication(buffer, lastTick)) {
     ReturnBuffer(logger, buffer);
 
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -702,15 +718,45 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   
   LOG_INFO("stopped replication logger for database '%s', last id: %llu", 
            logger->_databaseName,
-           (unsigned long long) logger->_lastId);
+           (unsigned long long) lastTick);
 
 
-  logger->_trx           = NULL;
-  logger->_trxCollection = NULL;
-  logger->_lastId        = 0;
-  logger->_active        = false;
+  logger->_trx             = NULL;
+  logger->_trxCollection   = NULL;
+  logger->_state._lastTick = 0;
+  logger->_state._active   = false;
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the state of the _replication collection for a non-running
+/// replication logger
+/// note: must hold the lock when calling this
+////////////////////////////////////////////////////////////////////////////////
+
+static int GetStateInactive (TRI_vocbase_t* vocbase,
+                             TRI_replication_state_t* dst) {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+ 
+  collection = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
+
+  if (collection == NULL || collection->_collection == NULL) {
+    LOG_ERROR("could not open collection '" TRI_COL_NAME_REPLICATION "'");
+
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  primary = (TRI_primary_collection_t*) collection->_collection;
+
+  dst->_active    = false;
+  dst->_firstTick = 0;
+  dst->_lastTick  = primary->base._info._tick;
+
+  TRI_ReleaseCollectionVocBase(vocbase, collection);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -742,14 +788,15 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   TRI_InitReadWriteLock(&logger->_statusLock);
   TRI_InitSpin(&logger->_idLock);
 
-  logger->_vocbase       = vocbase;
-  logger->_trx           = NULL;
-  logger->_trxCollection = NULL;
-  logger->_lastId        = 0;
-  logger->_active        = false;
-  logger->_logSize       = vocbase->_replicationLogSize;
-  logger->_waitForSync   = vocbase->_replicationWaitForSync;
-  logger->_databaseName  = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+  logger->_vocbase          = vocbase;
+  logger->_trx              = NULL;
+  logger->_trxCollection    = NULL;
+  logger->_state._firstTick = 0;
+  logger->_state._lastTick  = 0;
+  logger->_state._active    = false;
+  logger->_logSize          = vocbase->_replicationLogSize;
+  logger->_waitForSync      = vocbase->_replicationWaitForSync;
+  logger->_databaseName     = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
 
   assert(logger->_databaseName != NULL);
 
@@ -788,7 +835,7 @@ int TRI_StartReplicationLogger (TRI_replication_logger_t* logger) {
 
   TRI_WriteLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     res = StartReplicationLogger(logger);
   }
 
@@ -808,7 +855,7 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
   
   TRI_WriteLockReadWriteLock(&logger->_statusLock);
 
-  if (logger->_active) {
+  if (logger->_state._active) {
     res = StopReplicationLogger(logger);
   }
 
@@ -816,6 +863,32 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current replication state
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
+                                TRI_replication_state_t* state) {
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+  
+  TRI_WriteLockReadWriteLock(&logger->_statusLock);
+
+  if (logger->_state._active) {
+    // use state from logger
+    res = GetStateReplicationLogger(logger, state);
+  }
+  else {
+    // read first/last directly from collection
+    res = GetStateInactive(logger->_vocbase, state);
+  }
+
+  TRI_WriteUnlockReadWriteLock(&logger->_statusLock);
+
+  return res;
+} 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -938,7 +1011,7 @@ int TRI_TransactionReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (logger->_active) {
+  if (logger->_state._active) {
     TRI_primary_collection_t* primary;
 
     primary = logger->_trxCollection->_collection->_collection;
@@ -969,7 +1042,7 @@ int TRI_CreateCollectionReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
@@ -1003,7 +1076,7 @@ int TRI_DropCollectionReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
@@ -1038,7 +1111,7 @@ int TRI_RenameCollectionReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
@@ -1073,7 +1146,7 @@ int TRI_ChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
@@ -1109,7 +1182,7 @@ int TRI_CreateIndexReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
@@ -1144,7 +1217,7 @@ int TRI_DropIndexReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
@@ -1182,7 +1255,7 @@ int TRI_DocumentReplication (TRI_vocbase_t* vocbase,
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_active) {
+  if (! logger->_state._active) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_NO_ERROR;
