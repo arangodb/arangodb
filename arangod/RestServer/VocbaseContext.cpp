@@ -113,7 +113,10 @@ bool VocbaseContext::authenticate () {
 
     if (path != 0) {
       // check if path starts with /_
-      if (*path == '/' && *(path + 1) == '_') {
+      if (*path != '/') {
+        return true;
+      }
+      if (*path != '\0' && *(path + 1) != '_') {
         return true;
       }
     }
