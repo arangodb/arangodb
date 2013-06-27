@@ -138,6 +138,84 @@
 
       });
       
+      it('should overwrite the nodeShaper label attribute', function() {
+        var oldShapes = window.NodeShaper.shapes,
+          spy = spyOn(window, "NodeShaper").andCallThrough(),
+          config = {
+            nodeShaper: {
+              label: "Foxx"
+            }
+          },
+          ui;
+        spy.shapes = oldShapes;
+        ui  = new GraphViewerPreview(cont, config);
+        expect(window.NodeShaper).wasCalledWith(
+          jasmine.any(Object),
+          {
+            label: "label",
+            shape: jasmine.any(Object),
+            color: jasmine.any(Object),
+            distortion: "reset"
+          },
+          undefined
+        );
+      });
+      
+      it('should overwrite the source attribute if image should be displayed', function() {
+        var oldShapes = window.NodeShaper.shapes,
+          width = 32,
+          height = 23,
+          spy = spyOn(window, "NodeShaper").andCallThrough(),
+          config = {
+            nodeShaper: {
+              shape: {
+                type: oldShapes.IMAGE,
+                width: width,
+                height: height,
+                source: "Foxx"
+              }
+            }
+          },
+          ui;
+        spy.shapes = oldShapes;
+
+        ui  = new GraphViewerPreview(cont, config);
+        expect(window.NodeShaper).wasCalledWith(
+          jasmine.any(Object),
+          {
+            shape: {
+              type: oldShapes.IMAGE,
+              width: width,
+              height: height,
+              source: "image"
+            },
+            color: jasmine.any(Object),
+            distortion: "reset"
+          },
+          undefined
+        );
+      });
+      
+      it('should overwrite the edgeShaper label attribute', function() {
+        var oldShapes = window.EdgeShaper.shapes,
+          spy = spyOn(window, "EdgeShaper").andCallThrough(),
+          config = {
+            edgeShaper: {
+              label: "Foxx"
+            }
+          },
+          ui;
+        spy.shapes = oldShapes;
+        ui  = new GraphViewerPreview(cont, config);
+        expect(window.EdgeShaper).wasCalledWith(
+          jasmine.any(Object),
+          {
+            label: "label",
+            color: jasmine.any(Object)
+          }
+        );
+      });
+      
     });
   
     describe('testing mouse actions', function() {
