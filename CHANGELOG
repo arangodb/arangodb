@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* issue #559: added Foxx documentation to user manual
+
 * added server startup option `--server.authenticate-system-only`. This option can be
   used to restrict the need for HTTP authentication to internal functionality and APIs,
   such as `/_api/*` and `/_admin/*`. 
