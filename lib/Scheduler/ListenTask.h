@@ -68,7 +68,7 @@ namespace triagens {
 /// @brief listen to given endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListenTask (Endpoint*, bool);
+        ListenTask (Endpoint*);
 
       public:
 
@@ -130,7 +130,6 @@ namespace triagens {
         bool bindSocket ();
 
       private:
-        bool reuseAddress;
         Endpoint* _endpoint;
         TRI_socket_t _listenSocket;
 
