@@ -73,12 +73,13 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test name function
+/// @brief test _query function
 ////////////////////////////////////////////////////////////////////////////////
 
     testQuery : function () {
       assertEqual([ 1 ], internal.db._query("return 1").toArray());
       assertEqual([ [ 1, 2, 9, "foo" ] ], internal.db._query("return [ 1, 2, 9, \"foo\" ]").toArray());
+      assertEqual([ [ 1, 454 ] ], internal.db._query("return [ @low, @high ]", { low : 1, high : 454 }).toArray());
     }
 
   };

@@ -2643,7 +2643,8 @@ static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) 
 /// @brief generate Javascript code for the AST nodes recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
+char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
+                           size_t* length) {
   TRI_aql_codegen_js_t* generator;
   TRI_aql_codegen_register_t resultRegister;
   char* code;
@@ -2651,6 +2652,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
   assert(context);
 
   generator = CreateGenerator(context);
+
   if (generator == NULL) {
     return NULL;
   }
@@ -2671,16 +2673,24 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
 
   if (generator->_errorCode == TRI_ERROR_NO_ERROR) {
     // put everything together
-    code = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, generator->_functionBuffer._buffer, generator->_buffer._buffer);
-    if (code) {
+    size_t len1 = TRI_LengthStringBuffer(&generator->_functionBuffer);
+    size_t len2 = TRI_LengthStringBuffer(&generator->_buffer);
+
+    code = TRI_ConcatenateSized2StringZ(TRI_UNKNOWN_MEM_ZONE, 
+                                        generator->_functionBuffer._buffer,
+                                        len1, 
+                                        generator->_buffer._buffer, 
+                                        len2);
+    if (code != NULL) {
       LOG_TRACE("generated code: %s", code);
+      *length = len1 + len2;
     }
     else {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
 
-  // errorCode might have changed, no else!
+  // errorCode might have changed.
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     // register the error
     TRI_SetErrorContextAql(context, generator->_errorCode, generator->_errorValue);

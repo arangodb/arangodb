@@ -569,7 +569,6 @@ int TRI_InsertElementHashArray (TRI_hash_array_t* array,
   uint64_t hash;
   uint64_t i;
   bool found;
-  int res;
   TRI_hash_index_element_t* arrayElement;
 
   // ...........................................................................
@@ -634,6 +633,8 @@ int TRI_InsertElementHashArray (TRI_hash_array_t* array,
   // ...........................................................................
 
   if (array->_nrAlloc < 2 * array->_nrUsed) {
+    int res;
+
     res = ResizeHashArray(array);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -658,7 +659,6 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   uint64_t hash;
   uint64_t i;
   bool found;
-  int res;
   TRI_hash_index_element_t* arrayElement;
 
   // ...........................................................................
@@ -722,6 +722,8 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   // ...........................................................................
 
   if (array->_nrAlloc < 2 * array->_nrUsed) {
+    int res;
+
     res = ResizeHashArray(array);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1042,7 +1044,6 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
   uint64_t hash;
   uint64_t i;
   bool found;
-  int res;
   TRI_hash_index_element_t* arrayElement;
 
   // ...........................................................................
@@ -1110,6 +1111,8 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
   // ...........................................................................
 
   if (array->_nrAlloc < 2 * array->_nrUsed) {
+    int res;
+
     res = ResizeHashArray(array);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1133,7 +1136,6 @@ int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t* array,
                                  bool overwrite) {
   uint64_t hash;
   uint64_t i;
-  int res;
   TRI_hash_index_element_t* arrayElement;
 
   // ...........................................................................
@@ -1182,6 +1184,8 @@ int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t* array,
   // ...........................................................................
 
   if (array->_nrAlloc < 2 * array->_nrUsed) {
+    int res;
+
     res = ResizeHashArray(array);
 
     if (res != TRI_ERROR_NO_ERROR) {

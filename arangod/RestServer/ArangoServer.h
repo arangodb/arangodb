@@ -276,6 +276,33 @@ namespace triagens {
         ApplicationV8* _applicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not only requests to internal URLs need authentication
+///
+/// @CMDOPT{\--server.authenticate-system-only @CA{boolean}}
+///
+/// Controls whether incoming requests need authentication only if they are
+/// directed to the ArangoDB's internal APIs and features, located at `/_api/`,
+/// `/_admin/` etc. 
+///
+/// IF the flag is set to @LIT{true}, then HTTP authentication is only
+/// required for requests going to URLs starting with `/_`, but not for other
+/// URLs. The flag can thus be used to expose a user-made API without HTTP
+/// authentication to the outside world, but to prevent the outside world from
+/// using the ArangoDB API and the admin interface without authentication.
+///
+/// The default is @LIT{false}.
+///
+/// Note that authentication still needs to be enabled for the server regularly
+/// in order for HTTP authentication to be forced for the ArangoDB API and the
+/// web interface.  Setting only this flag is not enough.
+///
+/// You can control ArangoDB's general authentication feature with the 
+/// `--server.disable-authentication` flag. 
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _authenticateSystemOnly;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
 /// @CMDOPT{\--server.threads @CA{number}}
@@ -285,18 +312,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _dispatcherThreads;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start in multiple database mode
-///
-/// @CMDOPT{\--server.multiple-databases @CA{flag}}
-///
-/// If @LIT{true} the server can start more than one database.
-///
-/// The default is @LIT{false}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _multipleDatabases;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
@@ -325,37 +340,6 @@ namespace triagens {
         string _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove on drop
-///
-/// @CMDOPT{\--database.remove-on-drop @CA{flag}}
-///
-/// If @LIT{true} and you drop a collection, then they directory and all
-/// associated datafiles will be removed from disk. If @LIT{false}, then they
-/// collection directory will be renamed to @LIT{deleted-...}, but remains on
-/// hard disk. To restore such a dropped collection, you can rename the
-/// directory back to @LIT{collection-...}, but you must also edit the file
-/// @LIT{parameter.json} inside the directory.
-///
-/// The default is @LIT{true}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _removeOnDrop;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove on compaction
-///
-/// @CMDOPT{\--database.remove-on-compaction @CA{flag}}
-///
-/// Normally the garbage collection will removed compacted datafile. For debug
-/// purposes you can use this option to keep the old datafiles. You should
-/// never set it to @LIT{false} on a live system.
-///
-/// The default is @LIT{true}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _removeOnCompacted;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default journal size
 ///
 /// @CMDOPT{\--database.maximal-journal-size @CA{size}}
@@ -367,7 +351,7 @@ namespace triagens {
 /// The default is @LIT{32MB}.
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint64_t _defaultMaximalSize;
+        TRI_voc_size_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default wait for sync behavior
@@ -383,19 +367,19 @@ namespace triagens {
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force syncing of shape data
+/// @brief development mode
 ///
-/// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
+/// @CMDOPT{\--development-mode}
 ///
-/// Force syncing of shape data to disk when writing shape information.
-/// If turned off, syncing will still happen for shapes of collections that
-/// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
-/// will always happen, regardless of the value of waitForSync.
-///
-/// The default is @LIT{true}.
+/// Specifying this option will start the server in development mode. The
+/// development mode forces reloading of all actions and Foxx applications on
+/// every HTTP request. This is very resource-intensive and slow, but makes
+/// developing server-side actions and Foxx applications much easier.
+///        
+/// Never use this option in production.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _forceSyncShapes;
+        bool _developmentMode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief force syncing of collection properties
@@ -415,15 +399,62 @@ namespace triagens {
         bool _forceSyncProperties;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief development mode
+/// @brief force syncing of shape data
 ///
-/// @CMDOPT{\--development-mode}
+/// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
 ///
-/// Specifying this option will start the server in development mode. Never use
-/// this option in production.
+/// Force syncing of shape data to disk when writing shape information.
+/// If turned off, syncing will still happen for shapes of collections that
+/// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
+/// will always happen, regardless of the value of waitForSync.
+///
+/// The default is @LIT{true}.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _developmentMode;
+        bool _forceSyncShapes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start in multiple database mode
+///
+/// @CMDOPT{\--server.multiple-databases @CA{flag}}
+///
+/// If @LIT{true} the server can start more than one database.
+///
+/// The default is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _multipleDatabases;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on compaction
+///
+/// @CMDOPT{\--database.remove-on-compaction @CA{flag}}
+///
+/// Normally the garbage collection will removed compacted datafile. For debug
+/// purposes you can use this option to keep the old datafiles. You should
+/// never set it to @LIT{false} on a live system.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnCompacted;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove on drop
+///
+/// @CMDOPT{\--database.remove-on-drop @CA{flag}}
+///
+/// If @LIT{true} and you drop a collection, then they directory and all
+/// associated datafiles will be removed from disk. If @LIT{false}, then they
+/// collection directory will be renamed to @LIT{deleted-...}, but remains on
+/// hard disk. To restore such a dropped collection, you can rename the
+/// directory back to @LIT{collection-...}, but you must also edit the file
+/// @LIT{parameter.json} inside the directory.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _removeOnDrop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
@@ -479,6 +510,30 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string _defaultLanguage;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable replication logging
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+        bool _replicationEnable;
+#endif
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief target size for a replication log
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+        int64_t _replicationLogSize;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waitForSync for replication logs
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+        bool _replicationWaitForSync;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase

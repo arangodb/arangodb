@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-/*global ArangoAdapter, JSONAdapter */
+/*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -120,6 +120,16 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       );
       self.adapter.setChildLimit(5);
       break;
+    case "foxx":
+      adapterConfig.width = width;
+      adapterConfig.height = height;
+      self.adapter = new FoxxAdapter(
+        nodes,
+        edges,
+        adapterConfig.route,
+        adapterConfig
+      );
+      break;
     case "json":
       self.adapter = new JSONAdapter(
         adapterConfig.path,
@@ -127,6 +137,15 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         edges,
         width,
         height
+      );
+      break;
+    case "preview":
+      adapterConfig.width = width;
+      adapterConfig.height = height;
+      self.adapter = new PreviewAdapter(
+        nodes,
+        edges,
+        adapterConfig
       );
       break;
     default:
@@ -147,11 +166,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
     edges.length = 0;
-    self.adapter.loadNodeFromTreeById(nodeId, function (node) {
+    self.adapter.loadNode(nodeId, function (node) {
       node._expanded = true;
-      node.x = width / 2;
-      node.y = height / 2;
-      node.fixed = true;
       self.start();
     });
   };
@@ -161,9 +177,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     edges.length = 0;
     self.adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
       node._expanded = true;
-      node.x = width / 2;
-      node.y = height / 2;
-      node.fixed = true;
       self.start();
     });
   };

@@ -125,7 +125,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 ////////////////////////////////////////////////////////////////////////////////
 
     static inline char* data (V8Buffer *b) {
-      return V8Buffer::data(b->_handle);
+      return data(b->_handle);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +144,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 ////////////////////////////////////////////////////////////////////////////////
 
     static inline size_t length (V8Buffer *b) {
-      return V8Buffer::length(b->_handle);
+      return length(b->_handle);
     }
 
 // -----------------------------------------------------------------------------

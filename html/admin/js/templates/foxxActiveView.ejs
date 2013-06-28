@@ -14,7 +14,13 @@
       
       <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
     </p>
-    <%if (attributes.active) {%>
+    <%if (attributes.development) {%>
+      <span class="badge badge-success loaded badge-foxx">
+        <div class="cornered">
+          development
+        </div>
+      </span>
+    <%} else if (attributes.active) {%>
       <span class="badge badge-success loaded badge-foxx">
         <div class="cornered">
           active

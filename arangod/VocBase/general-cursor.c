@@ -53,12 +53,12 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
 
   TRI_general_cursor_result_t* result;
 
-  if (!data) {
+  if (data == NULL) {
     return NULL;
   }
 
   result = (TRI_general_cursor_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t), false);
-  if (!result) {
+  if (result == NULL) {
     return NULL;
   }
 
@@ -79,7 +79,7 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
 void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
   assert(result);
 
-  if (!result->_freed) {
+  if (! result->_freed) {
     result->freeData(result);
     result->_freed = true;
   }
@@ -122,7 +122,7 @@ static inline TRI_general_cursor_row_t NextGeneralCursor (TRI_general_cursor_t* 
     return cursor->_result->getAt(cursor->_result, cursor->_currentRow++);
   }
 
-  if (!cursor->_result->_freed) {
+  if (! cursor->_result->_freed) {
     cursor->_result->_freed = true;
     cursor->_result->freeData(cursor->_result);
   }

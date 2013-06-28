@@ -171,6 +171,22 @@ char* TRI_Concatenate2String (char const*, char const*);
 char* TRI_Concatenate2StringZ (TRI_memory_zone_t*, char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2String (char const*, size_t, char const*, size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths, using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t*, 
+                                    char const*, 
+                                    size_t, 
+                                    char const*, 
+                                    size_t); 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -268,7 +284,10 @@ char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen);
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLength);
+char* TRI_EscapeControlsCString (char const* in, 
+                                 size_t inLength, 
+                                 size_t* outLength, 
+                                 bool appendNewline);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using C escapes

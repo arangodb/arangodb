@@ -857,6 +857,76 @@ function CollectionSuite () {
       var r4 = c1.revision();
       assertTypeOf("string", r4);
       assertEqual(r3, r4);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test system collection dropping / renaming / unloading
+////////////////////////////////////////////////////////////////////////////////
+
+    testSystemSpecial : function () {
+      [ '_trx', '_users' ].forEach(function(cn) {
+        var c = db._collection(cn);
+
+        // drop
+        try {
+          c.drop();
+          fail();
+        }
+        catch (err1) {
+          assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
+        }
+        
+        // rename
+        var cn = "example";
+        db._drop(cn);
+
+        try {
+          c.rename(cn);
+          fail();
+        }
+        catch (err2) {
+          assertEqual(ERRORS.ERROR_FORBIDDEN.code, err2.errorNum);
+        }
+
+        // unload is allowed
+        c.unload();
+
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test special properties of replication collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialReplication : function () {
+      var repl = db._collection('_replication');
+
+      // drop is not allowed      
+      try {
+        repl.drop();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
+      }
+
+      // rename is not allowed
+      try {
+        var cn = "example";
+        db._drop(cn);
+        repl.rename(cn);
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err2.errorNum);
+      }
+      
+      // unload is not allowed
+      try {
+        repl.unload();
+      }
+      catch (err3) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err3.errorNum);
+      }
     }
 
   };

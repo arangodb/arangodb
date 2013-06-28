@@ -41,6 +41,7 @@
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
+#include "VocBase/replication.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
 
@@ -394,7 +395,8 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 /// @brief creates a new document or edge marker in memory
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
+static int CreateDocumentMarker (TRI_primary_collection_t* primary,
+                                 TRI_voc_tid_t tid,
                                  TRI_doc_document_key_marker_t** result,
                                  TRI_voc_size_t* totalSize,
                                  char** keyBody, 
@@ -402,12 +404,10 @@ static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
                                  TRI_voc_key_t key,
                                  TRI_shaped_json_t const* shaped, 
                                  void const* data) {
-  TRI_primary_collection_t* primary;
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
   char* position;
   char keyBuffer[TRI_VOC_KEY_MAX_LENGTH + 1]; 
-  TRI_voc_tid_t tid;
   TRI_voc_size_t keyBodySize;
   TRI_voc_tick_t tick;
   size_t markerSize;
@@ -418,8 +418,6 @@ static int CreateDocumentMarker (TRI_transaction_collection_t* trxCollection,
 
   *result = NULL;
   tick = TRI_NewTickVocBase();
-  tid = TRI_GetMarkerIdTransaction(trxCollection->_transaction);
-  primary = trxCollection->_collection->_collection;
 
   // generate the key
   keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
@@ -525,9 +523,13 @@ static int CreateHeader (TRI_document_collection_t* document,
                          TRI_voc_fid_t fid,
                          TRI_doc_mptr_t** result) {
   TRI_doc_mptr_t* header;
+  size_t markerSize;
+
+  markerSize = (size_t) marker->base._size;
+  assert(markerSize > 0);
 
   // get a new header pointer
-  header = document->_headers->request(document->_headers);
+  header = document->_headers->request(document->_headers, markerSize);
 
   if (header == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -761,7 +763,7 @@ static int RollbackInsert (TRI_document_collection_t* document,
   DeleteSecondaryIndexes(document, newHeader, true);
 
   // release the header. nobody else should point to it now
-  document->_headers->release(document->_headers, newHeader);
+  document->_headers->release(document->_headers, newHeader, true);
 
   res = TRI_ERROR_NO_ERROR;
 
@@ -852,7 +854,7 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
     // update the header with the correct fid and the positions in the datafile
     header->_fid  = fid;
     header->_data = ((char*) result);
-    header->_key  = ((char*) result) + marker->_offsetKey;  
+    header->_key  = ((char*) result) + marker->_offsetKey; 
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid, true);
@@ -886,6 +888,10 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT_MAINTAINER(*freeMarker == true);
   TRI_ASSERT_MAINTAINER(header != NULL);
+  TRI_ASSERT_MAINTAINER(marker != NULL);
+  TRI_ASSERT_MAINTAINER(totalSize > 0);
+  TRI_ASSERT_MAINTAINER(marker->base._size == totalSize);
+
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
   // .............................................................................
@@ -897,7 +903,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insert has failed
-    document->_headers->release(document->_headers, header);
+    document->_headers->release(document->_headers, header, true);
     return res;
   }
 
@@ -907,7 +913,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
   if (res != TRI_ERROR_NO_ERROR) {
     // insertion into secondary indexes failed
     DeletePrimaryIndex(document, header, true);
-    document->_headers->release(document->_headers, header);
+    document->_headers->release(document->_headers, header, true);
 
     return res;
   }
@@ -983,13 +989,17 @@ static int WriteRemoveMarker (TRI_document_collection_t* document,
     dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, header->_fid, true);
 
     if (dfi != NULL) {
+      int64_t size;
+
       TRI_ASSERT_MAINTAINER(header->_data != NULL);
 
+      size = (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
+
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
+      dfi->_sizeAlive -= size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) (header->_data))->_size;
+      dfi->_sizeDead += size;
     }
 
     if (header->_fid != fid) {
@@ -1091,7 +1101,7 @@ static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
   if (res == TRI_ERROR_NO_ERROR) {
     if (directOperation) {
       // release the header pointer
-      document->_headers->release(document->_headers, header);
+      document->_headers->release(document->_headers, header, true);
     }
 
     return TRI_ERROR_NO_ERROR;
@@ -1116,6 +1126,9 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 
   marker = (TRI_doc_document_key_marker_t const*) m;
 
+  assert(marker != NULL);
+  assert(m->_size > 0);
+
   newHeader->_rid     = marker->_rid;
   newHeader->_fid     = fid;
   newHeader->_data    = marker;
@@ -1136,11 +1149,14 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
   TRI_voc_fid_t fid;
   int res;
 
+  assert(totalSize == marker->base._size);
   res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, &result, waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // writing the element into the datafile has succeeded
     TRI_doc_datafile_info_t* dfi;
+
+    assert(result != NULL);
 
     // update the header with the correct fid and the positions in the datafile
     header->_fid  = fid;
@@ -1160,12 +1176,12 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
     }
 
     if (dfi != NULL) {
-      int64_t length = (int64_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
+      int64_t size = (int64_t) ((TRI_df_marker_t*) oldHeader->_data)->_size;
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= length;
+      dfi->_sizeAlive -= size;
       dfi->_numberDead++;
-      dfi->_sizeDead += length;
+      dfi->_sizeDead += size;
     }
   }
 
@@ -1258,7 +1274,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (directOperation) {
-      document->_headers->moveBack(document->_headers, oldHeader);
+      document->_headers->moveBack(document->_headers, newHeader, &oldData);
     }
 
     // write new header into result  
@@ -1474,7 +1490,15 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
   // first create a new marker in memory
   // this does not require any locks
 
-  res = CreateDocumentMarker(trxCollection, &marker, &totalSize, &keyBody, markerType, key, shaped, data);
+  res = CreateDocumentMarker(primary, 
+                             TRI_GetMarkerIdTransaction(trxCollection->_transaction), 
+                             &marker, 
+                             &totalSize, 
+                             &keyBody, 
+                             markerType, 
+                             key, 
+                             shaped, 
+                             data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1587,7 +1611,7 @@ static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT_MAINTAINER(mptr != NULL);
   
   // initialise the result
-  mptr->_key = NULL;
+  mptr->_key  = NULL;
   mptr->_data = NULL;
   
   marker = NULL;  
@@ -1952,7 +1976,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     if (res != TRI_ERROR_NO_ERROR) {
       // insertion failed
       LOG_ERROR("inserting document into indexes failed");
-      document->_headers->release(document->_headers, header);
+      document->_headers->release(document->_headers, header, true);
 
       return res;
     }
@@ -1978,7 +2002,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_headers->moveBack(document->_headers, newHeader);
+    document->_headers->moveBack(document->_headers, newHeader, &oldData);
       
     // update the datafile info
     if (oldData._fid == state->_fid) {
@@ -1989,13 +2013,16 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     }
 
     if (dfi != NULL && found->_data != NULL) {
+      int64_t size;
+
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
+      size = (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
 
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeAlive -= size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeDead += size;
     }
 
     if (state->_dfi != NULL) {
@@ -2080,13 +2107,17 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     }
 
     if (dfi != NULL) {
+      int64_t size;
+
       TRI_ASSERT_MAINTAINER(found->_data != NULL);
 
+      size = (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
+
       dfi->_numberAlive--;
-      dfi->_sizeAlive -= (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeAlive -= size;
 
       dfi->_numberDead++;
-      dfi->_sizeDead += (int64_t) ((TRI_df_marker_t*) found->_data)->_size;
+      dfi->_sizeDead += size;
     }
 
     if (state->_dfi != NULL) {
@@ -2096,7 +2127,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     DeletePrimaryIndex(document, found, false);
 
     // free the header
-    document->_headers->release(document->_headers, CONST_CAST(found));
+    document->_headers->release(document->_headers, CONST_CAST(found), true);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2229,10 +2260,11 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
       // check whether the transaction was half-way committed...
 
       res = TRI_ExecuteSingleOperationTransaction(state->_vocbase, 
-                                                  TRI_TRANSACTION_COORDINATOR_COLLECTION, 
+                                                  TRI_COL_NAME_TRANSACTION,
                                                   TRI_TRANSACTION_READ, 
                                                   ReadTrxCallback, 
-                                                  state);
+                                                  state,
+                                                  false);
       if (res == TRI_ERROR_NO_ERROR) {
         size_t i, n; 
 
@@ -3844,11 +3876,11 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 /// @brief drops an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_idx_iid_t iid) {
+bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
+                                      TRI_idx_iid_t iid) {
   TRI_index_t* found;
   TRI_primary_collection_t* primary;
-  size_t n;
-  size_t i;
+  size_t i, n;
 
   if (iid == 0) {
     return true;
@@ -3899,6 +3931,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
 
     removeResult = TRI_RemoveIndexFile(primary, found);
     TRI_FreeIndex(found);
+
+    TRI_DropIndexReplication(primary->base._vocbase, primary->base._info._cid, iid);
 
     return removeResult;
   }
@@ -4012,7 +4046,8 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collection_t* document,
-                                                           size_t size,
+                                                           size_t count,
+                                                           int64_t size,
                                                            TRI_idx_iid_t iid,
                                                            bool* created) {
   TRI_index_t* idx;
@@ -4027,7 +4062,8 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   // check if we already know a cap constraint
   if (primary->_capConstraint != NULL) {
-    if (primary->_capConstraint->_size == size) {
+    if (primary->_capConstraint->_count == count &&
+        primary->_capConstraint->_size == size) {
       return &primary->_capConstraint->base;
     }
     else {
@@ -4037,7 +4073,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
 
   // create a new index
-  idx = TRI_CreateCapConstraint(primary, size);
+  idx = TRI_CreateCapConstraint(primary, count, size);
 
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4075,25 +4111,43 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 static int CapConstraintFromJson (TRI_document_collection_t* document,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
-  TRI_json_t* num;
+  TRI_json_t* val1;
+  TRI_json_t* val2;
   TRI_index_t* idx;
-  size_t size;
+  size_t count;
+  int64_t size;
 
-  num = TRI_LookupArrayJson(definition, "size");
+  val1 = TRI_LookupArrayJson(definition, "size");
+  val2 = TRI_LookupArrayJson(definition, "byteSize");
 
-  if (num == NULL || num->_type != TRI_JSON_NUMBER) {
-    LOG_ERROR("ignoring cap constraint %llu, 'size' missing", (unsigned long long) iid);
+  if ((val1 == NULL || val1->_type != TRI_JSON_NUMBER) &&
+      (val2 == NULL || val2->_type != TRI_JSON_NUMBER)) {
+    LOG_ERROR("ignoring cap constraint %llu, 'size' and 'byteSize' missing", 
+              (unsigned long long) iid);
+
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  if (num->_value._number < 1.0) {
-    LOG_ERROR("ignoring cap constraint %llu, 'size' %f must be at least 1", (unsigned long long) iid, num->_value._number);
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  count = 0;
+  if (val1 != NULL && val1->_value._number > 0.0) {
+    count = (size_t) val1->_value._number;
   }
 
-  size = (size_t) num->_value._number;
+  size = 0;
+  if (val2 != NULL && val2->_value._number > (double) TRI_CAP_CONSTRAINT_MIN_SIZE) {
+    size = (int64_t) val2->_value._number;
+  }
 
-  idx = CreateCapConstraintDocumentCollection(document, size, iid, NULL);
+  if (count == 0 && size == 0) {
+    LOG_ERROR("ignoring cap constraint %llu, 'size' must be at least 1, "
+              "or 'byteSize' must be at least " 
+              TRI_CAP_CONSTRAINT_MIN_SIZE_STR,
+              (unsigned long long) iid); 
+
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  idx = CreateCapConstraintDocumentCollection(document, count, size, iid, NULL);
 
   return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
 }
@@ -4116,7 +4170,8 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
-                                                        size_t size,
+                                                        size_t count,
+                                                        int64_t size,
                                                         bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
@@ -4129,7 +4184,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  idx = CreateCapConstraintDocumentCollection(document, size, 0, created);
+  idx = CreateCapConstraintDocumentCollection(document, count, size, 0, created);
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 

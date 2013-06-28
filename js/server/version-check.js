@@ -438,6 +438,11 @@
       return createSystemCollection("_trx", { waitForSync : false });
     });
 
+    // set up the collection _replication
+    addTask("setupReplication", "setup _replication collection", function () {
+      return createSystemCollection("_replication", { waitForSync : false });
+    });
+
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "
                 + activeTasks.length + " task(s) to run");
@@ -494,19 +499,6 @@
   }
 
 
-  function applyFixes () {
-    // fixes we'll apply every time we start the server after an upgrade can go here...
-    try {
-      var users = db._collection("_users");
-      if (users) {
-        users.ensureUniqueConstraint("user");
-      }
-    }
-    catch (e) {
-
-    }
-  }
-
   var lastVersion = null;
   var currentServerVersion = internal.db._version().match(/^(\d+\.\d+).*$/);
 
@@ -542,7 +534,6 @@
     if (internal.upgrade) {
       runUpgrade(currentVersion);
     }
-    applyFixes();
     return true;
   }
 

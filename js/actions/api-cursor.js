@@ -57,10 +57,10 @@ var QUERY = internal.AQL_QUERY;
 /// @RESTBODYPARAM{query,json,required}
 /// The following attributes can be used inside the JSON object:
 /// - `query`: contains the query string to be executed (mandatory)
-/// - `count`: boolean flag that indicates whether the number of documents
-///   found should be returned as "count" attribute in the result set (optional).
-///   Calculating the "count" attribute might have a performance penalty for
-///   some queries so this option is turned off by default.
+/// - `count`: boolean flag that indicates whether the total number of documents
+///   in the result set should be returned in the "count" attribute of the result
+///   (optional). Calculating the "count" attribute might in the future have a 
+///   performance impact for some queries so this option is turned off by default.
 /// - `batchSize`: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
@@ -76,9 +76,10 @@ var QUERY = internal.AQL_QUERY;
 /// - `query`: contains the query string to be executed (mandatory)
 ///
 /// - `count`: boolean flag that indicates whether the number of documents
-///   found should be returned as "count" attribute in the result set (optional).
-///   Calculating the "count" attribute might have a performance penalty for
-///   some queries so this option is turned off by default.
+///   in the result set should be returned in the "count" attribute of the result (optional).
+///   Calculating the "count" attribute might in the future have a performance 
+///   impact for some queries so this option is turned off by default, and "count" 
+///   is only returned when requested.
 ///
 /// - `batchSize`: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is

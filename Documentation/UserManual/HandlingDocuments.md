@@ -38,7 +38,7 @@ All documents in ArangoDB have a document handle. This handle uniquely defines a
 document and is managed by ArangoDB. The interface allows you to access the
 documents of a collection as:
 
-    db.@FA{collection}.documet(@FA{document-handle})
+    db.@FA{collection}.document(@FA{document-handle})
 
 For example: Assume that the document handle, which is stored in the `_id` field
 of the document, is `demo/362549` and the document lives in a collection
@@ -64,6 +64,10 @@ Collection Methods {#HandlingDocumentsCollectionMethods}
 
 @anchor HandlingDocumentsRead
 @copydetails JS_DocumentVocbaseCol
+
+@CLEARPAGE
+@anchor HandlingDocumentsExists
+@copydetails JS_ExistsVocbaseCol
 
 @CLEARPAGE
 @anchor HandlingDocumentsAny
@@ -103,6 +107,10 @@ Database Methods {#HandlingDocumentsDatabaseMethods}
 
 @anchor HandlingDocumentsDbRead
 @copydetails JS_DocumentVocbase
+
+@CLEARPAGE
+@anchor HandlingDocumentsDbExists
+@copydetails JS_ExistsVocbase
 
 @CLEARPAGE
 @anchor HandlingDocumentsDbReplace

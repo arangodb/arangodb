@@ -23,7 +23,7 @@ window.foxxEditView = Backbone.View.extend({
     "click #activate"       : "activate"
   },
   hidden: function () {
-    window.App.navigate("applications/installed", {trigger: true});
+    window.App.navigate("applications", {trigger: true});
   },
   
   uninstall: function () {

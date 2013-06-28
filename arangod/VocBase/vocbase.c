@@ -50,6 +50,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/primary-collection.h"
+#include "VocBase/replication.h"
 #include "VocBase/server-id.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/synchroniser.h"
@@ -86,6 +87,12 @@ static uint64_t CurrentTick = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_spin_t TickLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief system defaults for vocbases
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vocbase_defaults_t SystemDefaults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -214,6 +221,77 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy the system defaults
+////////////////////////////////////////////////////////////////////////////////
+
+static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
+                          TRI_vocbase_defaults_t* dst) {
+  dst->defaultMaximalSize           = src->defaultMaximalSize;
+#ifdef TRI_ENABLE_REPLICATION  
+  dst->replicationLogSize           = src->replicationLogSize;
+#endif
+  dst->removeOnDrop                 = src->removeOnDrop;
+  dst->removeOnCompacted            = src->removeOnCompacted;
+  dst->defaultWaitForSync           = src->defaultWaitForSync;
+  dst->forceSyncShapes              = src->forceSyncShapes;
+  dst->forceSyncProperties          = src->forceSyncProperties;
+  dst->requireAuthentication        = src->requireAuthentication;    
+  dst->authenticateSystemOnly       = src->authenticateSystemOnly;
+#ifdef TRI_ENABLE_REPLICATION  
+  dst->replicationEnable            = src->replicationEnable;
+  dst->replicationWaitForSync       = src->replicationWaitForSync;
+#endif
+}  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill a TRI_vocbase_t object with default values provided in defaults
+////////////////////////////////////////////////////////////////////////////////
+
+static void ApplyDefaults (TRI_vocbase_t* vocbase, 
+                           TRI_vocbase_defaults_t const* defaults) {
+
+  vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
+#ifdef TRI_ENABLE_REPLICATION  
+  vocbase->_replicationLogSize           = defaults->replicationLogSize;
+#endif
+  vocbase->_removeOnDrop                 = defaults->removeOnDrop;
+  vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
+  vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
+  vocbase->_forceSyncShapes              = defaults->forceSyncShapes;
+  vocbase->_forceSyncProperties          = defaults->forceSyncProperties;
+  vocbase->_requireAuthentication        = defaults->requireAuthentication;    
+  vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
+#ifdef TRI_ENABLE_REPLICATION  
+  vocbase->_replicationEnable            = defaults->replicationEnable;
+  vocbase->_replicationWaitForSync       = defaults->replicationWaitForSync;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill a TRI_vocbase_defaults_t object with values from a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+static void GetDefaults (TRI_vocbase_t const* vocbase, 
+                         TRI_vocbase_defaults_t* defaults) {
+
+  defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
+#ifdef TRI_ENABLE_REPLICATION  
+  defaults->replicationLogSize          = vocbase->_replicationLogSize;
+#endif
+  defaults->removeOnDrop                = vocbase->_removeOnDrop;
+  defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
+  defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
+  defaults->forceSyncShapes             = vocbase->_forceSyncShapes;
+  defaults->forceSyncProperties         = vocbase->_forceSyncProperties;
+  defaults->requireAuthentication       = vocbase->_requireAuthentication;    
+  defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
+#ifdef TRI_ENABLE_REPLICATION  
+  defaults->replicationEnable           = vocbase->_replicationEnable;
+  defaults->replicationWaitForSync      = vocbase->_replicationWaitForSync;
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current tick value, without using a lock
@@ -363,9 +441,11 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 /// @brief removes a collection name from the global list of collections
 ///
 /// This function is called when a collection is dropped.
+/// note: the collection must be write-locked for this operation
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+static bool UnregisterCollection (TRI_vocbase_t* vocbase, 
+                                  TRI_vocbase_col_t* collection) {
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
@@ -374,6 +454,8 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  TRI_DropCollectionReplication(vocbase, collection->_cid);
 
   return true;
 }
@@ -415,6 +497,12 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    return false;
+  }
+  
+  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT)) {
+    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
     return false;
   }
 
@@ -696,8 +784,32 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     cid
   };
 
-  init._status = TRI_VOC_COL_STATUS_CORRUPTED;
-  init._collection = NULL;
+  init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
+  init._collection  = NULL;
+
+  // default flags: everything is allowed
+  init._canDrop     = true;
+  init._canRename   = true;
+  init._canUnload   = true;
+ 
+  // check for special system collection names 
+  if (TRI_IsSystemCollectionName(name)) {
+    // a few system collections have special behavior
+    if (TRI_EqualString(name, TRI_COL_NAME_DATABASES) ||
+        TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS) ||
+        TRI_EqualString(name, TRI_COL_NAME_PREFIXES) ||
+        TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+        TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
+        TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+      // these collections cannot be dropped or renamed
+      init._canDrop   = false;
+      init._canRename = false;
+
+      // the replication collection cannot be unloaded manually)
+      // (this would make the server hang)
+      init._canUnload = ! TRI_EqualString(name, TRI_COL_NAME_REPLICATION);
+    }
+  }
 
   TRI_CopyString(init._name, name, sizeof(init._name));
 
@@ -951,7 +1063,8 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 /// collection lock by yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, 
+                                  TRI_vocbase_col_t* collection) {
   TRI_col_type_e type;
 
   // .............................................................................
@@ -1000,7 +1113,8 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
     if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_DROP_CALLBACK)) {
       // drop call going on, we must abort
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
+      
+      // someone requested the collection to be dropped, so it's not there anymore
       return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
@@ -1162,6 +1276,20 @@ void TRI_UpdateTickVocBase (TRI_voc_tick_t tick) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current tick counter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t TRI_CurrentTickVocBase () {
+  TRI_voc_tick_t tick;
+
+  TRI_LockSpin(&TickLock);
+  tick = GetTick();
+  TRI_UnlockSpin(&TickLock);
+
+  return tick;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1206,7 +1334,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_vocbase_t* vocbase;
   char* lockFile;
   bool iterateMarkers;
+  bool isSystem;
   int res;
+
+  assert(defaults != NULL);
 
   if (! TRI_IsDirectory(path)) {
     LOG_ERROR("database path '%s' is not a directory", path);
@@ -1222,6 +1353,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
     return NULL;
   }
+
+  isSystem = TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE); 
 
   // .............................................................................
   // check that the database is not locked and lock it
@@ -1261,13 +1394,15 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
     LOG_FATAL_AND_EXIT("cannot create cursors");
   }
 
-  vocbase->_lockFile = lockFile;
-  vocbase->_path = TRI_DuplicateString(path);
-  vocbase->_name = TRI_DuplicateString(name);
-  vocbase->_isSystem = false;
-  vocbase->_requireAuthentication = true;
+  vocbase->_lockFile         = lockFile;
+  vocbase->_path             = TRI_DuplicateString(path);
+  vocbase->_name             = TRI_DuplicateString(name);
   vocbase->_shutdownFilename = TRI_Concatenate2File(path, "SHUTDOWN");
+  vocbase->_isSystem         = false;
 
+  // use the defaults provided
+  ApplyDefaults(vocbase, defaults);
+  
   // init AQL functions
   vocbase->_functions = TRI_InitialiseFunctionsAql();
 
@@ -1308,38 +1443,47 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
-  // scan directory for collections
+  // read the server id
   // .............................................................................
 
-  // defaults
-  vocbase->_defaultMaximalSize     = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
-  vocbase->_defaultWaitForSync     = false; // default sync behavior for new collections
-  vocbase->_forceSyncShapes        = true;  // force sync of shape data to disk
-  vocbase->_removeOnCompacted      = true;
-  vocbase->_removeOnDrop           = true;
- 
-  if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
-    LOG_FATAL_AND_EXIT("reading/creating server id failed");
+  if (isSystem) { 
+    if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
+      LOG_FATAL_AND_EXIT("reading/creating server id failed");
+    }
   }
 
+  // .............................................................................
+  // read information from last shutdown
+  // .............................................................................
 
   // check if we can find a SHUTDOWN file
   // this file will contain the last tick value issued by the server
   // if we find the file, we can avoid scanning datafiles for the last used tick value
+  // note: this is done for the _system database only
 
-  iterateMarkers = true;
+  if (isSystem) {
+    iterateMarkers = true;
 
-  res = ReadShutdownInfo(vocbase->_shutdownFilename);
+    res = ReadShutdownInfo(vocbase->_shutdownFilename);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    // we found the SHUTDOWN file
-    // no need to iterate the markers
+    if (res == TRI_ERROR_NO_ERROR) {
+      // we found the SHUTDOWN file
+      // no need to iterate the markers
+      iterateMarkers = false;
+    }
+    else if (res == TRI_ERROR_INTERNAL) {
+      LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
+    }
+  }
+  else {
     iterateMarkers = false;
   }
-  else if (res == TRI_ERROR_INTERNAL) {
-    LOG_FATAL_AND_EXIT("cannot read shutdown information from file '%s'", vocbase->_shutdownFilename);
-  }
 
+  // .............................................................................
+  // scan directory for collections
+  // .............................................................................
+
+ 
   // scan the database path for collections
   // this will create the list of collections and their datafiles, and will also
   // determine the last tick values used (if iterateMarkers is true)
@@ -1366,10 +1510,27 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
 
 
   LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());  
+
+
+#ifdef TRI_ENABLE_REPLICATION
+  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
+
+  if (vocbase->_replicationLogger == NULL) {
+    LOG_FATAL_AND_EXIT("initialising replication for data '%s' failed", name);
+  }
+
+  if (defaults->replicationEnable) {
+    res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("unable to start replication in database '%s'", name);
+    }
+  }
+#endif
     
 
-  // now remove SHUTDOWN file if it was present
-  if (! iterateMarkers) {
+  // now remove SHUTDOWN file if it was present. this is done for the _system database only
+  if (isSystem && ! iterateMarkers) {
     if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
     }
@@ -1401,16 +1562,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_InitThread(&(vocbase->_indexGC));
   TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
   
-  if (defaults) {
-    vocbase->_removeOnDrop = defaults->removeOnDrop;
-    vocbase->_removeOnCompacted = defaults->removeOnCompacted;
-    vocbase->_defaultMaximalSize = defaults->defaultMaximalSize;
-    vocbase->_defaultWaitForSync = defaults->defaultWaitForSync;
-    vocbase->_forceSyncShapes = defaults->forceSyncShapes;
-    vocbase->_forceSyncProperties = defaults->forceSyncProperties;
-    vocbase->_requireAuthentication = defaults->requireAuthentication;    
-  }  
-  
   // we are done
   return vocbase;
 }
@@ -1437,6 +1588,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
 
   TRI_DestroyVectorPointer(&collections);
+
+
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_FreeReplicationLogger(vocbase->_replicationLogger);
+  vocbase->_replicationLogger = NULL;
+#endif
 
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
@@ -1513,6 +1670,25 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the vocbase system defaults
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetSystemDefaultsVocBase (TRI_vocbase_defaults_t const* src) {
+  TRI_vocbase_defaults_t* dst = &SystemDefaults;
+
+  CopyDefaults(src, dst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the defaults from a vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_GetDefaultsVocBase (TRI_vocbase_t const* vocbase,
+                             TRI_vocbase_defaults_t* dst) {
+  GetDefaults(vocbase, dst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief load authentication information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1528,7 +1704,6 @@ void TRI_LoadAuthInfoVocBase (TRI_vocbase_t* vocbase) {
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t result;
-  TRI_vocbase_col_t* found;
   size_t i;
 
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
@@ -1536,6 +1711,8 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   for (i = 0;  i < vocbase->_collectionsById._nrAlloc;  ++i) {
+    TRI_vocbase_col_t* found;
+
     found = vocbase->_collectionsById._table[i];
 
     if (found != NULL) {
@@ -1547,6 +1724,76 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all known (document) collections with their parameters
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                              bool (*filter)(TRI_vocbase_col_t*, void*),
+                                              void* data) {
+  TRI_vector_pointer_t collections;
+  TRI_json_t* json;
+  size_t i, n;
+  
+  json = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
+
+  // copy collection pointers into vector so we can work with the copy without
+  // the global lock 
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  n = collections._length;
+  for (i = 0; i < n; ++i) {
+    TRI_vocbase_col_t* collection = TRI_AtVectorPointer(&collections, i);
+
+    TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+
+    if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
+        collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      continue;
+    }
+
+    if (filter != NULL && ! filter(collection, data)) {
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      continue;
+    }
+
+    if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
+      TRI_json_t* cinfo;
+
+      cinfo = TRI_CreateJsonCollectionInfo(&collection->_collection->base._info);
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
+    }
+    else {
+      TRI_col_info_t parameter;
+      TRI_json_t* cinfo;
+      int res;
+
+      res = TRI_LoadCollectionInfo(collection->_path, &parameter, false);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        cinfo = TRI_CreateJsonCollectionInfo(&parameter);
+        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
+      } 
+    }
+    
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  }
+   
+  TRI_DestroyVectorPointer(&collections);
+
+  return json;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a collection name by a collection id
@@ -1663,6 +1910,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_collection_t* col;
   TRI_primary_collection_t* primary = NULL;
   TRI_document_collection_t* document;
+  TRI_json_t* json;
   TRI_col_type_e type;
   char const* name;
   void const* found;
@@ -1741,8 +1989,19 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = primary;
   TRI_CopyString(collection->_path, primary->base._directory, sizeof(collection->_path));
+  
+  // grab a read-lock on the collection so no one else can unload it
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
+  // release the lock on the list of collections
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  // replicate and finally unlock the collection
+  json = TRI_CreateJsonCollectionInfo(&col->_info);
+  TRI_CreateCollectionReplication(vocbase, cid, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   return collection;
 }
@@ -1751,7 +2010,12 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 /// @brief unloads a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, 
+                                 TRI_vocbase_col_t* collection) {
+  if (! collection->_canUnload) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
+  }
+
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   // cannot unload a corrupted collection
@@ -1760,13 +2024,13 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
-  // a unloaded collection is unloaded
+  // an unloaded collection is unloaded
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
   }
 
-  // a unloading collection is treated as unloaded
+  // an unloading collection is treated as unloaded
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
@@ -1808,8 +2072,13 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 /// @brief drops a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, 
+                               TRI_vocbase_col_t* collection) {
   int res;
+  
+  if (! collection->_canDrop) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
+  }
 
   // mark collection as deleted
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1922,31 +2191,51 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 /// @brief renames a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection, char const* newName) {
+int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, 
+                                 TRI_vocbase_col_t* collection, 
+                                 char const* newName) {
   TRI_col_info_t info;
   void const* found;
-  char const* oldName;
+  char* oldName;
   bool isSystem;
   int res;
+  
+  if (! collection->_canRename) {
+    return TRI_set_errno(TRI_ERROR_FORBIDDEN); 
+  }
+
+  // lock collection because we are going to copy its current name
+  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
   // old name should be different
-  oldName = collection->_name;
+  oldName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, collection->_name);
+
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (TRI_EqualString(oldName, newName)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+
     return TRI_ERROR_NO_ERROR;
   }
 
   isSystem = TRI_IsSystemCollectionName(oldName);
+
   if (isSystem && ! TRI_IsSystemCollectionName(newName)) {
     // a system collection shall not be renamed to a non-system collection name
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
   else if (! isSystem && TRI_IsSystemCollectionName(newName)) {
     // a non-system collection shall not be renamed to a system collection name
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   if (! TRI_IsAllowedCollectionName(isSystem, newName)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
+
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1960,6 +2249,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
@@ -1968,6 +2259,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
@@ -1978,6 +2271,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   if (found != NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
@@ -1992,6 +2287,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
       return TRI_set_errno(res);
     }
@@ -2004,6 +2301,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
       return TRI_set_errno(res);
     }
@@ -2019,6 +2318,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
       return TRI_set_errno(res);
     }
@@ -2031,6 +2332,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   else {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
@@ -2045,7 +2348,13 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  // stay inside the outer lock to protect against unloading
+  TRI_RenameCollectionReplication(vocbase, collection->_cid, newName);
+  
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+  TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2054,7 +2363,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 /// @brief locks a (document) collection for usage, loading or manifesting it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, 
+                              TRI_vocbase_col_t* collection) {
   return LoadCollectionVocBase(vocbase, collection);
 }
 
@@ -2062,7 +2372,8 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collect
 /// @brief locks a (document) collection for usage by id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const TRI_voc_cid_t cid) {
+TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, 
+                                                 const TRI_voc_cid_t cid) {
   TRI_vocbase_col_t const* collection;
   int res;
 
@@ -2092,7 +2403,8 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const T
 /// @brief locks a (document) collection for usage by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
+TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
+                                                   char const* name) {
   TRI_vocbase_col_t const* collection;
   int res;
 
@@ -2124,7 +2436,8 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
 /// @brief releases a (document) collection from usage
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase, 
+                                   TRI_vocbase_col_t* collection) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 }
 

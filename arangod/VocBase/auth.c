@@ -30,6 +30,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "ShapedJson/shape-accessor.h"
+#include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
@@ -244,7 +245,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   LOG_DEBUG("starting to load authentication and authorisation information");
 
-  collection = TRI_LookupCollectionByNameVocBase(vocbase, "_users");
+  collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 
   if (collection == NULL) {
     LOG_INFO("collection '_users' does not exist, no authentication available");
@@ -478,16 +479,11 @@ bool TRI_CheckAuthenticationAuthInfo2 (TRI_vocbase_t* vocbase,
 
   assert(vocbase);
 
-  // lockup username
+  // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   auth = TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username);
 
-  if (auth == 0) {
-    TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
-    return false;
-  }
-
-  if (! auth->_active) {
+  if (auth == 0 || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }

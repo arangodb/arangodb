@@ -1,6 +1,37 @@
 v1.4
 ----
 
+* issue #559: added Foxx documentation to user manual
+
+* added server startup option `--server.authenticate-system-only`. This option can be
+  used to restrict the need for HTTP authentication to internal functionality and APIs,
+  such as `/_api/*` and `/_admin/*`. 
+  Setting this option to `true` will thus force authentication for the ArangoDB APIs 
+  and the web interface, but allow unauthenticated requests for other URLs (including
+  user defined actions and Foxx applications).
+  The default value of this option is `false`, meaning that if authentication is turned
+  on, authentication is still required for *all* incoming requests. Only by setting the
+  option to `true` this restriction is lifted and authentication becomes required for
+  URLs starting with `/_` only.
+
+  Please note that authentication still needs to be enabled regularly by setting the
+  `--server.disable-authentication` parameter to `false`. Otherwise no authentication 
+  will be required for any URLs as before.
+
+* protect collections against unloading when there are still document barriers around.
+
+* extended cap constraints to optionally limit the active data size in a collection to
+  a specific number of bytes.
+
+  The arguments for creating a cap constraint are now:
+  `collection.ensureCapConstraint(<count>, <byteSize>);`
+
+  It is supported to specify just a count as in ArangoDB 1.3 and before, to specify 
+  just a fileSize, or both. The first met constraint will trigger the automated
+  document removal.
+
+* added `db._exists(doc)` and `collection.exists(doc)` for easy document existence checks
+
 * added API `/_api/current-database` to retrieve information about the database the
   client is currently connected to.
 
@@ -53,6 +84,12 @@ v1.4
 * issue #517: Foxx: Route parameters with captial letters fail
 
 * issue #512: Binded Parameters for LIMIT
+
+
+v1.3.3 (XXXX-XX-XX)
+-------------------
+
+* added missing error reporting for errors that happened during import of edges
 
 
 v1.3.2 (2013-XX-XX)
