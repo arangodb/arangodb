@@ -59,13 +59,13 @@ var arangodb = require("org/arangodb"),
 var findOrCreateCollectionByName = function (name) {
   var col = db._collection(name);
 
-  if (col === null) {
+  if (is.notExisty(col)) {
     col = db._create(name);
   } else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
-  if (col === null) {
+  if (is.notExisty(col)) {
     throw "collection '" + name + "' has vanished";
   }
 
@@ -79,13 +79,13 @@ var findOrCreateCollectionByName = function (name) {
 var findOrCreateEdgeCollectionByName = function (name) {
   var col = db._collection(name);
 
-  if (col === null) {
+  if (is.notExisty(col)) {
     col = db._createEdgeCollection(name);
   } else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
-  if (col === null) {
+  if (is.notExisty(col)) {
     throw "collection '" + name + "' has vanished";
   }
 
@@ -118,8 +118,8 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
-  var shallow = this._properties._shallowCopy;
-  var id;
+  var shallow = this._properties._shallowCopy,
+    id;
 
   // Could potentially change the weight of edges
   this._graph.emptyCachedPredecessors();
@@ -201,8 +201,8 @@ Vertex.prototype.edges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getInEdges = function () {
-  var labels = Array.prototype.slice.call(arguments);
-  var result = this.inbound();
+  var labels = Array.prototype.slice.call(arguments),
+    result = this.inbound();
 
   if (labels.length > 0) {
     result = result.filter(function (edge) {
@@ -226,8 +226,8 @@ Vertex.prototype.getInEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getOutEdges = function () {
-  var labels = Array.prototype.slice.call(arguments);
-  var result = this.outbound();
+  var labels = Array.prototype.slice.call(arguments),
+    result = this.outbound();
 
   if (labels.length > 0) {
     result = result.filter(function (edge) {
@@ -248,8 +248,8 @@ Vertex.prototype.getOutEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getEdges = function () {
-  var labels = Array.prototype.slice.call(arguments);
-  var result = this.edges();
+  var labels = Array.prototype.slice.call(arguments),
+    result = this.edges();
 
   if (labels.length > 0) {
     result = result.filter(function (edge) {
@@ -313,8 +313,8 @@ Vertex.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
-  var shallow = this._properties._shallowCopy;
-  var id;
+  var shallow = this._properties._shallowCopy,
+    id;
 
   shallow[name] = value;
 
@@ -382,78 +382,69 @@ Vertex.prototype.outDegree = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
-  var gdb = db._collection("_graphs");
-  var graphProperties;
-  var graphPropertiesId;
+  var gdb = db._collection("_graphs"),
+    graphProperties,
+    graphPropertiesId;
 
-  if (gdb === null) {
+  if (is.notExisty(gdb)) {
     throw "_graphs collection does not exist.";
   }
 
-  if (typeof name !== "string" || name === "") {
+  if (is.noString(name) || name === "") {
     throw "<name> must be a string";
   }
 
-  if (vertices === undefined && edges === undefined) {
-
+  if (is.notExisty(vertices) && is.notExisty(edges)) {
     // Find an existing graph
     try {
       graphProperties = gdb.document(name);
-    }
-    catch (e) {
+    } catch (e) {
       throw "no graph named '" + name + "' found";
     }
 
-    if (graphProperties === null) {
+    if (is.notExisty(graphProperties)) {
       throw "no graph named '" + name + "' found";
     }
 
     vertices = db._collection(graphProperties.vertices);
 
-    if (vertices === null) {
+    if (is.notExisty(vertices)) {
       throw "vertex collection '" + graphProperties.vertices + "' has vanished";
     }
 
     edges = db._collection(graphProperties.edges);
 
-    if (edges === null) {
+    if (is.notExisty(edges)) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
     }
-  }
-  else if (typeof vertices !== "string" || vertices === "") {
+  } else if (is.noString(vertices) || vertices === "") {
     throw "<vertices> must be a string or null";
-  }
-  else if (typeof edges !== "string" || edges === "") {
+  } else if (is.noString(edges) || edges === "") {
     throw "<edges> must be a string or null";
-  }
-  else {
-
+  } else {
     // Create a new graph or get an existing graph
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
 
     try {
       graphProperties = gdb.document(name);
-    }
-    catch (e1) {
+    } catch (e1) {
       graphProperties = null;
     }
 
     // Graph doesn't exist yet
     if (graphProperties === null) {
-
       // check if know that graph
       graphProperties = gdb.firstExample(
         'vertices', vertices.name(),
         'edges', edges.name()
       );
 
-      if (graphProperties === null) {
-        
+      if (is.notExisty(graphProperties)) {
          // check if edge is used in a graph
         graphProperties = gdb.firstExample('edges', edges.name());
 
-        if (graphProperties === null) {      
+        if (is.notExisty(graphProperties)) {
           graphPropertiesId = gdb.save({
             'vertices' : vertices.name(),
             'edges' : edges.name(),
@@ -461,24 +452,14 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
           }, waitForSync);
 
           graphProperties = gdb.document(graphPropertiesId);
-        }
-        else {
+        } else {
           throw "edge collection already used";
-        }         
-      }
-      else {
+        }
+      } else {
         throw "found graph but has different <name>";
       }
-    }
-    else {
+    } else {
       throw "graph with that name already exists";
-      //if (graphProperties.vertices !== vertices.name()) {
-      //  throw "found graph but has different <vertices>";
-      //}
-
-      //if (graphProperties.edges !== edges.name()) {
-      //  throw "found graph but has different <edges>";
-      //}
     }
   }
 
@@ -535,7 +516,7 @@ Graph.prototype.drop = function (waitForSync) {
 Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitForSync) {
   this.emptyCachedPredecessors();
 
-  if (id !== undefined && id !== null) {
+  if (is.existy(id)) {
     shallow._key = String(id);
   }
 
@@ -727,7 +708,7 @@ Graph.prototype.removeEdge = function (edge, waitForSync) {
   if (edge._properties) {
     result = this._edges.remove(edge._properties, true, waitForSync);
 
-    if (! result) {
+    if (!result) {
       throw "cannot delete edge";
     }
 
@@ -794,20 +775,20 @@ Graph.prototype.setCachedPredecessors = function (target, source, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructVertex = function (data) {
-  var id;
+  var id, vertex, properties;
 
-  if (typeof data === "string") {
+  if (is.string(data)) {
     id = data;
   } else {
     id = data._id;
   }
 
-  var vertex = this._verticesCache[id];
+  vertex = this._verticesCache[id];
 
-  if (vertex === undefined) {
-    var properties = this._vertices.document(id);
+  if (is.notExisty(vertex)) {
+    properties = this._vertices.document(id);
 
-    if (! properties) {
+    if (!properties) {
       throw "accessing a deleted vertex";
     }
 
@@ -824,7 +805,7 @@ Graph.prototype.constructVertex = function (data) {
 Graph.prototype.constructEdge = function (data) {
   var id, edge, properties;
 
-  if (typeof data === "string") {
+  if (is.string(data)) {
     id = data;
   } else {
     id = data._id;
@@ -832,7 +813,7 @@ Graph.prototype.constructEdge = function (data) {
 
   edge = this._edgesCache[id];
 
-  if (edge === undefined) {
+  if (is.existy(edge)) {
     properties = this._edges.document(id);
 
     if (!properties) {
