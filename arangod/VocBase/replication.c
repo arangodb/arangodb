@@ -1327,24 +1327,12 @@ int TRI_DocumentReplication (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump data from a collection
+/// @brief get the datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpCollectionReplication (TRI_string_buffer_t* buffer, 
-                                   TRI_vocbase_col_t* collection,
-                                   TRI_voc_tick_t tickMin,
-                                   TRI_voc_tick_t tickMax,
-                                   uint64_t chunkSize) {
-  TRI_primary_collection_t* primary;
+static TRI_vector_t GetDatafiles (TRI_primary_collection_t* primary) {
   TRI_vector_t datafiles;
-  TRI_voc_tick_t firstFoundTick;
-  TRI_voc_tick_t lastFoundTick;
-  size_t i; 
-  int res;
-  bool hasMarkers;
-  bool hasMore;
-
-  primary = (TRI_primary_collection_t*) collection->_collection;
+  size_t i;
 
   // determine the datafiles of the collection
   TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
@@ -1369,8 +1357,28 @@ int TRI_DumpCollectionReplication (TRI_string_buffer_t* buffer,
 
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
+  return datafiles;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from a collection
+////////////////////////////////////////////////////////////////////////////////
 
+static int DumpCollection (TRI_string_buffer_t* buffer, 
+                           TRI_primary_collection_t* primary,
+                           TRI_voc_tick_t tickMin,
+                           TRI_voc_tick_t tickMax,
+                           uint64_t chunkSize) {
+  TRI_vector_t datafiles;
+  TRI_voc_tick_t firstFoundTick;
+  TRI_voc_tick_t lastFoundTick;
+  size_t i; 
+  int res;
+  bool hasMarkers;
+  bool hasMore;
+
+  datafiles = GetDatafiles(primary);
+  
   TRI_AppendStringStringBuffer(buffer, "{\"markers\":[");
   
   res            = TRI_ERROR_NO_ERROR;
@@ -1477,6 +1485,40 @@ int TRI_DumpCollectionReplication (TRI_string_buffer_t* buffer,
     TRI_AppendStringStringBuffer(buffer, hasMore ? "true" : "false");
     TRI_AppendCharStringBuffer(buffer, '}');
   }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DumpCollectionReplication (TRI_string_buffer_t* buffer, 
+                                   TRI_vocbase_col_t* collection,
+                                   TRI_voc_tick_t tickMin,
+                                   TRI_voc_tick_t tickMax,
+                                   uint64_t chunkSize) {
+  TRI_primary_collection_t* primary;
+  TRI_barrier_t* b;
+  int res;
+
+  primary = (TRI_primary_collection_t*) collection->_collection;
+
+  // create a barrier so the underlying collection is not unloaded
+  b = TRI_CreateBarrierReplication(&primary->_barrierList);
+
+  if (b == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  // block compaction
+  TRI_ReadLockReadWriteLock(&primary->_compactionLock);
+
+  res = DumpCollection(buffer, primary, tickMin, tickMax, chunkSize);
+  
+  TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
+
+  TRI_FreeBarrier(b);
 
   return res;
 }
