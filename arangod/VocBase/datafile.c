@@ -1300,16 +1300,20 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
+/// also may set datafile's min/max tick values
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t* datafile,
                           bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                           void* data,
-                          bool journal) {
+                          bool journal,
+                          bool setTicks) {
   char* ptr;
   char* end;
 
-  LOG_TRACE("iterating over datafile '%s', fid: %llu", datafile->getName(datafile), (unsigned long long) datafile->_fid);
+  LOG_TRACE("iterating over datafile '%s', fid: %llu", 
+            datafile->getName(datafile), 
+            (unsigned long long) datafile->_fid);
 
   ptr = datafile->_data;
   end = datafile->_data + datafile->_currentSize;
@@ -1326,6 +1330,21 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 
     if (marker->_size == 0) {
       return true;
+    }
+
+    // set min/max tick values for datafile
+    if (setTicks) {
+      TRI_voc_tick_t tick;
+
+      tick = marker->_tick;
+
+      if (datafile->_tickMin == 0) {
+        datafile->_tickMin = tick;
+      }
+
+      if (tick > datafile->_tickMax) {
+        datafile->_tickMax = tick;
+      }
     }
 
     result = iterator(marker, data, datafile, journal);

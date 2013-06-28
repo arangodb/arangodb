@@ -61,10 +61,9 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask (Endpoint* endpoint, bool reuseAddress)
+ListenTask::ListenTask (Endpoint* endpoint)
   : Task("ListenTask"),
     readWatcher(0),
-    reuseAddress(reuseAddress),
     _endpoint(endpoint),
     acceptFailures(0) {
   _listenSocket.fileHandle = 0;

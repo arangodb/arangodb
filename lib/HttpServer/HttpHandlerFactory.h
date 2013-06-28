@@ -39,7 +39,7 @@
 
 namespace triagens {
   namespace rest {
-    class ConnectionInfo;
+    struct ConnectionInfo;
     class HttpHandler;
     class HttpRequest;
     class HttpResponse;

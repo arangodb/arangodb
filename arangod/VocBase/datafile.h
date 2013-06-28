@@ -565,12 +565,14 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
+/// also may set datafile's min/max tick values
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t*,
                           bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                           void* data,
-                          bool journal);
+                          bool journal,
+                          bool setTicks);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing datafile read-only

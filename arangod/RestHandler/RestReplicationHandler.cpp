@@ -33,6 +33,9 @@
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
+#include "VocBase/replication.h"
+
+#ifdef TRI_ENABLE_REPLICATION
 
 using namespace std;
 using namespace triagens::basics;
@@ -103,6 +106,7 @@ Handler::status_e RestReplicationHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
+  // only POST is allowed
   if (type != HttpRequest::HTTP_REQUEST_POST) { 
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
@@ -120,20 +124,20 @@ Handler::status_e RestReplicationHandler::execute() {
   vector<string> const& suffix = _request->suffix();
   const string& command = suffix[0];
 
-  bool foundCollection;
-  char const* collection = _request->value("collection", foundCollection);
-
-  if (command == "dump-initial-start") {
-    handleInitialDumpStart();
+  if (command == "start") {
+    handleCommandStart();
   }
-  else if (command == "dump-initial-collection" && foundCollection) {
-    handleInitialDumpCollection(collection);
+  else if (command == "stop") {
+    handleCommandStop();
   }
-  else if (command == "dump-initial-end") {
-    handleInitialDumpEnd();
+  else if (command == "state") {
+    handleCommandState();
   }
-  else if (command == "dump-continuous") {
-    handleContinuousDump();
+  else if (command == "inventory") {
+    handleCommandInventory();
+  }
+  else if (command == "dump") {
+    handleCommandDump(); 
   }
   else {
     generateError(HttpResponse::BAD,
@@ -147,100 +151,250 @@ Handler::status_e RestReplicationHandler::execute() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to include a collection in replication
-////////////////////////////////////////////////////////////////////////////////
-    
-bool RestReplicationHandler::shouldIncludeCollection (const char* name) {
-  // TODO: exclude certain collections from replication
-  return true; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump a part of a collection
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::dumpCollection (TRI_voc_cid_t cid,
-                                            TRI_voc_tick_t tickStart,
-                                            TRI_voc_tick_t tickEnd,
-                                            uint64_t chunkSize) {
-  return TRI_ERROR_NO_ERROR;
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                             public static methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle replication initialisation
+/// @addtogroup ArangoDB
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::handleInitialDumpStart () {
-  TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exclude a collection from replication?
+////////////////////////////////////////////////////////////////////////////////
 
-  // TODO: activate replication log here
-
-  TRI_json_t result;
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-  
-
-  // collections
-  TRI_vector_pointer_t colls = TRI_CollectionsVocBase(_vocbase);
-  const size_t n = colls._length;
-  TRI_json_t* collections = TRI_CreateList2Json(TRI_CORE_MEM_ZONE, n);
-
-  for (size_t i = 0;  i < n;  ++i) {
-    TRI_vocbase_col_t const* c = (TRI_vocbase_col_t const*) colls._buffer[i];
-
-    if (! shouldIncludeCollection(c->_name)) {
-      continue;
-    }
-    
-    TRI_json_t* name = TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, c->_name);
-    TRI_json_t* cid  = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) c->_cid));
-
-    TRI_json_t* collection = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, collection, "name", name);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, collection, "cid", cid);
-
-    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, collections, collection);
+bool RestReplicationHandler::excludeCollection (const char* name) {
+  if (TRI_EqualString(name, TRI_COL_NAME_DATABASES)) {
+    return true;
   }
   
-  TRI_DestroyVectorPointer(&colls);
-
-  // server data  
-  TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+  if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS)) {
+    return true;
+  }
   
-  // put it all together 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) tick)));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
+  if (TRI_EqualString(name, TRI_COL_NAME_PREFIXES)) {
+    return true;
+  }
 
-  generateResult(&result);
+  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION)) {
+    return true;
+  }
 
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  if (TRI_EqualString(name, TRI_COL_NAME_TRANSACTION)) {
+    return true;
+  }
+  
+  if (TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+    return true;
+  }
 
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief filter a collection based on collection attributes
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection, 
+                                               void* data) {
+  const char* name = collection->_name;
+
+  if (name == NULL) {
+    // invalid collection
+    return false;
+  }
+
+  if (*name == '_' && excludeCollection(name)) {
+    // system collection
+    return false;
+  }
+
+  TRI_voc_tick_t* tick = (TRI_voc_tick_t*) data;
+
+  if (collection->_cid > *tick) {
+    // collection is too new?
+    return false;
+  }
+
+  // all other cases should be included
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle dump of a single collection
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestReplicationHandler::handleInitialDumpCollection (const char* collection) {
-  static const uint64_t minChunkSize = 1 * 1024 * 1024;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add replication state to a JSON array
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::addState (TRI_json_t* dst, 
+                                       TRI_replication_state_t const* state) {
+
+  TRI_json_t* stateJson = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
+
+  // add replication state
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
+
+  char* firstString = TRI_StringUInt64(state->_firstTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "firstTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
+
+  char* lastString = TRI_StringUInt64(state->_lastTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
   
-  assert(collection != 0);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, dst, "state", stateJson);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remotely start the replication
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandStart () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  int res = TRI_StartReplicationLogger(_vocbase->_replicationLogger);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
     
-  if (! shouldIncludeCollection(collection)) {
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remotely stop the replication
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandStop () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  int res = TRI_StopReplicationLogger(_vocbase->_replicationLogger);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the state of the replication
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandState () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  TRI_replication_state_t state;
+
+  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
+    
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+    
+    addState(&result, &state);
+
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the inventory (current replication and collection state)
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandInventory () {
+  assert(_vocbase->_replicationLogger != 0);
+
+  TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
+  
+  // collections
+  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, &filterCollection, &tick);
+
+  TRI_replication_state_t state;
+
+  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_CORE_MEM_ZONE, collections);
+
+    generateError(HttpResponse::BAD, res);
+  }
+  else {
+    TRI_json_t result;
+  
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+
+    // add server info
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+    
+    // add collections state
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
+
+    addState(&result, &state);
+  
+    generateResult(&result);
+  
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  }
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump command for a specific collection
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandDump () {
+  static const uint64_t minChunkSize = 16 * 1024;
+
+  char const* collection = _request->value("collection");
+    
+  if (collection == 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection");
-    return false;
+                  "invalid collection parameter");
+    return;
   }
-
+  
   // determine start tick for dump
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = 0;
+  TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
   bool found;
   char const* value;
-
+  
   value = _request->value("from", found);
   if (found) {
     tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
@@ -256,9 +410,9 @@ bool RestReplicationHandler::handleInitialDumpCollection (const char* collection
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
-    return false;
+    return;
   }
-
+  
   // determine chunk size
   uint64_t chunkSize = minChunkSize;
 
@@ -270,42 +424,65 @@ bool RestReplicationHandler::handleInitialDumpCollection (const char* collection
     chunkSize = minChunkSize;
   }
 
-  LOGGER_DEBUG("request collection dump for collection " << collection << 
-               ", tickStart: " << tickStart << ", tickEnd: " << tickEnd);
+  TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
-  TRI_vocbase_col_t* col = TRI_UseCollectionByNameVocBase(_vocbase, collection);
-  if (col == 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection");
-    return false;
+  if (c == 0) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
   }
 
-  dumpCollection(col->_cid, tickStart, tickEnd, chunkSize);
+  const TRI_voc_cid_t cid = c->_cid;
+
+  LOGGER_DEBUG("request collection dump for collection '" << collection << "', "
+               "tickStart: " << tickStart << ", tickEnd: " << tickEnd);
+
+  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == 0) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+  
+
+  // initialise the dump container
+  TRI_replication_dump_t dump; 
+  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
+
+  if (dump._buffer == 0) {
+    TRI_ReleaseCollectionVocBase(_vocbase, col);
+    
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize);
+  
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
-  return true;
-}
+  if (res == TRI_ERROR_NO_ERROR) {
+    // generate the result
+    _response = createResponse(HttpResponse::OK);
+    _response->setContentType("application/x-arango-dump; charset=utf-8");
+    _response->setHeader("x-arango-hasmore", (dump._hasMore ? "true" : "false"));
+    _response->setHeader("x-arango-lastfound", StringUtils::itoa(dump._lastFoundTick));
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle end of initial dump
-////////////////////////////////////////////////////////////////////////////////
+    // transfer ownership of the buffer contents
+    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
+    // avoid double freeing
+    dump._buffer->_buffer = 0;
+  }
+  else {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
 
-bool RestReplicationHandler::handleInitialDumpEnd () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief continuous streaming of replication log
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestReplicationHandler::handleContinuousDump () {
-  return true;
+  TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor

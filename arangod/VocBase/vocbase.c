@@ -500,7 +500,9 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return false;
   }
   
-  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT)) {
+  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT) ||
+      TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_REPLICATION) ||
+      TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_COMPACTION)) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     return false;
@@ -1704,7 +1706,6 @@ void TRI_LoadAuthInfoVocBase (TRI_vocbase_t* vocbase) {
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t result;
-  TRI_vocbase_col_t* found;
   size_t i;
 
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
@@ -1712,6 +1713,8 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   for (i = 0;  i < vocbase->_collectionsById._nrAlloc;  ++i) {
+    TRI_vocbase_col_t* found;
+
     found = vocbase->_collectionsById._table[i];
 
     if (found != NULL) {
@@ -1723,6 +1726,76 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all known (document) collections with their parameters
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                              bool (*filter)(TRI_vocbase_col_t*, void*),
+                                              void* data) {
+  TRI_vector_pointer_t collections;
+  TRI_json_t* json;
+  size_t i, n;
+  
+  json = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
+
+  // copy collection pointers into vector so we can work with the copy without
+  // the global lock 
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  n = collections._length;
+  for (i = 0; i < n; ++i) {
+    TRI_vocbase_col_t* collection = TRI_AtVectorPointer(&collections, i);
+
+    TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+
+    if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
+        collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      continue;
+    }
+
+    if (filter != NULL && ! filter(collection, data)) {
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      continue;
+    }
+
+    if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
+      TRI_json_t* cinfo;
+
+      cinfo = TRI_CreateJsonCollectionInfo(&collection->_collection->base._info);
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
+    }
+    else {
+      TRI_col_info_t parameter;
+      TRI_json_t* cinfo;
+      int res;
+
+      res = TRI_LoadCollectionInfo(collection->_path, &parameter, false);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        cinfo = TRI_CreateJsonCollectionInfo(&parameter);
+        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
+      } 
+    }
+    
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  }
+   
+  TRI_DestroyVectorPointer(&collections);
+
+  return json;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a collection name by a collection id
