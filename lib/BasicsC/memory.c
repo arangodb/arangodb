@@ -59,7 +59,7 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
-#define ZONE_DEBUG_LOCATION "in %s:%d"
+#define ZONE_DEBUG_LOCATION " in %s:%d"
 #define ZONE_DEBUG_PARAMS ,file, line
 
 #else
@@ -189,10 +189,9 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   // warn in the case of very big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
     fprintf(stderr,
-            "big malloc action: %llu bytes in %s:%d\n", 
-            (unsigned long long) n, 
-            file, 
-            line);
+            "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
+            (unsigned long long) n 
+            ZONE_DEBUG_PARAMS);
   }
 
   m = malloc((size_t) n + sizeof(uintptr_t));
@@ -278,11 +277,11 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   p -= sizeof(uintptr_t);
 
   if (* (uintptr_t*) p != zone->_zid) {
-    LOG_WARNING("memory zone mismatch in TRI_Reallocate in %s:%d, old zone %d, new zone %d",
-                file,
-                line,
-                (int) * (uintptr_t*) p,
-                (int) zone->_zid);
+    fprintf(stderr,
+            "memory zone mismatch in TRI_Reallocate" ZONE_DEBUG_LOCATION ", old zone %d, new zone %d"
+            ZONE_DEBUG_PARAMS,
+            (int) * (uintptr_t*) p,
+            (int) zone->_zid);
   }
 
   p = realloc(p, (size_t) n + sizeof(uintptr_t));
@@ -344,17 +343,20 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
   p = (char*) m;
 
   if (p == NULL) {
-    LOG_ERROR("freeing nil ptr " ZONE_DEBUG_LOCATION ZONE_DEBUG_PARAMS);
+    fprintf(stderr,
+            "freeing nil ptr " ZONE_DEBUG_LOCATION 
+            ZONE_DEBUG_PARAMS);
   }
 
   // zone->_zid is a uint32_t but we'll decrease by sizeof(uintptr_t) bytes for good alignment everywhere
   p -= sizeof(uintptr_t);
 
   if (* (uintptr_t*) p != zone->_zid) {
-    LOG_WARNING("memory zone mismatch in TRI_Free " ZONE_DEBUG_LOCATION ", old zone %d, new %d"
-                ZONE_DEBUG_PARAMS,
-                (int) * (uintptr_t*) p,
-                (int) zone->_zid);
+    fprintf(stderr,
+            "memory zone mismatch in TRI_Free" ZONE_DEBUG_LOCATION ", old zone %d, new %d\n"
+            ZONE_DEBUG_PARAMS,
+            (int) * (uintptr_t*) p,
+            (int) zone->_zid);
   }
 
   free(p);
@@ -378,7 +380,10 @@ void TRI_SystemFree (void* p) {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (p == NULL) {
-    LOG_ERROR("freeing nil ptr in %s:%d", file, line);
+    fprintf(stderr,
+            "freeing nil ptr in %s:%d\n", 
+            file, 
+            line);
   }
 #endif
   free(p);
