@@ -1827,7 +1827,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   idx = &skiplistIndex->base;
 
   idx->typeName = TypeNameSkiplistIndex;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, false);
+  TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, true);
 
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
