@@ -44,13 +44,15 @@ function NodeReducer(nodes, edges) {
       })[0];
     },
     
-    // Will Overwrite dQ, a and heap!
+    
     populateValues = function(dQ, a, heap) {
       var m = edges.length,
-        twoM = 2 * m,
-        cFact = 1 / twoM;
+        twoM = 2 * m;
       _.each(nodes, function(n) {
-        a[n._id] = (n._outboundCounter + n._inboundCounter) / twoM;
+        a[n._id] = {
+          in: n._inboundCounter / m,
+          out: n._outboundCounter / m
+        };
       });
       
       _.each(edges, function(e) {
@@ -65,15 +67,49 @@ function NodeReducer(nodes, edges) {
         if (dQ[sID] === undefined) {
           dQ[sID] = {};
           heap[sID] = {};
-          heap[sID].val = -1;
+          heap[sID].val = Number.NEGATIVE_INFINITY;
         }
-        dQ[sID][lID] = cFact - a[sID] * a[lID];
+        dQ[sID][lID] = (dQ[sID][lID] || 0) + 1 / twoM - a[e.source._id].in * a[e.target._id].out;
         if (heap[sID].val < dQ[sID][lID]) {
           heap[sID].val = dQ[sID][lID];
           heap[sID].sID = sID;
           heap[sID].lID = lID;
         }
       });
+      console.log(dQ);
+   },
+    
+    // Will Overwrite dQ, a and heap!
+    // Old undirected version
+    populateValuesUndirected = function(dQ, a, heap) {
+      var m = edges.length,
+        twoM = 2 * m;
+      _.each(nodes, function(n) {
+        a[n._id] = n._outboundCounter / m;
+      });
+      
+      _.each(edges, function(e) {
+        var sID, lID;
+        if (e.source._id < e.target._id) {
+          sID = e.source._id;
+          lID = e.target._id;
+        } else {
+          sID = e.target._id;
+          lID = e.source._id;
+        }
+        if (dQ[sID] === undefined) {
+          dQ[sID] = {};
+          heap[sID] = {};
+          heap[sID].val = Number.NEGATIVE_INFINITY;
+        }
+        dQ[sID][lID] = (dQ[sID][lID] || 0) + 1 / twoM - a[sID] * a[lID];
+        if (heap[sID].val < dQ[sID][lID]) {
+          heap[sID].val = dQ[sID][lID];
+          heap[sID].sID = sID;
+          heap[sID].lID = lID;
+        }
+      });
+      console.log(dQ);
    },
    
    getLargestOnHeap = function(heap) {
@@ -87,12 +123,11 @@ function NodeReducer(nodes, edges) {
      coms[lID] = coms[lID] || {com: [lID], q: 0};
      var old = coms[sID].com,
       newC = coms[lID].com;
-     coms[lID].com = old.concat(newC);
-     coms[lID].q += coms[sID].q + val;
-     delete coms[sID];
+     coms[sID].com = old.concat(newC);
+     coms[sID].q += coms[sID].q + val;
+     delete coms[lID];
    },
    
-
    getDQValue = function(dQ, a, b) {
      if (a < b) {
        if (dQ[a] !== undefined) {
@@ -142,34 +177,88 @@ function NodeReducer(nodes, edges) {
      }
    },
    
-   updateValues = function(largest, dQ, a, heap) {
-     var lID = largest.lID,
-       sID = largest.sID;
-     _.each(nodes, function (n) {
-       var id = n._id,
-         c1, c2;
-       if (id === sID || id === lID) {
-         return null;
-       }
-       c1 = getDQValue(dQ, id, sID);
-       c2 = getDQValue(dQ, id, lID);
-       if (c1 !== undefined) {
-         if (c2 !== undefined) {
-           setDQValue(dQ, heap, id, lID, c1 + c2);
+   calcDQValue2 = function(a, i, j, k, vi, vj) {
+     if (vi !== undefined || vj !== undefined) {
+       if (vi !== undefined) {
+         if (vj !== undefined) {
+           return vi + vj;
          } else {
-           setDQValue(dQ, heap, id, lID, c1 - 2 * a[lID] * a[id]);
+           return vi - 2 * a[j] * a[k]; 
          }
-         delDQValue(dQ, id, sID);
        } else {
-         if (c2 !== undefined) {
-           setDQValue(dQ, heap, id, lID, c2- 2 * a[sID] * a[id]);
+         return vj - 2 * a[i] * a[k]; 
+       }
+     }
+   }, 
+   
+   updateHeap = function(dQ, heap) {
+     _.each(heap, function (last, k) {
+       var l = dQ[k],
+         max = Number.NEGATIVE_INFINITY,
+         maxId;
+       if (l) {
+         _.each(l, function (v, id) {
+           if (max < v) {
+             max = v;
+             maxId = id;
+           }
+         });
+         heap[k] = {
+           sID: k,
+           lID: maxId,
+           val: max
          }
+       } else {
+         delete heap[k];
        }
      });
-     delete dQ[sID];
-     delete heap[sID];
-     a[lID] += a[sID];
-     delete a[sID];
+   },
+   
+   updateValues = function(largest, dQ, a, heap) {
+     var lID = largest.lID,
+       sID = largest.sID,
+       listS = dQ[sID] || {},
+       listL = dQ[lID] || {};
+     _.each(dQ, function (l, k) {
+       var c1, c2;
+       if (k < sID) {
+         l[sID] = calcDQValue2(a, sID, lID, k, l[sID], l[lID]);
+         delete l[lID];
+         return;
+       } else if (k === sID) {
+         delete l[lID];
+         _.each(l, function(val, key) {
+           if (key < lID) {
+             if (dQ[key] && dQ[key][lID] !== undefined) {
+               l[key] = calcDQValue2(a, sID, lID, key, val, dQ[key][lID]);
+               delete dQ[key][lID];
+             } else {
+               l[key] = calcDQValue2(a, sID, lID, key, val, undefined);
+             }
+             return;
+           } else {
+             if (dQ[lID] && dQ[lID][key]) {
+               l[key] = calcDQValue2(a, sID, lID, key, val, listL[key]);
+               delete listL[key];
+             } else {
+               l[key] = calcDQValue2(a, sID, lID, key, val, undefined);
+             }
+             return;
+           }
+         });
+         return;
+       } else if (k < lID) {
+         listS[k] = calcDQValue2(a, sID, lID, k, undefined, l[lID]);
+       } else if (lID === k) {
+         _.each(listL, function(val, key) {
+           listS[key] = calcDQValue2(a, sID, lID, k, undefined, listL[key]);
+         });
+       }
+     });
+     delete dQ[lID];
+     a[sID] += a[sID];
+     delete a[lID];
+     updateHeap(dQ, heap);     
    },
    
    sortBySize = function(a, b) {
@@ -256,8 +345,6 @@ function NodeReducer(nodes, edges) {
    },
    
    communityDetectionStep = function(dQ, a, heap, coms) {
-     //console.log("COMS: " + JSON.stringify(coms));
-     //console.log("HEAP: " + JSON.stringify(heap));
      var l = getLargestOnHeap(heap);
      if (l === Number.NEGATIVE_INFINITY || l.val < 0) {
        return false;
@@ -303,6 +390,17 @@ function NodeReducer(nodes, edges) {
       dist = {},
       dist2 = {},
       detectSteps = true,
+      getBest = function (communities) {
+        var bestQ = Number.NEGATIVE_INFINITY,
+          bestC;
+        _.each(communities, function (obj) {
+          if (obj.q > bestQ) {
+            bestQ = obj.q;
+            bestC = obj.com;
+          }
+        });
+        return bestC;
+      },
       sortByDistance = function (a, b) {
         var d1 = dist[_.min(a,minDist(dist))],
           d2 = dist[_.min(b,minDist(dist))],
@@ -319,16 +417,29 @@ function NodeReducer(nodes, edges) {
     while (detectSteps) {
       detectSteps = communityDetectionStep(dQ, a, heap, coms);
     }
-    res = _.pluck(_.values(coms), "com");
+    console.log(coms);
+
     if (focus !== undefined) {
+      _.each(coms, function(obj, key) {
+        if (obj.com.length === 1) {
+          delete coms[key];
+        }
+        if (_.contains(obj.com, focus._id)) {
+          delete coms[key];
+        }
+      });
+      res = _.pluck(_.values(coms), "com");
       dist = floatDist(focus._id);
-      res = res.filter(function(e) {return !_.contains(e, focus._id);});
-      res = res.filter(function(e) {return e.length > 1;});
       res.sort(sortByDistance);
+      return res[0];
     } else {
-      res = res.filter(function(e) {return e.length > 1;});
+      _.each(coms, function(obj, key) {
+        if (obj.com.length === 1) {
+          delete coms[key];
+        }
+      });
+      return getBest(coms);
     }
-    return res[0];
   };
   
   self.bucketNodes = function(toSort, numBuckets) {
