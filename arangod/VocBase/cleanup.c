@@ -97,6 +97,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
 
     if (container->_begin == NULL ||
         container->_begin->_type == TRI_BARRIER_ELEMENT ||
+        container->_begin->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
       // did not find anything at the head of the barrier list or found an element marker
       // this means we must exit and cannot throw away datafiles and can unload collections

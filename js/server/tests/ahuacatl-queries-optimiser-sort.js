@@ -343,6 +343,18 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       
       var explain = explainQuery(query);
       assertEqual("for", explain[0].type);
+      assertEqual("filter", explain[1].type); 
+      assertEqual("sort", explain[2].type); // sort still there
+      assertEqual("return", explain[3].type);
+      
+      query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 >= 0 SORT c.value RETURN c";
+
+      actual = getQueryResults(query, false);
+      assertEqual(1, actual.length);
+      assertEqual(0, actual[0].value);
+      
+      explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
       assertEqual("filter", explain[1].type); // sort optimised away
       assertEqual("return", explain[2].type);
     },
@@ -367,6 +379,18 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(99, actual[99].value);
       
       var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("filter", explain[1].type); 
+      assertEqual("sort", explain[2].type); // sort still there
+      assertEqual("return", explain[3].type);
+      
+      query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 <= 1 SORT c.value, c.value2 RETURN c";
+
+      actual = getQueryResults(query, false);
+      assertEqual(1, actual.length);
+      assertEqual(0, actual[0].value);
+
+      explain = explainQuery(query);
       assertEqual("for", explain[0].type);
       assertEqual("filter", explain[1].type); // sort optimised away
       assertEqual("return", explain[2].type);
@@ -419,8 +443,9 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       
       var explain = explainQuery(query);
       assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); // sort optimised away
-      assertEqual("return", explain[2].type);
+      assertEqual("filter", explain[1].type); // cannot use index for sorting
+      assertEqual("sort", explain[2].type); // cannot use index for sorting
+      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

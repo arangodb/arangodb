@@ -253,7 +253,7 @@ Configuration example document:
 ////////////////////////////////////////////////////////////////////////////////
 
 function stringToBoolean(string){
-  if (undefined === string) {
+  if (undefined === string || null === string) {
     return false;
   }
   

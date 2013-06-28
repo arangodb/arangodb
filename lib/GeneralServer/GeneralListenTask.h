@@ -74,8 +74,8 @@ namespace triagens {
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralListenTask (S* server, Endpoint* endpoint, bool reuseAddress)
-          : Task("GeneralListenTask"), ListenTask(endpoint, reuseAddress), server(server) {
+        GeneralListenTask (S* server, Endpoint* endpoint)
+          : Task("GeneralListenTask"), ListenTask(endpoint), server(server) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
