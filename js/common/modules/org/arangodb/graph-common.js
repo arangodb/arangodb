@@ -677,7 +677,7 @@ Graph.prototype._prepareEdgeData = function (data, label) {
     label = data.$label;
   }
 
-  if (is.object(data)) {
+  if (is.noObject(data)) {
     edgeData = {};
   } else {
     edgeData = data._shallowCopy || {};
@@ -691,7 +691,7 @@ Graph.prototype._prepareEdgeData = function (data, label) {
 Graph.prototype._prepareVertexData = function (data) {
   var vertexData;
 
-  if (is.object(data)) {
+  if (is.noObject(data)) {
     vertexData = {};
   } else {
     vertexData = data._shallowCopy || {};
