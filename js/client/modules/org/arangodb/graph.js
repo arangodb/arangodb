@@ -203,7 +203,7 @@ Vertex.prototype.setProperty = function (name, value) {
 Graph.prototype.initialize = function (name, vertices, edges) {
   var results;
 
-  if (vertices === undefined && edges === undefined) {
+  if (is.notExisty(vertices) && is.notExisty(edges)) {
     results = GraphAPI.getGraph(name);
   } else {
     results = GraphAPI.postGraph({
@@ -277,7 +277,7 @@ Graph.prototype._saveVertex = function (id, params) {
 Graph.prototype.getVertex = function (id) {
   var results = GraphAPI.getVertex(this._properties._key, id);
 
-  if (results === null) {
+  if (is.notExisty(results)) {
     return null;
   }
 
@@ -303,7 +303,7 @@ Graph.prototype.getVertices = function () {
 Graph.prototype.getEdge = function (id) {
   var results = GraphAPI.getEdge(this._properties._key, id);
 
-  if (results === null) {
+  if (is.notExisty(results)) {
     return null;
   }
 
