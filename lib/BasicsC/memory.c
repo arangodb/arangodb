@@ -189,7 +189,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   // warn in the case of very big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
     fprintf(stderr,
-            "big malloc action: %llu bytes in %s:%d", 
+            "big malloc action: %llu bytes in %s:%d\n", 
             (unsigned long long) n, 
             file, 
             line);
@@ -208,7 +208,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 
     if (CoreReserve == NULL) {
       fprintf(stderr,
-              "FATAL: failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!",
+              "FATAL: failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!\n",
               (unsigned long long) n,
               (int) zone->_zid
               ZONE_DEBUG_PARAMS);
@@ -298,7 +298,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
     if (CoreReserve == NULL) {
       fprintf(stderr,
-              "FATAL: failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!",
+              "FATAL: failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!\n",
               (unsigned long long) n,
               zone->_zid
               ZONE_DEBUG_PARAMS);
