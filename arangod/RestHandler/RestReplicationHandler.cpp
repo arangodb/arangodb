@@ -105,48 +105,63 @@ string const& RestReplicationHandler::queue () const {
 Handler::status_e RestReplicationHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
+  
+  vector<string> const& suffix = _request->suffix();
 
-  // only POST is allowed
-  if (type != HttpRequest::HTTP_REQUEST_POST) { 
-    generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  const size_t len = suffix.size();
 
+  if (len == 1) {
+    const string& command = suffix[0];
+
+    if (command == "start") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandStart();
+    }
+    else if (command == "stop") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandStop();
+    }
+    else if (command == "state") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandState();
+    }
+    else if (command == "inventory") {
+      if (type != HttpRequest::HTTP_REQUEST_POST) {
+        goto BAD_CALL;
+      }
+      handleCommandInventory();
+    }
+    else if (command == "dump") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandDump(); 
+    }
+    else {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid command");
+    }
+      
     return Handler::HANDLER_DONE;
   }
-  
-  const size_t len = _request->suffix().size();
+
+BAD_CALL:
   if (len != 1) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "expecting POST /_api/replication/<command>");
-    return Handler::HANDLER_DONE;
-  }
-  
-  vector<string> const& suffix = _request->suffix();
-  const string& command = suffix[0];
-
-  if (command == "start") {
-    handleCommandStart();
-  }
-  else if (command == "stop") {
-    handleCommandStop();
-  }
-  else if (command == "state") {
-    handleCommandState();
-  }
-  else if (command == "inventory") {
-    handleCommandInventory();
-  }
-  else if (command == "dump") {
-    handleCommandDump(); 
+                  "expecting URL /_api/replication/<command>");
   }
   else {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "expecting POST /_api/replication/<command>");
-    return Handler::HANDLER_DONE;
+    generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
-
-  // success
+  
   return Handler::HANDLER_DONE;
 }
 
