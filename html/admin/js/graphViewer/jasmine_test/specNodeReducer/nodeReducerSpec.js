@@ -59,7 +59,7 @@
         }).not.toThrow();
       });
     });
-
+    
     describe('setup correctly', function() {
       
       var reducer,
@@ -109,18 +109,18 @@
       describe('checking community identification', function() {
         
         it('should be able to identify an obvious community', function() {
-          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4]);
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
           edges.push(helper.createSimpleEdge(nodes, 0, 1));
           edges.push(helper.createSimpleEdge(nodes, 0, 2));
           edges.push(helper.createSimpleEdge(nodes, 0, 3));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
           
           var com = reducer.getCommunity(3, nodes[4]);
-          expect(com).toContainNodes([0, 1, 2]);
+          expect(com).toContainNodes(["0", "1", "2"]);
         });
         
         it('should prefer cliques as a community over an equal sized other group', function() {
-          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
           helper.insertClique(nodes, edges, [0, 1, 2, 3]);
           edges.push(helper.createSimpleEdge(nodes, 4, 3));
           edges.push(helper.createSimpleEdge(nodes, 4, 5));
@@ -129,11 +129,11 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 8));
           
           var com = reducer.getCommunity(6, nodes[4]);
-          expect(com).toContainNodes([0, 1, 2, 3]);
+          expect(com).toContainNodes(["0", "1", "2", "3"]);
         });
         
         it('should not return a close group if there is an alternative', function() {
-          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4, 5, 6, 7]);
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
           helper.insertClique(nodes, edges, [0, 1, 2]);
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
@@ -142,11 +142,11 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 7));
           
           var com = reducer.getCommunity(6, nodes[3]);
-          expect(com).toContainNodes([5, 6, 7]);
+          expect(com).toContainNodes(["5", "6", "7"]);
         });
         
         it('should also take the best community if no focus is given', function() {
-          helper.insertSimpleNodes(nodes, [0, 1, 2, 3, 4, 5, 6, 7]);
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
           helper.insertClique(nodes, edges, [0, 1, 2]);
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
@@ -155,11 +155,27 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 7));
           
           var com = reducer.getCommunity(6);
-          expect(com).toContainNodes([0, 1, 2, 3]);
+          expect(com).toContainNodes(["0", "1", "2"]);
+        });
+        
+        it('should also take the best community if no focus is given', function() {
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
+          
+          edges.push(helper.createSimpleEdge(nodes, 0, 1));
+          edges.push(helper.createSimpleEdge(nodes, 0, 2));
+          edges.push(helper.createSimpleEdge(nodes, 1, 2));
+          edges.push(helper.createSimpleEdge(nodes, 2, 3));
+          edges.push(helper.createSimpleEdge(nodes, 3, 4));
+          edges.push(helper.createSimpleEdge(nodes, 4, 5));
+          edges.push(helper.createSimpleEdge(nodes, 5, 6));
+          edges.push(helper.createSimpleEdge(nodes, 5, 7));
+          
+          var com = reducer.getCommunity(6);
+          expect(com).toContainNodes(["0", "1", "2", "3", "4"]);
         });
         
       });
-      
+      /*
       describe('checking bucket sort of nodes', function() {
         var allNodes, buckets;
         
@@ -299,7 +315,7 @@
         });
         
       });
-      
+      */
     });
   });
 }());

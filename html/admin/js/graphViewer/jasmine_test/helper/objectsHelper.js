@@ -78,6 +78,7 @@ var helper = helper || {};
     for (i = 0; i < toConnect.length - 1; i++) {
       for (j = i + 1; j < toConnect.length; j++) {
         edges.push(helper.createSimpleEdge(nodes, toConnect[i], toConnect[j]));
+        edges.push(helper.createSimpleEdge(nodes, toConnect[j], toConnect[i]));
       }
     }
   };
