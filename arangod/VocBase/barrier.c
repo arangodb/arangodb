@@ -138,6 +138,7 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
         ptr->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK ||
         ptr->_type == TRI_BARRIER_DATAFILE_DROP_CALLBACK ||
         ptr->_type == TRI_BARRIER_DATAFILE_RENAME_CALLBACK ||
+        ptr->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
         ptr->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
 
       // free data still allocated in barrier elements
@@ -208,6 +209,26 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 
   element->_line = line;
   element->_filename = filename;
+
+  LinkBarrierElement(&element->base, container);
+
+  return &element->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new replication barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierReplication (TRI_barrier_list_t* container) {
+  TRI_barrier_replication_t* element;
+
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_replication_t), false);
+
+  if (element == NULL) {
+    return NULL;
+  }
+
+  element->base._type = TRI_BARRIER_COLLECTION_REPLICATION;
 
   LinkBarrierElement(&element->base, container);
 

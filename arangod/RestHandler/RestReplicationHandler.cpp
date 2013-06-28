@@ -438,9 +438,6 @@ void RestReplicationHandler::handleCommandDump () {
     return;
   }
   
-  // TODO: block compaction
-  // TRI_ReadLockReadWriteLock(((TRI_primary_collection_t*) collection)->_compactionLock);
-
 
   TRI_string_buffer_t buffer; 
   // initialise the buffer
@@ -448,8 +445,6 @@ void RestReplicationHandler::handleCommandDump () {
 
   int res = TRI_DumpCollectionReplication(&buffer, col, tickStart, tickEnd, chunkSize);
   
-  //TRI_ReadUnlockReadWriteLock(((TRI_primary_collection_t*) collection)->_compactionLock);
-
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
   if (res == TRI_ERROR_NO_ERROR) {

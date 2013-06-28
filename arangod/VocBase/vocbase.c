@@ -500,7 +500,9 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return false;
   }
   
-  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT)) {
+  if (TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_ELEMENT) ||
+      TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_REPLICATION) ||
+      TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_COMPACTION)) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     return false;
