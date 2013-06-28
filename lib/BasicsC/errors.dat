@@ -30,6 +30,7 @@ ERROR_HTTP_BAD_PARAMETER,400,"bad parameter","Will be raised when the HTTP reque
 ERROR_HTTP_FORBIDDEN,403,"forbidden","Will be raised when the operation is forbidden."
 ERROR_HTTP_NOT_FOUND,404,"not found","Will be raised when an URI is unknown."
 ERROR_HTTP_METHOD_NOT_ALLOWED,405,"method not supported","Will be raised when an unsupported HTTP method is used for an operation."
+ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 
 ################################################################################

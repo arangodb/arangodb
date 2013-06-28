@@ -135,10 +135,22 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
     cursorIconBox.style.display = "block";
   });
   
-  this.addControlNewNode = function() {
+  /*******************************************
+  * Raw rebind objects
+  *
+  *******************************************/
+  
+  this.dragRebinds = function() {
+    return {
+      nodes: {
+        drag: dispatcher.events.DRAG
+      }
+    };
+  };
+  
+  this.newNodeRebinds = function() {
     var prefix = "control_event_new_node",
       idprefix = prefix + "_",
-      icon = "plus-sign",
       createCallback = function(n) {
         modalDialogHelper.createModalCreateDialog(
           "Create New Node",
@@ -150,36 +162,47 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
             })();
           }
         );
-      },
-      callback = function() {
-        setCursorIcon(icon);
-        rebindNodes();
-        rebindEdges();
-        rebindSVG({click: createCallback});
       };
-    createIcon(icon, "new_node", callback);
+    return {
+      svg: {
+        click: createCallback
+      }
+    };
   };
   
-  
-  this.addControlDrag = function() {
-    var prefix = "control_event_drag",
+  this.connectNodesRebinds = function() {
+    var prefix = "control_event_connect",
       idprefix = prefix + "_",
-      icon = "move",
-      callback = function() {
-        setCursorIcon(icon);
-        rebindNodes( {
-          drag: dispatcher.events.DRAG
+      nodesDown = dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
+        var pos = getCursorPositionInSVG(ev),
+          moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
+        dispatcher.bind("svg", "mousemove", function(ev) {
+          var pos = getCursorPositionInSVG(ev);
+          moveCB(pos.x, pos.y);
         });
-        rebindEdges();
-        rebindSVG();
+      }),
+      nodesUp = dispatcher.events.FINISHCREATEEDGE(function(edge){
+        edgeShaper.removeCursorFollowingEdge();
+        dispatcher.bind("svg", "mousemove", function(){});
+      }),
+      svgUp = function() {
+        dispatcher.events.CANCELCREATEEDGE();
+        edgeShaper.removeCursorFollowingEdge();
       };
-    createIcon(icon, "drag", callback);
+    return {
+      nodes: {
+        mousedown: nodesDown,
+        mouseup: nodesUp
+      },
+      svg: {
+        mouseup: svgUp
+      }
+    };
   };
   
-  this.addControlEdit = function() {
+  this.editRebinds = function() {
     var prefix = "control_event_edit",
       idprefix = prefix + "_",
-      icon = "pencil",
       nodeCallback = function(n) {
         modalDialogHelper.createModalEditDialog(
           "Edit Node " + n._id,
@@ -203,33 +226,92 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
             })();
           }
         );
+      };
+      return {
+        nodes: {
+          click: nodeCallback
+        },
+        edges: {
+          click: edgeCallback
+        }
+      };
+  };
+  
+  this.expandRebinds = function() {
+    return {
+      nodes: {
+        click: dispatcher.events.EXPAND
+      }
+    };
+  };
+  
+  this.deleteRebinds = function() {
+    return {
+      nodes: {
+        click: dispatcher.events.DELETENODE(
+          function() {}
+        )
       },
+      edges: {
+        click: dispatcher.events.DELETEEDGE(
+          function() {}
+        )
+      }
+    };
+  };
+  
+  this.rebindAll = function(obj) {
+    rebindNodes(obj.nodes);
+    rebindEdges(obj.edges);
+    rebindSVG(obj.svg);
+  };
+  
+  /*******************************************
+  * Functions to add controls
+  *
+  *******************************************/
+  
+  
+  this.addControlNewNode = function() {
+    var icon = "plus-sign",
       callback = function() {
         setCursorIcon(icon);
-        rebindNodes({click: nodeCallback});
-        rebindEdges({click: edgeCallback});
-        rebindSVG();
+        self.rebindAll(self.newNodeRebinds());
+      };
+    createIcon(icon, "new_node", callback);
+  };
+  
+  this.addControlDrag = function() {
+    var prefix = "control_event_drag",
+      idprefix = prefix + "_",
+      icon = "move",
+      callback = function() {
+        setCursorIcon(icon);
+        self.rebindAll(self.dragRebinds());
+      };
+    createIcon(icon, "drag", callback);
+  };
+  
+  this.addControlEdit = function() {
+    var icon = "pencil",
+      callback = function() {
+        setCursorIcon(icon);
+        self.rebindAll(self.editRebinds());
       };
     createIcon(icon, "edit", callback);
   };
   
   this.addControlExpand = function() {
-    var prefix = "control_event_expand",
-      idprefix = prefix + "_",
-      icon = "plus",
+    var icon = "plus",
       callback = function() {
         setCursorIcon(icon);
-        rebindNodes({click: dispatcher.events.EXPAND});
-        rebindEdges();
-        rebindSVG();
+        self.rebindAll(self.expandRebinds());
       };
     createIcon(icon, "expand", callback);
   };
   
   this.addControlDelete = function() {
-    var prefix = "control_event_delete",
-      idprefix = prefix + "_",
-      icon = "trash",
+    var icon = "trash",
       callback = function() {
         setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
@@ -244,37 +326,13 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlConnect = function() {
-    var prefix = "control_event_connect",
-      idprefix = prefix + "_",
-      icon = "resize-horizontal",
+    var icon = "resize-horizontal",
       callback = function() {
         setCursorIcon(icon);
-        rebindNodes({
-          mousedown: dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
-            var pos = getCursorPositionInSVG(ev),
-              moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
-            dispatcher.bind("svg", "mousemove", function(ev) {
-              var pos = getCursorPositionInSVG(ev);
-              moveCB(pos.x, pos.y);
-            });
-          }),
-          mouseup: dispatcher.events.FINISHCREATEEDGE(function(edge){
-            edgeShaper.removeCursorFollowingEdge();
-            dispatcher.bind("svg", "mousemove", function(){});
-          })
-        });
-        rebindEdges();
-        rebindSVG({
-          mouseup: function() {
-            dispatcher.events.CANCELCREATEEDGE();
-            edgeShaper.removeCursorFollowingEdge();
-          }
-        });
+        self.rebindAll(self.connectNodesRebinds());
       };
     createIcon(icon, "connect", callback);
   };
-  
-  
   
   this.addAll = function () {
     self.addControlDrag();

@@ -40,9 +40,7 @@ function FoxxAdapter(nodes, edges, route, config) {
   if (route === undefined) {
     throw "The route has to be given.";
   }
-  
 
-  
   var self = this,
     absAdapter = new AbstractAdapter(nodes, edges),
     routes = {},
@@ -177,8 +175,8 @@ function FoxxAdapter(nodes, edges, route, config) {
 
     parseResult = function (result, callback) {
       var inserted = {},
-        first = result.nodes[0];
-        first = absAdapter.insertNode(first);
+        first = result.first;
+      first = absAdapter.insertNode(first);
       _.each(result.nodes, function(n) {
         n = absAdapter.insertNode(n);
         inserted[n._id] = n;

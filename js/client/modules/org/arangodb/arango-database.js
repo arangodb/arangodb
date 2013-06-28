@@ -89,6 +89,12 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief key regex
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-])+$/;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief append the waitForSync parameter to a URL
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -138,6 +144,15 @@ ArangoDatabase.prototype._documenturl = function (id, expectedName) {
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
       errorNum: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code,
       errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+    });
+  }
+
+  if (ArangoDatabase.keyRegex.exec(s[1]) === null) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
   }
 
@@ -200,7 +215,6 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
   '  _collections()                   list all collections             ' + "\n" +
   '  _collection(<identifier>)        get collection by identifier/name' + "\n" +
   '  _create(<name>, <props>)         creates a new collection         ' + "\n" +
-  '  _truncate(<name>)                delete all documents             ' + "\n" +
   '  _drop(<name>)                    delete a collection              ' + "\n" +
   '                                                                    ' + "\n" +
   'Document Functions:                                                 ' + "\n" +
@@ -210,13 +224,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
   '  _update(<id>, <data>,            update document                  ' + "\n" +
   '          <overwrite>, <keepNull>)                                  ' + "\n" +
   '  _remove(<id>)                    delete document                  ' + "\n" +
+  '  _truncate()                      delete all documents             ' + "\n" +
   '                                                                    ' + "\n" +
   'Query Functions:                                                    ' + "\n" +
-  '  _createStatement(<data>);        create and return select query   ' + "\n" +
-  '  _query(<query>);                 create, execute and return query ' + "\n" +
-  '                                                                    ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  <collection names>               collection with the given name   ';
+  '  _query(<query>);                 execute AQL query                ' + "\n" +
+  '  _createStatement(<data>);        create and return AQL query      ';
 
 ArangoDatabase.prototype._help = function () {  
   internal.print(helpArangoDatabase);
@@ -542,6 +554,43 @@ ArangoDatabase.prototype._document = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a document exists, identified by its id
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._exists = function (id) {
+  var rev = null;
+  var requestResult;
+
+  if (id.hasOwnProperty("_id")) {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+
+    id = id._id;
+  }
+
+  if (rev === null) {
+    requestResult = this._connection.HEAD(this._documenturl(id));
+  }
+  else {
+    requestResult = this._connection.HEAD(this._documenturl(id),
+      {'if-match' : JSON.stringify(rev) });
+  }
+
+  if (requestResult !== null && 
+      requestResult.error === true &&
+      (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
+       requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code)) {
+    return false;
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -700,8 +749,13 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (data) {  
-  return new ArangoStatement(this, { query: data }).execute();
+ArangoDatabase.prototype._query = function (query, bindVars) {  
+  var payload = {
+    query: query,
+    bindVars: bindVars || undefined 
+  };
+  
+  return new ArangoStatement(this, payload).execute();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

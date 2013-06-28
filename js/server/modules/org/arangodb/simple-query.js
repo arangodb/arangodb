@@ -96,13 +96,42 @@ SimpleQueryAll.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalise attribute names for searching in indexes
+/// this will turn 
+/// { a: { b: { c: 1, d: true }, e: "bar" } } 
+/// into
+/// { "a.b.c" : 1, "a.b.d" : true, "a.e" : "bar" }
+////////////////////////////////////////////////////////////////////////////////
+
+function normalizeAttributes (obj, prefix) {
+  var prep = ((prefix === "" || prefix === undefined) ? "" : prefix + "."), o, normalized = { };
+
+  for (o in obj) {
+    if (obj.hasOwnProperty(o)) {
+      if (typeof obj[o] === 'object' && ! Array.isArray(obj[o])) {
+        var sub = normalizeAttributes(obj[o], prep + o), i;
+        for (i in sub) {
+          if (sub.hasOwnProperty(i)) {
+            normalized[i] = sub[i];
+          }
+        }
+      }
+      else {
+        normalized[prep + o] = obj[o];
+      }
+    }
+  }
+
+  return normalized;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by scan or hash index
 ////////////////////////////////////////////////////////////////////////////////
 
 function byExample (collection, example, skip, limit) {
   var unique = true;
   var documentId = null;
-  var attributes = [];
   var k;
       
   if (typeof example !== "object" || Array.isArray(example)) {
@@ -115,13 +144,11 @@ function byExample (collection, example, skip, limit) {
 
   for (k in example) {
     if (example.hasOwnProperty(k)) {
-      attributes.push(k);
-
       if (example[k] === null) {
         unique = false;
       }
       else if (k === '_id' || k === '_key') {
-        // example contains the document id in attribute "_id"
+        // example contains the document id in attribute "_id" or "_key"
         documentId = example[k];
         break;
       }
@@ -157,11 +184,13 @@ function byExample (collection, example, skip, limit) {
   }
 
   var idx = null;
+  var normalized = normalizeAttributes(example, "");
+  var keys = Object.keys(normalized);
 
   try {
-    idx = collection.lookupHashIndex.apply(collection, attributes);
+    idx = collection.lookupHashIndex.apply(collection, keys);
     if (idx === null && unique) {
-      idx = collection.lookupUniqueConstraint.apply(collection, attributes);
+      idx = collection.lookupUniqueConstraint.apply(collection, keys);
 
       if (idx !== null) {
         console.debug("found unique constraint %s", idx.id);
@@ -176,7 +205,7 @@ function byExample (collection, example, skip, limit) {
 
   if (idx !== null) {
     // use hash index
-    return collection.BY_EXAMPLE_HASH(idx.id, example, skip, limit);
+    return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
   }
 
   // use full collection scan

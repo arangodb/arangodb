@@ -998,7 +998,7 @@ function process_property_compare (compare) {
       return compare;
   }
 
-  throw "unknow compare function in property filter";
+  throw "unknown compare function in property filter";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

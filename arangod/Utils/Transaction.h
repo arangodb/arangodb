@@ -29,6 +29,7 @@
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
 #include "VocBase/barrier.h"
+#include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
@@ -332,7 +333,7 @@ namespace triagens {
 
         int addCollection (const string& name,
                            TRI_transaction_type_e type) {
-          if (name == TRI_TRANSACTION_COORDINATOR_COLLECTION) {
+          if (name == TRI_COL_NAME_TRANSACTION) {
             return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
           }
 
@@ -610,6 +611,7 @@ namespace triagens {
           if (count == 0) {
             // barrier not needed, kill it
             TRI_FreeBarrier(*barrier);
+            *barrier = 0;
           }
 
           return TRI_ERROR_NO_ERROR;
@@ -686,6 +688,7 @@ namespace triagens {
           if (count == 0) {
             // barrier not needed, kill it
             TRI_FreeBarrier(*barrier);
+            *barrier = 0;
           }
 
           return TRI_ERROR_NO_ERROR;
@@ -1013,7 +1016,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _timeout, _waitForSync);
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, true, _timeout, _waitForSync);
 
           if (_trx == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;

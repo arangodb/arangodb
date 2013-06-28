@@ -29,6 +29,7 @@
 
 #include "build.h"
 
+#include "BasicsC/tri-strings.h"
 #include "VocBase/auth.h"
 #include "Logger/Logger.h"
 #include "VocbaseManager.h"
@@ -87,7 +88,7 @@ VocbaseContext::~VocbaseContext () {
 /// @brief set request user by user name
 ////////////////////////////////////////////////////////////////////////////////
 
-void VocbaseContext::setRequestUserByName (string const&  name) {
+void VocbaseContext::setRequestUserByName (string const& name) {
   // TODO:
 }
 
@@ -96,15 +97,34 @@ void VocbaseContext::setRequestUserByName (string const&  name) {
 ////////////////////////////////////////////////////////////////////////////////
         
 bool VocbaseContext::authenticate () {
+  if (! _vocbase) {
+    // no vocbase known
+    return true;
+  }
+
+  if (! _vocbase->_requireAuthentication) {
+    // no authentication required at all
+    return true;
+  }
+
+  if (_vocbase->_authenticateSystemOnly) {
+    // authentication required, but only for /_api, /_admin etc.
+    const char* path = _request->requestPath();
+
+    if (path != 0) {
+      // check if path starts with /_
+      if (*path != '/') {
+        return true;
+      }
+      if (*path != '\0' && *(path + 1) != '_') {
+        return true;
+      }
+    }
+  }
   
-  if (_vocbase && _vocbase->_requireAuthentication) {    
-    // TODO: create a user and add it to the context
-    
-    return _manager->authenticate(_vocbase, _request);
-  }
-  else {
-    return true;  
-  }
+  // authentication required
+  // TODO: create a user and add it to the context
+  return _manager->authenticate(_vocbase, _request);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

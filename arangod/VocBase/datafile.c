@@ -520,7 +520,6 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 
   while (ptr < end) {
     TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
-    bool ok;
     size_t size;
 
 #ifdef DEBUG_DATAFILE
@@ -582,6 +581,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     }
 
     if (marker->_type != 0) {
+      bool ok;
+
       ok = TRI_CheckCrcMarkerDatafile(marker);
 
       if (! ok) {

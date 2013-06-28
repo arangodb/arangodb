@@ -25,7 +25,7 @@ window.foxxMountView = Backbone.View.extend({
     "click #install"        : "install"
   },
   hidden: function () {
-    window.App.navigate("applications/available", {trigger: true});
+    window.App.navigate("applications", {trigger: true});
   },
   
   install: function () {

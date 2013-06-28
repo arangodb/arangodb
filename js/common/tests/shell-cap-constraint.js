@@ -35,7 +35,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -57,6 +56,11 @@ function CapConstraintSuite() {
     return 0;
   };
 
+  var assertBadParameter = function (err) {
+    assertTrue(err.errorNum === ERRORS.ERROR_BAD_PARAMETER.code ||
+               err.errorNum === ERRORS.ERROR_HTTP_BAD_PARAMETER.code);
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,11 +77,84 @@ function CapConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   tearDown : function () {
-    collection.unload();
-    collection.drop();
-    collection = null;
+    if (collection !== null) {
+      internal.wait(0);
+      collection.unload();
+      collection.drop();
+      collection = null;
+    }
     internal.wait(0.0);
   },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with invalid count
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCount1 : function () {
+      try {
+        collection.ensureCapConstraint(0);
+        fail();
+      }
+      catch (err) {
+        assertBadParameter(err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with invalid count
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCount2 : function () {
+      try {
+        collection.ensureCapConstraint(-10);
+        fail();
+      }
+      catch (err) {
+        assertBadParameter(err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with invalid byteSize
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidBytesize1 : function () {
+      try {
+        collection.ensureCapConstraint(0, -1024);
+        fail();
+      }
+      catch (err) {
+        assertBadParameter(err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with invalid byteSize
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidBytesize2 : function () {
+      try {
+        collection.ensureCapConstraint(0, 1024);
+        fail();
+      }
+      catch (err) {
+        assertBadParameter(err);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with invalid count
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCombination : function () {
+      try {
+        collection.ensureCapConstraint(0, 0);
+        fail();
+      }
+      catch (err) {
+        assertBadParameter(err);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: cap creation
@@ -91,6 +168,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(10, idx.size);
+      assertEqual(0, idx.byteSize);
 
       idx = collection.ensureCapConstraint(10);
 
@@ -98,6 +176,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(false, idx.isNewlyCreated);
       assertEqual(10, idx.size);
+      assertEqual(0, idx.byteSize);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +191,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(10, idx.size);
+      assertEqual(0, idx.byteSize);
 
       try {
         idx = collection.ensureCapConstraint(20);
@@ -133,6 +213,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(10, idx.size);
+      assertEqual(0, idx.byteSize);
 
       assertEqual(0, collection.count());
 
@@ -174,6 +255,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(5, idx.size);
+      assertEqual(0, idx.byteSize);
 
       assertEqual(0, collection.count());
 
@@ -217,6 +299,7 @@ function CapConstraintSuite() {
       collection.truncate();
       assertEqual(0, collection.count());
 
+      internal.wait(0);
       collection.unload();
       internal.wait(5);
 
@@ -228,13 +311,14 @@ function CapConstraintSuite() {
 /// @brief test: updates
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdates : function () {
+    testUpdates1 : function () {
       var idx = collection.ensureCapConstraint(5);
       var fun = function(d) { return d.n; };
 
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(5, idx.size);
+      assertEqual(0, idx.byteSize);
 
       assertEqual(0, collection.count());
 
@@ -271,13 +355,14 @@ function CapConstraintSuite() {
 /// @brief test: updates
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdates : function () {
+    testUpdates2 : function () {
       var idx = collection.ensureCapConstraint(3);
       var fun = function(d) { return d._key; };
 
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(3, idx.size);
+      assertEqual(0, idx.byteSize);
 
       collection.save({ _key: "foo" });
       collection.save({ _key: "bar" });
@@ -306,6 +391,7 @@ function CapConstraintSuite() {
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
 
+      internal.wait(0);
       collection.unload();
       internal.wait(4);
       
@@ -332,6 +418,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(5, idx.size);
+      assertEqual(0, idx.byteSize);
 
       assertEqual(0, collection.count());
 
@@ -342,6 +429,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
 
+      internal.wait(0);
       collection.unload();
       internal.wait(5);
 
@@ -356,6 +444,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
       
+      internal.wait(0);
       collection.unload();
       internal.wait(5);
 
@@ -381,6 +470,7 @@ function CapConstraintSuite() {
       assertEqual("cap", idx.type);
       assertEqual(true, idx.isNewlyCreated);
       assertEqual(5, idx.size);
+      assertEqual(0, idx.byteSize);
 
       assertEqual(0, collection.count());
 
@@ -399,6 +489,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
       
+      internal.wait(0);
       collection.unload();
       internal.wait(5);
       
@@ -408,6 +499,261 @@ function CapConstraintSuite() {
       collection.save({ n: 0 });
       assertEqual([0, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with byteSize
+////////////////////////////////////////////////////////////////////////////////
+
+    testBytesize : function () {
+      var idx = collection.ensureCapConstraint(0, 16384);
+      var id = idx.id;
+
+      assertNotEqual(0, id);
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(0, idx.size);
+      assertEqual(16384, idx.byteSize);
+
+      idx = collection.ensureCapConstraint(0, 16384);
+
+      assertEqual(id, idx.id);
+      assertEqual("cap", idx.type);
+      assertEqual(false, idx.isNewlyCreated);
+      assertEqual(0, idx.size);
+      assertEqual(16384, idx.byteSize);
+
+      for (var i = 0; i < 1000; ++i) {
+        collection.save({ "test" : "this is a test" });
+      }
+
+      assertTrue(collection.count() < 1000);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with count and byteSize
+////////////////////////////////////////////////////////////////////////////////
+
+    testCombo1 : function () {
+      var idx = collection.ensureCapConstraint(50, 16384);
+      var id = idx.id;
+
+      assertNotEqual(0, id);
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(50, idx.size);
+      assertEqual(16384, idx.byteSize);
+
+      idx = collection.ensureCapConstraint(50, 16384);
+
+      assertEqual(id, idx.id);
+      assertEqual("cap", idx.type);
+      assertEqual(false, idx.isNewlyCreated);
+      assertEqual(50, idx.size);
+      assertEqual(16384, idx.byteSize);
+
+      for (var i = 0; i < 1000; ++i) {
+        collection.save({ "test" : "this is a test" });
+      }
+
+      assertEqual(50, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cap with count and byteSize
+////////////////////////////////////////////////////////////////////////////////
+
+    testCombo2 : function () {
+      var idx = collection.ensureCapConstraint(1000, 16384);
+      var id = idx.id;
+
+      assertNotEqual(0, id);
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(1000, idx.size);
+      assertEqual(16384, idx.byteSize);
+
+      idx = collection.ensureCapConstraint(1000, 16384);
+
+      assertEqual(id, idx.id);
+      assertEqual("cap", idx.type);
+      assertEqual(false, idx.isNewlyCreated);
+      assertEqual(1000, idx.size);
+      assertEqual(16384, idx.byteSize);
+
+      for (var i = 0; i < 1000; ++i) {
+        collection.save({ "test" : "this is a test" });
+      }
+
+      assertTrue(collection.count() < 1000);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: too large document
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentTooLarge1 : function () {
+      collection.ensureCapConstraint(1, 16384);
+      var doc = { };
+
+      for (var i = 0; i < 1000; ++i) {
+        doc["test" + i] = "this is a test for the too large document";
+      }
+
+      try {
+        collection.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code ||
+                   err.errorNum === ERRORS.ERROR_INTERNAL.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: too large document
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentTooLarge2 : function () {
+      collection.ensureCapConstraint(1000, 16384);
+      var doc = { };
+
+      for (var i = 0; i < 1000; ++i) {
+        doc["test" + i] = "this is a test for the too large document";
+      }
+
+      try {
+        collection.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code ||
+                   err.errorNum === ERRORS.ERROR_INTERNAL.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: modification of collection size via updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testSizeModificationSimple : function () {
+      collection.ensureCapConstraint(1000, 16384);
+
+      var doc = collection.save({ a : 1 }); 
+
+      // cap should not be triggered here, but we want to see whether assertions fail
+      doc = collection.replace(doc, { a : 2, b : 2 }); 
+      assertEqual(1, collection.count());
+      collection.truncate();
+      assertEqual(0, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: modification of collection size via updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testSizeModificationsMulti : function () {
+      collection.ensureCapConstraint(1000, 16384);
+
+      var doc = collection.save({ }); 
+      var data = { };
+              
+      for (var i = 0; i < 100; ++i) {
+        data["a" + i] = i;
+
+        // cap should not be triggered here, but we want to see whether assertions fail
+        doc = collection.replace(doc, data);
+      }
+
+      assertEqual(1, collection.count()); 
+
+      collection.truncate();
+      doc = null;
+      collection.unload();
+      internal.wait(5);
+
+      assertEqual(0, collection.count()); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: modification of collection size via updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testSizeModifications : function () {
+      collection.ensureCapConstraint(2, 16384);
+
+      var doc = collection.save({ _key: "test", a: 1 });
+      var rev = doc._rev;
+      collection.save({ a : 2 });
+
+      data = { };
+      for (var i = 0; i < 1000; ++i) {
+        data["b" + i] = "this document will really get too big...";
+      }
+
+      try {
+        collection.update(doc, data); 
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code ||
+                   err.errorNum === ERRORS.ERROR_INTERNAL.code);
+      }
+
+      doc = null;
+      collection.unload();
+      internal.wait(5);
+
+      assertEqual(2, collection.count());
+      assertEqual(1, collection.document("test").a);
+      assertEqual(rev, collection.document("test")._rev);
+
+      collection.truncate();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: modification of collection size via updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testSizeModificationsViolations : function () {
+      collection.ensureCapConstraint(1, 16384);
+
+      var doc = collection.save({ }); 
+      var data = { };
+              
+      for (var i = 0; i < 10; ++i) {
+        data["a" + i] = i;
+
+        doc = collection.replace(doc, data);
+      }
+      
+      assertEqual(1, collection.count()); 
+      assertEqual(collection.toArray()[0].a9, 9);
+
+      for (i = 0; i < 1000; ++i) {
+        data["b" + i] = "this document will really get too big...";
+      }
+
+      try {
+        collection.save(data);
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code ||
+                   err.errorNum === ERRORS.ERROR_INTERNAL.code);
+      }
+
+      assertEqual(collection.toArray()[0].a9, 9);
+      assertEqual(1, collection.count());
+      
+      doc = null;
+      collection.unload();
+      internal.wait(5);
+      assertEqual(collection.toArray()[0].a9, 9);
+      assertEqual(1, collection.count());
+
+      collection.truncate();
+      assertEqual(0, collection.count()); 
+    }
 
   };
 }

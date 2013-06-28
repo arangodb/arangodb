@@ -38,7 +38,8 @@ unittests-brief: \
 	unittests-arangob \
 	unittests-import \
 	unittests-upgrade \
-	unittests-dfdb
+	unittests-dfdb \
+	unittests-authentication
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -85,6 +86,7 @@ SERVER_OPT := \
 	--javascript.modules-path @top_srcdir@/js/server/modules\;@top_srcdir@/js/common/modules\;@top_srcdir@/js/node \
 	--javascript.package-path @top_srcdir@/js/npm\;@top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
+        --log.file "" \
 	--ruby.action-directory @top_srcdir@/mr/actions \
 	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
 	--server.threads 4 \
@@ -126,6 +128,15 @@ start-server:
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
 	@echo
+
+################################################################################
+### @brief issue a curl request and return the status
+################################################################################
+
+.PHONY: curl-request-get
+
+curl-request-get:
+	@declare -x ACTUAL=$$(curl --dump - -X GET "$(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL)" 2> /dev/null | head -n 1 | sed -e 's/^HTTP\/1\.1 \([0-9]\+\).*/\1/g'); if [ "x$$ACTUAL" != "x$(EXPECTED)" ]; then echo "request to $(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL) returned $$ACTUAL, expected: $(EXPECTED)"; false; else true; fi
 
 ################################################################################
 ### @brief COMMON MAKE-RELATED TESTS
@@ -237,6 +248,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
@@ -395,7 +407,7 @@ unittests-shell-client:
 	@echo
 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
-
+	sleep 2
 	kill `cat $(PIDFILE)`
 
 	while test -f $(PIDFILE); do sleep 1; done
@@ -466,7 +478,7 @@ unittests-import:
 
 	@echo
 	@echo "================================================================================"
-	@echo "<< IMPORT TESTS                                                             >>"
+	@echo "<< IMPORT TESTS                                                               >>"
 	@echo "================================================================================"
 	@echo
 
@@ -589,6 +601,74 @@ unittests-arangob:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
+
+################################################################################
+### @brief AUTHENTICATION
+################################################################################
+
+.PHONY: unittests-authentication
+
+unittests-authentication:
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< AUTHENTICATION TESTS                                                       >>"
+	@echo "================================================================================"
+	@echo
+
+################################################################################
+### @brief FULL AUTHENTICATION
+################################################################################
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth false --server.authenticate-system-only false" PROTO=http
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html/" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/test" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/the-big-fat-fox" EXPECTED="401" || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+
+################################################################################
+### @brief AUTHENTICATION FOR /_ ONLY
+################################################################################
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth false --server.authenticate-system-only true" PROTO=http
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html/" EXPECTED="401" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/test" EXPECTED="404" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/the-big-fat-fox" EXPECTED="404" || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+
+################################################################################
+### @brief NO AUTHENTICATION
+################################################################################
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true --server.authenticate-system-only true" PROTO=http
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="404" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="404" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="200" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html" EXPECTED="301" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_admin/html/" EXPECTED="301" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/test" EXPECTED="404" || test "x$(FORCE)" == "x1"
+	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/the-big-fat-fox" EXPECTED="404" || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
 
 ################################################################################
 ### @brief CPPCHECK

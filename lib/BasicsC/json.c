@@ -728,7 +728,7 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new attribute name and valuer
+/// @brief adds a new attribute name and value
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject) {

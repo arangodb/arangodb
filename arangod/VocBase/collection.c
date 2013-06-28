@@ -81,7 +81,7 @@ static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
-  TRI_doc_mptr_t const* e = element;
+  old_doc_mptr_t const* e = element;
   return TRI_FnvHashString((char const*) e->_key);
 }
 
@@ -90,8 +90,7 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_doc_mptr_t const* e = element;
-
+  old_doc_mptr_t const* e = element;
   char const * k = key;
   return (strcmp(k, e->_key) == 0);
 }
@@ -132,7 +131,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
     if (found == NULL) {
       old_doc_mptr_t* header;
 
-      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t), true);
+      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(old_doc_mptr_t), true);
       if (header == NULL) {
         return false;
       }
@@ -141,7 +140,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
       header->_fid = datafile->_fid;
       header->_validTo = 0;
       header->_data = marker;
-      header->_key = ((char*) d) + d->_offsetKey;
+      header->_key = key;
 
       // insert into primary index
       TRI_InsertKeyAssociativePointer(primaryIndex, header->_key, header, false);
@@ -158,7 +157,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
       newHeader->_rid = d->_rid;
       newHeader->_fid = datafile->_fid;
       newHeader->_data = marker;
-      newHeader->_key = ((char*) d) + d->_offsetKey;
+      newHeader->_key = key;
       newHeader->_validTo = 0;
     }
   }
@@ -175,7 +174,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
     if (found == NULL) {
       old_doc_mptr_t* header;
 
-      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t), true);
+      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(old_doc_mptr_t), true);
       if (header == NULL) {
         return false;
       }
@@ -1130,6 +1129,38 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief jsonify a parameter info block
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
+  TRI_json_t* json;
+  char* cidString;
+   
+  cidString = TRI_StringUInt64((uint64_t) info->_cid);
+  
+  // create a json info object
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
+
+  if (info->_keyOptions) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
+
+  return json;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a parameter info block from file
@@ -1275,30 +1306,10 @@ int TRI_SaveCollectionInfo (char const* path,
                             const bool forceSync) {
   TRI_json_t* json;
   char* filename;
-  char* cidString;
   bool ok;
-
-  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
-  cidString = TRI_StringUInt64((uint64_t) info->_cid);
-
-  // create a json info object
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
-
-  if (info->_keyOptions) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
-  }
   
-  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
+  filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  json = TRI_CreateJsonCollectionInfo(info);
 
   // save json info to file
   ok = TRI_SaveJson(filename, json, forceSync);
@@ -1331,7 +1342,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
-  if (parameter != 0) {
+  if (parameter != NULL) {
     collection->_info._doCompact   = parameter->_doCompact;
     collection->_info._maximalSize = parameter->_maximalSize;
     collection->_info._waitForSync = parameter->_waitForSync;
@@ -1370,7 +1381,8 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
+int TRI_RenameCollection (TRI_collection_t* collection, 
+                          char const* name) {
   TRI_col_info_t new;
   int res;
 
@@ -1764,21 +1776,26 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
         TRI_df_header_marker_t header;
         TRI_col_header_marker_t cm;
         TRI_df_footer_marker_t footer;
+        TRI_voc_tick_t tick;
+
+        tick = TRI_NewTickVocBase();
 
         // datafile header
         TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
         header._version     = TRI_DF_VERSION;
         header._maximalSize = actualSize;
-        header._fid         = TRI_NewTickVocBase();
+        header._fid         = tick;
+        header.base._tick   = tick;
         header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
 
         written += TRI_WRITE(fdout, &header.base, header.base._size);
 
         // col header
         TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
-        cm._type     = (TRI_col_type_t) info->_type;
-        cm._cid      = info->_cid;
-        cm.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
+        cm._type      = (TRI_col_type_t) info->_type;
+        cm._cid       = info->_cid;
+        cm.base._tick = tick;
+        cm.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
 
         written += TRI_WRITE(fdout, &cm.base, cm.base._size);
 
@@ -1797,6 +1814,8 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
               assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
                      marker->_type == TRI_DOC_MARKER_KEY_EDGE);
 
+              tick = TRI_NewTickVocBase();
+
               // copy the old marker
               buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, TRI_DF_ALIGN_BLOCK(marker->_size), true);
               memcpy(buffer, marker, marker->_size);
@@ -1804,6 +1823,8 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
               doc = (TRI_doc_document_key_marker_t*) buffer;
               // reset _tid value to 0
               doc->_tid = 0;
+              
+              doc->base._tick = tick;
               // recalc crc
               doc->base._crc = 0;
               doc->base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) doc, marker->_size));
@@ -1822,15 +1843,19 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
             }
           }
         }
+        
+        tick = TRI_NewTickVocBase();
 
         // datafile footer
         TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+        footer.base._tick   = tick;
         footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
         written += TRI_WRITE(fdout, &footer.base, footer.base._size);
 
         TRI_CLOSE(fdout);
-
       }
+                
+      LOG_DEBUG("rewritten datafile '%s' has size %llu", outfile, (unsigned long long) written);
 
       TRI_DestroyAssociativePointer(&primaryIndex);
 

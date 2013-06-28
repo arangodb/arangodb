@@ -38,26 +38,8 @@ var arangodb = require("org/arangodb"),
   Graph = common.Graph,
   Vertex = common.Vertex,
   GraphArray = common.GraphArray,
-  Iterator,
+  Iterator = common.Iterator,
   GraphAPI;
-
-Iterator = function (graph, cursor, MyPrototype, stringRepresentation) {
-  this.next = function next() {
-    if (cursor.hasNext()) {
-      return new MyPrototype(graph, cursor.next());
-    }
-
-    return undefined;
-  };
-
-  this.hasNext = function hasNext() {
-    return cursor.hasNext();
-  };
-
-  this._PRINT = function (context) {
-    context.output += stringRepresentation;
-  };
-};
 
 GraphAPI = {
   send: function (method, graphKey, path, data) {
@@ -204,32 +186,6 @@ GraphAPI = {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       module "org/arangodb/graph"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              Edge
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new edge object
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -237,38 +193,6 @@ GraphAPI = {
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the to vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getInVertex = function () {
-  return this._graph.getVertex(this._properties._to);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the from vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getOutVertex = function () {
-  return this._graph.getVertex(this._properties._from);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the other vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getPeerVertex = function (vertex) {
-  if (vertex._properties._id === this._properties._to) {
-    return this._graph.getVertex(this._properties._from);
-  }
-
-  if (vertex._properties._id === this._properties._from) {
-    return this._graph.getVertex(this._properties._to);
-  }
-
-  return null;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of an edge
@@ -404,36 +328,8 @@ Vertex.prototype.setProperty = function (name, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of edges
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype.degree = function () {
-  return this.getEdges().length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of in-edges
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype.inDegree = function () {
-  return this.getInEdges().length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of out-edges
-////////////////////////////////////////////////////////////////////////////////
-
-Vertex.prototype.outDegree = function () {
-  return this.getOutEdges().length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Graph
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -537,8 +433,11 @@ Graph.prototype.getVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var cursor = GraphAPI.getVertices(this._vertices._database, this._properties._key, {});
-  return new Iterator(this, cursor, Vertex, "[vertex iterator]");
+  var cursor = GraphAPI.getVertices(this._vertices._database, this._properties._key, {}),
+    graph = this,
+    wrapper = function(object) {
+      return new Vertex(graph, object);
+    };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,8 +459,12 @@ Graph.prototype.getEdge = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var cursor = GraphAPI.getEdges(this._vertices._database, this._properties._key, {});
-  return new Iterator(this, cursor, Edge, "[edge iterator]");
+  var cursor = GraphAPI.getEdges(this._vertices._database, this._properties._key, {}),
+    graph = this,
+    wrapper = function(object) {
+      return new Edge(graph, object);
+    };
+  return new Iterator(wrapper, cursor, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,26 +483,6 @@ Graph.prototype.removeVertex = function (vertex) {
 Graph.prototype.removeEdge = function (edge) {
   GraphAPI.deleteEdge(this._properties._key, edge._properties._key);
   edge._properties = undefined;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of vertices
-///
-/// @FUN{@FA{graph}.order()}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.order = function () {
-  return this._vertices.count();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of edges
-///
-/// @FUN{@FA{graph}.size()}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.size = function () {
-  return this._edges.count();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
