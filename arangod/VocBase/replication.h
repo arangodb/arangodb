@@ -44,7 +44,6 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_col_info_s;
 struct TRI_df_marker_s;
 struct TRI_document_collection_s;
 struct TRI_doc_mptr_s;
@@ -88,13 +87,24 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replication dump container
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_dump_s {
+  struct TRI_string_buffer_s*  _buffer;
+  TRI_voc_tick_t               _lastFoundTick;
+  bool                         _hasMore;
+}
+TRI_replication_dump_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief state information about replication
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_state_s {
-  bool            _active;
   TRI_voc_tick_t  _firstTick;
   TRI_voc_tick_t  _lastTick;
+  bool            _active;
 }
 TRI_replication_state_t;
 
@@ -319,7 +329,7 @@ int TRI_DocumentReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_DumpCollectionReplication (struct TRI_string_buffer_s*,
+int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
                                    struct TRI_vocbase_col_s*,
                                    TRI_voc_tick_t,
                                    TRI_voc_tick_t,

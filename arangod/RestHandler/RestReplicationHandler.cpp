@@ -391,7 +391,7 @@ void RestReplicationHandler::handleCommandDump () {
   
   // determine start tick for dump
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = 0;
+  TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
   bool found;
   char const* value;
   
@@ -424,42 +424,58 @@ void RestReplicationHandler::handleCommandDump () {
     chunkSize = minChunkSize;
   }
 
-  const TRI_voc_cid_t cid = (TRI_voc_cid_t) StringUtils::uint64(collection);
+  TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
-  LOGGER_DEBUG("request collection dump for collection " << cid << 
-               ", tickStart: " << tickStart << ", tickEnd: " << tickEnd);
+  if (c == 0) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  const TRI_voc_cid_t cid = c->_cid;
+
+  LOGGER_DEBUG("request collection dump for collection '" << collection << "', "
+               "tickStart: " << tickStart << ", tickEnd: " << tickEnd);
 
   TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
 
   if (col == 0) {
-    generateError(HttpResponse::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                  "collection not found");
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
   
 
-  TRI_string_buffer_t buffer; 
-  // initialise the buffer
-  TRI_InitSizedStringBuffer(&buffer, TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
+  // initialise the dump container
+  TRI_replication_dump_t dump; 
+  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
 
-  int res = TRI_DumpCollectionReplication(&buffer, col, tickStart, tickEnd, chunkSize);
+  if (dump._buffer == 0) {
+    TRI_ReleaseCollectionVocBase(_vocbase, col);
+    
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize);
   
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    // generate the JSON result
+    // generate the result
     _response = createResponse(HttpResponse::OK);
-    _response->setContentType("application/json; charset=utf-8");
+    _response->setContentType("application/x-arango-dump; charset=utf-8");
+    _response->setHeader("x-arango-hasmore", (dump._hasMore ? "true" : "false"));
+    _response->setHeader("x-arango-lastfound", StringUtils::itoa(dump._lastFoundTick));
 
-    _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
-    buffer._buffer = 0;
+    // transfer ownership of the buffer contents
+    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
+    // avoid double freeing
+    dump._buffer->_buffer = 0;
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
 
-  TRI_DestroyStringBuffer(&buffer);
+  TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

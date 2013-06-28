@@ -797,7 +797,7 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
               datafile->getName(datafile), 
               (unsigned long long) datafile->_fid);
 
-    result = TRI_IterateDatafile(datafile, iterator, data, false);
+    result = TRI_IterateDatafile(datafile, iterator, data, false, true);
 
     if (! result) {
       return false;
@@ -850,7 +850,7 @@ static bool IterateFiles (TRI_vector_string_t* vector,
     datafile = TRI_OpenDatafile(filename);
 
     if (datafile != NULL) {
-      TRI_IterateDatafile(datafile, iterator, data, journal);
+      TRI_IterateDatafile(datafile, iterator, data, journal, false);
       TRI_CloseDatafile(datafile);
       TRI_FreeDatafile(datafile);
     }
@@ -1718,7 +1718,7 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
       for (i = 0; i < datafiles._length; ++i) {
         TRI_datafile_t* df = datafiles._buffer[i];
 
-        TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false);
+        TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false, false);
       }
 
 

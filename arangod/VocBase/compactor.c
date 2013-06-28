@@ -607,7 +607,7 @@ static void CompactifyDatafile (TRI_document_collection_t* document,
   // deletion markers
   context._keepDeletions = keepDeletions;
 
-  ok = TRI_IterateDatafile(df, Compactifier, &context, false);
+  ok = TRI_IterateDatafile(df, Compactifier, &context, false, false);
 
   if (! ok) {
     LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
