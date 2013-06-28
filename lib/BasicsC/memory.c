@@ -188,7 +188,11 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   // warn in the case of very big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
-    LOG_WARNING("big malloc action: %llu bytes in %s:%d", (unsigned long long) n, file, line);
+    fprintf(stderr,
+            "big malloc action: %llu bytes in %s:%d", 
+            (unsigned long long) n, 
+            file, 
+            line);
   }
 
   m = malloc((size_t) n + sizeof(uintptr_t));
