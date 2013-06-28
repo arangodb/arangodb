@@ -241,7 +241,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameGeo1Index (const TRI_index_t const* idx) {
+static const char* TypeNameGeo1Index (TRI_index_t const* idx) {
   return "geo1";
 }
 
@@ -292,7 +292,7 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameGeo2Index (const TRI_index_t const* idx) {
+static const char* TypeNameGeo2Index (TRI_index_t const* idx) {
   return "geo2";
 }
 
