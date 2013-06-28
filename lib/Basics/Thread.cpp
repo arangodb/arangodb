@@ -36,7 +36,7 @@
 #include <signal.h>
 
 #include "Basics/ConditionLocker.h"
-#include "Logger/Logger.h"
+#include "BasicsC/logging.h"
 
 
 using namespace triagens::basics;
@@ -131,7 +131,7 @@ Thread::Thread (std::string const& name)
 
 Thread::~Thread () {
   if (_running != 0) {
-    LOGGER_WARNING("forcefully shutting down thread '" << _name << "'");
+    LOG_WARNING("forcefully shutting down thread '%s'", _name.c_str());
     TRI_StopThread(&_thread);
   }
 
@@ -175,7 +175,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
   _finishedCondition = finishedCondition;
 
   if (_started != 0) {
-    LOGGER_FATAL_AND_EXIT("called started on an already started thread");
+    LOG_FATAL_AND_EXIT("called started on an already started thread");
   }
 
   _started = 1;
@@ -184,7 +184,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
   bool ok = TRI_StartThread(&_thread, text.c_str(), &startThread, this);
 
   if (! ok) {
-    LOGGER_ERROR("could not start thread '" << _name << "': " << strerror(errno));
+    LOG_ERROR("could not start thread '%s': %s", _name.c_str(), strerror(errno));
   }
 
   return ok;
@@ -196,7 +196,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
 void Thread::stop () {
   if (_running != 0) {
-    LOGGER_TRACE("trying to cancel (aka stop) the thread '" << _name << "'");
+    LOG_TRACE("trying to cancel (aka stop) the thread '%s'", _name.c_str());
     TRI_StopThread(&_thread);
   }
 }
@@ -226,7 +226,7 @@ void Thread::shutdown () {
   }
 
   if (_running != 0) {
-    LOGGER_TRACE("trying to cancel (aka stop) the thread '" << _name << "'");
+    LOG_TRACE("trying to cancel (aka stop) the thread '%s'", _name.c_str());
     TRI_StopThread(&_thread);
   }
 
@@ -264,15 +264,15 @@ void Thread::allowAsynchronousCancelation () {
   if (_started) {
     if (_running) {
       if (TRI_IsSelfThread(&_thread)) {
-        LOGGER_DEBUG("set asynchronous cancelation for thread '" << _name << "'");
+        LOG_DEBUG("set asynchronous cancelation for thread '%s'", _name.c_str());
         TRI_AllowCancelation();
       }
       else {
-        LOGGER_ERROR("cannot change cancelation type of an already running thread from the outside");
+        LOG_ERROR("cannot change cancelation type of an already running thread from the outside");
       }
     }
     else {
-      LOGGER_WARNING("thread has already stop, it is useless to change the cancelation type");
+      LOG_WARNING("thread has already stopped, it is useless to change the cancelation type");
     }
   }
   else {
@@ -295,7 +295,7 @@ void Thread::allowAsynchronousCancelation () {
 
 void Thread::runMe () {
   if (_asynchronousCancelation) {
-    LOGGER_DEBUG("set asynchronous cancelation for thread '" << _name << "'");
+    LOG_DEBUG("set asynchronous cancelation for thread '%s'", _name.c_str());
     TRI_AllowCancelation();
   }
 
@@ -306,7 +306,7 @@ void Thread::runMe () {
   }
   catch (...) {
     _running = 0;
-    LOGGER_WARNING("exception caught in thread '" << _name << "'");
+    LOG_WARNING("exception caught in thread '%s'", _name.c_str());
     throw;
   }
 
