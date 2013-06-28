@@ -63,6 +63,30 @@ To include your app in the list of apps running on your ArangoDB instance, start
 
 Now point your browser to `http://localhost:8529/my/wiese` and you should see "Worked!". After this short overview, let's get into the details.
 
+## Fishbowl - Foxx's app repository 
+Foxx comes with a repository of apps other people created. This repository is called "fishbowl". You can access the repository through arangosh:
+
+
+    $ arangosh
+    arangosh> aal = require('org/arangodb/aal');
+    arangosh> aal.updateFishbowl();
+	arangosh> aal.listFishbowl();
+
+This updates the list of available apps and displays the list. Let's assume you want to install the demo todo app called "aye_aye". First get a list of all available versions of "aye_aye":
+
+	arangosh> aal.details("aye_aye");
+	
+The following command can be copied from the results of the previous details command. To download version 1.0.8 of "aye_aye" run:
+
+	arangosh> aaal.load("github", "mchacki/aye_aye", "v1.0.8");
+
+The response contains the full path to the directory where "aye_aye" was saved.
+The last step is to mount "aye_aye" to a route of your choice, e.g.
+
+	arangosh> aal.installApp("aye_aye","/todos");
+
+You can now use aye_aye in your browser at `http://localhost:8529/todos`.
+
 ## Details on Foxx.Application
 
 #### new Foxx.Application
@@ -76,20 +100,20 @@ Now point your browser to `http://localhost:8529/my/wiese` and you should see "W
 Using the base paths defined in the manifest file, you can require modules that you need in this FoxxApplication. So for example:
 
     app.requires = {
-      "schafspelz": "wolf"
+      "sheepskin": "wolf"
     };
 
-This will require the file `wolf.js` in the libs folder you have defined and make the module available via the variable `schafspelz` in your FoxxApplication definitions:
+This will require the file `wolf.js` in the libs folder you have defined and make the module available via the variable `sheepskin` in your FoxxApplication definitions:
 
     app.get("/bark", function (req, res) {
-      schafspelz.bark();
+      sheepskin.bark();
     });
 
 *Please note that you cannot use the normal require syntax in a `FoxxApplication`, because it's a special DSL and not a normal JavaScript file.*
 
 #### Foxx.Application#registerRepository
 
-Use this method to register a repository and a corresponding model. They can then be used in your handlers via `repository.name` where name is the registered name. A repository is a module that gets data from the database or saves data to it. A model is a representation of data which will be used by the repository.
+A repository is a module that gets data from the database or saves data to it. A model is a representation of data which will be used by the repository. Use this method to register a repository and a corresponding model. They can then be used in your handlers via `repository.name` where name is the registered name. 
 
     Foxx = require("org/arangodb/foxx");
 
@@ -408,7 +432,7 @@ If a request is made to `/application.js` (in development mode), the file array 
 
 ## Development Mode
 
-If you start ArangoDB with the option `--javascript.dev-app-path` followed by the path to a directory containing a manifest file, you are starting ArangoDB in development mode with the application loaded. This means that on every request:
+If you start ArangoDB with the option `--javascript.dev-app-path` followed by the path to a directory containing a manifest file and the path to the database, you are starting ArangoDB in development mode with the application loaded. This means that on every request:
 
 1. All routes are dropped
 2. All module caches are flushed
