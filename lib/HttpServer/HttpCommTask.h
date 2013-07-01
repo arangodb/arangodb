@@ -196,7 +196,7 @@ namespace triagens {
             if (headerLength > this->_maximalHeaderSize) {
               LOGGER_WARNING("maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength);
               // header is too large
-              HttpResponse response(HttpResponse::HEADER_TOO_LARGE);
+              HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE);
               this->handleResponse(&response);
 
               return true;
@@ -218,10 +218,27 @@ namespace triagens {
                 // internal server error
                 HttpResponse response(HttpResponse::SERVER_ERROR);
                 this->handleResponse(&response);
-
                 this->resetState();
 
-                return false;
+                return true;
+              }
+
+              // check HTTP protocol
+              if (! this->_request->isHttp10() && ! this->_request->isHttp11()) {
+                HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED);
+                this->handleResponse(&response);
+                this->resetState();
+
+                return true;
+              }
+              
+              // check max URL length
+              if (this->_request->fullUrl().length() > 16384) {
+                HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG);
+                this->handleResponse(&response);
+                this->resetState();
+
+                return true;
               }
 
               // update the connection information, i. e. client and server addresses and ports
@@ -289,6 +306,21 @@ namespace triagens {
                   return true;
                 }
               }
+           
+            
+              // .............................................................................
+              // check if server is active
+              // .............................................................................
+
+              if (! this->_server->getScheduler()->isActive()) {
+                // server is inactive and will intentionally respond with HTTP 503
+                LOGGER_TRACE("cannot serve request - server is inactive");
+                HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE);
+                this->handleResponse(&response);
+
+                return true;
+              }
+
 
               // check for a 100-continue
               if (this->_readRequestBody) {
@@ -323,7 +355,7 @@ namespace triagens {
             if (this->_bodyLength > this->_maximalBodySize) {
               LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength);
               // request entity too large
-              HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+              HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
               this->handleResponse(&response);
 
               this->resetState();
@@ -597,7 +629,7 @@ namespace triagens {
           if ((size_t) bodyLength > this->_maximalBodySize) {
             // request entity too large
             LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << bodyLength);
-            HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+            HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
             this->handleResponse(&response);
 
             return false;

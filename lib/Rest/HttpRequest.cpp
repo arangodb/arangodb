@@ -70,7 +70,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _type(HTTP_REQUEST_ILLEGAL),
     _prefix(),
     _suffix(),
-    _version(HTTP_1_0),
+    _version(HTTP_UNKNOWN),
     _user(),
     _requestContext(0) {
 
@@ -101,7 +101,7 @@ HttpRequest::HttpRequest ()
     _type(HTTP_REQUEST_ILLEGAL),
     _prefix(),
     _suffix(),
-    _version(HTTP_1_0),
+    _version(HTTP_UNKNOWN),
     _user(),
     _requestContext(0) {
 }
@@ -756,8 +756,11 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                   if (e[7] == '1') {
                     _version = HTTP_1_1;
                   }
-                  else {
+                  else if (e[7] == '0') {
                     _version = HTTP_1_0;
+                  }
+                  else {
+                    _version = HTTP_UNKNOWN;
                   }
 
                   e += versionLength;
