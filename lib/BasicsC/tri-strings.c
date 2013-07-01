@@ -1139,7 +1139,8 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString (char const* in, 
+char* TRI_EscapeControlsCString (TRI_memory_zone_t* zone,
+                                 char const* in, 
                                  size_t inLength, 
                                  size_t* outLength,
                                  bool appendNewline) {
@@ -1148,7 +1149,12 @@ char* TRI_EscapeControlsCString (char const* in,
   char const * ptr;
   char const * end;
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (4 * inLength) + 1 + (appendNewline ? 1 : 0), false);
+  buffer = TRI_Allocate(zone, (4 * inLength) + 1 + (appendNewline ? 1 : 0), false);
+
+  if (buffer == NULL) {
+    return NULL;
+  }
+
   qtr = buffer;
 
   for (ptr = in, end = ptr + inLength;  ptr < end;  ptr++, qtr++) {
@@ -1192,11 +1198,15 @@ char* TRI_EscapeControlsCString (char const* in,
   *qtr = '\0';
   *outLength = (size_t) (qtr - buffer);
 
-  qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, (*outLength) + 1, false);
-  memcpy(qtr, buffer, (*outLength) + 1);
+  qtr = TRI_Allocate(zone, (*outLength) + 1, false);
 
-  TRI_Free(TRI_CORE_MEM_ZONE, buffer);
+  if (qtr != NULL) {
+    memcpy(qtr, buffer, (*outLength) + 1);
+  }
 
+  TRI_Free(zone, buffer);
+
+  // may be NULL
   return qtr;
 }
 

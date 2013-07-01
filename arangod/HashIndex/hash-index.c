@@ -433,7 +433,7 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameHashIndex (const TRI_index_t const* idx) {
+static const char* TypeNameHashIndex (TRI_index_t const* idx) {
   return "hash";
 }
 

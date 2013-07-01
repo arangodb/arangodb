@@ -737,7 +737,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
     TRI_set_errno(res);
     TRI_CLOSE(fd);
 
-    LOG_ERROR("cannot memory map datafile '%s': '%d'", filename, res);
+    LOG_ERROR("cannot memory map datafile '%s': %s", filename, TRI_errno_string(res));
     return NULL;
   }
 

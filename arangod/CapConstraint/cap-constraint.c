@@ -176,7 +176,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameCapConstraint (const TRI_index_t const* idx) {
+static const char* TypeNameCapConstraint (TRI_index_t const* idx) {
   return "cap";
 }
 

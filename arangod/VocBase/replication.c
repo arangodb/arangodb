@@ -805,6 +805,128 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int DumpCollection (TRI_replication_dump_t* dump, 
+                           TRI_primary_collection_t* primary,
+                           TRI_voc_tick_t tickMin,
+                           TRI_voc_tick_t tickMax,
+                           uint64_t chunkSize) {
+  TRI_vector_t datafiles;
+  TRI_string_buffer_t* buffer;
+  TRI_voc_tick_t firstFoundTick;
+  TRI_voc_tick_t lastFoundTick;
+  size_t i; 
+  int res;
+  bool hasMore;
+
+  buffer = dump->_buffer;
+  datafiles = GetRangeDatafiles(primary, tickMin, tickMax);
+  
+  hasMore        = false;
+  firstFoundTick = 0;
+  lastFoundTick  = 0;
+  res            = TRI_ERROR_NO_ERROR;
+
+  for (i = 0; i < datafiles._length; ++i) {
+    df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
+    TRI_datafile_t* datafile = e->_data;
+    char* ptr;
+    char* end;
+
+    // we are reading from a journal that might be modified in parallel
+    // so we must read-lock it
+    if (e->_isJournal) {
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
+     
+    ptr = datafile->_data;
+    end = ptr + datafile->_currentSize;
+
+    while (ptr < end) {
+      TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+      TRI_voc_tick_t foundTick;
+
+      if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+        // end of datafile
+        break;
+      }
+      
+      ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+          
+      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
+          marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
+          marker->_type != TRI_DOC_MARKER_KEY_DELETION) {
+        continue;
+      }
+
+      // get the marker's tick and check whether we should include it
+      foundTick = marker->_tick;
+      
+      if (foundTick < tickMin) {
+        // marker too old
+        continue;
+      }
+
+      if (foundTick > tickMax) {
+        // marker too new
+        hasMore = false;
+        goto NEXT_DF;
+      }
+
+      
+      // note the last tick we processed
+      if (firstFoundTick == 0) {
+        firstFoundTick = foundTick;
+      }
+      lastFoundTick = foundTick;
+
+      // TODO: check if marker is part of an aborted transaction
+      if (! StringifyMarkerReplication(buffer, (TRI_document_collection_t*) primary, marker)) {
+        res = TRI_ERROR_INTERNAL;
+
+        goto NEXT_DF;
+      }
+
+      if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
+        // abort the iteration
+        hasMore = ((ptr < end) || (i < datafiles._length - 1));
+
+        goto NEXT_DF;
+      }
+    }
+
+NEXT_DF:
+    if (e->_isJournal) {
+      // read-unlock the journal
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
+
+    if (res != TRI_ERROR_NO_ERROR || ! hasMore) {
+      break;
+    }
+  }
+  
+  TRI_DestroyVector(&datafiles);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (datafiles._length > 0) {
+      // data available for requested range
+      dump->_lastFoundTick = lastFoundTick;
+      dump->_hasMore       = hasMore;
+    }
+    else {
+      // no data available for requested range
+      dump->_lastFoundTick = 0;
+      dump->_hasMore       = false;
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get current state from the replication logger
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
@@ -1485,130 +1607,6 @@ int TRI_DocumentReplication (TRI_vocbase_t* vocbase,
 
   res = LogEvent(logger, 0, true, typeName, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump data from a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int DumpCollection (TRI_replication_dump_t* dump, 
-                           TRI_primary_collection_t* primary,
-                           TRI_voc_tick_t tickMin,
-                           TRI_voc_tick_t tickMax,
-                           uint64_t chunkSize) {
-  TRI_vector_t datafiles;
-  TRI_string_buffer_t* buffer;
-  TRI_voc_tick_t firstFoundTick;
-  TRI_voc_tick_t lastFoundTick;
-  size_t i; 
-  int res;
-  bool hasMore;
-
-  buffer = dump->_buffer;
-  datafiles = GetRangeDatafiles(primary, tickMin, tickMax);
-  
-  hasMore        = false;
-  firstFoundTick = 0;
-  lastFoundTick  = 0;
-  res            = TRI_ERROR_NO_ERROR;
-
-  for (i = 0; i < datafiles._length; ++i) {
-    df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
-    TRI_datafile_t* datafile = e->_data;
-    char* ptr;
-    char* end;
-
-    // we are reading from a journal that might be modified in parallel
-    // so we must read-lock it
-    if (e->_isJournal) {
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-    }
-     
-    ptr = datafile->_data;
-    end = ptr + datafile->_currentSize;
-
-    while (ptr < end) {
-      TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
-      TRI_voc_tick_t foundTick;
-
-      if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
-        // end of datafile
-        break;
-      }
-      
-      ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
-          
-      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
-          marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
-          marker->_type != TRI_DOC_MARKER_KEY_DELETION) {
-        continue;
-      }
-
-      // get the marker's tick and check whether we should include it
-      foundTick = marker->_tick;
-      
-      if (foundTick < tickMin) {
-        // marker too old
-        continue;
-      }
-
-      if (foundTick > tickMax) {
-        // marker too new
-        hasMore = false;
-        goto NEXT_DF;
-      }
-
-      
-      // note the last tick we processed
-      if (firstFoundTick == 0) {
-        firstFoundTick = foundTick;
-      }
-      lastFoundTick = foundTick;
-
-      // TODO: check if marker is part of transaction and committed etc.
-      if (! StringifyMarkerReplication(buffer, (TRI_document_collection_t*) primary, marker)) {
-        res = TRI_ERROR_INTERNAL;
-
-        goto NEXT_DF;
-      }
-
-      if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
-        // abort the iteration
-        hasMore = ((ptr < end) || (i < datafiles._length - 1));
-
-        goto NEXT_DF;
-      }
-    }
-
-NEXT_DF:
-    if (e->_isJournal) {
-      // read-unlock the journal
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-    }
-
-    if (res != TRI_ERROR_NO_ERROR || ! hasMore) {
-      break;
-    }
-  }
-
-  
-  TRI_DestroyVector(&datafiles);
-
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (datafiles._length > 0) {
-      // data available for requested range
-      dump->_lastFoundTick = lastFoundTick;
-      dump->_hasMore       = hasMore;
-    }
-    else {
-      // no data available for requested range
-      dump->_lastFoundTick = 0;
-      dump->_hasMore       = false;
-    }
-  }
 
   return res;
 }

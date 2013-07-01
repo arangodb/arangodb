@@ -419,7 +419,7 @@ char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNamePrimary (const TRI_index_t const* idx) {
+static const char* TypeNamePrimary (TRI_index_t const* idx) {
   return "primary";
 }
 
@@ -995,7 +995,7 @@ static int InsertPriorityQueueIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNamePriorityQueueIndex (const TRI_index_t const* idx) {
+static const char* TypeNamePriorityQueueIndex (TRI_index_t const* idx) {
   return "priorityqueue";
 }
 
@@ -1660,7 +1660,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameSkiplistIndex (const TRI_index_t const* idx) {
+static const char* TypeNameSkiplistIndex (TRI_index_t const* idx) {
   return "skiplist";
 }
 
@@ -2037,7 +2037,7 @@ static int InsertFulltextIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameFulltextIndex (const TRI_index_t const* idx) {
+static const char* TypeNameFulltextIndex (TRI_index_t const* idx) {
   return "fulltext";
 }
 
@@ -2574,7 +2574,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameBitarrayIndex (const TRI_index_t const* idx) {
+static const char* TypeNameBitarrayIndex (TRI_index_t const* idx) {
   return "bitarray";
 }
 
