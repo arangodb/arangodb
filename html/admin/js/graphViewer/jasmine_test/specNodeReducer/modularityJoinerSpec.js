@@ -312,7 +312,6 @@
             joiner.joinCommunity(toJoin);
             
             expect(joiner.getDQ()).toEqual(expected);
-            console.log(expected);
           });
         
         });
@@ -451,6 +450,21 @@
               val: 2/m - one.in * two.out - one.out * two.in
             });
           });
+          
+          it('should return null for best if the value is 0 or worse', function() {
+            var toJoin = joiner.getBest();
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("0");
+            expect(toJoin.lID).toEqual("3");
+            joiner.joinCommunity(toJoin);
+            
+            toJoin = joiner.getBest();
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("1");
+            expect(toJoin.lID).toEqual("2");
+            joiner.joinCommunity(toJoin);
+            expect(joiner.getBest()).toBeNull();
+          });
         
         });
         
@@ -509,6 +523,7 @@
         beforeEach(function() {
           // This is the Zachary Karate Club Network
           helper.insertSimpleNodes(nodes, [
+            "0", // Just Temporary node, as the orig is counting from 1 instead of 0
             "1","2","3","4","5","6","7","8","9","10",
             "11","12","13","14","15","16","17","18","19","20",
             "21","22","23","24","25","26","27","28","29","30",
@@ -592,6 +607,111 @@
           edges.push(helper.createSimpleEdge(nodes, 34, 31));
           edges.push(helper.createSimpleEdge(nodes, 34, 32));
           edges.push(helper.createSimpleEdge(nodes, 34, 33));
+          nodes.shift(1); //Remove the temporary node;
+          joiner.setup();
+          
+        });
+        
+        it('should never have duplicates in communities', function() {
+          this.addMatchers({
+            toNotContainDuplicates: function() {
+              var comms = this.actual,
+                duplicate = [],
+                found = {},
+                failed = false;
+              _.each(comms, function (v) {
+                _.each(v.nodes, function (i) {
+                  if (found[i]) {
+                    failed = true;
+                    duplicate.push(i);
+                  } else {
+                    found[i] = true;
+                  }
+                });
+              });
+              this.message = function() {
+                var outComms = comms;
+                _.each(outComms, function(o) {
+                  o.nodes = _.filter(o.nodes, function(n) {
+                    return _.contains(duplicate, n);
+                  });
+                })
+                
+                return "Found duplicate nodes [" + duplicate
+                  + "] in communities: " + JSON.stringify(outComms);
+              }
+              return !failed;
+            }
+          });
+          var best = joiner.getBest();
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+            expect(joiner.getCommunities()).toNotContainDuplicates();
+          }
+        });
+        
+        
+        it('should be able to find communities', function() {
+          this.addMatchers({
+            toContainKarateClubCommunities: function() {
+              var c1 = ["15", "16", "19", "21", "23", "24", "27", "28", "30", "31", "33", "34", "9"].sort().join(),
+                c2 = ["10", "13", "14", "18", "2", "22", "3", "4", "8"].sort().join(),
+                c3 = ["1", "11", "12", "17", "20" , "5", "6", "7"].sort().join(),
+                c4 = ["25", "26", "29", "32"].sort().join(),
+                comms = this.actual,
+                failed = false,
+                msg = "Found incorrect: ";
+              _.each(comms, function(o) {
+                var check = o.nodes.sort().join();
+                switch (check) {
+                case c1:
+                  c1 = "";
+                  break;
+                case c2:
+                  c2 = "";
+                  break;
+                case c3:
+                  c3 = "";
+                  break;
+                case c4:
+                  c4 = "";
+                  break;
+                default:
+                  msg += "[" + check + "] ";  
+                  failed = true;
+                }
+                return;
+              });
+              this.message = function() {
+                var notFound = "";
+                if (c1 !== "") {
+                  notFound += "[" + c1 + "] ";
+                }
+                if (c2 !== "") {
+                  notFound += "[" + c2 + "] ";
+                }
+                if (c3 !== "") {
+                  notFound += "[" + c3 + "] ";
+                }
+                if (c4 !== "") {
+                  notFound += "[" + c4 + "] ";
+                }
+                return msg + " and did not find: " + notFound;
+              };
+              return !failed;
+            }
+          });
+          
+          
+          var best = joiner.getBest();
+          var steps = 0;
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+            steps++;
+          }
+          expect(joiner.getCommunities()).toContainKarateClubCommunities();
         });
         
       });

@@ -157,6 +157,11 @@ function ModularityJoiner(nodes, edges) {
         }
         if (s === low) {
           delete list[high];
+          if (_.isEmpty(list)) {
+            delete dQ[s];
+            delete heap[s];
+            return;
+          }
           _.each(list, function(v, k) {
             if (k < high) {
               list[k] += dQ[k][high];
@@ -220,6 +225,9 @@ function ModularityJoiner(nodes, edges) {
         bestV = dQ[sID][lID];
       }
     });
+    if (bestV <= 0) {
+      return null;
+    }
     return {
       sID: bestS,
       lID: bestL,
@@ -253,8 +261,9 @@ function ModularityJoiner(nodes, edges) {
       comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
       comms[s].q += comms[l].q;
       delete comms[l];
+    } else {
+      comms[s].nodes.push(l);
     }
-    comms[s].nodes.push(l);
     comms[s].q += q;
     updateDQAndHeap(s, l);
   };
