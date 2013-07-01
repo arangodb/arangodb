@@ -34,6 +34,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -93,7 +94,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
+    if (result->getHttpReturnCode() == HttpResponse::OK) {
 
       // default value
       _version = "arango";
@@ -408,11 +409,11 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
+    _lastHttpReturnCode = HttpResponse::SERVER_ERROR;
 
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("error"), v8::Boolean::New(true));
-    result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
+    result->Set(v8::String::New("code"), v8::Integer::New(HttpResponse::SERVER_ERROR));
 
     int errorNumber = 0;
 
@@ -520,10 +521,10 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
+    _lastHttpReturnCode = HttpResponse::SERVER_ERROR;
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
+    result->Set(v8::String::New("code"), v8::Integer::New(HttpResponse::SERVER_ERROR));
 
     int errorNumber = 0;
 

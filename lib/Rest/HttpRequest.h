@@ -86,6 +86,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum HttpVersion {
+          HTTP_UNKNOWN,
           HTTP_1_0,
           HTTP_1_1
         };

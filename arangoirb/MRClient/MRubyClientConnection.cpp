@@ -34,6 +34,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -97,7 +98,7 @@ MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
   else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
+    if (result->getHttpReturnCode() == HttpResponse::OK) {
 
       // default value
       _version = "arango";
@@ -295,12 +296,12 @@ mrb_value MRubyClientConnection::requestData (HttpRequest::HttpRequestType metho
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
+    _lastHttpReturnCode = HttpResponse::SERVER_ERROR;
 
     mrb_value result = mrb_hash_new_capa(_mrb, 2);
 
     mrb_hash_set(_mrb, result, mrs->_errorSym, mrb_true_value());
-    mrb_hash_set(_mrb, result, mrs->_codeSym, mrb_fixnum_value(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
+    mrb_hash_set(_mrb, result, mrs->_codeSym, mrb_fixnum_value(HttpResponse::SERVER_ERROR));
 
     int errorNumber = 0;
 

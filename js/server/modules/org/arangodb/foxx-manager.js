@@ -350,6 +350,7 @@ function routingAalApp (app, mount, prefix) {
     var i;
     var context;
     var routes;
+    var defaultDocument;
 
     if (mount === "") {
       mount = "/";
@@ -365,6 +366,13 @@ function routingAalApp (app, mount, prefix) {
     // compute the collection prefix
     if (prefix === undefined) {
       prefix = mount.substr(1).replace(/\//g, "_");
+    }
+
+    if (app._manifest.hasOwnProperty("defaultDocument")) {
+      defaultDocument = app._manifest.defaultDocument;
+    }
+    else {
+      defaultDocument = "index.html";
     }
 
     // setup the routes
@@ -395,7 +403,7 @@ function routingAalApp (app, mount, prefix) {
         "do" : "org/arangodb/actions/redirectRequest",
         "options" : {
           "permanently" : true,
-          "destination" : p + "index.html"
+          "destination" : p + defaultDocument 
         }
       }
     });
