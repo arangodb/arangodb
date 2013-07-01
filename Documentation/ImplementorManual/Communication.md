@@ -4,8 +4,16 @@ HTTP Handling in ArangoDB {#Communication}
 @NAVIGATE_Communication
 @EMBEDTOC{CommunicationTOC}
 
+Clients sending requests to ArangoDB must use either HTTP 1.0 or HTTP 1.1.
+Other HTTP versions are not supported by ArangoDB and any attempt to send 
+a different HTTP version signature will result in the server responding with
+an HTTP 505 (HTTP version not supported) error.
+
 ArangoDB will always respond to client requests with HTTP 1.1. Clients
-should therefore support HTTP version 1.1.
+should therefore support HTTP version 1.1. 
+
+The maximum URL length accepted by ArangoDB is 16K. Incoming requests with
+longer URLs will be rejected with an HTTP 414 (Request-URI too long) error.
 
 Keep-Alive and Authentication {#CommunicationKeepAlive}
 =======================================================
