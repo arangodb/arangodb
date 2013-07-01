@@ -64,179 +64,275 @@
       
       var joiner,
       nodes,
-      edges;
+      edges,
+      testNetFour;
 
       beforeEach(function () {
         nodes = [];
         edges = [];
         joiner = new ModularityJoiner(nodes, edges);
+        testNetFour = function() {
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3"]);
+          edges.push(helper.createSimpleEdge(nodes, 0, 1));
+          edges.push(helper.createSimpleEdge(nodes, 0, 3));
+          edges.push(helper.createSimpleEdge(nodes, 1, 2));
+          edges.push(helper.createSimpleEdge(nodes, 2, 1));
+          edges.push(helper.createSimpleEdge(nodes, 2, 3));
+          edges.push(helper.createSimpleEdge(nodes, 3, 0));
+          edges.push(helper.createSimpleEdge(nodes, 3, 1));
+          edges.push(helper.createSimpleEdge(nodes, 3, 2));
+        };
+      });
+      
+      describe('getters', function() {
+        
+        beforeEach(function() {
+          this.addMatchers({
+            toBeGetter: function() {
+              var func = joiner[this.actual];
+              if (!func) {
+                this.message = function() {
+                  return "Expected " + this.actual + " to be defined.";
+                };
+                return false;
+              }
+              if ("function" !== typeof func) {
+                this.message = function() {
+                  return "Expected " + this.actual + " to be a function.";
+                };
+                return false;
+              }
+              if (func.length !== 0) {
+                this.message = function() {
+                  return "Expected " + this.actual + " to be a getter function.";
+                };
+                return false;
+              }
+              return true;
+            }
+          });
+        })
+        
+        it('should offer the adjacency matrix', function() {
+          expect("getAdjacencyMatrix").toBeGetter();
+        });
+        
+        it('should offer the heap', function() {
+          expect("getHeap").toBeGetter();
+        });
+        
+        it('should offer the delta qs', function() {
+          expect("getDQ").toBeGetter();
+        });
+        
+        it('should offer the degrees', function() {
+          expect("getDegrees").toBeGetter();
+        });
+        
+        it('should offer the best join', function() {
+          expect("getBest").toBeGetter();
+        });
+        
+        it('should offer the community list', function() {
+          expect("getCommunities").toBeGetter();
+        });
+        
       });
       
       describe('checking the interface', function() {
         
-        it('should offer a function to compute the Adjacency Matrix', function() {
-          expect(joiner.makeAdjacencyMatrix).toBeDefined();
-          expect(joiner.makeAdjacencyMatrix).toEqual(jasmine.any(Function));
-          expect(joiner.makeAdjacencyMatrix.length).toEqual(0);
+        it('should offer a setup function', function() {
+          expect(joiner.setup).toBeDefined();
+          expect(joiner.setup).toEqual(jasmine.any(Function));
+          expect(joiner.setup.length).toEqual(0);
         });
         
-        it('should offer a function to compute the initial degrees', function() {
-          expect(joiner.makeInitialDegrees).toBeDefined();
-          expect(joiner.makeInitialDegrees).toEqual(jasmine.any(Function));
-          expect(joiner.makeInitialDegrees.length).toEqual(0);
-        });
-             
-      });
-      
-      it('should be able to create an adjacency matrix', function() {
-        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
-        edges.push(helper.createSimpleEdge(nodes, 0, 1));
-        edges.push(helper.createSimpleEdge(nodes, 0, 3));
-        edges.push(helper.createSimpleEdge(nodes, 1, 2));
-        edges.push(helper.createSimpleEdge(nodes, 2, 1));
-        edges.push(helper.createSimpleEdge(nodes, 3, 0));
-        edges.push(helper.createSimpleEdge(nodes, 3, 1));
-        edges.push(helper.createSimpleEdge(nodes, 3, 2));
-        
-        expect(joiner.makeAdjacencyMatrix()).toEqual({
-          "0": ["1", "3"],
-          "1": ["2"],
-          "2": ["1"],
-          "3": ["0", "1", "2"]
-        });
-        
-      });
-      
-      describe('computation of degrees', function() {
-        
-        beforeEach(function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3"]);
-          edges.push(helper.createSimpleEdge(nodes, 0, 1));
-          edges.push(helper.createSimpleEdge(nodes, 0, 3));
-          edges.push(helper.createSimpleEdge(nodes, 1, 2));
-          edges.push(helper.createSimpleEdge(nodes, 2, 1));
-          edges.push(helper.createSimpleEdge(nodes, 3, 0));
-          edges.push(helper.createSimpleEdge(nodes, 3, 1));
-          edges.push(helper.createSimpleEdge(nodes, 3, 2));
-        });
-        
-        it('should create the matrix if necessary', function() {
-          spyOn(joiner, "makeAdjacencyMatrix").andCallThrough();
-          joiner.makeInitialDegrees();
-          expect(joiner.makeAdjacencyMatrix).wasCalled();
-        });
-      
-        it('should not create the matrix if done before', function() {
-          joiner.makeAdjacencyMatrix();
-          spyOn(joiner, "makeAdjacencyMatrix").andCallThrough();
-          joiner.makeInitialDegrees();
-          expect(joiner.makeAdjacencyMatrix).wasNotCalled();
-        });
-      
-        it('should be able to populate the initial degrees', function() {
-          var m = edges.length,
-            one = 1 / m,
-            two = 2 / m,
-            three = 3 / m;
-          
-          expect(joiner.makeInitialDegrees()).toEqual({
-            "0": {
-              in: one,
-              out: two
-            },
-            "1": {
-              in: three,
-              out: one
-            },
-            "2": {
-              in: two,
-              out: one
-            },
-            "3": {
-              in: one,
-              out: three
-            }
-          });
-        });
-      });
-
-      describe('computation of deltaQ', function() {
-        
-        var m, zero, one, two, three
-        
-        beforeEach(function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3"]);
-          edges.push(helper.createSimpleEdge(nodes, 0, 1));
-          edges.push(helper.createSimpleEdge(nodes, 0, 3));
-          edges.push(helper.createSimpleEdge(nodes, 1, 2));
-          edges.push(helper.createSimpleEdge(nodes, 2, 1));
-          edges.push(helper.createSimpleEdge(nodes, 3, 0));
-          edges.push(helper.createSimpleEdge(nodes, 3, 1));
-          edges.push(helper.createSimpleEdge(nodes, 3, 2));
-          
-          m = edges.length;
-          zero = {
-            in: 1/m,
-            out: 2/m
-          };
-          one = {
-            in: 3/m,
-            out: 1/m
-          };
-          two = {
-            in: 2/m,
-            out: 1/m
-          };
-          three = {
-            in: 1/m,
-            out: 3/m
-          };
-        });
-        
-        it('should create matrix if necessary', function() {
-          spyOn(joiner, "makeAdjacencyMatrix").andCallThrough();
-          joiner.makeInitialDQ();
-          expect(joiner.makeAdjacencyMatrix).wasCalled();
-        });
-      
-        it('should not create matrix if done before', function() {
-          joiner.makeAdjacencyMatrix();
-          spyOn(joiner, "makeAdjacencyMatrix").andCallThrough();
-          joiner.makeInitialDQ();
-          expect(joiner.makeAdjacencyMatrix).wasNotCalled();
-        });
-        
-        it('should create degrees if necessary', function() {
-          spyOn(joiner, "makeInitialDegrees").andCallThrough();
-          joiner.makeInitialDQ();
-          expect(joiner.makeInitialDegrees).wasCalled();
-        });
-      
-        it('should not create degrees if done before', function() {
-          joiner.makeInitialDegrees();
-          spyOn(joiner, "makeInitialDegrees").andCallThrough();
-          joiner.makeInitialDQ();
-          expect(joiner.makeInitialDegrees).wasNotCalled();
-        });
-        
-        it('should be able to populate the inital deltaQ', function() {
-          expect(joiner.makeInitialDQ()).toEqual({
-            "0": {
-              "1": 1/m - zero.in * one.out,
-              "3": 2/m - zero.in * three.out - zero.out * three.in
-            },
-            "1": {
-              "2": 2/m - one.in * two.out - one.out * two.in,
-              "3": 1/m - one.out * three.in
-            },
-            "2": {
-              "3": 1/m - two.out * three.in
-            },
-          });
+        it('should offer a function to join two communities', function() {
+          expect(joiner.joinCommunity).toBeDefined();
+          expect(joiner.joinCommunity).toEqual(jasmine.any(Function));
+          expect(joiner.joinCommunity.length).toEqual(1);
         });
         
       });
 
+      describe('after setup', function() {
+        
+        beforeEach(function() {
+          testNetFour();
+          joiner.setup();
+        });
+        
+        describe('the adjacency matrix', function() {
+          
+          it('should be created', function() {
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": ["1", "3"],
+              "1": ["2"],
+              "2": ["1", "3"],
+              "3": ["0", "1", "2"]
+            });
+        
+          });
+        });
+        
+        describe('the degrees', function() {
+        
+          it('should initialy be populated', function() {
+            var m = edges.length,
+              one = 1 / m,
+              two = 2 / m,
+              three = 3 / m;
+          
+            expect(joiner.getDegrees()).toEqual({
+              "0": {
+                in: one,
+                out: two
+              },
+              "1": {
+                in: three,
+                out: one
+              },
+              "2": {
+                in: two,
+                out: two
+              },
+              "3": {
+                in: two,
+                out: three
+              }
+            });
+          });
+        });
+        
+        describe('the deltaQ', function() {
+        
+          var m, zero, one, two, three
+        
+          beforeEach(function() {          
+            m = edges.length;
+            zero = {
+              in: 1/m,
+              out: 2/m
+            };
+            one = {
+              in: 3/m,
+              out: 1/m
+            };
+            two = {
+              in: 2/m,
+              out: 2/m
+            };
+            three = {
+              in: 2/m,
+              out: 3/m
+            };
+          });
+        
+          it('should initialy be populated', function() {
+            expect(joiner.getDQ()).toEqual({
+              "0": {
+                "1": 1/m - zero.in * one.out,
+                "3": 2/m - zero.in * three.out - zero.out * three.in
+              },
+              "1": {
+                "2": 2/m - one.in * two.out - one.out * two.in,
+                "3": 1/m - one.out * three.in
+              },
+              "2": {
+                "3": 2/m - two.in * three.out - two.out * three.in
+              },
+            });
+          });
+        
+        });
+        
+        describe('the heap', function() {
+        
+          var m, zero, one, two, three
+        
+          beforeEach(function() {          
+            m = edges.length;
+            zero = {
+              in: 1/m,
+              out: 2/m
+            };
+            one = {
+              in: 3/m,
+              out: 1/m
+            };
+            two = {
+              in: 2/m,
+              out: 2/m
+            };
+            three = {
+              in: 2/m,
+              out: 3/m
+            };
+          });
+
+          it('should initialy by populated', function() {
+            expect(joiner.getHeap()).toEqual({
+              "0": "3",
+              "1": "2",
+              "2": "3"
+            });
+          });
+        
+          it('should return the largest value', function() {
+            expect(joiner.getBest()).toEqual({
+              sID: "0",
+              lID: "3",
+              val: 2/m - zero.in * three.out - zero.out * three.in
+            });
+          });
+        
+        });
+        
+        describe('communities', function() {
+        
+          it('should be able to get the communities', function() {
+            // No communities yet. Should not return single nodes.
+            expect(joiner.getCommunities()).toEqual({});
+          });
+        
+          it('should be able to join two communities', function() {
+            var toJoin = joiner.getBest(),
+              joinVal = toJoin.val,
+              m = edges.length,
+              zero = {
+                in: 1/m,
+                out: 2/m
+              },
+              one = {
+                in: 3/m,
+                out: 1/m
+              },
+              two = {
+                in: 2/m,
+                out: 2/m
+              },
+              three = {
+                in: 2/m,
+                out: 3/m
+              };
+            expect(toJoin).toEqual({
+              sID: "0",
+              lID: "3",
+              val: 2/m - zero.in * three.out - zero.out * three.in
+            });
+            joiner.joinCommunity(toJoin);
+            expect(joiner.getCommunities()).toEqual({
+              "0": {
+                nodes: ["0", "3"],
+                q: joinVal
+              }
+            });
+          });
+        
+        });
+        
+      });
+      
     });
   });
 }());
