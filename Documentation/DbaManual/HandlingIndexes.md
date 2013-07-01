@@ -32,7 +32,7 @@ are special sections for
 Address and ETag of an Index {#HandlingIndexesResource}
 =======================================================
 
-All indexs in ArangoDB have an index handle. This handle uniquely defines an
+All indexes in ArangoDB have an index handle. This handle uniquely defines an
 index and is managed by ArangoDB. The interface allows you to access the indexs
 of a collection as:
 
