@@ -617,6 +617,10 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// details. Depending on the index type, a single attribute or multiple 
 /// attributes may be indexed.
 ///
+/// Indexing system attributes such as `_id`, `_key`, `_from`, and `_to`
+/// is not supported by any index type. Manually creating an index that 
+/// relies on any of these attributes is unsupported.
+///
 /// Some indexes can be created as unique or non-unique variants. Uniqueness
 /// can be controlled for most indexes by specifying the `unique` in the
 /// index details. Setting it to `true` will create a unique index. 
