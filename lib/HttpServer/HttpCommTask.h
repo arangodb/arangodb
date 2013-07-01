@@ -265,7 +265,7 @@ namespace triagens {
               }
 
               // store the original request's type. we need it later when responding
-              // (original request objects gets deleted before responding)
+              // (original request object gets deleted before responding)
               this->_requestType = this->_request->requestType();
 
 
@@ -300,23 +300,33 @@ namespace triagens {
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
                   this->handleResponse(&response);
-
                   this->resetState();
 
                   return true;
                 }
               }
+          
            
+              // enable the following statement for excessive logging of incoming requests
+              // LOGGER_INFO(this->_connectionInfo.serverAddress << "," << this->_connectionInfo.serverPort << "," << 
+              //             this->_connectionInfo.clientAddress << "," << 
+              //             HttpRequest::translateMethod(this->_request->requestType()) << "," <<
+              //             HttpRequest::translateVersion(this->_request->httpVersion()) << "," << 
+              //             this->_bodyLength << "," <<
+              //             this->_request->fullUrl());
             
               // .............................................................................
               // check if server is active
               // .............................................................................
 
-              if (! this->_server->getScheduler()->isActive()) {
+              Scheduler const* scheduler = this->_server->getScheduler();
+
+              if (scheduler != 0 && ! scheduler->isActive()) {
                 // server is inactive and will intentionally respond with HTTP 503
                 LOGGER_TRACE("cannot serve request - server is inactive");
                 HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE);
                 this->handleResponse(&response);
+                this->resetState();
 
                 return true;
               }
@@ -357,7 +367,6 @@ namespace triagens {
               // request entity too large
               HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
               this->handleResponse(&response);
-
               this->resetState();
 
               return true;
@@ -410,7 +419,6 @@ namespace triagens {
 
                   HttpResponse response(HttpResponse::BAD);
                   this->handleResponse(&response);
-
                   this->resetState();
 
                   return true;

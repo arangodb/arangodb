@@ -1191,6 +1191,19 @@ void HttpRequest::addRequestContext (RequestContext* requestContext) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief translate the HTTP protocol version
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpRequest::translateVersion (HttpVersion version) {
+  switch (version) {
+    case HTTP_1_0:      return "HTTP/1.0";
+    case HTTP_1_1:      return "HTTP/1.1";
+    case HTTP_UNKNOWN:   
+    default:            return "HTTP/1.0";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief translate an enum value into an HTTP method string
 ////////////////////////////////////////////////////////////////////////////////
 
