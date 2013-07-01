@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* issue #563: can aal become a default object?
+
 * issue #559: added Foxx documentation to user manual
 
 * added server startup option `--server.authenticate-system-only`. This option can be
