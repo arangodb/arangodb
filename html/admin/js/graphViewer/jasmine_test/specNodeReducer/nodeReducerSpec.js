@@ -58,6 +58,14 @@
           var s = new NodeReducer([], []);
         }).not.toThrow();
       });
+      
+      it('should create an instance of the modularityJoiner', function() {
+        spyOn(window, "ModularityJoiner");
+        var n = [],
+          e = [],
+          s = new NodeReducer(n, e);
+        expect(window.ModularityJoiner).wasCalledWith(n, e);
+      });
     });
     
     describe('setup correctly', function() {
@@ -158,24 +166,8 @@
           expect(com).toContainNodes(["0", "1", "2"]);
         });
         
-        it('should also take the best community if no focus is given', function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
-          
-          edges.push(helper.createSimpleEdge(nodes, 0, 1));
-          edges.push(helper.createSimpleEdge(nodes, 0, 2));
-          edges.push(helper.createSimpleEdge(nodes, 1, 2));
-          edges.push(helper.createSimpleEdge(nodes, 2, 3));
-          edges.push(helper.createSimpleEdge(nodes, 3, 4));
-          edges.push(helper.createSimpleEdge(nodes, 4, 5));
-          edges.push(helper.createSimpleEdge(nodes, 5, 6));
-          edges.push(helper.createSimpleEdge(nodes, 5, 7));
-          
-          var com = reducer.getCommunity(6);
-          expect(com).toContainNodes(["0", "1", "2", "3", "4"]);
-        });
-        
       });
-      /*
+      
       describe('checking bucket sort of nodes', function() {
         var allNodes, buckets;
         
@@ -315,7 +307,7 @@
         });
         
       });
-      */
+      
     });
   });
 }());

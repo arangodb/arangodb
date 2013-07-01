@@ -4,7 +4,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
-/*global NodeReducer*/
+/*global ModularityJoiner*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -111,7 +111,7 @@
               return true;
             }
           });
-        })
+        });
         
         it('should offer the adjacency matrix', function() {
           expect("getAdjacencyMatrix").toBeGetter();
@@ -209,20 +209,20 @@
             three = 3 / m;
             initDeg = {
               "0": {
-                in: one,
-                out: two
+                _in: one,
+                _out: two
               },
               "1": {
-                in: three,
-                out: one
+                _in: three,
+                _out: one
               },
               "2": {
-                in: two,
-                out: two
+                _in: two,
+                _out: two
               },
               "3": {
-                in: two,
-                out: three
+                _in: two,
+                _out: three
               }
             };
           });
@@ -261,34 +261,34 @@
           beforeEach(function() {          
             m = edges.length;
             zero = {
-              in: 1/m,
-              out: 2/m
+              _in: 1/m,
+              _out: 2/m
             };
             one = {
-              in: 3/m,
-              out: 1/m
+              _in: 3/m,
+              _out: 1/m
             };
             two = {
-              in: 2/m,
-              out: 2/m
+              _in: 2/m,
+              _out: 2/m
             };
             three = {
-              in: 2/m,
-              out: 3/m
+              _in: 2/m,
+              _out: 3/m
             };
             initDQ = {
               "0": {
-                "1": 1/m - zero.in * one.out - zero.out * one.in,
-                "2": - zero.in * two.out - zero.out * two.in,
-                "3": 2/m - zero.in * three.out - zero.out * three.in
+                "1": 1/m - zero._in * one._out - zero._out * one._in,
+                "2": - zero._in * two._out - zero._out * two._in,
+                "3": 2/m - zero._in * three._out - zero._out * three._in
               },
               "1": {
-                "2": 2/m - one.in * two.out - one.out * two.in,
-                "3": 1/m - one.in * three.out - one.out * three.in
+                "2": 2/m - one._in * two._out - one._out * two._in,
+                "3": 1/m - one._in * three._out - one._out * three._in
               },
               "2": {
-                "3": 2/m - two.in * three.out - two.out * three.in
-              },
+                "3": 2/m - two._in * three._out - two._out * three._in
+              }
             };
           });
         
@@ -382,25 +382,25 @@
         */
         describe('the heap', function() {
         
-          var m, zero, one, two, three
+          var m, zero, one, two, three;
         
           beforeEach(function() {          
             m = edges.length;
             zero = {
-              in: 1/m,
-              out: 2/m
+              _in: 1/m,
+              _out: 2/m
             };
             one = {
-              in: 3/m,
-              out: 1/m
+              _in: 3/m,
+              _out: 1/m
             };
             two = {
-              in: 2/m,
-              out: 2/m
+              _in: 2/m,
+              _out: 2/m
             };
             three = {
-              in: 2/m,
-              out: 3/m
+              _in: 2/m,
+              _out: 3/m
             };
           });
 
@@ -416,7 +416,7 @@
             expect(joiner.getBest()).toEqual({
               sID: "0",
               lID: "3",
-              val: 2/m - zero.in * three.out - zero.out * three.in
+              val: 2/m - zero._in * three._out - zero._out * three._in
             });
           });
         
@@ -447,7 +447,7 @@
             expect(joiner.getBest()).toEqual({
               sID: "1",
               lID: "2",
-              val: 2/m - one.in * two.out - one.out * two.in
+              val: 2/m - one._in * two._out - one._out * two._in
             });
           });
           
@@ -483,20 +483,20 @@
               expected = {},
               m = edges.length,
               zero = {
-                in: 1/m,
-                out: 2/m
+                _in: 1/m,
+                _out: 2/m
               },
               one = {
-                in: 3/m,
-                out: 1/m
+                _in: 3/m,
+                _out: 1/m
               },
               two = {
-                in: 2/m,
-                out: 2/m
+                _in: 2/m,
+                _out: 2/m
               },
               three = {
-                in: 2/m,
-                out: 3/m
+                _in: 2/m,
+                _out: 3/m
               };
             expected[lowId] = {
               nodes: [
@@ -508,7 +508,7 @@
             expect(toJoin).toEqual({
               sID: "0",
               lID: "3",
-              val: 2/m - zero.in * three.out - zero.out * three.in
+              val: 2/m - zero._in * three._out - zero._out * three._in
             });
             joiner.joinCommunity(toJoin);
             expect(joiner.getCommunities()).toEqual(expected);
@@ -635,11 +635,10 @@
                   o.nodes = _.filter(o.nodes, function(n) {
                     return _.contains(duplicate, n);
                   });
-                })
-                
+                });
                 return "Found duplicate nodes [" + duplicate
                   + "] in communities: " + JSON.stringify(outComms);
-              }
+              };
               return !failed;
             }
           });
@@ -655,7 +654,10 @@
         it('should be able to find communities', function() {
           this.addMatchers({
             toContainKarateClubCommunities: function() {
-              var c1 = ["15", "16", "19", "21", "23", "24", "27", "28", "30", "31", "33", "34", "9"].sort().join(),
+              var c1 = [
+                  "15", "16", "19", "21", "23", "24", "27",
+                  "28", "30", "31", "33", "34", "9"
+                ].sort().join(),
                 c2 = ["10", "13", "14", "18", "2", "22", "3", "4", "8"].sort().join(),
                 c3 = ["1", "11", "12", "17", "20" , "5", "6", "7"].sort().join(),
                 c4 = ["25", "26", "29", "32"].sort().join(),
@@ -702,14 +704,10 @@
               return !failed;
             }
           });
-          
-          
           var best = joiner.getBest();
-          var steps = 0;
           while (best !== null) {
             joiner.joinCommunity(best);
             best = joiner.getBest();
-            steps++;
           }
           expect(joiner.getCommunities()).toContainKarateClubCommunities();
         });
