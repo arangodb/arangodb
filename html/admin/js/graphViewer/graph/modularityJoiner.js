@@ -37,6 +37,7 @@ function ModularityJoiner(nodes, edges) {
   }
   
   var matrix = null,
+    backwardMatrix = null,
     self = this,
     m = 0,
     revM = 0,
@@ -44,12 +45,21 @@ function ModularityJoiner(nodes, edges) {
     dQ = null,
     heap = null,
     comms = {},
+ 
+    ////////////////////////////////////
+    // Private functions              //
+    //////////////////////////////////// 
     
     makeAdjacencyMatrix = function() {
       matrix = {};
+      backwardMatrix = {};
       _.each(edges, function (e) {
-        matrix[e.source._id] = matrix[e.source._id] || [];
-        matrix[e.source._id].push(e.target._id);
+        var s = e.source._id,
+          t = e.target._id;
+        matrix[s] = matrix[s] || {};
+        matrix[s][t] = (matrix[s][t] || 0) + 1;
+        backwardMatrix[t] = backwardMatrix[t] || {};
+        backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
       });
       m = edges.length;
       revM = 1/m;
@@ -67,7 +77,7 @@ function ModularityJoiner(nodes, edges) {
       return a;
     },
   
-    makeInitialDQ = function() {
+    makeInitialDQOld = function() {
       dQ = {};
       _.each(matrix, function(ts, src) {
         _.each(ts, function(tar) {
@@ -86,27 +96,93 @@ function ModularityJoiner(nodes, edges) {
       return dQ;
     },
   
-    makeInitialHeap = function() {
-      heap = {};
-      _.each(dQ, function(l, s) {
-        var maxT,
-          maxV = Number.NEGATIVE_INFINITY;
-        _.each(l, function(v, t) {
-          if (maxV < v) {
-            maxV = v;
-            maxT = t;
+    makeInitialDQ = function() {
+      dQ = {};
+      _.each(nodes, function(n1) {
+        var s = n1._id;
+        _.each(nodes, function(n2) {
+          var t = n2._id,
+            ast;
+          if (matrix[s] && matrix[s][t]) {
+            ast = matrix[s][t];
+          } else {
+            ast = 0;
+          }
+          if (s < t) {
+            dQ[s] = dQ[s] || {};
+            dQ[s][t] = (dQ[s][t] || 0) + ast * revM - a[s].in * a[t].out;
+            return;
+          }
+          if (t < s) {
+            dQ[t] = dQ[t] || {};
+            dQ[t][s] = (dQ[t][s] || 0) + ast * revM - a[s].in * a[t].out;
+            return;
           }
         });
-        heap[s] = maxT;
+      });      
+    },
+  
+    setHeapToMaxInList = function(list, id) {
+      var maxT,
+        maxV = Number.NEGATIVE_INFINITY;
+      _.each(list, function(v, t) {
+        if (maxV < v) {
+          maxV = v;
+          maxT = t;
+        }
       });
+      heap[id] = maxT;
+    },
+    
+    
+    makeInitialHeap = function() {
+      heap = {};
+      _.each(dQ, setHeapToMaxInList);
       return heap;
+    },
+    
+    updateDQAndHeap = function (low, high) {
+      _.each(dQ, function (list, s) {
+        if (s < low) {
+          list[low] += list[high];
+          delete list[high];
+          if (heap[s] === low || heap[s] === high) {
+            setHeapToMaxInList(list, s);
+          } else {
+            if (dQ[s][heap[s]] < list[low]) {
+              heap[s] = low;
+            }
+          }
+          return;
+        }
+        if (s === low) {
+          delete list[high];
+          _.each(list, function(v, k) {
+            if (k < high) {
+              list[k] += dQ[k][high];
+              delete dQ[k][high];
+              return;
+            }
+            if (high < k) {
+              list[k] += dQ[high][k];
+              return;
+            }
+            return;
+          });
+          setHeapToMaxInList(list, s);
+          return;
+        }
+        if (_.isEmpty(list)) {
+          delete dQ[s];
+          delete heap[s];
+        }
+        return;
+      });
+      delete dQ[high];
+      delete heap[high];
     };
     
-  ////////////////////////////////////
-  // Private functions              //
-  ////////////////////////////////////
-  
-  
+
   ////////////////////////////////////
   // Public functions               //
   ////////////////////////////////////
@@ -168,10 +244,18 @@ function ModularityJoiner(nodes, edges) {
   // computation                    //
   ////////////////////////////////////
   
-  
-  
-    
   this.joinCommunity = function(comm) {
-    
+    var s = comm.sID,
+      l = comm.lID,
+      q = comm.val;
+    comms[s] = comms[s] || {nodes: [s], q: 0};
+    if (comms[l]) {
+      comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
+      comms[s].q += comms[l].q;
+      delete comms[l];
+    }
+    comms[s].nodes.push(l);
+    comms[s].q += q;
+    updateDQAndHeap(s, l);
   };
 }
