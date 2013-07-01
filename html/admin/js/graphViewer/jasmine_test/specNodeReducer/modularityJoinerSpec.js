@@ -163,7 +163,7 @@
         });
         
         describe('the adjacency matrix', function() {
-          
+          /*
           it('should be created', function() {
             expect(joiner.getAdjacencyMatrix()).toEqual({
               "0": ["1", "3"],
@@ -173,17 +173,41 @@
             });
         
           });
+          */
+          
+          it('should be created', function() {
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": {
+                "1": 1,
+                "3": 1
+              },
+              "1": {
+                "2": 1
+              },
+              "2": {
+                "1": 1,
+                "3": 1
+              },
+              "3": {
+                "0": 1,
+                "1": 1,
+                "2": 1
+              }
+            });
+          });
         });
         
         describe('the degrees', function() {
         
-          it('should initialy be populated', function() {
-            var m = edges.length,
-              one = 1 / m,
-              two = 2 / m,
-              three = 3 / m;
-          
-            expect(joiner.getDegrees()).toEqual({
+          var m, one, two, three, initDeg;
+            
+        
+          beforeEach(function() {
+            m = edges.length;
+            one = 1 / m;
+            two = 2 / m;
+            three = 3 / m;
+            initDeg = {
               "0": {
                 in: one,
                 out: two
@@ -200,13 +224,39 @@
                 in: two,
                 out: three
               }
-            });
+            };
           });
+        
+          it('should initialy be populated', function() {
+            expect(joiner.getDegrees()).toEqual(initDeg);
+          });
+          
+          /*
+          it('should be updated after a joining step', function() {
+            var toJoin = joiner.getBest(),
+              expected = {};
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("0");
+            expect(toJoin.lID).toEqual("3");
+            
+            expected["0"] = {
+              in: initDeg["0"].in + initDeg["3"].in,
+              out: initDeg["0"].out + initDeg["3"].out,
+            };
+            expected["1"] = initDeg["1"];
+            expected["2"] = initDeg["2"];
+            
+            joiner.joinCommunity(toJoin);
+            
+            expect(joiner.getDegrees()).toEqual(expected);
+          });
+          */
         });
+        
         
         describe('the deltaQ', function() {
         
-          var m, zero, one, two, three
+          var m, zero, one, two, three, initDQ;
         
           beforeEach(function() {          
             m = edges.length;
@@ -226,10 +276,71 @@
               in: 2/m,
               out: 3/m
             };
+            initDQ = {
+              "0": {
+                "1": 1/m - zero.in * one.out - zero.out * one.in,
+                "2": - zero.in * two.out - zero.out * two.in,
+                "3": 2/m - zero.in * three.out - zero.out * three.in
+              },
+              "1": {
+                "2": 2/m - one.in * two.out - one.out * two.in,
+                "3": 1/m - one.in * three.out - one.out * three.in
+              },
+              "2": {
+                "3": 2/m - two.in * three.out - two.out * three.in
+              },
+            };
           });
         
           it('should initialy be populated', function() {
-            expect(joiner.getDQ()).toEqual({
+            expect(joiner.getDQ()).toEqual(initDQ);
+          });
+        
+          it('should be updated after a joining step', function() {
+            var toJoin = joiner.getBest(),
+              expected = {};
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("0");
+            expect(toJoin.lID).toEqual("3");
+            
+            expected["0"] = {};
+            expected["0"]["1"] = initDQ["0"]["1"] + initDQ["1"]["3"];
+            expected["0"]["2"] = initDQ["0"]["2"] + initDQ["2"]["3"];
+            expected["1"] = {};
+            expected["1"]["2"] = initDQ["1"]["2"];
+            
+            joiner.joinCommunity(toJoin);
+            
+            expect(joiner.getDQ()).toEqual(expected);
+            console.log(expected);
+          });
+        
+        });
+        
+        /*
+        describe('the deltaQ', function() {
+        
+          var m, zero, one, two, three, initDQ;
+        
+          beforeEach(function() {          
+            m = edges.length;
+            zero = {
+              in: 1/m,
+              out: 2/m
+            };
+            one = {
+              in: 3/m,
+              out: 1/m
+            };
+            two = {
+              in: 2/m,
+              out: 2/m
+            };
+            three = {
+              in: 2/m,
+              out: 3/m
+            };
+            initDQ = {
               "0": {
                 "1": 1/m - zero.in * one.out,
                 "3": 2/m - zero.in * three.out - zero.out * three.in
@@ -241,11 +352,35 @@
               "2": {
                 "3": 2/m - two.in * three.out - two.out * three.in
               },
-            });
+            };
+          });
+        
+          it('should initialy be populated', function() {
+            expect(joiner.getDQ()).toEqual(initDQ);
+          });
+        
+          it('should be updated after a joining step', function() {
+            var toJoin = joiner.getBest(),
+              expected = {};
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("0");
+            expect(toJoin.lID).toEqual("3");
+            
+            expected["0"] = {};
+            expected["0"]["1"] = initDQ["0"]["1"] + initDQ["1"]["3"];
+            expected["0"]["2"] = initDQ["2"]["3"] - 3;
+            
+            expected["1"] = {};
+            expected["1"]["2"] = initDQ["1"]["2"];
+            
+            joiner.joinCommunity(toJoin);
+            
+            expect(joiner.getDQ()).toEqual(expected);
           });
         
         });
         
+        */
         describe('the heap', function() {
         
           var m, zero, one, two, three
@@ -286,6 +421,37 @@
             });
           });
         
+          it('should be updated after a join step', function() {
+            var toJoin = joiner.getBest(),
+              expected = {};
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("0");
+            expect(toJoin.lID).toEqual("3");
+
+            joiner.joinCommunity(toJoin);
+            
+            expect(joiner.getHeap()).toEqual({
+              "0": "2",
+              "1": "2"
+            });
+          });
+        
+          it('should return the largest value after a join step', function() {
+            var toJoin = joiner.getBest(),
+              expected = {};
+            //Make sure we join the right ones:
+            expect(toJoin.sID).toEqual("0");
+            expect(toJoin.lID).toEqual("3");
+
+            joiner.joinCommunity(toJoin);
+            
+            expect(joiner.getBest()).toEqual({
+              sID: "1",
+              lID: "2",
+              val: 2/m - one.in * two.out - one.out * two.in
+            });
+          });
+        
         });
         
         describe('communities', function() {
@@ -298,6 +464,9 @@
           it('should be able to join two communities', function() {
             var toJoin = joiner.getBest(),
               joinVal = toJoin.val,
+              lowId = toJoin.sID,
+              highId = toJoin.lID,
+              expected = {},
               m = edges.length,
               zero = {
                 in: 1/m,
@@ -315,23 +484,119 @@
                 in: 2/m,
                 out: 3/m
               };
+            expected[lowId] = {
+              nodes: [
+                lowId,
+                highId
+              ],
+              q: joinVal
+            };
             expect(toJoin).toEqual({
               sID: "0",
               lID: "3",
               val: 2/m - zero.in * three.out - zero.out * three.in
             });
             joiner.joinCommunity(toJoin);
-            expect(joiner.getCommunities()).toEqual({
-              "0": {
-                nodes: ["0", "3"],
-                q: joinVal
-              }
-            });
+            expect(joiner.getCommunities()).toEqual(expected);
           });
         
         });
         
       });
+      
+      describe('checking the zachary karate club', function() {
+        
+        beforeEach(function() {
+          // This is the Zachary Karate Club Network
+          helper.insertSimpleNodes(nodes, [
+            "1","2","3","4","5","6","7","8","9","10",
+            "11","12","13","14","15","16","17","18","19","20",
+            "21","22","23","24","25","26","27","28","29","30",
+            "31","32","33","34"
+          ]);
+          edges.push(helper.createSimpleEdge(nodes, 2, 1));
+          edges.push(helper.createSimpleEdge(nodes, 3, 1));
+          edges.push(helper.createSimpleEdge(nodes, 3, 2));
+          edges.push(helper.createSimpleEdge(nodes, 4, 1));
+          edges.push(helper.createSimpleEdge(nodes, 4, 2));
+          edges.push(helper.createSimpleEdge(nodes, 4, 3));
+          edges.push(helper.createSimpleEdge(nodes, 5, 1));
+          edges.push(helper.createSimpleEdge(nodes, 6, 1));
+          edges.push(helper.createSimpleEdge(nodes, 7, 1));
+          edges.push(helper.createSimpleEdge(nodes, 7, 5));
+          edges.push(helper.createSimpleEdge(nodes, 7, 6));
+          edges.push(helper.createSimpleEdge(nodes, 8, 1));
+          edges.push(helper.createSimpleEdge(nodes, 8, 2));
+          edges.push(helper.createSimpleEdge(nodes, 8, 3));
+          edges.push(helper.createSimpleEdge(nodes, 8, 4));
+          edges.push(helper.createSimpleEdge(nodes, 9, 1));
+          edges.push(helper.createSimpleEdge(nodes, 9, 3));
+          edges.push(helper.createSimpleEdge(nodes, 10, 3));
+          edges.push(helper.createSimpleEdge(nodes, 11, 1));
+          edges.push(helper.createSimpleEdge(nodes, 11, 5));
+          edges.push(helper.createSimpleEdge(nodes, 11, 6));
+          edges.push(helper.createSimpleEdge(nodes, 12, 1));
+          edges.push(helper.createSimpleEdge(nodes, 13, 1));
+          edges.push(helper.createSimpleEdge(nodes, 13, 4));
+          edges.push(helper.createSimpleEdge(nodes, 14, 1));
+          edges.push(helper.createSimpleEdge(nodes, 14, 2));
+          edges.push(helper.createSimpleEdge(nodes, 14, 3));
+          edges.push(helper.createSimpleEdge(nodes, 14, 4));
+          edges.push(helper.createSimpleEdge(nodes, 17, 6));
+          edges.push(helper.createSimpleEdge(nodes, 17, 7));
+          edges.push(helper.createSimpleEdge(nodes, 18, 1));
+          edges.push(helper.createSimpleEdge(nodes, 18, 2));
+          edges.push(helper.createSimpleEdge(nodes, 20, 1));
+          edges.push(helper.createSimpleEdge(nodes, 20, 2));
+          edges.push(helper.createSimpleEdge(nodes, 22, 1));
+          edges.push(helper.createSimpleEdge(nodes, 22, 2));
+          edges.push(helper.createSimpleEdge(nodes, 26, 24));
+          edges.push(helper.createSimpleEdge(nodes, 26, 25));
+          edges.push(helper.createSimpleEdge(nodes, 28, 3));
+          edges.push(helper.createSimpleEdge(nodes, 28, 24));
+          edges.push(helper.createSimpleEdge(nodes, 28, 25));
+          edges.push(helper.createSimpleEdge(nodes, 29, 3));
+          edges.push(helper.createSimpleEdge(nodes, 30, 24));
+          edges.push(helper.createSimpleEdge(nodes, 30, 27));
+          edges.push(helper.createSimpleEdge(nodes, 31, 2));
+          edges.push(helper.createSimpleEdge(nodes, 31, 9));
+          edges.push(helper.createSimpleEdge(nodes, 32, 1));
+          edges.push(helper.createSimpleEdge(nodes, 32, 25));
+          edges.push(helper.createSimpleEdge(nodes, 32, 26));
+          edges.push(helper.createSimpleEdge(nodes, 32, 29));
+          edges.push(helper.createSimpleEdge(nodes, 33, 3));
+          edges.push(helper.createSimpleEdge(nodes, 33, 9));
+          edges.push(helper.createSimpleEdge(nodes, 33, 15));
+          edges.push(helper.createSimpleEdge(nodes, 33, 16));
+          edges.push(helper.createSimpleEdge(nodes, 33, 19));
+          edges.push(helper.createSimpleEdge(nodes, 33, 21));
+          edges.push(helper.createSimpleEdge(nodes, 33, 23));
+          edges.push(helper.createSimpleEdge(nodes, 33, 24));
+          edges.push(helper.createSimpleEdge(nodes, 33, 30));
+          edges.push(helper.createSimpleEdge(nodes, 33, 31));
+          edges.push(helper.createSimpleEdge(nodes, 33, 32));
+          edges.push(helper.createSimpleEdge(nodes, 34, 9));
+          edges.push(helper.createSimpleEdge(nodes, 34, 10));
+          edges.push(helper.createSimpleEdge(nodes, 34, 14));
+          edges.push(helper.createSimpleEdge(nodes, 34, 15));
+          edges.push(helper.createSimpleEdge(nodes, 34, 16));
+          edges.push(helper.createSimpleEdge(nodes, 34, 19));
+          edges.push(helper.createSimpleEdge(nodes, 34, 20));
+          edges.push(helper.createSimpleEdge(nodes, 34, 21));
+          edges.push(helper.createSimpleEdge(nodes, 34, 23));
+          edges.push(helper.createSimpleEdge(nodes, 34, 24));
+          edges.push(helper.createSimpleEdge(nodes, 34, 27));
+          edges.push(helper.createSimpleEdge(nodes, 34, 28));
+          edges.push(helper.createSimpleEdge(nodes, 34, 29));
+          edges.push(helper.createSimpleEdge(nodes, 34, 30));
+          edges.push(helper.createSimpleEdge(nodes, 34, 31));
+          edges.push(helper.createSimpleEdge(nodes, 34, 32));
+          edges.push(helper.createSimpleEdge(nodes, 34, 33));
+        });
+        
+      });
+      
+      
       
     });
   });
