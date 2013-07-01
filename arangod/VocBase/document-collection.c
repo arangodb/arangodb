@@ -3879,15 +3879,24 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
                                       TRI_idx_iid_t iid) {
   TRI_index_t* found;
+  TRI_vocbase_t* vocbase;
   TRI_primary_collection_t* primary;
   size_t i, n;
 
   if (iid == 0) {
+    // invalid index id or primary index
     return true;
   }
 
   found = NULL;
   primary = &document->base;
+  
+  vocbase = primary->base._vocbase;
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+#endif
+
 
   // .............................................................................
   // inside write-lock
@@ -3921,6 +3930,10 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
   RebuildIndexInfo(document);
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
 
   // .............................................................................
   // outside write-lock
@@ -4182,6 +4195,10 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   // inside write-lock
   // .............................................................................
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   idx = CreateCapConstraintDocumentCollection(document, count, size, 0, created);
@@ -4192,17 +4209,21 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -4558,6 +4579,10 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   primary = &document->base;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock
   // .............................................................................
@@ -4572,17 +4597,21 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -4602,6 +4631,10 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   primary = &document->base;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock
   // .............................................................................
@@ -4616,17 +4649,21 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -4817,6 +4854,10 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
 
   primary = &document->base;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock
   // .............................................................................
@@ -4832,17 +4873,21 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -5025,6 +5070,10 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   primary = &document->base;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock the collection
   // .............................................................................
@@ -5039,17 +5088,21 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -5286,6 +5339,10 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   primary = &document->base;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock the collection
   // .............................................................................
@@ -5300,17 +5357,21 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -5530,6 +5591,10 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
 
   primary = &document->base;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock
   // .............................................................................
@@ -5545,17 +5610,21 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
   // outside write-lock
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx != NULL) {
+    if (created) {
+      int res;
+
+      res = TRI_SaveIndex(primary, idx);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+      }
+    }
   }
 
-  if (created) {
-    int res;
-
-    res = TRI_SaveIndex(primary, idx);
-
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   return idx;
 }
@@ -5805,6 +5874,10 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   *errorCode = TRI_ERROR_NO_ERROR;
   *errorStr  = NULL;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
+
   // .............................................................................
   // inside write-lock the collection
   // .............................................................................
@@ -5824,28 +5897,28 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   // The index is 'new' so save it
   // .............................................................................
 
-  if (idx == NULL) {
-    return NULL;
-  }
+  if (idx != NULL) {
+    if (created) {
+      int res;
 
-  if (created) {
-    int res;
+      res = TRI_SaveIndex(primary, idx);
 
-    res = TRI_SaveIndex(primary, idx);
+      // ...........................................................................
+      // If index could not be saved, report the error and return NULL
+      // TODO: get TRI_SaveIndex to report the error
+      // ...........................................................................
 
-    // ...........................................................................
-    // If index could not be saved, report the error and return NULL
-    // TODO: get TRI_SaveIndex to report the error
-    // ...........................................................................
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      return idx;
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = NULL;
+        *errorCode = res;
+        *errorStr  = TRI_DuplicateString("Bitarray index could not be saved.");
+      }
     }
-
-    *errorCode = res;
-    *errorStr  = TRI_DuplicateString("Bitarray index could not be saved.");
-    return NULL;
   }
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_objectLock);
+#endif
 
   // .............................................................................
   // Index already exists so simply return it
