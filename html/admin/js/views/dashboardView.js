@@ -4,7 +4,7 @@
 var dashboardView = Backbone.View.extend({
   el: '#content',
   updateInterval: 500, // 0.5 second, constant
-  updateFrequency: 5, // the actual update rate (5 s)
+  updateFrequency: 10, // the actual update rate (5 s)
   updateCounter: 0,
   arraySize: 20, // how many values will we keep per figure?
   seriesData: {},
