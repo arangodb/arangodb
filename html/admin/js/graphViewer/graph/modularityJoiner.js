@@ -1,4 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*global _*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -70,9 +71,9 @@ function ModularityJoiner(nodes, edges) {
       a = {};
       _.each(nodes, function (n) {
         a[n._id] = {
-          in: n._inboundCounter / m,
-          out: n._outboundCounter / m
-        }
+          _in: n._inboundCounter / m,
+          _out: n._outboundCounter / m
+        };
       });
       return a;
     },
@@ -83,12 +84,12 @@ function ModularityJoiner(nodes, edges) {
         _.each(ts, function(tar) {
           if (src < tar) {
             dQ[src] = dQ[src] || {};
-            dQ[src][tar] = (dQ[src][tar] || 0) + revM - a[src].in * a[tar].out;
+            dQ[src][tar] = (dQ[src][tar] || 0) + revM - a[src]._in * a[tar]._out;
             return;
           } 
           if (tar < src) {
             dQ[tar] = dQ[tar] || {};
-            dQ[tar][src] = (dQ[tar][src] || 0) + revM - a[src].in * a[tar].out;
+            dQ[tar][src] = (dQ[tar][src] || 0) + revM - a[src]._in * a[tar]._out;
             return;
           }
         });
@@ -110,12 +111,12 @@ function ModularityJoiner(nodes, edges) {
           }
           if (s < t) {
             dQ[s] = dQ[s] || {};
-            dQ[s][t] = (dQ[s][t] || 0) + ast * revM - a[s].in * a[t].out;
+            dQ[s][t] = (dQ[s][t] || 0) + ast * revM - a[s]._in * a[t]._out;
             return;
           }
           if (t < s) {
             dQ[t] = dQ[t] || {};
-            dQ[t][s] = (dQ[t][s] || 0) + ast * revM - a[s].in * a[t].out;
+            dQ[t][s] = (dQ[t][s] || 0) + ast * revM - a[s]._in * a[t]._out;
             return;
           }
         });
