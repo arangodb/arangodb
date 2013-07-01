@@ -1,6 +1,41 @@
 v1.4
 ----
 
+* added a signal handler for SIGUSR1 signal: 
+
+  when ArangoDB receives this signal, it will respond all further incoming requests
+  with an HTTP 503 (Service Unavailable) error. This will be the case until another
+  SIGUSR1 signal is caught. This will make ArangoDB start serving requests regularly
+  again. Note: this is not implemented on Windows.
+
+* limited maximum request URI length to 16384 bytes:
+
+  Incoming requests with longer request URIs will be responded to with an HTTP
+  414 (Request-URI Too Long) error.
+
+* require version 1.0 or 1.1 in HTTP version signature of requests sent by clients:
+  
+  Clients sending requests with a non-HTTP 1.0 or non-HTTP 1.1 version number will
+  be served with an HTTP 505 (HTTP Version Not Supported) error.
+
+* updated manual on indexes:  
+
+  using system attributes such as `_id`, `_key`, `_from`, `_to`, `_rev` in indexes is
+  disallowed and will be rejected by the server. This was the case since ArangoDB 1.3,
+  but was not properly documented.
+
+* issue #563: can aal become a default object?
+
+  aal is now a prefab object in arangosh
+
+* prevent certain system collections from being renamed, dropped, or even unloaded.
+
+  Which restrictions there are for which system collections may vary from release to
+  release, but users should in general not try to modify system collections directly
+  anyway. 
+  
+  Note: there are no such restrictions for user-created collections.
+
 * issue #559: added Foxx documentation to user manual
 
 * added server startup option `--server.authenticate-system-only`. This option can be

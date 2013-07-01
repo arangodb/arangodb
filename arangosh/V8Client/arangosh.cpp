@@ -46,6 +46,7 @@
 #include "BasicsC/tri-strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -547,7 +548,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
   V8ClientConnection* connection = CreateConnection();
 
-  if (connection->isConnected() && connection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
+  if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
          << "' Version " << connection->getVersion() << endl;
   }
@@ -1622,7 +1623,7 @@ int main (int argc, char* argv[]) {
     BaseClient.printWelcomeInfo();
 
     if (useServer) {
-      if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
+      if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
         cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
              << "' version " << ClientConnection->getVersion() << endl;
       }

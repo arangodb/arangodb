@@ -883,7 +883,11 @@ function post_api_index_bitarray (req, res, collection, body) {
 /// Most indexes (a notable exception being the cap constraint) require the
 /// list of attributes to be indexed in the `fields` attribute of the index
 /// details. Depending on the index type, a single attribute or multiple 
-/// attributes may be indexed.
+/// attributes may be indexed. 
+/// 
+/// Indexing system attributes such as `_id`, `_key`, `_from`, and `_to`
+/// is not supported by any index type. Manually creating an index that 
+/// relies on any of these attributes is unsupported.
 ///
 /// Some indexes can be created as unique or non-unique variants. Uniqueness
 /// can be controlled for most indexes by specifying the `unique` in the
