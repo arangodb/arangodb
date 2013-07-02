@@ -51,16 +51,107 @@ function ModularityJoiner(nodes, edges) {
     // Private functions              //
     //////////////////////////////////// 
     
+    setHeapToMax = function(id) {
+      var maxT,
+        maxV = Number.NEGATIVE_INFINITY;
+      _.each(dQ[id], function(v, t) {
+        if (maxV < v) {
+          maxV = v;
+          maxT = t;
+        }
+      });
+      if (maxV < 0) {
+        delete heap[id];
+        return;
+      }
+      heap[id] = maxT;
+    },
+  
+    setHeapToMaxInList = function(l, id) {
+      setHeapToMax(id);
+    },
+    
+    isSetDQVal = function(i, j) {
+      if (i < j) {
+        return dQ[i] && dQ[i][j];
+      }
+      return dQ[j] && dQ[j][i];
+    },
+    
+    // This does not check if everything exists,
+    // do it before!
+    getDQVal = function(i, j) {
+      if (i < j) {
+        return dQ[i][j];
+      }
+      return dQ[j][i];
+    },
+    
+    setDQVal = function(i, j, v) {
+      if (i < j) {
+        dQ[i] = dQ[i] || {};
+        dQ[i][j] = v;
+        return;
+      }
+      dQ[j] = dQ[j] || {};
+      dQ[j][i] = v;
+    },
+    
+    delDQVal = function(i, j) {
+      if (i < j) {
+        delete dQ[i][j];
+        if (_.isEmpty(dQ[i])) {
+          delete dQ[i];
+        }
+        return;
+      }
+      if (i === j) {
+        return;
+      }
+      delDQVal(j, i);
+    },
+    
+    updateHeap = function(i, j) {
+      var hv, val;
+      if (i < j) {
+        if (!isSetDQVal(i, j)) {
+          setHeapToMax(i);
+          return;
+        }
+        val = getDQVal(i, j);
+        if (heap[i] === j) {
+          setHeapToMax(i);
+          return;
+        }
+        if (!isSetDQVal(i, heap[i])) {
+          setHeapToMax(i);
+          return;
+        }
+        hv = getDQVal(i, heap[i]);
+        if (hv < val) {
+          heap[i] = j;
+        }
+        return;
+      }
+      if (i === j) {
+        return;
+      }
+      updateHeap(j, i);
+    },
+    
+    updateDegrees = function(low, high) {
+      a[low]._in += a[high]._in;
+      a[low]._out += a[high]._out;
+      delete a[high];
+    }, 
+    
     makeAdjacencyMatrix = function() {
       matrix = {};
-      backwardMatrix = {};
       _.each(edges, function (e) {
         var s = e.source._id,
           t = e.target._id;
         matrix[s] = matrix[s] || {};
         matrix[s][t] = (matrix[s][t] || 0) + 1;
-        backwardMatrix[t] = backwardMatrix[t] || {};
-        backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
       });
       m = edges.length;
       revM = 1/m;
@@ -77,27 +168,8 @@ function ModularityJoiner(nodes, edges) {
       });
       return a;
     },
-  
-    makeInitialDQOld = function() {
-      dQ = {};
-      _.each(matrix, function(ts, src) {
-        _.each(ts, function(tar) {
-          if (src < tar) {
-            dQ[src] = dQ[src] || {};
-            dQ[src][tar] = (dQ[src][tar] || 0) + revM - a[src]._in * a[tar]._out;
-            return;
-          } 
-          if (tar < src) {
-            dQ[tar] = dQ[tar] || {};
-            dQ[tar][src] = (dQ[tar][src] || 0) + revM - a[src]._in * a[tar]._out;
-            return;
-          }
-        });
-      });
-      return dQ;
-    },
-  
-    makeInitialDQ = function() {
+    
+    makeInitialDQBKP = function() {
       dQ = {};
       _.each(nodes, function(n1) {
         var s = n1._id;
@@ -122,18 +194,41 @@ function ModularityJoiner(nodes, edges) {
         });
       });      
     },
-  
-    setHeapToMaxInList = function(list, id) {
-      var maxT,
-        maxV = Number.NEGATIVE_INFINITY;
-      _.each(list, function(v, t) {
-        if (maxV < v) {
-          maxV = v;
-          maxT = t;
-        }
-      });
-      heap[id] = maxT;
+    
+    notConnectedPenalty = function(s, t) {
+      return a[s]._out * a[t]._in + a[s]._in * a[t]._out;
     },
+    
+    
+    makeInitialDQ = function() {
+      dQ = {};
+      _.each(nodes, function(n1) {
+        var s = n1._id;
+        _.each(nodes, function(n2) {
+          var t = n2._id,
+            ast = 0,
+            value;
+          if (t <= s) {
+            return;
+          }
+          if (matrix[s] && matrix[s][t]) {
+            ast += matrix[s][t];
+          }
+          if (matrix[t] && matrix[t][s]) {
+            ast += matrix[t][s];
+          }
+          if (ast === 0) {
+            return;
+          }
+          value = ast * revM - notConnectedPenalty(s, t);
+          if (value > 0) {
+            setDQVal(s, t, value);
+          }
+          return;
+        });
+      });      
+    },
+
     
     
     makeInitialHeap = function() {
@@ -142,7 +237,7 @@ function ModularityJoiner(nodes, edges) {
       return heap;
     },
     
-    updateDQAndHeap = function (low, high) {
+    updateDQAndHeapBKP = function (low, high) {
       _.each(dQ, function (list, s) {
         if (s < low) {
           list[low] += list[high];
@@ -165,6 +260,10 @@ function ModularityJoiner(nodes, edges) {
           }
           _.each(list, function(v, k) {
             if (k < high) {
+              if (dQ[k][high] === undefined) {
+                console.log("K:", k, "High:", high, "dQ:", dQ[k]);
+                console.log(dQ);
+              }
               list[k] += dQ[k][high];
               delete dQ[k][high];
               return;
@@ -186,8 +285,57 @@ function ModularityJoiner(nodes, edges) {
       });
       delete dQ[high];
       delete heap[high];
-    };
+    },
     
+
+    // i < j && i != j != k
+    updateDQAndHeapValue = function (i, j, k) {
+      var val;
+      if (isSetDQVal(k, i)) {
+        val = getDQVal(k, i);
+        if (isSetDQVal(k, j)) {
+          val += getDQVal(k, j);
+          setDQVal(k, i, val);
+          delDQVal(k, j);
+          updateHeap(k, i);
+          updateHeap(k, j);
+          return;
+        }
+        val -= notConnectedPenalty(k, j);
+        if (val < 0) {
+          delDQVal(k, i);
+        }
+        updateHeap(k, i);
+        return;
+      }
+      if (isSetDQVal(k, j)) {
+        val = getDQVal(k, j);        
+        val -= notConnectedPenalty(k, i);
+        if (val > 0) {
+          setDQVal(k, i, val);
+        }
+        updateHeap(k, i);
+        delDQVal(k, j);
+        updateHeap(k, j);
+      }
+    },
+    
+    updateDQAndHeap = function (low, high) {
+      _.each(dQ, function (list, s) {
+        if (s === low || s === high) {
+          _.each(list, function(v, t) {
+            if (t === high) {
+              delDQVal(low, high);
+              updateHeap(low, high);
+              return;
+            }
+            updateDQAndHeapValue(low, high, t);
+          });
+          return;
+        }
+        updateDQAndHeapValue(low, high, s);
+      });
+    };
 
   ////////////////////////////////////
   // Public functions               //
@@ -267,5 +415,6 @@ function ModularityJoiner(nodes, edges) {
     }
     comms[s].q += q;
     updateDQAndHeap(s, l);
+    updateDegrees(s, l);
   };
 }

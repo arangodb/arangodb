@@ -163,17 +163,6 @@
         });
         
         describe('the adjacency matrix', function() {
-          /*
-          it('should be created', function() {
-            expect(joiner.getAdjacencyMatrix()).toEqual({
-              "0": ["1", "3"],
-              "1": ["2"],
-              "2": ["1", "3"],
-              "3": ["0", "1", "2"]
-            });
-        
-          });
-          */
           
           it('should be created', function() {
             expect(joiner.getAdjacencyMatrix()).toEqual({
@@ -231,7 +220,7 @@
             expect(joiner.getDegrees()).toEqual(initDeg);
           });
           
-          /*
+          
           it('should be updated after a joining step', function() {
             var toJoin = joiner.getBest(),
               expected = {};
@@ -240,8 +229,8 @@
             expect(toJoin.lID).toEqual("3");
             
             expected["0"] = {
-              in: initDeg["0"].in + initDeg["3"].in,
-              out: initDeg["0"].out + initDeg["3"].out,
+              _in: initDeg["0"]._in + initDeg["3"]._in,
+              _out: initDeg["0"]._out + initDeg["3"]._out,
             };
             expected["1"] = initDeg["1"];
             expected["2"] = initDeg["2"];
@@ -250,13 +239,25 @@
             
             expect(joiner.getDegrees()).toEqual(expected);
           });
-          */
+          
         });
         
         
         describe('the deltaQ', function() {
         
-          var m, zero, one, two, three, initDQ;
+          var m, zero, one, two, three, initDQ,
+            cleanDQ = function(dq) {
+              _.each(dq, function(list, s) {
+                _.each(list, function(v, t) {
+                  if (v < 0) {
+                    delete list[t];
+                  }
+                });
+                if (_.isEmpty(list)) {
+                  delete dq[s];
+                }
+              });
+            };
         
           beforeEach(function() {          
             m = edges.length;
@@ -290,12 +291,13 @@
                 "3": 2/m - two._in * three._out - two._out * three._in
               }
             };
+            cleanDQ(initDQ);
           });
-        
+          
           it('should initialy be populated', function() {
             expect(joiner.getDQ()).toEqual(initDQ);
           });
-        
+          
           it('should be updated after a joining step', function() {
             var toJoin = joiner.getBest(),
               expected = {};
@@ -304,82 +306,23 @@
             expect(toJoin.lID).toEqual("3");
             
             expected["0"] = {};
-            expected["0"]["1"] = initDQ["0"]["1"] + initDQ["1"]["3"];
-            expected["0"]["2"] = initDQ["0"]["2"] + initDQ["2"]["3"];
+            if (initDQ["0"]["1"] && initDQ["1"]["3"]) {
+              expected["0"]["1"] = initDQ["0"]["1"] + initDQ["1"]["3"];
+            }
+            if (initDQ["0"]["2"] && initDQ["2"]["3"]) {
+              expected["0"]["2"] = initDQ["0"]["2"] + initDQ["2"]["3"];
+            }
             expected["1"] = {};
-            expected["1"]["2"] = initDQ["1"]["2"];
-            
+            if (initDQ["1"]["2"]) {
+              expected["1"]["2"] = initDQ["1"]["2"];
+            }
+            cleanDQ(expected);
             joiner.joinCommunity(toJoin);
-            
             expect(joiner.getDQ()).toEqual(expected);
           });
         
         });
         
-        /*
-        describe('the deltaQ', function() {
-        
-          var m, zero, one, two, three, initDQ;
-        
-          beforeEach(function() {          
-            m = edges.length;
-            zero = {
-              in: 1/m,
-              out: 2/m
-            };
-            one = {
-              in: 3/m,
-              out: 1/m
-            };
-            two = {
-              in: 2/m,
-              out: 2/m
-            };
-            three = {
-              in: 2/m,
-              out: 3/m
-            };
-            initDQ = {
-              "0": {
-                "1": 1/m - zero.in * one.out,
-                "3": 2/m - zero.in * three.out - zero.out * three.in
-              },
-              "1": {
-                "2": 2/m - one.in * two.out - one.out * two.in,
-                "3": 1/m - one.out * three.in
-              },
-              "2": {
-                "3": 2/m - two.in * three.out - two.out * three.in
-              },
-            };
-          });
-        
-          it('should initialy be populated', function() {
-            expect(joiner.getDQ()).toEqual(initDQ);
-          });
-        
-          it('should be updated after a joining step', function() {
-            var toJoin = joiner.getBest(),
-              expected = {};
-            //Make sure we join the right ones:
-            expect(toJoin.sID).toEqual("0");
-            expect(toJoin.lID).toEqual("3");
-            
-            expected["0"] = {};
-            expected["0"]["1"] = initDQ["0"]["1"] + initDQ["1"]["3"];
-            expected["0"]["2"] = initDQ["2"]["3"] - 3;
-            
-            expected["1"] = {};
-            expected["1"]["2"] = initDQ["1"]["2"];
-            
-            joiner.joinCommunity(toJoin);
-            
-            expect(joiner.getDQ()).toEqual(expected);
-          });
-        
-        });
-        
-        */
         describe('the heap', function() {
         
           var m, zero, one, two, three;
@@ -403,7 +346,7 @@
               _out: 3/m
             };
           });
-
+          
           it('should initialy by populated', function() {
             expect(joiner.getHeap()).toEqual({
               "0": "3",
@@ -411,7 +354,7 @@
               "2": "3"
             });
           });
-        
+          
           it('should return the largest value', function() {
             expect(joiner.getBest()).toEqual({
               sID: "0",
@@ -419,7 +362,7 @@
               val: 2/m - zero._in * three._out - zero._out * three._in
             });
           });
-        
+          
           it('should be updated after a join step', function() {
             var toJoin = joiner.getBest(),
               expected = {};
@@ -428,13 +371,11 @@
             expect(toJoin.lID).toEqual("3");
 
             joiner.joinCommunity(toJoin);
-            
             expect(joiner.getHeap()).toEqual({
-              "0": "2",
               "1": "2"
             });
           });
-        
+          
           it('should return the largest value after a join step', function() {
             var toJoin = joiner.getBest(),
               expected = {};
@@ -465,7 +406,7 @@
             joiner.joinCommunity(toJoin);
             expect(joiner.getBest()).toBeNull();
           });
-        
+          
         });
         
         describe('communities', function() {
@@ -649,18 +590,30 @@
             expect(joiner.getCommunities()).toNotContainDuplicates();
           }
         });
-        
-        
+
         it('should be able to find communities', function() {
+          /*
+          correct acc to: NMCM09
+          Red:
+          21,23,24,19,27,16,30,33,34,29,15,9,31
+          White:
+          25, 26, 28, 32
+          Green:
+          5, 6, 7, 11, 17
+          Blue:
+          1, 2, 3, 4, 10, 14, 20, 22, 18, 13, 12
+          */
+          
+        
           this.addMatchers({
             toContainKarateClubCommunities: function() {
               var c1 = [
-                  "15", "16", "19", "21", "23", "24", "27",
-                  "28", "30", "31", "33", "34", "9"
+                  "10", "15", "16", "19", "21", "23", "27",
+                  "30", "31", "33", "34", "9"
                 ].sort().join(),
-                c2 = ["10", "13", "14", "18", "2", "22", "3", "4", "8"].sort().join(),
-                c3 = ["1", "11", "12", "17", "20" , "5", "6", "7"].sort().join(),
-                c4 = ["25", "26", "29", "32"].sort().join(),
+                c2 = ["1", "12", "13", "14", "18", "2", "20", "22", "3", "4", "8"].sort().join(),
+                c3 = ["11", "17", "5", "6", "7"].sort().join(),
+                c4 = ["24", "25", "26", "28", "29", "32"].sort().join(),
                 comms = this.actual,
                 failed = false,
                 msg = "Found incorrect: ";
@@ -714,8 +667,32 @@
         
       });
       
-      
-      
+      /*
+      describe('checking large networks', function() {
+        
+        it('should be able to handle 1000 nodes', function() {
+          var i, best         
+          helper.insertNSimpleNodes(nodes, 1000);
+          helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+          for (i = 11; i < 1000; i++) {
+            edges.push(helper.createSimpleEdge(nodes, i - 1, i));
+            edges.push(helper.createSimpleEdge(nodes, i, i - 2));
+          }
+
+          joiner.setup();
+          best = joiner.getBest();
+          var step = 0;
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+            step++;
+          }
+          //expect(joiner.getCommunities()).toContainKarateClubCommunities();
+          
+        });
+        
+      });
+      */
     });
   });
 }());

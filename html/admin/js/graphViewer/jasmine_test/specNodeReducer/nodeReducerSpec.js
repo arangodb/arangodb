@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach, jasmine */
+/*global runs, waits */
 /*global describe, it, expect, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
@@ -164,6 +165,44 @@
           
           var com = reducer.getCommunity(6);
           expect(com).toContainNodes(["0", "1", "2"]);
+        });
+        
+        it('should wait for a running identification to finish before allowing to start a new one', function() {
+          
+          var firstRun, secondRun;
+          
+          runs(function() { 
+            var i;           
+            helper.insertNSimpleNodes(nodes, 1000);
+            helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+            for (i = 11; i < 1000; i++) {
+              edges.push(helper.createSimpleEdge(nodes, i - 1, i));
+            }
+            
+            
+            setTimeout(function() {
+              console.log("Start1");
+              firstRun = reducer.getCommunity(6);
+              console.log("End1");
+            }, 10);
+            
+            setTimeout(function() {
+              console.log("Start2");
+              expect(function() {
+                secondRun = reducer.getCommunity(6);
+              }).toThrow("Still running.");
+              console.log("End2");
+            }, 10);
+            
+          });
+          
+          waits(100);
+          
+          runs(function() {
+            expect(firstRun).toContainNodes(["0", "1", "2"]);
+            expect(secondRun).toBeUndefined();
+          });
+          
         });
         
       });

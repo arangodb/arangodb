@@ -34,11 +34,29 @@ var helper = helper || {};
 (function objectsHelper() {
   "use strict";
   
+  helper.insertNSimpleNodes = function (nodes, n) {
+    var i;
+    for (i = 0; i < n; i++) {
+      nodes.push({
+        _id: i,
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      });
+    }
+  };
+  
   helper.createSimpleNodes = function (ids) {
     var nodes = [];
     _.each(ids, function(i) {
       nodes.push({
         _id: i,
+        _inboundCounter: 0,
+        _outboundCounter: 0,
         position: {
           x: 1,
           y: 1,
