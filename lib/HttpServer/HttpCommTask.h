@@ -140,6 +140,10 @@ namespace triagens {
           this->_bodyLength      = 0;
           this->_readRequestBody = false;
           this->_requestPending  = false;
+
+          this->_httpVersion     = HttpRequest::HTTP_UNKNOWN;
+          this->_requestType     = HttpRequest::HTTP_REQUEST_ILLEGAL;
+          this->_fullUrl         = "";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,8 +227,11 @@ namespace triagens {
                 return true;
               }
 
-              // check HTTP protocol
-              if (! this->_request->isHttp10() && ! this->_request->isHttp11()) {
+              // check HTTP protocol version
+              _httpVersion = this->_request->httpVersion();
+
+              if (_httpVersion != HttpRequest::HTTP_1_0 && 
+                  _httpVersion != HttpRequest::HTTP_1_1) {
                 HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED);
                 this->handleResponse(&response);
                 this->resetState();
@@ -233,7 +240,8 @@ namespace triagens {
               }
               
               // check max URL length
-              if (this->_request->fullUrl().length() > 16384) {
+              _fullUrl = this->_request->fullUrl();
+              if (_fullUrl.size() > 16384) {
                 HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG);
                 this->handleResponse(&response);
                 this->resetState();
@@ -306,15 +314,6 @@ namespace triagens {
                 }
               }
           
-           
-              // enable the following statement for excessive logging of incoming requests
-              // LOGGER_INFO(this->_connectionInfo.serverAddress << "," << this->_connectionInfo.serverPort << "," << 
-              //             this->_connectionInfo.clientAddress << "," << 
-              //             HttpRequest::translateMethod(this->_request->requestType()) << "," <<
-              //             HttpRequest::translateVersion(this->_request->httpVersion()) << "," << 
-              //             this->_bodyLength << "," <<
-              //             this->_request->fullUrl());
-            
               // .............................................................................
               // check if server is active
               // .............................................................................
@@ -530,15 +529,13 @@ namespace triagens {
 
             // not authenticated
             else {
-              string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
-
-              delete this->_request;
-              this->_request = 0;
+              const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
               HttpResponse response(HttpResponse::UNAUTHORIZED);
               response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
 
               this->handleResponse(&response);
+              this->resetState();
             }
 
             return processRead();
@@ -606,6 +603,14 @@ namespace triagens {
 
           LOGGER_TRACE("HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str());
 
+          // disable the following statement to prevent excessive logging of incoming requests
+          LOGGER_USAGE(this->_connectionInfo.clientAddress << " \"" << 
+                       HttpRequest::translateMethod(this->_requestType) << " " <<
+                       this->_fullUrl << " " <<
+                       HttpRequest::translateVersion(this->_httpVersion) << "\" " << 
+                       response->responseCode() << " " << 
+                       response->body().length());
+
           // clear body
           response->body().clear();
 
@@ -671,10 +676,22 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief http version number used
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpRequest::HttpVersion _httpVersion;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief type of request (GET, POST, ...)
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpRequest::HttpRequestType _requestType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief value of requested URL
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _fullUrl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief value of the HTTP origin header the client sent (if any).
