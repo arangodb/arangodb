@@ -438,8 +438,10 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_scope_t* scope;
   TRI_aql_codegen_register_t offsetRegister;
   TRI_aql_codegen_register_t limitRegister;
+  int res;
 
   scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t), false);
+
   if (scope == NULL) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return;
@@ -477,15 +479,30 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   scope->_hint           = hint; // for-loop hint
 
   // init symbol table
-  TRI_InitAssociativePointer(&scope->_variables,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &HashVariable,
-                             &EqualVariable,
-                             NULL);
+  res = TRI_InitAssociativePointer(&scope->_variables,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &HashVariable,
+                                   &EqualVariable,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+
+    return;
+  }
 
   // push the scope on the stack
-  TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
+  res = TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativePointer(&scope->_variables);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+
+    return;
+  }
 
 #if AQL_VERBOSE
   ScopeOutput(generator, "\n/* scope start (");
@@ -2567,6 +2584,11 @@ static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator) {
   size_t i, n;
 
   StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, NULL);
+  
+  if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
+    return 0;
+  }
+
   InitList(generator, startRegister);
 
   statements = &generator->_context->_statements->_statements;
@@ -2604,10 +2626,12 @@ static void FreeGenerator (TRI_aql_codegen_js_t* const generator) {
 
 static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) {
   TRI_aql_codegen_js_t* generator;
+  int res;
 
   assert(context);
 
   generator = (TRI_aql_codegen_js_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_js_t), false);
+
   if (generator == NULL) {
     return NULL;
   }
@@ -2617,7 +2641,12 @@ static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) 
   TRI_InitStringBuffer(&generator->_buffer, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitStringBuffer(&generator->_functionBuffer, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitVectorPointer(&generator->_scopes, TRI_UNKNOWN_MEM_ZONE);
+  res = TRI_InitVectorPointer2(&generator->_scopes, TRI_UNKNOWN_MEM_ZONE, 4);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
   generator->_errorCode = TRI_ERROR_NO_ERROR;
   generator->_errorValue = NULL;
   generator->_registerIndex = 0;

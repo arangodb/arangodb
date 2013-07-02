@@ -100,6 +100,7 @@ static TRI_aql_scope_e NextType (TRI_aql_context_t* const context,
 static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
                                      const TRI_aql_scope_e type) {
   TRI_aql_scope_t* scope;
+  int res;
 
   assert(context);
 
@@ -122,12 +123,19 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
 
   TRI_InitVectorPointer(&scope->_sorts, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitAssociativePointer(&scope->_variables,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_HashVariableAql,
-                             &TRI_EqualVariableAql,
-                             0);
+  res = TRI_InitAssociativePointer(&scope->_variables,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &TRI_HashVariableAql,
+                                   &TRI_EqualVariableAql,
+                                   0);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorPointer(&scope->_sorts);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
+
+    return NULL;
+  }
 
   return scope;
 }
@@ -241,13 +249,11 @@ const char* TRI_TypeNameScopeAql (const TRI_aql_scope_e type) {
 /// @brief init scopes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InitScopesAql (TRI_aql_context_t* const context) {
+void TRI_InitScopesAql (TRI_aql_context_t* const context) {
   assert(context);
 
   TRI_InitVectorPointer(&context->_memory._scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,6 +266,7 @@ void TRI_FreeScopesAql (TRI_aql_context_t* const context) {
   assert(context);
 
   n = context->_memory._scopes._length;
+
   for (i = 0; i < n; ++i) {
     TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&context->_memory._scopes, i);
 
@@ -290,10 +297,17 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
   scope->_level = (size_t) context->_memory._scopes._length;
 
   LOG_TRACE("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
-  TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
-  TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope);
+
+  if (TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope)) {
+    return false;
+  }
+
+  if (TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope)) {
+    return false;
+  }
 
   node = TRI_CreateNodeScopeStartAql(context, scope);
+
   if (node == NULL) {
     return false;
   }
