@@ -231,6 +231,10 @@ General Logging Options {#CommandLineLoggingGeneral}
 @copydetails triagens::rest::ApplicationServer::_logFile
 
 @CLEARPAGE
+@anchor CommandLineLoggingLogRequestsFile
+@copydetails triagens::rest::ApplicationServer::_logRequestsFile
+
+@CLEARPAGE
 @anchor CommandLineLoggingLogSeverity
 @copydetails triagens::rest::ApplicationServer::_logSeverity
 
@@ -258,8 +262,12 @@ Human Readable Logging {#CommandLineLoggingHuman}
 @copydetails triagens::rest::ApplicationServer::_logThreadId
 
 @CLEARPAGE
-@anchor CommandLineLoggingLogFilter
-@copydetails triagens::rest::ApplicationServer::_logFilter
+@anchor CommandLineLoggingLogSourceFilter
+@copydetails triagens::rest::ApplicationServer::_logSourceFilter
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogContentFilter
+@copydetails triagens::rest::ApplicationServer::_logContentFilter
 
 @CLEARPAGE
 Machine Readable Logging {#CommandLineLoggingMachine}

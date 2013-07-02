@@ -28,7 +28,12 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.GraphAPI = {
+var GraphAPI,
+  arangodb = require("org/arangodb"),
+  arangosh = require("org/arangodb/arangosh");
+
+
+GraphAPI = {
   send: function (method, graphKey, path, data) {
     var results = arangodb.arango[method]("/_api/graph/" +
       encodeURIComponent(graphKey) +
@@ -171,3 +176,5 @@ exports.GraphAPI = {
     return new ArangoQueryCursor(database, results);
   }
 };
+
+exports.GraphAPI = GraphAPI;
