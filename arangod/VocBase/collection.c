@@ -1195,7 +1195,7 @@ int TRI_LoadCollectionInfo (char const* path,
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, &error);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
 
   if (json == NULL) {
     if (error != NULL) {
@@ -1213,7 +1213,7 @@ int TRI_LoadCollectionInfo (char const* path,
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
@@ -1248,7 +1248,7 @@ int TRI_LoadCollectionInfo (char const* path,
         parameter->_maximalSize = value->_value._number;
       }
     }
-    else if (value->_type == TRI_JSON_STRING) {
+    else if (value->_type == TRI_JSON_STRING && value->_value._string.data != NULL) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
 
@@ -1279,7 +1279,7 @@ int TRI_LoadCollectionInfo (char const* path,
     }
   }
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   // warn about wrong version of the collection
   if (versionWarning &&
