@@ -668,10 +668,14 @@ optional_function_call_arguments:
 
 function_arguments_list:
     expression {
-      TRI_PushListAql(context, $1);
+      if (! TRI_PushListAql(context, $1)) {
+        ABORT_OOM
+      }
     }
   | function_arguments_list T_COMMA expression {
-      TRI_PushListAql(context, $3);
+      if (! TRI_PushListAql(context, $3)) {
+        ABORT_OOM
+      }
     }
   ;
 
@@ -994,6 +998,10 @@ integer_value:
     T_INTEGER {
       TRI_aql_node_t* node;
       int64_t value;
+
+      if (! $1) {
+        ABORT_OOM
+      }
 
       value = TRI_Int64String($1);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
