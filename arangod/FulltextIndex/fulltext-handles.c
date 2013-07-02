@@ -79,12 +79,14 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
   }
 
   slot = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false);
+
   if (slot == NULL) {
     return false;
   }
 
   // allocate and clear
   slot->_documents = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true);
+
   if (slot->_documents == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
     return false;
@@ -92,6 +94,7 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
 
   // allocate and clear deleted flags
   slot->_deleted = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true);
+
   if (slot->_deleted == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_documents);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
@@ -130,7 +133,8 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
     return true;
   }
 
-  slots = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, false);
+  slots = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true);
+
   if (slots == NULL) {
     // out of memory
     return false;
@@ -176,6 +180,7 @@ TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize)
   TRI_fulltext_handles_t* handles;
 
   handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false);
+
   if (handles == NULL) {
     return NULL;
   }
@@ -196,13 +201,16 @@ TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeHandlesFulltextIndex (TRI_fulltext_handles_t* handles) {
-  uint32_t i;
-
-  for (i = 0; i < handles->_numSlots; ++i) {
-    FreeSlot(handles->_slots[i]);
-  }
 
   if (handles->_slots != NULL) {
+    uint32_t i;
+
+    for (i = 0; i < handles->_numSlots; ++i) {
+      if (handles->_slots[i] != NULL) {
+        FreeSlot(handles->_slots[i]);
+      }
+    }
+
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles->_slots);
   }
 
@@ -275,6 +283,7 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* 
   }
 
   clone = TRI_CreateHandlesFulltextIndex(original->_slotSize);
+
   if (clone == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, map);
     return NULL;
@@ -326,6 +335,7 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
   uint32_t slotPosition;
 
   handle = handles->_next;
+
   if (handle == UINT32_MAX - 1) {
     // out of handles
     return 0;
