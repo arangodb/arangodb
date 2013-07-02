@@ -1273,7 +1273,7 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
 
-    if (key->_type != TRI_JSON_STRING) {
+    if (key->_type != TRI_JSON_STRING || key->_value._string.data == 0) {
       continue;
     }
 
