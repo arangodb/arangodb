@@ -359,6 +359,31 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief logs usage messages
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_LOGGER
+
+#define LOGGER_USAGE(a)                                                           \
+  do {                                                                            \
+    if (TRI_IsUsageLogging()) {                                                   \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_INFO                                                       \
+      << TRI_LOG_SEVERITY_USAGE                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
+
+#else
+
+#define LOGGER_USAGE(a)                                                           \
+  while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief logs non-human messsages
 ////////////////////////////////////////////////////////////////////////////////
 

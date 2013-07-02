@@ -54,12 +54,12 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_LOG_LEVEL_FATAL = 1,
-  TRI_LOG_LEVEL_ERROR = 2,
+  TRI_LOG_LEVEL_FATAL   = 1,
+  TRI_LOG_LEVEL_ERROR   = 2,
   TRI_LOG_LEVEL_WARNING = 3,
-  TRI_LOG_LEVEL_INFO = 4,
-  TRI_LOG_LEVEL_DEBUG = 5,
-  TRI_LOG_LEVEL_TRACE = 6
+  TRI_LOG_LEVEL_INFO    = 4,
+  TRI_LOG_LEVEL_DEBUG   = 5,
+  TRI_LOG_LEVEL_TRACE   = 6
 }
 TRI_log_level_e;
 
@@ -68,12 +68,13 @@ TRI_log_level_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_LOG_SEVERITY_EXCEPTION = 1,
-  TRI_LOG_SEVERITY_TECHNICAL = 2,
-  TRI_LOG_SEVERITY_FUNCTIONAL = 3,
+  TRI_LOG_SEVERITY_EXCEPTION   = 1,
+  TRI_LOG_SEVERITY_TECHNICAL   = 2,
+  TRI_LOG_SEVERITY_FUNCTIONAL  = 3,
   TRI_LOG_SEVERITY_DEVELOPMENT = 4,
-  TRI_LOG_SEVERITY_HUMAN = 5,
-  TRI_LOG_SEVERITY_UNKNOWN = 6
+  TRI_LOG_SEVERITY_USAGE       = 5,
+  TRI_LOG_SEVERITY_HUMAN       = 6,
+  TRI_LOG_SEVERITY_UNKNOWN     = 7
 }
 TRI_log_severity_e;
 
@@ -84,9 +85,9 @@ TRI_log_severity_e;
 typedef enum {
 
   // exceptions
-  TRI_LOG_CATEGORY_FATAL   = 1000,
-  TRI_LOG_CATEGORY_ERROR   = 1001,
-  TRI_LOG_CATEGORY_WARNING = 1002,
+  TRI_LOG_CATEGORY_FATAL             = 1000,
+  TRI_LOG_CATEGORY_ERROR             = 1001,
+  TRI_LOG_CATEGORY_WARNING           = 1002,
 
   // technical
   TRI_LOG_CATEGORY_HEARTBEAT         = 2000,
@@ -178,6 +179,12 @@ void TRI_SetFunctionLogging (bool show);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetFileToLog (char const* file);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if usage logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsUsageLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if human logging is enabled
@@ -434,6 +441,28 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief logs usage messages
+////////////////////////////////////////////////////////////////////////////////
+
+#undef LOG_USAGE
+
+#ifdef TRI_ENABLE_LOGGER
+
+#define LOG_USAGE(...)                                                                                    \
+  do {                                                                                                    \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                            \
+    if (TRI_IsUsageLogging()) {                                                                           \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, TRI_LOG_SEVERITY_USAGE, __VA_ARGS__); \
+    }                                                                                                     \
+  } while (0)
+
+#else
+
+#define LOG_USAGE(...) while (0)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -473,14 +502,21 @@ struct TRI_log_appender_s;
 /// @brief creates a log append for file output
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_log_appender_s* TRI_CreateLogAppenderFile (char const* filename);
+struct TRI_log_appender_s* TRI_CreateLogAppenderFile (char const*,
+                                                      char const*,
+                                                      TRI_log_severity_e,
+                                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for syslog
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_SYSLOG
-struct TRI_log_appender_s* TRI_CreateLogAppenderSyslog (char const* name, char const* facility);
+struct TRI_log_appender_s* TRI_CreateLogAppenderSyslog (char const*, 
+                                                        char const*,
+                                                        char const*,
+                                                        TRI_log_severity_e,
+                                                        bool);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

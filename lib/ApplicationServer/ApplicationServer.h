@@ -705,11 +705,11 @@ namespace triagens {
         string _logSeverity;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log level
+/// @brief log file
 ///
 /// @CMDOPT{\--log.file @CA{filename}}
 ///
-/// This option allows the user to specify the name of a file to which
+/// This option allows the user to specify the name of a file to which 
 /// information is logged. By default, if no log file is specified, the standard
 /// output is used. Note that if the file named by @CA{filename} does not
 /// exist, it will be created. If the file cannot be created (e.g. due to
@@ -721,6 +721,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logFile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log file for requests
+///
+/// @CMDOPT{\--log.requests-file @CA{filename}}
+///
+/// This option allows the user to specify the name of a file to which
+/// requests are logged. By default, no log file is used and requests are
+/// not logged. Note that if the file named by @CA{filename} does not
+/// exist, it will be created. If the file cannot be created (e.g. due to
+/// missing file privileges), the server will refuse to start. If the specified
+/// file already exists, output is appended to that file.
+///
+/// Use @LIT{+} to log to standard error. Use @LIT{-} to log to standard output.
+/// Use @LIT{""} to disable request logging altogether.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _logRequestsFile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log prefix
@@ -787,15 +805,25 @@ namespace triagens {
         bool _logLineNumber;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log filter
+/// @brief log source filter
 ///
-/// @CMDOPT{\--log.filter @CA{arg}}
+/// @CMDOPT{\--log.source-filter @CA{arg}}
 ///
 /// For debug and trace messages, only log those messages originated from the
 /// C source file @CA{arg}. The argument can be used multiple times.
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> _logFilter;
+        vector<string> _logSourceFilter;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log content filter
+///
+/// @CMDOPT{\--log.content-filter @CA{arg}}
+///
+/// Only log message containing the specified string @CA{arg}.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _logContentFilter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random number generator to use
