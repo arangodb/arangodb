@@ -237,7 +237,6 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
     pids = 0;
     *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
