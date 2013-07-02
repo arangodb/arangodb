@@ -106,15 +106,15 @@ TRI_multi_array_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMultiArray (TRI_multi_array_t*,
-                         TRI_memory_zone_t*,
-                         size_t elementSize,
-                         uint64_t (*hashKey) (TRI_multi_array_t*, void*),
-                         uint64_t (*hashElement) (TRI_multi_array_t*, void*),
-                         void (*clearElement) (TRI_multi_array_t*, void*),
-                         bool (*isEmptyElement) (TRI_multi_array_t*, void*),
-                         bool (*isEqualKeyElement) (TRI_multi_array_t*, void*, void*),
-                         bool (*isEqualElementElement) (TRI_multi_array_t*, void*, void*));
+int TRI_InitMultiArray (TRI_multi_array_t*,
+                        TRI_memory_zone_t*,
+                        size_t elementSize,
+                        uint64_t (*hashKey) (TRI_multi_array_t*, void*),
+                        uint64_t (*hashElement) (TRI_multi_array_t*, void*),
+                        void (*clearElement) (TRI_multi_array_t*, void*),
+                        bool (*isEmptyElement) (TRI_multi_array_t*, void*),
+                        bool (*isEqualKeyElement) (TRI_multi_array_t*, void*, void*),
+                        bool (*isEqualElementElement) (TRI_multi_array_t*, void*, void*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
@@ -247,12 +247,12 @@ TRI_multi_pointer_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
-                           TRI_memory_zone_t*,
-                           uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
-                           uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
-                           bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
-                           bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*));
+int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
+                          TRI_memory_zone_t*,
+                          uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
+                          uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
+                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
+                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
