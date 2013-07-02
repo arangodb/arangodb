@@ -774,9 +774,29 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   TRI_edge_index_t* edgeIndex;
   TRI_index_t* idx;
   char* id;
+  int res;
 
   // create index
   edgeIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false);
+
+  if (edgeIndex == NULL) {
+    return NULL;
+  }
+  
+  res = TRI_InitMultiPointer(&edgeIndex->_edges,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashElementEdge,
+                             HashElementEdge,
+                             IsEqualKeyEdge,
+                             IsEqualElementEdge);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
+
+    return NULL;
+  }
+
+
   idx = &edgeIndex->base;
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
@@ -789,13 +809,6 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
-
-  TRI_InitMultiPointer(&edgeIndex->_edges,
-                       TRI_UNKNOWN_MEM_ZONE,
-                       HashElementEdge,
-                       HashElementEdge,
-                       IsEqualKeyEdge,
-                       IsEqualElementEdge);
 
   return idx;
 }

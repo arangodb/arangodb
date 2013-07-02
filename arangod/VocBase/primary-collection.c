@@ -559,6 +559,8 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 
 int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
+  int res;
+
   primary->_shaper             = shaper;
   primary->_capConstraint      = NULL;
   primary->_keyGenerator       = NULL;
@@ -568,21 +570,31 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
   primary->size                = Count;
 
 
+  res = TRI_InitAssociativePointer(&primary->_datafileInfo,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyDatafile,
+                                   HashElementDatafile,
+                                   IsEqualKeyElementDatafile,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  res = TRI_InitAssociativePointer(&primary->_primaryIndex,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyHeader,
+                                   HashElementDocument,
+                                   IsEqualKeyDocument,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativePointer(&primary->_datafileInfo);
+
+    return res;
+  }
+
   TRI_InitBarrierList(&primary->_barrierList, primary);
-
-  TRI_InitAssociativePointer(&primary->_datafileInfo,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyDatafile,
-                             HashElementDatafile,
-                             IsEqualKeyElementDatafile,
-                             NULL);
-
-  TRI_InitAssociativePointer(&primary->_primaryIndex,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyHeader,
-                             HashElementDocument,
-                             IsEqualKeyDocument,
-                             NULL);
 
   TRI_InitReadWriteLock(&primary->_lock);
   TRI_InitReadWriteLock(&primary->_compactionLock);
@@ -603,6 +615,7 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
 
   TRI_DestroyReadWriteLock(&primary->_compactionLock);
   TRI_DestroyReadWriteLock(&primary->_lock);
+
   TRI_DestroyAssociativePointer(&primary->_primaryIndex);
 
   if (primary->_shaper != NULL) {
