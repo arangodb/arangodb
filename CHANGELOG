@@ -1,6 +1,23 @@
 v1.4
 ----
 
+* renamed command-line option `--log.filter` to `--log.source-filter` to avoid
+  misunderstandings
+
+* introduced new command-line option `--log.content-filter` to optionally restrict 
+  logging to just specific log messages (containing the filter string, case-sensitive).
+  
+  For example, to filter on just log entries which contain `ArangoDB`, use:
+  
+      --log.content-filter "ArangoDB"
+
+* added optional command-line option `--log.requests-file` to log incoming HTTP
+  requests to a file.
+
+  When used, all HTTP requests will be logged to the specified file, containing the
+  client IP address, HTTP method, requests URL, HTTP response code, and size of the
+  response body.
+
 * added a signal handler for SIGUSR1 signal: 
 
   when ArangoDB receives this signal, it will respond all further incoming requests

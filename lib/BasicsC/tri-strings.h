@@ -112,6 +112,12 @@ bool TRI_CaseEqualString2 (char const* left, char const* right, size_t n);
 bool TRI_IsPrefixString (char const* full, char const* prefix);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if second string is contained in the first
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsContainedString (char const* full, char const* part);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string, without using a memory zone
 ///
 /// This function can be used when strings need to be returned to other system

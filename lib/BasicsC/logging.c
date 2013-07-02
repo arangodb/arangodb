@@ -66,6 +66,9 @@ typedef struct TRI_log_appender_s {
   void (*log) (struct TRI_log_appender_s*, TRI_log_level_e, TRI_log_severity_e, char const* msg, size_t length);
   void (*reopen) (struct TRI_log_appender_s*);
   void (*close) (struct TRI_log_appender_s*);
+  char*              _contentFilter;   // an optional content filter for log messages
+  TRI_log_severity_e _severityFilter;  // appender will care only about message with a specific severity. set to TRI_LOG_SEVERITY_UNKNOWN to catch all
+  bool               _consume;         // whether or not the appender will consume the message (true) or let it through to other appenders (false)
 }
 TRI_log_appender_t;
 
@@ -171,6 +174,12 @@ static TRI_thread_t LoggingThread;
 ////////////////////////////////////////////////////////////////////////////////
 
 static sig_atomic_t LoggingThreadActive = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief usage logging
+////////////////////////////////////////////////////////////////////////////////
+
+static sig_atomic_t IsUsage = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief human readable logging
@@ -455,10 +464,17 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
 
   if (ShowThreadIdentifier) {
-    n = snprintf(buffer + m, size - m, "[%llu-%llu] ", (unsigned long long) currentProcessId, (unsigned long long) currentThreadId);
+    n = snprintf(buffer + m, 
+                 size - m, 
+                 "[%llu-%llu] ", 
+                 (unsigned long long) currentProcessId, 
+                 (unsigned long long) currentThreadId);
   }
   else {
-    n = snprintf(buffer + m, size - m, "[%llu] ", (unsigned long long) currentProcessId);
+    n = snprintf(buffer + m, 
+                 size - m, 
+                 "[%llu] ", 
+                 (unsigned long long) currentProcessId);
   }
 
   if (n < 0) {
@@ -477,12 +493,12 @@ static int GenerateMessage (char* buffer,
   ll = "UNKNOWN";
 
   switch (level) {
-    case TRI_LOG_LEVEL_FATAL: ll = "FATAL"; break;
-    case TRI_LOG_LEVEL_ERROR: ll = "ERROR"; break;
+    case TRI_LOG_LEVEL_FATAL:   ll = "FATAL"; break;
+    case TRI_LOG_LEVEL_ERROR:   ll = "ERROR"; break;
     case TRI_LOG_LEVEL_WARNING: ll = "WARNING"; break;
-    case TRI_LOG_LEVEL_INFO: ll = "INFO"; break;
-    case TRI_LOG_LEVEL_DEBUG: ll = "DEBUG"; break;
-    case TRI_LOG_LEVEL_TRACE: ll = "TRACE"; break;
+    case TRI_LOG_LEVEL_INFO:    ll = "INFO"; break;
+    case TRI_LOG_LEVEL_DEBUG:   ll = "DEBUG"; break;
+    case TRI_LOG_LEVEL_TRACE:   ll = "TRACE"; break;
   }
 
   n = snprintf(buffer + m, size - m, "%s ", ll);
@@ -597,7 +613,8 @@ static void OutputMessage (TRI_log_level_e level,
 
     return;
   }
-  
+
+  // copy message to ring buffer of recent log messages  
   if (severity == TRI_LOG_SEVERITY_HUMAN) {
     // we start copying the message from the given offset to skip any irrelevant
     // or redundant message parts such as date, info etc. The offset might be 0 though.
@@ -645,7 +662,27 @@ static void OutputMessage (TRI_log_level_e level,
       TRI_log_appender_t* appender;
 
       appender = Appenders._buffer[i];
+
+      assert(appender != NULL);
+
+      // apply severity filter
+      if (appender->_severityFilter != TRI_LOG_SEVERITY_UNKNOWN && 
+          appender->_severityFilter != severity) {
+        continue;
+      }
+
+      // apply content filter on log message
+      if (appender->_contentFilter != NULL) {
+        if (! TRI_IsContainedString(message, appender->_contentFilter)) {
+          continue;
+        }
+      }
+
       appender->log(appender, level, severity, message, length);
+
+      if (appender->_consume) {
+        break;
+      }
     }
 
     TRI_UnlockSpin(&AppendersLock);
@@ -715,7 +752,27 @@ static void MessageQueueWorker (void* data) {
           TRI_log_appender_t* appender;
 
           appender = Appenders._buffer[i];
+
+          assert(appender != NULL);
+
+          // apply severity filter
+          if (appender->_severityFilter != TRI_LOG_SEVERITY_UNKNOWN && 
+            appender->_severityFilter != msg->_severity) {
+            continue;
+          }
+
+          // apply content filter on log message
+          if (appender->_contentFilter != NULL) {
+            if (! TRI_IsContainedString(msg->_message, appender->_contentFilter)) {
+              continue;
+            }
+          }
+
           appender->log(appender, msg->_level, msg->_severity, msg->_message, msg->_length);
+      
+          if (appender->_consume) {
+            break;
+          }
         }
 
         TRI_UnlockSpin(&AppendersLock);
@@ -983,6 +1040,7 @@ void TRI_SetLogSeverityLogging (char const* severities) {
   IsTechnical = 0;
   IsFunctional = 0;
   IsDevelopment = 0;
+  IsUsage = 0;
   IsHuman = 0;
 
   n = split._length;
@@ -1002,6 +1060,9 @@ void TRI_SetLogSeverityLogging (char const* severities) {
     else if (TRI_CaseEqualString(type, "development")) {
       IsDevelopment = 1;
     }
+    else if (TRI_CaseEqualString(type, "usage")) {
+      IsUsage = 1;
+    }
     else if (TRI_CaseEqualString(type, "human")) {
       IsHuman = 1;
     }
@@ -1010,6 +1071,7 @@ void TRI_SetLogSeverityLogging (char const* severities) {
       IsTechnical = 1;
       IsFunctional = 1;
       IsDevelopment = 1;
+      IsUsage = 1;
       IsHuman = 1;
     }
     else if (TRI_CaseEqualString(type, "non-human")) {
@@ -1017,6 +1079,7 @@ void TRI_SetLogSeverityLogging (char const* severities) {
       IsTechnical = 1;
       IsFunctional = 1;
       IsDevelopment = 1;
+      IsUsage = 1;
     }
   }
 
@@ -1070,6 +1133,14 @@ void TRI_SetFunctionLogging (bool show) {
 void TRI_SetFileToLog (char const* file) {
   UseFileBasedLogging = true;
   FilesToLog[TRI_FnvHashString(file) % FilesToLogSize] = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if usage logging is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsUsageLogging () {
+  return IsUsage != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1458,6 +1529,10 @@ static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, self->_filename);
   }
 
+  if (self->base._contentFilter != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, self->base._contentFilter);
+  }
+
   TRI_DestroySpin(&self->_lock);
 
   TRI_Free(TRI_CORE_MEM_ZONE, self);
@@ -1480,7 +1555,10 @@ static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
 /// @brief creates a log appender for file output
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
+TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
+                                               char const* contentFilter,
+                                               TRI_log_severity_e severityFilter,
+                                               bool consume) {
   log_appender_file_t* appender;
 
   // no logging
@@ -1495,6 +1573,19 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return NULL;
+  }
+    
+  appender->base._contentFilter  = NULL;
+  appender->base._severityFilter = severityFilter;
+  appender->base._consume        = consume;
+
+  if (contentFilter != NULL) {
+    if (NULL == (appender->base._contentFilter = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, contentFilter))) {
+      TRI_Free(TRI_CORE_MEM_ZONE, appender);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
   }
 
   // logging to stdout
@@ -1521,6 +1612,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
     TRI_SetCloseOnExitFile(appender->_fd);
 
     appender->_filename = TRI_DuplicateString(filename);
+
     if (appender->_filename == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       TRI_Free(TRI_CORE_MEM_ZONE, appender);
@@ -1530,9 +1622,9 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
   }
 
   // set methods
-  appender->base.log = LogAppenderFile_Log;
+  appender->base.log    = LogAppenderFile_Log;
   appender->base.reopen = LogAppenderFile_Reopen;
-  appender->base.close = LogAppenderFile_Close;
+  appender->base.close  = LogAppenderFile_Close;
 
   // create lock
   TRI_InitSpin(&appender->_lock);
@@ -1607,6 +1699,7 @@ static void LogAppenderSyslog_Log (TRI_log_appender_t* appender,
   switch (severity) {
     case TRI_LOG_SEVERITY_EXCEPTION: priority = LOG_CRIT;  break;
     case TRI_LOG_SEVERITY_FUNCTIONAL: priority = LOG_NOTICE;  break;
+    case TRI_LOG_SEVERITY_USAGE: priority = LOG_INFO;  break;
     case TRI_LOG_SEVERITY_TECHNICAL: priority = LOG_INFO;  break;
     case TRI_LOG_SEVERITY_DEVELOPMENT: priority = LOG_DEBUG;  break;
     default: priority = LOG_DEBUG;  break;
@@ -1653,12 +1746,16 @@ static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
   log_appender_syslog_t* self;
 
   self = (log_appender_syslog_t*) appender;
-
+  
   TRI_LockMutex(&self->_mutex);
   closelog();
   TRI_UnlockMutex(&self->_mutex);
 
   TRI_DestroyMutex(&self->_mutex);
+  
+  if (self->base._contentFilter != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, self->base._contentFilter);
+  }
 
   TRI_Free(TRI_CORE_MEM_ZONE, self);
 }
@@ -1684,7 +1781,11 @@ static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
 
 #ifdef TRI_ENABLE_SYSLOG
 
-TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* facility) {
+TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, 
+                                                 char const* facility,
+                                                 char const* contentFilter,
+                                                 TRI_log_severity_e severityFilter,
+                                                 bool consume) {
   log_appender_syslog_t* appender;
   int value;
 
@@ -1699,10 +1800,27 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
   // allocate space
   appender = (log_appender_syslog_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(log_appender_syslog_t), false);
 
+  if (appender == NULL) {
+    return NULL;
+  }
+  
+  appender->base._contentFilter  = NULL;
+  appender->base._severityFilter = severityFilter;
+  appender->base._consume        = consume;
+
   // set methods
-  appender->base.log = LogAppenderSyslog_Log;
-  appender->base.reopen = LogAppenderSyslog_Reopen;
-  appender->base.close = LogAppenderSyslog_Close;
+  appender->base.log             = LogAppenderSyslog_Log;
+  appender->base.reopen          = LogAppenderSyslog_Reopen;
+  appender->base.close           = LogAppenderSyslog_Close;
+
+  if (contentFilter != NULL) {
+    if (NULL == (appender->base._contentFilter = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, contentFilter))) {
+      TRI_Free(TRI_CORE_MEM_ZONE, appender);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+  }
 
   TRI_InitMutex(&appender->_mutex);
 
