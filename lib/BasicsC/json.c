@@ -723,8 +723,10 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name, TRI_json_t* subobject) {
-  TRI_Insert2ArrayJson(zone, object, name, subobject);
-  TRI_Free(zone, subobject);
+  if (object != NULL && subobject != NULL) {
+    TRI_Insert2ArrayJson(zone, object, name, subobject);
+    TRI_Free(zone, subobject);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
