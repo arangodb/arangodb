@@ -1147,7 +1147,15 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
       TRI_document_collection_t* document;
 
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+#endif
+
       document = TRI_OpenDocumentCollection(vocbase, collection->_path);
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
 
       if (document == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1736,6 +1744,8 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
+/// while the collections are iterated over, there will be a global lock so
+/// that there will be consistent view of collections & their properties 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
@@ -1752,6 +1762,10 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
   }
 
   TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
+#endif
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock 
@@ -1797,6 +1811,10 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
     
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
    
   TRI_DestroyVectorPointer(&collections);
 
