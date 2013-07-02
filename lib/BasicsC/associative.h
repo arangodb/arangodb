@@ -105,15 +105,15 @@ TRI_associative_array_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitAssociativeArray (TRI_associative_array_t*,
-                               TRI_memory_zone_t*,
-                               size_t elementSize,
-                               uint64_t (*hashKey) (TRI_associative_array_t*, void*),
-                               uint64_t (*hashElement) (TRI_associative_array_t*, void*),
-                               void (*clearElement) (TRI_associative_array_t*, void*),
-                               bool (*isEmptyElement) (TRI_associative_array_t*, void*),
-                               bool (*isEqualKeyElement) (TRI_associative_array_t*, void*, void*),
-                               bool (*isEqualElementElement) (TRI_associative_array_t*, void*, void*));
+int TRI_InitAssociativeArray (TRI_associative_array_t*,
+                              TRI_memory_zone_t*,
+                              size_t elementSize,
+                              uint64_t (*hashKey) (TRI_associative_array_t*, void*),
+                              uint64_t (*hashElement) (TRI_associative_array_t*, void*),
+                              void (*clearElement) (TRI_associative_array_t*, void*),
+                              bool (*isEmptyElement) (TRI_associative_array_t*, void*),
+                              bool (*isEqualKeyElement) (TRI_associative_array_t*, void*, void*),
+                              bool (*isEqualElementElement) (TRI_associative_array_t*, void*, void*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
@@ -260,12 +260,12 @@ TRI_associative_pointer_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
-                                 TRI_memory_zone_t*,
-                                 uint64_t (*hashKey) (TRI_associative_pointer_t*, void const*),
-                                 uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
-                                 bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
-                                 bool (*isEqualElementElement) (TRI_associative_pointer_t*, void const*, void const*));
+int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
+                                TRI_memory_zone_t*,
+                                uint64_t (*hashKey) (TRI_associative_pointer_t*, void const*),
+                                uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
+                                bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
+                                bool (*isEqualElementElement) (TRI_associative_pointer_t*, void const*, void const*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
@@ -335,6 +335,16 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t*, void* ele
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t*, void const* key, void* element, bool overwrite);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an key/element to the array
+/// returns a status code, and *found will contain a found element (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t*, 
+                                      void const*, 
+                                      void*, 
+                                      void const**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
@@ -424,12 +434,12 @@ TRI_associative_synced_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
-                                TRI_memory_zone_t*,
-                                uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
-                                uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
-                                bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
-                                bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*));
+int TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
+                               TRI_memory_zone_t*,
+                               uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
+                               uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
+                               bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
+                               bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer

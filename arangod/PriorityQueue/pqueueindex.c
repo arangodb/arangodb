@@ -121,6 +121,7 @@ PQIndex* PQueueIndex_new (void) {
 
   PQIndex* idx;
   bool ok;
+  int res;
 
   // ..........................................................................
   // Allocate the Priority Queue Index
@@ -141,6 +142,7 @@ PQIndex* PQueueIndex_new (void) {
   // ..........................................................................
 
   idx->_pq = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pqueue_t) + sizeof(void*), false);
+
   if (idx->_pq == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -154,6 +156,7 @@ PQIndex* PQueueIndex_new (void) {
   // ..........................................................................
 
   idx->_aa = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_array_t), false);
+
   if (idx->_aa == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_pq);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
@@ -188,16 +191,22 @@ PQIndex* PQueueIndex_new (void) {
   // Initialise the associative array
   // ..........................................................................
 
-  TRI_InitAssociativeArray(idx->_aa,
-                           TRI_UNKNOWN_MEM_ZONE, 
-                           sizeof(TRI_pq_index_element_t), 
-                           HashKeyPQIndex,
-                           HashElementPQIndex,
-                           ClearElementPQIndex,
-                           IsEmptyElementPQIndex,
-                           IsEqualKeyElementPQIndex,
-                           IsEqualElementElementPQIndex);
+  res = TRI_InitAssociativeArray(idx->_aa,
+                                 TRI_UNKNOWN_MEM_ZONE, 
+                                 sizeof(TRI_pq_index_element_t), 
+                                 HashKeyPQIndex,
+                                 HashElementPQIndex,
+                                 ClearElementPQIndex,
+                                 IsEmptyElementPQIndex,
+                                 IsEqualKeyElementPQIndex,
+                                 IsEqualElementElementPQIndex);
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    PQueueIndex_free(idx);
+    LOG_ERROR("out of memory when creating priority queue index");
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
 
   // ..........................................................................
   // Add the associative array at the end of the pq so that we can access later

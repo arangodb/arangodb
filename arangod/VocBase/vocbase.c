@@ -396,7 +396,7 @@ static int WriteShutdownInfo (char const* filename) {
   assert(filename != NULL);
 
   // create a json object
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == NULL) {
     // out of memory
@@ -405,18 +405,18 @@ static int WriteShutdownInfo (char const* filename) {
   }
 
   tickString = TRI_StringUInt64((uint64_t) GetTick());
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
   tt = time(0);
   TRI_gmtime(tt, &tb);
   len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, buffer, len));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, buffer, len));
 
   // save json info to file
   LOG_DEBUG("Writing shutdown info to file '%s'", filename);
   ok = TRI_SaveJson(filename, json, true);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
     LOG_ERROR("could not save shutdown info in file '%s': %s", filename, TRI_last_error());
@@ -778,6 +778,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
                                          char const* path) {
   void const* found;
   TRI_vocbase_col_t* collection;
+  int res;
 
   // create the init object
   TRI_vocbase_col_t init = {
@@ -833,8 +834,8 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   memcpy(collection, &init, sizeof(TRI_vocbase_col_t));
 
   // check name
-  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name, collection, false);
-
+  res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, collection->_name, collection, &found);
+  
   if (found != NULL) {
     LOG_ERROR("duplicate entry for collection name '%s'", collection->_name);
 
@@ -843,9 +844,18 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // check collection identifier (unknown for new born collections)
-  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsById, &cid, collection, false);
+  if (res != TRI_ERROR_NO_ERROR) {
+    // OOM. this might have happend AFTER insertion
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_set_errno(res);
 
+    return NULL;
+  }
+
+  // check collection identifier (unknown for new born collections)
+  res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsById, &cid, collection, &found);
+  
   if (found != NULL) {
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
 
@@ -854,6 +864,16 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    return NULL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // OOM. this might have happend AFTER insertion
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_set_errno(res);
+
     return NULL;
   }
 
@@ -1434,15 +1454,16 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
                              EqualKeyCollectionName,
                              NULL);
 
-  // transactions
-  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase);
-
   TRI_InitAssociativePointer(&vocbase->_authInfo,
                              TRI_CORE_MEM_ZONE,
                              HashKeyAuthInfo,
                              HashElementAuthInfo,
                              EqualKeyAuthInfo,
                              NULL);
+  
+  // transactions
+  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase);
+
 
 #ifdef TRI_ENABLE_REPLICATION
   TRI_InitReadWriteLock(&vocbase->_objectLock);
@@ -2433,7 +2454,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
   TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
-
+ 
+  // this shouldn't fail, as we removed an element above so adding one should be ok
   TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
 
 #ifdef TRI_ENABLE_REPLICATION

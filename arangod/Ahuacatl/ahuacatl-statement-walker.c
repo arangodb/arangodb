@@ -339,8 +339,10 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
                                                           TRI_aql_visit_f preVisitStatement,
                                                           TRI_aql_visit_f postVisitStatement) {
   TRI_aql_statement_walker_t* walker;
+  int res;
 
   walker = (TRI_aql_statement_walker_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_statement_walker_t), false);
+
   if (walker == NULL) {
     return NULL;
   }
@@ -352,7 +354,12 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
   walker->preVisitStatement  = preVisitStatement;
   walker->postVisitStatement = postVisitStatement;
 
-  TRI_InitVectorPointer(&walker->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
+  res = TRI_InitVectorPointer2(&walker->_currentScopes, TRI_UNKNOWN_MEM_ZONE, 4);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
+
+    return NULL;
+  }
 
   return walker;
 }

@@ -166,6 +166,7 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                          const char* const query) {
   TRI_aql_context_t* context;
+  int res;
 
   TRI_ASSERT_MAINTAINER(vocbase != NULL);
   TRI_ASSERT_MAINTAINER(query != NULL);
@@ -173,6 +174,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   LOG_TRACE("creating context");
 
   context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t), false);
+
   if (context == NULL) {
     return NULL;
   }
@@ -183,28 +185,49 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   context->_scopeIndex = 0;
 
   // actual bind parameter values
-  TRI_InitAssociativePointer(&context->_parameters._values,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_HashBindParameterAql,
-                             &TRI_EqualBindParameterAql,
-                             0);
+  res = TRI_InitAssociativePointer(&context->_parameters._values,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &TRI_HashBindParameterAql,
+                                   &TRI_EqualBindParameterAql,
+                                   0);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, context);
+
+    return NULL;
+  }
 
   // bind parameter names used in the query
-  TRI_InitAssociativePointer(&context->_parameters._names,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_EqualStringKeyAssociativePointer,
-                             0);
+  res = TRI_InitAssociativePointer(&context->_parameters._names,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &TRI_EqualStringKeyAssociativePointer,
+                                   0);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativePointer(&context->_parameters._values);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, context);
+
+    return NULL;
+  }
 
   // collections
-  TRI_InitAssociativePointer(&context->_collectionNames,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_HashStringKeyAssociativePointer,
-                             &TRI_EqualStringKeyAssociativePointer,
-                             0);
+  res = TRI_InitAssociativePointer(&context->_collectionNames,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &TRI_HashStringKeyAssociativePointer,
+                                   &TRI_EqualStringKeyAssociativePointer,
+                                   0);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativePointer(&context->_parameters._names);
+    TRI_DestroyAssociativePointer(&context->_parameters._values);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, context);
+
+    return NULL;
+  }
 
   TRI_InitVectorPointer2(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE, 16);
   TRI_InitVectorPointer2(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE, 16);
@@ -212,11 +235,14 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
   TRI_InitErrorAql(&context->_error);
 
-  context->_parser = NULL;
+  context->_parser     = NULL;
   context->_statements = NULL;
-  context->_query = query;
-
+  context->_query      = query;
+  
+  TRI_InitScopesAql(context);
+ 
   context->_parser = TRI_CreateParserAql(context->_query);
+
   if (context->_parser == NULL) {
     // could not create the parser
     TRI_FreeContextAql(context);
@@ -231,14 +257,13 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   }
 
   context->_statements = TRI_CreateStatementListAql();
+
   if (context->_statements == NULL) {
     // could not create statement list
     TRI_FreeContextAql(context);
 
     return NULL;
   }
-
-  TRI_InitScopesAql(context);
 
   return context;
 }

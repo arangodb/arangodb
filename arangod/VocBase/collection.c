@@ -1707,12 +1707,12 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // build an in-memory index of documents
-      TRI_InitAssociativePointer(&primaryIndex,
-          TRI_UNKNOWN_MEM_ZONE,
-          HashKeyHeader,
-          HashElementDocument,
-          IsEqualKeyDocument,
-          0);
+      res = TRI_InitAssociativePointer(&primaryIndex,
+                                       TRI_UNKNOWN_MEM_ZONE,
+                                       HashKeyHeader,
+                                       HashElementDocument,
+                                       IsEqualKeyDocument,
+                                       0);
 
       // read all markers in the existing datafiles
       for (i = 0; i < datafiles._length; ++i) {
