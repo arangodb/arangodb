@@ -234,11 +234,11 @@ static TRI_json_t* TraditionalToJson (const TRI_key_generator_t* const generator
   data = (traditional_keygen_t*) generator->_data;
   assert(data != NULL);
 
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json != NULL) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TraditionalName));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, data->_allowUserKeys));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TraditionalName));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, data->_allowUserKeys));
   }
 
   return json;
@@ -525,13 +525,13 @@ static TRI_json_t* AutoIncrementToJson (const TRI_key_generator_t* const generat
   data = (autoincrement_keygen_t*) generator->_data;
   assert(data != NULL);
 
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json != NULL) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, AutoIncrementName));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, data->_allowUserKeys));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) data->_offset));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "increment", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) data->_increment));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, AutoIncrementName));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, data->_allowUserKeys));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) data->_offset));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "increment", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) data->_increment));
   }
 
   return json;
