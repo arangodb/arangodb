@@ -38,6 +38,7 @@ function NodeReducer(nodes, edges) {
   }
   
   var self = this,
+    isRunning = false,
     joiner = new ModularityJoiner(nodes, edges),
     
     neighbors = function(sID) {
@@ -149,6 +150,10 @@ function NodeReducer(nodes, edges) {
    };
    
   self.getCommunity = function(limit, focus) {
+    if (isRunning === true) {
+      throw "Still running.";
+    }
+    isRunning = true;
     var coms = {},
       res = [],
       dist = {},
@@ -174,6 +179,7 @@ function NodeReducer(nodes, edges) {
         return val;
       };
     if (nodes.length === 0 || edges.length === 0) {
+      isRunning = false;
       throw "Load some nodes first.";
     }
     joiner.setup();
@@ -193,8 +199,10 @@ function NodeReducer(nodes, edges) {
       res = _.pluck(_.values(coms), "nodes");
       dist = floatDist(focus._id);
       res.sort(sortByDistance);
+      isRunning = false;
       return res[0];
     }
+    isRunning = false;
     return getBest(coms);
   };
   
