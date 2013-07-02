@@ -618,7 +618,14 @@
     });
     
     describe('configured for image', function() {
-      var shaper;
+      var shaper,
+      imageById = function(id) {
+        return d3.selectAll("svg g")
+          .filter(function(d) {
+            return d._id === id;
+          })
+          .select("image,img");
+      };
       
       beforeEach(function () {
         var config = {
@@ -658,17 +665,17 @@
           {_id: 5, _data:{}}
         ];
         shaper.drawNodes(nodes);
-        expect($("image,img", $("svg #1")).attr("width")).toEqual("15");
-        expect($("image,img", $("svg #2")).attr("width")).toEqual("15");
-        expect($("image,img", $("svg #3")).attr("width")).toEqual("15");
-        expect($("image,img", $("svg #4")).attr("width")).toEqual("15");
-        expect($("image,img", $("svg #5")).attr("width")).toEqual("15");
+        expect(imageById(1).attr("width")).toEqual("15");
+        expect(imageById(2).attr("width")).toEqual("15");
+        expect(imageById(3).attr("width")).toEqual("15");
+        expect(imageById(4).attr("width")).toEqual("15");
+        expect(imageById(5).attr("width")).toEqual("15");
         
-        expect($("image,img", $("svg #1")).attr("height")).toEqual("10");
-        expect($("image,img", $("svg #2")).attr("height")).toEqual("10");
-        expect($("image,img", $("svg #3")).attr("height")).toEqual("10");
-        expect($("image,img", $("svg #4")).attr("height")).toEqual("10");
-        expect($("image,img", $("svg #5")).attr("height")).toEqual("10");
+        expect(imageById(1).attr("height")).toEqual("10");
+        expect(imageById(2).attr("height")).toEqual("10");
+        expect(imageById(3).attr("height")).toEqual("10");
+        expect(imageById(4).attr("height")).toEqual("10");
+        expect(imageById(5).attr("height")).toEqual("10");
         
       });
       
@@ -695,17 +702,17 @@
             } 
           });
         shaper.drawNodes(nodes);
-        expect($("image,img", $("svg #1")).attr("width")).toEqual("11");
-        expect($("image,img", $("svg #2")).attr("width")).toEqual("12");
-        expect($("image,img", $("svg #3")).attr("width")).toEqual("13");
-        expect($("image,img", $("svg #4")).attr("width")).toEqual("14");
-        expect($("image,img", $("svg #5")).attr("width")).toEqual("15");
+        expect(imageById(1).attr("width")).toEqual("11");
+        expect(imageById(2).attr("width")).toEqual("12");
+        expect(imageById(3).attr("width")).toEqual("13");
+        expect(imageById(4).attr("width")).toEqual("14");
+        expect(imageById(5).attr("width")).toEqual("15");
         
-        expect($("image,img", $("svg #1")).attr("height")).toEqual("9");
-        expect($("image,img", $("svg #2")).attr("height")).toEqual("8");
-        expect($("image,img", $("svg #3")).attr("height")).toEqual("7");
-        expect($("image,img", $("svg #4")).attr("height")).toEqual("6");
-        expect($("image,img", $("svg #5")).attr("height")).toEqual("5");
+        expect(imageById(1).attr("height")).toEqual("9");
+        expect(imageById(2).attr("height")).toEqual("8");
+        expect(imageById(3).attr("height")).toEqual("7");
+        expect(imageById(4).attr("height")).toEqual("6");
+        expect(imageById(5).attr("height")).toEqual("5");
         
       });
     
@@ -751,7 +758,7 @@
           }
         ];
         shaper.drawNodes(nodes);
-        expect($("svg #1 image,img").attr("href")).toEqual("source.png");
+        expect(imageById(1).attr("xlink:href")).toEqual("source.png");
       });
       
       it('should be able to use a function to determine the image', function() {
@@ -784,8 +791,8 @@
           }
         });
         shaper.drawNodes(nodes);
-        expect($("image,img", $("svg #1")).attr("href")).toEqual("source.png");
-        expect($("image,img", $("svg #2")).attr("href")).toEqual("alt.png");
+        expect(imageById(1).attr("xlink:href")).toEqual("source.png");
+        expect(imageById(2).attr("xlink:href")).toEqual("alt.png");
       });
       
       it('should be able to fallback to a given default image', function() {
@@ -811,8 +818,8 @@
           }
         ];
         shaper.drawNodes(nodes);
-        expect($("image,img", $("svg #1")).attr("href")).toEqual("source.png");
-        expect($("image,img", $("svg #2")).attr("href")).toEqual("default.png");
+        expect(imageById(1).attr("xlink:href")).toEqual("source.png");
+        expect(imageById(2).attr("xlink:href")).toEqual("default.png");
       });
       
     });
