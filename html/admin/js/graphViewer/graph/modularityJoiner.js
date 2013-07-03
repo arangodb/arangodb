@@ -393,6 +393,7 @@ function ModularityJoiner(nodes, edges) {
     makeInitialDegrees();
     makeInitialDQ();
     makeInitialHeap();
+    comms = {};
   };
   
   

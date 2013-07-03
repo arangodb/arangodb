@@ -142,16 +142,15 @@
         });
         
         it('should not return a close group if there is an alternative', function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
           helper.insertClique(nodes, edges, [0, 1, 2]);
+          helper.insertClique(nodes, edges, [3, 4, 5]);
+          helper.insertClique(nodes, edges, [6, 7, 8]);
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
-          edges.push(helper.createSimpleEdge(nodes, 3, 4));
-          edges.push(helper.createSimpleEdge(nodes, 4, 5));
           edges.push(helper.createSimpleEdge(nodes, 5, 6));
-          edges.push(helper.createSimpleEdge(nodes, 5, 7));
           
           var com = reducer.getCommunity(6, nodes[3]);
-          expect(com).toContainNodes(["5", "6", "7"]);
+          expect(com).toContainNodes(["6", "7", "8"]);
         });
         
         it('should also take the best community if no focus is given', function() {
@@ -166,19 +165,19 @@
           var com = reducer.getCommunity(6);
           expect(com).toContainNodes(["0", "1", "2"]);
         });
-        
+        /* Will be replaced by WebWorkers!
         it('should wait for a running identification to finish before allowing to start a new one', function() {
           
           var firstRun, secondRun;
           
           runs(function() { 
             var i;           
-            helper.insertNSimpleNodes(nodes, 1000);
+            helper.insertNSimpleNodes(nodes, 12);
             helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-            for (i = 11; i < 1000; i++) {
+            for (i = 11; i < 12; i++) {
               edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             }
-            
+
             
             setTimeout(function() {
               console.log("Start1");
@@ -204,7 +203,7 @@
           });
           
         });
-        
+        */
       });
       
       describe('checking bucket sort of nodes', function() {

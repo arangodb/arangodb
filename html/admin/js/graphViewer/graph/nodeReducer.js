@@ -150,7 +150,7 @@ function NodeReducer(nodes, edges) {
    };
    
   self.getCommunity = function(limit, focus) {
-    if (isRunning === true) {
+    if (isRunning) {
       throw "Still running.";
     }
     isRunning = true;
@@ -196,6 +196,7 @@ function NodeReducer(nodes, edges) {
           delete coms[key];
         }
       });
+      
       res = _.pluck(_.values(coms), "nodes");
       dist = floatDist(focus._id);
       res.sort(sortByDistance);
