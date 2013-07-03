@@ -245,7 +245,7 @@ static TRI_datafile_t* CreateCompactor (TRI_primary_collection_t* primary,
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
 
-  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
