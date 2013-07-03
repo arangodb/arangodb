@@ -5945,6 +5945,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
     *errorNum = res;
     *errorStr = TRI_DuplicateString("Bitarray index creation aborted due to documents within collection.");
     TRI_FreeBitarrayIndex(idx);
+
     return NULL;
   }
 
