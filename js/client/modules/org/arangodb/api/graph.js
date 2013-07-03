@@ -30,8 +30,8 @@
 
 var GraphAPI,
   arangodb = require("org/arangodb"),
-  arangosh = require("org/arangodb/arangosh");
-
+  arangosh = require("org/arangodb/arangosh"),
+  ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
 
 GraphAPI = {
   send: function (method, graphKey, path, data) {
