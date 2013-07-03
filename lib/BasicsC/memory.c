@@ -48,7 +48,6 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
-#define MALLOC_ERROR_THRESHOLD (4* 1024 * 1024 * 1024)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,15 +128,6 @@ static void CheckSize (uint64_t n, char const* file, int line) {
             "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
             (unsigned long long) n 
             ZONE_DEBUG_PARAMS);
-  }
-
-  // fail in the case of very big malloc operations
-  if (n >= MALLOC_ERROR_THRESHOLD) {
-    fprintf(stderr,
-            "too big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
-            (unsigned long long) n 
-            ZONE_DEBUG_PARAMS);
-    assert(false);
   }
 }
 
