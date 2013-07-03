@@ -263,10 +263,6 @@ function ModularityJoiner(nodes, edges) {
           }
           _.each(list, function(v, k) {
             if (k < high) {
-              if (dQ[k][high] === undefined) {
-                console.log("K:", k, "High:", high, "dQ:", dQ[k]);
-                console.log(dQ);
-              }
               list[k] += dQ[k][high];
               delete dQ[k][high];
               return;
