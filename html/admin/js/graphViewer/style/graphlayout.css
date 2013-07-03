@@ -45,3 +45,12 @@ div.mousepointer {
   margin: 0;
   padding: 5px;  
 }
+
+button.graphViewer-icon-button {
+  border: medium none;
+  width: 25px;
+  height: 25px;
+  margin-top: -8px;
+  background-color: transparent;
+}
+
