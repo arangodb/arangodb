@@ -360,14 +360,51 @@
         
       });
       
-      it('should display nested attributes', function() {
-        helper.simulateMouseEvent("click", id);
+      it('should be possible to delete values from nodes', function() {
         
-        helper.simulateMouseEvent("click", "2");
+        runs(function() {
+          helper.simulateMouseEvent("click", id);
+          
+          helper.simulateMouseEvent("click", "1");
+        
+          expect($("#" + nodeId + "_name_delete").length).toEqual(1);
+        
+          helper.simulateMouseEvent("click", nodeId + "_name_delete");
+        
+          expect($("#" + nodeId + "_name_delete").length).toEqual(0);
+
+          helper.simulateMouseEvent("click", nodeId + "_submit");
+          expect(adapter.patchNode).toHaveBeenCalledWith(
+            nodes[0],
+            {},
+            jasmine.any(Function)
+          );
+        });
       
-        expect($("#" + nodeId + "_modal").length).toEqual(1);
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
         
-        expect($("#" + nodeId + "_name_value").val()).toEqual(JSON.stringify(nodes[1]._data.name));
+      });
+      
+      it('should display nested attributes', function() {
+        
+        runs(function() {
+          helper.simulateMouseEvent("click", id);
+        
+          helper.simulateMouseEvent("click", "2");
+      
+          expect($("#" + nodeId + "_modal").length).toEqual(1);
+        
+          expect($("#" + nodeId + "_name_value").val()).toEqual(JSON.stringify(nodes[1]._data.name));
+
+          helper.simulateMouseEvent("click", nodeId + "_modal_dismiss");
+        });
+        
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+
 
       });
       
@@ -390,6 +427,36 @@
             edges[0],
             {
               label: "newLabel",
+              nested: nested
+            },
+            jasmine.any(Function)
+          );
+        });
+        
+        waitsFor(function() {
+          return $("#" + edgeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should be possible to remove attributes from edges', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1-2");
+            
+          expect($("#" + edgeId + "_label_delete").length).toEqual(1);
+        
+          helper.simulateMouseEvent("click", edgeId + "_label_delete");
+        
+          expect($("#" + edgeId + "_label_delete").length).toEqual(0);
+          
+          helper.simulateMouseEvent("click", edgeId + "_submit");
+
+          expect(adapter.patchEdge).toHaveBeenCalledWith(
+            edges[0],
+            {
               nested: nested
             },
             jasmine.any(Function)
