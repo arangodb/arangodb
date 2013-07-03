@@ -97,7 +97,7 @@ static int PriorityQueueFromJson (TRI_document_collection_t*,
 /// @brief checks whether a header is visible in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsVisible (TRI_doc_mptr_t const* header) {
+static inline bool IsVisible (TRI_doc_mptr_t const* header) {
   return (header != NULL);
 }
 
@@ -105,8 +105,8 @@ static bool IsVisible (TRI_doc_mptr_t const* header) {
 /// @brief set the collection revision id with the marker's tick value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SetRevision (TRI_document_collection_t* document,
-                         TRI_voc_tick_t tick) {
+static inline void SetRevision (TRI_document_collection_t* document,
+                                TRI_voc_tick_t tick) {
   TRI_col_info_t* info = &document->base.base._info;
 
   if (tick > info->_tick) {
@@ -118,7 +118,7 @@ static void SetRevision (TRI_document_collection_t* document,
 /// @brief increase the document counter
 ////////////////////////////////////////////////////////////////////////////////
 
-static void IncreaseDocumentCount (TRI_primary_collection_t* primary) {
+static inline void IncreaseDocumentCount (TRI_primary_collection_t* primary) {
   primary->_numberDocuments++;
 }
 
@@ -126,7 +126,7 @@ static void IncreaseDocumentCount (TRI_primary_collection_t* primary) {
 /// @brief decrease the document counter
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DecreaseDocumentCount (TRI_primary_collection_t* primary) {
+static inline void DecreaseDocumentCount (TRI_primary_collection_t* primary) {
   TRI_ASSERT_MAINTAINER(primary->_numberDocuments > 0);
 
   primary->_numberDocuments--;
@@ -141,6 +141,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
                                const bool isRollback) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t* found;
+  int res;
 
   TRI_ASSERT_MAINTAINER(document != NULL);
   TRI_ASSERT_MAINTAINER(header != NULL);
@@ -149,12 +150,11 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   primary = &document->base;
 
   // add a new header
-  found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, (void*) header, false);
+  res = TRI_InsertKeyAssociativePointer2(&primary->_primaryIndex, header->_key, (void*) header, (const void**) &found);
 
-  // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL.
-  // in case the call succeeds but does not find any previous value, it also returns NULL
-  // this function here will continue happily in both cases.
-  // These two cases must be distinguishable in order to notify the caller about an error
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
 
   if (found == NULL) {
     // success
@@ -162,16 +162,15 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 
     return TRI_ERROR_NO_ERROR;
   } 
-  else {
-    // we found a previous revision in the index
-    // the found revision is still alive
-    LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
-              header->_key,
-              (unsigned long long) found->_rid,
-              (unsigned long long) header->_rid);
+  
+  // we found a previous revision in the index
+  // the found revision is still alive
+  LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
+            header->_key,
+            (unsigned long long) found->_rid,
+            (unsigned long long) header->_rid);
 
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-  }
+  return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
