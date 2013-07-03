@@ -57,14 +57,13 @@ var modalDialogHelper = modalDialogHelper || {};
     };
     
     table.appendChild(firstRow);
-    firstRow.className = "collectionTh";
     firstRow.id = "first_row";
     firstRow.appendChild(firstCell);
     firstCell.colSpan = "3";
     firstCell.appendChild(addRow);
     
     addRow.id = idprefix + "new";
-    addRow.className = "enabled";
+    addRow.className = "pull-right graphViewer-icon-button";
     
     addRow.appendChild(addImg);
     addImg.className = "plusIcon";
@@ -90,7 +89,7 @@ var modalDialogHelper = modalDialogHelper || {};
       actTh.className = "collectionTh";
       deleteInput = document.createElement("button");
       deleteInput.id = idprefix + key + "_delete";
-      deleteInput.className = "enabled";
+      deleteInput.className = "graphViewer-icon-button";
       
       actTh.appendChild(deleteInput);
       
