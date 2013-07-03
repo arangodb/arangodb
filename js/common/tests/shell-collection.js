@@ -632,10 +632,17 @@ function CollectionSuite () {
         // rotate() is only present server-side...
         c1.rotate();
 
+        // must wait so the synchroniser can catch up
+        require("internal").wait(5);
+
         f = c1.figures();
         assertEqual(1, f.datafiles.count);
         
         c1.rotate();
+
+        // must wait so the synchroniser can catch up
+        require("internal").wait(5);
+
         f = c1.figures();
         assertEqual(2, f.datafiles.count);
       }
