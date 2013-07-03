@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach, jasmine */
 /*global describe, it, expect, spyOn */
-/*global window, eb, loadFixtures, document */
+/*global window, eb, loadFixtures, document, console*/
 /*global $, _, d3*/
 /*global helper*/
 /*global ModularityJoiner*/
@@ -230,7 +230,7 @@
             
             expected["0"] = {
               _in: initDeg["0"]._in + initDeg["3"]._in,
-              _out: initDeg["0"]._out + initDeg["3"]._out,
+              _out: initDeg["0"]._out + initDeg["3"]._out
             };
             expected["1"] = initDeg["1"];
             expected["2"] = initDeg["2"];
@@ -354,9 +354,7 @@
             edges.push(helper.createSimpleEdge(nodes, firstID + 3, firstID));
             
             joiner.setup();
-            
-            var dQ = joiner.getDQ();
-            expect(dQ).toBeOrdered();
+            expect(joiner.getDQ()).toBeOrdered();
             
           });
         
@@ -710,10 +708,10 @@
         
         beforeEach(function() {
           this.addMatchers({
-            toBeOrdered: function(failedIn) {
+            toBeOrdered: function() {
               var dQ = this.actual,
                 notFailed = true,
-                msg = "Step " + failedIn + ": In dQ the pointers: ";
+                msg = "In dQ the pointers: ";
               _.each(dQ, function(list, pointer) {
                 _.each(list, function(val, target) {
                   if (target < pointer) {
@@ -762,7 +760,7 @@
               if (_.isUndefined(comms[low])) {
                 this.message = function() {
                   return "The lower ID " + low + " is no pointer to a community";
-                }
+                };
                 return false;
               }
               this.message = function() {
@@ -774,7 +772,7 @@
             toFulfillCommunityPointerConstraint: function() {
               var comms = this.actual.getCommunities(),
                 notFailed = true,
-                msg = "In communities the pointers: "
+                msg = "In communities the pointers: ";
               _.each(comms, function(list, pointer) {
                 var ns = list.nodes;
                 if (ns[0] !== pointer) {
@@ -789,8 +787,8 @@
                 });
               });
               this.message = function () {
-                return msg += "are not correct";
-              }
+                return msg + "are not correct";
+              };
               return notFailed;
             },
             
@@ -818,7 +816,7 @@
                 
             },
             
-            toBeConsistent: function(joined, failedIn) {
+            toBeConsistent: function(joined) {
               var testee = this.actual;
               expect(testee).toFulfillDQConstraint(joined);
               expect(testee).toFulfillHeapConstraint(joined);
@@ -853,7 +851,6 @@
           }
           joiner.setup();
           best = joiner.getBest();
-          var step = 0;
           while (best !== null) {
             expect(best).toContainALowerAndAHigherID();
             joiner.joinCommunity(best);
@@ -869,37 +866,38 @@
       describe('checking large networks', function() {
         
         it('should be able to handle 1000 nodes', function() {
-          var start = (new Date).getTime();
-          var i, best, nodeCount = 1000;      
+          var start = (new Date()).getTime(),
+            i, 
+            best, 
+            nodeCount = 1000,
+            diff;  
           helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
           for (i = 11; i < nodeCount; i++) {
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-          var diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           best = joiner.getBest();
-          var step = 0;
           while (best !== null) {
             joiner.joinCommunity(best);
             best = joiner.getBest();
-            step++;
           }
-          diff = (new Date).getTime() - start;
-          2976
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Compute:", diff, "ms");          
         });
         
         // This is the max. number of nodes for the admin UI
+        // However the format is realy unlikely in the adminUI
         /*
         it('should be able to handle 3000 nodes', function() {
-          var start = (new Date).getTime();
+          var start = (new Date()).getTime();
           var i, best, nodeCount = 3000;      
           helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -907,13 +905,13 @@
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-          var diff = (new Date).getTime() - start;
+          var diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           best = joiner.getBest();
           var step = 0;
           while (best !== null) {
@@ -921,16 +919,18 @@
             best = joiner.getBest();
             step++;
           }
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           
           console.log("Runtime Compute:", diff, "ms");          
         });
         */
         // This is what we expect in the Admin UI
         it('should be able to handle few large satelites', function() {
-          var start = (new Date).getTime();
-          var i, best;
-          var s0 = helper.insertSatelite(nodes, edges, 0, 500),
+          var start = (new Date()).getTime(),
+            i,
+            best,
+            diff,
+            s0 = helper.insertSatelite(nodes, edges, 0, 500),
             s1 = helper.insertSatelite(nodes, edges, 1, 300),
             s2 = helper.insertSatelite(nodes, edges, 2, 313),
             s3 = helper.insertSatelite(nodes, edges, 3, 461),
@@ -971,33 +971,32 @@
           
           console.log(nodes.length, edges.length);
 
-          var diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           best = joiner.getBest();
-          var step = 0;
           while (best !== null) {
             joiner.joinCommunity(best);
             best = joiner.getBest();
-            step++;
           }
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           
           console.log("Runtime Compute:", diff, "ms");      
         });
         
         it('should be able to handle many small satelites', function() {
-          var start = (new Date).getTime();
-          var i, best;
+          var start = (new Date()).getTime(),
+          i,
+          best,
+          diff,
           // This test network has been randomly generated.
           // Each Satelite center has 20-100 children
           // And has an edge to 3 - 13 centers
-          
-          var
+
           s0 = helper.insertSatelite(nodes, edges, 0, 22),
           s1 = helper.insertSatelite(nodes, edges, 1, 72),
           s2 = helper.insertSatelite(nodes, edges, 2, 76),
@@ -1396,21 +1395,19 @@
 
           console.log(nodes.length, edges.length);
 
-          var diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           best = joiner.getBest();
-          var step = 0;
           while (best !== null) {
             joiner.joinCommunity(best);
             best = joiner.getBest();
-            step++;
           }
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           
           console.log("Runtime Compute:", diff, "ms");
                 
@@ -1419,7 +1416,7 @@
         
         /*
         it('should be able to handle 10000 nodes', function() {
-          var start = (new Date).getTime();
+          var start = (new Date()).getTime();
           var i, best, nodeCount = 10000;      
           helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -1427,13 +1424,13 @@
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-          var diff = (new Date).getTime() - start;
+          var diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           best = joiner.getBest();
           var step = 0;
           while (best !== null) {
@@ -1441,7 +1438,7 @@
             best = joiner.getBest();
             step++;
           }
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Compute:", diff, "ms");          
         });
         */
