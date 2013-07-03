@@ -38,18 +38,41 @@ var modalDialogHelper = modalDialogHelper || {};
       callbackCapsule = function() {
         callback(tableToJSON);
       },
-      table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule);
+      table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule),
+      firstRow = document.createElement("tr"),
+      firstCell = document.createElement("th"),
+      addRow = document.createElement("button"),
+      addImg = document.createElement("img"),
+      newCounter = 1,
+      insertRow;
       
     tableToJSON = function() {
       var result = {};
-      _.each($("#" + idprefix + "table tr"), function(tr) {
+      _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
         var key = tr.children[1].children[0].value,
           value = tr.children[2].children[0].value;
         result[key] = value;
       });
       return result;
     };
-    _.each(object, function(value, key) {
+    
+    table.appendChild(firstRow);
+    firstRow.className = "collectionTh";
+    firstRow.id = "first_row";
+    firstRow.appendChild(firstCell);
+    firstCell.colSpan = "3";
+    firstCell.appendChild(addRow);
+    
+    addRow.id = idprefix + "new";
+    addRow.className = "enabled";
+    
+    addRow.appendChild(addImg);
+    addImg.className = "plusIcon";
+    addImg.src = "img/plus_icon.png";
+    addImg.width = "16";
+    addImg.height = "16";
+    
+    insertRow = function(value, key) {
       var internalRegex = /^_(id|rev|key|from|to)/,
         tr = document.createElement("tr"),
         actTh = document.createElement("th"),
@@ -59,7 +82,6 @@ var modalDialogHelper = modalDialogHelper || {};
         keyInput,
         valueInput,
         delImg;
-        
       if (internalRegex.test(key)) {
         return;
       }
@@ -96,10 +118,21 @@ var modalDialogHelper = modalDialogHelper || {};
       valueInput = document.createElement("input");
       valueInput.type = "text";
       valueInput.id = idprefix + key + "_value";
-      valueInput.value = JSON.stringify(value);
-      valueTh.appendChild(valueInput);
+      if ("object" === typeof value) {
+        valueInput.value = JSON.stringify(value);
+      } else {
+        valueInput.value = value;
       }
-    );
+      
+      valueTh.appendChild(valueInput);
+    };
+    
+    addRow.onclick = function() {
+      insertRow("", "new_" + newCounter);
+      newCounter++;
+    };
+    
+    _.each(object, insertRow);
     $("#" + idprefix + "modal").modal('show');
   };
   

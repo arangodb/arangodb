@@ -360,6 +360,53 @@
         
       });
       
+      it('should be possible to add new attributes to nodes', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1");
+      
+          helper.simulateMouseEvent("click", nodeId + "_new");
+          
+          expect($("#" + nodeId + "_new_1_delete").length).toEqual(1);
+          expect($("#" + nodeId + "_new_1_key").length).toEqual(1);
+          expect($("#" + nodeId + "_new_1_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", nodeId + "_new");
+          
+          expect($("#" + nodeId + "_new_2_delete").length).toEqual(1);
+          expect($("#" + nodeId + "_new_2_key").length).toEqual(1);
+          expect($("#" + nodeId + "_new_2_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", nodeId + "_new_2_delete");
+          
+          expect($("#" + nodeId + "_new_2_delete").length).toEqual(0);
+          expect($("#" + nodeId + "_new_2_key").length).toEqual(0);
+          expect($("#" + nodeId + "_new_2_value").length).toEqual(0);
+          
+          $("#" + nodeId + "_new_1_key").val("newKey");
+          $("#" + nodeId + "_new_1_value").val("newVal");
+          
+          helper.simulateMouseEvent("click", nodeId + "_submit");
+
+          expect(adapter.patchNode).toHaveBeenCalledWith(
+            nodes[0],
+            {
+              name: "Alice",
+              newKey: "newVal"
+            },
+            jasmine.any(Function)
+          );
+          
+        });
+        
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
       it('should be possible to delete values from nodes', function() {
         
         runs(function() {
@@ -428,6 +475,53 @@
             {
               label: "newLabel",
               nested: nested
+            },
+            jasmine.any(Function)
+          );
+        });
+        
+        waitsFor(function() {
+          return $("#" + edgeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should be possible to add new attributes to edges', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1-2");
+      
+          helper.simulateMouseEvent("click", edgeId + "_new");
+          
+          expect($("#" + edgeId + "_new_1_delete").length).toEqual(1);
+          expect($("#" + edgeId + "_new_1_key").length).toEqual(1);
+          expect($("#" + edgeId + "_new_1_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", edgeId + "_new");
+          
+          expect($("#" + edgeId + "_new_2_delete").length).toEqual(1);
+          expect($("#" + edgeId + "_new_2_key").length).toEqual(1);
+          expect($("#" + edgeId + "_new_2_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", edgeId + "_new_2_delete");
+          
+          expect($("#" + edgeId + "_new_2_delete").length).toEqual(0);
+          expect($("#" + edgeId + "_new_2_key").length).toEqual(0);
+          expect($("#" + edgeId + "_new_2_value").length).toEqual(0);
+          
+          $("#" + edgeId + "_new_1_key").val("newKey");
+          $("#" + edgeId + "_new_1_value").val("newVal");
+          
+          helper.simulateMouseEvent("click", edgeId + "_submit");
+
+          expect(adapter.patchEdge).toHaveBeenCalledWith(
+            edges[0],
+            {
+              label: "oldLabel",
+              nested: nested,
+              newKey: "newVal"
             },
             jasmine.any(Function)
           );
