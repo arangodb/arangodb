@@ -1309,7 +1309,8 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
 /// @brief set the index cleanup flag for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SetIndexCleanupFlag (TRI_document_collection_t* document, bool value) {
+static void SetIndexCleanupFlag (TRI_document_collection_t* document, 
+                                 bool value) {
   document->_cleanupIndexes = value;
 
   LOG_DEBUG("setting cleanup indexes flag for collection '%s' to %d",
@@ -1323,18 +1324,27 @@ static void SetIndexCleanupFlag (TRI_document_collection_t* document, bool value
 /// The caller must hold the index lock for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
+static int AddIndex (TRI_document_collection_t* document, 
+                     TRI_index_t* idx) {
+  int res;
+
   assert(idx != NULL);
 
   LOG_DEBUG("adding index of type %s for collection '%s'",
             idx->typeName(idx),
             document->base.base._info._name);
 
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  res = TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
 
   if (idx->cleanup != NULL) {
     SetIndexCleanupFlag(document, true);
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2185,7 +2195,7 @@ static int OpenIteratorAddOperation (open_iterator_state_t* state,
 static void OpenIteratorResetOperations (open_iterator_state_t* state) {
   size_t n = state->_operations._length;
 
-  if (n > OpenIteratorBufferSize) {
+  if (n > OpenIteratorBufferSize * 2) {
     // free some memory
     TRI_DestroyVector(&state->_operations);
     TRI_InitVector2(&state->_operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
@@ -2754,7 +2764,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     TRI_shaper_t* shaper) {
-  TRI_index_t* primary;
+  TRI_index_t* primaryIndex;
   int res;
 
   document->_cleanupIndexes = false;
@@ -2779,39 +2789,49 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   // create primary index
   TRI_InitVectorPointer(&document->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
 
-  primary = TRI_CreatePrimaryIndex(&document->base);
+  primaryIndex = TRI_CreatePrimaryIndex(&document->base);
 
-  if (primary == NULL) {
+  if (primaryIndex == NULL) {
     TRI_DestroyVectorPointer(&document->_allIndexes);
     TRI_DestroyPrimaryCollection(&document->base);
 
     return false;
   }
 
-  AddIndex(document, primary);
+  res = AddIndex(document, primaryIndex);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeIndex(primaryIndex);
+    TRI_DestroyVectorPointer(&document->_allIndexes);
+    TRI_DestroyPrimaryCollection(&document->base);
+
+    return false;
+  }
 
   // create edges index
   if (document->base.base._info._type == TRI_COL_TYPE_EDGE) {
-    TRI_index_t* edges;
+    TRI_index_t* edgesIndex;
 
-    edges = TRI_CreateEdgeIndex(&document->base);
-    if (edges == NULL) {
-      size_t i, n;
+    edgesIndex = TRI_CreateEdgeIndex(&document->base);
 
-      n = document->_allIndexes._length;
-
-      for (i = 0; i < n ; ++i) {
-        TRI_index_t* idx = TRI_AtVectorPointer(&document->_allIndexes, i);
-        TRI_FreeIndex(idx);
-      }
+    if (edgesIndex == NULL) {
+      TRI_FreeIndex(primaryIndex);
       TRI_DestroyVectorPointer(&document->_allIndexes);
-
       TRI_DestroyPrimaryCollection(&document->base);
 
       return false;
     }
 
-    AddIndex(document, edges);
+    res = AddIndex(document, edgesIndex);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_FreeIndex(edgesIndex);
+      TRI_FreeIndex(primaryIndex);
+      TRI_DestroyVectorPointer(&document->_allIndexes);
+      TRI_DestroyPrimaryCollection(&document->base);
+
+      return false;
+    }
   }
 
   TRI_InitCondition(&document->_journalsCondition);
@@ -4107,16 +4127,24 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeCapConstraint(idx);
+
     return NULL;
   }
 
   // and store index
-  AddIndex(document, idx);
-  primary->_capConstraint = (TRI_cap_constraint_t*) idx;
+  res = AddIndex(document, idx);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeCapConstraint(idx);
+
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
   }
+  
+  primary->_capConstraint = (TRI_cap_constraint_t*) idx;
 
   return idx;
 }
@@ -4359,11 +4387,18 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeGeoIndex(idx);
+
     return NULL;
   }
 
   // and store index
-  AddIndex(document, idx);
+  res = AddIndex(document, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeGeoIndex(idx);
+
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
@@ -4772,11 +4807,18 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeHashIndex(idx);
+
     return NULL;
   }
 
   // store index and return
-  AddIndex(document, idx);
+  res = AddIndex(document, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeHashIndex(idx);
+
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
@@ -4993,11 +5035,18 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeSkiplistIndex(idx);
+
     return NULL;
   }
 
   // store index and return
-  AddIndex(document, idx);
+  res = AddIndex(document, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeSkiplistIndex(idx);
+
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
@@ -5229,11 +5278,18 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFulltextIndex(idx);
+
     return NULL;
   }
 
   // store index and return
-  AddIndex(document, idx);
+  res = AddIndex(document, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeFulltextIndex(idx);
+
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
@@ -5483,7 +5539,9 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
   idx = TRI_CreatePriorityQueueIndex(&document->base, &fields, &paths, unique);
   
   if (idx == NULL) {
+    TRI_DestroyVector(&paths);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
     return NULL;
   }
 
@@ -5500,9 +5558,17 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
   // ...........................................................................
 
   res = FillIndex(document, idx);
+  
+  // ...........................................................................
+  // release memory allocated to vector
+  // ...........................................................................
+
+  TRI_DestroyVector(&paths);
+
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreePriorityQueueIndex(idx);
+
     return NULL;
   }
 
@@ -5510,13 +5576,13 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
   // store index
   // ...........................................................................
 
-  AddIndex(document, idx);
+  res = AddIndex(document, idx);
 
-  // ...........................................................................
-  // release memory allocated to vector
-  // ...........................................................................
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreePriorityQueueIndex(idx);
 
-  TRI_DestroyVector(&paths);
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
@@ -5800,7 +5866,15 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // store index within the collection and return
   // ...........................................................................
 
-  AddIndex(document, idx);
+  res = AddIndex(document, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    *errorNum = res;
+    *errorStr = TRI_DuplicateString(TRI_errno_string(res));
+    TRI_FreeBitarrayIndex(idx);
+
+    return NULL;
+  }
 
   if (created != NULL) {
     *created = true;
