@@ -111,6 +111,33 @@ static int CoreInitialised = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+
+static void CheckSize (uint64_t n, char const* file, int line) {
+  // warn in the case of big malloc operations
+  if (n >= MALLOC_WARNING_THRESHOLD) {
+    fprintf(stderr,
+            "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
+            (unsigned long long) n 
+            ZONE_DEBUG_PARAMS);
+  }
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
@@ -160,8 +187,16 @@ TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
 /// @brief system memory allocation
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+void* TRI_SystemAllocateZ (uint64_t n, bool set, char const* file, int line) {
+#else
 void* TRI_SystemAllocate (uint64_t n, bool set) {
+#endif
   char* m;
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  CheckSize(n, file, line); 
+#endif
 
   m = malloc((size_t) n);
 
@@ -186,13 +221,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   char* m;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  // warn in the case of very big malloc operations
-  if (n >= MALLOC_WARNING_THRESHOLD) {
-    fprintf(stderr,
-            "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
-            (unsigned long long) n 
-            ZONE_DEBUG_PARAMS);
-  }
+  CheckSize(n, file, line); 
 
   m = malloc((size_t) n + sizeof(uintptr_t));
 #else
@@ -275,6 +304,8 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   p -= sizeof(uintptr_t);
+
+  CheckSize(n, file, line);
 
   if (* (uintptr_t*) p != zone->_zid) {
     fprintf(stderr,

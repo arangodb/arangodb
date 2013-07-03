@@ -29,13 +29,13 @@ ArangoDB will close connections automatically for clients that send requests
 using HTTP 1.0, except if they send an `Connection: Keep-Alive` header.
 
 The default Keep-Alive timeout can be specified at server start using the
-`\-\-server.keep\-alive\-timeout` parameter.
+`--server.keep-alive-timeout` parameter.
 
 Client authentication is done by using the `Authorization` HTTP header.
 ArangoDB supports Basic authentication.
 
 Authentication is optional. To enforce authentication for incoming requested,
-the server must be started with the option `\-\-server.disable-authentication`.
+the server must be started with the option `--server.disable-authentication`.
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
@@ -51,7 +51,7 @@ world without the need for HTTP authentication, but to still protect the usage o
 ArangoDB API (i.e. `/_api/*`) and the admin interface (i.e. `/_admin/*`) with
 HTTP authentication.
 
-This behavior can be controlled with the option `\-\-server.authenticate\-system\-only`
+This behavior can be controlled with the option `--server.authenticate-system-only`
 startup parameter. It is set to `false` by default so when using authentication,
 all incoming requests need HTTP authentication. Setting the option to `false` will
 only require requests to the internal functionality require authentication but 
