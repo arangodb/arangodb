@@ -1,6 +1,14 @@
 v1.4
 ----
 
+* fixed several out-of-memory situations when double freeing or invalid memory
+  accesses could happen
+
+* less msyncing during the creation of collections
+
+  This is achieved by not syncing the initial (standard) markers in shapes collections.
+  After all standard markers are written, the shapes collection will get synced.
+
 * renamed command-line option `--log.filter` to `--log.source-filter` to avoid
   misunderstandings
 
