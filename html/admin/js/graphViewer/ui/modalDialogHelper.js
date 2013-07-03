@@ -38,7 +38,7 @@ var modalDialogHelper = modalDialogHelper || {};
       callbackCapsule = function() {
         callback(tableToJSON);
       },
-      table =  modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule);
+      table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule);
       
     tableToJSON = function() {
       var result = {};
@@ -76,7 +76,7 @@ var modalDialogHelper = modalDialogHelper || {};
       valueInput = document.createElement("input");
       valueInput.type = "text";
       valueInput.id = idprefix + key + "_value";
-      valueInput.value = value;
+      valueInput.value = JSON.stringify(value);
       valueTh.appendChild(valueInput);
       }
     );

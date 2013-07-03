@@ -494,6 +494,35 @@
         
         });
         
+        
+        describe('checking multiple executions', function() {
+          
+          it('should be able to recompute the joining', function() {
+            var best = joiner.getBest(),
+              first,
+              firstStringified,
+              second,
+              secondStringified;
+            best = joiner.getBest();
+            while (best !== null) {
+              joiner.joinCommunity(best);
+              best = joiner.getBest();
+            }
+            first = joiner.getCommunities();
+            firstStringified = JSON.stringify(first);
+            joiner.setup();
+            best = joiner.getBest();
+            while (best !== null) {
+              joiner.joinCommunity(best);
+              best = joiner.getBest();
+            }
+            second = joiner.getCommunities();
+            secondStringified = JSON.stringify(second);
+            expect(JSON.stringify(first)).toEqual(firstStringified);
+            expect(secondStringified).toEqual(firstStringified);
+          });
+          
+        });
       });
       
       describe('checking the zachary karate club', function() {
