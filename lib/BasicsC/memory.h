@@ -110,7 +110,12 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 /// allocations easier.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#define TRI_SystemAllocate(a,b) TRI_SystemAllocateZ((a),(b),__FILE__,__LINE__)
+void* TRI_SystemAllocateZ (uint64_t, bool, char const*, int);
+#else
 void* TRI_SystemAllocate (uint64_t, bool);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
@@ -118,7 +123,7 @@ void* TRI_SystemAllocate (uint64_t, bool);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_Allocate(a,b,c) TRI_AllocateZ((a),(b),(c),__FILE__,__LINE__)
-void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, bool, char const* file, int line);
+void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, bool, char const*, int);
 #else
 void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
 #endif
@@ -129,7 +134,7 @@ void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_Reallocate(a,b,c) TRI_ReallocateZ((a),(b),(c),__FILE__,__LINE__)
-void* TRI_ReallocateZ (TRI_memory_zone_t*, void*, uint64_t, char const* file, int line);
+void* TRI_ReallocateZ (TRI_memory_zone_t*, void*, uint64_t, char const*, int);
 #else
 void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
 #endif
@@ -140,7 +145,7 @@ void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_Free(a,b) TRI_FreeZ((a),(b),__FILE__,__LINE__)
-void TRI_FreeZ (TRI_memory_zone_t*, void*, char const* file, int line);
+void TRI_FreeZ (TRI_memory_zone_t*, void*, char const*, int);
 #else
 void TRI_Free (TRI_memory_zone_t*, void*);
 #endif
@@ -156,7 +161,7 @@ void TRI_Free (TRI_memory_zone_t*, void*);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_SystemFree(a) TRI_SystemFreeZ((a),__FILE__,__LINE__)
-void TRI_SystemFreeZ (void*, char const* file, int line);
+void TRI_SystemFreeZ (void*, char const*, int);
 #else
 void TRI_SystemFree (void*);
 #endif
