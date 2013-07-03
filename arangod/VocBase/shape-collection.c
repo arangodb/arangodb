@@ -162,8 +162,9 @@ static int CreateJournal (TRI_shape_collection_t* collection,
   cm._cid  = collection->base._info._cid;
   cm._type = TRI_COL_TYPE_SHAPE;
 
-  // on journal creation, always use waitForSync = true
-  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
+  // on journal creation, always use waitForSync = false, as there will
+  // always be basic shapes inserted directly afterwards
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create document header in journal '%s': %s",
@@ -344,7 +345,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
   int res;
   bool waitForSync;
 
-  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+  if (marker->_type == TRI_DF_MARKER_SHAPE && collection->_initialised) {
     // this is a shape. we will honor the collection's waitForSync attribute
     // which is determined by the global forceSyncShape flag and the actual collection's
     // waitForSync flag
@@ -407,6 +408,7 @@ TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
   }
 
   TRI_InitMutex(&shape->_lock);
+  shape->_initialised = false;
 
   return shape;
 }
@@ -459,6 +461,8 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   TRI_datafile_t* journal;
   int res;
 
+  assert(marker->_size == markerSize);
+
   // lock the collection
   TRI_LockMutex(&collection->_lock);
 
@@ -488,6 +492,28 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   // write marker and shape
   res = WriteElement(collection, journal, *result, marker, markerSize);
 
+  if (res == TRI_ERROR_NO_ERROR) {
+    journal->_written = ((char*) *result) + marker->_size;
+  }
+
+  // release lock on collection
+  TRI_UnlockMutex(&collection->_lock);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief syncs the active journal of a shape collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SyncShapeCollection (TRI_shape_collection_t* collection) {
+  int res;
+
+  // lock the collection
+  TRI_LockMutex(&collection->_lock);
+
+  res = TRI_SyncCollection(&collection->base);
+  
   // release lock on collection
   TRI_UnlockMutex(&collection->_lock);
 
