@@ -321,6 +321,45 @@
             expect(joiner.getDQ()).toEqual(expected);
           });
         
+          it('should be ordered', function() {
+            this.addMatchers({
+              toBeOrdered: function() {
+                var dQ = this.actual,
+                  notFailed = true,
+                  msg = "The pointers: ";
+                _.each(dQ, function(list, pointer) {
+                  _.each(list, function(val, target) {
+                    if (target < pointer) {
+                      notFailed = false;
+                      msg += pointer + " -> " + target + ", ";
+                    }
+                  });
+                });
+                this.message = function() {
+                  return msg + "are not correct";
+                };
+                return notFailed;
+              }
+            });
+            
+            var firstID = nodes.length;
+            helper.insertSimpleNodes(nodes, ["9", "20", "10", "99", "12"]);
+            
+            edges.push(helper.createSimpleEdge(nodes, 0, firstID));
+            edges.push(helper.createSimpleEdge(nodes, firstID, firstID + 1));
+            edges.push(helper.createSimpleEdge(nodes, firstID + 1, firstID + 2));
+            edges.push(helper.createSimpleEdge(nodes, firstID + 2, firstID + 3));
+            edges.push(helper.createSimpleEdge(nodes, firstID + 3, firstID + 4));
+            edges.push(helper.createSimpleEdge(nodes, firstID + 4, firstID));
+            edges.push(helper.createSimpleEdge(nodes, firstID + 3, firstID));
+            
+            joiner.setup();
+            
+            var dQ = joiner.getDQ();
+            expect(dQ).toBeOrdered();
+            
+          });
+        
         });
         
         describe('the heap', function() {
@@ -667,19 +706,184 @@
         
       });
       
-      /*
-      describe('checking large networks', function() {
+      describe('checking consistency after join', function() {
         
-        it('should be able to handle 1000 nodes', function() {
-          var i, best         
-          helper.insertNSimpleNodes(nodes, 1000);
+        beforeEach(function() {
+          this.addMatchers({
+            toBeOrdered: function(failedIn) {
+              var dQ = this.actual,
+                notFailed = true,
+                msg = "Step " + failedIn + ": In dQ the pointers: ";
+              _.each(dQ, function(list, pointer) {
+                _.each(list, function(val, target) {
+                  if (target < pointer) {
+                    notFailed = false;
+                    msg += pointer + " -> " + target + ", ";
+                  }
+                });
+              });
+              this.message = function() {
+                return msg + "are not correct";
+              };
+              return notFailed;
+            },
+            
+            toFulfillHeapConstraint: function(joined) {
+              var heap = this.actual.getHeap(),
+                high = joined.lID;
+              this.message = function() {
+                return "The heap " + _.keys(heap) + " should not contain " + high;
+              };
+              return _.isUndefined(heap[high]);
+            },
+            toFulfillDQConstraint: function(joined) {
+              var dQ = this.actual.getDQ(),
+                high = joined.lID;
+              this.message = function() {
+                return "The delta Q " + _.keys(dQ) + " should not contain " + high;
+              };
+              return _.isUndefined(dQ[high]);
+            },
+            toBeDefinedInHeapIffInDQ: function(testee) {
+              var id = this.actual,
+                dQ = testee.getDQ(),
+                heap = testee.getHeap();
+              if (_.isUndefined(dQ[id])) {
+                this.message = id + " is defined on heap but not on dQ";
+                return _.isUndefined(heap[id]);
+              }
+              this.message = id + " is defined on dQ but not on heap";
+              return !_.isUndefined(heap[id]);
+            },
+            toFulfillCommunityInclusionConstraint: function(joined) {
+              var comms = this.actual.getCommunities(),
+                low = joined.sID,
+                high = joined.lID;
+              if (_.isUndefined(comms[low])) {
+                this.message = function() {
+                  return "The lower ID " + low + " is no pointer to a community";
+                }
+                return false;
+              }
+              this.message = function() {
+                return "The community " + comms[low].nodes + " should contain " + high;
+              };
+              return _.contains(comms[low].nodes, high);
+            },
+            
+            toFulfillCommunityPointerConstraint: function() {
+              var comms = this.actual.getCommunities(),
+                notFailed = true,
+                msg = "In communities the pointers: "
+              _.each(comms, function(list, pointer) {
+                var ns = list.nodes;
+                if (ns[0] !== pointer) {
+                  notFailed = false;
+                  msg += pointer + " -first-> " + ns[0] + ", ";
+                }
+                _.each(ns, function(id) {
+                  if (id < pointer) {
+                    notFailed = false;
+                    msg += pointer + " -> " + id + ", ";
+                  }
+                });
+              });
+              this.message = function () {
+                return msg += "are not correct";
+              }
+              return notFailed;
+            },
+            
+            toNotContainAnyJoinedNode: function() {
+              var comms = this.actual.getCommunities(),
+                dQ = this.actual.getDQ(),
+                forbidden = [],
+                msg = "Nodes: ",
+                notFailed = true;
+              _.each(comms, function(list) {
+                var reducedList = list.nodes.slice();
+                reducedList.shift(1);
+                forbidden = forbidden.concat(reducedList);
+              });
+              _.each(forbidden, function (id) {
+                if (!_.isUndefined(dQ[id])) {
+                  notFailed = false;
+                  msg += id + ", ";
+                }
+              });
+              this.message = function() {
+                return msg + "should not be contained in dQ";
+              };
+              return notFailed;
+                
+            },
+            
+            toBeConsistent: function(joined, failedIn) {
+              var testee = this.actual;
+              expect(testee).toFulfillDQConstraint(joined);
+              expect(testee).toFulfillHeapConstraint(joined);
+              expect(joined.sID).toBeDefinedInHeapIffInDQ(testee);
+              expect(testee).toFulfillCommunityInclusionConstraint(joined);
+              expect(testee).toNotContainAnyJoinedNode();
+              expect(testee).toFulfillCommunityPointerConstraint();
+              
+              return true;
+            },
+            
+            toContainALowerAndAHigherID: function() {
+              var toJoin = this.actual;
+              this.message = function() {
+                return toJoin.sID + " shold be lower than " + toJoin.lID;
+              };
+              return toJoin.sID < toJoin.lID;
+            }
+            
+          });
+        });
+        
+        it('for a larger network', function() {
+          var i, best,
+            step = 0,
+            nodeCount = 20;
+          helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-          for (i = 11; i < 1000; i++) {
+          for (i = 11; i < nodeCount; i++) {
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-
           joiner.setup();
+          best = joiner.getBest();
+          var step = 0;
+          while (best !== null) {
+            expect(best).toContainALowerAndAHigherID();
+            joiner.joinCommunity(best);
+            expect(joiner).toBeConsistent(best, step);
+            best = joiner.getBest();
+            step++;
+          }
+        });
+        
+      });
+      
+      
+      describe('checking large networks', function() {
+        
+        it('should be able to handle 1000 nodes', function() {
+          var start = (new Date).getTime();
+          var i, best, nodeCount = 1000;      
+          helper.insertNSimpleNodes(nodes, nodeCount);
+          helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+          for (i = 11; i < nodeCount; i++) {
+            edges.push(helper.createSimpleEdge(nodes, i - 1, i));
+            edges.push(helper.createSimpleEdge(nodes, i, i - 2));
+          }
+          var diff = (new Date).getTime() - start;
+          console.log("Runtime Fill:", diff, "ms");
+          start = (new Date).getTime();
+          joiner.setup();
+          diff = (new Date).getTime() - start;
+          console.log("Runtime Setup:", diff, "ms");
+          start = (new Date).getTime();
           best = joiner.getBest();
           var step = 0;
           while (best !== null) {
@@ -687,12 +891,39 @@
             best = joiner.getBest();
             step++;
           }
-          //expect(joiner.getCommunities()).toContainKarateClubCommunities();
-          
+          diff = (new Date).getTime() - start;
+          console.log("Runtime Compute:", diff, "ms");          
         });
-        
+        /*
+        it('should be able to handle 10000 nodes', function() {
+          var start = (new Date).getTime();
+          var i, best, nodeCount = 10000;      
+          helper.insertNSimpleNodes(nodes, nodeCount);
+          helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+          for (i = 11; i < nodeCount; i++) {
+            edges.push(helper.createSimpleEdge(nodes, i - 1, i));
+            edges.push(helper.createSimpleEdge(nodes, i, i - 2));
+          }
+          var diff = (new Date).getTime() - start;
+          console.log("Runtime Fill:", diff, "ms");
+          start = (new Date).getTime();
+          joiner.setup();
+          diff = (new Date).getTime() - start;
+          console.log("Runtime Setup:", diff, "ms");
+          start = (new Date).getTime();
+          best = joiner.getBest();
+          var step = 0;
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+            step++;
+          }
+          diff = (new Date).getTime() - start;
+          console.log("Runtime Compute:", diff, "ms");          
+        });
+        */
       });
-      */
+      
     });
   });
 }());
