@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach, jasmine */
 /*global describe, it, expect, spyOn */
-/*global window, eb, loadFixtures, document */
+/*global window, eb, loadFixtures, document, console*/
 /*global $, _, d3*/
 /*global helper*/
 /*global ModularityJoiner*/
@@ -230,7 +230,7 @@
             
             expected["0"] = {
               _in: initDeg["0"]._in + initDeg["3"]._in,
-              _out: initDeg["0"]._out + initDeg["3"]._out,
+              _out: initDeg["0"]._out + initDeg["3"]._out
             };
             expected["1"] = initDeg["1"];
             expected["2"] = initDeg["2"];
@@ -354,9 +354,7 @@
             edges.push(helper.createSimpleEdge(nodes, firstID + 3, firstID));
             
             joiner.setup();
-            
-            var dQ = joiner.getDQ();
-            expect(dQ).toBeOrdered();
+            expect(joiner.getDQ()).toBeOrdered();
             
           });
         
@@ -710,10 +708,10 @@
         
         beforeEach(function() {
           this.addMatchers({
-            toBeOrdered: function(failedIn) {
+            toBeOrdered: function() {
               var dQ = this.actual,
                 notFailed = true,
-                msg = "Step " + failedIn + ": In dQ the pointers: ";
+                msg = "In dQ the pointers: ";
               _.each(dQ, function(list, pointer) {
                 _.each(list, function(val, target) {
                   if (target < pointer) {
@@ -762,7 +760,7 @@
               if (_.isUndefined(comms[low])) {
                 this.message = function() {
                   return "The lower ID " + low + " is no pointer to a community";
-                }
+                };
                 return false;
               }
               this.message = function() {
@@ -774,7 +772,7 @@
             toFulfillCommunityPointerConstraint: function() {
               var comms = this.actual.getCommunities(),
                 notFailed = true,
-                msg = "In communities the pointers: "
+                msg = "In communities the pointers: ";
               _.each(comms, function(list, pointer) {
                 var ns = list.nodes;
                 if (ns[0] !== pointer) {
@@ -789,8 +787,8 @@
                 });
               });
               this.message = function () {
-                return msg += "are not correct";
-              }
+                return msg + "are not correct";
+              };
               return notFailed;
             },
             
@@ -818,7 +816,7 @@
                 
             },
             
-            toBeConsistent: function(joined, failedIn) {
+            toBeConsistent: function(joined) {
               var testee = this.actual;
               expect(testee).toFulfillDQConstraint(joined);
               expect(testee).toFulfillHeapConstraint(joined);
@@ -853,7 +851,6 @@
           }
           joiner.setup();
           best = joiner.getBest();
-          var step = 0;
           while (best !== null) {
             expect(best).toContainALowerAndAHigherID();
             joiner.joinCommunity(best);
@@ -869,21 +866,52 @@
       describe('checking large networks', function() {
         
         it('should be able to handle 1000 nodes', function() {
-          var start = (new Date).getTime();
-          var i, best, nodeCount = 1000;      
+          var start = (new Date()).getTime(),
+            i, 
+            best, 
+            nodeCount = 1000,
+            diff;  
           helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
           for (i = 11; i < nodeCount; i++) {
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-          var diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
+          best = joiner.getBest();
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+          }
+          diff = (new Date()).getTime() - start;
+          console.log("Runtime Compute:", diff, "ms");          
+        });
+        
+        // This is the max. number of nodes for the admin UI
+        // However the format is realy unlikely in the adminUI
+        /*
+        it('should be able to handle 3000 nodes', function() {
+          var start = (new Date()).getTime();
+          var i, best, nodeCount = 3000;      
+          helper.insertNSimpleNodes(nodes, nodeCount);
+          helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+          for (i = 11; i < nodeCount; i++) {
+            edges.push(helper.createSimpleEdge(nodes, i - 1, i));
+            edges.push(helper.createSimpleEdge(nodes, i, i - 2));
+          }
+          var diff = (new Date()).getTime() - start;
+          console.log("Runtime Fill:", diff, "ms");
+          start = (new Date()).getTime();
+          joiner.setup();
+          diff = (new Date()).getTime() - start;
+          console.log("Runtime Setup:", diff, "ms");
+          start = (new Date()).getTime();
           best = joiner.getBest();
           var step = 0;
           while (best !== null) {
@@ -891,12 +919,504 @@
             best = joiner.getBest();
             step++;
           }
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
+          
           console.log("Runtime Compute:", diff, "ms");          
         });
+        */
+        // This is what we expect in the Admin UI
+        it('should be able to handle few large satelites', function() {
+          var start = (new Date()).getTime(),
+            i,
+            best,
+            diff,
+            s0 = helper.insertSatelite(nodes, edges, 0, 500),
+            s1 = helper.insertSatelite(nodes, edges, 1, 300),
+            s2 = helper.insertSatelite(nodes, edges, 2, 313),
+            s3 = helper.insertSatelite(nodes, edges, 3, 461),
+            s4 = helper.insertSatelite(nodes, edges, 4, 251),
+            s5 = helper.insertSatelite(nodes, edges, 5, 576),
+            s6 = helper.insertSatelite(nodes, edges, 6, 126),
+            s7 = helper.insertSatelite(nodes, edges, 7, 231),
+            s8 = helper.insertSatelite(nodes, edges, 8, 50),
+            s9 = helper.insertSatelite(nodes, edges, 9, 70),
+            s10 = helper.insertSatelite(nodes, edges, 10, 111);
+          edges.push(helper.createSimpleEdge(nodes, s0, s1));
+          edges.push(helper.createSimpleEdge(nodes, s0, s2));
+          edges.push(helper.createSimpleEdge(nodes, s0, s3));
+          edges.push(helper.createSimpleEdge(nodes, s0, s4));
+          edges.push(helper.createSimpleEdge(nodes, s1, s0));
+          edges.push(helper.createSimpleEdge(nodes, s1, s5));
+          edges.push(helper.createSimpleEdge(nodes, s1, s6));
+          edges.push(helper.createSimpleEdge(nodes, s2, s1));
+          edges.push(helper.createSimpleEdge(nodes, s3, s7));
+          edges.push(helper.createSimpleEdge(nodes, s3, s8));
+          edges.push(helper.createSimpleEdge(nodes, s4, s0));
+          edges.push(helper.createSimpleEdge(nodes, s4, s8));
+          edges.push(helper.createSimpleEdge(nodes, s4, s9));
+          edges.push(helper.createSimpleEdge(nodes, s5, s2));
+          edges.push(helper.createSimpleEdge(nodes, s5, s6));
+          edges.push(helper.createSimpleEdge(nodes, s5, s10));
+          edges.push(helper.createSimpleEdge(nodes, s6, s5));
+          edges.push(helper.createSimpleEdge(nodes, s7, s5));
+          edges.push(helper.createSimpleEdge(nodes, s7, s6));
+          edges.push(helper.createSimpleEdge(nodes, s8, s0));
+          edges.push(helper.createSimpleEdge(nodes, s8, s2));
+          edges.push(helper.createSimpleEdge(nodes, s8, s4));
+          edges.push(helper.createSimpleEdge(nodes, s8, s6));
+          edges.push(helper.createSimpleEdge(nodes, s9, s8));
+          edges.push(helper.createSimpleEdge(nodes, s9, s10));
+          edges.push(helper.createSimpleEdge(nodes, s10, s1));
+          edges.push(helper.createSimpleEdge(nodes, s10, s9));
+          
+          console.log(nodes.length, edges.length);
+
+          diff = (new Date()).getTime() - start;
+          console.log("Runtime Fill:", diff, "ms");
+          start = (new Date()).getTime();
+          joiner.setup();
+          diff = (new Date()).getTime() - start;
+          console.log("Runtime Setup:", diff, "ms");
+          start = (new Date()).getTime();
+          best = joiner.getBest();
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+          }
+          diff = (new Date()).getTime() - start;
+          
+          console.log("Runtime Compute:", diff, "ms");      
+        });
+        
+        it('should be able to handle many small satelites', function() {
+          var start = (new Date()).getTime(),
+          i,
+          best,
+          diff,
+          // This test network has been randomly generated.
+          // Each Satelite center has 20-100 children
+          // And has an edge to 3 - 13 centers
+
+          s0 = helper.insertSatelite(nodes, edges, 0, 22),
+          s1 = helper.insertSatelite(nodes, edges, 1, 72),
+          s2 = helper.insertSatelite(nodes, edges, 2, 76),
+          s3 = helper.insertSatelite(nodes, edges, 3, 68),
+          s4 = helper.insertSatelite(nodes, edges, 4, 64),
+          s5 = helper.insertSatelite(nodes, edges, 5, 46),
+          s6 = helper.insertSatelite(nodes, edges, 6, 24),
+          s7 = helper.insertSatelite(nodes, edges, 7, 98),
+          s8 = helper.insertSatelite(nodes, edges, 8, 84),
+          s9 = helper.insertSatelite(nodes, edges, 9, 93),
+          s10 = helper.insertSatelite(nodes, edges, 10, 79),
+          s11 = helper.insertSatelite(nodes, edges, 11, 58),
+          s12 = helper.insertSatelite(nodes, edges, 12, 98),
+          s13 = helper.insertSatelite(nodes, edges, 13, 64),
+          s14 = helper.insertSatelite(nodes, edges, 14, 62),
+          s15 = helper.insertSatelite(nodes, edges, 15, 56),
+          s16 = helper.insertSatelite(nodes, edges, 16, 63),
+          s17 = helper.insertSatelite(nodes, edges, 17, 83),
+          s18 = helper.insertSatelite(nodes, edges, 18, 98),
+          s19 = helper.insertSatelite(nodes, edges, 19, 29),
+          s20 = helper.insertSatelite(nodes, edges, 20, 50),
+          s21 = helper.insertSatelite(nodes, edges, 21, 62),
+          s22 = helper.insertSatelite(nodes, edges, 22, 20),
+          s23 = helper.insertSatelite(nodes, edges, 23, 30),
+          s24 = helper.insertSatelite(nodes, edges, 24, 50),
+          s25 = helper.insertSatelite(nodes, edges, 25, 55),
+          s26 = helper.insertSatelite(nodes, edges, 26, 41),
+          s27 = helper.insertSatelite(nodes, edges, 27, 60),
+          s28 = helper.insertSatelite(nodes, edges, 28, 62),
+          s29 = helper.insertSatelite(nodes, edges, 29, 91),
+          s30 = helper.insertSatelite(nodes, edges, 30, 59),
+          s31 = helper.insertSatelite(nodes, edges, 31, 48),
+          s32 = helper.insertSatelite(nodes, edges, 32, 76),
+          s33 = helper.insertSatelite(nodes, edges, 33, 88),
+          s34 = helper.insertSatelite(nodes, edges, 34, 92),
+          s35 = helper.insertSatelite(nodes, edges, 35, 87),
+          s36 = helper.insertSatelite(nodes, edges, 36, 65),
+          s37 = helper.insertSatelite(nodes, edges, 37, 80),
+          s38 = helper.insertSatelite(nodes, edges, 38, 28),
+          s39 = helper.insertSatelite(nodes, edges, 39, 33),
+          s40 = helper.insertSatelite(nodes, edges, 40, 86),
+          s41 = helper.insertSatelite(nodes, edges, 41, 81),
+          s42 = helper.insertSatelite(nodes, edges, 42, 26),
+          s43 = helper.insertSatelite(nodes, edges, 43, 57),
+          s44 = helper.insertSatelite(nodes, edges, 44, 61),
+          s45 = helper.insertSatelite(nodes, edges, 45, 47),
+          s46 = helper.insertSatelite(nodes, edges, 46, 47),
+          s47 = helper.insertSatelite(nodes, edges, 47, 33);
+          edges.push(helper.createSimpleEdge(nodes, s0, s44));
+          edges.push(helper.createSimpleEdge(nodes, s0, s47));
+          edges.push(helper.createSimpleEdge(nodes, s0, s3));
+          edges.push(helper.createSimpleEdge(nodes, s0, s39));
+          edges.push(helper.createSimpleEdge(nodes, s0, s8));
+          edges.push(helper.createSimpleEdge(nodes, s0, s21));
+          edges.push(helper.createSimpleEdge(nodes, s1, s36));
+          edges.push(helper.createSimpleEdge(nodes, s1, s43));
+          edges.push(helper.createSimpleEdge(nodes, s1, s43));
+          edges.push(helper.createSimpleEdge(nodes, s1, s40));
+          edges.push(helper.createSimpleEdge(nodes, s1, s39));
+          edges.push(helper.createSimpleEdge(nodes, s1, s44));
+          edges.push(helper.createSimpleEdge(nodes, s2, s32));
+          edges.push(helper.createSimpleEdge(nodes, s2, s10));
+          edges.push(helper.createSimpleEdge(nodes, s2, s26));
+          edges.push(helper.createSimpleEdge(nodes, s2, s39));
+          edges.push(helper.createSimpleEdge(nodes, s2, s43));
+          edges.push(helper.createSimpleEdge(nodes, s2, s42));
+          edges.push(helper.createSimpleEdge(nodes, s2, s16));
+          edges.push(helper.createSimpleEdge(nodes, s2, s7));
+          edges.push(helper.createSimpleEdge(nodes, s2, s3));
+          edges.push(helper.createSimpleEdge(nodes, s3, s8));
+          edges.push(helper.createSimpleEdge(nodes, s3, s33));
+          edges.push(helper.createSimpleEdge(nodes, s3, s9));
+          edges.push(helper.createSimpleEdge(nodes, s3, s18));
+          edges.push(helper.createSimpleEdge(nodes, s3, s18));
+          edges.push(helper.createSimpleEdge(nodes, s3, s6));
+          edges.push(helper.createSimpleEdge(nodes, s3, s1));
+          edges.push(helper.createSimpleEdge(nodes, s4, s47));
+          edges.push(helper.createSimpleEdge(nodes, s4, s13));
+          edges.push(helper.createSimpleEdge(nodes, s4, s9));
+          edges.push(helper.createSimpleEdge(nodes, s4, s17));
+          edges.push(helper.createSimpleEdge(nodes, s4, s18));
+          edges.push(helper.createSimpleEdge(nodes, s4, s44));
+          edges.push(helper.createSimpleEdge(nodes, s4, s7));
+          edges.push(helper.createSimpleEdge(nodes, s5, s47));
+          edges.push(helper.createSimpleEdge(nodes, s5, s27));
+          edges.push(helper.createSimpleEdge(nodes, s5, s12));
+          edges.push(helper.createSimpleEdge(nodes, s5, s35));
+          edges.push(helper.createSimpleEdge(nodes, s5, s33));
+          edges.push(helper.createSimpleEdge(nodes, s5, s2));
+          edges.push(helper.createSimpleEdge(nodes, s5, s38));
+          edges.push(helper.createSimpleEdge(nodes, s5, s17));
+          edges.push(helper.createSimpleEdge(nodes, s5, s18));
+          edges.push(helper.createSimpleEdge(nodes, s5, s2));
+          edges.push(helper.createSimpleEdge(nodes, s5, s27));
+          edges.push(helper.createSimpleEdge(nodes, s5, s0));
+          edges.push(helper.createSimpleEdge(nodes, s6, s25));
+          edges.push(helper.createSimpleEdge(nodes, s6, s32));
+          edges.push(helper.createSimpleEdge(nodes, s6, s12));
+          edges.push(helper.createSimpleEdge(nodes, s6, s47));
+          edges.push(helper.createSimpleEdge(nodes, s6, s3));
+          edges.push(helper.createSimpleEdge(nodes, s7, s11));
+          edges.push(helper.createSimpleEdge(nodes, s7, s35));
+          edges.push(helper.createSimpleEdge(nodes, s7, s28));
+          edges.push(helper.createSimpleEdge(nodes, s7, s46));
+          edges.push(helper.createSimpleEdge(nodes, s7, s37));
+          edges.push(helper.createSimpleEdge(nodes, s7, s15));
+          edges.push(helper.createSimpleEdge(nodes, s7, s31));
+          edges.push(helper.createSimpleEdge(nodes, s7, s3));
+          edges.push(helper.createSimpleEdge(nodes, s8, s41));
+          edges.push(helper.createSimpleEdge(nodes, s8, s30));
+          edges.push(helper.createSimpleEdge(nodes, s8, s20));
+          edges.push(helper.createSimpleEdge(nodes, s8, s2));
+          edges.push(helper.createSimpleEdge(nodes, s8, s40));
+          edges.push(helper.createSimpleEdge(nodes, s9, s21));
+          edges.push(helper.createSimpleEdge(nodes, s9, s40));
+          edges.push(helper.createSimpleEdge(nodes, s9, s42));
+          edges.push(helper.createSimpleEdge(nodes, s9, s46));
+          edges.push(helper.createSimpleEdge(nodes, s9, s23));
+          edges.push(helper.createSimpleEdge(nodes, s9, s8));
+          edges.push(helper.createSimpleEdge(nodes, s9, s17));
+          edges.push(helper.createSimpleEdge(nodes, s10, s43));
+          edges.push(helper.createSimpleEdge(nodes, s10, s18));
+          edges.push(helper.createSimpleEdge(nodes, s10, s6));
+          edges.push(helper.createSimpleEdge(nodes, s11, s18));
+          edges.push(helper.createSimpleEdge(nodes, s11, s31));
+          edges.push(helper.createSimpleEdge(nodes, s11, s43));
+          edges.push(helper.createSimpleEdge(nodes, s11, s28));
+          edges.push(helper.createSimpleEdge(nodes, s11, s5));
+          edges.push(helper.createSimpleEdge(nodes, s11, s37));
+          edges.push(helper.createSimpleEdge(nodes, s12, s14));
+          edges.push(helper.createSimpleEdge(nodes, s12, s6));
+          edges.push(helper.createSimpleEdge(nodes, s12, s35));
+          edges.push(helper.createSimpleEdge(nodes, s12, s6));
+          edges.push(helper.createSimpleEdge(nodes, s12, s8));
+          edges.push(helper.createSimpleEdge(nodes, s12, s36));
+          edges.push(helper.createSimpleEdge(nodes, s13, s28));
+          edges.push(helper.createSimpleEdge(nodes, s13, s38));
+          edges.push(helper.createSimpleEdge(nodes, s13, s41));
+          edges.push(helper.createSimpleEdge(nodes, s14, s32));
+          edges.push(helper.createSimpleEdge(nodes, s14, s19));
+          edges.push(helper.createSimpleEdge(nodes, s14, s29));
+          edges.push(helper.createSimpleEdge(nodes, s14, s21));
+          edges.push(helper.createSimpleEdge(nodes, s14, s17));
+          edges.push(helper.createSimpleEdge(nodes, s14, s31));
+          edges.push(helper.createSimpleEdge(nodes, s15, s0));
+          edges.push(helper.createSimpleEdge(nodes, s15, s28));
+          edges.push(helper.createSimpleEdge(nodes, s15, s22));
+          edges.push(helper.createSimpleEdge(nodes, s15, s25));
+          edges.push(helper.createSimpleEdge(nodes, s15, s11));
+          edges.push(helper.createSimpleEdge(nodes, s15, s39));
+          edges.push(helper.createSimpleEdge(nodes, s16, s37));
+          edges.push(helper.createSimpleEdge(nodes, s16, s41));
+          edges.push(helper.createSimpleEdge(nodes, s16, s37));
+          edges.push(helper.createSimpleEdge(nodes, s16, s22));
+          edges.push(helper.createSimpleEdge(nodes, s16, s11));
+          edges.push(helper.createSimpleEdge(nodes, s16, s45));
+          edges.push(helper.createSimpleEdge(nodes, s16, s38));
+          edges.push(helper.createSimpleEdge(nodes, s17, s28));
+          edges.push(helper.createSimpleEdge(nodes, s17, s11));
+          edges.push(helper.createSimpleEdge(nodes, s17, s10));
+          edges.push(helper.createSimpleEdge(nodes, s17, s13));
+          edges.push(helper.createSimpleEdge(nodes, s17, s0));
+          edges.push(helper.createSimpleEdge(nodes, s17, s11));
+          edges.push(helper.createSimpleEdge(nodes, s17, s1));
+          edges.push(helper.createSimpleEdge(nodes, s17, s25));
+          edges.push(helper.createSimpleEdge(nodes, s18, s39));
+          edges.push(helper.createSimpleEdge(nodes, s18, s24));
+          edges.push(helper.createSimpleEdge(nodes, s18, s41));
+          edges.push(helper.createSimpleEdge(nodes, s18, s14));
+          edges.push(helper.createSimpleEdge(nodes, s18, s31));
+          edges.push(helper.createSimpleEdge(nodes, s19, s43));
+          edges.push(helper.createSimpleEdge(nodes, s19, s44));
+          edges.push(helper.createSimpleEdge(nodes, s19, s23));
+          edges.push(helper.createSimpleEdge(nodes, s19, s40));
+          edges.push(helper.createSimpleEdge(nodes, s19, s0));
+          edges.push(helper.createSimpleEdge(nodes, s19, s5));
+          edges.push(helper.createSimpleEdge(nodes, s20, s13));
+          edges.push(helper.createSimpleEdge(nodes, s20, s34));
+          edges.push(helper.createSimpleEdge(nodes, s20, s46));
+          edges.push(helper.createSimpleEdge(nodes, s20, s39));
+          edges.push(helper.createSimpleEdge(nodes, s20, s14));
+          edges.push(helper.createSimpleEdge(nodes, s20, s12));
+          edges.push(helper.createSimpleEdge(nodes, s20, s34));
+          edges.push(helper.createSimpleEdge(nodes, s20, s37));
+          edges.push(helper.createSimpleEdge(nodes, s20, s39));
+          edges.push(helper.createSimpleEdge(nodes, s21, s2));
+          edges.push(helper.createSimpleEdge(nodes, s21, s10));
+          edges.push(helper.createSimpleEdge(nodes, s21, s28));
+          edges.push(helper.createSimpleEdge(nodes, s21, s7));
+          edges.push(helper.createSimpleEdge(nodes, s21, s44));
+          edges.push(helper.createSimpleEdge(nodes, s21, s13));
+          edges.push(helper.createSimpleEdge(nodes, s21, s37));
+          edges.push(helper.createSimpleEdge(nodes, s22, s12));
+          edges.push(helper.createSimpleEdge(nodes, s22, s12));
+          edges.push(helper.createSimpleEdge(nodes, s22, s5));
+          edges.push(helper.createSimpleEdge(nodes, s22, s8));
+          edges.push(helper.createSimpleEdge(nodes, s22, s42));
+          edges.push(helper.createSimpleEdge(nodes, s22, s26));
+          edges.push(helper.createSimpleEdge(nodes, s22, s29));
+          edges.push(helper.createSimpleEdge(nodes, s22, s1));
+          edges.push(helper.createSimpleEdge(nodes, s22, s0));
+          edges.push(helper.createSimpleEdge(nodes, s22, s19));
+          edges.push(helper.createSimpleEdge(nodes, s23, s47));
+          edges.push(helper.createSimpleEdge(nodes, s23, s20));
+          edges.push(helper.createSimpleEdge(nodes, s23, s13));
+          edges.push(helper.createSimpleEdge(nodes, s23, s36));
+          edges.push(helper.createSimpleEdge(nodes, s24, s19));
+          edges.push(helper.createSimpleEdge(nodes, s24, s10));
+          edges.push(helper.createSimpleEdge(nodes, s24, s32));
+          edges.push(helper.createSimpleEdge(nodes, s24, s42));
+          edges.push(helper.createSimpleEdge(nodes, s24, s11));
+          edges.push(helper.createSimpleEdge(nodes, s24, s32));
+          edges.push(helper.createSimpleEdge(nodes, s24, s1));
+          edges.push(helper.createSimpleEdge(nodes, s24, s29));
+          edges.push(helper.createSimpleEdge(nodes, s24, s34));
+          edges.push(helper.createSimpleEdge(nodes, s25, s45));
+          edges.push(helper.createSimpleEdge(nodes, s25, s34));
+          edges.push(helper.createSimpleEdge(nodes, s25, s9));
+          edges.push(helper.createSimpleEdge(nodes, s25, s41));
+          edges.push(helper.createSimpleEdge(nodes, s26, s37));
+          edges.push(helper.createSimpleEdge(nodes, s26, s28));
+          edges.push(helper.createSimpleEdge(nodes, s26, s34));
+          edges.push(helper.createSimpleEdge(nodes, s26, s43));
+          edges.push(helper.createSimpleEdge(nodes, s26, s13));
+          edges.push(helper.createSimpleEdge(nodes, s26, s6));
+          edges.push(helper.createSimpleEdge(nodes, s27, s47));
+          edges.push(helper.createSimpleEdge(nodes, s27, s29));
+          edges.push(helper.createSimpleEdge(nodes, s27, s36));
+          edges.push(helper.createSimpleEdge(nodes, s27, s36));
+          edges.push(helper.createSimpleEdge(nodes, s27, s45));
+          edges.push(helper.createSimpleEdge(nodes, s27, s15));
+          edges.push(helper.createSimpleEdge(nodes, s28, s30));
+          edges.push(helper.createSimpleEdge(nodes, s28, s5));
+          edges.push(helper.createSimpleEdge(nodes, s28, s27));
+          edges.push(helper.createSimpleEdge(nodes, s28, s33));
+          edges.push(helper.createSimpleEdge(nodes, s28, s4));
+          edges.push(helper.createSimpleEdge(nodes, s28, s44));
+          edges.push(helper.createSimpleEdge(nodes, s28, s24));
+          edges.push(helper.createSimpleEdge(nodes, s28, s25));
+          edges.push(helper.createSimpleEdge(nodes, s29, s18));
+          edges.push(helper.createSimpleEdge(nodes, s29, s3));
+          edges.push(helper.createSimpleEdge(nodes, s29, s10));
+          edges.push(helper.createSimpleEdge(nodes, s29, s38));
+          edges.push(helper.createSimpleEdge(nodes, s29, s5));
+          edges.push(helper.createSimpleEdge(nodes, s29, s0));
+          edges.push(helper.createSimpleEdge(nodes, s29, s25));
+          edges.push(helper.createSimpleEdge(nodes, s29, s46));
+          edges.push(helper.createSimpleEdge(nodes, s30, s46));
+          edges.push(helper.createSimpleEdge(nodes, s30, s7));
+          edges.push(helper.createSimpleEdge(nodes, s30, s2));
+          edges.push(helper.createSimpleEdge(nodes, s30, s22));
+          edges.push(helper.createSimpleEdge(nodes, s30, s27));
+          edges.push(helper.createSimpleEdge(nodes, s30, s34));
+          edges.push(helper.createSimpleEdge(nodes, s30, s39));
+          edges.push(helper.createSimpleEdge(nodes, s30, s45));
+          edges.push(helper.createSimpleEdge(nodes, s31, s33));
+          edges.push(helper.createSimpleEdge(nodes, s31, s46));
+          edges.push(helper.createSimpleEdge(nodes, s31, s30));
+          edges.push(helper.createSimpleEdge(nodes, s31, s5));
+          edges.push(helper.createSimpleEdge(nodes, s31, s2));
+          edges.push(helper.createSimpleEdge(nodes, s31, s25));
+          edges.push(helper.createSimpleEdge(nodes, s31, s18));
+          edges.push(helper.createSimpleEdge(nodes, s31, s27));
+          edges.push(helper.createSimpleEdge(nodes, s31, s25));
+          edges.push(helper.createSimpleEdge(nodes, s32, s30));
+          edges.push(helper.createSimpleEdge(nodes, s32, s26));
+          edges.push(helper.createSimpleEdge(nodes, s32, s1));
+          edges.push(helper.createSimpleEdge(nodes, s32, s21));
+          edges.push(helper.createSimpleEdge(nodes, s32, s38));
+          edges.push(helper.createSimpleEdge(nodes, s32, s38));
+          edges.push(helper.createSimpleEdge(nodes, s32, s23));
+          edges.push(helper.createSimpleEdge(nodes, s33, s36));
+          edges.push(helper.createSimpleEdge(nodes, s33, s40));
+          edges.push(helper.createSimpleEdge(nodes, s33, s6));
+          edges.push(helper.createSimpleEdge(nodes, s34, s19));
+          edges.push(helper.createSimpleEdge(nodes, s34, s29));
+          edges.push(helper.createSimpleEdge(nodes, s34, s2));
+          edges.push(helper.createSimpleEdge(nodes, s34, s0));
+          edges.push(helper.createSimpleEdge(nodes, s34, s14));
+          edges.push(helper.createSimpleEdge(nodes, s34, s0));
+          edges.push(helper.createSimpleEdge(nodes, s34, s1));
+          edges.push(helper.createSimpleEdge(nodes, s34, s19));
+          edges.push(helper.createSimpleEdge(nodes, s34, s42));
+          edges.push(helper.createSimpleEdge(nodes, s34, s39));
+          edges.push(helper.createSimpleEdge(nodes, s34, s15));
+          edges.push(helper.createSimpleEdge(nodes, s34, s17));
+          edges.push(helper.createSimpleEdge(nodes, s35, s13));
+          edges.push(helper.createSimpleEdge(nodes, s35, s31));
+          edges.push(helper.createSimpleEdge(nodes, s35, s30));
+          edges.push(helper.createSimpleEdge(nodes, s35, s22));
+          edges.push(helper.createSimpleEdge(nodes, s35, s47));
+          edges.push(helper.createSimpleEdge(nodes, s35, s25));
+          edges.push(helper.createSimpleEdge(nodes, s36, s44));
+          edges.push(helper.createSimpleEdge(nodes, s36, s25));
+          edges.push(helper.createSimpleEdge(nodes, s36, s19));
+          edges.push(helper.createSimpleEdge(nodes, s36, s9));
+          edges.push(helper.createSimpleEdge(nodes, s36, s11));
+          edges.push(helper.createSimpleEdge(nodes, s36, s11));
+          edges.push(helper.createSimpleEdge(nodes, s36, s6));
+          edges.push(helper.createSimpleEdge(nodes, s36, s14));
+          edges.push(helper.createSimpleEdge(nodes, s36, s28));
+          edges.push(helper.createSimpleEdge(nodes, s36, s31));
+          edges.push(helper.createSimpleEdge(nodes, s37, s40));
+          edges.push(helper.createSimpleEdge(nodes, s37, s4));
+          edges.push(helper.createSimpleEdge(nodes, s37, s45));
+          edges.push(helper.createSimpleEdge(nodes, s37, s11));
+          edges.push(helper.createSimpleEdge(nodes, s37, s39));
+          edges.push(helper.createSimpleEdge(nodes, s37, s30));
+          edges.push(helper.createSimpleEdge(nodes, s37, s31));
+          edges.push(helper.createSimpleEdge(nodes, s37, s9));
+          edges.push(helper.createSimpleEdge(nodes, s37, s35));
+          edges.push(helper.createSimpleEdge(nodes, s37, s45));
+          edges.push(helper.createSimpleEdge(nodes, s37, s7));
+          edges.push(helper.createSimpleEdge(nodes, s37, s32));
+          edges.push(helper.createSimpleEdge(nodes, s38, s36));
+          edges.push(helper.createSimpleEdge(nodes, s38, s45));
+          edges.push(helper.createSimpleEdge(nodes, s38, s5));
+          edges.push(helper.createSimpleEdge(nodes, s38, s1));
+          edges.push(helper.createSimpleEdge(nodes, s39, s37));
+          edges.push(helper.createSimpleEdge(nodes, s39, s32));
+          edges.push(helper.createSimpleEdge(nodes, s39, s31));
+          edges.push(helper.createSimpleEdge(nodes, s39, s13));
+          edges.push(helper.createSimpleEdge(nodes, s39, s20));
+          edges.push(helper.createSimpleEdge(nodes, s39, s25));
+          edges.push(helper.createSimpleEdge(nodes, s39, s7));
+          edges.push(helper.createSimpleEdge(nodes, s39, s20));
+          edges.push(helper.createSimpleEdge(nodes, s39, s27));
+          edges.push(helper.createSimpleEdge(nodes, s39, s5));
+          edges.push(helper.createSimpleEdge(nodes, s39, s17));
+          edges.push(helper.createSimpleEdge(nodes, s39, s8));
+          edges.push(helper.createSimpleEdge(nodes, s40, s8));
+          edges.push(helper.createSimpleEdge(nodes, s40, s12));
+          edges.push(helper.createSimpleEdge(nodes, s40, s31));
+          edges.push(helper.createSimpleEdge(nodes, s40, s39));
+          edges.push(helper.createSimpleEdge(nodes, s40, s31));
+          edges.push(helper.createSimpleEdge(nodes, s40, s9));
+          edges.push(helper.createSimpleEdge(nodes, s41, s45));
+          edges.push(helper.createSimpleEdge(nodes, s41, s6));
+          edges.push(helper.createSimpleEdge(nodes, s41, s36));
+          edges.push(helper.createSimpleEdge(nodes, s41, s12));
+          edges.push(helper.createSimpleEdge(nodes, s41, s26));
+          edges.push(helper.createSimpleEdge(nodes, s41, s6));
+          edges.push(helper.createSimpleEdge(nodes, s41, s21));
+          edges.push(helper.createSimpleEdge(nodes, s41, s33));
+          edges.push(helper.createSimpleEdge(nodes, s42, s25));
+          edges.push(helper.createSimpleEdge(nodes, s42, s28));
+          edges.push(helper.createSimpleEdge(nodes, s42, s46));
+          edges.push(helper.createSimpleEdge(nodes, s42, s34));
+          edges.push(helper.createSimpleEdge(nodes, s42, s41));
+          edges.push(helper.createSimpleEdge(nodes, s42, s32));
+          edges.push(helper.createSimpleEdge(nodes, s42, s9));
+          edges.push(helper.createSimpleEdge(nodes, s43, s12));
+          edges.push(helper.createSimpleEdge(nodes, s43, s29));
+          edges.push(helper.createSimpleEdge(nodes, s43, s2));
+          edges.push(helper.createSimpleEdge(nodes, s43, s14));
+          edges.push(helper.createSimpleEdge(nodes, s43, s1));
+          edges.push(helper.createSimpleEdge(nodes, s43, s13));
+          edges.push(helper.createSimpleEdge(nodes, s43, s28));
+          edges.push(helper.createSimpleEdge(nodes, s43, s47));
+          edges.push(helper.createSimpleEdge(nodes, s43, s22));
+          edges.push(helper.createSimpleEdge(nodes, s43, s2));
+          edges.push(helper.createSimpleEdge(nodes, s43, s5));
+          edges.push(helper.createSimpleEdge(nodes, s44, s3));
+          edges.push(helper.createSimpleEdge(nodes, s44, s1));
+          edges.push(helper.createSimpleEdge(nodes, s44, s18));
+          edges.push(helper.createSimpleEdge(nodes, s44, s37));
+          edges.push(helper.createSimpleEdge(nodes, s44, s0));
+          edges.push(helper.createSimpleEdge(nodes, s44, s4));
+          edges.push(helper.createSimpleEdge(nodes, s44, s18));
+          edges.push(helper.createSimpleEdge(nodes, s44, s7));
+          edges.push(helper.createSimpleEdge(nodes, s44, s9));
+          edges.push(helper.createSimpleEdge(nodes, s44, s38));
+          edges.push(helper.createSimpleEdge(nodes, s44, s15));
+          edges.push(helper.createSimpleEdge(nodes, s45, s35));
+          edges.push(helper.createSimpleEdge(nodes, s45, s34));
+          edges.push(helper.createSimpleEdge(nodes, s45, s5));
+          edges.push(helper.createSimpleEdge(nodes, s46, s7));
+          edges.push(helper.createSimpleEdge(nodes, s46, s39));
+          edges.push(helper.createSimpleEdge(nodes, s46, s21));
+          edges.push(helper.createSimpleEdge(nodes, s46, s47));
+          edges.push(helper.createSimpleEdge(nodes, s46, s1));
+          edges.push(helper.createSimpleEdge(nodes, s46, s19));
+          edges.push(helper.createSimpleEdge(nodes, s46, s11));
+          edges.push(helper.createSimpleEdge(nodes, s47, s9));
+          edges.push(helper.createSimpleEdge(nodes, s47, s10));
+          edges.push(helper.createSimpleEdge(nodes, s47, s46));
+          edges.push(helper.createSimpleEdge(nodes, s47, s13));
+          edges.push(helper.createSimpleEdge(nodes, s47, s21));
+          edges.push(helper.createSimpleEdge(nodes, s47, s19));
+          edges.push(helper.createSimpleEdge(nodes, s47, s8));
+          edges.push(helper.createSimpleEdge(nodes, s47, s39));
+          edges.push(helper.createSimpleEdge(nodes, s47, s15));
+          edges.push(helper.createSimpleEdge(nodes, s47, s34));
+          edges.push(helper.createSimpleEdge(nodes, s47, s30));
+          edges.push(helper.createSimpleEdge(nodes, s47, s45));
+
+          console.log(nodes.length, edges.length);
+
+          diff = (new Date()).getTime() - start;
+          console.log("Runtime Fill:", diff, "ms");
+          start = (new Date()).getTime();
+          joiner.setup();
+          diff = (new Date()).getTime() - start;
+          console.log("Runtime Setup:", diff, "ms");
+          start = (new Date()).getTime();
+          best = joiner.getBest();
+          while (best !== null) {
+            joiner.joinCommunity(best);
+            best = joiner.getBest();
+          }
+          diff = (new Date()).getTime() - start;
+          
+          console.log("Runtime Compute:", diff, "ms");
+                
+        });
+        
+        
         /*
         it('should be able to handle 10000 nodes', function() {
-          var start = (new Date).getTime();
+          var start = (new Date()).getTime();
           var i, best, nodeCount = 10000;      
           helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -904,13 +1424,13 @@
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-          var diff = (new Date).getTime() - start;
+          var diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           joiner.setup();
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Setup:", diff, "ms");
-          start = (new Date).getTime();
+          start = (new Date()).getTime();
           best = joiner.getBest();
           var step = 0;
           while (best !== null) {
@@ -918,7 +1438,7 @@
             best = joiner.getBest();
             step++;
           }
-          diff = (new Date).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Compute:", diff, "ms");          
         });
         */
