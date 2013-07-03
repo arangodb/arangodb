@@ -2786,14 +2786,22 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
     return false;
   }
 
-  // create primary index
-  TRI_InitVectorPointer(&document->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
+  res = TRI_InitVectorPointer2(&document->_allIndexes, TRI_UNKNOWN_MEM_ZONE, 2);
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyPrimaryCollection(&document->base);
+    TRI_set_errno(res);
+
+    return false;
+  }
+
+  // create primary index
   primaryIndex = TRI_CreatePrimaryIndex(&document->base);
 
   if (primaryIndex == NULL) {
     TRI_DestroyVectorPointer(&document->_allIndexes);
     TRI_DestroyPrimaryCollection(&document->base);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return false;
   }
@@ -2804,6 +2812,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
     TRI_FreeIndex(primaryIndex);
     TRI_DestroyVectorPointer(&document->_allIndexes);
     TRI_DestroyPrimaryCollection(&document->base);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return false;
   }
@@ -2818,6 +2827,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
       TRI_FreeIndex(primaryIndex);
       TRI_DestroyVectorPointer(&document->_allIndexes);
       TRI_DestroyPrimaryCollection(&document->base);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
       return false;
     }
@@ -2829,6 +2839,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
       TRI_FreeIndex(primaryIndex);
       TRI_DestroyVectorPointer(&document->_allIndexes);
       TRI_DestroyPrimaryCollection(&document->base);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
       return false;
     }
