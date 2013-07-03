@@ -50,6 +50,7 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
       private:
 
         DocumentWrapper (const DocumentWrapper&);
@@ -57,7 +58,10 @@ namespace triagens {
         
       public:
 
-        DocumentWrapper (TRI_doc_mptr_t const* document, TRI_primary_collection_t* primary) {
+        DocumentWrapper (TRI_doc_mptr_t const* document, 
+                         TRI_primary_collection_t* primary) :
+          _json(0) {
+
           TRI_shaped_json_t shapedJson;
 
           TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
@@ -102,8 +106,8 @@ namespace triagens {
 
       bool getBooleanValue (string const& name, bool defaultValue) {
         TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
-        if (b != 0 && b->_type == TRI_JSON_BOOLEAN)
-        {
+
+        if (b != 0 && b->_type == TRI_JSON_BOOLEAN) {
           return b->_value._boolean;
         }
 
@@ -116,8 +120,8 @@ namespace triagens {
 
       double getNumericValue (string const& name, double defaultValue) {
         TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
-        if (b != 0 && b->_type == TRI_JSON_NUMBER)
-        {
+
+        if (b != 0 && b->_type == TRI_JSON_NUMBER) {
           return b->_value._number;
         }
 
@@ -130,9 +134,9 @@ namespace triagens {
 
       string getStringValue (string const& name, string const& defaultValue) {
         TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
-        if (b != 0 && b->_type == TRI_JSON_STRING)
-        {
-          return string(b->_value._string.data, b->_value._string.length-1);
+
+        if (b != 0 && b->_type == TRI_JSON_STRING) {
+          return string(b->_value._string.data, b->_value._string.length - 1);
         }
 
         return defaultValue;
@@ -154,6 +158,7 @@ namespace triagens {
     private:
       
       TRI_json_t* _json;
+
       TRI_memory_zone_t* _zone;
       
 ////////////////////////////////////////////////////////////////////////////////
