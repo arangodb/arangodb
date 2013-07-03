@@ -324,7 +324,8 @@ function processZip (source) {
   if (! fs.exists(location) || ! fs.isFile(location)) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_FILE_NOT_FOUND.code;
-    err.errorMessage = arangodb.errors.ERROR_FILE_NOT_FOUND.message + ": cannot find zip file '" + String(location) + "'";
+    err.errorMessage = arangodb.errors.ERROR_FILE_NOT_FOUND.message + 
+                       ": cannot find zip file '" + String(location) + "'";
 
     throw err;
   }
@@ -402,12 +403,12 @@ function processSource (src) {
 
   if (! response.filename) {
     var msg = response.errorMessage;
-    var err2 = new ArangoError();
-    err2.errorNum = arangodb.errors.ERROR_APPLICATION_UPLOAD_FAILED.code;
-    err2.errorMessage = arangodb.errors.ERROR_APPLICATION_UPLOAD_FAILED.message + 
+    var err3 = new ArangoError();
+    err3.errorNum = arangodb.errors.ERROR_APPLICATION_UPLOAD_FAILED.code;
+    err3.errorMessage = arangodb.errors.ERROR_APPLICATION_UPLOAD_FAILED.message + 
                         ": " + String(msg);
 
-    throw err2;
+    throw err3;
   }
 
   return response.filename;
@@ -525,6 +526,8 @@ function updateFishbowl () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function compareApps (l, r) { 
+  'use strict';
+
   var left = l.name.toLowerCase(), right = r.name.toLowerCase();
 
   if (left < right) { 
