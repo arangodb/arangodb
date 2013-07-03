@@ -115,6 +115,11 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
 
   assert(datafile->_fd > 0);
 
+  if (begin == end) {
+    // no need to sync
+    return true;
+  }
+
   return TRI_msync(datafile->_fd, mmHandle, begin, end);
 }
 
@@ -832,7 +837,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   result = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
 
   if (result == TRI_ERROR_NO_ERROR) {
-    result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, true);
+    result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, false);
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
