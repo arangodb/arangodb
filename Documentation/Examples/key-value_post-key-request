@@ -1,7 +1,0 @@
-  POST /_api/key/example_collection/example_key1 HTTP/1.1
-  Host: localhost:9000
-  x-voc-expires: 2011-09-29T08:00:00Z
-  x-voc-extended: {"option1":35,"option2":"x"}
-  Content-Length: 2
-  
-  12

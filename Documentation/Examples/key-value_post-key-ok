@@ -1,7 +1,0 @@
-  HTTP/1.1 201 Created
-  connection: Keep-Alive
-  content-type: application/json
-  server: triagens GmbH High-Performance HTTP Server
-  content-length: 62
-
-  {"saved":true,"_id":"155630/9500735","error":false,"code":201}

@@ -1,4 +1,0 @@
-arangosh> db.example.save({ Hello : "World" });
-{ error : false, _id : "70628/1512420", _rev : "1512420" }
-arangosh> db.example.save({ name : "Musterman", age : 29 });
-{ error : false, _id : "70628/1774564", _rev : "1774564" }

@@ -1,2 +1,0 @@
-  DELETE /_api/key/example_collection/example_key1 HTTP/1.1
-  Host: localhost:9000
