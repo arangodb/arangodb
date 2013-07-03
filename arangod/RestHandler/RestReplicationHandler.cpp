@@ -34,6 +34,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/replication.h"
+#include "VocBase/server-id.h"
 
 #ifdef TRI_ENABLE_REPLICATION
 
@@ -375,7 +376,14 @@ void RestReplicationHandler::handleCommandInventory () {
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
     // add server info
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+    TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+
+    TRI_server_id_t serverId = TRI_GetServerId();  
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
     
     // add collections state
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
