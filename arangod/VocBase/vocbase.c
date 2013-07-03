@@ -331,7 +331,7 @@ static int ReadShutdownInfo (char const* filename) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
 
   if (json == NULL) {
     return TRI_ERROR_INTERNAL;
@@ -345,12 +345,13 @@ static int ReadShutdownInfo (char const* filename) {
   tickString = TRI_LookupArrayJson(json, "tick");
 
   if (tickString == NULL || tickString->_type != TRI_JSON_STRING) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
     return TRI_ERROR_INTERNAL;
   }
 
   foundTick = TRI_UInt64String(tickString->_value._string.data);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
 
@@ -839,8 +840,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   if (found != NULL) {
     LOG_ERROR("duplicate entry for collection name '%s'", collection->_name);
 
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
     return NULL;
   }
 
@@ -862,8 +864,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("duplicate collection identifier %llu for name '%s'",
               (unsigned long long) collection->_cid, collection->_name);
 
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+
     return NULL;
   }
 
@@ -872,6 +875,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+
     TRI_set_errno(res);
 
     return NULL;
