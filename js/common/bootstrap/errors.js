@@ -130,6 +130,7 @@
     "ERROR_APPLICATION_INVALID_NAME" : { "code" : 1751, "message" : "invalid application name" }, 
     "ERROR_APPLICATION_INVALID_MOUNT" : { "code" : 1752, "message" : "invalid mount" }, 
     "ERROR_APPLICATION_DOWNLOAD_FAILED" : { "code" : 1753, "message" : "application download failed" }, 
+    "ERROR_APPLICATION_UPLOAD_FAILED" : { "code" : 1754, "message" : "application upload failed" }, 
     "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" }, 
     "ERROR_KEYVALUE_KEY_EXISTS"    : { "code" : 1801, "message" : "key already exists" }, 
     "ERROR_KEYVALUE_KEY_NOT_FOUND" : { "code" : 1802, "message" : "key not found" }, 
