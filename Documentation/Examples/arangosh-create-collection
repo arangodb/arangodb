@@ -1,2 +1,0 @@
-arangosh> db._create("example");
-[ArangoCollection 70628, "example" (status loaded)]

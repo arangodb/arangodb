@@ -1,7 +1,0 @@
-  HTTP/1.1 404 Bad Request
-  content-type: application/json
-  connection: Keep-Alive
-  server: triagens GmbH High-Performance HTTP Server
-  content-length: 75
-
-  {"error":true,"code":404,"errorNum":41304,"errorMessage":"Use PUT to change value"}
