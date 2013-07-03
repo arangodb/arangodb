@@ -250,8 +250,8 @@ static bool ValidateAttributeName (const char* attributeName,
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static const bool ExtractForceSync (v8::Arguments const& argv,
-                                    const int index) {
+static bool ExtractForceSync (v8::Arguments const& argv,
+                              const int index) {
   assert(index > 0);
 
   const bool forceSync = (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
@@ -263,8 +263,8 @@ static const bool ExtractForceSync (v8::Arguments const& argv,
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static const TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
-                                                          const int index) {
+static TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
+                                                    const int index) {
   assert(index > 0);
 
   // default value
@@ -6805,7 +6805,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
 ////////////////////////////////////////////////////////////////////////////////
 
-const int32_t TRI_GetVocBaseColType () {
+int32_t TRI_GetVocBaseColType () {
   return WRP_VOCBASE_COL_TYPE;
 }
 

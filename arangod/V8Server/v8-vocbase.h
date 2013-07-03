@@ -88,7 +88,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
 ////////////////////////////////////////////////////////////////////////////////
 
-const int32_t TRI_GetVocBaseColType ();
+int32_t TRI_GetVocBaseColType ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
