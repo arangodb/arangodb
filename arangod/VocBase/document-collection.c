@@ -3989,7 +3989,9 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
                                       TRI_idx_iid_t iid) {
   TRI_index_t* found;
+#ifdef TRI_ENABLE_REPLICATION
   TRI_vocbase_t* vocbase;
+#endif
   TRI_primary_collection_t* primary;
   size_t i, n;
 
@@ -4001,10 +4003,9 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
   found = NULL;
   primary = &document->base;
   
-  vocbase = primary->base._vocbase;
-
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+  vocbase = primary->base._vocbase;
+  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
 #endif
 
 
@@ -4042,7 +4043,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
 #endif
 
   // .............................................................................
