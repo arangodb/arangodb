@@ -38,7 +38,7 @@ var helper = helper || {};
     var i;
     for (i = 0; i < n; i++) {
       nodes.push({
-        _id: i,
+        _id: String(i),
         _inboundCounter: 0,
         _outboundCounter: 0,
         position: {

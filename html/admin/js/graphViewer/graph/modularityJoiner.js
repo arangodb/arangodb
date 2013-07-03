@@ -99,6 +99,9 @@ function ModularityJoiner(nodes, edges) {
     
     delDQVal = function(i, j) {
       if (i < j) {
+        if (!dQ[i]) {
+          return;
+        }
         delete dQ[i][j];
         if (_.isEmpty(dQ[i])) {
           delete dQ[i];
@@ -400,7 +403,7 @@ function ModularityJoiner(nodes, edges) {
   ////////////////////////////////////
   // computation                    //
   ////////////////////////////////////
-  
+    
   this.joinCommunity = function(comm) {
     var s = comm.sID,
       l = comm.lID,
