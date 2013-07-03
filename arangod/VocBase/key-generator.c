@@ -656,11 +656,13 @@ int TRI_CreateKeyGenerator (const TRI_json_t* const parameters,
   }
 
   generator = CreateGenerator(options);
+
   if (generator == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   res = generator->init(generator, options);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeKeyGenerator(generator);
 
