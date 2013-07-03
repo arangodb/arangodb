@@ -42,11 +42,9 @@ var modalDialogHelper = modalDialogHelper || {};
       
     tableToJSON = function() {
       var result = {};
-        
       _.each($("#" + idprefix + "table tr"), function(tr) {
-        var key = tr.children[0].children[0].value,
-          value = tr.children[1].children[0].value;
-        
+        var key = tr.children[1].children[0].value,
+          value = tr.children[2].children[0].value;
         result[key] = value;
       });
       return result;
@@ -54,15 +52,37 @@ var modalDialogHelper = modalDialogHelper || {};
     _.each(object, function(value, key) {
       var internalRegex = /^_(id|rev|key|from|to)/,
         tr = document.createElement("tr"),
+        actTh = document.createElement("th"),
         keyTh = document.createElement("th"),
         valueTh = document.createElement("th"),
+        deleteInput,
         keyInput,
-        valueInput;
+        valueInput,
+        delImg;
         
       if (internalRegex.test(key)) {
         return;
       }
       table.appendChild(tr);
+      tr.appendChild(actTh);
+      actTh.className = "collectionTh";
+      deleteInput = document.createElement("button");
+      deleteInput.id = idprefix + key + "_delete";
+      deleteInput.className = "enabled";
+      
+      actTh.appendChild(deleteInput);
+      
+      delImg = document.createElement("img");
+      delImg.src = "img/icon_delete.png";
+      delImg.width = "16";
+      delImg.height = "16";
+      
+      deleteInput.appendChild(delImg);
+      
+      deleteInput.onclick = function() {
+        table.removeChild(tr);
+      };
+      
       tr.appendChild(keyTh);
       keyTh.className = "collectionTh";
       keyInput = document.createElement("input");
@@ -112,7 +132,7 @@ var modalDialogHelper = modalDialogHelper || {};
     };
       
     headerDiv.className = "modal-header";
-    
+    buttonDismiss.id = idprefix + "modal_dismiss";
     buttonDismiss.className = "close";
     buttonDismiss.dataDismiss = "modal";
     buttonDismiss.ariaHidden = "true";
