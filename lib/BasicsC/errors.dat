@@ -185,6 +185,7 @@ ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an
 ERROR_APPLICATION_INVALID_NAME,1751,"invalid application name","Will be raised when an invalid application name is specified."
 ERROR_APPLICATION_INVALID_MOUNT,1752,"invalid mount","Will be raised when an invalid mount is specified."
 ERROR_APPLICATION_DOWNLOAD_FAILED,1753,"application download failed","Will be raised when an application download from the central repository failed."
+ERROR_APPLICATION_UPLOAD_FAILED,1754,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
 
 ################################################################################
 ## Key value access
