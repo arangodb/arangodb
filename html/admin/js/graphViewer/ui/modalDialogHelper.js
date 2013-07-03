@@ -41,6 +41,8 @@ var modalDialogHelper = modalDialogHelper || {};
       table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule),
       firstRow = document.createElement("tr"),
       firstCell = document.createElement("th"),
+      secondCell = document.createElement("th"),
+      thirdCell = document.createElement("th"),
       addRow = document.createElement("button"),
       addImg = document.createElement("img"),
       newCounter = 1,
@@ -49,8 +51,9 @@ var modalDialogHelper = modalDialogHelper || {};
     tableToJSON = function() {
       var result = {};
       _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
-        var key = tr.children[1].children[0].value,
-          value = tr.children[2].children[0].value;
+        
+        var key = $(".keyCell input", tr).val(),
+          value = $(".valueCell input", tr).val();
         result[key] = value;
       });
       return result;
@@ -59,11 +62,19 @@ var modalDialogHelper = modalDialogHelper || {};
     table.appendChild(firstRow);
     firstRow.id = "first_row";
     firstRow.appendChild(firstCell);
-    firstCell.colSpan = "3";
-    firstCell.appendChild(addRow);
+    firstCell.className = "keyCell";
+    
+    firstRow.appendChild(secondCell);
+    secondCell.className = "valueCell";
+    
+    firstRow.appendChild(thirdCell);
+    
+    thirdCell.className = "actionCell";
+    thirdCell.appendChild(addRow);
+    
     
     addRow.id = idprefix + "new";
-    addRow.className = "pull-right graphViewer-icon-button";
+    addRow.className = "graphViewer-icon-button";
     
     addRow.appendChild(addImg);
     addImg.className = "plusIcon";
@@ -85,8 +96,32 @@ var modalDialogHelper = modalDialogHelper || {};
         return;
       }
       table.appendChild(tr);
+      
+      tr.appendChild(keyTh);
+      keyTh.className = "keyCell";
+      keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.id = idprefix + key + "_key";
+      keyInput.value = key;
+      keyTh.appendChild(keyInput);
+      
+      
+      tr.appendChild(valueTh);
+      valueTh.className = "valueCell";
+      valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.id = idprefix + key + "_value";
+      if ("object" === typeof value) {
+        valueInput.value = JSON.stringify(value);
+      } else {
+        valueInput.value = value;
+      }
+      
+      valueTh.appendChild(valueInput);
+      
+
       tr.appendChild(actTh);
-      actTh.className = "collectionTh";
+      actTh.className = "actionCell";
       deleteInput = document.createElement("button");
       deleteInput.id = idprefix + key + "_delete";
       deleteInput.className = "graphViewer-icon-button";
@@ -104,26 +139,6 @@ var modalDialogHelper = modalDialogHelper || {};
         table.removeChild(tr);
       };
       
-      tr.appendChild(keyTh);
-      keyTh.className = "collectionTh";
-      keyInput = document.createElement("input");
-      keyInput.type = "text";
-      keyInput.id = idprefix + key + "_key";
-      keyInput.value = key;
-      keyTh.appendChild(keyInput);
-      
-      tr.appendChild(valueTh);
-      valueTh.className = "collectionTh";
-      valueInput = document.createElement("input");
-      valueInput.type = "text";
-      valueInput.id = idprefix + key + "_value";
-      if ("object" === typeof value) {
-        valueInput.value = JSON.stringify(value);
-      } else {
-        valueInput.value = value;
-      }
-      
-      valueTh.appendChild(valueInput);
     };
     
     addRow.onclick = function() {
