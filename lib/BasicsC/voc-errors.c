@@ -126,6 +126,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
   REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");
+  REG_ERROR(ERROR_APPLICATION_UPLOAD_FAILED, "application upload failed");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");

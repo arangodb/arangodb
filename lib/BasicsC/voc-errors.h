@@ -277,6 +277,9 @@ extern "C" {
 /// - 1753: @LIT{application download failed}
 ///   Will be raised when an application download from the central repository
 ///   failed.
+/// - 1754: @LIT{application upload failed}
+///   Will be raised when an application upload from the client to the ArangoDB
+///   server failed.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -1613,6 +1616,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1754: ERROR_APPLICATION_UPLOAD_FAILED
+///
+/// application upload failed
+///
+/// Will be raised when an application upload from the client to the ArangoDB
+/// server failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1754)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

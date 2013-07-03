@@ -177,9 +177,13 @@ function processDirectory (source) {
   var i;
   var location = source.location;
 
-
   if (! fs.exists(location) || ! fs.isDirectory(location)) {
-    throw "could not find directory";
+    var err1 = new ArangoError();
+    err1.errorNum = arangodb.errors.ERROR_FILE_NOT_FOUND.code;
+    err1.errorMessage = arangodb.errors.ERROR_FILE_NOT_FOUND.message + 
+                        ": '" + String(location) + "' is not a directory";
+
+    throw err1;
   }
   
   // .............................................................................
@@ -204,7 +208,12 @@ function processDirectory (source) {
   }
 
   if (files.length === 0) {
-    throw "directory '" + location + "' is empty";
+    var err2 = new ArangoError();
+    err2.errorNum = arangodb.errors.ERROR_FILE_NOT_FOUND.code;
+    err2.errorMessage = arangodb.errors.ERROR_FILE_NOT_FOUND.message + 
+                        ": directory '" + String(location) + "' is empty";
+
+    throw err2;
   }
 
   var tempFile = fs.getTempFile("downloads", false); 
@@ -246,7 +255,11 @@ function repackZipFile (source) {
   }
 
   if (found === "undefined") {
-    throw "cannot find manifest file in '" + filename + "'";
+    var err1 = new ArangoError();
+    err1.errorNum = arangodb.errors.ERROR_FILE_NOT_FOUND.code;
+    err1.errorMessage = arangodb.errors.ERROR_FILE_NOT_FOUND.message + ": cannot find manifest file '" + filename + "'";
+
+    throw err1;
   }
 
   var mp;
@@ -294,7 +307,7 @@ function repackZipFile (source) {
   try {
     fs.removeDirectoryRecursive(path);
   }
-  catch (err) {
+  catch (err3) {
     console.warn("cannot remove temporary directory '%s'", path);
   }
 }
@@ -309,7 +322,11 @@ function processZip (source) {
   var location = source.location;
 
   if (! fs.exists(location) || ! fs.isFile(location)) {
-    throw "could not find zip file '" + location + "'";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_FILE_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_FILE_NOT_FOUND.message + ": cannot find zip file '" + String(location) + "'";
+
+    throw err;
   }
 
   source.filename = source.location;
@@ -363,7 +380,12 @@ function processSource (src) {
     processGithubRepository(src);
   }
   else {
-    throw "unknown application type '" + src.type + "'";
+    var err1 = new ArangoError();
+    err1.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err1.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+                        ": unknown application type '" + src.type + "'";
+
+    throw err1;
   }
 
   // upload file to the server 
@@ -379,7 +401,13 @@ function processSource (src) {
   } 
 
   if (! response.filename) {
-    throw "could not upload application to arangodb";
+    var msg = response.errorMessage;
+    var err2 = new ArangoError();
+    err2.errorNum = arangodb.errors.ERROR_APPLICATION_UPLOAD_FAILED.code;
+    err2.errorMessage = arangodb.errors.ERROR_APPLICATION_UPLOAD_FAILED.message + 
+                        ": " + String(msg);
+
+    throw err2;
   }
 
   return response.filename;
@@ -474,7 +502,7 @@ function updateFishbowl () {
     var result = internal.download(url, "", { method: "get", followRedirects: true, timeout: 30 }, filename);
 
     if (result.code < 200 || result.code > 299) {
-      throw "github download failed";
+      throwDownloadError("github download from '" + url + "' failed with error code " + result.code);
     }
 
     updateFishbowlFromZip(filename);
@@ -490,6 +518,23 @@ function updateFishbowl () {
 
     throw err;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator for applications
+////////////////////////////////////////////////////////////////////////////////
+
+function compareApps (l, r) { 
+  var left = l.name.toLowerCase(), right = r.name.toLowerCase();
+
+  if (left < right) { 
+    return -1; 
+  }
+  if (right < left) { 
+    return 1; 
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,7 +563,12 @@ exports.load = function (type, location, version) {
   var res;
 
   if (typeof location === "undefined") {
-    throw "missing type";
+    var err1 = new ArangoError();
+    err1.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err1.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + ": " + 
+                        "location missing";
+
+    throw err1;
   }
   else {
     source = { type: type, location: location, version: version };
@@ -527,11 +577,21 @@ exports.load = function (type, location, version) {
   filename = processSource(source);
 
   if (typeof source.name === "undefined") {
-    throw "name is missing for '" + JSON.stringify(source) + "'";
+    var err2 = new ArangoError();
+    err2.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err2.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+                        ": name missing for '" + JSON.stringify(source) + "'";
+
+    throw err2;
   }
 
   if (typeof source.version === "undefined") {
-    throw "version is missing for '" + JSON.stringify(source) + "'";
+    var err3 = new ArangoError();
+    err3.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err3.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+                        ": version missing for '" + JSON.stringify(source) + "'";
+
+    throw err3;
   }
 
   req = {
@@ -682,7 +742,7 @@ exports.printAvailable = function () {
 
   arangodb.printTable(
     list,
-    ["AppID", "Name", "Version", "Path"]);
+    ["AppID", "Name", "Description", "Version", "Path"]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -698,9 +758,11 @@ exports.listAvailable = function () {
 
   while (cursor.hasNext()) {
     var doc = cursor.next();
+
     var res = {
       AppID: doc.app,
       Name: doc.name,
+      Description: doc.description || "",
       Version: doc.version,
       Path: doc.path
     };
@@ -726,7 +788,7 @@ exports.listFishbowl = function () {
     var doc = cursor.next();
     var res = {
       name: doc.name,
-      description: doc.description,
+      description: doc.description || "",
       author: doc.author
     };
 
@@ -743,20 +805,14 @@ exports.listFishbowl = function () {
 exports.printFishbowl = function () {
   'use strict';
 
-  var compare = function (a,b) {
-    if (a.name < b.name) {return -1;}
-    if (b.name < a.name) {return 1;}
-    return 0;
-  };
-
   var list = exports.listFishbowl();
 
   if (list.length === 0) {
-    arangodb.print("Fishbowl is empty, please use 'updateFishbowl'");
+    arangodb.print("Fishbowl is empty, please use 'aal.updateFishbowl();'");
   }
   else {
     arangodb.printTable(
-      list.sort(compare),
+      list.sort(compareApps),
       [ "name", "author", "description" ]);
   }
 };
@@ -771,16 +827,40 @@ exports.search = function (name) {
   var fishbowl = getFishbowlStorage();
 
   if (fishbowl.count() === 0) {
-    arangodb.print("Fishbowl is empty, please use 'updateFishbowl'");
+    arangodb.print("Fishbowl is empty, please use 'aal.updateFishbowl();'");
 
     return [];
   }
 
-  var docs = fishbowl.fulltext("description", "prefix:" + name).toArray();
-  docs = docs.concat(fishbowl.fulltext("name", "prefix:" + name).toArray());
+  var docs;
+
+  if (name === undefined || (typeof name === "string" && name.length === 0)) {
+    docs = fishbowl.toArray();
+  }
+  else {
+    // get results by looking in "description" attribute
+    docs = fishbowl.fulltext("description", "prefix:" + name).toArray();
+
+    // build a hash of keys
+    var i, keys = { };
+    for (i = 0; i < docs.length; ++i) {
+      keys[docs[i]._key] = 1;
+    }
+
+    // get results by looking in "name" attribute
+    var docs2= fishbowl.fulltext("name", "prefix:" + name).toArray();
+
+    // merge the two result sets, avoiding duplicates
+    for (i = 0; i < docs2.length; ++i) {
+      if (keys.hasOwnProperty(docs2[i]._key)) {
+        continue;
+      }
+      docs.push(docs2[i]);
+    }
+  }
 
   arangodb.printTable(
-    docs,
+    docs.sort(compareApps),
     [ "name", "author", "description" ]);
 };
 
@@ -798,7 +878,7 @@ exports.details = function (name) {
   var fishbowl = getFishbowlStorage();
 
   if (fishbowl.count() === 0) {
-    arangodb.print("Fishbowl is empty, please use 'updateFishbowl'");
+    arangodb.print("Fishbowl is empty, please use 'aal.updateFishbowl();'");
     return;
   }
 
@@ -808,7 +888,7 @@ exports.details = function (name) {
     desc = fishbowl.document(name);
   }
   catch (err) {
-    arangodb.print("No '" + name + "' in Fishbowl, please try 'search'");
+    arangodb.print("No '" + name + "' in Fishbowl, please try 'aal.search();'");
     return;
   }
 
@@ -822,9 +902,16 @@ exports.details = function (name) {
     internal.printf("\nDescription:\n%s\n\n", desc.description);
   }
 
+  var header = false;
+
   for (i in desc.versions) {
     if (desc.versions.hasOwnProperty(i)) {
       var v = desc.versions[i];
+    
+      if (! header) {
+        arangodb.print("Download:");
+        header = true;
+      }
 
       if (v.type === "github") {
         if (v.hasOwnProperty("tag")) {
