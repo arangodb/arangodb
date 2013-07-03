@@ -1,8 +1,0 @@
-> curl -X GET --dump - http://localhost:8529/_api/database/collections
-HTTP/1.1 200 OK
-content-type: application/json
-
-[
-  {"id":138663,"name":"five"},
-  {"id":189990,"name":"examples"}
-]
