@@ -1908,6 +1908,16 @@ open_iterator_operation_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mark a transaction as failed during opening of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int OpenIteratorNoteFailedTransaction (open_iterator_state_t const* state) {
+  assert(state->_tid > 0);
+  
+  return TRI_AddIdFailedTransaction(&state->_document->_failedTransactions, state->_tid);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply an insert/update operation when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2268,7 +2278,9 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
     if (state->_trxCollections > 1 && state->_trxPrepared) {
       int res;
 
-      // check whether the transaction was half-way committed...
+      // multi-collection transaction... 
+      // check if we have a coordinator entry in _trx
+      // if yes, then we'll recover the transaction, otherwise we'll abort it
 
       res = TRI_ExecuteSingleOperationTransaction(state->_vocbase, 
                                                   TRI_COL_NAME_TRANSACTION,
@@ -2279,6 +2291,9 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
       if (res == TRI_ERROR_NO_ERROR) {
         size_t i, n; 
 
+        // TRI_ERROR_NO_ERROR means we have found a coordinator entry
+        // otherwise we would have got TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND etc.
+
         LOG_INFO("recovering transaction %llu", (unsigned long long) state->_tid);
         n = state->_operations._length;
 
@@ -2288,6 +2303,7 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
           open_iterator_operation_t* operation = TRI_AtVector(&state->_operations, i);
 
           r = OpenIteratorApplyOperation(state, operation);
+
           if (r != TRI_ERROR_NO_ERROR) {
             res = r;
           }
@@ -2297,6 +2313,8 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
         return res;
       }
     }
+
+    OpenIteratorNoteFailedTransaction(state);
 
     LOG_INFO("rolling back uncommitted transaction %llu", (unsigned long long) state->_tid);
     OpenIteratorResetOperations(state);
@@ -2360,6 +2378,7 @@ static int OpenIteratorHandleDocumentMarker (TRI_df_marker_t const* marker,
                   (unsigned long long) datafile->_fid,
                   (unsigned long long) d->_tid,
                   (unsigned long long) state->_tid);
+
       OpenIteratorAbortTransaction(state);
 
       return TRI_ERROR_INTERNAL;
@@ -2421,6 +2440,7 @@ static int OpenIteratorHandleBeginMarker (TRI_df_marker_t const* marker,
                 (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
+
     OpenIteratorAbortTransaction(state);
   }
 
@@ -2446,6 +2466,7 @@ static int OpenIteratorHandleCommitMarker (TRI_df_marker_t const* marker,
                 (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
+
     OpenIteratorAbortTransaction(state);
   }
   else {
@@ -2475,6 +2496,7 @@ static int OpenIteratorHandlePrepareMarker (TRI_df_marker_t const* marker,
                 (unsigned long long) datafile->_fid,
                 (unsigned long long) m->_tid,
                 (unsigned long long) state->_tid);
+
     OpenIteratorAbortTransaction(state);
   }
   else {
@@ -2880,6 +2902,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
 static int IterateMarkersCollection (TRI_collection_t* collection) {
   open_iterator_state_t openState;
+  int res;
 
   // initialise state for iteration
   openState._document       = (TRI_document_collection_t*) collection;
@@ -2890,13 +2913,18 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._dfi            = NULL;
   openState._vocbase        = collection->_vocbase;
   
-  TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
+  res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
   
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
   // abort any transaction that's unfinished after iterating over all markers
   OpenIteratorAbortTransaction(&openState);
+
   TRI_DestroyVector(&openState._operations);
 
   return TRI_ERROR_NO_ERROR;
@@ -2943,8 +2971,9 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   res = TRI_CreateKeyGenerator(parameter->_keyOptions, &keyGenerator);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("cannot create key generator for document collection: %s", TRI_errno_string(res));
     TRI_set_errno(res);
-    LOG_WARNING("cannot create key generator for document collection");
+
     return NULL;
   }
 
@@ -2956,7 +2985,20 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (document == NULL) {
     TRI_FreeKeyGenerator(keyGenerator);
-    LOG_WARNING("cannot create key generator for document collection");
+    LOG_WARNING("cannot create document collection");
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+
+  res = TRI_InitVector2(&document->_failedTransactions, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tid_t), 64);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeKeyGenerator(keyGenerator);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
+    LOG_WARNING("cannot create key generator for document collection: %s", TRI_errno_string(res));
+    TRI_set_errno(res);
+
     return NULL;
   }
 
@@ -2964,9 +3006,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (collection == NULL) {
     TRI_FreeKeyGenerator(keyGenerator);
+    TRI_DestroyVector(&document->_failedTransactions);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
     LOG_ERROR("cannot create document collection");
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
     return NULL;
   }
 
@@ -2980,6 +3023,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");
 
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection); // will free document
@@ -2992,6 +3036,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("cannot initialise document collection");
 
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection); // will free document
@@ -3003,10 +3048,12 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // save the parameter block (within create, no need to lock)
   res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_forceSyncProperties);
+
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->_directory, TRI_last_error());
 
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection); // will free document
 
@@ -3023,34 +3070,34 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 /// Note that the collection must be closed first.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
-  size_t i;
-  size_t n;
+void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
+  size_t i, n;
 
-  TRI_DestroyCondition(&collection->_journalsCondition);
+  TRI_DestroyCondition(&document->_journalsCondition);
 
-  TRI_FreeSimpleHeaders(collection->_headers);
+  TRI_FreeSimpleHeaders(document->_headers);
 
   // free memory allocated for indexes
-  n = collection->_allIndexes._length;
+  n = document->_allIndexes._length;
   for (i = 0 ; i < n ; ++i) {
-    TRI_index_t* idx = (TRI_index_t*) collection->_allIndexes._buffer[i];
+    TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
     TRI_FreeIndex(idx);
   }
   // free index vector
-  TRI_DestroyVectorPointer(&collection->_allIndexes);
+  TRI_DestroyVectorPointer(&document->_allIndexes);
+  TRI_DestroyVector(&document->_failedTransactions);
 
-  TRI_DestroyPrimaryCollection(&collection->base);
+  TRI_DestroyPrimaryCollection(&document->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeDocumentCollection (TRI_document_collection_t* collection) {
-  TRI_DestroyDocumentCollection(collection);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
+  TRI_DestroyDocumentCollection(document);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3214,21 +3261,35 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   if (document == NULL) {
     return NULL;
   }
+  
+  res = TRI_InitVector2(&document->_failedTransactions, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tid_t), 64);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
+    LOG_ERROR("cannot open document collection: %s", TRI_errno_string(res));
+    TRI_set_errno(res);
+
+    return NULL;
+  }
 
   collection = TRI_OpenCollection(vocbase, &document->base.base, path);
 
   if (collection == NULL) {
+    TRI_DestroyVector(&document->_failedTransactions);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
     LOG_ERROR("cannot open document collection from path '%s'", path);
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
     return NULL;
   }
 
   // then the shape collection
   shapes = TRI_Concatenate2File(collection->_directory, "SHAPES");
+
   if (shapes == NULL) {
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
+
     return NULL;
   }
 
@@ -3236,20 +3297,20 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_FreeString(TRI_CORE_MEM_ZONE, shapes);
 
   if (shaper == NULL) {
-    LOG_ERROR("cannot open shapes collection");
-
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
+    LOG_ERROR("cannot open shapes collection");
 
     return NULL;
   }
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
-    LOG_ERROR("cannot initialise document collection");
-
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
+    LOG_ERROR("cannot initialise document collection");
 
     return NULL;
   }
@@ -3258,26 +3319,40 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   res = TRI_CreateKeyGenerator(collection->_info._keyOptions, &keyGenerator);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-    LOG_ERROR("cannot initialise document collection");
-
+    TRI_DestroyVector(&document->_failedTransactions);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
+    LOG_ERROR("cannot initialise document collection");
+    TRI_set_errno(res);
+
     return NULL;
   }
 
   TRI_ASSERT_MAINTAINER(keyGenerator != NULL);
   document->base._keyGenerator = keyGenerator;
 
-
   shapeCollection = TRI_CollectionVocShaper(shaper);
 
   if (shapeCollection != NULL) {
-    shapeCollection->base._info._waitForSync = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
+    bool syncShapes = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
+
+    shapeCollection->base._info._waitForSync = syncShapes;
   }
 
   // iterate over all markers of the collection
-  IterateMarkersCollection(collection);
+  res = IterateMarkersCollection(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVector(&document->_failedTransactions);
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection);
+    TRI_FreeShapeCollection(shapeCollection);
+    
+    LOG_ERROR("cannot iterate data of document collection");
+    TRI_set_errno(res);
+
+    return NULL;
+  }
 
   // fill internal indexes (this is, the edges index at the moment) 
   FillInternalIndexes(document);
