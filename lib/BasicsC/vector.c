@@ -86,12 +86,14 @@ int TRI_InitVector2 (TRI_vector_t* vector,
 
   if (initialCapacity != 0) {
     vector->_buffer = (char*) TRI_Allocate(vector->_memoryZone, (initialCapacity * vector->_elementSize), false);
+
     if (vector->_buffer == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
 
   vector->_capacity = initialCapacity;
+
   return TRI_ERROR_NO_ERROR;
 }
 
