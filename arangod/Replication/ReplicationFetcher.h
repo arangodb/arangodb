@@ -46,6 +46,7 @@ namespace triagens {
   namespace httpclient {
     class GeneralClientConnection;
     class SimpleHttpClient;
+    class SimpleHttpResult;
   }
   
   namespace rest {
@@ -144,6 +145,16 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the data from a collection dump
+////////////////////////////////////////////////////////////////////////////////
+
+        int applyCollectionDump (TRI_voc_cid_t,
+                                 httpclient::SimpleHttpResult*,
+                                 string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get local replication apply state
