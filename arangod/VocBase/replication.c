@@ -1086,11 +1086,11 @@ NEXT_DF:
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStateReplicationLogger (TRI_replication_logger_t* logger,
-                                      TRI_replication_state_t* dst) {
+                                      TRI_replication_log_state_t* dst) {
   assert(logger->_state._active);
 
   TRI_LockSpin(&logger->_idLock);
-  memcpy(dst, &logger->_state, sizeof(TRI_replication_state_t));
+  memcpy(dst, &logger->_state, sizeof(TRI_replication_log_state_t));
   TRI_UnlockSpin(&logger->_idLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -1218,7 +1218,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStateInactive (TRI_vocbase_t* vocbase,
-                             TRI_replication_state_t* dst) {
+                             TRI_replication_log_state_t* dst) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
  
@@ -1351,7 +1351,7 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
-                                TRI_replication_state_t* state) {
+                                TRI_replication_log_state_t* state) {
   int res;
 
   res = TRI_ERROR_NO_ERROR;
@@ -1795,6 +1795,213 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 
   TRI_FreeBarrier(b);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           REPLICATION APPLICATION
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the filename of the replication application file
+////////////////////////////////////////////////////////////////////////////////
+
+static char* GetApplyStateFilename (TRI_vocbase_t* vocbase) {
+  return TRI_Concatenate2File(vocbase->_path, "REPLICATION");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the replication apply state
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* ApplyStateToJson (TRI_replication_apply_state_t const* state) {
+  TRI_json_t* json;
+  char* serverId;
+  char* lastTick;
+
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  serverId = TRI_StringUInt64(state->_serverId);
+  lastTick = TRI_StringUInt64(state->_lastTick);
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastTick));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a master info struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
+                                    const char* endpoint) {
+  info->_endpoint         = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  info->_serverId         = 0;
+  info->_majorVersion     = 0;
+  info->_minorVersion     = 0;
+  info->_state._firstTick = 0;
+  info->_state._lastTick  = 0;
+  info->_state._active    = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a master info struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
+  if (info->_endpoint != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, info->_endpoint);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log information about the master state
+////////////////////////////////////////////////////////////////////////////////
+      
+void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
+                                   const char* prefix) {
+  LOG_INFO("%s master at %s, id %llu, tick range: %llu - %llu, version %d.%d", 
+           prefix,
+           info->_endpoint,
+           (unsigned long long) info->_serverId,
+           (unsigned long long) info->_state._firstTick,
+           (unsigned long long) info->_state._lastTick,
+           info->_majorVersion,
+           info->_minorVersion);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply state struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitApplyStateReplication (TRI_replication_apply_state_t* state) {
+  state->_serverId = 0;
+  state->_lastTick = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save the replication application state to a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SaveApplyStateReplication (TRI_vocbase_t* vocbase,
+                                   TRI_replication_apply_state_t const* state,
+                                   bool sync) {
+  TRI_json_t* json;
+  char* filename;
+  int res;
+
+  json = ApplyStateToJson(state);
+
+  if (json == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  filename = GetApplyStateFilename(vocbase);
+
+  if (! TRI_SaveJson(filename, json, sync)) {
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load the replication application state from a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
+                                   TRI_replication_apply_state_t* state) {
+  TRI_json_t* json;
+  TRI_json_t* serverId;
+  TRI_json_t* lastTick;
+  char* filename;
+  char* error;
+  int res;
+   
+  filename = GetApplyStateFilename(vocbase);
+
+  if (! TRI_ExistsFile(filename)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  error = NULL;
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+
+  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
+    if (error != NULL) {
+      TRI_Free(TRI_CORE_MEM_ZONE, error);
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  // read the server id
+  serverId = TRI_LookupArrayJson(json, "serverId");
+
+  if (serverId == NULL || 
+      serverId->_type != TRI_JSON_STRING || 
+      serverId->_value._string.data == NULL) {
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    state->_serverId = TRI_UInt64String(serverId->_value._string.data);
+  }
+
+  // read the last tick
+  lastTick = TRI_LookupArrayJson(json, "lastTick");
+
+  if (lastTick == NULL || 
+      lastTick->_type != TRI_JSON_STRING || 
+      lastTick->_value._string.data == NULL) {
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    state->_lastTick = TRI_UInt64String(lastTick->_value._string.data);
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, json);
 
   return res;
 }

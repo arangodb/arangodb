@@ -1769,11 +1769,13 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
+/// and optionally indexes
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                              bool withIndexes,
                                               bool (*filter)(TRI_vocbase_col_t*, void*),
                                               void* data) {
   TRI_vector_pointer_t collections;
@@ -1789,7 +1791,7 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
+  TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
 #endif
 
   // copy collection pointers into vector so we can work with the copy without
@@ -1800,45 +1802,52 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
 
   n = collections._length;
   for (i = 0; i < n; ++i) {
-    TRI_vocbase_col_t* collection = TRI_AtVectorPointer(&collections, i);
+    TRI_vocbase_col_t* collection;
+    TRI_json_t* result;
+     
+    collection = TRI_AtVectorPointer(&collections, i);
 
     TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
     if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
         collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      // we do not need to care about deleted or corrupted collections
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
 
+    // check if we want this collection
     if (filter != NULL && ! filter(collection, data)) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
 
-    if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-      TRI_json_t* cinfo;
+    result = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
 
-      cinfo = TRI_CreateJsonCollectionInfo(&collection->_collection->base._info);
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
-    }
-    else {
-      TRI_col_info_t parameter;
-      TRI_json_t* cinfo;
-      int res;
+    if (result != NULL) {
+      TRI_json_t* collectionInfo;
+      TRI_json_t* indexesInfo;
 
-      res = TRI_LoadCollectionInfo(collection->_path, &parameter, false);
+      collectionInfo = TRI_ReadJsonCollectionInfo(collection);
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        cinfo = TRI_CreateJsonCollectionInfo(&parameter);
-        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
-      } 
-    }
+      if (collectionInfo != NULL) {
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
+
+        indexesInfo = TRI_ReadJsonIndexInfo(collection);
+
+        if (indexesInfo != NULL) {
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
+        }
+      }
+
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, result);
+    } 
     
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
 #endif
    
   TRI_DestroyVectorPointer(&collections);
