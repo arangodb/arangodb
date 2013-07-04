@@ -89,7 +89,7 @@
         });
       });
       
-      it('should be able to pass parameters for constructor', function() {
+      it('should pass parameters for constructor', function() {
         var created;
         
         runs(function() {
@@ -117,6 +117,35 @@
         });
       });
       
+      it('should be informed if cunstruction failed', function() {
+        var created, error;
+        
+        runs(function() {
+          created = true;
+          function Test(a){
+            if (a === undefined) {
+              throw "Failed";
+            }
+          }
+          var cb = function(d){
+            var data = d.data;
+            if (data.cmd === "construct") {
+              created = data.result;
+              error = data.error;
+            }
+          },
+          worker = new WebWorkerWrapper(Test, cb);
+        });
+        
+        waitsFor(function(){
+          return !created;
+        }, 1000);
+
+        runs(function() {
+          expect(created).toBeFalsy();
+          expect(error).toEqual("Failed");
+        });
+      });
     });
     
     
