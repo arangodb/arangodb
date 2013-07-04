@@ -166,7 +166,8 @@
           expect(com).toContainNodes(["0", "1", "2"]);
         });
         /* Will be replaced by WebWorkers!
-        it('should wait for a running identification to finish before allowing to start a new one', function() {
+        it('should wait for a running identification'
+        + ' to finish before allowing to start a new one', function() {
           
           var firstRun, secondRun;
           
