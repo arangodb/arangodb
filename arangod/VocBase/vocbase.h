@@ -390,21 +390,21 @@ TRI_vocbase_col_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t* const      _vocbase;
+  TRI_vocbase_t* const          _vocbase;
 
-  TRI_col_type_t const      _type;               // collection type
-  TRI_voc_cid_t const       _cid;                // collecttion identifier
+  TRI_col_type_t const          _type;               // collection type
+  TRI_voc_cid_t const           _cid;                // collecttion identifier
 
-  TRI_read_write_lock_t     _lock;               // lock protecting the status and name
+  TRI_read_write_lock_t         _lock;               // lock protecting the status and name
 
-  TRI_vocbase_col_status_e  _status;             // status of the collection
+  TRI_vocbase_col_status_e      _status;             // status of the collection
   struct TRI_primary_collection_s* _collection;  // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
 
-  bool                      _canDrop;
-  bool                      _canUnload;
-  bool                      _canRename;
+  bool                          _canDrop;
+  bool                          _canUnload;
+  bool                          _canRename;
 }
 TRI_vocbase_col_t;
 
@@ -526,9 +526,11 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
+/// and optionally indexes
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_json_s* TRI_ParametersCollectionsVocBase (TRI_vocbase_t*,
+                                                     bool,
                                                      bool (*)(TRI_vocbase_col_t*, void*),
                                                      void*);
 

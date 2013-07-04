@@ -258,7 +258,7 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::addState (TRI_json_t* dst, 
-                                       TRI_replication_state_t const* state) {
+                                       TRI_replication_log_state_t const* state) {
 
   TRI_json_t* stateJson = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
 
@@ -329,7 +329,7 @@ void RestReplicationHandler::handleCommandStop () {
 void RestReplicationHandler::handleCommandState () {
   assert(_vocbase->_replicationLogger != 0);
 
-  TRI_replication_state_t state;
+  TRI_replication_log_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
 
@@ -369,9 +369,9 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
   
   // collections
-  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, &filterCollection, &tick);
+  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, true, &filterCollection, &tick);
 
-  TRI_replication_state_t state;
+  TRI_replication_log_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
 
@@ -385,9 +385,9 @@ void RestReplicationHandler::handleCommandInventory () {
   
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
-    // add collections state
+    // add collections data
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
-
+    
     addState(&result, &state);
   
     generateResult(&result);
