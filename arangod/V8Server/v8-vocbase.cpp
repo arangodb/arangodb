@@ -3080,10 +3080,16 @@ static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
   if (argv.Length() != 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNC(<master>)");
   }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
 
   const string masterEndpoint = TRI_ObjectToString(argv[0]);
 
-  ReplicationFetcher rf(masterEndpoint, 600);
+  ReplicationFetcher rf(vocbase, masterEndpoint, 600);
   rf.run();
 
   return scope.Close(v8::True());

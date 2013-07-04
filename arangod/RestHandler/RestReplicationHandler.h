@@ -37,7 +37,7 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
-struct TRI_replication_state_s;
+struct TRI_replication_log_state_s;
 struct TRI_vocbase_col_s;
 
 namespace triagens {
@@ -151,7 +151,7 @@ namespace triagens {
 /// @brief add replication state to a JSON array
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addState (TRI_json_t*, struct TRI_replication_state_s const*);
+        void addState (TRI_json_t*, struct TRI_replication_log_state_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remotely start the replication

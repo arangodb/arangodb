@@ -928,7 +928,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_waitForSync   = src->_waitForSync;
 
   if (src->_keyOptions) {
-    dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
+    dst->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, src->_keyOptions);
   }
   else {
     dst->_keyOptions  = NULL;
@@ -943,7 +943,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
 
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
   if (parameter->_keyOptions != NULL) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_keyOptions);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, parameter->_keyOptions);
     parameter->_keyOptions = NULL;
   }
 }
@@ -972,6 +972,7 @@ char* TRI_GetDirectoryCollection (char const* path,
     char* tmp2;
 
     tmp1 = TRI_StringUInt64(parameter->_cid);
+
     if (tmp1 == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -979,6 +980,7 @@ char* TRI_GetDirectoryCollection (char const* path,
     }
 
     tmp2 = TRI_Concatenate2String("collection-", tmp1);
+
     if (tmp2 == NULL) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
 
@@ -1037,6 +1039,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
 
   filename = TRI_GetDirectoryCollection(path, parameter);
+
   if (filename == NULL) {
     LOG_ERROR("cannot create collection '%s'", TRI_last_error());
     return NULL;
@@ -1070,6 +1073,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
+
     if (collection == NULL) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -1129,6 +1133,98 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return JSON information about the collection from the collection's
+/// "parameter.json" file. This function does not require the collection to be
+/// loaded.
+/// The caller must make sure that the files is not modified while this 
+/// function is called.
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
+  TRI_json_t* json;
+  char* filename;
+  char* error;
+
+  filename = TRI_Concatenate2File(collection->_path, TRI_COL_PARAMETER_FILE);
+
+  error = NULL;
+
+  // load JSON description of the collection
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  if (error != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+  }
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return JSON information about the indexes of a collection from the 
+/// collection's index files. This function does not require the collection to 
+/// be loaded.
+/// The caller must make sure that the files is not modified while this 
+/// function is called.
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_json_t* TRI_ReadJsonIndexInfo (TRI_vocbase_col_t* collection) {
+  TRI_json_t* json;
+  TRI_vector_string_t files;
+  regex_t re;
+  size_t i, n;
+  int res;
+
+  res = regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
+  files = TRI_FilesDirectory(collection->_path);
+  n = files._length;
+  
+  json = TRI_CreateList2Json(TRI_CORE_MEM_ZONE, n);
+
+  if (json == NULL) {
+    TRI_DestroyVectorString(&files);
+
+    return NULL;
+  }
+  
+  for (i = 0;  i < n;  ++i) {
+    char const* file = files._buffer[i];
+       
+    if (regexec(&re, file, (size_t) 0, NULL, 0) == 0) {
+      TRI_json_t* indexJson;
+      char* fqn = TRI_Concatenate2File(collection->_path, file);
+      char* error = NULL;
+       
+      indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, fqn, &error);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
+
+      if (error != NULL) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+      }
+
+      if (indexJson != NULL) {
+        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, indexJson);
+      }
+    }
+  }
+
+  TRI_DestroyVectorString(&files);
+
+  regfree(&re);
+
+  return json;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief syncs the active journal of a collection
@@ -1317,7 +1413,7 @@ int TRI_LoadCollectionInfo (char const* path,
     }
     else if (value->_type == TRI_JSON_ARRAY) {
       if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
-        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+        parameter->_keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, value);
       }
     }
   }
@@ -1518,8 +1614,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
 void TRI_IterateIndexCollection (TRI_collection_t* collection,
                                  bool (*iterator)(char const* filename, void*),
                                  void* data) {
-  size_t n;
-  size_t i;
+  size_t i, n;
 
   // iterate over all index files
   n = collection->_indexFiles._length;
