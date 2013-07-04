@@ -122,6 +122,67 @@ ReplicationFetcher::~ReplicationFetcher () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief run method
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::run () {
+  int res;
+  string errorMsg;
+
+  res = getMasterState(errorMsg);
+  if (res != TRI_ERROR_NO_ERROR) {
+    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
+    return res;
+  }
+  
+  res = getLocalState(errorMsg);
+  if (res != TRI_ERROR_NO_ERROR) {
+    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
+    return res;
+  }
+
+  bool fullSynchronisation = false;
+
+  if (_applyState._lastTick == 0) {
+    // we had never sychronised anything
+    fullSynchronisation = true;
+  }
+  else if (_applyState._lastTick > 0 && 
+           _applyState._lastTick < _masterInfo._state._firstTick) {
+    // we had synchronised something before, but that point was
+    // before the start of the master logs. this would mean a gap
+    // in the data, so we'll do a complete re-sync
+    fullSynchronisation = true;
+  }
+
+  if (fullSynchronisation) {
+    LOGGER_INFO("performing full synchronisation with master");
+
+    // nothing applied so far. do a full sync of collections
+    res = getMasterInventory(errorMsg);
+    if (res != TRI_ERROR_NO_ERROR) {
+      std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
+      return res;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get local replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -266,66 +327,97 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method
+/// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::handleCollectionDump (TRI_voc_cid_t cid,
+                                              TRI_voc_tick_t maxTick,
+                                              string& errorMsg) {
+  if (_client == 0) {
+    return TRI_ERROR_INTERNAL;
+  }
 
-int ReplicationFetcher::run () {
-  int res;
-  string errorMsg;
+  const string baseUrl = "/_api/replication/dump?collection=" + StringUtils::itoa(cid);
+  map<string, string> headers;
 
-  res = getMasterState(errorMsg);
-  if (res != TRI_ERROR_NO_ERROR) {
-    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
-    return res;
+  TRI_voc_tick_t fromTick = 0;
+
+  while (true) {
+    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) + "&to=" + StringUtils::itoa(maxTick);
+
+    // send request
+    SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
+                                                  url,
+                                                  0, 
+                                                  0,  
+                                                  headers); 
+
+    if (response == 0) {
+      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
+
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    if (! response->isComplete()) {
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": " + _client->getErrorMessage();
+
+      delete response;
+
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    if (response->wasHttpError()) {
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+                 ": " + response->getHttpReturnMessage();
+      
+      delete response;
+
+      return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    }
+
+    bool hasMore = false;
+    bool found;
+    string header = response->getHeaderField("x-arango-hasmore", found);
+
+    if (found) {
+      hasMore = StringUtils::boolean(header);
+    }
+   
+    if (hasMore) { 
+      header = response->getHeaderField("x-arango-lastfound", found);
+
+      if (found) {
+        TRI_voc_tick_t tick = StringUtils::uint64(header);
+
+        if (tick > fromTick) {
+          fromTick = tick;
+        }
+        else {
+          // TODO: raise error
+          hasMore = false;
+        }
+      }
+      else {
+        // TODO: raise error
+        hasMore = false;
+      }
+    }
+
+std::cout << "GOT: " << response->getBody().str().c_str() << "\n\n\n";
+
+    delete response;
+
+    if (! hasMore || fromTick == 0) {
+      // done
+      return TRI_ERROR_NO_ERROR;
+    }
   }
   
-  res = getLocalState(errorMsg);
-  if (res != TRI_ERROR_NO_ERROR) {
-    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
-    return res;
-  }
-
-  bool fullSynchronisation = false;
-
-  if (_applyState._lastTick == 0) {
-    // we had never sychronised anything
-    fullSynchronisation = true;
-  }
-  else if (_applyState._lastTick > 0 && 
-           _applyState._lastTick < _masterInfo._state._firstTick) {
-    // we had synchronised something before, but that point was
-    // before the start of the master logs. this would mean a gap
-    // in the data, so we'll do a complete re-sync
-    fullSynchronisation = true;
-  }
-
-  if (fullSynchronisation) {
-    LOGGER_INFO("performing full synchronisation with master");
-
-    // nothing applied so far. do a full sync of collections
-    res = getMasterInventory(errorMsg);
-    if (res != TRI_ERROR_NO_ERROR) {
-      std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
-      return res;
-    }
-    
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  assert(false);
+  return TRI_ERROR_INTERNAL;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the information about a collection
@@ -414,6 +506,13 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* json,
   
     return TRI_ERROR_NO_ERROR;
   }
+  else if (phase == PHASE_DATA) {
+    int res;
+
+    res = handleCollectionDump(id, _masterInfo._state._lastTick, errorMsg);
+
+    return res;
+  }
 
   assert(false);
   return TRI_ERROR_INTERNAL;
@@ -438,7 +537,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   ENSURE_JSON(tick, isString, "lastTick is missing in response");
   const TRI_voc_tick_t lastTick = StringUtils::uint64(tick->_value._string.data);
 
-  bool active = JsonHelper::getBooleanValue(state, "active", false);
+  bool running = JsonHelper::getBooleanValue(state, "running", false);
 
   // process "server" section
   TRI_json_t const* server = JsonHelper::getArrayElement(json, "server");
@@ -447,8 +546,8 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   TRI_json_t const* version = JsonHelper::getArrayElement(server, "version");
   ENSURE_JSON(version, isString, "server version is missing in response");
   
-  TRI_json_t const* id = JsonHelper::getArrayElement(server, "id");
-  ENSURE_JSON(version, isString, "server id is missing in response");
+  TRI_json_t const* id = JsonHelper::getArrayElement(server, "serverId");
+  ENSURE_JSON(id, isString, "server id is missing in response");
 
 
   // validate all values we got
@@ -489,7 +588,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   _masterInfo._serverId         = masterId;
   _masterInfo._state._firstTick = firstTick;
   _masterInfo._state._lastTick  = lastTick;
-  _masterInfo._state._active    = active;
+  _masterInfo._state._active    = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
 
@@ -504,16 +603,25 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
                                                  string& errorMsg) {
   TRI_json_t const* collections = JsonHelper::getArrayElement(json, "collections");
   ENSURE_JSON(collections, isList, "collections section is missing from response");
-
+  
   const size_t n = collections->_value._objects._length;
 
   // iterate over all collections from the master...
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
     ENSURE_JSON(collection, isArray, "collection declaration is invalid in response");
+  
+    TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+    ENSURE_JSON(parameters, isArray, "parameters section is missing from response");
+
+    /* TODO: handle indexes
+    TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+    ENSURE_JSON(indexes, isList, "indexes section is missing from response");
+    LOGGER_INFO(JsonHelper::toString(indexes));
+    */
 
     // drop the collection if it exists locally
-    int res = handleCollectionInitial(collection, errorMsg, PHASE_DROP);
+    int res = handleCollectionInitial(parameters, errorMsg, PHASE_DROP);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -522,19 +630,35 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
 
   // iterate over all collections from the master again
   if (n > 0) {
-    // we need to sleep for a while to allow the collections to be dropped (asynchronously)
+    // we'll sleep for a while to allow the collections to be dropped (asynchronously)
     // TODO: find a safer mechanism for waiting until we can beginning creating collections
     sleep(5);
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
+    
+      TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
 
       // now re-create the collection locally
-      int res = handleCollectionInitial(collection, errorMsg, PHASE_CREATE);
+      int res = handleCollectionInitial(parameters, errorMsg, PHASE_CREATE);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
+    }
+  }
+
+  // all collections created. now sync collection data
+  for (size_t i = 0; i < n; ++i) {
+    TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
+    
+    TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+      
+    // now sync collection data
+    int res = handleCollectionInitial(parameters, errorMsg, PHASE_DATA);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
   }
 
