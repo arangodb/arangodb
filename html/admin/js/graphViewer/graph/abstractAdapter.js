@@ -288,6 +288,17 @@ function AbstractAdapter(nodes, edges) {
       });
       nodes.push(commNode);
     },
+    
+    requestCollapse = function (focus) {
+      var com = reducer.getCommunity(limit, focus);
+      collapseCommunity(com);
+    },
+  
+    checkNodeLimit = function (focus) {
+      if (limit < nodes.length) {
+        requestCollapse(focus);
+      }
+    },
   
     expandCommunity = function (commNode) {
       var commId = commNode._id,
@@ -296,8 +307,7 @@ function AbstractAdapter(nodes, edges) {
         com;
       removeNode(commNode);
       if (limit < nodes.length + nodesToAdd.length) {
-        com = reducer.getCommunity(limit);
-        collapseCommunity(com);
+        requestCollapse();
       }
       _.each(nodesToAdd, function(n) {
         delete joinedInCommunities[n._id];
@@ -336,21 +346,11 @@ function AbstractAdapter(nodes, edges) {
       }
     },
     
-    checkNodeLimit = function (focus) {
-      if (limit < nodes.length) {
-        var com = reducer.getCommunity(limit, focus);
-        collapseCommunity(com);
-      }
-    },
-    
     setNodeLimit = function (pLimit, callback) {
       limit = pLimit;
-      if (limit < nodes.length) {
-        var com = reducer.getCommunity(limit);
-        collapseCommunity(com);
-        if (callback !== undefined) {
-          callback();
-        }
+      checkNodeLimit();
+      if (callback !== undefined) {
+        callback();
       }
     },
     
