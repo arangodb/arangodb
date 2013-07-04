@@ -443,7 +443,9 @@
       
           expect($("#" + nodeId + "_modal").length).toEqual(1);
         
-          expect($("#" + nodeId + "_name_value").val()).toEqual(JSON.stringify(nodes[1]._data.name));
+          expect($("#" + nodeId + "_name_value").val()).toEqual(
+            JSON.stringify(nodes[1]._data.name
+          ));
 
           helper.simulateMouseEvent("click", nodeId + "_modal_dismiss");
         });
