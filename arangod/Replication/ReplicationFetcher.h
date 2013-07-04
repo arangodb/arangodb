@@ -31,9 +31,15 @@
 #include "Basics/Common.h"
 
 #include "Logger/Logger.h"
+#include "VocBase/replication.h"
 #include "VocBase/server-id.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
   
 struct TRI_json_s;
+struct TRI_vocbase_s;
 
 namespace triagens {
 
@@ -48,29 +54,36 @@ namespace triagens {
 
   namespace arango {
 
-    struct ReplicationServer {
-      string          endpoint;
-
-      TRI_server_id_t id;
-
-      struct {
-        int major;
-        int minor;
-      }               version;
-
-      void log (const string& prefix) {
-        LOGGER_INFO(prefix << 
-                    " master at " << endpoint << 
-                    ", id " << id << 
-                    ", version " << version.major << "." << version.minor);
-      }
-    };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ReplicationFetcher
 // -----------------------------------------------------------------------------
 
     class ReplicationFetcher {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication apply setup phase
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef enum {
+          PHASE_DROP,
+          PHASE_CREATE,
+        }
+        setup_phase_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -87,7 +100,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReplicationFetcher (const std::string&,
+        ReplicationFetcher (struct TRI_vocbase_s*,
+                            const std::string&,
                             double);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,22 +126,22 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnect
+/// @brief get local replication apply state
 ////////////////////////////////////////////////////////////////////////////////
-  
-        void disconnect ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connect
-////////////////////////////////////////////////////////////////////////////////
-    
-        int connect ();
+        int getLocalState (string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getMasterState ();
+        int getMasterState (string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get master inventory
+////////////////////////////////////////////////////////////////////////////////
+
+        int getMasterInventory (string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method
@@ -149,10 +163,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handle the information about a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleCollectionInitial (struct TRI_json_s const*, 
+                                     string&, 
+                                     setup_phase_e);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the state response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleStateResponse (struct TRI_json_s const*);
+        int handleStateResponse (struct TRI_json_s const*, 
+                                 string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle the inventory response of the master
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleInventoryResponse (struct TRI_json_s const*, string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -168,10 +197,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+       
+        struct TRI_vocbase_s* _vocbase;
 
-        ReplicationServer _master;
-        
-        double _timeout;
+        TRI_replication_master_info_t _masterInfo;
+  
+        TRI_replication_apply_state_t _applyState;
 
         rest::Endpoint* _endpoint;
 
