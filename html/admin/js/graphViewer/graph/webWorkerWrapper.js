@@ -46,20 +46,30 @@ function WebWorkerWrapper(Class, callback) {
   onmessage = function(e) {
     switch(e.data.cmd) {
       case "construct":
-        w = new (Function.prototype.bind.apply(
-          Construct, [null].concat(e.data.args)
-        ))();
-        if (w) {
+        try {
+          w = new (Function.prototype.bind.apply(
+            Construct, [null].concat(e.data.args)
+          ))();
+          if (w) {
+            self.postMessage({
+              cmd: "construct",
+              result: true
+            });
+          } else {
+            self.postMessage({
+              cmd: "construct",
+              result: false
+            });
+          }
+        } catch (err) {
           self.postMessage({
             cmd: "construct",
-            result: true
-          });
-        } else {
-          self.postMessage({
-            cmd: "construct",
-            result: false
+            result: false,
+            error: err
           });
         }
+        
+        
         break;
       default:
         if (w && typeof w[e.data.cmd] === "function") {
@@ -79,8 +89,9 @@ function WebWorkerWrapper(Class, callback) {
     return new window.Blob(code.split());
   },
   worker,
+  url = window.webkitURL || window.URL,
   blobPointer = new BlobObject(Class);
-  worker = new window.Worker(window.webkitURL.createObjectURL(blobPointer));
+  worker = new window.Worker(url.createObjectURL(blobPointer));
   worker.onmessage = callback;
   
   this.call = function(cmd) {
