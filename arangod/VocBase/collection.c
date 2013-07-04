@@ -338,14 +338,17 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_col_file_structure_t structure;
   TRI_vector_string_t files;
   regex_t re;
-  size_t i;
-  size_t n;
+  size_t i, n;
+  
+  if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return structure;
+  }
 
   // check files within the directory
   files = TRI_FilesDirectory(path);
   n = files._length;
-
-  regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
@@ -488,16 +491,19 @@ static bool CheckCollection (TRI_collection_t* collection) {
   TRI_vector_string_t files;
   bool stop;
   regex_t re;
-  size_t i;
-  size_t n;
+  size_t i, n;
+  
+  if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return false;
+  }
 
   stop = false;
 
   // check files within the directory
   files = TRI_FilesDirectory(collection->_directory);
   n = files._length;
-
-  regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
@@ -1179,11 +1185,10 @@ TRI_json_t* TRI_ReadJsonIndexInfo (TRI_vocbase_col_t* collection) {
   TRI_vector_string_t files;
   regex_t re;
   size_t i, n;
-  int res;
 
-  res = regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB);
+  if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) != 0) {
+    LOG_ERROR("unable to compile regular expression");
 
-  if (res != TRI_ERROR_NO_ERROR) {
     return NULL;
   }
 
@@ -1761,6 +1766,12 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
   size_t i, n;
   int res;
   
+  if (regcomp(&re, "^.*\\.new$", REG_EXTENDED) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return TRI_ERROR_INTERNAL;
+  }
+
   res = TRI_ERROR_NO_ERROR;
             
   TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION);
@@ -1773,8 +1784,6 @@ int TRI_UpgradeCollection (TRI_vocbase_t* vocbase,
   // remove all .new files. they are probably left-overs from previous runs
   // .............................................................................
   
-  regcomp(&re, "^.*\\.new$", REG_EXTENDED);
-
   for (i = 0;  i < n;  ++i) {
     regmatch_t matches[1];
     char const* file = files._buffer[i];
