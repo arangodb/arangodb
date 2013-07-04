@@ -173,6 +173,19 @@ extern "C" {
 ///   invalid type.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
+/// - 1400: @LIT{no response}
+///   Will be raised when the replica does not receive any or an incomplete
+///   response from the master.
+/// - 1401: @LIT{invalid response}
+///   Will be raised when the replica receives an invalid response from the
+///   master.
+/// - 1402: @LIT{master error}
+///   Will be raised when the replica receives a server error from the master.
+/// - 1403: @LIT{master incompatible}
+///   Will be raised when the master the replica connects to has an
+///   incompatible version.
+/// - 1404: @LIT{loop detected}
+///   Will be raised when the replica connects to itself for replication.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1181,6 +1194,59 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATAFILE_FULL                                    (1300)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
+///
+/// no response
+///
+/// Will be raised when the replica does not receive any or an incomplete
+/// response from the master.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_NO_RESPONSE                                 (1400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1401: ERROR_REPLICATION_INVALID_RESPONSE
+///
+/// invalid response
+///
+/// Will be raised when the replica receives an invalid response from the
+/// master.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_INVALID_RESPONSE                            (1401)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1402: ERROR_REPLICATION_MASTER_ERROR
+///
+/// master error
+///
+/// Will be raised when the replica receives a server error from the master.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_MASTER_ERROR                                (1402)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1403: ERROR_REPLICATION_MASTER_INCOMPATIBLE
+///
+/// master incompatible
+///
+/// Will be raised when the master the replica connects to has an incompatible
+/// version.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         (1403)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1404: ERROR_REPLICATION_LOOP
+///
+/// loop detected
+///
+/// Will be raised when the replica connects to itself for replication.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_LOOP                                        (1404)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
