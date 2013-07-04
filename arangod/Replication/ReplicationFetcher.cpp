@@ -27,14 +27,16 @@
 
 #include "ReplicationFetcher.h"
 
+#include "BasicsC/json.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "VocBase/server-id.h"
 
 using namespace std;
-//using namespace triagens::basics;
+using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::httpclient;
@@ -54,12 +56,13 @@ using namespace triagens::httpclient;
 
 ReplicationFetcher::ReplicationFetcher (const string& masterEndpoint,
                                         double timeout) :
-  _masterEndpoint(masterEndpoint),
   _timeout(timeout),
   _endpoint(Endpoint::clientFactory(masterEndpoint)),
   _connection(0),
   _client(0) {
  
+  _master.endpoint = masterEndpoint;
+
   if (_endpoint != 0) { 
     _connection = GeneralClientConnection::factory(_endpoint, _timeout, _timeout, 3);
 
@@ -129,17 +132,17 @@ int ReplicationFetcher::connect () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get master status
+/// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-int ReplicationFetcher::getMasterStatus () {
+int ReplicationFetcher::getMasterState () {
   if (_client == 0) {
     return TRI_ERROR_INTERNAL;
   }
 
   map<string, string> headers;
 
-  // send GET request
+  // send request to get master inventory
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                 "/_api/replication/state",
                                                 0, 
@@ -148,27 +151,37 @@ int ReplicationFetcher::getMasterStatus () {
 
   if (response == 0) {
     // TODO: fix error code
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
   string returnMessage;
-  int    returnCode;
+  int    res = TRI_ERROR_NO_ERROR;
 
   if (! response->isComplete()) {
     returnMessage = _client->getErrorMessage();
-    returnCode    = 500;
+    res           = TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
   else {
-    returnMessage = response->getHttpReturnMessage();
-    returnCode    = response->getHttpReturnCode();
+    returnMessage  = response->getHttpReturnMessage();
+
+    if (response->wasHttpError()) {
+      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    }
+    else {
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+
+      if (json != 0) {
+        res = handleStateResponse(json);
+
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+    }
+  std::cout << response->getBody().str() << std::endl;
   }
 
-  std::cout << "GOT STATUS CODE " << returnCode << ", MESSAGE: " << returnMessage << std::endl;
-  std::cout << response->getBody().str() << std::endl;
-  
   delete response;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +190,10 @@ int ReplicationFetcher::getMasterStatus () {
 
 int ReplicationFetcher::run () {
   // TODO: make this a loop
-  return getMasterStatus();
+  int res = getMasterState();
+
+  std::cout << "RES: " << res << "\n";
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +208,66 @@ int ReplicationFetcher::run () {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle the state response of the master
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::handleStateResponse (TRI_json_t const* json) {
+  TRI_json_t const* server = TRI_LookupArrayJson(json, "server");
+
+  if (server == 0 || server->_type != TRI_JSON_ARRAY) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_json_t const* version = TRI_LookupArrayJson(server, "version");
+  
+  if (version == 0 || 
+      version->_type != TRI_JSON_STRING ||
+      version->_value._string.data == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  TRI_json_t const* id = TRI_LookupArrayJson(server, "id");
+
+  if (id == 0 || 
+      id->_type != TRI_JSON_STRING ||
+      id->_value._string.data == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  const TRI_server_id_t masterId = StringUtils::uint64(id->_value._string.data);
+
+  if (masterId == 0) {
+    // invalid master id
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  if (masterId == TRI_GetServerId()) {
+    // master and replica are the same instance. this is not supported.
+    return TRI_ERROR_REPLICATION_LOOP;
+  }
+
+  int major = 0;
+  int minor = 0;
+
+  if (sscanf(version->_value._string.data, "%d.%d", &major, &minor) != 2) {
+    return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
+  }
+
+  if (major != 1 ||
+      (major == 1 && minor != 4)) {
+    return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
+  }
+
+  _master.version.major = major;
+  _master.version.minor = minor;
+  _master.id            = masterId;
+
+  _master.log("connected to");
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
