@@ -554,11 +554,30 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   collection = data;
   cid = 0;
 
+#ifdef _WIN32
+  // .........................................................................
+  // Just thank your lucky stars that there are only 4 backslashes
+  // .........................................................................
+  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+#else
+  res = regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+#endif
+
+  if (res != 0) {
+    LOG_ERROR("unable to complile regular expression");
+
+    return false;
+  }
+
+
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
     LOG_ERROR("someone resurrected the collection '%s'", collection->_name);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    regfree(&re);
+
     return false;
   }
 
@@ -573,6 +592,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                 (int) collection->_type);
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      regfree(&re);
+
       return false;
     }
 
@@ -588,6 +609,9 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                 TRI_last_error());
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      
+      regfree(&re);
+
       return true;
     }
 
@@ -626,15 +650,6 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   if (*collection->_path != '\0') {
     int regExpResult;
 
-#ifdef _WIN32
-      // .........................................................................
-      // Just thank your lucky stars that there are only 4 backslashes
-      // .........................................................................
-      regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
-#else
-      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
-#endif
-    
     regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
 
     if (regExpResult == 0) {
@@ -697,9 +712,9 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                 collection->_name,
                 collection->_path);
     }
-
-    regfree(&re);
   }
+    
+  regfree(&re);
 
   if (cid > 0) {
     TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
@@ -919,10 +934,16 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   size_t n;
   size_t i;
 
+  res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
+
+  if (res != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return res;
+  }
+  
   files = TRI_FilesDirectory(path);
   n = files._length;
-
-  regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
   for (i = 0;  i < n;  ++i) {
     char* name;
@@ -957,8 +978,8 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-        regfree(&re);
         TRI_DestroyVectorString(&files);
+        regfree(&re);
 
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
       }
@@ -1032,9 +1053,9 @@ static int ScanPath (TRI_vocbase_t* vocbase,
               LOG_ERROR("upgrading collection '%s' failed.", info._name);
             
               TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-              regfree(&re);
               TRI_DestroyVectorString(&files);
               TRI_FreeCollectionInfoOptions(&info);
+              regfree(&re);
  
               return TRI_set_errno(res);
             }
@@ -1052,9 +1073,9 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             LOG_ERROR("failed to add document collection from '%s'", file);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-            regfree(&re);
             TRI_DestroyVectorString(&files);
             TRI_FreeCollectionInfoOptions(&info);
+            regfree(&re);
 
             return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
           }
@@ -1079,6 +1100,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   regfree(&re);
 
   TRI_DestroyVectorString(&files);
+
   return TRI_ERROR_NO_ERROR;
 }
 
