@@ -111,6 +111,7 @@ static int TraditionalInit (TRI_key_generator_t* const generator,
   traditional_keygen_t* data;
 
   data = (traditional_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(traditional_keygen_t), false);
+
   if (data == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -314,6 +315,7 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
   autoincrement_keygen_t* data;
 
   data = (autoincrement_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(autoincrement_keygen_t), false);
+
   if (data == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
