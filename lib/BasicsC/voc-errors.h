@@ -184,7 +184,9 @@ extern "C" {
 /// - 1403: @LIT{master incompatible}
 ///   Will be raised when the master the replica connects to has an
 ///   incompatible version.
-/// - 1404: @LIT{loop detected}
+/// - 1404: @LIT{master change}
+///   Will be raised when the master the replica connects is changed.
+/// - 1405: @LIT{loop detected}
 ///   Will be raised when the replica connects to itself for replication.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
@@ -1239,14 +1241,24 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         (1403)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1404: ERROR_REPLICATION_LOOP
+/// @brief 1404: ERROR_REPLICATION_MASTER_CHANGE
+///
+/// master change
+///
+/// Will be raised when the master the replica connects is changed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_MASTER_CHANGE                               (1404)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1405: ERROR_REPLICATION_LOOP
 ///
 /// loop detected
 ///
 /// Will be raised when the replica connects to itself for replication.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_LOOP                                        (1404)
+#define TRI_ERROR_REPLICATION_LOOP                                        (1405)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
