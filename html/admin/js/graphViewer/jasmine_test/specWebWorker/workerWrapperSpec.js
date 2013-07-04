@@ -2,7 +2,7 @@
 /*global beforeEach, afterEach, jasmine */
 /*global runs, waits, waitsFor */
 /*global describe, it, expect, spyOn */
-/*global window*/
+/*global window, toString*/
 /*global WebWorkerWrapper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +146,48 @@
           expect(error).toEqual("Failed");
         });
       });
+      
+      it('should pass arbitrary many parameters for constructor', function() {
+        var created, error;
+        
+        runs(function() {
+          created = false;
+          error = "";
+          function Test(arr, obj, num, str) {
+            if (arr === undefined) {
+              throw "Failed to pass array";
+            }
+            if (obj === undefined) {
+              throw "Failed to pass object";
+            }
+            if (num === undefined || num !== 5.61) {
+              throw "Failed to pass number";
+            }
+            if (str === undefined || str !== "Foxx") {
+              throw "Failed to pass string";
+            }
+            
+          }
+          var cb = function(d){
+            var data = d.data;
+            if (data.cmd === "construct") {
+              created = data.result;
+              error = data.error;
+            }
+          },
+          worker = new WebWorkerWrapper(Test, cb, [1,2,3], {a: "b"}, 5.61, "Foxx");
+        });
+        
+        waitsFor(function(){
+          return created;
+        }, 1000);
+
+        runs(function() {
+          expect(created).toBeTruthy();
+          expect(error).toBeUndefined();
+        });
+      });
+      
     });
     
     
