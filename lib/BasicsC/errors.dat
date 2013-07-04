@@ -115,6 +115,16 @@ ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
 
 ################################################################################
+## ArangoDB replication errors
+################################################################################
+
+ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replica does not receive any or an incomplete response from the master."
+ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replica receives an invalid response from the master."
+ERROR_REPLICATION_MASTER_ERROR,1402,"master error","Will be raised when the replica receives a server error from the master."
+ERROR_REPLICATION_MASTER_INCOMPATIBLE,1403,"master incompatible","Will be raised when the master the replica connects to has an incompatible version."
+ERROR_REPLICATION_LOOP,1404,"loop detected","Will be raised when the replica connects to itself for replication."
+
+################################################################################
 ## ArangoDB query errors
 ################################################################################
 
