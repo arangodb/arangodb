@@ -122,7 +122,8 @@ ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replic
 ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replica receives an invalid response from the master."
 ERROR_REPLICATION_MASTER_ERROR,1402,"master error","Will be raised when the replica receives a server error from the master."
 ERROR_REPLICATION_MASTER_INCOMPATIBLE,1403,"master incompatible","Will be raised when the master the replica connects to has an incompatible version."
-ERROR_REPLICATION_LOOP,1404,"loop detected","Will be raised when the replica connects to itself for replication."
+ERROR_REPLICATION_MASTER_CHANGE,1404,"master change","Will be raised when the master the replica connects is changed."
+ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replica connects to itself for replication."
 
 ################################################################################
 ## ArangoDB query errors
