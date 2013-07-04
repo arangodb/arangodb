@@ -62,7 +62,7 @@
       });
     });
     
-    describe('setup correctly', function() {
+    describe('checking construction', function() {
       
       it('should create an instance of the given class', function() {
         
@@ -190,7 +190,116 @@
       
     });
     
-    
+    describe('checking communication', function() {
+      
+      var worker, returned, called;
+      
+      beforeEach(function() {
+        called = false;
+        function Test(){
+          this.noParams = function() {
+            return "Success";
+          };
+          
+          this.oneParam = function(a) {
+            return "Param: " + a;
+          };
+          
+          this.manyParams = function(a, b, c) {
+            return a + " -> " + b + " -> " + c;
+          };
+          
+          this.failure = function() {
+            throw "Failed";
+          };
+        }
+        var cb = function(d){
+          if (d.data.cmd !== "construct") {
+            returned = d.data;
+            called = true;
+          }
+        };
+        worker = new WebWorkerWrapper(Test, cb);
+      });
+      
+      it('should call a function by name', function() {
+        runs(function() {
+          worker.call("noParams");
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(returned.cmd).toEqual("noParams");
+          expect(returned.result).toEqual("Success");
+        });
+        
+      });
+      
+      it('should call a function with param', function() {
+        runs(function() {
+          worker.call("oneParam", "Alice");
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(returned.cmd).toEqual("oneParam");
+          expect(returned.result).toEqual("Param: Alice");
+        });
+        
+      });
+      
+      it('should call a function with many params', function() {
+        runs(function() {
+          worker.call("manyParams", "A", "B", "C");
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(returned.cmd).toEqual("manyParams");
+          expect(returned.result).toEqual("A -> B -> C");
+        });
+        
+      });
+      
+      it('should give info if function does not exist', function() {
+        runs(function() {
+          worker.call("unknown");
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(returned.cmd).toEqual("unknown");
+          expect(returned.error).toEqual("Method not known");
+        });
+      });
+      
+      it('should give info if function throws error', function() {
+        runs(function() {
+          worker.call("failure");
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(returned.cmd).toEqual("failure");
+          expect(returned.error).toEqual("Failed");
+        });
+      });
+    });
   });
   
 }());

@@ -68,14 +68,24 @@ function WebWorkerWrapper(Class, callback) {
             error: err
           });
         }
-        
-        
         break;
       default:
         if (w && typeof w[e.data.cmd] === "function") {
+          try {
+            self.postMessage({
+              cmd: e.data.cmd,
+              result: w[e.data.cmd].apply(w, e.data.args)
+            });
+          } catch (err1) {
+            self.postMessage({
+              cmd: e.data.cmd,
+              error: err1
+            });
+          }
+        } else {
           self.postMessage({
             cmd: e.data.cmd,
-            result: w[e.data.cmd].apply(w, e.data.args)
+            error: "Method not known"
           });
         }
     }
