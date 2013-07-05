@@ -893,6 +893,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   size_t i; 
   int res;
   bool hasMore;
+  bool bufferFull;
   bool ignoreMarkers;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
@@ -910,6 +911,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   lastTid        = 0;
   res            = TRI_ERROR_NO_ERROR;
   hasMore        = true;
+  bufferFull     = false;
   ignoreMarkers  = false;
 
   for (i = 0; i < datafiles._length; ++i) {
@@ -1032,7 +1034,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
       if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
         // abort the iteration
-        hasMore = ((ptr < end) || (i < datafiles._length - 1));
+        bufferFull = true;
 
         goto NEXT_DF;
       }
@@ -1050,7 +1052,7 @@ NEXT_DF:
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR || ! hasMore) {
+    if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
       break;
     }
   }
@@ -1058,15 +1060,17 @@ NEXT_DF:
   TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (datafiles._length > 0) {
+    if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;
       dump->_hasMore       = hasMore;
+      dump->_bufferFull    = bufferFull;
     }
     else {
       // no data available for requested range
       dump->_lastFoundTick = 0;
       dump->_hasMore       = false;
+      dump->_bufferFull    = false;
     }
   }
 
