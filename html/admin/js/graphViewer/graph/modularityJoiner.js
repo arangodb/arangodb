@@ -568,13 +568,13 @@ function ModularityJoiner() {
     coms = getCommunities();
     if (focus !== undefined) {
       _.each(coms, function(obj, key) {
-        if (_.contains(obj.nodes, focus._id)) {
+        if (_.contains(obj.nodes, focus)) {
           delete coms[key];
         }
       });
       
       res = _.pluck(_.values(coms), "nodes");
-      dist = floatDist(focus._id);
+      dist = floatDist(focus);
       res.sort(sortByDistance);
       isRunning = false;
       return res[0];
@@ -607,8 +607,5 @@ function ModularityJoiner() {
   
   this.getCommunity = getCommunity;
   
-  this.getDimensions = function() {
-    return _.isEmpty({});
-  };
   
 }
