@@ -1,0 +1,85 @@
+unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44160740
+{"hello":"world"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "44488420"
+location: /_api/document/products/44160740
+
+{ 
+  "error" : false, 
+  "_id" : "products/44160740", 
+  "_rev" : "44488420", 
+  "_key" : "44160740" 
+}
+
+unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44160740
+{"numbers":{"one":1,"two":2,"three":3,"empty":null}}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "45012708"
+location: /_api/document/products/44160740
+
+{ 
+  "error" : false, 
+  "_id" : "products/44160740", 
+  "_rev" : "45012708", 
+  "_key" : "44160740" 
+}
+
+unix> curl --dump - http://localhost:8529/_api/document/products/44160740
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "45012708"
+
+{ 
+  "one" : "world", 
+  "hello" : "world", 
+  "numbers" : { 
+    "empty" : null, 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3 
+  }, 
+  "_id" : "products/44160740", 
+  "_rev" : "45012708", 
+  "_key" : "44160740" 
+}
+
+unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44160740?keepNull=false
+{"hello":null,"numbers":{"four":4}}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "45405924"
+location: /_api/document/products/44160740
+
+{ 
+  "error" : false, 
+  "_id" : "products/44160740", 
+  "_rev" : "45405924", 
+  "_key" : "44160740" 
+}
+
+unix> curl --dump - http://localhost:8529/_api/document/products/44160740
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "45405924"
+
+{ 
+  "one" : "world", 
+  "numbers" : { 
+    "empty" : null, 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3, 
+    "four" : 4 
+  }, 
+  "_id" : "products/44160740", 
+  "_rev" : "45405924", 
+  "_key" : "44160740" 
+}
+

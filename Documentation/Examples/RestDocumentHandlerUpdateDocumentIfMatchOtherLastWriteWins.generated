@@ -1,0 +1,15 @@
+unix> curl -X PUT --header 'If-Match:"41080548"' --data @- --dump - http://localhost:8529/_api/document/products/40752868?policy=last
+{}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "41277156"
+location: /_api/document/products/40752868
+
+{ 
+  "error" : false, 
+  "_id" : "products/40752868", 
+  "_rev" : "41277156", 
+  "_key" : "40752868" 
+}
+

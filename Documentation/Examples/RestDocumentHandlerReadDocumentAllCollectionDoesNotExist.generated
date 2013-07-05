@@ -1,0 +1,12 @@
+unix> curl --dump - http://localhost:8529/_api/document/?collection=doesnotexist
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "collection /_api/collection/doesnotexist not found", 
+  "code" : 404, 
+  "errorNum" : 1203 
+}
+

@@ -1,6 +1,8 @@
 v1.3.3 (XXXX-XX-XX)
 -------------------
 
+* updated and fixed generated examples
+
 * issue #559: added Foxx documentation to user manual
 
 * added missing error reporting for errors that happened during import of edges
