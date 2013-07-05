@@ -79,9 +79,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         typedef enum {
+          PHASE_VALIDATE,
           PHASE_DROP,
           PHASE_CREATE,
-          PHASE_DATA
+          PHASE_DATA,
+          PHASE_INDEXES
         }
         setup_phase_e;
 
@@ -206,7 +208,8 @@ namespace triagens {
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollectionInitial (struct TRI_json_s const*, 
+        int handleCollectionInitial (struct TRI_json_s const*,
+                                     struct TRI_json_s const*, 
                                      string&, 
                                      setup_phase_e);
 
@@ -222,6 +225,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleInventoryResponse (struct TRI_json_s const*, string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over all collections from a list and apply an action
+////////////////////////////////////////////////////////////////////////////////
+  
+        int iterateCollections (struct TRI_json_s const*,
+                                string&,
+                                setup_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

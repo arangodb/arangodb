@@ -45,6 +45,8 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_df_marker_s;
+struct TRI_index_s;
+struct TRI_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               DOCUMENT COLLECTION
@@ -275,6 +277,14 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index, based on a JSON description
+////////////////////////////////////////////////////////////////////////////////
+  
+int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
+                                         struct TRI_json_s const*,
+                                         struct TRI_index_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rolls back a document operation
