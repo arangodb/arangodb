@@ -566,6 +566,10 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   TRI_voc_key_t key;
   TRI_voc_rid_t oldRev;
   TRI_voc_rid_t rid;
+
+  if (! TRI_ReserveStringBuffer(buffer, 256)) {
+    return false;
+  }
   
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     oldRev = 0;
