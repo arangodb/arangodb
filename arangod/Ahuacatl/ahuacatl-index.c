@@ -346,14 +346,14 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
           // primary index key names must be treated differently. _id and _key are the same
-          if (! TRI_EqualString("_id", fieldName) && ! TRI_EqualString("_key", fieldName)) {
+          if (! TRI_EqualString("_id", fieldName) && ! TRI_EqualString(TRI_VOC_ATTRIBUTE_KEY, fieldName)) {
             continue;
           }
         }
         else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
           // edge index key names must be treated differently. _from and _to can be used independently
-          if (! TRI_EqualString("_from", fieldName) &&
-              ! TRI_EqualString("_to", fieldName)) {
+          if (! TRI_EqualString(TRI_VOC_ATTRIBUTE_FROM, fieldName) &&
+              ! TRI_EqualString(TRI_VOC_ATTRIBUTE_TO, fieldName)) {
             continue;
           }
         }

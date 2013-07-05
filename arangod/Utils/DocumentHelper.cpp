@@ -136,7 +136,7 @@ int DocumentHelper::getKey (TRI_json_t const* json,
   }
 
   // check _key is there
-  const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
+  const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, TRI_VOC_ATTRIBUTE_KEY);
 
   if (k == 0) {
     return TRI_ERROR_NO_ERROR;

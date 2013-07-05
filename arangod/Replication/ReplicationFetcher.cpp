@@ -238,6 +238,7 @@ int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
+        const TRI_voc_rid_t rid = StringUtils::uint64(JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_REV, ""));
 
         if (type[7] == 'e') {
           // edge
@@ -248,8 +249,9 @@ int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection
             res = TRI_ERROR_NO_ERROR;
           }
 
-          string from = JsonHelper::getStringValue(json, "_from", "");
-          string to   = JsonHelper::getStringValue(json, "_to", "");
+          string from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
+          string to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
+          
 
           // parse _from
           TRI_document_edge_t edge;
@@ -263,7 +265,7 @@ int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insert(trxCollection, key, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false);
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false);
           }
         }
         else {
@@ -272,7 +274,7 @@ int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insert(trxCollection, key, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false);
+            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false);
           }
         }
       }
