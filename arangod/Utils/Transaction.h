@@ -719,8 +719,9 @@ namespace triagens {
           }
 
           res = create(trxCollection, 
-                       markerType, 
                        key, 
+                       0,
+                       markerType, 
                        mptr, 
                        shaped, 
                        data, 
@@ -736,8 +737,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int create (TRI_transaction_collection_t* trxCollection,
-                           const TRI_df_marker_type_e markerType,
                            const TRI_voc_key_t key,
+                           TRI_voc_rid_t rid,
+                           const TRI_df_marker_type_e markerType,
                            TRI_doc_mptr_t* mptr,
                            TRI_shaped_json_t const* shaped,
                            void const* data,
@@ -747,6 +749,7 @@ namespace triagens {
 
           int res = primary->insert(trxCollection,
                                     key, 
+                                    rid,
                                     mptr, 
                                     markerType, 
                                     shaped, 

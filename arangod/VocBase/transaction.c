@@ -725,7 +725,16 @@ static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = primary->insert(trxCollection, coordinator->_key, &coordinator->_mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, NULL, false, false);
+  res = primary->insert(trxCollection, 
+                        coordinator->_key, 
+                        0, 
+                        &coordinator->_mptr, 
+                        TRI_DOC_MARKER_KEY_DOCUMENT, 
+                        shaped, 
+                        NULL, 
+                        false, 
+                        false);
+
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
   return res;
