@@ -138,7 +138,7 @@
         };
       });
 
-      
+      /*
       describe('getters', function() {
         
         beforeEach(function() {
@@ -604,9 +604,9 @@
         
         
       });
-      
+      */
       describe('checking direct community identification', function() {
-      
+        
         it('should be able to identify an obvious community', function() {
           helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
           edges.push(helper.createSimpleEdge(nodes, 0, 1));
@@ -618,7 +618,7 @@
             joiner.insertEdge(e.source._id, e.target._id);
           });
         
-          var com = joiner.getCommunity(3, nodes[4]);
+          var com = joiner.getCommunity(3, nodes[4]._id);
           expect(com).toContainNodes(["0", "1", "2"]);
         });
       
@@ -635,10 +635,10 @@
             joiner.insertEdge(e.source._id, e.target._id);
           });
         
-          var com = joiner.getCommunity(6, nodes[4]);
+          var com = joiner.getCommunity(6, nodes[4]._id);
           expect(com).toContainNodes(["0", "1", "2", "3"]);
         });
-      
+        
         it('should not return a close group if there is an alternative', function() {
           helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
           helper.insertClique(nodes, edges, [0, 1, 2]);
@@ -650,11 +650,11 @@
           _.each(edges, function(e) {
             joiner.insertEdge(e.source._id, e.target._id);
           });
-        
-          var com = joiner.getCommunity(6, nodes[3]);
+          var com = joiner.getCommunity(6, nodes[3]._id);
+          console.log(JSON.stringify(com));
           expect(com).toContainNodes(["6", "7", "8"]);
         });
-      
+        /*
         it('should also take the best community if no focus is given', function() {
           helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
           helper.insertClique(nodes, edges, [0, 1, 2]);
@@ -671,7 +671,7 @@
           var com = joiner.getCommunity(6);
           expect(com).toContainNodes(["0", "1", "2"]);
         });
-        
+        */
       });
       
       /*
@@ -887,7 +887,7 @@
         
       });
       */
-      
+      /*
       describe('checking consistency after join', function() {
         
         beforeEach(function() {
@@ -1045,8 +1045,8 @@
         });
         
       });
-      
-      
+      */
+      /*
       describe('checking large networks', function() {
         
         it('should be able to handle 1000 nodes', function() {
@@ -1605,7 +1605,7 @@
         });
         
       });
-      
+      */
     
       /*
       it('should be able to handle 10000 nodes', function() {
@@ -1691,31 +1691,6 @@
         });
       });
       
-      it('should request the dimension', function() {
-        runs(function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
-          edges.push(helper.createSimpleEdge(nodes, 0, 1));
-          edges.push(helper.createSimpleEdge(nodes, 0, 2));
-          edges.push(helper.createSimpleEdge(nodes, 0, 3));
-          edges.push(helper.createSimpleEdge(nodes, 3, 4));
-      
-          _.each(edges, function(e) {
-            joiner.call("insertEdge", e.source._id, e.target._id);
-          });
-          joiner.call("getDimensions");
-          
-        });
-        
-        waitsFor(function() {
-          return called;
-        });
-        
-        runs(function() {
-          expect(result).toBeTruthy();
-        });
-        
-      });
-      
       it('should be able to identify an obvious community', function() {
         
         runs(function() {
@@ -1737,66 +1712,96 @@
         });
         
         runs(function() {
-          console.log(result);
           expect(result).toContainNodes(["0", "1", "2"]);
           expect(error).toBeUndefined();
         });
       });
       
-      /*
       it('should prefer cliques as a community over an equal sized other group', function() {
-        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
-        helper.insertClique(nodes, edges, [0, 1, 2, 3]);
-        edges.push(helper.createSimpleEdge(nodes, 4, 3));
-        edges.push(helper.createSimpleEdge(nodes, 4, 5));
-        edges.push(helper.createSimpleEdge(nodes, 5, 6));
-        edges.push(helper.createSimpleEdge(nodes, 5, 7));
-        edges.push(helper.createSimpleEdge(nodes, 5, 8));
+        
+        runs(function() {
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+          helper.insertClique(nodes, edges, [0, 1, 2, 3]);
+          edges.push(helper.createSimpleEdge(nodes, 4, 3));
+          edges.push(helper.createSimpleEdge(nodes, 4, 5));
+          edges.push(helper.createSimpleEdge(nodes, 5, 6));
+          edges.push(helper.createSimpleEdge(nodes, 5, 7));
+          edges.push(helper.createSimpleEdge(nodes, 5, 8));
       
-        _.each(edges, function(e) {
-          joiner.call("insertEdge", e.source._id, e.target._id);
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
+          
+          joiner.call("getCommunity", 6, nodes[4]._id);
         });
         
-      
-        var com = joiner.getCommunity(6, nodes[4]);
-        expect(com).toContainNodes(["0", "1", "2", "3"]);
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(result).toContainNodes(["0", "1", "2", "3"]);
+          expect(error).toBeUndefined();
+        });
+        
       });
     
       it('should not return a close group if there is an alternative', function() {
-        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
-        helper.insertClique(nodes, edges, [0, 1, 2]);
-        helper.insertClique(nodes, edges, [3, 4, 5]);
-        helper.insertClique(nodes, edges, [6, 7, 8]);
-        edges.push(helper.createSimpleEdge(nodes, 3, 2));
-        edges.push(helper.createSimpleEdge(nodes, 5, 6));
+        
+        runs(function() {
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+          helper.insertClique(nodes, edges, [0, 1, 2]);
+          helper.insertClique(nodes, edges, [3, 4, 5]);
+          helper.insertClique(nodes, edges, [6, 7, 8]);
+          edges.push(helper.createSimpleEdge(nodes, 3, 2));
+          edges.push(helper.createSimpleEdge(nodes, 5, 6));
       
-        _.each(edges, function(e) {
-          joiner.call("insertEdge", e.source._id, e.target._id);
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
+          
+          joiner.call("getCommunity", 6, nodes[3]._id);
         });
         
-      
-        var com = joiner.getCommunity(6, nodes[3]);
-        expect(com).toContainNodes(["6", "7", "8"]);
-      });
-    
-      it('should also take the best community if no focus is given', function() {
-        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
-        helper.insertClique(nodes, edges, [0, 1, 2]);
-        edges.push(helper.createSimpleEdge(nodes, 3, 2));
-        edges.push(helper.createSimpleEdge(nodes, 3, 4));
-        edges.push(helper.createSimpleEdge(nodes, 4, 5));
-        edges.push(helper.createSimpleEdge(nodes, 5, 6));
-        edges.push(helper.createSimpleEdge(nodes, 5, 7));
-      
-        _.each(edges, function(e) {
-          joiner.call("insertEdge", e.source._id, e.target._id);
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          console.log(JSON.stringify(result));
+          expect(result).toContainNodes(["6", "7", "8"]);
+          expect(error).toBeUndefined();
         });
       
-        var com = joiner.getCommunity(6);
-        expect(com).toContainNodes(["0", "1", "2"]);
       });
-      */
+      
+      it('should also take the best community if no focus is given', function() {
+        runs(function() {
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
+          helper.insertClique(nodes, edges, [0, 1, 2]);
+          edges.push(helper.createSimpleEdge(nodes, 3, 2));
+          edges.push(helper.createSimpleEdge(nodes, 3, 4));
+          edges.push(helper.createSimpleEdge(nodes, 4, 5));
+          edges.push(helper.createSimpleEdge(nodes, 5, 6));
+          edges.push(helper.createSimpleEdge(nodes, 5, 7));
+      
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
+          
+          joiner.call("getCommunity", 6);
+        });
+      
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(result).toContainNodes(["0", "1", "2"]);
+          expect(error).toBeUndefined();
+        });
+      });
+      
     });
-    
   });
 }());
