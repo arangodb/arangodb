@@ -595,7 +595,7 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
 int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxCollection,
                                               TRI_voc_tick_t maxTick,
                                               string& errorMsg) {
-  static const uint64_t chunkSize = 1024 * 1024; 
+  static const uint64_t chunkSize = 2 * 1024 * 1024; 
 
   if (_client == 0) {
     return TRI_ERROR_INTERNAL;
@@ -616,7 +616,6 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                  "&from=" + StringUtils::itoa(fromTick) + 
                  "&to=" + StringUtils::itoa(maxTick);
 
-LOGGER_INFO("requesting " << url);
     // send request
     SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                   url,
@@ -650,41 +649,38 @@ LOGGER_INFO("requesting " << url);
     }
 
     int res;
-    bool hasMore = false;
+    bool checkMore = false;
     bool found;
-    string header = response->getHeaderField("x-arango-hasmore", found);
+    string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
 
     if (found) {
-      hasMore = StringUtils::boolean(header);
+      checkMore = StringUtils::boolean(header);
       res = TRI_ERROR_NO_ERROR;
     }
     else {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                 ": header 'x-arango-hasmore' is missing";
+                 ": header '" TRI_REPLICATION_HEADER_CHECKMORE "' is missing";
     }
    
-    if (hasMore) { 
-      header = response->getHeaderField("x-arango-lastfound", found);
+    if (checkMore) { 
+      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTFOUND, found);
 
       if (found) {
         TRI_voc_tick_t tick = StringUtils::uint64(header);
-      LOGGER_INFO("got last found tick: " << tick);
 
         if (tick > fromTick) {
           fromTick = tick;
         }
         else {
-          res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-      
-          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                     ": illogical tick value";
+          // we got the same tick again, this indicates we're at the end
+          checkMore = false;
         }
       }
       else {
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                   ": header 'x-arango-lastfound' is missing";
+                   ": header '" TRI_REPLICATION_HEADER_LASTFOUND "' is missing";
       }
     }
 
@@ -698,9 +694,11 @@ LOGGER_INFO("requesting " << url);
       return res;
     }
 
-    if (! hasMore || fromTick == 0) {
+    if (! checkMore || fromTick == 0) {
       // done
-      LOGGER_INFO("successfully transferred " << markerCount << " data markers");
+      if (markerCount > 0) {
+        LOGGER_INFO("successfully transferred " << markerCount << " data markers");
+      }
       
       return res;
     }
