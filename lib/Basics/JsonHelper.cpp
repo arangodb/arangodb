@@ -25,39 +25,16 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_JSON_HELPER_H
-#define TRIAGENS_BASICS_JSON_HELPER_H 1
+#include "Basics/JsonHelper.h"
 
-#include "Basics/Common.h"
+#include "BasicsC/json.h"
+#include "BasicsC/string-buffer.h"
 
-struct TRI_json_s;
-
-namespace triagens {
-  namespace basics {
+using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class JsonHelper
 // -----------------------------------------------------------------------------
-
-    class JsonHelper {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        JsonHelper ();
-        ~JsonHelper ();
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
@@ -68,85 +45,128 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
       
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify json
 ////////////////////////////////////////////////////////////////////////////////
         
-        static std::string toString (struct TRI_json_s const*);
+std::string JsonHelper::toString (TRI_json_t const* json) {
+  TRI_string_buffer_t buffer;
+
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  int res = TRI_StringifyJson(&buffer, json);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return "";
+  }
+
+  string out(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+  TRI_DestroyStringBuffer(&buffer);
+
+  return out;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isArray (struct TRI_json_s const*);
+bool JsonHelper::isArray (TRI_json_t const* json) {
+  return json != 0 && json->_type == TRI_JSON_ARRAY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for lists
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isList (struct TRI_json_s const*);
+bool JsonHelper::isList (TRI_json_t const* json) {
+  return json != 0 && json->_type == TRI_JSON_LIST;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for strings
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isString (struct TRI_json_s const*);
+bool JsonHelper::isString (TRI_json_t const* json) {
+  return json != 0 && json->_type == TRI_JSON_STRING && json->_value._string.data != 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for numbers
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isNumber (struct TRI_json_s const*);
+bool JsonHelper::isNumber (TRI_json_t const* json) {
+  return json != 0 && json->_type == TRI_JSON_NUMBER;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for booleans
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isBoolean (struct TRI_json_s const*);
+bool JsonHelper::isBoolean (TRI_json_t const* json) {
+  return json != 0 && json->_type == TRI_JSON_BOOLEAN;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an array sub-element
 ////////////////////////////////////////////////////////////////////////////////
         
-        static struct TRI_json_s* getArrayElement (struct TRI_json_s const*, 
-                                                   const char* name);
+TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json, 
+                                         const char* name) {
+  if (! isArray(json)) {
+    return 0;
+  }
+
+  return TRI_LookupArrayJson(json, name);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
-        static std::string getStringValue (struct TRI_json_s const*, 
-                                           const char*, 
-                                           const std::string&);
+std::string JsonHelper::getStringValue (TRI_json_t const* json, 
+                                        const char* name, 
+                                        const std::string& defaultValue) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (isString(sub)) {
+    return string(sub->_value._string.data, sub->_value._string.length - 1);
+  }
+  return defaultValue;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a numeric sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-        static double getNumberValue (struct TRI_json_s const*, 
-                                      const char*, 
-                                      double);
+double JsonHelper::getNumberValue (TRI_json_t const* json, 
+                                   const char* name, 
+                                   double defaultValue) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (isNumber(sub)) {
+    return sub->_value._number;
+  }
+  return defaultValue;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
-        static double getBooleanValue (struct TRI_json_s const*, 
-                                       const char*, 
-                                       bool);
+double JsonHelper::getBooleanValue (TRI_json_t const* json, 
+                                    const char* name, 
+                                    bool defaultValue) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (isBoolean(sub)) {
+    return sub->_value._boolean;
+  }
+  return defaultValue;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
         
-    };
-  }
-}
-
-#endif
-
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"

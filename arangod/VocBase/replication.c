@@ -757,8 +757,6 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
   APPEND_STRING(buffer, "\",\"key\":\""); 
   // key is user-defined, but does not need escaping
   APPEND_STRING(buffer, key); 
-  APPEND_STRING(buffer, "\",\"rid\":\""); 
-  APPEND_UINT64(buffer, (uint64_t) rid); 
 
   // document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
@@ -1196,6 +1194,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 
   res = LogEvent(logger, 0, true, OPERATION_REPLICATION_STOP, buffer); 
   
+  TRI_CommitTransaction(logger->_trx, 0);
   TRI_FreeTransaction(logger->_trx);
   
   LOG_INFO("stopped replication logger for database '%s', last id: %llu", 

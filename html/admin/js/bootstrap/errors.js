@@ -94,6 +94,7 @@
     "ERROR_REPLICATION_MASTER_INCOMPATIBLE" : { "code" : 1403, "message" : "master incompatible" }, 
     "ERROR_REPLICATION_MASTER_CHANGE" : { "code" : 1404, "message" : "master change" }, 
     "ERROR_REPLICATION_LOOP"       : { "code" : 1405, "message" : "loop detected" }, 
+    "ERROR_REPLICATION_UNEXPECTED_MARKER" : { "code" : 1406, "message" : "unexpected marker" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" }, 
