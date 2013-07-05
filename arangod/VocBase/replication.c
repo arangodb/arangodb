@@ -888,7 +888,6 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
-  TRI_voc_tick_t firstFoundTick;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
   size_t i; 
@@ -907,7 +906,6 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   document       = (TRI_document_collection_t*) primary;
  
   // setup some iteration state
-  firstFoundTick = 0;
   lastFoundTick  = 0;
   lastTid        = 0;
   res            = TRI_ERROR_NO_ERROR;
@@ -982,7 +980,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
-      if (foundTick < tickMin) {
+      if (foundTick <= tickMin) {
         // marker too old
         continue;
       }
@@ -994,9 +992,6 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
       // note the last tick we processed
-      if (firstFoundTick == 0) {
-        firstFoundTick = foundTick;
-      }
       lastFoundTick = foundTick;
 
 

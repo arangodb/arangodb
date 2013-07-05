@@ -331,7 +331,8 @@ int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection
 
 int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCollection,
                                              SimpleHttpResult* response,
-                                             string& errorMsg) {
+                                             string& errorMsg,
+                                             uint64_t& markerCount) {
   
   const string invalidMsg = "received invalid JSON data for collection " + 
                             StringUtils::itoa(trxCollection->_cid);
@@ -344,8 +345,11 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
     std::getline(data, line, '\n');
 
     if (line.size() < 2) {
+      // we are done
       return TRI_ERROR_NO_ERROR;
     }
+      
+    ++markerCount;
 
     TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
 
@@ -604,13 +608,15 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
 
   map<string, string> headers;
 
-  TRI_voc_tick_t fromTick = 0;
+  TRI_voc_tick_t fromTick    = 0;
+  uint64_t       markerCount = 0;
 
   while (true) {
     string url = baseUrl + 
                  "&from=" + StringUtils::itoa(fromTick) + 
                  "&to=" + StringUtils::itoa(maxTick);
 
+LOGGER_INFO("requesting " << url);
     // send request
     SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                   url,
@@ -643,12 +649,19 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
 
+    int res;
     bool hasMore = false;
     bool found;
     string header = response->getHeaderField("x-arango-hasmore", found);
 
     if (found) {
       hasMore = StringUtils::boolean(header);
+      res = TRI_ERROR_NO_ERROR;
+    }
+    else {
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": header 'x-arango-hasmore' is missing";
     }
    
     if (hasMore) { 
@@ -656,29 +669,39 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
 
       if (found) {
         TRI_voc_tick_t tick = StringUtils::uint64(header);
+      LOGGER_INFO("got last found tick: " << tick);
 
         if (tick > fromTick) {
           fromTick = tick;
         }
         else {
-          // TODO: raise error
-          hasMore = false;
+          res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      
+          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                     ": illogical tick value";
         }
       }
       else {
-        // TODO: raise error
-        hasMore = false;
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                   ": header 'x-arango-lastfound' is missing";
       }
     }
 
-    int res = applyCollectionDump(trxCollection, response, errorMsg);
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = applyCollectionDump(trxCollection, response, errorMsg, markerCount);
+    }
 
     delete response;
 
-    if (res != TRI_ERROR_NO_ERROR ||
-        ! hasMore || 
-        fromTick == 0) {
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    if (! hasMore || fromTick == 0) {
       // done
+      LOGGER_INFO("successfully transferred " << markerCount << " data markers");
+      
       return res;
     }
   }
