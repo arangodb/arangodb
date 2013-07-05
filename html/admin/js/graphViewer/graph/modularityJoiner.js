@@ -38,13 +38,12 @@ function ModularityJoiner(nodes, edges) {
   }
   
   var matrix = null,
-    backwardMatrix = null,
-    self = this,
     m = 0,
     revM = 0,
     a = null,
     dQ = null,
     heap = null,
+    isRunning = false,
     comms = {},
  
     ////////////////////////////////////
@@ -334,37 +333,35 @@ function ModularityJoiner(nodes, edges) {
         }
         updateDQAndHeapValue(low, high, s);
       });
-    };
+    },
 
-  ////////////////////////////////////
-  // Public functions               //
-  ////////////////////////////////////
+
   
   ////////////////////////////////////
   // getters                        //
   ////////////////////////////////////
   
-  this.getAdjacencyMatrix = function() {
+  getAdjacencyMatrix = function() {
     return matrix;
-  };
+  },
   
-  this.getHeap = function() {
+  getHeap = function() {
     return heap;
-  };
+  },
   
-  this.getDQ = function() {
+  getDQ = function() {
     return dQ;
-  };
+  },
   
-  this.getDegrees = function() {
+  getDegrees = function() {
     return a;
-  };
+  },
   
-  this.getCommunities = function() {
+  getCommunities = function() {
     return comms;
-  };
+  },
   
-  this.getBest = function() {
+  getBest = function() {
     var bestL, bestS, bestV = Number.NEGATIVE_INFINITY;
     _.each(heap, function(lID, sID) {
       if (bestV < dQ[sID][lID]) {
@@ -381,27 +378,38 @@ function ModularityJoiner(nodes, edges) {
       lID: bestL,
       val: bestV
     };
-  };
+  },
   
+  getBestCommunity = function (communities) {
+    var bestQ = Number.NEGATIVE_INFINITY,
+      bestC;
+    _.each(communities, function (obj) {
+      if (obj.q > bestQ) {
+        bestQ = obj.q;
+        bestC = obj.nodes;
+      }
+    });
+    return bestC;
+  },
   
   ////////////////////////////////////
   // setup                          //
   ////////////////////////////////////
   
-  this.setup = function() {
+  setup = function() {
     makeAdjacencyMatrix();
     makeInitialDegrees();
     makeInitialDQ();
     makeInitialHeap();
     comms = {};
-  };
+  },
   
   
   ////////////////////////////////////
   // computation                    //
   ////////////////////////////////////
     
-  this.joinCommunity = function(comm) {
+  joinCommunity = function(comm) {
     var s = comm.sID,
       l = comm.lID,
       q = comm.val;
@@ -416,5 +424,131 @@ function ModularityJoiner(nodes, edges) {
     comms[s].q += q;
     updateDQAndHeap(s, l);
     updateDegrees(s, l);
+  },
+  
+  //////////////////////////////////////////////
+  // Evaluate value of community by distance  //
+  //////////////////////////////////////////////
+  
+  neighbors = function(sID) {
+    var neigh = [];
+    _.each(edges, function(e) {
+      if (e.source._id === sID) {
+        neigh.push(e.target._id);
+        return;
+      }
+      if (e.target._id === sID) {
+        neigh.push(e.source._id);
+        return;
+      }
+    });
+    return neigh;
+  },
+  
+  floatDistStep = function(dist, depth, todo) {
+    if (todo.length === 0) {
+      return true;
+    }
+    var nextTodo = [];
+    _.each(todo, function(t) {
+      if (dist[t] !== Number.POSITIVE_INFINITY) {
+        return;
+      }
+      dist[t] = depth;
+      nextTodo = nextTodo.concat(neighbors(t));
+    });
+    return floatDistStep(dist, depth+1, nextTodo);
+  },
+ 
+  floatDist = function(sID) {
+    var dist = {};
+    _.each(_.pluck(nodes, "_id"), function(n) {
+      dist[n] = Number.POSITIVE_INFINITY;
+    });
+    dist[sID] = 0;
+    if (floatDistStep(dist, 1, neighbors(sID))) {
+      return dist;
+    }
+    throw "FAIL!";
+  },
+  
+  minDist = function(dist) {
+    return function(a) {
+      return dist[a];
+    };
+  },
+  
+  ////////////////////////////////////
+  // Get only the Best Community    //
+  ////////////////////////////////////
+   
+  getCommunity = function(limit, focus) {
+    if (isRunning) {
+      throw "Still running.";
+    }
+    isRunning = true;
+    var coms = {},
+      res = [],
+      dist = {},
+      best,
+      sortByDistance = function (a, b) {
+        var d1 = dist[_.min(a,minDist(dist))],
+          d2 = dist[_.min(b,minDist(dist))],
+          val = d2 - d1;
+        if (val === 0) {
+          val = coms[b[b.length-1]].q - coms[a[a.length-1]].q;
+        }
+        return val;
+      };
+    if (nodes.length === 0 || edges.length === 0) {
+      isRunning = false;
+      throw "Load some nodes first.";
+    }
+    setup();
+    best = getBest();
+    while (best !== null) {
+      joinCommunity(best);
+      best = getBest();
+    }
+    coms = getCommunities();
+    
+    if (focus !== undefined) {
+      _.each(coms, function(obj, key) {
+        if (_.contains(obj.nodes, focus._id)) {
+          delete coms[key];
+        }
+      });
+      
+      res = _.pluck(_.values(coms), "nodes");
+      dist = floatDist(focus._id);
+      res.sort(sortByDistance);
+      isRunning = false;
+      return res[0];
+    }
+    isRunning = false;
+    return getBestCommunity(coms);
   };
+  
+  ////////////////////////////////////
+  // Public functions               //
+  ////////////////////////////////////
+  
+  this.getAdjacencyMatrix = getAdjacencyMatrix;
+ 
+  this.getHeap = getHeap;
+ 
+  this.getDQ = getDQ;
+ 
+  this.getDegrees = getDegrees;
+ 
+  this.getCommunities = getCommunities;
+ 
+  this.getBest = getBest;
+  
+  this.setup = setup;
+  
+  this.joinCommunity = joinCommunity;
+  
+  this.getCommunity = getCommunity;
+  
 }
