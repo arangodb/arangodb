@@ -395,11 +395,9 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (trx.primaryCollection()->base._info._type == TRI_COL_TYPE_EDGE) {
-    // check if we are inserting with the DOCUMENT handler into an EDGE collection
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-                  "must not use the document handler to create an edge");
+  if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+    // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 

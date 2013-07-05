@@ -145,9 +145,6 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  // edge
-  TRI_document_edge_t edge;
-
   // extract the from
   bool found;
   char const* from = _request->value("from", found);
@@ -210,9 +207,17 @@ bool RestEdgeHandler::createDocument () {
     generateTransactionError(collection, res);
     return false;
   }
+  
+  if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_EDGE) {
+    // check if we are inserting with the EDGE handler into a non-EDGE collection    
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return false;
+  }
 
   const TRI_voc_cid_t cid = trx.cid();
 
+  // edge
+  TRI_document_edge_t edge;
   edge._fromCid = cid;
   edge._toCid = cid;
   edge._fromKey = 0;
