@@ -27,16 +27,174 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function ModularityJoiner(edges) {
+function ModularityJoiner() {
   "use strict";
-
-  if (edges === undefined) {
-    throw "Edges have to be given.";
-  }
   
-  var matrix = null,
-    backwardMatrix,
-    degrees = null,
+  var 
+  // Copy of underscore.js. importScripts doesn't work
+    breaker = {},
+    nativeForEach = Array.prototype.forEach,
+    nativeKeys = Object.keys,
+    nativeIsArray = Array.isArray,
+    toString = Object.prototype.toString,
+    nativeIndexOf = Array.prototype.indexOf,
+    nativeMap = Array.prototype.map,
+    nativeSome = Array.prototype.some,
+    _ = {
+      isArray: nativeIsArray || function(obj) {
+        return toString.call(obj) === '[object Array]';
+      },
+      isFunction: function(obj) {
+        return typeof obj === 'function';
+      },
+      isString: function(obj) {
+        return toString.call(obj) === '[object String]';
+      },
+      has: function(obj, key) {
+        return Object.prototype.hasOwnProperty.call(obj, key);
+      },
+      each: function(obj, iterator, context) {
+        if (obj === null || obj === undefined) {
+          return;
+        }
+        var i, l, key;
+        if (nativeForEach && obj.forEach === nativeForEach) {
+          obj.forEach(iterator, context);
+        } else if (obj.length === +obj.length) {
+          for (i = 0, l = obj.length; i < l; i++) {
+            if (iterator.call(context, obj[i], i, obj) === breaker) {
+              return;
+            }
+          }
+        } else {
+          for (key in obj) {
+            if (_.has(obj, key)) {
+              if (iterator.call(context, obj[key], key, obj) === breaker) {
+                return;
+              }
+            }
+          }
+        }
+      },
+      keys: nativeKeys || function(obj) {
+        if (obj !== Object(obj)) {
+          throw new TypeError('Invalid object');
+        }
+        var keys = [], key;
+        for (key in obj) {
+          if (_.has(obj, key)) {
+            keys[keys.length] = key;
+          }
+        }
+        return keys;
+      },
+      min: function(obj, iterator, context) {
+        if (!iterator && _.isArray(obj) && obj[0] === +obj[0] && obj.length < 65535) {
+          return Math.min.apply(Math, obj);
+        }
+        if (!iterator && _.isEmpty(obj)) {
+          return Infinity;
+        }
+        var result = {computed : Infinity, value: Infinity};
+        _.each(obj, function(value, index, list) {
+          var computed = iterator ? iterator.call(context, value, index, list) : value;
+          if (computed < result.computed) {
+            result = {value : value, computed : computed};
+          }
+        });
+        return result.value;
+      },
+      map: function(obj, iterator, context) {
+        var results = [];
+        if (obj === null) {
+          return results;
+        }
+        if (nativeMap && obj.map === nativeMap) {
+          return obj.map(iterator, context);
+        }
+        _.each(obj, function(value, index, list) {
+          results[results.length] = iterator.call(context, value, index, list);
+        });
+        return results;
+      },
+      pluck: function(obj, key) {
+        return _.map(obj, function(value){ return value[key]; });
+      },
+      uniq: function(array, isSorted, iterator, context) {
+        if (_.isFunction(isSorted)) {
+          context = iterator;
+          iterator = isSorted;
+          isSorted = false;
+        }
+        var initial = iterator ? _.map(array, iterator, context) : array,
+          results = [],
+          seen = [];
+        _.each(initial, function(value, index) {
+          if (isSorted ? (!index || seen[seen.length - 1] !== value) : !_.contains(seen, value)) {
+            seen.push(value);
+            results.push(array[index]);
+          }
+        });
+        return results;
+      },
+      union: function() {
+        return _.uniq(Array.prototype.concat.apply(Array.prototype, arguments));
+      },
+      isEmpty: function(obj) {
+        var key;
+        if (obj === null) {
+          return true;
+        }
+        if (_.isArray(obj) || _.isString(obj)) {
+          return obj.length === 0;
+        }
+        for (key in obj) {
+          if (_.has(obj, key)) {
+            return false;
+          }
+        }
+        return true;
+      },
+      any: function(obj, iterator, context) {
+        iterator || (iterator = _.identity);
+        var result = false;
+        if (obj === null) {
+          return result;
+        }
+        if (nativeSome && obj.some === nativeSome) {
+          return obj.some(iterator, context);
+        }
+        _.each(obj, function(value, index, list) {
+          if (result || (result = iterator.call(context, value, index, list))) {
+            return breaker;
+          }
+        });
+        return !!result;
+      },
+      contains: function(obj, target) {
+        if (obj === null) {
+          return false;
+        }
+        if (nativeIndexOf && obj.indexOf === nativeIndexOf) {
+          return obj.indexOf(target) !== -1;
+        }
+        return _.any(obj, function(value) {
+          return value === target;
+        });
+      },
+      values: function(obj) {
+        var values = [], key;
+        for (key in obj) {
+          if (_.has(obj, key)) {
+            values.push(obj[key]);
+          }
+        }
+        return values;
+      }
+    },
+    matrix = {},
+    backwardMatrix = {},
+    degrees = {},
     m = 0,
     revM = 0,
     a = null,
@@ -145,26 +303,18 @@ function ModularityJoiner(edges) {
       a[low]._out += a[high]._out;
       delete a[high];
     }, 
-    
-    makeAdjacencyMatrix = function() {
-      matrix = {};
-      backwardMatrix = {};
-      degrees = {};
-      _.each(edges, function (e) {
-        var s = e.source._id,
-          t = e.target._id;
-        matrix[s] = matrix[s] || {};
-        matrix[s][t] = (matrix[s][t] || 0) + 1;
-        backwardMatrix[t] = backwardMatrix[t] || {};
-        backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
-        degrees[s] = degrees[s] || {_in: 0, _out:0}; 
-        degrees[t] = degrees[t] || {_in: 0, _out:0};
-        degrees[s]._out++;
-        degrees[t]._in++;
-      });
-      m = edges.length;
-      revM = 1/m;
-      return matrix;
+
+    insertEdge = function(s, t) {
+      matrix[s] = matrix[s] || {};
+      matrix[s][t] = (matrix[s][t] || 0) + 1;
+      backwardMatrix[t] = backwardMatrix[t] || {};
+      backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
+      degrees[s] = degrees[s] || {_in: 0, _out:0}; 
+      degrees[t] = degrees[t] || {_in: 0, _out:0};
+      degrees[s]._out++;
+      degrees[t]._in++;
+      m++;
+      revM = Math.pow(m, -1);
     },
   
     makeInitialDegrees = function() {
@@ -203,7 +353,8 @@ function ModularityJoiner(edges) {
           }
           return;
         });
-      });   
+      });
+  
     },
     
     makeInitialHeap = function() {
@@ -321,7 +472,6 @@ function ModularityJoiner(edges) {
   ////////////////////////////////////
   
   setup = function() {
-    makeAdjacencyMatrix();
     makeInitialDegrees();
     makeInitialDQ();
     makeInitialHeap();
@@ -416,7 +566,6 @@ function ModularityJoiner(edges) {
       best = getBest();
     }
     coms = getCommunities();
-    
     if (focus !== undefined) {
       _.each(coms, function(obj, key) {
         if (_.contains(obj.nodes, focus._id)) {
@@ -438,6 +587,8 @@ function ModularityJoiner(edges) {
   // Public functions               //
   ////////////////////////////////////
   
+  this.insertEdge = insertEdge;
+  
   this.getAdjacencyMatrix = getAdjacencyMatrix;
  
   this.getHeap = getHeap;
@@ -455,5 +606,9 @@ function ModularityJoiner(edges) {
   this.joinCommunity = joinCommunity;
   
   this.getCommunity = getCommunity;
+  
+  this.getDimensions = function() {
+    return _.isEmpty({});
+  };
   
 }

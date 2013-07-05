@@ -63,18 +63,11 @@
     
     describe('setup process', function() {
       
-      it('should throw an error if no edges are given', function() {
-        expect(function() {
-          var s = new ModularityJoiner();
-        }).toThrow("Edges have to be given.");
-      });
-      
       it('should not throw an error if mandatory information is given', function() {
         expect(function() {
-          var s = new ModularityJoiner([]);
+          var s = new ModularityJoiner();
         }).not.toThrow();
       });
-      
       
       it('should be possible to create it as a worker', function() {
         
@@ -98,7 +91,7 @@
               }
               
             },
-            w = new WebWorkerWrapper(ModularityJoiner, cb, e);
+            w = new WebWorkerWrapper(ModularityJoiner, cb);
         });
         
         waitsFor(function() {
@@ -123,7 +116,7 @@
       beforeEach(function () {
         nodes = [];
         edges = [];
-        joiner = new ModularityJoiner(edges);
+        joiner = new ModularityJoiner();
         testNetFour = function() {
           helper.insertSimpleNodes(nodes, ["0", "1", "2", "3"]);
           edges.push(helper.createSimpleEdge(nodes, 0, 1));
@@ -134,8 +127,17 @@
           edges.push(helper.createSimpleEdge(nodes, 3, 0));
           edges.push(helper.createSimpleEdge(nodes, 3, 1));
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
+          joiner.insertEdge("0", "1");
+          joiner.insertEdge("0", "3");
+          joiner.insertEdge("1", "2");
+          joiner.insertEdge("2", "1");
+          joiner.insertEdge("2", "3");
+          joiner.insertEdge("3", "0");
+          joiner.insertEdge("3", "1");
+          joiner.insertEdge("3", "2");
         };
       });
+
       
       describe('getters', function() {
         
@@ -194,6 +196,12 @@
       
       describe('checking the interface', function() {
         
+        it('should offer a function to insert an edge', function() {
+          expect(joiner.insertEdge).toBeDefined();
+          expect(joiner.insertEdge).toEqual(jasmine.any(Function));
+          expect(joiner.insertEdge.length).toEqual(2);
+        });
+        
         it('should offer a setup function', function() {
           expect(joiner.setup).toBeDefined();
           expect(joiner.setup).toEqual(jasmine.any(Function));
@@ -213,7 +221,7 @@
         });
         
       });
-
+      
       describe('after setup', function() {
         
         beforeEach(function() {
@@ -244,6 +252,7 @@
             });
           });
         });
+        
         
         describe('the degrees', function() {
         
@@ -401,20 +410,29 @@
               }
             });
             
+            
+            
             var firstID = nodes.length;
             helper.insertSimpleNodes(nodes, ["9", "20", "10", "99", "12"]);
             
             edges.push(helper.createSimpleEdge(nodes, 0, firstID));
+            joiner.insertEdge("0", "9");
             edges.push(helper.createSimpleEdge(nodes, firstID, firstID + 1));
+            joiner.insertEdge("9", "20");
             edges.push(helper.createSimpleEdge(nodes, firstID + 1, firstID + 2));
+            joiner.insertEdge("20", "10");
             edges.push(helper.createSimpleEdge(nodes, firstID + 2, firstID + 3));
+            joiner.insertEdge("10", "99");
             edges.push(helper.createSimpleEdge(nodes, firstID + 3, firstID + 4));
+            joiner.insertEdge("99", "12");
             edges.push(helper.createSimpleEdge(nodes, firstID + 4, firstID));
+            joiner.insertEdge("12", "9");
             edges.push(helper.createSimpleEdge(nodes, firstID + 3, firstID));
+            joiner.insertEdge("99", "9");
+            
             
             joiner.setup();
             expect(joiner.getDQ()).toBeOrdered();
-            
           });
         
         });
@@ -423,7 +441,7 @@
         
           var m, zero, one, two, three;
         
-          beforeEach(function() {          
+          beforeEach(function() {
             m = edges.length;
             zero = {
               _in: 1/m,
@@ -596,6 +614,10 @@
           edges.push(helper.createSimpleEdge(nodes, 0, 3));
           edges.push(helper.createSimpleEdge(nodes, 3, 4));
         
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
+        
           var com = joiner.getCommunity(3, nodes[4]);
           expect(com).toContainNodes(["0", "1", "2"]);
         });
@@ -609,6 +631,10 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 7));
           edges.push(helper.createSimpleEdge(nodes, 5, 8));
         
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
+        
           var com = joiner.getCommunity(6, nodes[4]);
           expect(com).toContainNodes(["0", "1", "2", "3"]);
         });
@@ -620,6 +646,10 @@
           helper.insertClique(nodes, edges, [6, 7, 8]);
           edges.push(helper.createSimpleEdge(nodes, 3, 2));
           edges.push(helper.createSimpleEdge(nodes, 5, 6));
+        
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
         
           var com = joiner.getCommunity(6, nodes[3]);
           expect(com).toContainNodes(["6", "7", "8"]);
@@ -634,51 +664,16 @@
           edges.push(helper.createSimpleEdge(nodes, 5, 6));
           edges.push(helper.createSimpleEdge(nodes, 5, 7));
         
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
+        
           var com = joiner.getCommunity(6);
           expect(com).toContainNodes(["0", "1", "2"]);
         });
         
-        /* Will be replaced by WebWorkers!
-        it('should wait for a running identification'
-        + ' to finish before allowing to start a new one', function() {
-        
-          var firstRun, secondRun;
-        
-          runs(function() { 
-            var i;           
-            helper.insertNSimpleNodes(nodes, 12);
-            helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-            for (i = 11; i < 12; i++) {
-              edges.push(helper.createSimpleEdge(nodes, i - 1, i));
-            }
-
-          
-            setTimeout(function() {
-              console.log("Start1");
-              firstRun = joiner.getCommunity(6);
-              console.log("End1");
-            }, 10);
-          
-            setTimeout(function() {
-              console.log("Start2");
-              expect(function() {
-                secondRun = joiner.getCommunity(6);
-              }).toThrow("Still running.");
-              console.log("End2");
-            }, 10);
-          
-          });
-        
-          waits(100);
-        
-          runs(function() {
-            expect(firstRun).toContainNodes(["0", "1", "2"]);
-            expect(secondRun).toBeUndefined();
-          });
-        
-        });
-        */
       });
+      
       /*
       describe('checking the zachary karate club', function() {
         
@@ -770,6 +765,11 @@
           edges.push(helper.createSimpleEdge(nodes, 34, 32));
           edges.push(helper.createSimpleEdge(nodes, 34, 33));
           nodes.shift(1); //Remove the temporary node;
+          
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
+          
           joiner.setup();
           
         });
@@ -887,6 +887,7 @@
         
       });
       */
+      
       describe('checking consistency after join', function() {
         
         beforeEach(function() {
@@ -1060,6 +1061,9 @@
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
           diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
           start = (new Date()).getTime();
@@ -1088,6 +1092,9 @@
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
           diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
           start = (new Date()).getTime();
@@ -1149,8 +1156,9 @@
           edges.push(helper.createSimpleEdge(nodes, s9, s10));
           edges.push(helper.createSimpleEdge(nodes, s10, s1));
           edges.push(helper.createSimpleEdge(nodes, s10, s9));
-          
-          console.log(nodes.length, edges.length);
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
 
           diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
@@ -1574,7 +1582,9 @@
           edges.push(helper.createSimpleEdge(nodes, s47, s30));
           edges.push(helper.createSimpleEdge(nodes, s47, s45));
 
-          console.log(nodes.length, edges.length);
+          _.each(edges, function(e) {
+            joiner.insertEdge(e.source._id, e.target._id);
+          });
 
           diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
@@ -1596,7 +1606,7 @@
         
       });
       
-      
+    
       /*
       it('should be able to handle 10000 nodes', function() {
         var start = (new Date()).getTime();
@@ -1627,7 +1637,6 @@
       */
     });
     
-    /*
     describe('configured as a worker', function() {
       
       var joiner,
@@ -1656,15 +1665,21 @@
             edges.push(helper.createSimpleEdge(nodes, 3, 0));
             edges.push(helper.createSimpleEdge(nodes, 3, 1));
             edges.push(helper.createSimpleEdge(nodes, 3, 2));
+            _.each(edges, function(e) {
+              joiner.call("insertEdge", e.source._id, e.target._id);
+            });
           };
           var callback = function(d) {
+            if (d.data.cmd === "insertEdge") {
+              return;
+            }
             called = true;
             if (d.data.cmd !== "construct") {
               result = d.data.result;
               error = d.data.error;
             }
           };
-          joiner = new WebWorkerWrapper(NodeReducer, callback, nodes, edges);
+          joiner = new WebWorkerWrapper(ModularityJoiner, callback);
         });
         
         waitsFor(function() {
@@ -1676,28 +1691,112 @@
         });
       });
       
-      
-      it('should be possible to identify communities', function() {
-        
+      it('should request the dimension', function() {
         runs(function() {
-          testNetFour();
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
+          edges.push(helper.createSimpleEdge(nodes, 0, 1));
+          edges.push(helper.createSimpleEdge(nodes, 0, 2));
+          edges.push(helper.createSimpleEdge(nodes, 0, 3));
+          edges.push(helper.createSimpleEdge(nodes, 3, 4));
+      
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
           joiner.call("getDimensions");
+          
         });
         
         waitsFor(function() {
           return called;
-        }, 5000);
+        });
         
         runs(function() {
-          expect(result).toEqual(["0","3"]);
-          expect(error).toBeUndefined();
+          expect(result).toBeTruthy();
         });
         
       });
       
+      it('should be able to identify an obvious community', function() {
+        
+        runs(function() {
+          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
+          edges.push(helper.createSimpleEdge(nodes, 0, 1));
+          edges.push(helper.createSimpleEdge(nodes, 0, 2));
+          edges.push(helper.createSimpleEdge(nodes, 0, 3));
+          edges.push(helper.createSimpleEdge(nodes, 3, 4));
       
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
+          joiner.call("getCommunity", 3, nodes[4]._id);
+          
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          console.log(result);
+          expect(result).toContainNodes(["0", "1", "2"]);
+          expect(error).toBeUndefined();
+        });
+      });
       
+      /*
+      it('should prefer cliques as a community over an equal sized other group', function() {
+        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+        helper.insertClique(nodes, edges, [0, 1, 2, 3]);
+        edges.push(helper.createSimpleEdge(nodes, 4, 3));
+        edges.push(helper.createSimpleEdge(nodes, 4, 5));
+        edges.push(helper.createSimpleEdge(nodes, 5, 6));
+        edges.push(helper.createSimpleEdge(nodes, 5, 7));
+        edges.push(helper.createSimpleEdge(nodes, 5, 8));
+      
+        _.each(edges, function(e) {
+          joiner.call("insertEdge", e.source._id, e.target._id);
+        });
+        
+      
+        var com = joiner.getCommunity(6, nodes[4]);
+        expect(com).toContainNodes(["0", "1", "2", "3"]);
+      });
+    
+      it('should not return a close group if there is an alternative', function() {
+        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+        helper.insertClique(nodes, edges, [0, 1, 2]);
+        helper.insertClique(nodes, edges, [3, 4, 5]);
+        helper.insertClique(nodes, edges, [6, 7, 8]);
+        edges.push(helper.createSimpleEdge(nodes, 3, 2));
+        edges.push(helper.createSimpleEdge(nodes, 5, 6));
+      
+        _.each(edges, function(e) {
+          joiner.call("insertEdge", e.source._id, e.target._id);
+        });
+        
+      
+        var com = joiner.getCommunity(6, nodes[3]);
+        expect(com).toContainNodes(["6", "7", "8"]);
+      });
+    
+      it('should also take the best community if no focus is given', function() {
+        helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
+        helper.insertClique(nodes, edges, [0, 1, 2]);
+        edges.push(helper.createSimpleEdge(nodes, 3, 2));
+        edges.push(helper.createSimpleEdge(nodes, 3, 4));
+        edges.push(helper.createSimpleEdge(nodes, 4, 5));
+        edges.push(helper.createSimpleEdge(nodes, 5, 6));
+        edges.push(helper.createSimpleEdge(nodes, 5, 7));
+      
+        _.each(edges, function(e) {
+          joiner.call("insertEdge", e.source._id, e.target._id);
+        });
+      
+        var com = joiner.getCommunity(6);
+        expect(com).toContainNodes(["0", "1", "2"]);
+      });
+      */
     });
-    */
+    
   });
 }());
