@@ -175,7 +175,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync);
+          return this->create(this->trxCollection(), key, 0, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, shaped, 0, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync);
+          return this->create(this->trxCollection(), key, 0, TRI_DOC_MARKER_KEY_EDGE, mptr, shaped, data, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

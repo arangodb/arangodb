@@ -396,6 +396,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 
 static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                  TRI_voc_tid_t tid,
+                                 TRI_voc_tick_t tick,
                                  TRI_doc_document_key_marker_t** result,
                                  TRI_voc_size_t* totalSize,
                                  char** keyBody, 
@@ -408,7 +409,6 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   char* position;
   char keyBuffer[TRI_VOC_KEY_MAX_LENGTH + 1]; 
   TRI_voc_size_t keyBodySize;
-  TRI_voc_tick_t tick;
   size_t markerSize;
   size_t keySize;
   size_t fromSize;
@@ -416,7 +416,10 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   int res;
 
   *result = NULL;
-  tick = TRI_NewTickVocBase();
+
+  if (tick == 0) {
+    tick = TRI_NewTickVocBase();
+  }
 
   // generate the key
   keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
@@ -1477,6 +1480,7 @@ static int NotifyTransaction (TRI_primary_collection_t* primary,
 
 static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
+                             TRI_voc_rid_t rid,
                              TRI_doc_mptr_t* mptr,
                              TRI_df_marker_type_e markerType,
                              TRI_shaped_json_t const* shaped,
@@ -1502,7 +1506,8 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
   // this does not require any locks
 
   res = CreateDocumentMarker(primary, 
-                             TRI_GetMarkerIdTransaction(trxCollection->_transaction), 
+                             TRI_GetMarkerIdTransaction(trxCollection->_transaction),
+                             (TRI_voc_tick_t) rid, 
                              &marker, 
                              &totalSize, 
                              &keyBody, 

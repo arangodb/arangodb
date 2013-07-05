@@ -7479,7 +7479,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   if (key[0] == '_') {
-    if (key == "_id" || key == "_rev" || key == "_key") {
+    if (key == "_id" || key == TRI_VOC_ATTRIBUTE_REV || key == TRI_VOC_ATTRIBUTE_KEY) {
       return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
     }
   }

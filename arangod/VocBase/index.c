@@ -746,8 +746,8 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* p
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_from"));
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_to"));
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -800,7 +800,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   idx = &edgeIndex->base;
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
-  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
+  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
   TRI_PushBackVectorString(&idx->_fields, id);
  
   idx->typeName = TypeNameEdge;

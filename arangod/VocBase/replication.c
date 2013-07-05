@@ -365,6 +365,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
   res = primary->insert(logger->_trxCollection, 
                         NULL, 
+                        0,
                         &mptr, 
                         TRI_DOC_MARKER_KEY_DOCUMENT, 
                         shaped, 
@@ -631,9 +632,9 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
     APPEND_STRING(buffer, "\",\"doc\":{");
     
     // common document meta-data
-    APPEND_STRING(buffer, "\"_key\":\"");
+    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"_rev\":\"");
+    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
@@ -642,11 +643,11 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
       TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
-      APPEND_STRING(buffer, ",\"_from\":\"");
+      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"_to\":\"");
+      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_toCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, toKey);
@@ -767,9 +768,9 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
     APPEND_STRING(buffer, "\",\"doc\":{");
     
     // common document meta-data
-    APPEND_STRING(buffer, "\"_key\":\"");
+    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"_rev\":\"");
+    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
@@ -778,11 +779,11 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
       TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
-      APPEND_STRING(buffer, ",\"_from\":\"");
+      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"_to\":\"");
+      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_toCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, toKey);
