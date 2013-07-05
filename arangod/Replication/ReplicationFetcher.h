@@ -173,7 +173,8 @@ namespace triagens {
 
         int applyCollectionDump (struct TRI_transaction_collection_s*,
                                  httpclient::SimpleHttpResult*,
-                                 string&);
+                                 string&,
+                                 uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get local replication apply state
