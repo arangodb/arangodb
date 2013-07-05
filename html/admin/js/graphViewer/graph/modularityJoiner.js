@@ -27,17 +27,16 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function ModularityJoiner(nodes, edges) {
+function ModularityJoiner(edges) {
   "use strict";
-  
-  if (nodes === undefined) {
-    throw "Nodes have to be given.";
-  }
+
   if (edges === undefined) {
     throw "Edges have to be given.";
   }
   
   var matrix = null,
+    backwardMatrix,
+    degrees = null,
     m = 0,
     revM = 0,
     a = null,
@@ -149,11 +148,19 @@ function ModularityJoiner(nodes, edges) {
     
     makeAdjacencyMatrix = function() {
       matrix = {};
+      backwardMatrix = {};
+      degrees = {};
       _.each(edges, function (e) {
         var s = e.source._id,
           t = e.target._id;
         matrix[s] = matrix[s] || {};
         matrix[s][t] = (matrix[s][t] || 0) + 1;
+        backwardMatrix[t] = backwardMatrix[t] || {};
+        backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
+        degrees[s] = degrees[s] || {_in: 0, _out:0}; 
+        degrees[t] = degrees[t] || {_in: 0, _out:0};
+        degrees[s]._out++;
+        degrees[t]._in++;
       });
       m = edges.length;
       revM = 1/m;
@@ -162,76 +169,42 @@ function ModularityJoiner(nodes, edges) {
   
     makeInitialDegrees = function() {
       a = {};
-      _.each(nodes, function (n) {
-        a[n._id] = {
-          _in: n._inboundCounter / m,
-          _out: n._outboundCounter / m
+      _.each(degrees, function (n, id) {
+        a[id] = {
+          _in: n._in / m,
+          _out: n._out / m
         };
       });
       return a;
-    },
-    
-    makeInitialDQBKP = function() {
-      dQ = {};
-      _.each(nodes, function(n1) {
-        var s = n1._id;
-        _.each(nodes, function(n2) {
-          var t = n2._id,
-            ast;
-          if (matrix[s] && matrix[s][t]) {
-            ast = matrix[s][t];
-          } else {
-            ast = 0;
-          }
-          if (s < t) {
-            dQ[s] = dQ[s] || {};
-            dQ[s][t] = (dQ[s][t] || 0) + ast * revM - a[s]._in * a[t]._out;
-            return;
-          }
-          if (t < s) {
-            dQ[t] = dQ[t] || {};
-            dQ[t][s] = (dQ[t][s] || 0) + ast * revM - a[s]._in * a[t]._out;
-            return;
-          }
-        });
-      });      
     },
     
     notConnectedPenalty = function(s, t) {
       return a[s]._out * a[t]._in + a[s]._in * a[t]._out;
     },
     
+    neighbors = function(sID) {
+      var outbound = _.keys(matrix[sID] || {}),
+        inbound = _.keys(backwardMatrix[sID] || {});
+      return _.union(outbound, inbound);
+    },
     
     makeInitialDQ = function() {
       dQ = {};
-      _.each(nodes, function(n1) {
-        var s = n1._id;
-        _.each(nodes, function(n2) {
-          var t = n2._id,
-            ast = 0,
+      _.each(matrix, function(tars, s) {
+        var bw = backwardMatrix[s] || {},
+          keys = neighbors(s);
+        _.each(keys, function(t) {
+          var ast = (tars[t] || 0),
             value;
-          if (t <= s) {
-            return;
-          }
-          if (matrix[s] && matrix[s][t]) {
-            ast += matrix[s][t];
-          }
-          if (matrix[t] && matrix[t][s]) {
-            ast += matrix[t][s];
-          }
-          if (ast === 0) {
-            return;
-          }
+          ast += (bw[t] || 0);
           value = ast * revM - notConnectedPenalty(s, t);
           if (value > 0) {
             setDQVal(s, t, value);
           }
           return;
         });
-      });      
+      });   
     },
-
-    
     
     makeInitialHeap = function() {
       heap = {};
@@ -239,53 +212,6 @@ function ModularityJoiner(nodes, edges) {
       return heap;
     },
     
-    updateDQAndHeapBKP = function (low, high) {
-      _.each(dQ, function (list, s) {
-        if (s < low) {
-          list[low] += list[high];
-          delete list[high];
-          if (heap[s] === low || heap[s] === high) {
-            setHeapToMaxInList(list, s);
-          } else {
-            if (dQ[s][heap[s]] < list[low]) {
-              heap[s] = low;
-            }
-          }
-          return;
-        }
-        if (s === low) {
-          delete list[high];
-          if (_.isEmpty(list)) {
-            delete dQ[s];
-            delete heap[s];
-            return;
-          }
-          _.each(list, function(v, k) {
-            if (k < high) {
-              list[k] += dQ[k][high];
-              delete dQ[k][high];
-              return;
-            }
-            if (high < k) {
-              list[k] += dQ[high][k];
-              return;
-            }
-            return;
-          });
-          setHeapToMaxInList(list, s);
-          return;
-        }
-        if (_.isEmpty(list)) {
-          delete dQ[s];
-          delete heap[s];
-        }
-        return;
-      });
-      delete dQ[high];
-      delete heap[high];
-    },
-    
-
     // i < j && i != j != k
     updateDQAndHeapValue = function (i, j, k) {
       var val;
@@ -335,8 +261,6 @@ function ModularityJoiner(nodes, edges) {
       });
     },
 
-
-  
   ////////////////////////////////////
   // getters                        //
   ////////////////////////////////////
@@ -430,21 +354,6 @@ function ModularityJoiner(nodes, edges) {
   // Evaluate value of community by distance  //
   //////////////////////////////////////////////
   
-  neighbors = function(sID) {
-    var neigh = [];
-    _.each(edges, function(e) {
-      if (e.source._id === sID) {
-        neigh.push(e.target._id);
-        return;
-      }
-      if (e.target._id === sID) {
-        neigh.push(e.source._id);
-        return;
-      }
-    });
-    return neigh;
-  },
-  
   floatDistStep = function(dist, depth, todo) {
     if (todo.length === 0) {
       return true;
@@ -462,7 +371,7 @@ function ModularityJoiner(nodes, edges) {
  
   floatDist = function(sID) {
     var dist = {};
-    _.each(_.pluck(nodes, "_id"), function(n) {
+    _.each(matrix, function(u, n) {
       dist[n] = Number.POSITIVE_INFINITY;
     });
     dist[sID] = 0;
@@ -500,10 +409,6 @@ function ModularityJoiner(nodes, edges) {
         }
         return val;
       };
-    if (nodes.length === 0 || edges.length === 0) {
-      isRunning = false;
-      throw "Load some nodes first.";
-    }
     setup();
     best = getBest();
     while (best !== null) {

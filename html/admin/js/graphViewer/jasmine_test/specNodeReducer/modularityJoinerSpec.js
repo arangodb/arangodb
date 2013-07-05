@@ -63,21 +63,15 @@
     
     describe('setup process', function() {
       
-      it('should throw an error if no nodes are given', function() {
-        expect(function() {
-          var s = new ModularityJoiner();
-        }).toThrow("Nodes have to be given.");
-      });
-      
       it('should throw an error if no edges are given', function() {
         expect(function() {
-          var s = new ModularityJoiner([]);
+          var s = new ModularityJoiner();
         }).toThrow("Edges have to be given.");
       });
       
       it('should not throw an error if mandatory information is given', function() {
         expect(function() {
-          var s = new ModularityJoiner([], []);
+          var s = new ModularityJoiner([]);
         }).not.toThrow();
       });
       
@@ -104,7 +98,7 @@
               }
               
             },
-            w = new WebWorkerWrapper(ModularityJoiner, cb, n, e);
+            w = new WebWorkerWrapper(ModularityJoiner, cb, e);
         });
         
         waitsFor(function() {
@@ -129,7 +123,7 @@
       beforeEach(function () {
         nodes = [];
         edges = [];
-        joiner = new ModularityJoiner(nodes, edges);
+        joiner = new ModularityJoiner(edges);
         testNetFour = function() {
           helper.insertSimpleNodes(nodes, ["0", "1", "2", "3"]);
           edges.push(helper.createSimpleEdge(nodes, 0, 1));
@@ -685,7 +679,7 @@
         });
         */
       });
-      
+      /*
       describe('checking the zachary karate club', function() {
         
         beforeEach(function() {
@@ -819,19 +813,18 @@
         });
 
         it('should be able to find communities', function() {
-          /*
-          correct acc to: NMCM09
-          Red:
-          21,23,24,19,27,16,30,33,34,29,15,9,31
-          White:
-          25, 26, 28, 32
-          Green:
-          5, 6, 7, 11, 17
-          Blue:
-          1, 2, 3, 4, 10, 14, 20, 22, 18, 13, 12
-          */
+          /////////////////////////////////////////////////////
+          /// correct acc to: NMCM09                         //
+          /// Red:                                           //
+          /// 21,23,24,19,27,16,30,33,34,29,15,9,31          //
+          /// White:                                         //
+          /// 25, 26, 28, 32                                 //
+          /// Green:                                         //
+          /// 5, 6, 7, 11, 17                                //
+          /// Blue:                                          //
+          /// 1, 2, 3, 4, 10, 14, 20, 22, 18, 13, 12         //
+          /////////////////////////////////////////////////////
           
-        
           this.addMatchers({
             toContainKarateClubCommunities: function() {
               var c1 = [
@@ -893,7 +886,7 @@
         });
         
       });
-      
+      */
       describe('checking consistency after join', function() {
         
         beforeEach(function() {
@@ -1085,17 +1078,17 @@
         
         // This is the max. number of nodes for the admin UI
         // However the format is realy unlikely in the adminUI
-        /*
+        
         it('should be able to handle 3000 nodes', function() {
-          var start = (new Date()).getTime();
-          var i, best, nodeCount = 3000;      
+          var start = (new Date()).getTime(),
+            i, best, nodeCount = 3000, diff;      
           helper.insertNSimpleNodes(nodes, nodeCount);
           helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
           for (i = 11; i < nodeCount; i++) {
             edges.push(helper.createSimpleEdge(nodes, i - 1, i));
             edges.push(helper.createSimpleEdge(nodes, i, i - 2));
           }
-          var diff = (new Date()).getTime() - start;
+          diff = (new Date()).getTime() - start;
           console.log("Runtime Fill:", diff, "ms");
           start = (new Date()).getTime();
           joiner.setup();
@@ -1103,17 +1096,15 @@
           console.log("Runtime Setup:", diff, "ms");
           start = (new Date()).getTime();
           best = joiner.getBest();
-          var step = 0;
           while (best !== null) {
             joiner.joinCommunity(best);
             best = joiner.getBest();
-            step++;
           }
           diff = (new Date()).getTime() - start;
           
           console.log("Runtime Compute:", diff, "ms");          
         });
-        */
+        
         // This is what we expect in the Admin UI
         it('should be able to handle few large satelites', function() {
           var start = (new Date()).getTime(),
@@ -1603,37 +1594,37 @@
                 
         });
         
-        
-        /*
-        it('should be able to handle 10000 nodes', function() {
-          var start = (new Date()).getTime();
-          var i, best, nodeCount = 10000;      
-          helper.insertNSimpleNodes(nodes, nodeCount);
-          helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-          for (i = 11; i < nodeCount; i++) {
-            edges.push(helper.createSimpleEdge(nodes, i - 1, i));
-            edges.push(helper.createSimpleEdge(nodes, i, i - 2));
-          }
-          var diff = (new Date()).getTime() - start;
-          console.log("Runtime Fill:", diff, "ms");
-          start = (new Date()).getTime();
-          joiner.setup();
-          diff = (new Date()).getTime() - start;
-          console.log("Runtime Setup:", diff, "ms");
-          start = (new Date()).getTime();
-          best = joiner.getBest();
-          var step = 0;
-          while (best !== null) {
-            joiner.joinCommunity(best);
-            best = joiner.getBest();
-            step++;
-          }
-          diff = (new Date()).getTime() - start;
-          console.log("Runtime Compute:", diff, "ms");          
-        });
-        */
       });
       
+      
+      /*
+      it('should be able to handle 10000 nodes', function() {
+        var start = (new Date()).getTime();
+        var i, best, nodeCount = 10000;      
+        helper.insertNSimpleNodes(nodes, nodeCount);
+        helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        for (i = 11; i < nodeCount; i++) {
+          edges.push(helper.createSimpleEdge(nodes, i - 1, i));
+          edges.push(helper.createSimpleEdge(nodes, i, i - 2));
+        }
+        var diff = (new Date()).getTime() - start;
+        console.log("Runtime Fill:", diff, "ms");
+        start = (new Date()).getTime();
+        joiner.setup();
+        diff = (new Date()).getTime() - start;
+        console.log("Runtime Setup:", diff, "ms");
+        start = (new Date()).getTime();
+        best = joiner.getBest();
+        var step = 0;
+        while (best !== null) {
+          joiner.joinCommunity(best);
+          best = joiner.getBest();
+          step++;
+        }
+        diff = (new Date()).getTime() - start;
+        console.log("Runtime Compute:", diff, "ms");          
+      });
+      */
     });
     
     /*
