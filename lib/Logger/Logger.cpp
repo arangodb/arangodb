@@ -108,7 +108,7 @@ static string LoggerFormat = "%Z;1;%S;%C;%H;%p-%t;%F;%A;%f;%m;%K;%f:%l;%x;%P;%u;
 /// @brief logger format for raw logging
 ////////////////////////////////////////////////////////////////////////////////
 
-static string LoggerRawFormat = "%Z %x";
+static string LoggerRawFormat = "\"%Z\"%x";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief special characters which must be escaped
@@ -406,7 +406,6 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
           if (! info._prefix.empty()) {
             line.appendText(StringUtils::escapeHex(info._prefix, SpecialCharacters));
           }
-
           line.appendText(StringUtils::escapeHex(text, SpecialCharacters));
 
           break;
@@ -435,7 +434,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
     }
   }
 
-  TRI_RawLog(info._level, info._severity, line.c_str(), line.length() - 1);
+  TRI_RawLog(info._level, info._severity, line.c_str(), line.length());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
