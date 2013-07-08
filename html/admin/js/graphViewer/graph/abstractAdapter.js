@@ -113,6 +113,7 @@ function AbstractAdapter(nodes, edges) {
     insertEdge = function(data) {
       var source,
         target,
+        informJoiner = true,
         edge = {
           _data: data,
           _id: data._id
@@ -144,6 +145,7 @@ function AbstractAdapter(nodes, edges) {
         })[0];
         edgeToPush.source._outboundCounter++;
         cachedCommunities[source._id].edges.push(edgeToPush);
+        informJoiner = false;
       } else {
         source._outboundCounter++;
       }
@@ -156,8 +158,12 @@ function AbstractAdapter(nodes, edges) {
         })[0];
         edgeToPush.target._inboundCounter++;
         cachedCommunities[target._id].edges.push(edgeToPush);
+        informJoiner = false;
       } else {
         target._inboundCounter++;
+      }
+      if (informJoiner) {
+        joiner.call("insertEdge", source._id, target._id);
       }
       return edge;
     },
@@ -171,12 +177,20 @@ function AbstractAdapter(nodes, edges) {
         }
       }
     },
+    
+    removeEdgeWithIndex = function (index) {
+      var e = edges[index],
+        s = e.source._id,
+        t = e.target._id;
+      edges.splice(index, 1);
+      joiner.call("deleteEdge",s , t);
+    },
   
     removeEdge = function (edge) {
       var i;
       for ( i = 0; i < edges.length; i++ ) {
         if ( edges[i] === edge ) {
-          edges.splice( i, 1 );
+          removeEdgeWithIndex(i);
           return;
         }
       }
@@ -188,12 +202,12 @@ function AbstractAdapter(nodes, edges) {
         if (edges[i].source === node) {
           node._outboundCounter--;
           edges[i].target._inboundCounter--;
-          edges.splice( i, 1 );
+          removeEdgeWithIndex(i);
           i--;
         } else if (edges[i].target === node) {
           node._inboundCounter--;
           edges[i].source._outboundCounter--;
-          edges.splice( i, 1 );
+          removeEdgeWithIndex(i);
           i--;
         }
       }
@@ -215,7 +229,7 @@ function AbstractAdapter(nodes, edges) {
               delete edgeToPush.target;
               edgeToPush.type = "b";
               edgeToPush.edge = edges[i];
-              edges.splice( i, 1 );
+              removeEdgeWithIndex(i);
               i--;
               break;
             }
@@ -230,7 +244,7 @@ function AbstractAdapter(nodes, edges) {
               delete edgeToPush.source;
               edgeToPush.type = "b";
               edgeToPush.edge = edges[i];
-              edges.splice( i, 1 );
+              removeEdgeWithIndex(i);
               i--;
               break;
             }
@@ -256,7 +270,7 @@ function AbstractAdapter(nodes, edges) {
             removed.push(edges[i]);
             node._outboundCounter--;
             edges[i].target._inboundCounter--;
-            edges.splice( i, 1 );
+            removeEdgeWithIndex(i);
             if (node._outboundCounter === 0) {
               break;
             }
@@ -268,6 +282,9 @@ function AbstractAdapter(nodes, edges) {
     },
     
     collapseCommunity = function (community) {
+      if (!community || community.length === 0) {
+        return;
+      }
       var commId = "*community_" + Math.floor(Math.random()* 1000000),
         commNode = {
           _id: commId,
@@ -330,15 +347,19 @@ function AbstractAdapter(nodes, edges) {
           case "t":
             edge = findEdge(e.id);
             edge.target = e.target;
+            joiner.call("insertEdge", edge.source._id, edge.target._id);
             break;
           case "s":
             edge = findEdge(e.id);
             edge.source = e.source;
+            joiner.call("insertEdge", edge.source._id, edge.target._id);
             break;
           case "b":
             edges.push(e.edge);
+            joiner.call("insertEdge", e.edge.source._id, e.edge.target._id);
             break;
         }
+        
       });
       delete cachedCommunities[commId];      
     },

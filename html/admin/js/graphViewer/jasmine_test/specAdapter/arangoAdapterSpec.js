@@ -371,12 +371,11 @@
           spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
             workerCB = cb;
             return {
-              call: function(name, l, f) {
-                if (f) {
-                  mockWrapper.call(name, l, f);
-                } else {
-                  mockWrapper.call(name, l);
-                }
+              call: function() {
+                mockWrapper.call.apply(
+                  mockWrapper,
+                  Array.prototype.slice.call(arguments)
+                );
               }
             };
           });

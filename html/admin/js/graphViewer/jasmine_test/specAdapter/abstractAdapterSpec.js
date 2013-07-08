@@ -499,12 +499,11 @@
         spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
           workerCB = cb;
           return {
-            call: function(name, l, f) {
-              if (f) {
-                mockWrapper.call(name, l, f);
-              } else {
-                mockWrapper.call(name, l);
-              }
+            call: function() {
+              mockWrapper.call.apply(
+                mockWrapper,
+                Array.prototype.slice.call(arguments)
+              );
             }
           };
         });
@@ -702,6 +701,244 @@
       });
       
     });
+    
+    describe('checking information of modularity joiner', function() {
+      
+      var adapter,
+      source,
+      target,
+      sourceid,
+      targetid,
+      mockWrapper,
+      workerCB;
+      
+      beforeEach(function() {
+        mockWrapper = {};
+        mockWrapper.call = function() {};
+        spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
+          workerCB = cb;
+          return {
+            call: function() {
+              mockWrapper.call.apply(
+                mockWrapper,
+                Array.prototype.slice.call(arguments)
+              );
+            }
+          };
+        });
+        adapter = new AbstractAdapter(nodes, edges);
+        source = adapter.insertNode({_id: 1});
+        target = adapter.insertNode({_id: 2});
+        sourceid = source._id;
+        targetid = target._id;
+      });
+      
+      it('should be informed if an edge is inserted', function() {
+        spyOn(mockWrapper, "call");
+        adapter.insertEdge({
+          _id: "1-2",
+          _from: sourceid,
+          _to: targetid
+        });
+        expect(mockWrapper.call).wasCalledWith("insertEdge", sourceid, targetid);
+      });
+      
+      it('should be informed if an edge is removed', function() {
+        var toDelete = {
+          _id: "1-2",
+          _from: sourceid,
+          _to: targetid
+        },
+        edgeToDel = adapter.insertEdge(toDelete);
+        spyOn(mockWrapper, "call");
+        adapter.removeEdge(edgeToDel);
+        
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", sourceid, targetid);
+      });
+      
+      it('should be informed if all edges for a node are removed', function() {
+        var toDelete1 = {
+            _id: "1-2",
+            _from: sourceid,
+            _to: targetid
+          },
+          toDelete2 = {
+            _id: "2-1",
+            _from: targetid,
+            _to: sourceid
+          };
+        adapter.insertEdge(toDelete1);
+        adapter.insertEdge(toDelete2);
+        spyOn(mockWrapper, "call");
+        
+        adapter.removeEdgesForNode(source);
+        
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", sourceid, targetid);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", targetid, sourceid);
+      });
+      
+      it('should remove all edges of a community if it is joined', function() {
+        var n1, n2, n3, n4,
+          e1, e2, e3, e4;
+        n1 = {
+          _id: "n1"
+        };
+        n2 = {
+          _id: "n2"
+        };
+        n3 = {
+          _id: "n3"
+        };
+        n4 = {
+          _id: "n4"
+        };
+        e1 = {
+          _id: "n1-n2",
+          _from: n1._id,
+          _to: n2._id
+        };
+        e2 = {
+          _id: "n2-n3",
+          _from: n2._id,
+          _to: n3._id
+        };
+        e3 = {
+          _id: "n3-n4",
+          _from: n3._id,
+          _to: n4._id
+        };
+        e4 = {
+          _id: "n4-n1",
+          _from: n4._id,
+          _to: n1._id
+        };
+        adapter.insertNode(n1);
+        adapter.insertNode(n2);
+        adapter.insertNode(n3);
+        adapter.insertNode(n4);
+      
+        adapter.insertEdge(e1);
+        adapter.insertEdge(e2);
+        adapter.insertEdge(e3);
+        adapter.insertEdge(e4);
+      
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [n1._id, n2._id, n3._id, n4._id]
+              }
+            });
+          }
+        });
+        adapter.setNodeLimit(3);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, n2._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n2._id, n3._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n3._id, n4._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n4._id, n1._id);
+      
+      });
+      
+      it('should not be informed of edges connected to communities', function() {
+        var n1, n2, n3,
+          e1, e2;
+        n1 = {
+          _id: "n1"
+        };
+        n2 = {
+          _id: "n2"
+        };
+        n3 = {
+          _id: "n3"
+        };
+        e1 = {
+          _id: "n1-n2",
+          _from: n1._id,
+          _to: n2._id
+        };
+        e2 = {
+          _id: "n2-n3",
+          _from: n2._id,
+          _to: n3._id
+        };
+
+        adapter.insertNode(n1);
+        adapter.insertNode(n2);
+        adapter.insertNode(n3);
+      
+        adapter.insertEdge(e1);
+        
+      
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [n1._id, n2._id]
+              }
+            });
+          }
+        });
+        adapter.setNodeLimit(3);
+                
+        adapter.insertEdge(e2);
+        expect(mockWrapper.call).not.wasCalledWith("insertEdge", n2._id, n3._id);
+        
+      });
+      
+      it('should be informed if a community is expanded', function() {
+        var n1, n2, n3,
+          e1, e2;
+        n1 = {
+          _id: "n1"
+        };
+        n2 = {
+          _id: "n2"
+        };
+        n3 = {
+          _id: "n3"
+        };
+        e1 = {
+          _id: "n1-n2",
+          _from: n1._id,
+          _to: n2._id
+        };
+        e2 = {
+          _id: "n2-n3",
+          _from: n2._id,
+          _to: n3._id
+        };
+
+        adapter.insertNode(n1);
+        adapter.insertNode(n2);
+        adapter.insertNode(n3);
+      
+        adapter.insertEdge(e1);
+        adapter.insertEdge(e2);
+      
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [n1._id, n2._id, n3._id]
+              }
+            });
+          }
+        });
+        adapter.setNodeLimit(3);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, n2._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n2._id, n3._id);
+        adapter.setNodeLimit(100);
+        adapter.expandCommunity(getCommunityNodes()[0]);
+        expect(mockWrapper.call).wasCalledWith("insertEdge", n1._id, n2._id);
+        expect(mockWrapper.call).wasCalledWith("insertEdge", n2._id, n3._id);
+      });
+      
+    });
+    
+    
     
     describe('checking many child nodes', function() {
       
