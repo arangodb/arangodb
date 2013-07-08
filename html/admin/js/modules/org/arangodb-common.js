@@ -383,16 +383,28 @@ exports.printTable = function  (list, columns, framed) {
 exports.stringPadding = function (str, len, pad, dir) {
   'use strict';
 
-  if (typeof(len) === "undefined") { len = 0; }
-  if (typeof(pad) === "undefined") { pad = ' '; }
-  if (typeof(dir) === "undefined") { dir = 'r'; }
+  // yes, this is more code than new Array(length).join(chr), but it makes jslint happy
+  function fill (length, chr) {
+    var result = '', i;
+    for (i = 0; i < length; ++i) {
+      result += chr;
+    }
+    return result;
+  }
+
+  if (typeof(len) === "undefined") { 
+    len = 0; 
+  }
+  if (typeof(pad) === "undefined") { 
+    pad = ' '; 
+  }
 
   if (len + 1 >= str.length) {
-    switch (dir){
+    switch (dir || "r"){
 
       // LEFT
       case 'l':
-        str = new Array(len + 1 - str.length).join(pad) + str;
+        str = fill(len + 1 - str.length, pad) + str;
         break;
 
       // BOTH
@@ -400,11 +412,11 @@ exports.stringPadding = function (str, len, pad, dir) {
         var padlen = len - str.length;
         var right = Math.ceil(padlen / 2);
         var left = padlen - right;
-        str = new Array(left+1).join(pad) + str + new Array(right+1).join(pad);
+        str = fill(left + 1, pad) + str + fill(right + 1, pad);
         break;
 
       default:
-         str = str + new Array(len + 1 - str.length).join(pad);
+         str = str + fill(len + 1 - str.length, pad);
          break;
     }
   }

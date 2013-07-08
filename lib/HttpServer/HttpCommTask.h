@@ -140,6 +140,10 @@ namespace triagens {
           this->_bodyLength      = 0;
           this->_readRequestBody = false;
           this->_requestPending  = false;
+
+          this->_httpVersion     = HttpRequest::HTTP_UNKNOWN;
+          this->_requestType     = HttpRequest::HTTP_REQUEST_ILLEGAL;
+          this->_fullUrl         = "";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,7 +200,7 @@ namespace triagens {
             if (headerLength > this->_maximalHeaderSize) {
               LOGGER_WARNING("maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength);
               // header is too large
-              HttpResponse response(HttpResponse::HEADER_TOO_LARGE);
+              HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE);
               this->handleResponse(&response);
 
               return true;
@@ -218,10 +222,31 @@ namespace triagens {
                 // internal server error
                 HttpResponse response(HttpResponse::SERVER_ERROR);
                 this->handleResponse(&response);
-
                 this->resetState();
 
-                return false;
+                return true;
+              }
+
+              // check HTTP protocol version
+              _httpVersion = this->_request->httpVersion();
+
+              if (_httpVersion != HttpRequest::HTTP_1_0 && 
+                  _httpVersion != HttpRequest::HTTP_1_1) {
+                HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED);
+                this->handleResponse(&response);
+                this->resetState();
+
+                return true;
+              }
+              
+              // check max URL length
+              _fullUrl = this->_request->fullUrl();
+              if (_fullUrl.size() > 16384) {
+                HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG);
+                this->handleResponse(&response);
+                this->resetState();
+
+                return true;
               }
 
               // update the connection information, i. e. client and server addresses and ports
@@ -248,7 +273,7 @@ namespace triagens {
               }
 
               // store the original request's type. we need it later when responding
-              // (original request objects gets deleted before responding)
+              // (original request object gets deleted before responding)
               this->_requestType = this->_request->requestType();
 
 
@@ -283,12 +308,28 @@ namespace triagens {
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
                   this->handleResponse(&response);
-
                   this->resetState();
 
                   return true;
                 }
               }
+          
+              // .............................................................................
+              // check if server is active
+              // .............................................................................
+
+              Scheduler const* scheduler = this->_server->getScheduler();
+
+              if (scheduler != 0 && ! scheduler->isActive()) {
+                // server is inactive and will intentionally respond with HTTP 503
+                LOGGER_TRACE("cannot serve request - server is inactive");
+                HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE);
+                this->handleResponse(&response);
+                this->resetState();
+
+                return true;
+              }
+
 
               // check for a 100-continue
               if (this->_readRequestBody) {
@@ -323,9 +364,8 @@ namespace triagens {
             if (this->_bodyLength > this->_maximalBodySize) {
               LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength);
               // request entity too large
-              HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+              HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
               this->handleResponse(&response);
-
               this->resetState();
 
               return true;
@@ -378,7 +418,6 @@ namespace triagens {
 
                   HttpResponse response(HttpResponse::BAD);
                   this->handleResponse(&response);
-
                   this->resetState();
 
                   return true;
@@ -450,7 +489,7 @@ namespace triagens {
                     response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
                     LOGGER_TRACE("client requested validation of the following headers " << allowHeaders);
                   }
-                  // set caching time (hard-coded to 1 day)
+                  // set caching time (hard-coded value)
                   response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
                 }
                 // End of CORS handling
@@ -490,15 +529,13 @@ namespace triagens {
 
             // not authenticated
             else {
-              string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
-
-              delete this->_request;
-              this->_request = 0;
+              const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
               HttpResponse response(HttpResponse::UNAUTHORIZED);
               response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
 
               this->handleResponse(&response);
+              this->resetState();
             }
 
             return processRead();
@@ -566,6 +603,15 @@ namespace triagens {
 
           LOGGER_TRACE("HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str());
 
+          // disable the following statement to prevent excessive logging of incoming requests
+          LOGGER_USAGE(",\"http-request\",\"" << this->_connectionInfo.clientAddress << "\",\"" << 
+                       HttpRequest::translateMethod(this->_requestType) << "\",\"" <<
+                       HttpRequest::translateVersion(this->_httpVersion) << "\"," << 
+                       response->responseCode() << "," <<
+                       this->_bodyLength << "," << 
+                       response->body().length() << ",\"" <<
+                       this->_fullUrl << "\"");
+
           // clear body
           response->body().clear();
 
@@ -597,7 +643,7 @@ namespace triagens {
           if ((size_t) bodyLength > this->_maximalBodySize) {
             // request entity too large
             LOGGER_WARNING("maximal body size is " << this->_maximalBodySize << ", request body size is " << bodyLength);
-            HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+            HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE);
             this->handleResponse(&response);
 
             return false;
@@ -631,10 +677,22 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief http version number used
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpRequest::HttpVersion _httpVersion;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief type of request (GET, POST, ...)
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpRequest::HttpRequestType _requestType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief value of requested URL
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _fullUrl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief value of the HTTP origin header the client sent (if any).

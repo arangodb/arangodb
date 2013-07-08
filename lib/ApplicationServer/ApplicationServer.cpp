@@ -84,6 +84,14 @@ string const ApplicationServer::OPTIONS_LIMITS = "Limit Options";
 string const ApplicationServer::OPTIONS_LOGGER = "Logging Options";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Replication Options
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+string const ApplicationServer::OPTIONS_REPLICATION = "Replication Options";
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Server Options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,10 +145,13 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logFormat(),
     _logSeverity("human"),
     _logFile("+"),
+    _logRequestsFile(""),
     _logPrefix(),
     _logSyslog(),
     _logThreadId(false),
     _logLineNumber(false),
+    _logSourceFilter(),
+    _logContentFilter(),
     _randomGenerator(5) {
 }
 
@@ -175,10 +186,13 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logFormat(),
     _logSeverity("human"),
     _logFile("+"),
+    _logRequestsFile(""),
     _logPrefix(),
     _logSyslog(),
     _logThreadId(false),
     _logLineNumber(false),
+    _logSourceFilter(),
+    _logContentFilter(),
     _randomGenerator(3) {
   storeRealPrivileges();
 }
@@ -271,6 +285,11 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   if (_options.has("log.line-number")) {
     _logLineNumber = true;
   }
+  
+  if (! _logRequestsFile.empty()) {
+    // add this so the user does not need to think about it
+    _logSeverity += ",usage";
+  }
 
   TRI_SetLineNumberLogging(_logLineNumber);
 
@@ -279,30 +298,64 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   TRI_SetPrefixLogging(_logPrefix);
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  for (vector<string>::iterator i = _logFilter.begin();  i != _logFilter.end();  ++i) {
+  for (vector<string>::iterator i = _logSourceFilter.begin();  i != _logSourceFilter.end();  ++i) {
     TRI_SetFileToLog(i->c_str());
   }
 
-#ifdef TRI_ENABLE_SYSLOG
-  if (_logSyslog != "") {
-    TRI_CreateLogAppenderSyslog(_logPrefix.c_str(), _logSyslog.c_str());
-  }
-#endif
+  char const* contentFilter = 0;
 
-  if (_logFile.length() > 0) {
+  if (_options.has("log.content-filter")) {
+    contentFilter = _logContentFilter.c_str();
+  }
+
+  // requests log (must come before the regular logs)
+  if (! _logRequestsFile.empty()) {
+    string filename = _logRequestsFile;
+
+    if (daemon && filename != "+" && filename != "-") {
+      filename = filename + ".daemon";
+    }
+
+    // this appender consumes all usage log messages, so they are not propagated to any others
+    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
+                                                                    0,
+                                                                    TRI_LOG_SEVERITY_USAGE,
+                                                                    true); 
+
+    // the user specified a requests log file to use but it could not be created. bail out
+    if (appender == 0) {
+      LOGGER_FATAL_AND_EXIT("failed to create requests logfile '" << filename << "'. Please check the path and permissions.");
+    }
+  }
+
+  // regular log file
+  if (! _logFile.empty()) {
     string filename = _logFile;
 
     if (daemon && filename != "+" && filename != "-") {
       filename = filename + ".daemon";
     }
 
-    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str());
+    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
+                                                                    contentFilter,
+                                                                    TRI_LOG_SEVERITY_UNKNOWN,
+                                                                    false);
 
     // the user specified a log file to use but it could not be created. bail out
     if (appender == 0) {
       LOGGER_FATAL_AND_EXIT("failed to create logfile '" << filename << "'. Please check the path and permissions.");
     }
   }
+  
+#ifdef TRI_ENABLE_SYSLOG
+  if (_logSyslog != "") {
+    TRI_CreateLogAppenderSyslog(_logPrefix.c_str(), 
+                                _logSyslog.c_str(),
+                                contentFilter,
+                                TRI_LOG_SEVERITY_UNKNOWN,
+                                false);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -783,13 +836,15 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options[OPTIONS_LOGGER]
     ("log.file", &_logFile, "log to file")
+    ("log.requests-file", &_logRequestsFile, "log requests to file")
     ("log.level,l", &_logLevel, "log level for severity 'human'")
   ;
 
   options[OPTIONS_LOGGER + ":help-log"]
     ("log.application", &_logApplicationName, "application name for syslog")
     ("log.facility", &_logFacility, "facility name for syslog")
-    ("log.filter", &_logFilter, "only debug and trace messages originated by specific C source file")
+    ("log.source-filter", &_logSourceFilter, "only debug and trace messages originated by specific C source file")
+    ("log.content-filter", &_logContentFilter, "only log message containing the specified string (case-sensitive)")
     ("log.format", &_logFormat, "log format")
     ("log.hostname", &_logHostName, "host name")
     ("log.line-number", "always log file and line number")

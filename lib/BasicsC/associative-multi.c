@@ -143,15 +143,15 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMultiArray(TRI_multi_array_t* array,
-                        TRI_memory_zone_t* zone,
-                        size_t elementSize,
-                        uint64_t (*hashKey) (TRI_multi_array_t*, void*),
-                        uint64_t (*hashElement) (TRI_multi_array_t*, void*),
-                        void (*clearElement) (TRI_multi_array_t*, void*),
-                        bool (*isEmptyElement) (TRI_multi_array_t*, void*),
-                        bool (*isEqualKeyElement) (TRI_multi_array_t*, void*, void*),
-                        bool (*isEqualElementElement) (TRI_multi_array_t*, void*, void*)) {
+int TRI_InitMultiArray(TRI_multi_array_t* array,
+                       TRI_memory_zone_t* zone,
+                       size_t elementSize,
+                       uint64_t (*hashKey) (TRI_multi_array_t*, void*),
+                       uint64_t (*hashElement) (TRI_multi_array_t*, void*),
+                       void (*clearElement) (TRI_multi_array_t*, void*),
+                       bool (*isEmptyElement) (TRI_multi_array_t*, void*),
+                       bool (*isEqualKeyElement) (TRI_multi_array_t*, void*, void*),
+                       bool (*isEqualElementElement) (TRI_multi_array_t*, void*, void*)) {
 
   array->hashKey = hashKey;
   array->hashElement = hashElement;
@@ -162,14 +162,14 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
 
   array->_memoryZone = zone;
   array->_elementSize = elementSize;
-  array->_nrAlloc = INITIAL_SIZE;
+  array->_nrAlloc = 0;
+  array->_nrUsed = 0;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * array->_nrAlloc, true);
-  if (array->_table == NULL) {
-    array->_nrAlloc = 0;
+  if (NULL == (array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * INITIAL_SIZE, true))) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_nrUsed = 0;
+  array->_nrAlloc = INITIAL_SIZE;
 
 #ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
@@ -181,6 +181,8 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
 #endif
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +190,9 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyMultiArray (TRI_multi_array_t* array) {
-  TRI_Free(array->_memoryZone, array->_table);
+  if (array->_table != NULL) {
+    TRI_Free(array->_memoryZone, array->_table);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,27 +639,26 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
-                           TRI_memory_zone_t* zone,
-                           uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
-                           uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
-                           bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
-                           bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*)) {
+int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
+                          TRI_memory_zone_t* zone,
+                          uint64_t (*hashKey) (TRI_multi_pointer_t*, void const*),
+                          uint64_t (*hashElement) (TRI_multi_pointer_t*, void const*),
+                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, void const*, void const*),
+                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, void const*, void const*)) {
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
   array->_memoryZone = zone;
-  array->_nrAlloc = INITIAL_SIZE;
+  array->_nrUsed  = 0;
+  array->_nrAlloc = 0;
 
-  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
-
-  if (array->_table == NULL) {
-    array->_nrAlloc = 0;
+  if (NULL == (array->_table = TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_nrUsed = 0;
+  array->_nrAlloc = INITIAL_SIZE;
 
 #ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
@@ -667,6 +670,8 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
 #endif
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -674,7 +679,9 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyMultiPointer (TRI_multi_pointer_t* array) {
-  TRI_Free(array->_memoryZone, array->_table);
+  if (array->_table != NULL) {
+    TRI_Free(array->_memoryZone, array->_table);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

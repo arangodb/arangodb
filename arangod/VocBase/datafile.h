@@ -138,12 +138,12 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_DF_STATE_CLOSED = 1,        // datafile is closed
-  TRI_DF_STATE_READ = 2,          // datafile is opened read only
-  TRI_DF_STATE_WRITE = 3,         // datafile is opened read/append
-  TRI_DF_STATE_OPEN_ERROR = 4,    // an error has occurred while opening
-  TRI_DF_STATE_WRITE_ERROR = 5,   // an error has occurred while writing
-  TRI_DF_STATE_RENAME_ERROR = 6   // an error has occurred while renaming
+  TRI_DF_STATE_CLOSED           = 1, // datafile is closed
+  TRI_DF_STATE_READ             = 2, // datafile is opened read only
+  TRI_DF_STATE_WRITE            = 3, // datafile is opened read/append
+  TRI_DF_STATE_OPEN_ERROR       = 4, // an error has occurred while opening
+  TRI_DF_STATE_WRITE_ERROR      = 5, // an error has occurred while writing
+  TRI_DF_STATE_RENAME_ERROR     = 6  // an error has occurred while renaming
 }
 TRI_df_state_e;
 
@@ -163,10 +163,10 @@ typedef enum {
 
   TRI_COL_MARKER_HEADER              = 2000,
 
-  TRI_DOC_MARKER_HEADER              = 3000,
-  TRI_DOC_MARKER_DOCUMENT            = 3001,
-  TRI_DOC_MARKER_DELETION            = 3002,
-  TRI_DOC_MARKER_EDGE                = 3006,
+  TRI_DOC_MARKER_HEADER              = 3000, // deprecated. do not use 
+  TRI_DOC_MARKER_DOCUMENT            = 3001, // deprecated. do not use
+  TRI_DOC_MARKER_DELETION            = 3002, // deprecated. do not use
+  TRI_DOC_MARKER_EDGE                = 3006, // deprecated. do not use
 
   TRI_DOC_MARKER_KEY_DOCUMENT        = 3007, // new marker with key values
   TRI_DOC_MARKER_KEY_EDGE            = 3008, // new marker with key values
@@ -240,9 +240,8 @@ typedef struct TRI_datafile_s {
   TRI_voc_fid_t _fid;            // datafile identifier
 
   TRI_df_state_e _state;         // state of the datafile (READ or WRITE)
-
-  char* _filename;               // underlying filename
   int _fd;                       // underlying file descriptor
+
   void* _mmHandle;               // underlying memory map object handle (windows only)
 
   TRI_voc_size_t _maximalSize;   // maximale size of the datafile
@@ -251,6 +250,11 @@ typedef struct TRI_datafile_s {
 
   char* _data;                   // start of the data array
   char* _next;                   // end of the current data
+
+  TRI_voc_tick_t _tickMin;       // minimum tick value contained
+  TRI_voc_tick_t _tickMax;       // maximum tick value contained
+  
+  char* _filename;               // underlying filename
 
   // function pointers
   bool (*isPhysical)(const struct TRI_datafile_s* const); // returns true if the datafile is a physical file
@@ -538,6 +542,7 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker to the datafile
+/// this function will write the marker as-is, without any CRC or tick updates
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
@@ -548,6 +553,8 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checksums and writes a marker to the datafile
+/// this function will also assign a new tick value for the marker (so that
+/// the tick values are increasing)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
@@ -558,12 +565,14 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
+/// also may set datafile's min/max tick values
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t*,
                           bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
                           void* data,
-                          bool journal);
+                          bool journal,
+                          bool setTicks);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing datafile read-only

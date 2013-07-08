@@ -208,12 +208,14 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a cap constraint (@ref IndexCapIntro) for the collection `collection-name`, if
-/// it does not already exist. Expects an object containing the index details.
+/// Creates a cap constraint (@ref IndexCapIntro) for the collection `collection-name`,
+/// if it does not already exist. Expects an object containing the index details.
 ///
 /// - `type`: must be equal to `"cap"`.
 ///
 /// - `size`: The maximal number of documents for the collection.
+/// 
+/// - `byteSize`: The maximal size of the active document data in the collection.
 ///
 /// Note that the cap constraint does not index particular attributes of the
 /// documents in a collection, but limits the number of documents in the
@@ -221,11 +223,14 @@ function get_api_index (req, res) {
 /// attribute names specified in the `fields` attribute nor uniqueness of
 /// any kind via the `unique` attribute.
 ///
+/// It is allowed to specify either `size` or `byteSize`, or both at
+/// the same time. If both are specified, then the automatic document removal
+/// will be triggered by the first non-met constraint.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
-/// returned.
+/// If the index already exists, then a `HTTP 200` is returned.
 ///
 /// @RESTRETURNCODE{201}
 /// If the index does not already exist and could be created, then a `HTTP 201`
@@ -236,7 +241,7 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a cap collection
+/// Creating a cap constraint
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewCapConstraint}
 ///     var cn = "products";
@@ -244,9 +249,12 @@ function get_api_index (req, res) {
 ///     db._create(cn, { waitForSync: true });
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "cap", "size" : 10 }';
+///     var body = { 
+///       type: "cap", 
+///       size : 10 
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     assert(response.code === 201);
 ///
@@ -255,14 +263,30 @@ function get_api_index (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_index_cap (req, res, collection, body) {
-  if (! body.hasOwnProperty("size")) {
+  if (body.hasOwnProperty("size") && 
+      (typeof body.size !== "number" || body.size < 0)) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expecting a size");
+                      "expecting a valid size");
     return;
   }
   
-  var size = body.size;
-  var index = collection.ensureCapConstraint(size);
+  if (body.hasOwnProperty("byteSize") && 
+      (typeof body.byteSize !== "number" || body.byteSize < 0)) {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
+                      "expecting a valid byteSize");
+    return;
+  }
+  
+  var size = body.size || 0;
+  var byteSize = body.byteSize || 0;
+
+  if (size <= 0 && byteSize <= 0) {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
+                      "expecting a valid size and/or byteSize");
+    return;
+  } 
+
+  var index = collection.ensureCapConstraint(size, byteSize);
 
   if (index.isNewlyCreated) {
     actions.resultOk(req, res, actions.HTTP_CREATED, index);
@@ -859,7 +883,11 @@ function post_api_index_bitarray (req, res, collection, body) {
 /// Most indexes (a notable exception being the cap constraint) require the
 /// list of attributes to be indexed in the `fields` attribute of the index
 /// details. Depending on the index type, a single attribute or multiple 
-/// attributes may be indexed.
+/// attributes may be indexed. 
+/// 
+/// Indexing system attributes such as `_id`, `_key`, `_from`, and `_to`
+/// is not supported by any index type. Manually creating an index that 
+/// relies on any of these attributes is unsupported.
 ///
 /// Some indexes can be created as unique or non-unique variants. Uniqueness
 /// can be controlled for most indexes by specifying the `unique` in the

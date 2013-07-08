@@ -66,6 +66,7 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
@@ -76,6 +77,7 @@ bin_arangod_SOURCES = \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/SkipListsEx/skiplistEx.c \
 	arangod/SkipListsEx/skiplistExIndex.c \
+	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-query.cpp \
@@ -95,6 +97,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/key-generator.c \
 	arangod/VocBase/marker.c \
 	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/replication.c \
 	arangod/VocBase/server-id.c \
 	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
@@ -115,6 +118,11 @@ bin_arangod_SOURCES += \
 	arangod/MRServer/mr-actions.cpp
 endif
 
+if ENABLE_REPLICATION
+
+bin_arangod_SOURCES += \
+	arangod/Replication/ReplicationFetcher.cpp
+endif
 
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER

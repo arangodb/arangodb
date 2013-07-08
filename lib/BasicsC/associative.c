@@ -36,6 +36,25 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initial number of elements in the array
+////////////////////////////////////////////////////////////////////////////////
+
+#define INITIAL_SIZE (10)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -126,18 +145,15 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitAssociativeArray (TRI_associative_array_t* array,
-                               TRI_memory_zone_t* zone,
-                               size_t elementSize,
-                               uint64_t (*hashKey) (TRI_associative_array_t*, void*),
-                               uint64_t (*hashElement) (TRI_associative_array_t*, void*),
-                               void (*clearElement) (TRI_associative_array_t*, void*),
-                               bool (*isEmptyElement) (TRI_associative_array_t*, void*),
-                               bool (*isEqualKeyElement) (TRI_associative_array_t*, void*, void*),
-                               bool (*isEqualElementElement) (TRI_associative_array_t*, void*, void*)) {
-  char* p;
-  char* e;
-
+int TRI_InitAssociativeArray (TRI_associative_array_t* array,
+                              TRI_memory_zone_t* zone,
+                              size_t elementSize,
+                              uint64_t (*hashKey) (TRI_associative_array_t*, void*),
+                              uint64_t (*hashElement) (TRI_associative_array_t*, void*),
+                              void (*clearElement) (TRI_associative_array_t*, void*),
+                              bool (*isEmptyElement) (TRI_associative_array_t*, void*),
+                              bool (*isEqualKeyElement) (TRI_associative_array_t*, void*, void*),
+                              bool (*isEqualElementElement) (TRI_associative_array_t*, void*, void*)) {
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->clearElement = clearElement;
@@ -147,24 +163,14 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
 
   array->_memoryZone = zone;
   array->_elementSize = elementSize;
-  array->_nrAlloc = 10;
+  array->_nrAlloc = 0;
+  array->_nrUsed  = 0;
 
-  array->_table = TRI_Allocate(zone, array->_elementSize * array->_nrAlloc, true);
-
-  p = array->_table;
-
-  if (p == NULL) {
-    array->_nrAlloc = 0;
-  }
-  else {
-    e = p + array->_elementSize * array->_nrAlloc;
-
-    for (;  p < e;  p += array->_elementSize) {
-      array->clearElement(array, p);
-    }
+  if (NULL == (array->_table = TRI_Allocate(zone, array->_elementSize * INITIAL_SIZE, true))) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_nrUsed = 0;
+  array->_nrAlloc = INITIAL_SIZE;
 
 #ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
@@ -176,6 +182,8 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
 #endif
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,7 +191,10 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyAssociativeArray (TRI_associative_array_t* array) {
-  TRI_Free(array->_memoryZone, array->_table);
+  if (array->_table != NULL) {
+    TRI_Free(array->_memoryZone, array->_table);
+    array->_table = NULL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,7 +596,7 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
+static bool ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   void** oldTable;
   uint32_t oldAlloc;
   uint32_t j;
@@ -604,7 +615,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
     array->_nrAlloc = oldAlloc;
     array->_table = oldTable;
 
-    return;
+    return false;
   }
 
   array->_nrUsed = 0;
@@ -617,6 +628,8 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   }
 
   TRI_Free(array->_memoryZone, oldTable);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -636,27 +649,26 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
-                                 TRI_memory_zone_t* zone,
-                                 uint64_t (*hashKey) (TRI_associative_pointer_t*, void const*),
-                                 uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
-                                 bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
-                                 bool (*isEqualElementElement) (TRI_associative_pointer_t*, void const*, void const*)) {
+int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
+                                TRI_memory_zone_t* zone,
+                                uint64_t (*hashKey) (TRI_associative_pointer_t*, void const*),
+                                uint64_t (*hashElement) (TRI_associative_pointer_t*, void const*),
+                                bool (*isEqualKeyElement) (TRI_associative_pointer_t*, void const*, void const*),
+                                bool (*isEqualElementElement) (TRI_associative_pointer_t*, void const*, void const*)) {
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
   array->_memoryZone = zone;
-  array->_nrAlloc = 10;
+  array->_nrAlloc = 0;
+  array->_nrUsed  = 0;
 
-  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
-
-  if (array->_table == NULL) {
-    array->_nrAlloc = 0;
+  if (NULL == (array->_table = TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_nrUsed = 0;
+  array->_nrAlloc = INITIAL_SIZE;
 
 #ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
@@ -668,6 +680,8 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
 #endif
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -675,7 +689,10 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyAssociativePointer (TRI_associative_pointer_t* array) {
-  TRI_Free(array->_memoryZone, array->_table);
+  if (array->_table != NULL) {
+    TRI_Free(array->_memoryZone, array->_table);
+    array->_table = NULL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,6 +921,70 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an key/element to the array
+/// returns a status code, and *found will contain a found element (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
+                                      void const* key,
+                                      void* element,
+                                      void const** found) {
+  uint64_t hash;
+  uint64_t i;
+  void* old;
+  
+  if (found != NULL) {
+    *found = NULL;
+  }
+
+  // check for out-of-memory
+  if (array->_nrAlloc == array->_nrUsed) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // compute the hash
+  hash = array->hashKey(array, key);
+  i = hash % array->_nrAlloc;
+
+#ifdef TRI_INTERNAL_STATS
+  // update statistics
+  array->_nrAdds++;
+#endif
+
+  // search the table
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+    i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
+    array->_nrProbesA++;
+#endif
+  }
+
+  old = array->_table[i];
+
+  // if we found an element, return
+  if (old != NULL) {
+    if (found != NULL) {
+      *found = old;
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  }
+    
+  // add a new element to the associative array
+  array->_table[i] = element;
+  array->_nrUsed++;
+
+  // if we were adding and the table is more than half full, extend it
+  if (array->_nrAlloc < 2 * array->_nrUsed) {
+    if (! ResizeAssociativePointer(array)) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1125,27 +1206,26 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
-                                TRI_memory_zone_t* zone,
-                                uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
-                                uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
-                                bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
-                                bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*)) {
+int TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
+                               TRI_memory_zone_t* zone,
+                               uint64_t (*hashKey) (TRI_associative_synced_t*, void const*),
+                               uint64_t (*hashElement) (TRI_associative_synced_t*, void const*),
+                               bool (*isEqualKeyElement) (TRI_associative_synced_t*, void const*, void const*),
+                               bool (*isEqualElementElement) (TRI_associative_synced_t*, void const*, void const*)) {
   array->hashKey = hashKey;
   array->hashElement = hashElement;
   array->isEqualKeyElement = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
   array->_memoryZone = zone;
-  array->_nrAlloc = 10;
+  array->_nrAlloc = 0;
+  array->_nrUsed  = 0;
 
-  array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
-
-  if (array->_table == NULL) {
-    array->_nrAlloc = 0;
+  if (NULL == (array->_table = TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_nrUsed = 0;
+  array->_nrAlloc = INITIAL_SIZE;
 
 #ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
@@ -1159,6 +1239,8 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
 #endif
 
   TRI_InitReadWriteLock(&array->_lock);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1166,7 +1248,11 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyAssociativeSynced (TRI_associative_synced_t* array) {
-  TRI_Free(array->_memoryZone, array->_table);
+  if (array->_table != NULL) {
+    TRI_Free(array->_memoryZone, array->_table);
+    array->_table = NULL;
+  }
+
   TRI_DestroyReadWriteLock(&array->_lock);
 }
 

@@ -45,6 +45,8 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_df_marker_s;
+struct TRI_index_s;
+struct TRI_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               DOCUMENT COLLECTION
@@ -177,6 +179,20 @@ struct TRI_df_marker_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief type containing a write operation for a transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_transaction_operation_s {
+  TRI_doc_mptr_t*               _newHeader;
+  TRI_doc_mptr_t*               _oldHeader;
+  TRI_doc_mptr_t                _oldData;
+  TRI_df_marker_t*              _marker;
+  size_t                        _markerSize;
+  TRI_voc_document_operation_e  _type;
+}
+TRI_transaction_operation_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief primary collection with global read-write lock
 ///
 /// A primary collection is a collection with a single read-write lock. This
@@ -191,21 +207,22 @@ typedef struct TRI_document_collection_s {
   // _lock of its base type, TRI_primary_collection_t.
   // .............................................................................
 
-  TRI_headers_t* _headers;
+  TRI_headers_t*           _headers;
 
-  TRI_vector_pointer_t _allIndexes;
-
-  // whether or not any of the indexes may need to be garbage-collected
-  // this flag may be modifying when an index is added to a collection
-  // if true, the cleanup thread will periodically call the cleanup functions of
-  // the collection's indexes that support cleanup
-  bool _cleanupIndexes;
+  TRI_vector_pointer_t     _allIndexes;
+  TRI_vector_t             _failedTransactions;
 
   // .............................................................................
   // this condition variable protects the _journalsCondition
   // .............................................................................
 
-  TRI_condition_t _journalsCondition;
+  TRI_condition_t          _journalsCondition;
+  
+  // whether or not any of the indexes may need to be garbage-collected
+  // this flag may be modifying when an index is added to a collection
+  // if true, the cleanup thread will periodically call the cleanup functions of
+  // the collection's indexes that support cleanup
+  bool                     _cleanupIndexes;
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_s*);
@@ -260,6 +277,14 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index, based on a JSON description
+////////////////////////////////////////////////////////////////////////////////
+  
+int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
+                                         struct TRI_json_s const*,
+                                         struct TRI_index_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rolls back a document operation
@@ -373,6 +398,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*, TRI_idx_iid_t)
 
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
                                                         size_t,
+                                                        int64_t,
                                                         bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,7 +702,7 @@ int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetRevisionDocumentCollection (TRI_document_collection_t*,
-                                        TRI_voc_rid_t);
+                                        TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection

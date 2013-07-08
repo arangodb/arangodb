@@ -91,7 +91,7 @@ static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t* resul
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_general_cursor_result_t* TRI_CreateResultAql (TRI_json_t* data) {
-  if (!data || data->_type != TRI_JSON_LIST) {
+  if (data == NULL || data->_type != TRI_JSON_LIST) {
     return NULL;
   }
 

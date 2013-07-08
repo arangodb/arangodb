@@ -133,7 +133,7 @@ std::string Version::getICUVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getConfigure () {
-  std::string configure;
+  std::string configure("");
 
 #ifdef TRI_CONFIGURE_COMMAND
 #ifdef TRI_CONFIGURE_OPTIONS
@@ -148,7 +148,7 @@ std::string Version::getConfigure () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getConfigureEnvironment () {
-  std::string env;
+  std::string env("");
 
 #ifdef TRI_CONFIGURE_FLAGS
   env.append(TRI_CONFIGURE_FLAGS);

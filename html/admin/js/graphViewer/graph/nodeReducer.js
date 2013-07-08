@@ -1,5 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console, alert*/
+/*global _*/
+// Will be injected by WebWorkers
+/*global self*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -29,6 +31,11 @@
 
 function NodeReducer(nodes, edges) {
   "use strict";
+  // We are executed as a worker
+  if (this.importScripts) {
+    this.importScripts("js/lib/underscore.js");
+  }
+  
   
   if (nodes === undefined) {
     throw "Nodes have to be given.";
@@ -36,240 +43,289 @@ function NodeReducer(nodes, edges) {
   if (edges === undefined) {
     throw "Edges have to be given.";
   }
+
+  var 
+    matrix = null,
+    m = 0,
+    revM = 0,
+    a = null,
+    dQ = null,
+    heap = null,
+    comms = {},
+    isRunning = false,
+    
+    ////////////////////////////////////
+    // Private functions              //
+    //////////////////////////////////// 
+    
+    /////////////////////////////////////
+    // Functions for Modularity Join   //
+    /////////////////////////////////////
+    
+    setHeapToMax = function(id) {
+      var maxT,
+        maxV = Number.NEGATIVE_INFINITY;
+      _.each(dQ[id], function(v, t) {
+        if (maxV < v) {
+          maxV = v;
+          maxT = t;
+        }
+      });
+      if (maxV < 0) {
+        delete heap[id];
+        return;
+      }
+      heap[id] = maxT;
+    },
   
-  var self = this,
-    getDegree = function(id) {
-      return $.grep(nodes, function(e){
-        return e._id === id;
-      })[0];
+    setHeapToMaxInList = function(l, id) {
+      setHeapToMax(id);
     },
     
-    // Will Overwrite dQ, a and heap!
-    populateValues = function(dQ, a, heap) {
-      var m = edges.length,
-        twoM = 2 * m,
-        cFact = 1 / twoM;
-      _.each(nodes, function(n) {
-        a[n._id] = (n._outboundCounter + n._inboundCounter) / twoM;
+    isSetDQVal = function(i, j) {
+      if (i < j) {
+        return dQ[i] && dQ[i][j];
+      }
+      return dQ[j] && dQ[j][i];
+    },
+    
+    // This does not check if everything exists,
+    // do it before!
+    getDQVal = function(i, j) {
+      if (i < j) {
+        return dQ[i][j];
+      }
+      return dQ[j][i];
+    },
+    
+    setDQVal = function(i, j, v) {
+      if (i < j) {
+        dQ[i] = dQ[i] || {};
+        dQ[i][j] = v;
+        return;
+      }
+      dQ[j] = dQ[j] || {};
+      dQ[j][i] = v;
+    },
+    
+    delDQVal = function(i, j) {
+      if (i < j) {
+        if (!dQ[i]) {
+          return;
+        }
+        delete dQ[i][j];
+        if (_.isEmpty(dQ[i])) {
+          delete dQ[i];
+        }
+        return;
+      }
+      if (i === j) {
+        return;
+      }
+      delDQVal(j, i);
+    },
+    
+    updateHeap = function(i, j) {
+      var hv, val;
+      if (i < j) {
+        if (!isSetDQVal(i, j)) {
+          setHeapToMax(i);
+          return;
+        }
+        val = getDQVal(i, j);
+        if (heap[i] === j) {
+          setHeapToMax(i);
+          return;
+        }
+        if (!isSetDQVal(i, heap[i])) {
+          setHeapToMax(i);
+          return;
+        }
+        hv = getDQVal(i, heap[i]);
+        if (hv < val) {
+          heap[i] = j;
+        }
+        return;
+      }
+      if (i === j) {
+        return;
+      }
+      updateHeap(j, i);
+    },
+    
+    updateDegrees = function(low, high) {
+      a[low]._in += a[high]._in;
+      a[low]._out += a[high]._out;
+      delete a[high];
+    }, 
+    
+    makeAdjacencyMatrix = function() {
+      matrix = {};
+      _.each(edges, function (e) {
+        var s = e.source._id,
+          t = e.target._id;
+        matrix[s] = matrix[s] || {};
+        matrix[s][t] = (matrix[s][t] || 0) + 1;
       });
-      
-      _.each(edges, function(e) {
-        var sID, lID;
-        if (e.source._id < e.target._id) {
-          sID = e.source._id;
-          lID = e.target._id;
-        } else {
-          sID = e.target._id;
-          lID = e.source._id;
-        }
-        if (dQ[sID] === undefined) {
-          dQ[sID] = {};
-          heap[sID] = {};
-          heap[sID].val = -1;
-        }
-        dQ[sID][lID] = cFact - a[sID] * a[lID];
-        if (heap[sID].val < dQ[sID][lID]) {
-          heap[sID].val = dQ[sID][lID];
-          heap[sID].sID = sID;
-          heap[sID].lID = lID;
-        }
+      m = edges.length;
+      revM = 1/m;
+      return matrix;
+    },
+  
+    makeInitialDegrees = function() {
+      a = {};
+      _.each(nodes, function (n) {
+        a[n._id] = {
+          _in: n._inboundCounter / m,
+          _out: n._outboundCounter / m
+        };
       });
-   },
-   
-   getLargestOnHeap = function(heap) {
-     return _.max(heap, function(e) {
-       return e.val;
-     });
-   },
-   
-   joinCommunities = function(sID, lID, coms, heap, val) {
-     coms[sID] = coms[sID] || {com: [sID], q: 0};
-     coms[lID] = coms[lID] || {com: [lID], q: 0};
-     var old = coms[sID].com,
-      newC = coms[lID].com;
-     coms[lID].com = old.concat(newC);
-     coms[lID].q += coms[sID].q + val;
-     delete coms[sID];
-   },
-   
+      return a;
+    },
+    
+    notConnectedPenalty = function(s, t) {
+      return a[s]._out * a[t]._in + a[s]._in * a[t]._out;
+    },
+    
+    
+    makeInitialDQ = function() {
+      dQ = {};
+      _.each(nodes, function(n1) {
+        var s = n1._id;
+        _.each(nodes, function(n2) {
+          var t = n2._id,
+            ast = 0,
+            value;
+          if (t <= s) {
+            return;
+          }
+          if (matrix[s] && matrix[s][t]) {
+            ast += matrix[s][t];
+          }
+          if (matrix[t] && matrix[t][s]) {
+            ast += matrix[t][s];
+          }
+          if (ast === 0) {
+            return;
+          }
+          value = ast * revM - notConnectedPenalty(s, t);
+          if (value > 0) {
+            setDQVal(s, t, value);
+          }
+          return;
+        });
+      });      
+    },
 
-   getDQValue = function(dQ, a, b) {
-     if (a < b) {
-       if (dQ[a] !== undefined) {
-         return dQ[a][b];
-       }
-       return undefined;
-     }
-     if (dQ[b] !== undefined) {
-       return dQ[b][a];
-     }
-     return undefined;
-   },
-   
-   setDQValue = function(dQ, heap, a, b, val) {
-     if (a < b) {
-       if(dQ[a] === undefined) {
-         dQ[a] = {};
-         heap[a] = {};
-         heap[a].val = -1;
-       }
-      dQ[a][b] = val;
-      if (heap[a].val < val) {
-        heap[a].val = val;
-        heap[a].sID = a;
-        heap[a].lID = b;
+    makeInitialHeap = function() {
+      heap = {};
+      _.each(dQ, setHeapToMaxInList);
+      return heap;
+    },
+    
+    // i < j && i != j != k
+    updateDQAndHeapValue = function (i, j, k) {
+      var val;
+      if (isSetDQVal(k, i)) {
+        val = getDQVal(k, i);
+        if (isSetDQVal(k, j)) {
+          val += getDQVal(k, j);
+          setDQVal(k, i, val);
+          delDQVal(k, j);
+          updateHeap(k, i);
+          updateHeap(k, j);
+          return;
+        }
+        val -= notConnectedPenalty(k, j);
+        if (val < 0) {
+          delDQVal(k, i);
+        }
+        updateHeap(k, i);
+        return;
       }
-     } else {
-       if(dQ[b] === undefined) {
-         dQ[b] = {};
-         heap[b] = {};
-         heap[b].val = -1;
-       }
-      dQ[b][a] = val;
-      if (heap[b].val < val) {
-        heap[b].val = val;
-        heap[b].sID = b;
-        heap[b].lID = a;
+      if (isSetDQVal(k, j)) {
+        val = getDQVal(k, j);        
+        val -= notConnectedPenalty(k, i);
+        if (val > 0) {
+          setDQVal(k, i, val);
+        }
+        updateHeap(k, i);
+        delDQVal(k, j);
+        updateHeap(k, j);
       }
-     }
-   },
+    },
+    
+    updateDQAndHeap = function (low, high) {
+      _.each(dQ, function (list, s) {
+        if (s === low || s === high) {
+          _.each(list, function(v, t) {
+            if (t === high) {
+              delDQVal(low, high);
+              updateHeap(low, high);
+              return;
+            }
+            updateDQAndHeapValue(low, high, t);
+          });
+          return;
+        }
+        updateDQAndHeapValue(low, high, s);
+      });
+    },
+    
+    /////////////////////////////
+    // Functions for Buckets   //
+    /////////////////////////////
+    
+    neighbors = function(sID) {
+      var neigh = [];
+      _.each(edges, function(e) {
+        if (e.source._id === sID) {
+          neigh.push(e.target._id);
+          return;
+        }
+        if (e.target._id === sID) {
+          neigh.push(e.source._id);
+          return;
+        }
+      });
+      return neigh;
+    },
+    
+    floatDistStep = function(dist, depth, todo) {
+      if (todo.length === 0) {
+        return true;
+      }
+      var nextTodo = [];
+      _.each(todo, function(t) {
+        if (dist[t] !== Number.POSITIVE_INFINITY) {
+          return;
+        }
+        dist[t] = depth;
+        nextTodo = nextTodo.concat(neighbors(t));
+      });
+      return floatDistStep(dist, depth+1, nextTodo);
+    },
    
-   delDQValue = function(dQ, a, b) {
-     if (a < b) {
-       delete dQ[a][b];
-     } else {
-       delete dQ[b][a];
-     }
-   },
-   
-   updateValues = function(largest, dQ, a, heap) {
-     var lID = largest.lID,
-       sID = largest.sID;
-     _.each(nodes, function (n) {
-       var id = n._id,
-         c1, c2;
-       if (id === sID || id === lID) {
-         return null;
-       }
-       c1 = getDQValue(dQ, id, sID);
-       c2 = getDQValue(dQ, id, lID);
-       if (c1 !== undefined) {
-         if (c2 !== undefined) {
-           setDQValue(dQ, heap, id, lID, c1 + c2);
-         } else {
-           setDQValue(dQ, heap, id, lID, c1 - 2 * a[lID] * a[id]);
-         }
-         delDQValue(dQ, id, sID);
-       } else {
-         if (c2 !== undefined) {
-           setDQValue(dQ, heap, id, lID, c2- 2 * a[sID] * a[id]);
-         }
-       }
-     });
-     delete dQ[sID];
-     delete heap[sID];
-     a[lID] += a[sID];
-     delete a[sID];
-   },
-   
-   sortBySize = function(a, b) {
-     return b.length - a.length;
-   },
-   
-   neighbors = function(sID) {
-     var neigh = [];
-     _.each(edges, function(e) {
-       if (e.source._id === sID) {
-         neigh.push(e.target._id);
-         return;
-       }
-       if (e.target._id === sID) {
-         neigh.push(e.source._id);
-         return;
-       }
-     });
-     return neigh;
-   },
-   
-   minDist = function(dist) {
-     return function(a) {
-       return dist[a];
-     };
-   },
-   
-   dijkstra = function(sID) {
-     var dist = {},
-       toDo, next, neigh,
-       filterNotNext = function(e) {
-         return e !== next;
-       },
-       computeNeighbours = function(v) {
-         if (_.contains(toDo, v)) {
-           if (dist[v] > dist[next] + 1) {
-             dist[v] = dist[next] + 1;
-           }
-         }
-       };
-       
-     toDo = _.pluck(nodes, "_id");
-     _.each(toDo, function(n) {
-       dist[n] = Number.POSITIVE_INFINITY;
-     });
-     dist[sID] = 0;
-     while(toDo.length > 0) {
-       next = _.min(toDo, minDist(dist));
-       if (next === Number.POSITIVE_INFINITY) {
-         break;
-       }
-       toDo = toDo.filter(filterNotNext);
-       neigh = neighbors(next);
-       _.each(neigh, computeNeighbours);
-     }
-     return dist;
-   },
-   
-   floatDistStep = function(dist, depth, todo) {
-     if (todo.length === 0) {
-       return true;
-     }
-     var nextTodo = [];
-     _.each(todo, function(t) {
-       if (dist[t] !== Number.POSITIVE_INFINITY) {
-         return;
-       }
-       dist[t] = depth;
-       nextTodo = nextTodo.concat(neighbors(t));
-     });
-     return floatDistStep(dist, depth+1, nextTodo);
-   },
-   
-   floatDist = function(sID) {
-     var dist = {};
-     _.each(_.pluck(nodes, "_id"), function(n) {
-       dist[n] = Number.POSITIVE_INFINITY;
-     });
-     dist[sID] = 0;
-     if (floatDistStep(dist, 1, neighbors(sID))) {
-       return dist;
-     }
-     throw "FAIL!";
-   },
-   
-   communityDetectionStep = function(dQ, a, heap, coms) {
-     //console.log("COMS: " + JSON.stringify(coms));
-     //console.log("HEAP: " + JSON.stringify(heap));
-     var l = getLargestOnHeap(heap);
-     if (l === Number.NEGATIVE_INFINITY || l.val < 0) {
-       return false;
-     }
-     joinCommunities(l.sID, l.lID, coms, heap, l.val);
-     updateValues(l, dQ, a, heap);
-     return true;
-   },
-   
+    floatDist = function(sID) {
+      var dist = {};
+      _.each(_.pluck(nodes, "_id"), function(n) {
+        dist[n] = Number.POSITIVE_INFINITY;
+      });
+      dist[sID] = 0;
+      if (floatDistStep(dist, 1, neighbors(sID))) {
+        return dist;
+      }
+      throw "FAIL!";
+    },
+    
+    minDist = function(dist) {
+      return function(a) {
+        return dist[a];
+      };
+    },
+    
    addNode = function(bucket, node) {
      bucket.push(node);
-     
    },
    
    getSimilarityValue = function(bucket, node) {
@@ -292,17 +348,114 @@ function NodeReducer(nodes, edges) {
      propCount++;
      countMatch++;
      return countMatch / propCount;
-   };
+   },
+   
+
+  
+   ////////////////////////////////////
+   // getters                        //
+   ////////////////////////////////////
+  
+   getAdjacencyMatrix = function() {
+     return matrix;
+   },
+  
+   getHeap = function() {
+     return heap;
+   },
+  
+   getDQ = function() {
+     return dQ;
+   },
+  
+   getDegrees = function() {
+     return a;
+   },
+  
+   getCommunities = function() {
+     return comms;
+   },
+  
+   getBestCommunity = function (communities) {
+     var bestQ = Number.NEGATIVE_INFINITY,
+       bestC;
+     _.each(communities, function (obj) {
+       if (obj.q > bestQ) {
+         bestQ = obj.q;
+         bestC = obj.nodes;
+       }
+     });
+     return bestC;
+   },
+  
+   getBest = function() {
+     var bestL, bestS, bestV = Number.NEGATIVE_INFINITY;
+     _.each(heap, function(lID, sID) {
+       if (bestV < dQ[sID][lID]) {
+         bestL = lID;
+         bestS = sID;
+         bestV = dQ[sID][lID];
+       }
+     });
+     if (bestV <= 0) {
+       return null;
+     }
+     return {
+       sID: bestS,
+       lID: bestL,
+       val: bestV
+     };
+   },
+  
+
+  
+   ////////////////////////////////////
+   // setup                          //
+   ////////////////////////////////////
+  
+   setup = function() {
+     makeAdjacencyMatrix();
+     makeInitialDegrees();
+     makeInitialDQ();
+     makeInitialHeap();
+     comms = {};
+   },
+  
+  
+   ////////////////////////////////////
+   // computation                    //
+   ////////////////////////////////////
     
-  self.getCommunity = function(limit, focus) {
-    var dQ = {},
-      a = {},
-      heap = {},
-      coms = {},
+  joinCommunity = function(comm) {
+     var s = comm.sID,
+       l = comm.lID,
+       q = comm.val;
+     comms[s] = comms[s] || {nodes: [s], q: 0};
+     if (comms[l]) {
+       comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
+       comms[s].q += comms[l].q;
+       delete comms[l];
+     } else {
+       comms[s].nodes.push(l);
+     }
+     comms[s].q += q;
+     updateDQAndHeap(s, l);
+     updateDegrees(s, l);
+  },
+  
+  ////////////////////////////////////
+  // Get only the Best Community    //
+  ////////////////////////////////////
+   
+  getCommunity = function(limit, focus) {
+    if (isRunning) {
+      throw "Still running.";
+    }
+    isRunning = true;
+    var coms = {},
       res = [],
       dist = {},
-      dist2 = {},
-      detectSteps = true,
+      best,
       sortByDistance = function (a, b) {
         var d1 = dist[_.min(a,minDist(dist))],
           d2 = dist[_.min(b,minDist(dist))],
@@ -313,25 +466,35 @@ function NodeReducer(nodes, edges) {
         return val;
       };
     if (nodes.length === 0 || edges.length === 0) {
+      isRunning = false;
       throw "Load some nodes first.";
     }
-    populateValues(dQ, a, heap);
-    while (detectSteps) {
-      detectSteps = communityDetectionStep(dQ, a, heap, coms);
+    setup();
+    best = getBest();
+    while (best !== null) {
+      joinCommunity(best);
+      best = getBest();
     }
-    res = _.pluck(_.values(coms), "com");
+    coms = getCommunities();
+    
     if (focus !== undefined) {
+      _.each(coms, function(obj, key) {
+        if (_.contains(obj.nodes, focus._id)) {
+          delete coms[key];
+        }
+      });
+      
+      res = _.pluck(_.values(coms), "nodes");
       dist = floatDist(focus._id);
-      res = res.filter(function(e) {return !_.contains(e, focus._id);});
-      res = res.filter(function(e) {return e.length > 1;});
       res.sort(sortByDistance);
-    } else {
-      res = res.filter(function(e) {return e.length > 1;});
+      isRunning = false;
+      return res[0];
     }
-    return res[0];
-  };
+    isRunning = false;
+    return getBestCommunity(coms);
+  },
   
-  self.bucketNodes = function(toSort, numBuckets) {
+  bucketNodes = function(toSort, numBuckets) {
     var res = [],
     threshold = 0.5;
     if (toSort.length <= numBuckets) {
@@ -359,5 +522,29 @@ function NodeReducer(nodes, edges) {
     });
     return res;
   };
+  
+  ////////////////////////////////////
+  // Public functions               //
+  ////////////////////////////////////
+ 
+  this.getAdjacencyMatrix = getAdjacencyMatrix;
+ 
+  this.getHeap = getHeap;
+ 
+  this.getDQ = getDQ;
+ 
+  this.getDegrees = getDegrees;
+ 
+  this.getCommunities = getCommunities;
+ 
+  this.getBest = getBest;
+  
+  this.setup = setup;
+  
+  this.joinCommunity = joinCommunity;
+  
+  this.getCommunity = getCommunity;
+  
+  this.bucketNodes = bucketNodes;
   
 }

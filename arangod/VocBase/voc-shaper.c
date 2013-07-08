@@ -36,25 +36,6 @@
 #include "BasicsC/utf8-helper.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile size
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_voc_size_t const SHAPER_DATAFILE_SIZE = (2 * 1024 * 1204);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
@@ -398,7 +379,7 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
   }
 
   // init attribute marker
-  TRI_InitMarker(&marker->base, TRI_DF_MARKER_ATTRIBUTE, totalSize, TRI_NewTickVocBase());
+  TRI_InitMarker(&marker->base, TRI_DF_MARKER_ATTRIBUTE, totalSize);
   
   // copy attribute name into marker
   memcpy(((char*) marker) + sizeof(TRI_df_attribute_marker_t), name, n);
@@ -428,6 +409,9 @@ static TRI_shape_aid_t FindAttributeByName (TRI_shaper_t* shaper, char const* na
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_attributeLock);
+
+    LOG_ERROR("an error occurred while writing attribute data into shapes collection: %s", 
+              TRI_errno_string(res));
     return 0;
   }
     
@@ -639,6 +623,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   // shape found, free argument and return
   if (found != 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+
     return found;
   }
 
@@ -647,13 +632,12 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
 
   if (marker == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
     return NULL;
   }
 
-  TRI_InitMarker(&marker->base, TRI_DF_MARKER_SHAPE, totalSize, TRI_NewTickVocBase());
+  TRI_InitMarker(&marker->base, TRI_DF_MARKER_SHAPE, totalSize);
   
   // copy shape into the marker
   memcpy(((char*) marker) + sizeof(TRI_df_shape_marker_t), shape, shape->_size);
@@ -665,10 +649,11 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
 
   if (found != 0) {
+    TRI_UnlockMutex(&s->_shapeLock);
+
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
-    TRI_UnlockMutex(&s->_shapeLock);
     return found;
   }
 
@@ -678,11 +663,14 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   // write into the shape collection
   res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
-
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
+
+    LOG_ERROR("an error occurred while writing shape data into shapes collection: %s", 
+              TRI_errno_string(res));
+  
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+
     return NULL;
   }
 
@@ -696,6 +684,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   assert(f == NULL);
 
   TRI_UnlockMutex(&s->_shapeLock);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+
   return l;
 }
 
@@ -1047,13 +1039,13 @@ static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, 
   return TRI_FnvHashBlock(TRI_FnvHashBlockInitial(), (char*)(aid), sizeof(TRI_shape_aid_t));
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collection) {
+static int InitStep1VocShaper (voc_shaper_t* shaper) {
+  int res;
+
   shaper->base.findAttributeByName = FindAttributeByName;
   shaper->base.lookupAttributeByName = LookupAttributeByName;
   shaper->base.lookupAttributeId = LookupAttributeId;
@@ -1062,40 +1054,101 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
   shaper->base.numShapes = NumShapes;
   shaper->base.numAttributes = NumAttributes;
 
-  TRI_InitAssociativeSynced(&shaper->_attributeNames,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            HashKeyAttributeName,
-                            HashElementAttributeName,
-                            EqualKeyAttributeName,
-                            0);
+  res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
+                                  TRI_UNKNOWN_MEM_ZONE,
+                                  HashKeyAttributeName,
+                                  HashElementAttributeName,
+                                  EqualKeyAttributeName,
+                                  0);
 
-  TRI_InitAssociativeSynced(&shaper->_attributeIds,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            HashKeyAttributeId,
-                            HashElementAttributeId,
-                            EqualKeyAttributeId,
-                            0);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
 
-  TRI_InitAssociativeSynced(&shaper->_shapeDictionary,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            0,
-                            HashElementShape,
-                            0,
-                            EqualElementShape);
+  res = TRI_InitAssociativeSynced(&shaper->_attributeIds,
+                                  TRI_UNKNOWN_MEM_ZONE,
+                                  HashKeyAttributeId,
+                                  HashElementAttributeId,
+                                  EqualKeyAttributeId,
+                                  0);
 
-  TRI_InitAssociativeSynced(&shaper->_shapeIds,
-                            TRI_UNKNOWN_MEM_ZONE,
-                            HashKeyShapeId,
-                            HashElementShapeId,
-                            EqualKeyShapeId,
-                            0);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
 
-  TRI_InitAssociativePointer(&shaper->_accessors,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             0,
-                             HashElementAccessor,
-                             0,
-                             EqualElementAccessor);
+    return res;
+  }
+
+  res = TRI_InitAssociativeSynced(&shaper->_shapeDictionary,
+                                  TRI_UNKNOWN_MEM_ZONE,
+                                  0,
+                                  HashElementShape,
+                                  0,
+                                  EqualElementShape);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
+
+    return res;
+  }
+
+  res = TRI_InitAssociativeSynced(&shaper->_shapeIds,
+                                  TRI_UNKNOWN_MEM_ZONE,
+                                  HashKeyShapeId,
+                                  HashElementShapeId,
+                                  EqualKeyShapeId,
+                                  0);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
+
+    return res;
+  }
+
+  res = TRI_InitAssociativePointer(&shaper->_accessors,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   0,
+                                   HashElementAccessor,
+                                   0,
+                                   EqualElementAccessor);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+    TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
+
+    return res;
+  }
+
+  res = TRI_InitAssociativePointer(&shaper->_weightedAttributes,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyWeightedAttribute,
+                                   HashElementWeightedAttribute,
+                                   EqualKeyElementWeightedAttribute,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativePointer(&shaper->_accessors);
+    TRI_DestroyAssociativeSynced(&shaper->_shapeIds);
+    TRI_DestroyAssociativeSynced(&shaper->_shapeDictionary);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
+    TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
+
+    return res;
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a persistent shaper
+////////////////////////////////////////////////////////////////////////////////
+
+static int InitStep2VocShaper (voc_shaper_t* shaper, 
+                               TRI_shape_collection_t* collection) {
 
   TRI_InitMutex(&shaper->_shapeLock);
   TRI_InitMutex(&shaper->_attributeLock);
@@ -1113,13 +1166,6 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
 
   TRI_InitVectorPointer(&shaper->_sortedAttributes, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitAssociativePointer(&shaper->_weightedAttributes,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyWeightedAttribute,
-                             HashElementWeightedAttribute,
-                             EqualKeyElementWeightedAttribute,
-                             NULL);
-
   // ..........................................................................
   // We require a place to store the weights -- a linked list is as good as
   // anything for now. Later try and store in a smart 2D array.
@@ -1129,8 +1175,8 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
   (shaper->_weights)._last   = NULL;
   (shaper->_weights)._length = 0;
 
+  return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1160,7 +1206,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   int res;
   bool ok;
 
-  TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE, 0);
+  TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, TRI_SHAPER_DATAFILE_SIZE, 0);
   // set waitForSync and isVolatile for shapes collection
   parameter._isVolatile  = isVolatile;
   parameter._waitForSync = waitForSync;
@@ -1172,6 +1218,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   }
 
   shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+
   if (shaper == NULL) {
     // out of memory
     TRI_FreeShapeCollection(collection);
@@ -1179,21 +1226,58 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
-  InitVocShaper(shaper, collection);
+  res = TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeShapeCollection(collection);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
+
+    return NULL;
+  }
+
+  res = InitStep1VocShaper(shaper);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeShapeCollection(collection);
+    TRI_FreeShaper(&shaper->base);
+
+    return NULL;
+  }
+
+  res = InitStep2VocShaper(shaper, collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeVocShaper(&shaper->base);
+
+    return NULL;
+  }
 
   // handle basics
   ok = TRI_InsertBasicTypesShaper(&shaper->base);
 
   if (! ok) {
     TRI_FreeVocShaper(&shaper->base);
+
+    return NULL;
+  }
+  
+  collection->_initialised = true;
+
+  res = TRI_SyncShapeCollection(collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot sync shape collection: %s", TRI_last_error());
+    TRI_FreeVocShaper(&shaper->base);
+
     return NULL;
   }
 
   res = TRI_SaveCollectionInfo(collection->base._directory, &parameter, vocbase->_forceSyncProperties);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->base._directory, TRI_last_error());
+    LOG_ERROR("cannot save collection parameters in directory '%s': %s", collection->base._directory, TRI_last_error());
     TRI_FreeVocShaper(&shaper->base);
+
     return NULL;
   }
 
@@ -1287,6 +1371,7 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
                                  char const* filename) {
   voc_shaper_t* shaper;
   TRI_shape_collection_t* collection;
+  int res;
   bool ok;
 
   collection = TRI_OpenShapeCollection(vocbase, filename);
@@ -1296,12 +1381,38 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
   }
 
   shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+
   if (shaper == NULL) {
+    TRI_FreeShapeCollection(collection);
+
     return NULL;
   }
 
-  TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
-  InitVocShaper(shaper, collection);
+  res = TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeShapeCollection(collection);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
+
+    return NULL;
+  }
+
+  res = InitStep1VocShaper(shaper);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeShapeCollection(collection);
+    TRI_FreeShaper(&shaper->base);
+
+    return NULL;
+  }
+  
+  res = InitStep2VocShaper(shaper, collection);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeVocShaper(&shaper->base);
+
+    return NULL;
+  }
 
   // read all shapes and attributes
   TRI_IterateCollection(&collection->base, OpenIterator, shaper);
@@ -1328,12 +1439,12 @@ TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
 
   if (! ok) {
     TRI_FreeVocShaper(&shaper->base);
+
     return NULL;
   }
 
   return &shaper->base;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a persistent shaper

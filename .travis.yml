@@ -1,5 +1,5 @@
 language: c
-before_script: "bash -c 'cd UnitTests/HttpInterface && bundle'"
+before_script: "bash -c 'cd UnitTests/HttpInterface && gem install bundler && bundle'"
 script: "make setup && ./configure --enable-relative --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu && make -j2 && make unittests-shell-server unittests-shell-server-ahuacatl unittests-http-server SKIP_RANGES=1 && echo 'done'"
 branches:
   only:

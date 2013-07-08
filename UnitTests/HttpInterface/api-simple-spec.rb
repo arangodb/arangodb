@@ -19,9 +19,8 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
         @cid = ArangoDB.create_collection(@cn, false)
 
-        (0...1500).each{|i|
-          ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"n\" : #{i} }")
-        }
+
+        ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db, c = db.#{@cn}; for (var i = 0; i < 1500; ++i) { c.save({ n: i }); }")
       end
 
       after do

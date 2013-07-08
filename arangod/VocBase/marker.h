@@ -58,8 +58,7 @@ char* TRI_NameMarker (TRI_df_marker_t const*);
 void TRI_CloneMarker (TRI_df_marker_t*,
                       TRI_df_marker_t const*,
                       TRI_voc_size_t,
-                      TRI_voc_size_t,
-                      TRI_voc_tick_t);
+                      TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a marker with the most basic information
@@ -67,8 +66,7 @@ void TRI_CloneMarker (TRI_df_marker_t*,
 
 void TRI_InitMarker (TRI_df_marker_t*,
                      TRI_df_marker_type_e,
-                     TRI_voc_size_t,
-                     TRI_voc_tick_t);
+                     TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

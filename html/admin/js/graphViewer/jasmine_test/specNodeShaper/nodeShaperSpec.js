@@ -1,6 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
+/*global runs, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -614,6 +615,213 @@
         expect($("svg circle").length).toEqual(5);
       });
     
+    });
+    
+    describe('configured for image', function() {
+      var shaper,
+      imageById = function(id) {
+        return d3.selectAll("svg g")
+          .filter(function(d) {
+            return d._id === id;
+          })
+          .select("image,img");
+      };
+      
+      beforeEach(function () {
+        var config = {
+          shape: {
+            type: NodeShaper.shapes.IMAGE
+          }
+        };
+        shaper = new NodeShaper(d3.select("svg"), config);
+      });
+
+      it('should draw image elements', function () {
+
+        var node = [{_id: 1, _data:{}}];
+        shaper.drawNodes(node);
+        expect($("svg .node").length).toEqual(1);
+        expect($("image,img", $("svg"))[0]).toBeDefined();
+        expect($("image,img", $("svg")).length).toEqual(1);
+        expect($("image,img", $("svg .node"))[0]).toBeDefined();
+        expect($("image,img", $("svg .node")).length).toEqual(1);
+        
+      });
+      
+      it('should be able to use a fixed size', function() {
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            width: 15,
+            height: 10
+          }
+        });
+        var nodes = [
+          {_id: 1, _data:{}},
+          {_id: 2, _data:{}},
+          {_id: 3, _data:{}},
+          {_id: 4, _data:{}},
+          {_id: 5, _data:{}}
+        ];
+        shaper.drawNodes(nodes);
+        expect(imageById(1).attr("width")).toEqual("15");
+        expect(imageById(2).attr("width")).toEqual("15");
+        expect(imageById(3).attr("width")).toEqual("15");
+        expect(imageById(4).attr("width")).toEqual("15");
+        expect(imageById(5).attr("width")).toEqual("15");
+        
+        expect(imageById(1).attr("height")).toEqual("10");
+        expect(imageById(2).attr("height")).toEqual("10");
+        expect(imageById(3).attr("height")).toEqual("10");
+        expect(imageById(4).attr("height")).toEqual("10");
+        expect(imageById(5).attr("height")).toEqual("10");
+        
+      });
+      
+      it('should be able to use a function to determine the size', function() {
+        var widthFunction = function (node) {
+            return 10 + node._id;
+          },
+          heightFunction = function (node) {
+            return 10 - node._id;
+          },
+          nodes = [
+            {_id: 1, _data:{}},
+            {_id: 2, _data:{}},
+            {_id: 3, _data:{}},
+            {_id: 4, _data:{}},
+            {_id: 5, _data:{}}
+          ];
+          shaper = new NodeShaper(d3.select("svg"),
+          {
+            shape: {
+              type: NodeShaper.shapes.IMAGE,
+              width: widthFunction,
+              height: heightFunction
+            } 
+          });
+        shaper.drawNodes(nodes);
+        expect(imageById(1).attr("width")).toEqual("11");
+        expect(imageById(2).attr("width")).toEqual("12");
+        expect(imageById(3).attr("width")).toEqual("13");
+        expect(imageById(4).attr("width")).toEqual("14");
+        expect(imageById(5).attr("width")).toEqual("15");
+        
+        expect(imageById(1).attr("height")).toEqual("9");
+        expect(imageById(2).attr("height")).toEqual("8");
+        expect(imageById(3).attr("height")).toEqual("7");
+        expect(imageById(4).attr("height")).toEqual("6");
+        expect(imageById(5).attr("height")).toEqual("5");
+        
+      });
+    
+      it('should display each node exactly once if an event is added', function() {
+        var nodes = [
+          {_id: 1, _data:{}},
+          {_id: 2, _data:{}},
+          {_id: 3, _data:{}},
+          {_id: 4, _data:{}},
+          {_id: 5, _data:{}}
+        ];
+        shaper.drawNodes(nodes);
+        
+        expect($("image,img",$("svg")).length).toEqual(5);
+        shaper.changeTo({actions: {
+          click: function() {return 0;}
+        }});
+        expect($("image,img",$("svg")).length).toEqual(5);
+        shaper.changeTo({actions: {
+          click: function() {return 1;}
+        }});
+        expect($("image,img",$("svg")).length).toEqual(5);
+        shaper.changeTo({actions: {
+          click: function() {return 2;}
+        }});
+        expect($("image,img",$("svg")).length).toEqual(5);
+      });
+      
+      it('should display an image stored in a given attribute', function() {
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            source: "img"
+          }
+        });
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              img: "source.png"
+            }
+          }
+        ];
+        shaper.drawNodes(nodes);
+        expect(imageById(1).attr("xlink:href")).toEqual("source.png");
+      });
+      
+      it('should be able to use a function to determine the image', function() {
+        var nodes = [
+            {
+              _id: 1,
+              _data: {
+                img: "source.png"
+              }
+            },{
+              _id: 2,
+              _data: {
+                alt: "alt.png"
+              }
+            }
+          ],
+          imgFunction = function(d) {
+            if (d._id === 1) {
+              return d._data.img;
+            }
+            if (d._id === 2) {
+              return d._data.alt;
+            }
+          };
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            source: imgFunction
+          }
+        });
+        shaper.drawNodes(nodes);
+        expect(imageById(1).attr("xlink:href")).toEqual("source.png");
+        expect(imageById(2).attr("xlink:href")).toEqual("alt.png");
+      });
+      
+      it('should be able to fallback to a given default image', function() {
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          shape: {
+            type: NodeShaper.shapes.IMAGE,
+            source: "img",
+            fallback: "default.png"
+          }
+        });
+        var nodes = [
+          {
+            _id: 1,
+            _data: {
+              img: "source.png"
+            }
+          },{
+            _id: 2,
+            _data: {
+            
+            }
+          }
+        ];
+        shaper.drawNodes(nodes);
+        expect(imageById(1).attr("xlink:href")).toEqual("source.png");
+        expect(imageById(2).attr("xlink:href")).toEqual("default.png");
+      });
+      
     });
     
     describe('configured for rectangle', function () {

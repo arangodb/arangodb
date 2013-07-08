@@ -309,6 +309,7 @@ function CollectionSuite () {
 
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -333,6 +334,7 @@ function CollectionSuite () {
 
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -394,6 +396,7 @@ function CollectionSuite () {
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
       assertEqual(1048576, p.journalSize);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -419,6 +422,7 @@ function CollectionSuite () {
       assertEqual(true, p.waitForSync);
       assertEqual(false, p.isVolatile);
       assertEqual(1048576, p.journalSize);
+      assertEqual(true, p.doCompact);
 
       db._drop(cn);
     },
@@ -431,7 +435,7 @@ function CollectionSuite () {
       var cn = "example";
 
       db._drop(cn);
-      var c1 = db._create(cn, { isVolatile : true });
+      var c1 = db._create(cn, { isVolatile : true, doCompact: false });
 
       assertTypeOf("string", c1._id);
       assertEqual(cn, c1.name());
@@ -443,6 +447,7 @@ function CollectionSuite () {
 
       assertEqual(true, p.isVolatile);
       assertEqual(1048576, p.journalSize);
+      assertEqual(false, p.doCompact);
       db._drop(cn);
     },
 
@@ -605,6 +610,44 @@ function CollectionSuite () {
       assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertEqual(0, c1.count());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate
+////////////////////////////////////////////////////////////////////////////////
+
+    testRotate : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      c1.save({ _key: "test" });
+      var f = c1.figures(); 
+      assertEqual(0, f.datafiles.count);
+
+      if (c1.rotate) {
+        // rotate() is only present server-side...
+        c1.rotate();
+
+        // must wait so the synchroniser can catch up
+        require("internal").wait(5);
+
+        f = c1.figures();
+        assertEqual(1, f.datafiles.count);
+        
+        c1.rotate();
+
+        // must wait so the synchroniser can catch up
+        require("internal").wait(5);
+
+        f = c1.figures();
+        assertEqual(2, f.datafiles.count);
+      }
+
+      c1.unload();
 
       db._drop(cn);
     },
@@ -821,6 +864,76 @@ function CollectionSuite () {
       var r4 = c1.revision();
       assertTypeOf("string", r4);
       assertEqual(r3, r4);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test system collection dropping / renaming / unloading
+////////////////////////////////////////////////////////////////////////////////
+
+    testSystemSpecial : function () {
+      [ '_trx', '_users' ].forEach(function(cn) {
+        var c = db._collection(cn);
+
+        // drop
+        try {
+          c.drop();
+          fail();
+        }
+        catch (err1) {
+          assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
+        }
+        
+        // rename
+        var cn = "example";
+        db._drop(cn);
+
+        try {
+          c.rename(cn);
+          fail();
+        }
+        catch (err2) {
+          assertEqual(ERRORS.ERROR_FORBIDDEN.code, err2.errorNum);
+        }
+
+        // unload is allowed
+        c.unload();
+
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test special properties of replication collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialReplication : function () {
+      var repl = db._collection('_replication');
+
+      // drop is not allowed      
+      try {
+        repl.drop();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
+      }
+
+      // rename is not allowed
+      try {
+        var cn = "example";
+        db._drop(cn);
+        repl.rename(cn);
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err2.errorNum);
+      }
+      
+      // unload is not allowed
+      try {
+        repl.unload();
+      }
+      catch (err3) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err3.errorNum);
+      }
     }
 
   };

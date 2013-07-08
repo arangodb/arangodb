@@ -29,7 +29,7 @@ var shellView = Backbone.View.extend({
     // evil: the resize event is globally bound to window, but there is
     // no elegant alternative... (is there?)
     var self = this;
-    $(window).resize(function () { 
+    $(window).resize(function () {
       self.resize();
     });
 

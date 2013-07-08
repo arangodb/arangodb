@@ -43,9 +43,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
-                           const char* utf8,
-                           const size_t inLength,
-                           size_t* outLength) {
+                        const char* utf8,
+                        const size_t inLength,
+                        size_t* outLength) {
   UErrorCode status;
   UChar* utf16;
   int32_t utf16Length;
@@ -149,7 +149,7 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
     }
     return utf8Dest;
   }
-
+  
   utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
   if (utf16 == NULL) {
     return NULL;
@@ -175,6 +175,8 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   int32_t utf16DestLength;
   char * utf8Dest;
   const UNormalizer2 *norm2;
+  char buffer[64];
+  bool mustFree;
 
   *outLength = 0;
 
@@ -194,21 +196,35 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   }
 
   // normalize UChar (UTF-16)
-  utf16Dest = (UChar *) TRI_Allocate(zone, (inLength + 1) * sizeof(UChar), false);
-  if (utf16Dest == NULL) {
-    return 0;
+
+  if (inLength < sizeof(buffer) / sizeof(UChar)) {
+    // use a static buffer
+    utf16Dest = (UChar *) &buffer[0];
+    mustFree = false;
+  }
+  else {
+    // use dynamic memory
+    utf16Dest = (UChar *) TRI_Allocate(zone, (inLength + 1) * sizeof(UChar), false);
+    if (utf16Dest == NULL) {
+      return 0;
+    }
+    mustFree = true;
   }
 
   status = U_ZERO_ERROR;
   utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, inLength, utf16Dest, inLength + 1, &status);
   if (status != U_ZERO_ERROR) {
-    TRI_Free(zone, utf16Dest);
+    if (mustFree) {
+      TRI_Free(zone, utf16Dest);
+    }
     return 0;
   }
 
   // Convert data back from UChar (UTF-16) to UTF-8
   utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, (size_t) utf16DestLength, outLength);
-  TRI_Free(zone, utf16Dest);
+  if (mustFree) {
+    TRI_Free(zone, utf16Dest);
+  }
 
   return utf8Dest;
 }

@@ -55,6 +55,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   if (showProperties) {
     var properties = collection.properties();
 
+    result.doCompact     = properties.doCompact;
     result.isVolatile    = properties.isVolatile;
     result.isSystem      = properties.isSystem;
     result.journalSize   = properties.journalSize;      
@@ -110,6 +111,9 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 /// - `waitForSync` (optional, default: false): If `true` then
 ///   the data is synchronised to disk before returning from a create or
 ///   update of a document.
+///
+/// - `doCompact` (optional, default is `true`): whether or not the collection
+///   will be compacted.
 ///
 /// - `journalSize` (optional, default is a @ref
 ///   CommandLineArangod "configuration parameter"): The maximal size of
@@ -202,14 +206,13 @@ function post_api_collection (req, res) {
   var name = body.name;
   var parameter = { waitForSync : false };
   var type = arangodb.ArangoCollection.TYPE_DOCUMENT;
-  var cid;
 
   if (body.hasOwnProperty("waitForSync")) {
     parameter.waitForSync = body.waitForSync;
   }
-
-  if (body.hasOwnProperty("journalSize")) {
-    parameter.journalSize = body.journalSize;
+  
+  if (body.hasOwnProperty("doCompact")) {
+    parameter.doCompact = body.doCompact;
   }
 
   if (body.hasOwnProperty("isSystem")) {
@@ -219,9 +222,9 @@ function post_api_collection (req, res) {
   if (body.hasOwnProperty("isVolatile")) {
     parameter.isVolatile = body.isVolatile;
   }
-
-  if (body.hasOwnProperty("_id")) {
-    cid = body._id;
+  
+  if (body.hasOwnProperty("journalSize")) {
+    parameter.journalSize = body.journalSize;
   }
 
   if (body.hasOwnProperty("type")) {
@@ -379,13 +382,15 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
-/// `waitForSync`, `journalSize`, and `isVolatile` properties. 
+/// `waitForSync`, `doCompact`, `journalSize`, and `isVolatile` properties. 
 /// This is achieved by forcing a load of the underlying collection.
 ///
 /// - `waitForSync`: If `true` then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
-/// - `journalSize`: The maximal size of a journal / datafile.
+/// - `doCompact`: Whether or not the collection will be compacted.
+///
+/// - `journalSize`: The maximal size setting for journals / datafiles.
 ///
 /// - `isVolatile`: If `true` then the collection data will be
 ///   kept in memory only and ArangoDB will not write or sync the data
@@ -1097,6 +1102,7 @@ function put_api_collection (req, res) {
 ///     var url = "/_api/collection/"+ coll._id;
 ///
 ///     var response = logCurlRequest('DELETE', url);
+///     db[cn] = undefined;
 ///
 ///     assert(response.code === 200);
 ///
@@ -1112,6 +1118,7 @@ function put_api_collection (req, res) {
 ///     var url = "/_api/collection/products1";
 ///
 ///     var response = logCurlRequest('DELETE', url);
+///     db[cn] = undefined;
 ///
 ///     assert(response.code === 200);
 ///

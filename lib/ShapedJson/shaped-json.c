@@ -581,6 +581,8 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
       return false;
     }
 
+    assert(found != NULL);
+
     dst->_type = found->_type;
     dst->_sid = found->_sid;
 
@@ -596,7 +598,6 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      TRI_Free(shaper->_memoryZone, shape);
 
       return false;
     }
@@ -649,6 +650,8 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
       return false;
     }
 
+    assert(found != NULL);
+
     dst->_type = found->_type;
     dst->_sid = found->_sid;
 
@@ -666,7 +669,6 @@ static bool FillShapeValueList (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
       }
 
       TRI_Free(shaper->_memoryZone, values);
-      TRI_Free(shaper->_memoryZone, shape);
 
       return false;
     }
@@ -1539,6 +1541,7 @@ static bool StringifyJsonShapeDataNumber (TRI_shaper_t* shaper,
   v = * (TRI_shape_number_t const*) data;
   // check for special values
 
+  // yes, this is intentional
   if (v != v) {
     // NaN
     res = TRI_AppendString2StringBuffer(buffer, "null", 4);
@@ -1778,13 +1781,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       return false;
     }
 
-    res = TRI_AppendCharStringBuffer(buffer, '"');
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return false;
-    }
-
-    res = TRI_AppendCharStringBuffer(buffer, ':');
+    res = TRI_AppendString2StringBuffer(buffer, "\":", 2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
@@ -1863,13 +1860,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       return false;
     }
 
-    res = TRI_AppendCharStringBuffer(buffer, '"');
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return false;
-    }
-
-    res = TRI_AppendCharStringBuffer(buffer, ':');
+    res = TRI_AppendString2StringBuffer(buffer, "\":", 2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
@@ -2295,6 +2286,37 @@ TRI_json_t* TRI_JsonShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t const* s
   }
 
   return JsonShapeData(shaper, shape, shaped->_data.data, shaped->_data.length);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a shaped json to a string buffer, without the outer braces
+/// this can only be used to stringify shapes of type array
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
+                                   TRI_string_buffer_t* buffer,
+                                   TRI_shaped_json_t const* shaped,
+                                   bool prepend) {
+  TRI_shape_t const* shape;
+  TRI_array_shape_t const* s;
+  bool ok;
+  uint64_t num;
+
+  shape = shaper->lookupShapeId(shaper, shaped->_sid);
+
+  if (shape == NULL || shape->_type != TRI_SHAPE_ARRAY) {
+    return false;
+  }
+
+  if (prepend) {
+    s = (TRI_array_shape_t const*) shape;
+    if (s->_fixedEntries + s->_variableEntries > 0) {
+      TRI_AppendCharStringBuffer(buffer, ',');
+    }
+  }
+
+  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

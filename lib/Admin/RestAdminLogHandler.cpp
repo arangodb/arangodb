@@ -286,6 +286,14 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   // .............................................................................
 
   TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
+
+  if (logs == 0) {
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_OUT_OF_MEMORY);
+    return HANDLER_DONE;
+  }
+
+
   TRI_vector_t clean;
 
   TRI_InitVector(&clean, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_log_buffer_t));

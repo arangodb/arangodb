@@ -28,7 +28,10 @@
 #ifndef TRIAGENS_UTILS_DOCUMENT_HELPER_H
 #define TRIAGENS_UTILS_DOCUMENT_HELPER_H 1
 
-#include "BasicsC/json.h"
+#include "Basics/Common.h"
+#include "VocBase/voc-types.h"
+
+struct TRI_json_s;
 
 namespace triagens {
   namespace arango {
@@ -73,53 +76,38 @@ namespace triagens {
 /// @brief assemble a document id from a string and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        static inline string assembleDocumentId (const string& collectionName,
-                                                 const string& key) {
-          return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
-        }
+        static std::string assembleDocumentId (const std::string&,
+                                               const std::string& key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
-        static inline string assembleDocumentId (const string& collectionName,
-                                                 const TRI_voc_key_t key) {
-          if (key == 0) {
-            return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_deleted";
-          }
+        static std::string assembleDocumentId (const std::string&,
+                                               const TRI_voc_key_t);
 
-          return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id and document key from an id
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool parseDocumentId (const std::string&, 
+                                     TRI_voc_cid_t&,
+                                     std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id and document key from an id
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool parseDocumentId (const char*,
+                                     TRI_voc_cid_t&,
+                                     char**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the "_key" attribute from a JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int getKey (TRI_json_t const* json, TRI_voc_key_t* key) {
-          *key = 0;
-
-          // check type of json
-          if (json == 0 || json->_type != TRI_JSON_ARRAY) {
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          // check _key is there
-          const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
-
-          if (k == 0) {
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (k->_type != TRI_JSON_STRING) {
-            // _key is there but not a string
-            return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-          }
-
-          // _key is there and a string
-          *key = k->_value._string.data;
-
-          return TRI_ERROR_NO_ERROR;
-        }
+        static int getKey (struct TRI_json_s const*, 
+                           TRI_voc_key_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

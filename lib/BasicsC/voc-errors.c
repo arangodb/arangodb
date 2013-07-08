@@ -34,11 +34,12 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
+  REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
-  REG_ERROR(ERROR_ARANGO_SHAPER_FAILED, "illegal shaper");
+  REG_ERROR(ERROR_ARANGO_SHAPER_FAILED, "could not shape document");
   REG_ERROR(ERROR_ARANGO_DATAFILE_SEALED, "datafile sealed");
   REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "read only");
@@ -83,6 +84,13 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_MISSING, "missing document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "invalid document type");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
+  REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
+  REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
+  REG_ERROR(ERROR_REPLICATION_MASTER_ERROR, "master error");
+  REG_ERROR(ERROR_REPLICATION_MASTER_INCOMPATIBLE, "master incompatible");
+  REG_ERROR(ERROR_REPLICATION_MASTER_CHANGE, "master change");
+  REG_ERROR(ERROR_REPLICATION_LOOP, "loop detected");
+  REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -125,6 +133,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
   REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");
+  REG_ERROR(ERROR_APPLICATION_UPLOAD_FAILED, "application upload failed");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
@@ -140,6 +149,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
+  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
   REG_ERROR(ERROR_SESSION_INVALID_SESSION, "invalid session");
   REG_ERROR(ERROR_SESSION_COULD_NOT_CREATE_SESSION, "could not create session");
   REG_ERROR(ERROR_SESSION_COULD_NOT_CHANGE_SESSION, "could not change session");

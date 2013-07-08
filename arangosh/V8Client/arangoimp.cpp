@@ -44,6 +44,7 @@
 #include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8Client/V8ClientConnection.h"
@@ -296,7 +297,7 @@ int main (int argc, char* argv[]) {
                                             ArangoClient::DEFAULT_RETRIES,
                                             false);
 
-  if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != SimpleHttpResult::HTTP_STATUS_OK) {
+  if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);

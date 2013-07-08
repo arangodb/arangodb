@@ -34,22 +34,24 @@ var helper = helper || {};
 (function objectsHelper() {
   "use strict";
   
-  helper.createSimpleNodes = function (ids) {
-    var nodes = [];
-    _.each(ids, function(i) {
+  helper.insertNSimpleNodes = function (nodes, n) {
+    var i;
+    for (i = 0; i < n; i++) {
       nodes.push({
-        _id: i,
+        _id: String(i),
+        _inboundCounter: 0,
+        _outboundCounter: 0,
         position: {
           x: 1,
           y: 1,
           z: 1
         }
       });
-    });
-    return nodes;
+    }
   };
   
-  helper.insertSimpleNodes = function (nodes, ids) {
+  helper.createSimpleNodes = function (ids) {
+    var nodes = [];
     _.each(ids, function(i) {
       nodes.push({
         _id: i,
@@ -61,6 +63,29 @@ var helper = helper || {};
           z: 1
         }
       });
+    });
+    return nodes;
+  };
+  
+  helper.insertSimpleNode = function (nodes, id) {
+    var n = {
+      _id: String(id),
+      _inboundCounter: 0,
+      _outboundCounter: 0,
+      position: {
+        x: 1,
+        y: 1,
+        z: 1
+      }
+    },
+    index = nodes.length;
+    nodes.push(n);
+    return index;
+  };
+  
+  helper.insertSimpleNodes = function (nodes, ids) {
+    _.each(ids, function(i) {
+      helper.insertSimpleNode(nodes, i);
     });
   };
   
@@ -78,8 +103,20 @@ var helper = helper || {};
     for (i = 0; i < toConnect.length - 1; i++) {
       for (j = i + 1; j < toConnect.length; j++) {
         edges.push(helper.createSimpleEdge(nodes, toConnect[i], toConnect[j]));
+        edges.push(helper.createSimpleEdge(nodes, toConnect[j], toConnect[i]));
       }
     }
   };
+  
+  helper.insertSatelite = function(nodes, edges, source, size) {
+    var i, s, t;
+    s = helper.insertSimpleNode(nodes, source);
+    for (i = 0; i < size; i++) {
+      t = helper.insertSimpleNode(nodes, source + "_" + i);
+      edges.push(helper.createSimpleEdge(nodes, s, t));
+    }
+    return s;
+  };
+  
   
 }());

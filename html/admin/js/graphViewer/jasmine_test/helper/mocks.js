@@ -34,7 +34,10 @@ var mocks = mocks || {};
   "use strict";
   
   mocks.layouter = {
-    drag: function(){}
+    drag: function(){},
+    setCombinedUpdateFunction: function() {},
+    stop: function(){},
+    start: function(){}
   };
   
   mocks.adapter = {

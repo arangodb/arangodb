@@ -109,6 +109,10 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// Omitting bind variables if the query references any will result also result
 /// in an `HTTP 400` error.
 ///
+/// @RESTRETURNCODE{404}
+/// The server will respond with `HTTP 404` in case a non-existing collection is
+/// accessed in the query.
+///
 /// @EXAMPLES
 ///
 /// Valid query:

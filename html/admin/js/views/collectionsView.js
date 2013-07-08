@@ -28,7 +28,6 @@ var collectionsView = Backbone.View.extend({
       }).render().el);
     }, this);
 
-    
     $('#searchInput').val(searchOptions.searchPhrase);
     $('#searchInput').focus();
     var val = $('#searchInput').val();

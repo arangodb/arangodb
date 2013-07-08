@@ -61,6 +61,7 @@ typedef enum {
   TRI_BARRIER_DATAFILE_RENAME_CALLBACK,
   TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK,
   TRI_BARRIER_COLLECTION_DROP_CALLBACK,
+  TRI_BARRIER_COLLECTION_REPLICATION,
   TRI_BARRIER_COLLECTION_COMPACTION
 }
 TRI_barrier_type_e;
@@ -92,6 +93,15 @@ typedef struct TRI_barrier_blocker_s {
   char const* _filename;
 }
 TRI_barrier_blocker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barrier replication
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_barrier_replication_s {
+  TRI_barrier_t base;
+}
+TRI_barrier_replication_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief barrier compaction
@@ -172,7 +182,8 @@ TRI_barrier_list_t;
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitBarrierList (TRI_barrier_list_t* container, struct TRI_primary_collection_s* collection);
+void TRI_InitBarrierList (TRI_barrier_list_t* container, 
+                          struct TRI_primary_collection_s* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a barrier list
@@ -184,7 +195,8 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container);
 /// @brief check whether the barrier list contains an element of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e type);
+bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, 
+                              TRI_barrier_type_e type);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new barrier element
@@ -195,6 +207,12 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e 
 TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
                                           size_t line,
                                           char const* filename);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new replication barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierReplication (TRI_barrier_list_t* container);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new compaction barrier

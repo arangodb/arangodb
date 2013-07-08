@@ -36,6 +36,25 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+ 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shapes collection default datafile size
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_SHAPER_DATAFILE_SIZE (2 * 1024 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -62,7 +81,8 @@ extern "C" {
 typedef struct TRI_shape_collection_s {
   TRI_collection_t base;
 
-  TRI_mutex_t _lock;
+  TRI_mutex_t      _lock;
+  bool             _initialised;
 }
 TRI_shape_collection_t;
 
@@ -122,6 +142,12 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
                               TRI_df_marker_t* marker,
                               TRI_voc_size_t markerSize,
                               TRI_df_marker_t** result);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief syncs the active journal of a shape collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SyncShapeCollection (TRI_shape_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection

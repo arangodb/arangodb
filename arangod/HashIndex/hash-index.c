@@ -307,6 +307,8 @@ static TRI_index_result_t HashIndex_find (TRI_hash_index_t* hashIndex,
     results._documents = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 1 * sizeof(TRI_doc_mptr_t*), false);
 
     if (results._documents == NULL) {
+      // no memory. prevent worst case by re-setting results length to 0
+      results._length = 0;
       return results;
     }
 
@@ -399,7 +401,10 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
                                       false);
 
     if (results._documents == NULL) {
+      // no memory. prevent worst case by re-setting results length to 0
       TRI_DestroyVectorPointer(&result);
+      results._length = 0;
+
       return results;
     }
 
@@ -433,7 +438,7 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameHashIndex (const TRI_index_t const* idx) {
+static const char* TypeNameHashIndex (TRI_index_t const* idx) {
   return "hash";
 }
 

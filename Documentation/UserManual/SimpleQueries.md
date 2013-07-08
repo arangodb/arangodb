@@ -70,8 +70,8 @@ use a very elaborate algorithm to lookup neighbors that is a magnitude faster
 than a simple R* index.
 
 In general a geo coordinate is a pair of latitude and longitude.  This can
-either be a list with two elements like `[-10\, +30]` (latitude first, followed
-by longitude) or an object like `{lon: -10\, lat: +30`}.  In order to find all
+either be a list with two elements like `[-10, +30]` (latitude first, followed
+by longitude) or an object like `{lon: -10, lat: +30`}.  In order to find all
 documents within a given radius around a coordinate use the @FN{within}
 operator. In order to find all documents near a given document use the @FN{near}
 operator.

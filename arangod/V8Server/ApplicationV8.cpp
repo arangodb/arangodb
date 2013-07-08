@@ -193,6 +193,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _v8Options(""),
     _startupLoader(),
     _actionLoader(),
+    _adminDirectory(),
     _vocbase(0),
     _nrInstances(0),
     _contexts(0),
@@ -735,7 +736,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   context->_context->Enter();
 
-  TRI_InitV8VocBridge(context->_context, _vocbase, i);
+  TRI_InitV8VocBridge(context->_context, _vocbase, _adminDirectory, i);
   TRI_InitV8Queries(context->_context);
 
 

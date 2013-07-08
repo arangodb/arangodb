@@ -1137,7 +1137,10 @@ static bool InsertHandle (index_t* const idx,
   if (node->_handles == NULL) {
     // node does not yet have any handles. now allocate a new chunk of handles
     node->_handles = TRI_CreateListFulltextIndex(idx->_initialNodeHandles);
-    idx->_memoryAllocated += TRI_MemoryListFulltextIndex(node->_handles);
+
+    if (node->_handles != NULL) {
+      idx->_memoryAllocated += TRI_MemoryListFulltextIndex(node->_handles);
+    }
   }
 
   if (node->_handles == NULL) {

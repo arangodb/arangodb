@@ -396,7 +396,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
-    deleted = (found == NULL || found->_rid > marker->_tick);
+    deleted = (found == NULL || found->_rid > d->_rid);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
@@ -430,6 +430,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     found2 = CONST_CAST(found);
+    assert(found2->_data != NULL);
+    assert(((TRI_df_marker_t*) found2->_data)->_size > 0);
+
     // the fid won't change
 
     // let marker point to the new position
@@ -604,7 +607,7 @@ static void CompactifyDatafile (TRI_document_collection_t* document,
   // deletion markers
   context._keepDeletions = keepDeletions;
 
-  ok = TRI_IterateDatafile(df, Compactifier, &context, false);
+  ok = TRI_IterateDatafile(df, Compactifier, &context, false, false);
 
   if (! ok) {
     LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
@@ -862,6 +865,7 @@ void TRI_CompactorVocBase (void* data) {
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
       TRI_primary_collection_t* primary;
+      bool doCompact;
 
       collection = collections._buffer[i];
 
@@ -878,14 +882,15 @@ void TRI_CompactorVocBase (void* data) {
         continue;
       }
 
-      worked = false;
-      type = primary->base._info._type;
+      worked    = false;
+      doCompact = primary->base._info._doCompact;
+      type      = primary->base._info._type;
 
       // for document collection, compactify datafiles
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-        if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
+        if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
           TRI_barrier_t* ce;
-
+          
           // check whether someone else holds a read-lock on the compaction lock
           if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
             // someone else is holding the compactor lock, we'll not compact
@@ -904,10 +909,10 @@ void TRI_CompactorVocBase (void* data) {
 
             TRI_FreeBarrier(ce);
           }
+        
+          // read-unlock the compaction lock
+          TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
         }
-          
-        // read-unlock the compaction lock
-        TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
       }
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

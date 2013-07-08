@@ -542,6 +542,7 @@ static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, TRI_shape_sid_t s
 
 TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
   array_shaper_t* shaper;
+  int res;
   bool ok;
 
   // create the shaper
@@ -551,7 +552,13 @@ TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
     return NULL;
   }
 
-  TRI_InitShaper(&shaper->base, zone);
+  res = TRI_InitShaper(&shaper->base, zone);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(zone, shaper);
+
+    return NULL;
+  }
 
   // create the attribute dictionary
   TRI_InitAssociativePointer(&shaper->_attributeNames,
@@ -668,22 +675,34 @@ char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, TRI_shape_pid_t pid
 /// @brief initialises the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
+int TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
+  int res;
+
   shaper->_memoryZone = zone;
 
-  TRI_InitAssociativeSynced(&shaper->_attributePathsByName,
-                            zone,
-                            HashNameKeyAttributePath,
-                            HashNameElementAttributePath,
-                            EqualNameKeyAttributePath,
-                            0);
+  res = TRI_InitAssociativeSynced(&shaper->_attributePathsByName,
+                                  zone,
+                                  HashNameKeyAttributePath,
+                                  HashNameElementAttributePath,
+                                  EqualNameKeyAttributePath,
+                                  0);
 
-  TRI_InitAssociativeSynced(&shaper->_attributePathsByPid,
-                            zone,
-                            HashPidKeyAttributePath,
-                            HashPidElementAttributePath,
-                            EqualPidKeyAttributePath,
-                            0);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  res = TRI_InitAssociativeSynced(&shaper->_attributePathsByPid,
+                                  zone,
+                                  HashPidKeyAttributePath,
+                                  HashPidElementAttributePath,
+                                  EqualPidKeyAttributePath,
+                                  0);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativeSynced(&shaper->_attributePathsByName);
+
+    return res;
+  }
 
   TRI_InitMutex(&shaper->_attributePathLock);
 
@@ -692,6 +711,8 @@ void TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
   shaper->lookupAttributePathByPid = LookupPidAttributePath;
   shaper->findAttributePathByName = FindAttributePathByName;
   shaper->lookupAttributePathByName = LookupAttributePathByName;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,6 +737,15 @@ void TRI_DestroyShaper (TRI_shaper_t* shaper) {
   TRI_DestroyAssociativeSynced(&shaper->_attributePathsByPid);
 
   TRI_DestroyMutex(&shaper->_attributePathLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the shaper
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeShaper (TRI_shaper_t* shaper) {
+  TRI_DestroyShaper(shaper);
+  TRI_Free(shaper->_memoryZone, shaper);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

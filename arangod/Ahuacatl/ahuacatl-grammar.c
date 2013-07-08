@@ -598,11 +598,11 @@ static const yytype_uint16 yyrline[] =
      371,   384,   404,   407,   407,   443,   446,   449,   452,   455,
      458,   464,   471,   485,   485,   510,   518,   526,   537,   545,
      553,   561,   569,   577,   585,   593,   601,   609,   617,   625,
-     633,   641,   652,   663,   665,   670,   673,   679,   682,   688,
-     688,   701,   703,   708,   713,   721,   721,   734,   736,   741,
-     743,   748,   756,   760,   760,   813,   830,   837,   845,   856,
-     866,   876,   883,   893,   896,   902,   910,   913,   934,   942,
-     950,   961,   972,   979,   988,   994
+     633,   641,   652,   663,   665,   670,   675,   683,   686,   692,
+     692,   705,   707,   712,   717,   725,   725,   738,   740,   745,
+     747,   752,   760,   764,   764,   817,   834,   841,   849,   860,
+     870,   880,   887,   897,   900,   906,   914,   917,   938,   946,
+     954,   965,   976,   983,   992,   998
 };
 #endif
 
@@ -2495,21 +2495,25 @@ yyreduce:
 /* Line 1778 of yacc.c  */
 #line 670 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_PushListAql(context, (yyvsp[(1) - (1)].node));
+      if (! TRI_PushListAql(context, (yyvsp[(1) - (1)].node))) {
+        ABORT_OOM
+      }
     }
     break;
 
   case 66:
 /* Line 1778 of yacc.c  */
-#line 673 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 675 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_PushListAql(context, (yyvsp[(3) - (3)].node));
+      if (! TRI_PushListAql(context, (yyvsp[(3) - (3)].node))) {
+        ABORT_OOM
+      }
     }
     break;
 
   case 67:
 /* Line 1778 of yacc.c  */
-#line 679 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 683 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
     }
@@ -2517,7 +2521,7 @@ yyreduce:
 
   case 68:
 /* Line 1778 of yacc.c  */
-#line 682 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 686 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
     }
@@ -2525,7 +2529,7 @@ yyreduce:
 
   case 69:
 /* Line 1778 of yacc.c  */
-#line 688 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 692 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       if (node == NULL) {
@@ -2538,7 +2542,7 @@ yyreduce:
 
   case 70:
 /* Line 1778 of yacc.c  */
-#line 695 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 699 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = TRI_PopStackParseAql(context);
     }
@@ -2546,21 +2550,21 @@ yyreduce:
 
   case 71:
 /* Line 1778 of yacc.c  */
-#line 701 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 705 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     }
     break;
 
   case 72:
 /* Line 1778 of yacc.c  */
-#line 703 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 707 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     }
     break;
 
   case 73:
 /* Line 1778 of yacc.c  */
-#line 708 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 712 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       if (! TRI_PushListAql(context, (yyvsp[(1) - (1)].node))) {
         ABORT_OOM
@@ -2570,7 +2574,7 @@ yyreduce:
 
   case 74:
 /* Line 1778 of yacc.c  */
-#line 713 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 717 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       if (! TRI_PushListAql(context, (yyvsp[(3) - (3)].node))) {
         ABORT_OOM
@@ -2580,7 +2584,7 @@ yyreduce:
 
   case 75:
 /* Line 1778 of yacc.c  */
-#line 721 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 725 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeArrayAql(context);
       if (node == NULL) {
@@ -2593,7 +2597,7 @@ yyreduce:
 
   case 76:
 /* Line 1778 of yacc.c  */
-#line 728 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 732 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = TRI_PopStackParseAql(context);
     }
@@ -2601,35 +2605,35 @@ yyreduce:
 
   case 77:
 /* Line 1778 of yacc.c  */
-#line 734 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 738 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     }
     break;
 
   case 78:
 /* Line 1778 of yacc.c  */
-#line 736 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 740 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     }
     break;
 
   case 79:
 /* Line 1778 of yacc.c  */
-#line 741 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 745 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     }
     break;
 
   case 80:
 /* Line 1778 of yacc.c  */
-#line 743 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 747 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     }
     break;
 
   case 81:
 /* Line 1778 of yacc.c  */
-#line 748 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 752 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       if (! TRI_PushArrayAql(context, (yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node))) {
         ABORT_OOM
@@ -2639,7 +2643,7 @@ yyreduce:
 
   case 82:
 /* Line 1778 of yacc.c  */
-#line 756 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 760 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // start of reference (collection or variable name)
       (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -2648,7 +2652,7 @@ yyreduce:
 
   case 83:
 /* Line 1778 of yacc.c  */
-#line 760 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 764 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // expanded variable access, e.g. variable[*]
       TRI_aql_node_t* node;
@@ -2678,7 +2682,7 @@ yyreduce:
 
   case 84:
 /* Line 1778 of yacc.c  */
-#line 784 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 788 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // return from the "expansion" subrule
       TRI_aql_node_t* expanded = TRI_PopStackParseAql(context);
@@ -2709,7 +2713,7 @@ yyreduce:
 
   case 85:
 /* Line 1778 of yacc.c  */
-#line 813 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 817 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // variable or collection
       TRI_aql_node_t* node;
@@ -2731,7 +2735,7 @@ yyreduce:
 
   case 86:
 /* Line 1778 of yacc.c  */
-#line 830 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 834 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
       
@@ -2743,7 +2747,7 @@ yyreduce:
 
   case 87:
 /* Line 1778 of yacc.c  */
-#line 837 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 841 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // named variable access, e.g. variable.reference
       (yyval.node) = TRI_CreateNodeAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
@@ -2756,7 +2760,7 @@ yyreduce:
 
   case 88:
 /* Line 1778 of yacc.c  */
-#line 845 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 849 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // indexed variable access, e.g. variable[index]
       (yyval.node) = TRI_CreateNodeIndexedAql(context, (yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
@@ -2769,7 +2773,7 @@ yyreduce:
 
   case 89:
 /* Line 1778 of yacc.c  */
-#line 856 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 860 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // named variable access, continuation from * expansion, e.g. [*].variable.reference
       TRI_aql_node_t* node = TRI_PopStackParseAql(context);
@@ -2784,7 +2788,7 @@ yyreduce:
 
   case 90:
 /* Line 1778 of yacc.c  */
-#line 866 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 870 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
       TRI_aql_node_t* node = TRI_PopStackParseAql(context);
@@ -2799,7 +2803,7 @@ yyreduce:
 
   case 91:
 /* Line 1778 of yacc.c  */
-#line 876 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 880 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // named variable access, continuation from * expansion, e.g. [*].variable.xx.reference
       (yyval.node) = TRI_CreateNodeAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
@@ -2811,7 +2815,7 @@ yyreduce:
 
   case 92:
 /* Line 1778 of yacc.c  */
-#line 883 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 887 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
       (yyval.node) = TRI_CreateNodeIndexedAql(context, (yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
@@ -2823,7 +2827,7 @@ yyreduce:
 
   case 93:
 /* Line 1778 of yacc.c  */
-#line 893 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 897 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
     }
@@ -2831,7 +2835,7 @@ yyreduce:
 
   case 94:
 /* Line 1778 of yacc.c  */
-#line 896 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 900 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
     }
@@ -2839,7 +2843,7 @@ yyreduce:
 
   case 95:
 /* Line 1778 of yacc.c  */
-#line 902 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 906 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, (yyvsp[(1) - (1)].strval));
       if (node == NULL) {
@@ -2852,7 +2856,7 @@ yyreduce:
 
   case 96:
 /* Line 1778 of yacc.c  */
-#line 910 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 914 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
     (yyval.node) = (yyvsp[(1) - (1)].node);
     }
@@ -2860,7 +2864,7 @@ yyreduce:
 
   case 97:
 /* Line 1778 of yacc.c  */
-#line 913 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 917 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node;
       double value;
@@ -2886,7 +2890,7 @@ yyreduce:
 
   case 98:
 /* Line 1778 of yacc.c  */
-#line 934 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 938 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueNullAql(context);
       if (node == NULL) {
@@ -2899,7 +2903,7 @@ yyreduce:
 
   case 99:
 /* Line 1778 of yacc.c  */
-#line 942 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 946 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, true);
       if (node == NULL) {
@@ -2912,7 +2916,7 @@ yyreduce:
 
   case 100:
 /* Line 1778 of yacc.c  */
-#line 950 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 954 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, false);
       if (node == NULL) {
@@ -2925,7 +2929,7 @@ yyreduce:
 
   case 101:
 /* Line 1778 of yacc.c  */
-#line 961 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 965 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, (yyvsp[(1) - (1)].strval));
       if (node == NULL) {
@@ -2938,7 +2942,7 @@ yyreduce:
 
   case 102:
 /* Line 1778 of yacc.c  */
-#line 972 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 976 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       if (! (yyvsp[(1) - (1)].strval)) {
         ABORT_OOM
@@ -2950,7 +2954,7 @@ yyreduce:
 
   case 103:
 /* Line 1778 of yacc.c  */
-#line 979 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 983 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       if (! (yyvsp[(1) - (1)].strval)) {
         ABORT_OOM
@@ -2962,7 +2966,7 @@ yyreduce:
 
   case 104:
 /* Line 1778 of yacc.c  */
-#line 988 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 992 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.strval) = (yyvsp[(1) - (1)].strval);
     }
@@ -2970,10 +2974,14 @@ yyreduce:
 
   case 105:
 /* Line 1778 of yacc.c  */
-#line 994 "arangod/Ahuacatl/ahuacatl-grammar.y"
+#line 998 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node;
       int64_t value;
+
+      if (! (yyvsp[(1) - (1)].strval)) {
+        ABORT_OOM
+      }
 
       value = TRI_Int64String((yyvsp[(1) - (1)].strval));
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
@@ -2992,7 +3000,7 @@ yyreduce:
 
 
 /* Line 1778 of yacc.c  */
-#line 2996 "arangod/Ahuacatl/ahuacatl-grammar.c"
+#line 3004 "arangod/Ahuacatl/ahuacatl-grammar.c"
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires

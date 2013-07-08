@@ -229,28 +229,44 @@ static bool EqualKeyData (TRI_associative_pointer_t* array, void const* k, void 
 
 TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (void*)) {
   TRI_shadow_store_t* store;
+  int res;
 
   store = (TRI_shadow_store_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_store_t), false);
 
-  if (store != NULL) {
-    TRI_InitAssociativePointer(&store->_ids,
-                               TRI_UNKNOWN_MEM_ZONE,
-                               HashKeyId,
-                               HashElementId,
-                               EqualKeyId,
-                               NULL);
-
-    TRI_InitAssociativePointer(&store->_pointers,
-                               TRI_UNKNOWN_MEM_ZONE,
-                               HashKeyData,
-                               HashElementData,
-                               EqualKeyData,
-                               NULL);
-
-    store->destroyShadow = destroy;
-
-    TRI_InitMutex(&store->_lock);
+  if (store == NULL) {
+    return NULL;
   }
+
+  res = TRI_InitAssociativePointer(&store->_ids,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyId,
+                                   HashElementId,
+                                   EqualKeyId,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, store);
+
+    return NULL;
+  }
+
+  res = TRI_InitAssociativePointer(&store->_pointers,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyData,
+                                   HashElementData,
+                                   EqualKeyData,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyAssociativePointer(&store->_ids);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, store);
+
+    return NULL;
+  }
+
+  store->destroyShadow = destroy;
+
+  TRI_InitMutex(&store->_lock);
 
   return store;
 }

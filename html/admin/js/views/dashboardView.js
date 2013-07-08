@@ -4,7 +4,7 @@
 var dashboardView = Backbone.View.extend({
   el: '#content',
   updateInterval: 500, // 0.5 second, constant
-  updateFrequency: 5, // the actual update rate (5 s)
+  updateFrequency: 10, // the actual update rate (5 s)
   updateCounter: 0,
   arraySize: 20, // how many values will we keep per figure?
   seriesData: {},
@@ -55,8 +55,8 @@ var dashboardView = Backbone.View.extend({
             error: function() {
               // need to flush previous values
               self.calculateSeries(true);
-              self.renderCharts();
               arangoHelper.arangoError("Lost connection to Database!");
+              self.renderCharts();
             }
           });
 
@@ -319,7 +319,7 @@ var dashboardView = Backbone.View.extend({
   renderCharts: function () {
     var self = this;
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
-    self.renderCollectionsChart();
+    //self.renderCollectionsChart();
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;

@@ -199,47 +199,6 @@ function COLLECTION (name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a value for comparison, sorting etc.
-////////////////////////////////////////////////////////////////////////////////
-
-function NORMALIZE (value) {
-  "use strict";
-
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  if (typeof(value) !== "object") {
-    return value;
-  }
-
-  var result;
-
-  if (Array.isArray(value)) {
-    result = [ ];
-    value.forEach(function (v) {
-      result.push(NORMALIZE(v));
-    });
-  } 
-  else {
-    var attributes = [ ], a;
-    for (a in value) {
-      if (value.hasOwnProperty(a)) {
-        attributes.push(a);
-      }
-    }
-    attributes.sort();
-
-    result = { };
-    attributes.forEach(function (a) {
-      result[a] = NORMALIZE(value[a]);
-    });
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone an object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -526,21 +485,18 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
 function KEYS (value, doSort) {
   "use strict";
 
-  var keys = [ ];
+  var keys;
   
   if (Array.isArray(value)) {
     var n = value.length, i;
+    keys = [ ];
+
     for (i = 0; i < n; ++i) {
       keys.push(i);
     }
   }
   else {
-    var a;
-    for (a in value) {
-      if (value.hasOwnProperty(a)) {
-        keys.push(a);
-      }
-    }
+    keys = Object.keys(value);
 
     if (doSort) {
       // object keys need to be sorted by names
@@ -558,30 +514,13 @@ function KEYS (value, doSort) {
 function KEYLIST (lhs, rhs) {
   "use strict";
 
-  var keys = [ ];
-  
   if (Array.isArray(lhs)) {
     // lhs & rhs are lists
-    var i, n;
-    if (lhs.length > rhs.length) {
-      n = lhs.length;
-    }
-    else {
-      n = rhs.length;
-    }
-    for (i = 0; i < n; ++i) {
-      keys.push(i);
-    }
-    return keys;
+    return KEYS(lhs.length > rhs.length ? lhs : rhs);
   }
-
+  
   // lhs & rhs are arrays
-  var a;
-  for (a in lhs) {
-    if (lhs.hasOwnProperty(a)) {
-      keys.push(a);
-    }
-  }
+  var a, keys = KEYS(lhs);
   for (a in rhs) {
     if (rhs.hasOwnProperty(a) && ! lhs.hasOwnProperty(a)) {
       keys.push(a);
@@ -625,6 +564,39 @@ function GET_INDEX (value, index) {
 
   if (TYPEWEIGHT(result) === TYPEWEIGHT_NULL) {
     return null;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a value for comparison, sorting etc.
+////////////////////////////////////////////////////////////////////////////////
+
+function NORMALIZE (value) {
+  "use strict";
+
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof(value) !== "object") {
+    return value;
+  }
+
+  var result;
+
+  if (Array.isArray(value)) {
+    result = [ ];
+    value.forEach(function (v) {
+      result.push(NORMALIZE(v));
+    });
+  } 
+  else {
+    result = { };
+    KEYS(value, true).forEach(function (a) {
+      result[a] = NORMALIZE(value[a]);
+    });
   }
 
   return result;
@@ -836,12 +808,11 @@ function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
   c = COLLECTION(collection);
 
   values.forEach(function (value) {
-    var example = { }, documents;
+    var example = { };
 
     example[attribute] = value;
 
-    documents = c.BY_EXAMPLE_HASH(idx, example).documents;
-    documents.forEach(function (doc) {
+    c.BY_EXAMPLE_HASH(idx, example).documents.forEach(function (doc) {
       result.push(doc);
     });
   });
@@ -967,9 +938,7 @@ function GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
 function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
   "use strict";
 
-  var result = [ ], c;
-
-  c = COLLECTION(collection);
+  var result = [ ], c = COLLECTION(collection);
 
   values.forEach(function (value) {
     var example = { }, documents;
@@ -991,10 +960,13 @@ function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
 function COLLECTIONS () {
   "use strict";
 
-  var result = [ ], collections = INTERNAL.db._collections();
-
-  collections.forEach(function (c) {
-    result.push({ "_id" : c._id, "name" : c.name() });
+  var result = [ ];
+  
+  INTERNAL.db._collections().forEach(function (c) {
+    result.push({ 
+      _id : c._id, 
+      name : c.name() 
+    });
   });
 
   return result;
@@ -1126,9 +1098,9 @@ function RELATIONAL_EQUAL (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length; 
+    for (i = 0; i < n; ++i) {
+      var key = keys[i];
       if (RELATIONAL_EQUAL(lhs[key], rhs[key]) === false) {
         return false;
       }
@@ -1171,9 +1143,9 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
+    for (i = 0; i < n; ++i) {
+      var key = keys[i];
       if (RELATIONAL_UNEQUAL(lhs[key], rhs[key]) === true) {
         return true;
       }
@@ -1218,10 +1190,9 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i, result;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
-      result = RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
+    for (i = 0; i < n; ++i) {
+      var key = keys[i], result = RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1288,10 +1259,9 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i, result;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
-      result = RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
+    for (i = 0; i < n; ++i) {
+      var key = keys[i], result = RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1358,10 +1328,9 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i, result;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
-      result = RELATIONAL_LESS_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
+    for (i = 0; i < n; ++i) {
+      var key = keys[i], result = RELATIONAL_LESS_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1428,10 +1397,9 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i, result;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
-      result = RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
+    for (i = 0; i < n; ++i) {
+      var key = keys[i], result = RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1501,10 +1469,9 @@ function RELATIONAL_CMP (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), key, i, result;
-    for (i = 0; i < keys.length; ++i) {
-      key = keys[i];
-      result = RELATIONAL_CMP(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
+    for (i = 0; i < n; ++i) {
+      var key = keys[i], result = RELATIONAL_CMP(lhs[key], rhs[key]);
       if (result !== 0) {
         return result;
       }
@@ -2998,21 +2965,25 @@ function ATTRIBUTES (element, removeInternal, sort) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ATTRIBUTES");
   }
 
-  var result = [ ], a;
-    
-  for (a in element) {
-    if (element.hasOwnProperty(a)) {
-      if (! removeInternal || a.substring(0, 1) !== '_') {
-        result.push(a);
+  if (removeInternal) {  
+    var a, result = [ ];
+
+    for (a in element) {
+      if (element.hasOwnProperty(a)) {
+        if (a.substring(0, 1) !== '_') {
+          result.push(a);
+        }
       }
     }
-  }
+  
+    if (sort) {
+      result.sort();
+    }
 
-  if (sort) {
-    result.sort();
+    return result;
   }
   
-  return result;
+  return KEYS(element, sort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3026,9 +2997,7 @@ function UNSET (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNSET");
   }
 
-  var keys = EXTRACT_KEYS(arguments, 1, "UNSET"), i;
-
-  var result = { }; 
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET"), i;
   // copy over all that is left
   for (i in value) {
     if (value.hasOwnProperty(i)) {
@@ -3118,7 +3087,7 @@ function MERGE_RECURSIVE () {
       }
     }
     return r;
- };
+  };
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -3478,27 +3447,6 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
     });
   }
 
-  function validate (value, map) {
-    if (value === null || value === undefined) {
-      var m;
-      // use first key from map
-      for (m in map) {
-        if (map.hasOwnProperty(m)) {
-          value = m;
-          break;
-        }
-      }
-    }
-    if (typeof value === 'string') {
-      value = value.toLowerCase().replace(/-/, "");
-      if (map[value] !== null) {
-        return map[value];
-      }
-    }
-
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
-  }
-
   if (typeof params.visitor !== "function") {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
   }
@@ -3508,55 +3456,16 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
     params.maxDepth = 256;
   }
 
-  // prepare an array of filters
-  var filters = [ ];
-  if (params.minDepth !== undefined) {
-    filters.push(TRAVERSAL.minDepthFilter);
-  }
-  if (params.maxDepth !== undefined) {
-    filters.push(TRAVERSAL.maxDepthFilter);
-  }
-  if (filters.length === 0) {
-    filters.push(TRAVERSAL.visitAllFilter);
-  }
-
   var config = {
     connect: params.connect,
     datasource: TRAVERSAL.collectionDatasourceFactory(edgeCollection),
-    strategy: validate(params.strategy, {
-      'depthfirst': TRAVERSAL.Traverser.DEPTH_FIRST,
-      'breadthfirst': TRAVERSAL.Traverser.BREADTH_FIRST
-    }),
-    order: validate(params.order, {
-      'preorder': TRAVERSAL.Traverser.PRE_ORDER,
-      'postorder': TRAVERSAL.Traverser.POST_ORDER
-    }),
-    itemOrder: validate(params.itemOrder, {
-      'forward': TRAVERSAL.Traverser.FORWARD,
-      'backward': TRAVERSAL.Traverser.BACKWARD
-    }),
     trackPaths: params.paths || false,
     visitor: params.visitor,
     maxDepth: params.maxDepth,
     minDepth: params.minDepth,
-    filter: filters,
-    uniqueness: {
-      vertices: validate(params.uniqueness && params.uniqueness.vertices, {
-        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
-        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
-        'path': TRAVERSAL.Traverser.UNIQUE_PATH
-      }),
-      edges: validate(params.uniqueness && params.uniqueness.edges, {
-        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
-        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
-        'path': TRAVERSAL.Traverser.UNIQUE_PATH
-      })
-    },
-    expander: validate(direction, {
-      'outbound': TRAVERSAL.outboundExpander,
-      'inbound': TRAVERSAL.inboundExpander,
-      'any': TRAVERSAL.anyExpander
-    })
+    maxIterations: params.maxIterations,
+    uniqueness: params.uniqueness,
+    expander: direction
   };
 
   if (params.followEdges) {
