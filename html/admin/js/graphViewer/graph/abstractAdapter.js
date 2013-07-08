@@ -139,7 +139,7 @@ function AbstractAdapter(nodes, edges) {
       if (cachedCommunities[source._id] !== undefined) {
         edgeToPush = {};
         edgeToPush.type = "s";
-        edgeToPush.id = edge._id;
+        edgeToPush._id = edge._id;
         edgeToPush.source = $.grep(cachedCommunities[source._id].nodes, function(e){
           return e._id === data._from;
         })[0];
@@ -152,7 +152,7 @@ function AbstractAdapter(nodes, edges) {
       if (cachedCommunities[target._id] !== undefined) {
         edgeToPush = {};
         edgeToPush.type = "t";
-        edgeToPush.id = edge._id;
+        edgeToPush._id = edge._id;
         edgeToPush.target = $.grep(cachedCommunities[target._id].nodes, function(e){
           return e._id === data._to;
         })[0];
@@ -229,14 +229,15 @@ function AbstractAdapter(nodes, edges) {
               delete edgeToPush.target;
               edgeToPush.type = "b";
               edgeToPush.edge = edges[i];
-              removeEdgeWithIndex(i);
+              edges.splice(i, 1);
               i--;
               break;
             }
             edges[i].source = commNode;
             edgeToPush.type = "s";
-            edgeToPush.id = edges[i]._id;
+            edgeToPush._id = edges[i]._id;
             edgeToPush.source = s;
+            joiner.call("deleteEdge", s._id, t._id);
           }
           if (t === nodes[j]) {
             if (edgeToPush.type !== undefined) {
@@ -244,14 +245,15 @@ function AbstractAdapter(nodes, edges) {
               delete edgeToPush.source;
               edgeToPush.type = "b";
               edgeToPush.edge = edges[i];
-              removeEdgeWithIndex(i);
+              edges.splice(i, 1);
               i--;
               break;
             }
             edges[i].target = commNode;
             edgeToPush.type = "t";
-            edgeToPush.id = edges[i]._id;
+            edgeToPush._id = edges[i]._id;
             edgeToPush.target = t;
+            joiner.call("deleteEdge", s._id, t._id);
           }
         }
         if (edgeToPush.type !== undefined) {
@@ -285,6 +287,7 @@ function AbstractAdapter(nodes, edges) {
       if (!community || community.length === 0) {
         return;
       }
+      console.log("Collapsing:", community);
       var commId = "*community_" + Math.floor(Math.random()* 1000000),
         commNode = {
           _id: commId,
@@ -309,8 +312,20 @@ function AbstractAdapter(nodes, edges) {
     
     joinerCb = function (d) {
       var data = d.data;
-      if (data.cmd === "getCommunity") {
-        collapseCommunity(data.result);
+      if (data.error) {
+        console.log(data.error);
+        return;
+      }
+      switch (data.cmd) {
+        case "getCommunity": 
+          collapseCommunity(data.result);
+          break;
+        case "insertEdge":
+          console.log("Inserted");
+          break;
+        case "deleteEdge":
+          console.log("Deleted");
+          break;
       }
     },
     
@@ -345,12 +360,12 @@ function AbstractAdapter(nodes, edges) {
         var edge;
         switch(e.type) {
           case "t":
-            edge = findEdge(e.id);
+            edge = findEdge(e._id);
             edge.target = e.target;
             joiner.call("insertEdge", edge.source._id, edge.target._id);
             break;
           case "s":
-            edge = findEdge(e.id);
+            edge = findEdge(e._id);
             edge.source = e.source;
             joiner.call("insertEdge", edge.source._id, edge.target._id);
             break;
