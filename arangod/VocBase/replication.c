@@ -821,70 +821,82 @@ static bool IterateShape (TRI_shaper_t* shaper,
                           char const* data,
                           uint64_t size,
                           void* ptr) {
-  TRI_replication_dump_t* dump;
-  TRI_string_buffer_t* buffer;
-  char* value;
-  size_t length;
-  int res;
-   
-  dump = (TRI_replication_dump_t*) ptr;
-  buffer = dump->_buffer;
-  
+  bool append = false;
+  bool withName = false;
+
   if (TRI_EqualString(name, "data")) {
+    append   = true;
+    withName = false;
+  }
+  else if (TRI_EqualString(name, "type") ||
+           TRI_EqualString(name, "tid")) {
+    append = true;
+    withName = true;
+  }
+  else {
+    append = false;
+  }
+
+  if (append) {
+    TRI_replication_dump_t* dump;
+    TRI_string_buffer_t* buffer;
+    char* value;
+    size_t length;
+    int res;
+  
+    dump = (TRI_replication_dump_t*) ptr;
+    buffer = dump->_buffer;
+
+    // append ,
     if (! TRI_LastCharStringBuffer(buffer) != '{') {
       res = TRI_AppendCharStringBuffer(buffer, ',');
+    }
+
+    if (withName) {
+      // append attribute name and value
+      res = TRI_AppendCharStringBuffer(buffer, '"');
 
       if (res != TRI_ERROR_NO_ERROR) {
         dump->_failed = true;
         return false;
       }
-    }
 
-    TRI_StringValueShapedJson(shape, data, &value, &length);
-
-    if (value != NULL && length > 2) {
-      res = TRI_AppendString2StringBuffer(dump->_buffer, value + 1, length - 2);
+      res = TRI_AppendStringStringBuffer(buffer, name);
 
       if (res != TRI_ERROR_NO_ERROR) {
         dump->_failed = true;
         return false;
       }
-    }
-  }
-  else if (TRI_EqualString(name, "type")) {
-    if (TRI_LastCharStringBuffer(buffer) != '{') {
-      res = TRI_AppendCharStringBuffer(buffer, ',');
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        dump->_failed = true;
-        return false;
+      res = TRI_AppendStringStringBuffer(buffer, "\":\"");
+
+      TRI_StringValueShapedJson(shape, data, &value, &length);
+
+      if (value != NULL && length > 0) {
+        res = TRI_AppendString2StringBuffer(dump->_buffer, value, length);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          dump->_failed = true;
+          return false;
+        }
+      }
+    
+      res = TRI_AppendCharStringBuffer(buffer, '"');
+    }
+    else {
+      // append raw value
+      TRI_StringValueShapedJson(shape, data, &value, &length);
+
+      if (value != NULL && length > 2) {
+        res = TRI_AppendString2StringBuffer(dump->_buffer, value + 1, length - 2);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          dump->_failed = true;
+          return false;
+        }
       }
     }
 
-    res = TRI_AppendCharStringBuffer(buffer, '"');
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      dump->_failed = true;
-      return false;
-    }
-    
-    res = TRI_AppendStringStringBuffer(buffer, name);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      dump->_failed = true;
-      return false;
-    }
-    
-    res = TRI_AppendStringStringBuffer(buffer, "\":\"");
-    
-    TRI_StringValueShapedJson(shape, data, &value, &length);
-
-    if (value != NULL && length > 0) {
-      res = TRI_AppendString2StringBuffer(dump->_buffer, value, length);
-    }
-    
-    res = TRI_AppendCharStringBuffer(buffer, '"');
-    
     if (res != TRI_ERROR_NO_ERROR) {
       dump->_failed = true;
       return false;
