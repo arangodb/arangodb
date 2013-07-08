@@ -247,7 +247,9 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
     return TRI_errno();
   }
 
-  TRI_CreateIndexReplication(collection->base._vocbase, collection->base._info._cid, idx->_iid, json);
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_LogCreateIndexReplication(collection->base._vocbase, collection->base._info._cid, idx->_iid, json);
+#endif
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 

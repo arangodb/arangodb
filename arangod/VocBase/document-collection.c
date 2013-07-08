@@ -4103,7 +4103,9 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
     removeResult = TRI_RemoveIndexFile(primary, found);
     TRI_FreeIndex(found);
 
-    TRI_DropIndexReplication(primary->base._vocbase, primary->base._info._cid, iid);
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_LogDropIndexReplication(primary->base._vocbase, primary->base._info._cid, iid);
+#endif
 
     return removeResult;
   }
