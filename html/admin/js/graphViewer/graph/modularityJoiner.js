@@ -324,6 +324,27 @@ function ModularityJoiner() {
       revM = Math.pow(m, -1);
     },
   
+    deleteEdge = function(s, t) {
+      if (matrix[s]) {
+        delete matrix[s][t];
+        delete backwardMatrix[t][s];
+        degrees[s]._out--;
+        degrees[t]._in--;
+        m--;
+        revM = Math.pow(m, -1);
+        if (_.isEmpty(matrix[s])) {
+          delete matrix[s];
+          delete backwardMatrix[t];
+        }
+        if (degrees[s]._in === 0 && degrees[s]._out === 0) {
+          delete degrees[s];
+        }
+        if (degrees[t]._in === 0 && degrees[t]._out === 0) {
+          delete degrees[t];
+        }
+      }
+    },
+  
     makeInitialDegrees = function() {
       a = {};
       _.each(degrees, function (n, id) {
@@ -595,6 +616,8 @@ function ModularityJoiner() {
   ////////////////////////////////////
   
   this.insertEdge = insertEdge;
+  
+  this.deleteEdge = deleteEdge;
   
   this.getAdjacencyMatrix = getAdjacencyMatrix;
  

@@ -135,7 +135,7 @@
         };
       });
 
-      /*
+      
       describe('getters', function() {
         
         beforeEach(function() {
@@ -199,6 +199,12 @@
           expect(joiner.insertEdge.length).toEqual(2);
         });
         
+        it('should offer a function to delete an edge', function() {
+          expect(joiner.deleteEdge).toBeDefined();
+          expect(joiner.deleteEdge).toEqual(jasmine.any(Function));
+          expect(joiner.deleteEdge.length).toEqual(2);
+        });
+        
         it('should offer a setup function', function() {
           expect(joiner.setup).toBeDefined();
           expect(joiner.setup).toEqual(jasmine.any(Function));
@@ -248,6 +254,75 @@
               }
             });
           });
+          
+          it('should react to insert edge', function() {
+            joiner.insertEdge("a", "b");
+            
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": {
+                "1": 1,
+                "3": 1
+              },
+              "1": {
+                "2": 1
+              },
+              "2": {
+                "1": 1,
+                "3": 1
+              },
+              "3": {
+                "0": 1,
+                "1": 1,
+                "2": 1
+              },
+              "a": {
+                "b": 1
+              }
+            });
+          });
+          
+          it('should react to delete edge', function() {
+            joiner.deleteEdge("0", "1");
+            
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": {
+                "3": 1
+              },
+              "1": {
+                "2": 1
+              },
+              "2": {
+                "1": 1,
+                "3": 1
+              },
+              "3": {
+                "0": 1,
+                "1": 1,
+                "2": 1
+              }
+            });
+          });
+          
+          it('should remove empty lines on delete', function() {
+            joiner.deleteEdge("1", "2");
+            
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": {
+                "1": 1,
+                "3": 1
+              },
+              "2": {
+                "1": 1,
+                "3": 1
+              },
+              "3": {
+                "0": 1,
+                "1": 1,
+                "2": 1
+              }
+            });
+          });
+          
         });
         
         
@@ -601,7 +676,7 @@
         
         
       });
-      */
+      
       describe('checking direct community identification', function() {
         
         it('should be able to identify an obvious community', function() {
@@ -670,7 +745,6 @@
         */
       });
       
-      /*
       describe('checking the zachary karate club', function() {
         
         beforeEach(function() {
@@ -882,8 +956,7 @@
         });
         
       });
-      */
-      /*
+      
       describe('checking consistency after join', function() {
         
         beforeEach(function() {
@@ -1041,8 +1114,7 @@
         });
         
       });
-      */
-      /*
+      
       describe('checking large networks', function() {
         
         it('should be able to handle 1000 nodes', function() {
@@ -1601,7 +1673,7 @@
         });
         
       });
-      */
+      
     
       /*
       it('should be able to handle 10000 nodes', function() {
