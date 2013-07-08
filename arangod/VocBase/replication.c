@@ -332,6 +332,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
  
   // printf("REPLICATION: %s: tid: %llu, %s\n", eventName, (unsigned long long) tid, buffer->_buffer);
 
+  // TODO: instead of using JSON here, we could directly use ShapedJson.
+  // this will be a performance optimisation
   json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == NULL) {
@@ -341,7 +343,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, eventName));
   if (tid == 0) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tid", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "0"));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tid", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, "0", 1));
   }
   else {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tid", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(tid)));
@@ -1083,6 +1085,79 @@ NEXT_DF:
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from the replication log
+////////////////////////////////////////////////////////////////////////////////
+
+static int DumpLog (TRI_replication_dump_t* dump, 
+                    TRI_primary_collection_t* primary,
+                    TRI_voc_tick_t tickMin,
+                    TRI_voc_tick_t tickMax,
+                    uint64_t chunkSize) {
+  TRI_document_collection_t* document;
+  TRI_doc_mptr_t* mptr;
+  TRI_string_buffer_t* buffer;
+  int res;
+    
+  LOG_TRACE("dumping log %llu, tick range %llu - %llu, chunk size %llu", 
+            (unsigned long long) primary->base._info._cid,
+            (unsigned long long) tickMin,
+            (unsigned long long) tickMax,
+            (unsigned long long) chunkSize);
+
+  // setup some iteration state
+  buffer              = dump->_buffer;
+  dump->_bufferFull   = false;
+  dump->_hasMore      = false;
+  dump->_lastFoundTick= 0;
+  
+  res                 = TRI_ERROR_NO_ERROR;
+  document            = (TRI_document_collection_t*) primary;
+  
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  mptr = document->_headers->front(document->_headers);
+
+  while (mptr != NULL) {
+    TRI_df_marker_t* marker;
+    TRI_voc_tick_t foundTick;
+    
+    marker  = (TRI_df_marker_t*) mptr->_data;
+    
+    // get the marker's tick and check whether we should include it
+    foundTick = marker->_tick;
+      
+    // note the last tick we processed
+    dump->_lastFoundTick = foundTick;
+
+    if (foundTick > tickMax) {
+      // marker too new
+      dump->_hasMore = false;
+      break;
+    }
+    
+    if (foundTick > tickMin) {
+      // marker should be included
+      if (! StringifyMarkerReplication(buffer, document, marker)) {
+        res = TRI_ERROR_INTERNAL;
+        break;
+      }
+
+      if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
+        // abort the iteration
+        dump->_bufferFull = true;
+        break;
+      }
+    }
+
+    mptr = mptr->_next;
+  }
+
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get current state from the replication logger
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
@@ -1222,24 +1297,24 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 
 static int GetStateInactive (TRI_vocbase_t* vocbase,
                              TRI_replication_log_state_t* dst) {
-  TRI_vocbase_col_t* collection;
+  TRI_vocbase_col_t* col;
   TRI_primary_collection_t* primary;
  
-  collection = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
+  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
 
-  if (collection == NULL || collection->_collection == NULL) {
+  if (col == NULL || col->_collection == NULL) {
     LOG_ERROR("could not open collection '" TRI_COL_NAME_REPLICATION "'");
 
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  primary = (TRI_primary_collection_t*) collection->_collection;
+  primary = (TRI_primary_collection_t*) col->_collection;
 
   dst->_active    = false;
   dst->_firstTick = 0;
   dst->_lastTick  = primary->base._info._tick;
 
-  TRI_ReleaseCollectionVocBase(vocbase, collection);
+  TRI_ReleaseCollectionVocBase(vocbase, col);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1380,7 +1455,7 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              public log functions
+// --SECTION--                                                     log functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1435,7 +1510,6 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 
       trxOperation = TRI_AtVector(trxCollection->_operations, j);
   
-      // write "commit"  
       buffer = GetBuffer(logger);
 
       if (! StringifyDocumentOperation(buffer, 
@@ -1450,6 +1524,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
       }
 
       typeName = TranslateDocumentOperation(trxOperation->_type);
+
       if (typeName == NULL) {
         ReturnBuffer(logger, buffer);
 
@@ -1483,8 +1558,8 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 /// @brief replicate a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_TransactionReplication (TRI_vocbase_t* vocbase,
-                                TRI_transaction_t const* trx) {
+int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
+                                   TRI_transaction_t const* trx) {
   TRI_replication_logger_t* logger;
   int res;
    
@@ -1517,9 +1592,9 @@ int TRI_TransactionReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a "create collection" operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateCollectionReplication (TRI_vocbase_t* vocbase,
-                                     TRI_voc_cid_t cid,
-                                     TRI_json_t const* json) {
+int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
+                                        TRI_voc_cid_t cid,
+                                        TRI_json_t const* json) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1552,8 +1627,8 @@ int TRI_CreateCollectionReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a "drop collection" operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropCollectionReplication (TRI_vocbase_t* vocbase,
-                                   TRI_voc_cid_t cid) {
+int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
+                                      TRI_voc_cid_t cid) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1586,9 +1661,9 @@ int TRI_DropCollectionReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a "rename collection" operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollectionReplication (TRI_vocbase_t* vocbase,
-                                     TRI_voc_cid_t cid,
-                                     char const* name) {
+int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
+                                        TRI_voc_cid_t cid,
+                                        char const* name) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1621,9 +1696,9 @@ int TRI_RenameCollectionReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a "change collection properties" operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
-                                               TRI_voc_cid_t cid,
-                                               TRI_json_t const* json) {
+int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
+                                                  TRI_voc_cid_t cid,
+                                                  TRI_json_t const* json) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1656,10 +1731,10 @@ int TRI_ChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a "create index" operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateIndexReplication (TRI_vocbase_t* vocbase,
-                                TRI_voc_cid_t cid,
-                                TRI_idx_iid_t iid,
-                                TRI_json_t const* json) {
+int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
+                                   TRI_voc_cid_t cid,
+                                   TRI_idx_iid_t iid,
+                                   TRI_json_t const* json) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1692,9 +1767,9 @@ int TRI_CreateIndexReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a "drop index" operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropIndexReplication (TRI_vocbase_t* vocbase,
-                              TRI_voc_cid_t cid,
-                              TRI_idx_iid_t iid) {
+int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
+                                 TRI_voc_cid_t cid,
+                                 TRI_idx_iid_t iid) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1727,11 +1802,11 @@ int TRI_DropIndexReplication (TRI_vocbase_t* vocbase,
 /// @brief replicate a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DocumentReplication (TRI_vocbase_t* vocbase,
-                             TRI_document_collection_t* document,
-                             TRI_voc_document_operation_e type,
-                             TRI_df_marker_t const* marker,
-                             TRI_doc_mptr_t const* oldHeader) {
+int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
+                                TRI_document_collection_t* document,
+                                TRI_voc_document_operation_e type,
+                                TRI_df_marker_t const* marker,
+                                TRI_doc_mptr_t const* oldHeader) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   const char* typeName;
@@ -1769,11 +1844,24 @@ int TRI_DocumentReplication (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    dump functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
-                                   TRI_vocbase_col_t* collection,
+                                   TRI_vocbase_col_t* col,
                                    TRI_voc_tick_t tickMin,
                                    TRI_voc_tick_t tickMax,
                                    uint64_t chunkSize) {
@@ -1781,7 +1869,10 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_barrier_t* b;
   int res;
 
-  primary = (TRI_primary_collection_t*) collection->_collection;
+  assert(col != NULL);
+  assert(col->_collection != NULL);
+
+  primary = (TRI_primary_collection_t*) col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
   b = TRI_CreateBarrierReplication(&primary->_barrierList);
@@ -1798,6 +1889,51 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 
   TRI_FreeBarrier(b);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from the replication log
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
+                            TRI_replication_dump_t* dump,
+                            TRI_voc_tick_t tickMin,
+                            TRI_voc_tick_t tickMax,
+                            uint64_t chunkSize) {
+  TRI_vocbase_col_t* col;
+  TRI_primary_collection_t* primary;
+  TRI_barrier_t* b;
+  int res;
+
+  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
+
+  if (col == NULL || col->_collection == NULL) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  primary = (TRI_primary_collection_t*) col->_collection;
+
+  // create a barrier so the underlying collection is not unloaded
+  b = TRI_CreateBarrierReplication(&primary->_barrierList);
+
+  if (b == NULL) {
+    TRI_ReleaseCollectionVocBase(vocbase, col);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  // block compaction
+  TRI_ReadLockReadWriteLock(&primary->_compactionLock);
+
+  res = DumpLog(dump, primary, tickMin, tickMax, chunkSize);
+  
+  TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
+
+  TRI_FreeBarrier(b);
+  
+  TRI_ReleaseCollectionVocBase(vocbase, col);
 
   return res;
 }
@@ -2007,6 +2143,54 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
   TRI_Free(TRI_CORE_MEM_ZONE, json);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  HELPER FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine whether a collection should be included in replication
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExcludeCollectionReplication (const char* name) {
+  if (TRI_EqualString(name, TRI_COL_NAME_DATABASES)) {
+    return true;
+  }
+  
+  if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS)) {
+    return true;
+  }
+  
+  if (TRI_EqualString(name, TRI_COL_NAME_PREFIXES)) {
+    return true;
+  }
+
+  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION)) {
+    return true;
+  }
+
+  if (TRI_EqualString(name, TRI_COL_NAME_TRANSACTION)) {
+    return true;
+  }
+  
+  if (TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+    return true;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

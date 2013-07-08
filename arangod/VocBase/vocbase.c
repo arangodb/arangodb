@@ -456,7 +456,9 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  TRI_DropCollectionReplication(vocbase, collection->_cid);
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_LogDropCollectionReplication(vocbase, collection->_cid);
+#endif
 
   return true;
 }
@@ -1993,7 +1995,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_collection_t* col;
   TRI_primary_collection_t* primary = NULL;
   TRI_document_collection_t* document;
+#ifdef TRI_ENABLE_REPLICATION
   TRI_json_t* json;
+#endif
   TRI_col_type_e type;
   char const* name;
   void const* found;
@@ -2085,10 +2089,12 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   // release the lock on the list of collections
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+#ifdef TRI_ENABLE_REPLICATION
   // replicate and finally unlock the collection
   json = TRI_CreateJsonCollectionInfo(&col->_info);
-  TRI_CreateCollectionReplication(vocbase, cid, json);
+  TRI_LogCreateCollectionReplication(vocbase, cid, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+#endif
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2499,8 +2505,10 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+#ifdef TRI_ENABLE_REPLICATION
   // stay inside the outer lock to protect against unloading
-  TRI_RenameCollectionReplication(vocbase, collection->_cid, newName);
+  TRI_LogRenameCollectionReplication(vocbase, collection->_cid, newName);
+#endif
   
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     

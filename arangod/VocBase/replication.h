@@ -199,7 +199,7 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t*,
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                     log functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,12 +213,12 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_TransactionReplication (struct TRI_vocbase_s*,
-                                struct TRI_transaction_s const*);
+int TRI_LogTransactionReplication (struct TRI_vocbase_s*,
+                                   struct TRI_transaction_s const*);
 
 #else
 
-#define TRI_TransactionReplication(...)
+#define TRI_LogTransactionReplication(...)
 
 #endif
 
@@ -228,13 +228,13 @@ int TRI_TransactionReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_CreateCollectionReplication (struct TRI_vocbase_s*,
-                                     TRI_voc_cid_t, 
-                                     struct TRI_json_s const*);
+int TRI_LogCreateCollectionReplication (struct TRI_vocbase_s*,
+                                        TRI_voc_cid_t, 
+                                        struct TRI_json_s const*);
 
 #else
 
-#define TRI_CreateCollectionReplication(...)
+#define TRI_LogCreateCollectionReplication(...)
 
 #endif
 
@@ -244,12 +244,12 @@ int TRI_CreateCollectionReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_DropCollectionReplication (struct TRI_vocbase_s*,
-                                   TRI_voc_cid_t);
+int TRI_LogDropCollectionReplication (struct TRI_vocbase_s*,
+                                      TRI_voc_cid_t);
 
 #else
 
-#define TRI_DropCollectionReplication(...)
+#define TRI_LogDropCollectionReplication(...)
 
 #endif
 
@@ -259,13 +259,13 @@ int TRI_DropCollectionReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_RenameCollectionReplication (struct TRI_vocbase_s*,
-                                     TRI_voc_cid_t,
-                                     char const*);
+int TRI_LogRenameCollectionReplication (struct TRI_vocbase_s*,
+                                        TRI_voc_cid_t,
+                                        char const*);
 
 #else
 
-#define TRI_RenameCollectionReplication(...)
+#define TRI_LogRenameCollectionReplication(...)
 
 #endif
 
@@ -275,13 +275,13 @@ int TRI_RenameCollectionReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_ChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
-                                               TRI_voc_cid_t,
-                                               struct TRI_json_s const*);
+int TRI_LogChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
+                                                  TRI_voc_cid_t,
+                                                  struct TRI_json_s const*);
 
 #else
 
-#define TRI_ChangePropertiesCollectionReplication(...)
+#define TRI_LogChangePropertiesCollectionReplication(...)
 
 #endif
 
@@ -291,14 +291,14 @@ int TRI_ChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_CreateIndexReplication (struct TRI_vocbase_s*,
-                                TRI_voc_cid_t,
-                                TRI_idx_iid_t,
-                                struct TRI_json_s const*);
+int TRI_LogCreateIndexReplication (struct TRI_vocbase_s*,
+                                   TRI_voc_cid_t,
+                                   TRI_idx_iid_t,
+                                   struct TRI_json_s const*);
 
 #else
 
-#define TRI_CreateIndexReplication(...)
+#define TRI_LogCreateIndexReplication(...)
 
 #endif
 
@@ -308,13 +308,13 @@ int TRI_CreateIndexReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_DropIndexReplication (struct TRI_vocbase_s*,
-                              TRI_voc_cid_t,
-                              TRI_idx_iid_t iid);
+int TRI_LogDropIndexReplication (struct TRI_vocbase_s*,
+                                 TRI_voc_cid_t,
+                                 TRI_idx_iid_t iid);
 
 #else
 
-#define TRI_DropIndexReplication(...)
+#define TRI_LogDropIndexReplication(...)
 
 #endif
 
@@ -324,20 +324,33 @@ int TRI_DropIndexReplication (struct TRI_vocbase_s*,
 
 #ifdef TRI_ENABLE_REPLICATION
 
-int TRI_DocumentReplication (struct TRI_vocbase_s*,
-                             struct TRI_document_collection_s*,
-                             TRI_voc_document_operation_e,
-                             struct TRI_df_marker_s const*,
-                             struct TRI_doc_mptr_s const*);
+int TRI_LogDocumentReplication (struct TRI_vocbase_s*,
+                                struct TRI_document_collection_s*,
+                                TRI_voc_document_operation_e,
+                                struct TRI_df_marker_s const*,
+                                struct TRI_doc_mptr_s const*);
 
 #else
 
-#define TRI_DocumentReplication(...)
+#define TRI_LogDocumentReplication(...)
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump data from a collection
+/// @} 
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    dump functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_REPLICATION
@@ -351,6 +364,24 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
 #else
 
 #define TRI_DumpCollectionReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump data from the replication log
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+int TRI_DumpLogReplication (struct TRI_vocbase_s*, 
+                            TRI_replication_dump_t*,
+                            TRI_voc_tick_t,
+                            TRI_voc_tick_t,
+                            uint64_t);
+
+#else
+
+#define TRI_DumpLogReplication(...)
 
 #endif
 
@@ -495,6 +526,28 @@ int TRI_LoadApplyStateReplication (struct TRI_vocbase_s*,
 #define TRI_LoadApplyStateReplication(...)
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  HELPER FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine whether a collection should be included in replication
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExcludeCollectionReplication (const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
