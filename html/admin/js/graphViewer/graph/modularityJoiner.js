@@ -50,9 +50,6 @@ function ModularityJoiner() {
       isString: function(obj) {
         return toString.call(obj) === '[object String]';
       },
-      has: function(obj, key) {
-        return Object.prototype.hasOwnProperty.call(obj, key);
-      },
       each: function(obj, iterator, context) {
         if (obj === null || obj === undefined) {
           return;
@@ -68,7 +65,7 @@ function ModularityJoiner() {
           }
         } else {
           for (key in obj) {
-            if (_.has(obj, key)) {
+            if (obj.hasOwnProperty(key)) {
               if (iterator.call(context, obj[key], key, obj) === breaker) {
                 return;
               }
@@ -77,12 +74,15 @@ function ModularityJoiner() {
         }
       },
       keys: nativeKeys || function(obj) {
+        /* As we are only working wiht internal vars
+        *  typesafenes is guaranteed
         if (obj !== Object(obj)) {
           throw new TypeError('Invalid object');
         }
+        */
         var keys = [], key;
         for (key in obj) {
-          if (_.has(obj, key)) {
+          if (obj.hasOwnProperty(key)) {
             keys[keys.length] = key;
           }
         }
@@ -130,7 +130,12 @@ function ModularityJoiner() {
           results = [],
           seen = [];
         _.each(initial, function(value, index) {
-          if (isSorted ? (!index || seen[seen.length - 1] !== value) : !_.contains(seen, value)) {
+          if (isSorted) {
+            if (!index || seen[seen.length - 1] !== value) {
+              seen.push(value);
+              results.push(array[index]);
+            }
+          } else if (!_.contains(seen, value)) {
             seen.push(value);
             results.push(array[index]);
           }
@@ -149,14 +154,14 @@ function ModularityJoiner() {
           return obj.length === 0;
         }
         for (key in obj) {
-          if (_.has(obj, key)) {
+          if (obj.hasOwnProperty(key)) {
             return false;
           }
         }
         return true;
       },
       any: function(obj, iterator, context) {
-        iterator || (iterator = _.identity);
+        iterator =  iterator || _.identity;
         var result = false;
         if (obj === null) {
           return result;
@@ -165,9 +170,11 @@ function ModularityJoiner() {
           return obj.some(iterator, context);
         }
         _.each(obj, function(value, index, list) {
-          if (result || (result = iterator.call(context, value, index, list))) {
+          if (result) {
             return breaker;
           }
+          result = iterator.call(context, value, index, list);
+          return breaker;
         });
         return !!result;
       },
@@ -185,7 +192,7 @@ function ModularityJoiner() {
       values: function(obj) {
         var values = [], key;
         for (key in obj) {
-          if (_.has(obj, key)) {
+          if (obj.hasOwnProperty(key)) {
             values.push(obj[key]);
           }
         }
