@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document utility functions
+/// @brief json helper functions
 ///
 /// @file
 ///
@@ -25,22 +25,21 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_DOCUMENT_HELPER_H
-#define TRIAGENS_UTILS_DOCUMENT_HELPER_H 1
+#ifndef TRIAGENS_BASICS_JSON_HELPER_H
+#define TRIAGENS_BASICS_JSON_HELPER_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/voc-types.h"
 
 struct TRI_json_s;
 
 namespace triagens {
-  namespace arango {
+  namespace basics {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class DocumentHelper
+// --SECTION--                                                  class JsonHelper
 // -----------------------------------------------------------------------------
 
-    class DocumentHelper {
+    class JsonHelper {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -53,10 +52,9 @@ namespace triagens {
 
       private:
 
-        DocumentHelper ();
-
-        ~DocumentHelper ();
-
+        JsonHelper ();
+        ~JsonHelper ();
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,50 +67,80 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
+      
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a string
+/// @brief stringify json
 ////////////////////////////////////////////////////////////////////////////////
-
-        static std::string assembleDocumentId (const std::string&,
-                                               const std::string& key);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a char* key
-////////////////////////////////////////////////////////////////////////////////
-
-        static std::string assembleDocumentId (const std::string&,
-                                               const TRI_voc_key_t);
+        
+        static std::string toString (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
+/// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
-
-        static bool parseDocumentId (const std::string&, 
-                                     TRI_voc_cid_t&,
-                                     std::string&);
+        
+        static bool isArray (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
+/// @brief returns true for lists
 ////////////////////////////////////////////////////////////////////////////////
-
-        static bool parseDocumentId (const char*,
-                                     TRI_voc_cid_t&,
-                                     char**);
+        
+        static bool isList (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the "_key" attribute from a JSON object
+/// @brief returns true for strings
+////////////////////////////////////////////////////////////////////////////////
+        
+        static bool isString (struct TRI_json_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true for numbers
+////////////////////////////////////////////////////////////////////////////////
+        
+        static bool isNumber (struct TRI_json_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true for booleans
+////////////////////////////////////////////////////////////////////////////////
+        
+        static bool isBoolean (struct TRI_json_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an array sub-element
+////////////////////////////////////////////////////////////////////////////////
+        
+        static struct TRI_json_s* getArrayElement (struct TRI_json_s const*, 
+                                                   const char* name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+        
+        static std::string getStringValue (struct TRI_json_s const*, 
+                                           const char*, 
+                                           const std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a numeric sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int getKey (struct TRI_json_s const*, 
-                           TRI_voc_key_t*);
+        static double getNumberValue (struct TRI_json_s const*, 
+                                      const char*, 
+                                      double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+        
+        static double getBooleanValue (struct TRI_json_s const*, 
+                                       const char*, 
+                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
+        
     };
   }
 }

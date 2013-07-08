@@ -331,7 +331,7 @@ static int ReadShutdownInfo (char const* filename) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
 
   if (json == NULL) {
     return TRI_ERROR_INTERNAL;
@@ -345,12 +345,13 @@ static int ReadShutdownInfo (char const* filename) {
   tickString = TRI_LookupArrayJson(json, "tick");
 
   if (tickString == NULL || tickString->_type != TRI_JSON_STRING) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
     return TRI_ERROR_INTERNAL;
   }
 
   foundTick = TRI_UInt64String(tickString->_value._string.data);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
 
@@ -553,11 +554,30 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   collection = data;
   cid = 0;
 
+#ifdef _WIN32
+  // .........................................................................
+  // Just thank your lucky stars that there are only 4 backslashes
+  // .........................................................................
+  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+#else
+  res = regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+#endif
+
+  if (res != 0) {
+    LOG_ERROR("unable to complile regular expression");
+
+    return false;
+  }
+
+
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
     LOG_ERROR("someone resurrected the collection '%s'", collection->_name);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+    regfree(&re);
+
     return false;
   }
 
@@ -572,6 +592,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                 (int) collection->_type);
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      regfree(&re);
+
       return false;
     }
 
@@ -587,6 +609,9 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                 TRI_last_error());
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+      
+      regfree(&re);
+
       return true;
     }
 
@@ -625,15 +650,6 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   if (*collection->_path != '\0') {
     int regExpResult;
 
-#ifdef _WIN32
-      // .........................................................................
-      // Just thank your lucky stars that there are only 4 backslashes
-      // .........................................................................
-      regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
-#else
-      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
-#endif
-    
     regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
 
     if (regExpResult == 0) {
@@ -696,9 +712,9 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
                 collection->_name,
                 collection->_path);
     }
-
-    regfree(&re);
   }
+    
+  regfree(&re);
 
   if (cid > 0) {
     TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
@@ -839,8 +855,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   if (found != NULL) {
     LOG_ERROR("duplicate entry for collection name '%s'", collection->_name);
 
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
     return NULL;
   }
 
@@ -862,8 +879,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("duplicate collection identifier %llu for name '%s'",
               (unsigned long long) collection->_cid, collection->_name);
 
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+
     return NULL;
   }
 
@@ -872,6 +890,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+
     TRI_set_errno(res);
 
     return NULL;
@@ -915,10 +934,16 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   size_t n;
   size_t i;
 
+  res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
+
+  if (res != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return res;
+  }
+  
   files = TRI_FilesDirectory(path);
   n = files._length;
-
-  regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
   for (i = 0;  i < n;  ++i) {
     char* name;
@@ -953,8 +978,8 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-        regfree(&re);
         TRI_DestroyVectorString(&files);
+        regfree(&re);
 
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
       }
@@ -1028,9 +1053,9 @@ static int ScanPath (TRI_vocbase_t* vocbase,
               LOG_ERROR("upgrading collection '%s' failed.", info._name);
             
               TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-              regfree(&re);
               TRI_DestroyVectorString(&files);
               TRI_FreeCollectionInfoOptions(&info);
+              regfree(&re);
  
               return TRI_set_errno(res);
             }
@@ -1048,9 +1073,9 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             LOG_ERROR("failed to add document collection from '%s'", file);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-            regfree(&re);
             TRI_DestroyVectorString(&files);
             TRI_FreeCollectionInfoOptions(&info);
+            regfree(&re);
 
             return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
           }
@@ -1075,6 +1100,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   regfree(&re);
 
   TRI_DestroyVectorString(&files);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1765,11 +1791,13 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
+/// and optionally indexes
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                              bool withIndexes,
                                               bool (*filter)(TRI_vocbase_col_t*, void*),
                                               void* data) {
   TRI_vector_pointer_t collections;
@@ -1785,7 +1813,7 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
+  TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
 #endif
 
   // copy collection pointers into vector so we can work with the copy without
@@ -1796,45 +1824,52 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
 
   n = collections._length;
   for (i = 0; i < n; ++i) {
-    TRI_vocbase_col_t* collection = TRI_AtVectorPointer(&collections, i);
+    TRI_vocbase_col_t* collection;
+    TRI_json_t* result;
+     
+    collection = TRI_AtVectorPointer(&collections, i);
 
     TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
     if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
         collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      // we do not need to care about deleted or corrupted collections
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
 
+    // check if we want this collection
     if (filter != NULL && ! filter(collection, data)) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
 
-    if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-      TRI_json_t* cinfo;
+    result = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
 
-      cinfo = TRI_CreateJsonCollectionInfo(&collection->_collection->base._info);
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
-    }
-    else {
-      TRI_col_info_t parameter;
-      TRI_json_t* cinfo;
-      int res;
+    if (result != NULL) {
+      TRI_json_t* collectionInfo;
+      TRI_json_t* indexesInfo;
 
-      res = TRI_LoadCollectionInfo(collection->_path, &parameter, false);
+      collectionInfo = TRI_ReadJsonCollectionInfo(collection);
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        cinfo = TRI_CreateJsonCollectionInfo(&parameter);
-        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, cinfo);
-      } 
-    }
+      if (collectionInfo != NULL) {
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
+
+        indexesInfo = TRI_ReadJsonIndexInfo(collection);
+
+        if (indexesInfo != NULL) {
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
+        }
+      }
+
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, result);
+    } 
     
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
 #endif
    
   TRI_DestroyVectorPointer(&collections);

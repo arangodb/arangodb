@@ -274,6 +274,7 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
       type: "app",
       app: "app:" + manifest.name + ":" + manifest.version,
       name: manifest.name,
+      description: manifest.description,
       version: manifest.version,
       path: path,
       thumbnail: thumbnail
@@ -329,6 +330,7 @@ function installAalApp (app, mount, prefix, development) {
   desc = {
     type: "mount",
     app: app._id,
+    description: app.description,
     mount: mount,
     active: false,
     collectionPrefix: prefix,

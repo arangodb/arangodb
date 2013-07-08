@@ -1,11 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach, jasmine */
-/*global runs, waits */
+/*global runs, waits, waitsFor */
 /*global describe, it, expect, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
-/*global NodeReducer*/
+/*global NodeReducer, WebWorkerWrapper*/
+/*global console*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -59,14 +60,7 @@
           var s = new NodeReducer([], []);
         }).not.toThrow();
       });
-      
-      it('should create an instance of the modularityJoiner', function() {
-        spyOn(window, "ModularityJoiner");
-        var n = [],
-          e = [],
-          s = new NodeReducer(n, e);
-        expect(window.ModularityJoiner).wasCalledWith(n, e);
-      });
+
     });
     
     describe('setup correctly', function() {
@@ -79,130 +73,14 @@
         nodes = [];
         edges = [];
         reducer = new NodeReducer(nodes, edges);
-        this.addMatchers({
-          toContainNodes: function(ns) {
-            var com = this.actual,
-            check = true;
-            this.message = function() {
-              return "Expected " + com + " to contain " + ns; 
-            };
-            if (com.length !== ns.length) {
-              return false;
-            }
-            _.each(ns, function(n) {
-              if(!_.contains(com, n)) {
-                check = false;
-              }
-            });
-            return check;
-          }
-        });
       });
       
       describe('checking the interface', function() {
-        
-        it('should offer a function to identify a far away community', function() {
-          expect(reducer.getCommunity).toBeDefined();
-          expect(reducer.getCommunity).toEqual(jasmine.any(Function));
-          expect(reducer.getCommunity.length).toEqual(2);
-        });
         
         it('should offer a function for bucket sort of nodes', function() {
           expect(reducer.bucketNodes).toBeDefined();
           expect(reducer.bucketNodes).toEqual(jasmine.any(Function));
           expect(reducer.bucketNodes.length).toEqual(2);
-        });
-        
-      });
-      
-      describe('checking community identification', function() {
-        
-        it('should be able to identify an obvious community', function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4"]);
-          edges.push(helper.createSimpleEdge(nodes, 0, 1));
-          edges.push(helper.createSimpleEdge(nodes, 0, 2));
-          edges.push(helper.createSimpleEdge(nodes, 0, 3));
-          edges.push(helper.createSimpleEdge(nodes, 3, 4));
-          
-          var com = reducer.getCommunity(3, nodes[4]);
-          expect(com).toContainNodes(["0", "1", "2"]);
-        });
-        
-        it('should prefer cliques as a community over an equal sized other group', function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
-          helper.insertClique(nodes, edges, [0, 1, 2, 3]);
-          edges.push(helper.createSimpleEdge(nodes, 4, 3));
-          edges.push(helper.createSimpleEdge(nodes, 4, 5));
-          edges.push(helper.createSimpleEdge(nodes, 5, 6));
-          edges.push(helper.createSimpleEdge(nodes, 5, 7));
-          edges.push(helper.createSimpleEdge(nodes, 5, 8));
-          
-          var com = reducer.getCommunity(6, nodes[4]);
-          expect(com).toContainNodes(["0", "1", "2", "3"]);
-        });
-        
-        it('should not return a close group if there is an alternative', function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
-          helper.insertClique(nodes, edges, [0, 1, 2]);
-          edges.push(helper.createSimpleEdge(nodes, 3, 2));
-          edges.push(helper.createSimpleEdge(nodes, 3, 4));
-          edges.push(helper.createSimpleEdge(nodes, 4, 5));
-          edges.push(helper.createSimpleEdge(nodes, 5, 6));
-          edges.push(helper.createSimpleEdge(nodes, 5, 7));
-          
-          var com = reducer.getCommunity(6, nodes[3]);
-          expect(com).toContainNodes(["5", "6", "7"]);
-        });
-        
-        it('should also take the best community if no focus is given', function() {
-          helper.insertSimpleNodes(nodes, ["0", "1", "2", "3", "4", "5", "6", "7"]);
-          helper.insertClique(nodes, edges, [0, 1, 2]);
-          edges.push(helper.createSimpleEdge(nodes, 3, 2));
-          edges.push(helper.createSimpleEdge(nodes, 3, 4));
-          edges.push(helper.createSimpleEdge(nodes, 4, 5));
-          edges.push(helper.createSimpleEdge(nodes, 5, 6));
-          edges.push(helper.createSimpleEdge(nodes, 5, 7));
-          
-          var com = reducer.getCommunity(6);
-          expect(com).toContainNodes(["0", "1", "2"]);
-        });
-        
-        it('should wait for a running identification to finish before allowing to start a new one', function() {
-          
-          var firstRun, secondRun;
-          
-          runs(function() { 
-            var i;           
-            helper.insertNSimpleNodes(nodes, 1000);
-            helper.insertClique(nodes, edges, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-            for (i = 11; i < 1000; i++) {
-              edges.push(helper.createSimpleEdge(nodes, i - 1, i));
-            }
-            
-            
-            setTimeout(function() {
-              console.log("Start1");
-              firstRun = reducer.getCommunity(6);
-              console.log("End1");
-            }, 10);
-            
-            setTimeout(function() {
-              console.log("Start2");
-              expect(function() {
-                secondRun = reducer.getCommunity(6);
-              }).toThrow("Still running.");
-              console.log("End2");
-            }, 10);
-            
-          });
-          
-          waits(100);
-          
-          runs(function() {
-            expect(firstRun).toContainNodes(["0", "1", "2"]);
-            expect(secondRun).toBeUndefined();
-          });
-          
         });
         
       });
@@ -348,5 +226,9 @@
       });
       
     });
+    
+    
+    
   });
+  
 }());

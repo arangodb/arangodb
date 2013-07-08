@@ -365,6 +365,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
   res = primary->insert(logger->_trxCollection, 
                         NULL, 
+                        0,
                         &mptr, 
                         TRI_DOC_MARKER_KEY_DOCUMENT, 
                         shaped, 
@@ -565,6 +566,10 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   TRI_voc_key_t key;
   TRI_voc_rid_t oldRev;
   TRI_voc_rid_t rid;
+
+  if (! TRI_ReserveStringBuffer(buffer, 256)) {
+    return false;
+  }
   
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     oldRev = 0;
@@ -631,9 +636,9 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
     APPEND_STRING(buffer, "\",\"doc\":{");
     
     // common document meta-data
-    APPEND_STRING(buffer, "\"_key\":\"");
+    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"_rev\":\"");
+    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
@@ -642,11 +647,11 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
       TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
-      APPEND_STRING(buffer, ",\"_from\":\"");
+      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"_to\":\"");
+      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_toCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, toKey);
@@ -757,8 +762,6 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
   APPEND_STRING(buffer, "\",\"key\":\""); 
   // key is user-defined, but does not need escaping
   APPEND_STRING(buffer, key); 
-  APPEND_STRING(buffer, "\",\"rid\":\""); 
-  APPEND_UINT64(buffer, (uint64_t) rid); 
 
   // document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
@@ -769,9 +772,9 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
     APPEND_STRING(buffer, "\",\"doc\":{");
     
     // common document meta-data
-    APPEND_STRING(buffer, "\"_key\":\"");
+    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"_rev\":\"");
+    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
@@ -780,11 +783,11 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
       TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
-      APPEND_STRING(buffer, ",\"_from\":\"");
+      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"_to\":\"");
+      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_toCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, toKey);
@@ -805,6 +808,80 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a transaction id is contained in the list of failed
+/// transactions
+////////////////////////////////////////////////////////////////////////////////
+
+static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
+  size_t n;
+
+  assert(list != NULL);
+
+  n = list->_length;
+ 
+  // decide how to search based on size of list
+  if (n == 0) {
+    // simple case: list is empty
+    return false;
+  }
+
+  else if (n < 16) {
+    // list is small: use a linear search
+    size_t i;
+
+    for (i = 0; i < n; ++i) {
+      TRI_voc_tid_t* tid = tid = TRI_AtVector(list, i);
+
+      if (*tid == search) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  else {
+    // list is somewhat bigger, use a binary search
+    size_t l = 0;
+    size_t r = (size_t) (n - 1);
+
+    while (true) {
+      // determine midpoint
+      TRI_voc_tid_t* tid;
+      size_t m;
+
+      m = l + ((r - l) / 2);
+      tid = TRI_AtVector(list, m);
+
+      if (*tid == search) {
+        return true;
+      }
+
+      if (*tid > search) {
+        if (m == 0) {
+          // we must abort because the following subtraction would
+          // make the size_t underflow
+          return false;
+        }
+        
+        r = m - 1;
+      }
+      else {
+        l = m + 1;
+      }
+
+      if (r < l) {
+        return false;
+      }
+    }
+  }
+
+  // we should never get here
+  assert(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -814,39 +891,85 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_voc_tick_t tickMax,
                            uint64_t chunkSize) {
   TRI_vector_t datafiles;
+  TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
-  TRI_voc_tick_t firstFoundTick;
   TRI_voc_tick_t lastFoundTick;
+  TRI_voc_tid_t lastTid;
   size_t i; 
   int res;
   bool hasMore;
+  bool bufferFull;
+  bool ignoreMarkers;
+    
+  LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
+            (unsigned long long) primary->base._info._cid,
+            (unsigned long long) tickMin,
+            (unsigned long long) tickMax,
+            (unsigned long long) chunkSize);
 
-  buffer = dump->_buffer;
-  datafiles = GetRangeDatafiles(primary, tickMin, tickMax);
-  
-  hasMore        = false;
-  firstFoundTick = 0;
+  buffer         = dump->_buffer;
+  datafiles      = GetRangeDatafiles(primary, tickMin, tickMax);
+  document       = (TRI_document_collection_t*) primary;
+ 
+  // setup some iteration state
   lastFoundTick  = 0;
+  lastTid        = 0;
   res            = TRI_ERROR_NO_ERROR;
+  hasMore        = true;
+  bufferFull     = false;
+  ignoreMarkers  = false;
 
   for (i = 0; i < datafiles._length; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
     TRI_datafile_t* datafile = e->_data;
-    char* ptr;
-    char* end;
+    TRI_vector_t* failedList;
+    char const* ptr;
+    char const* end;
+
+    failedList    = NULL;
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
     if (e->_isJournal) {
       TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+      if (document->_failedTransactions._length > 0) {
+        // there are failed transactions. just reference them
+        failedList = &document->_failedTransactions;
+      }
     }
-     
+    else {
+      assert(datafile->_isSealed);
+
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      
+      if (document->_failedTransactions._length > 0) {
+        // there are failed transactions. copy the list of ids
+        failedList = TRI_CopyVector(TRI_UNKNOWN_MEM_ZONE, &document->_failedTransactions);
+
+        if (failedList == NULL) {
+          res = TRI_ERROR_OUT_OF_MEMORY;
+        }
+      }
+
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
+    
     ptr = datafile->_data;
-    end = ptr + datafile->_currentSize;
+
+    if (res == TRI_ERROR_NO_ERROR) { 
+      // no error so far. start iterating
+      end = ptr + datafile->_currentSize;
+    }
+    else {
+      // some error occurred. don't iterate
+      end = ptr;
+    }
 
     while (ptr < end) {
       TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
       TRI_voc_tick_t foundTick;
+      TRI_voc_tid_t  tid;
 
       if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
         // end of datafile
@@ -864,7 +987,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
-      if (foundTick < tickMin) {
+      if (foundTick <= tickMin) {
         // marker too old
         continue;
       }
@@ -875,15 +998,40 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         goto NEXT_DF;
       }
 
-      
       // note the last tick we processed
-      if (firstFoundTick == 0) {
-        firstFoundTick = foundTick;
-      }
       lastFoundTick = foundTick;
 
-      // TODO: check if marker is part of an aborted transaction
-      if (! StringifyMarkerReplication(buffer, (TRI_document_collection_t*) primary, marker)) {
+
+      // handle aborted/unfinished transactions
+
+      if (failedList == NULL) {
+        // there are no failed transactions
+        ignoreMarkers = false;
+      }
+      else {
+        // get transaction id of marker
+        if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+          tid = ((TRI_doc_deletion_key_marker_t const*) marker)->_tid;
+        }
+        else {
+          tid = ((TRI_doc_document_key_marker_t const*) marker)->_tid;
+        }
+
+        // check if marker is from an aborted transaction
+        if (tid > 0) {
+          if (tid != lastTid) {
+            ignoreMarkers = InFailedList(failedList, tid);
+          }
+
+          lastTid = tid;
+        } 
+
+        if (ignoreMarkers) {
+          continue;
+        }
+      }
+
+      if (! StringifyMarkerReplication(buffer, document, marker)) {
         res = TRI_ERROR_INTERNAL;
 
         goto NEXT_DF;
@@ -891,7 +1039,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
       if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
         // abort the iteration
-        hasMore = ((ptr < end) || (i < datafiles._length - 1));
+        bufferFull = true;
 
         goto NEXT_DF;
       }
@@ -902,8 +1050,14 @@ NEXT_DF:
       // read-unlock the journal
       TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
     }
+    else {
+      // free our copy of the failed list
+      if (failedList != NULL) {
+        TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, failedList);
+      }
+    }
 
-    if (res != TRI_ERROR_NO_ERROR || ! hasMore) {
+    if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
       break;
     }
   }
@@ -911,15 +1065,17 @@ NEXT_DF:
   TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (datafiles._length > 0) {
+    if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;
       dump->_hasMore       = hasMore;
+      dump->_bufferFull    = bufferFull;
     }
     else {
       // no data available for requested range
       dump->_lastFoundTick = 0;
       dump->_hasMore       = false;
+      dump->_bufferFull    = false;
     }
   }
 
@@ -932,11 +1088,11 @@ NEXT_DF:
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStateReplicationLogger (TRI_replication_logger_t* logger,
-                                      TRI_replication_state_t* dst) {
+                                      TRI_replication_log_state_t* dst) {
   assert(logger->_state._active);
 
   TRI_LockSpin(&logger->_idLock);
-  memcpy(dst, &logger->_state, sizeof(TRI_replication_state_t));
+  memcpy(dst, &logger->_state, sizeof(TRI_replication_log_state_t));
   TRI_UnlockSpin(&logger->_idLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -1042,6 +1198,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 
   res = LogEvent(logger, 0, true, OPERATION_REPLICATION_STOP, buffer); 
   
+  TRI_CommitTransaction(logger->_trx, 0);
   TRI_FreeTransaction(logger->_trx);
   
   LOG_INFO("stopped replication logger for database '%s', last id: %llu", 
@@ -1064,7 +1221,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStateInactive (TRI_vocbase_t* vocbase,
-                             TRI_replication_state_t* dst) {
+                             TRI_replication_log_state_t* dst) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
  
@@ -1197,7 +1354,7 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
-                                TRI_replication_state_t* state) {
+                                TRI_replication_log_state_t* state) {
   int res;
 
   res = TRI_ERROR_NO_ERROR;
@@ -1641,6 +1798,213 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 
   TRI_FreeBarrier(b);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           REPLICATION APPLICATION
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the filename of the replication application file
+////////////////////////////////////////////////////////////////////////////////
+
+static char* GetApplyStateFilename (TRI_vocbase_t* vocbase) {
+  return TRI_Concatenate2File(vocbase->_path, "REPLICATION");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the replication apply state
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* ApplyStateToJson (TRI_replication_apply_state_t const* state) {
+  TRI_json_t* json;
+  char* serverId;
+  char* lastTick;
+
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  serverId = TRI_StringUInt64(state->_serverId);
+  lastTick = TRI_StringUInt64(state->_lastTick);
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastTick));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a master info struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
+                                    const char* endpoint) {
+  info->_endpoint         = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  info->_serverId         = 0;
+  info->_majorVersion     = 0;
+  info->_minorVersion     = 0;
+  info->_state._firstTick = 0;
+  info->_state._lastTick  = 0;
+  info->_state._active    = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a master info struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
+  if (info->_endpoint != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, info->_endpoint);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log information about the master state
+////////////////////////////////////////////////////////////////////////////////
+      
+void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
+                                   const char* prefix) {
+  LOG_INFO("%s master at %s, id %llu, tick range: %llu - %llu, version %d.%d", 
+           prefix,
+           info->_endpoint,
+           (unsigned long long) info->_serverId,
+           (unsigned long long) info->_state._firstTick,
+           (unsigned long long) info->_state._lastTick,
+           info->_majorVersion,
+           info->_minorVersion);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply state struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitApplyStateReplication (TRI_replication_apply_state_t* state) {
+  state->_serverId = 0;
+  state->_lastTick = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save the replication application state to a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SaveApplyStateReplication (TRI_vocbase_t* vocbase,
+                                   TRI_replication_apply_state_t const* state,
+                                   bool sync) {
+  TRI_json_t* json;
+  char* filename;
+  int res;
+
+  json = ApplyStateToJson(state);
+
+  if (json == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  filename = GetApplyStateFilename(vocbase);
+
+  if (! TRI_SaveJson(filename, json, sync)) {
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load the replication application state from a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
+                                   TRI_replication_apply_state_t* state) {
+  TRI_json_t* json;
+  TRI_json_t* serverId;
+  TRI_json_t* lastTick;
+  char* filename;
+  char* error;
+  int res;
+   
+  filename = GetApplyStateFilename(vocbase);
+
+  if (! TRI_ExistsFile(filename)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  error = NULL;
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+
+  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
+    if (error != NULL) {
+      TRI_Free(TRI_CORE_MEM_ZONE, error);
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  // read the server id
+  serverId = TRI_LookupArrayJson(json, "serverId");
+
+  if (serverId == NULL || 
+      serverId->_type != TRI_JSON_STRING || 
+      serverId->_value._string.data == NULL) {
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    state->_serverId = TRI_UInt64String(serverId->_value._string.data);
+  }
+
+  // read the last tick
+  lastTick = TRI_LookupArrayJson(json, "lastTick");
+
+  if (lastTick == NULL || 
+      lastTick->_type != TRI_JSON_STRING || 
+      lastTick->_value._string.data == NULL) {
+    res = TRI_ERROR_INTERNAL;
+  }
+  else {
+    state->_lastTick = TRI_UInt64String(lastTick->_value._string.data);
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, json);
 
   return res;
 }

@@ -3230,7 +3230,7 @@ namespace triagens {
           ++k;
 
           if (k == pos) {
-            return sourceStr.substr(offSet,delPos - offSet);
+            return sourceStr.substr(offSet, delPos - offSet);
           }
 
           offSet = delPos + delLength;

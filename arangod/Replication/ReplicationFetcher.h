@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication request handler
+/// @brief replication data fetcher
 ///
 /// @file
 ///
@@ -22,32 +22,74 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define TRIAGENS_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#ifndef TRIAGENS_REPLICATION_REPLICATION_FETCHER_H
+#define TRIAGENS_REPLICATION_REPLICATION_FETCHER_H 1
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-#include "HttpServer/HttpServer.h"
+#include "Basics/Common.h"
 
-#ifdef TRI_ENABLE_REPLICATION
+#include "Logger/Logger.h"
+#include "VocBase/replication.h"
+#include "VocBase/server-id.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace std;
-
-struct TRI_replication_log_state_s;
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+  
+struct TRI_json_s;
+struct TRI_transaction_collection_s;
+struct TRI_vocbase_s;
 struct TRI_vocbase_col_s;
 
 namespace triagens {
+
+  namespace httpclient {
+    class GeneralClientConnection;
+    class SimpleHttpClient;
+    class SimpleHttpResult;
+  }
+  
+  namespace rest {
+    class Endpoint;
+  }
+
   namespace arango {
 
-    class RestReplicationHandler : public RestVocbaseBaseHandler {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                ReplicationFetcher
+// -----------------------------------------------------------------------------
+
+    class ReplicationFetcher {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            RestReplicationHandler
+// --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication apply setup phase
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef enum {
+          PHASE_VALIDATE,
+          PHASE_DROP,
+          PHASE_CREATE,
+          PHASE_DATA,
+          PHASE_INDEXES
+        }
+        setup_phase_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -64,20 +106,22 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestReplicationHandler (rest::HttpRequest*, struct TRI_vocbase_s*);
+        ReplicationFetcher (struct TRI_vocbase_s*,
+                            const std::string&,
+                            double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
-
-        ~RestReplicationHandler ();
+        
+        ~ReplicationFetcher ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,49 +132,17 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief run method
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDirect ();
+        int run ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief comparator to sort collections
+/// sort order is by collection type first (vertices before edges), then name 
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        Handler::status_e execute();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-      
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exclude a collection from replication?
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool excludeCollection (const char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief filter a collection based on collection attributes
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool filterCollection (struct TRI_vocbase_col_s*, void*);
+        static int sortCollections (const void*, const void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -148,50 +160,115 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add replication state to a JSON array
+/// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addState (TRI_json_t*, struct TRI_replication_log_state_s const*);
+        int applyMarker (struct TRI_transaction_collection_s*,
+                         char const*,
+                         const TRI_voc_key_t,
+                         struct TRI_json_s const*,
+                         string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remotely start the replication
+/// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommandStart ();
+        int applyCollectionDump (struct TRI_transaction_collection_s*,
+                                 httpclient::SimpleHttpResult*,
+                                 string&,
+                                 uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remotely stop the replication
+/// @brief get local replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommandStop ();
+        int getLocalState (string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the state of the replication
+/// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommandState ();
+        int getMasterState (string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the inventory (current replication and collection state)
+/// @brief get master inventory
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommandInventory ();
+        int getMasterInventory (string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle a dump command for a specific collection
+/// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleCommandDump ();
+        int handleCollectionDump (struct TRI_transaction_collection_s*,
+                                  TRI_voc_tick_t,
+                                  string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle the information about a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleCollectionInitial (struct TRI_json_s const*,
+                                     struct TRI_json_s const*, 
+                                     string&, 
+                                     setup_phase_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle the state response of the master
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleStateResponse (struct TRI_json_s const*, 
+                                 string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle the inventory response of the master
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleInventoryResponse (struct TRI_json_s const*, string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over all collections from a list and apply an action
+////////////////////////////////////////////////////////////////////////////////
+  
+        int iterateCollections (struct TRI_json_s const*,
+                                string&,
+                                setup_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-     };
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+       
+        struct TRI_vocbase_s* _vocbase;
+
+        TRI_replication_master_info_t _masterInfo;
+  
+        TRI_replication_apply_state_t _applyState;
+
+        rest::Endpoint* _endpoint;
+
+        httpclient::GeneralClientConnection* _connection;
+        
+        httpclient::SimpleHttpClient* _client;
+
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
   }
 }
-
-#endif 
 
 #endif
 

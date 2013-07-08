@@ -433,7 +433,7 @@ accessed by their positions. The order of elements in a list is important.
 
 An `list-declaration` starts with the `[` symbol and ends with the `]` symbol. A
 `list-declaration` contains zero or many `expression`s, seperated from each
-other with the `\,` symbol.
+other with the `,` symbol.
 
 In the easiest case, a list is empty and thus looks like:
 
@@ -471,9 +471,9 @@ The other supported compound type is the document type. Documents are a
 composition of zero to many attributes. Each attribute is a name/value pair.
 Document attributes can be accessed individually by their names.
 
-Document declarations start with the `\{` symbol and end with the `\`} symbol. A
+Document declarations start with the `{` symbol and end with the `}` symbol. A
 document contains zero to many attribute declarations, seperated from each other
-with the `\,` symbol.  In the simplest case, a document is empty. Its
+with the `,` symbol.  In the simplest case, a document is empty. Its
 declaration would then be:
 
     { }
@@ -511,7 +511,7 @@ query.
 Using bind parameters, the meaning of an existing query cannot be changed.  Bind
 parameters can be used everywhere in a query where literals can be used.
 
-The syntax for bind parameters is `\@nameparameter` where `nameparameter` is the
+The syntax for bind parameters is `@nameparameter` where `nameparameter` is the
 actual parameter name. The bind parameter values need to be passed along with
 the query when it is executed, but not as part of the query text itself. Please
 refer to the @ref HttpCursorHttp manual section for information about how to
@@ -526,8 +526,8 @@ lower and upper case) or a digit (`0` to `9`), and can be followed by any
 letter, digit, or the underscore symbol.
 
 A special type of bind parameter exists for injecting collection names. This
-type of bind parameter has a name prefixed with an additional `\@` symbol (thus
-when using the bind parameter in a query, two `\@` symbols must be used.
+type of bind parameter has a name prefixed with an additional `@` symbol (thus
+when using the bind parameter in a query, two `@` symbols must be used.
 
     FOR u IN @@collection
       FILTER u.active == true
@@ -606,7 +606,7 @@ result is defined as follows:
 - boolean:`false` is less than `true`
 - number: numeric values are ordered by their cardinal value
 - string: string values are ordered using a localized comparison,
-  see @ref CommandLineDefaultLanguage "-\-default-language"
+  see @ref CommandLineDefaultLanguage "--default-language"
 
 Note: unlike in SQL, `null` can be compared to any value, including `null`
 itself, without the result being converted into `null` automatically.
@@ -945,10 +945,10 @@ The following type check functions are available:
 
 For string processing, AQL offers the following functions:
 
-- @FN{CONCAT(@FA{value1}\, @FA{value2}\, ... @FA{valuen})}: concatenate the strings 
+- @FN{CONCAT(@FA{value1}, @FA{value2}, ... @FA{valuen})}: concatenate the strings 
   passed as in @FA{value1} to @FA{valuen}. `null` values are ignored.
 
-- @FN{CONCAT_SEPARATOR(@FA{separator}\, @FA{value1}\, @FA{value2}\, ... @FA{valuen})}: 
+- @FN{CONCAT_SEPARATOR(@FA{separator}, @FA{value1}, @FA{value2}, ... @FA{valuen})}: 
   concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
   @FA{separator} string. `null` values are ignored.
 
@@ -959,17 +959,17 @@ For string processing, AQL offers the following functions:
 
 - @FN{UPPER(@FA{value})}: upper-case @FA{value}
 
-- @FN{SUBSTRING(@FA{value}\, @FA{offset}\, @FA{length})}: return a substring of @FA{value},
+- @FN{SUBSTRING(@FA{value}, @FA{offset}, @FA{length})}: return a substring of @FA{value},
   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
   start at position 0.
 
-- @FN{LEFT(@FA{value}\, @FA{LENGTH})}: returns the @FA{LENGTH} leftmost characters of
+- @FN{LEFT(@FA{value}, @FA{LENGTH})}: returns the @FA{LENGTH} leftmost characters of
   the string @FA{VALUE}.
 
-- @FN{RIGHT(@FA{value}\, @FA{LENGTH})}: returns the @FA{LENGTH} rightmost characters of
+- @FN{RIGHT(@FA{value}, @FA{LENGTH})}: returns the @FA{LENGTH} rightmost characters of
   the string @FA{VALUE}.
 
-- @FN{TRIM(@FA{value}\, @FA{type})}: returns the string @FA{VALUE} with whitespace stripped 
+- @FN{TRIM(@FA{value}, @FA{type})}: returns the string @FA{VALUE} with whitespace stripped 
   from the start and/or end. The optional @FA{type} parameter specifies from which parts
   of the string the whitespace is stripped:
   - @FA{type} 0 will strip whitespace from the start and end of the string
@@ -983,7 +983,7 @@ For string processing, AQL offers the following functions:
   `true` if @FA{search} is contained in @FA{text}, and `false` otherwise. By
   passing `true` as the third function parameter @FA{return-index}, the function
   will return the position of the first occurence of @FA{search} within @FA{text}, 
-  starting at offset 0, or `\-1` if @FA{search} is not contained in @FA{text}.
+  starting at offset 0, or `-1` if @FA{search} is not contained in @FA{text}.
 
   The string matching performed by @FN{CONTAINS} is case-sensitive.
 
@@ -1077,7 +1077,7 @@ AQL supports the following functions to operate on list values:
   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
   Calling this function might return the unique elements in any order.
 
-- @FN{UNION(@FA{list1\, list2\, ...})}: returns the union of all lists specified.
+- @FN{UNION(@FA{list1, list2, ...})}: returns the union of all lists specified.
   The function expects at least two list values as its arguments.
   Note: no duplicates will be removed. In order to remove duplicates, please use the
   @LIT{UNIQUE} function.
@@ -1111,13 +1111,13 @@ Apart from these functions, AQL also offers several language constructs (e.g.
 
 AQL supports the following functions to operate on document values:
 
-- @FN{MATCHES(@FA{document}\, @FA{examples}\, @FA{return-index})}: compares the document
+- @FN{MATCHES(@FA{document}, @FA{examples}, @FA{return-index})}: compares the document
   @FA{document} against each example document provided in the list @FA{examples}. 
   If @FA{document} matches one of the examples, `true` is returned, and if there is
   no match `false` will be returned. The default return value type can be changed by
   passing `true` as the third function parameter @FA{return-index}. Setting this
   flag will return the index of the example that matched (starting at offset 0), or 
-  `\-1` if there was no match.
+  `-1` if there was no match.
 
   The comparisons will be started with the first example. All attributes of the example
   will be compared against the attributes of @FA{document}. If all attributes match, the 
@@ -1138,7 +1138,7 @@ AQL supports the following functions to operate on document values:
   This will return `2`, because the third example matches, and because the 
   `return-index` flag is set to `true`.
 
-- @FN{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
+- @FN{MERGE(@FA{document1}, @FA{document2}, ... @FA{documentn})}: merges the documents
   in @FA{document1} to @FA{documentn} into a single document. If document attribute
   keys are ambiguous, the merged result will contain the values of the documents 
   contained later in the argument list.
@@ -1164,7 +1164,7 @@ AQL supports the following functions to operate on document values:
   Please note that merging will only be done for top-level attributes. If you wish to
   merge sub-attributes, you should consider using `MERGE_RECURSIVE` instead.
 
-- @FN{MERGE_RECURSIVE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: recursively
+- @FN{MERGE_RECURSIVE(@FA{document1}, @FA{document2}, ... @FA{documentn})}: recursively
   merges the documents in @FA{document1} to @FA{documentn} into a single document. If 
   document attribute keys are ambiguous, the merged result will contain the values of the 
   documents contained later in the argument list.
@@ -1178,23 +1178,23 @@ AQL supports the following functions to operate on document values:
     [ { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } ]
 
 
-- @FN{HAS(@FA{document}\, @FA{attributename})}: returns `true` if @FA{document} has an
+- @FN{HAS(@FA{document}, @FA{attributename})}: returns `true` if @FA{document} has an
   attribute named @FA{attributename}, and `false` otherwise.
 
-- @FN{ATTRIBUTES(@FA{document}\, @FA{removeInternal}\, @FA{sort})}: returns the attribute
+- @FN{ATTRIBUTES(@FA{document}, @FA{removeInternal}, @FA{sort})}: returns the attribute
   names of the document @FA{document} as a list. 
   If @FA{removeInternal} is set to `true`, then all internal attributes (such as `_id`, 
   `_key` etc.) are removed from the result. If @FA{sort} is set to `true`, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
 
-- @FN{UNSET(@FA{document}\, @FA{attributename}\, ...)}: removes the attributes @FA{attributename}
+- @FN{UNSET(@FA{document}, @FA{attributename}, ...)}: removes the attributes @FA{attributename}
   (can be one or many) from @FA{document}. All other attributes will be preserved.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
     RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
 
-- @FN{KEEP(@FA{document}\, @FA{attributename}\, ...)}: keeps only the attributes @FA{attributename}
+- @FN{KEEP(@FA{document}, @FA{attributename}, ...)}: keeps only the attributes @FA{attributename}
   (can be one or many) from @FA{document}. All other attributes will be removed from the result.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
@@ -1205,7 +1205,7 @@ AQL supports the following functions to operate on document values:
 
 AQL offers the following functions to filter data based on geo indexes:
 
-- @FN{NEAR(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{limit}\, @FA{distancename})}: 
+- @FN{NEAR(@FA{collection}, @FA{latitude}, @FA{longitude}, @FA{limit}, @FA{distancename})}: 
   returns at most @FA{limit} documents from collection @FA{collection} that are near
   @FA{latitude} and @FA{longitude}. The result contains at most @FA{limit} documents, returned in
   any order. If more than @FA{limit} documents qualify, it is undefined which of the qualifying
@@ -1217,7 +1217,7 @@ AQL offers the following functions to filter data based on geo indexes:
   @FA{limit} is an optional parameter since ArangoDB 1.3. If it is not specified or null, a limit
   value of 100 will be applied.
 
-- @FN{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
+- @FN{WITHIN(@FA{collection}, @FA{latitude}, @FA{longitude}, @FA{radius}, @FA{distancename})}: 
   returns all documents from collection @FA{collection} that are within a radius of
   @FA{radius} around that specified coordinate (@FA{latitude} and @FA{longitude}). The order
   in which the result documents are returned is undefined. Optionally, the distance between the
@@ -1234,7 +1234,7 @@ with an error.
 
 AQL offers the following functions to filter data based on fulltext indexes:
 
-- @FN{FULLTEXT(@FA{collection}\, @FA{attribute}\, @FA{query})}: 
+- @FN{FULLTEXT(@FA{collection}, @FA{attribute}, @FA{query})}: 
   returns all documents from collection @FA{collection} for which the attribute @FA{attribute}
   matches the fulltext query @FA{query}.
   @FA{query} is a comma-separated list of sought words (or prefixes of sought words). To 
@@ -1243,21 +1243,21 @@ AQL offers the following functions to filter data based on fulltext indexes:
   be mixed in the same query. Not specifying a qualifier for a search word will implicitly
   execute a complete-match search for the given word:
 
-  - `FULLTEXT(emails\, "body"\, "banana")` will look for the word `banana` in the 
+  - `FULLTEXT(emails, "body", "banana")` will look for the word `banana` in the 
     attribute `body` of the collection `collection`.
 
-  - `FULLTEXT(emails\, "body"\, "banana\,orange")` will look for boths the words 
+  - `FULLTEXT(emails, "body", "banana,orange")` will look for boths the words 
     `banana` and `orange` in the mentioned attribute. Only those documents will be
     returned that contain both words.
 
-  - `FULLTEXT(emails\, "body"\, "prefix:head")` will look for documents that contain any
+  - `FULLTEXT(emails, "body", "prefix:head")` will look for documents that contain any
     words starting with the prefix `head`.
 
-  - `FULLTEXT(emails\, "body"\, "prefix:head,complete:aspirin")` will look for all 
+  - `FULLTEXT(emails, "body", "prefix:head,complete:aspirin")` will look for all 
     documents that contain a word starting with the prefix `head` and that also contain 
     the (complete) word `aspirin`. Note: specifying `complete` is optional here.
 
-  - `FULLTEXT(emails\, "body"\, "prefix:cent,prefix:subst")` will look for all documents 
+  - `FULLTEXT(emails, "body", "prefix:cent,prefix:subst")` will look for all documents 
     that contain a word starting with the prefix `cent` and that also contain a word
     starting with the prefix `subst`.
 
@@ -1265,16 +1265,16 @@ AQL offers the following functions to filter data based on fulltext indexes:
   AND-combined, meaning only the logical intersection of all searches will be returned. 
   It is also possible to combine partial results with a logical OR, and with a logical NOT:
 
-  - `FULLTEXT(emails\, "body"\, "+this,+text,+document")` will return all documents that 
+  - `FULLTEXT(emails, "body", "+this,+text,+document")` will return all documents that 
     contain all the mentioned words. Note: specifying the `+` symbols is optional here.
 
-  - `FULLTEXT(emails\, "body"\, "banana,|apple")` will return all documents that contain
+  - `FULLTEXT(emails, "body", "banana,|apple")` will return all documents that contain
     either (or both) words `banana` or `apple`.
 
-  - `FULLTEXT(emails\, "body"\, "banana,-apple")` will return all documents that contain
+  - `FULLTEXT(emails, "body", "banana,-apple")` will return all documents that contain
     the word `banana` but do not contain the word `apple`.
 
-  - `FULLTEXT(emails\, "body"\, "banana,pear,-cranberry")` will return all documents that 
+  - `FULLTEXT(emails, "body", "banana,pear,-cranberry")` will return all documents that 
     contain both the words `banana` and `pear` but do not contain the word 
     `cranberry`.
 
@@ -1289,7 +1289,7 @@ will fail with an error.
 
 AQL has the following functions to traverse graphs:
 
-- @FN{PATHS(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{direction}\, @FA{followcycles})}: 
+- @FN{PATHS(@FA{vertexcollection}, @FA{edgecollection}, @FA{direction}, @FA{followcycles})}: 
   returns a list of paths through the graph defined by the nodes in the collection 
   @FA{vertexcollection} and edges in the collection @FA{edgecollection}. For each vertex
   in @FA{vertexcollection}, it will determine the paths through the graph depending on the
@@ -1316,7 +1316,7 @@ Example calls:
       FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
       RETURN p.vertices[*].name
 
-- @FN{TRAVERSAL(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{options})}: 
+- @FN{TRAVERSAL(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{options})}: 
   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
   starting at the vertex identified by id @FA{startVertex}. Vertex connectivity is
   specified by the @FA{direction} parameter:
@@ -1388,7 +1388,7 @@ Example calls:
       followEdges: [ { type: "knows" }, { state: "FL" } ]
     })
 
-- @FN{TRAVERSAL_TREE(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{connectName}\, @FA{options})}: 
+- @FN{TRAVERSAL_TREE(@FA{vertexcollection}, @FA{edgecollection}, @FA{startVertex}, @FA{direction}, @FA{connectName}, @FA{options})}: 
   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
   starting at the vertex identified by id @FA{startVertex} and creates a hierchical result.
   Vertex connectivity is establish by inserted an attribute which has the name specified via
@@ -1412,7 +1412,7 @@ If no bounds are set, a traversal might run into an endless loop in a cyclic gra
 and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
 time and memory for the result set.
 
-- @FN{EDGES(@FA{edgecollection}\, @FA{startvertex}\, @FA{direction}, @FA{edgeexamples})}:
+- @FN{EDGES(@FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
   return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
   @FA{direction} are:
   - `outbound`: return all outbound edges
@@ -1429,7 +1429,7 @@ Example calls:
     EDGES(friendrelations, "friends/john", "outbound")
     EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
 
-- @FN{NEIGHBORS(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startvertex}\, @FA{direction}, @FA{edgeexamples})}:
+- @FN{NEIGHBORS(@FA{vertexcollection}, @FA{edgecollection}, @FA{startvertex}, @FA{direction}, @FA{edgeexamples})}:
   return all neighbors that are directly connected to the vertex @FA{startvertex} as a list. 
   The possible values for @FA{direction} are:
   - `outbound`: return all outbound edges
@@ -1450,13 +1450,13 @@ Example calls:
 
 AQL offers the following functions to let the user control the flow of operations:
 
-- @FN{NOT_NULL(@FA{alternative}\, ...)}: returns the first alternative that is not `null`, 
+- @FN{NOT_NULL(@FA{alternative}, ...)}: returns the first alternative that is not `null`, 
   and `null` if all alternatives are `null` themselves.
 
-- @FN{FIRST_LIST(@FA{alternative}\, ...)}: returns the first alternative that is a list, and
+- @FN{FIRST_LIST(@FA{alternative}, ...)}: returns the first alternative that is a list, and
   `null` if none of the alternatives is a list.
 
-- @FN{FIRST_DOCUMENT(@FA{alternative}\, ...)}: returns the first alternative that is a document,
+- @FN{FIRST_DOCUMENT(@FA{alternative}, ...)}: returns the first alternative that is a document,
   and `null` if none of the alternatives is a document.
 
 @subsubsection AqlFunctionsMisc Miscellaneous functions
@@ -1743,11 +1743,11 @@ Variable expansion {#AqlExpansion}
 ----------------------------------
 
 In order to access a named attribute from all elements in a list easily, AQL
-offers the shortcut operator `[\*]` for variable expansion.
+offers the shortcut operator `[*]` for variable expansion.
 
-Using the `[\*]` operator with a variable will iterate over all elements in the
+Using the `[*]` operator with a variable will iterate over all elements in the
 variable thus allowing to access a particular attribute of each element.  It is
-required that the expanded variable is a list.  The result of the `[\*]`
+required that the expanded variable is a list.  The result of the `[*]`
 operator is again a list.
 
     FOR u IN users

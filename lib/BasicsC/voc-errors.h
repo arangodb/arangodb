@@ -173,6 +173,24 @@ extern "C" {
 ///   invalid type.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
+/// - 1400: @LIT{no response}
+///   Will be raised when the replica does not receive any or an incomplete
+///   response from the master.
+/// - 1401: @LIT{invalid response}
+///   Will be raised when the replica receives an invalid response from the
+///   master.
+/// - 1402: @LIT{master error}
+///   Will be raised when the replica receives a server error from the master.
+/// - 1403: @LIT{master incompatible}
+///   Will be raised when the master the replica connects to has an
+///   incompatible version.
+/// - 1404: @LIT{master change}
+///   Will be raised when the master the replica connects is changed.
+/// - 1405: @LIT{loop detected}
+///   Will be raised when the replica connects to itself for replication.
+/// - 1406: @LIT{unexpected marker}
+///   Will be raised when an unexpected marker is found in the replication
+///   stream.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -277,6 +295,9 @@ extern "C" {
 /// - 1753: @LIT{application download failed}
 ///   Will be raised when an application download from the central repository
 ///   failed.
+/// - 1754: @LIT{application upload failed}
+///   Will be raised when an application upload from the client to the ArangoDB
+///   server failed.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -1180,6 +1201,79 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATAFILE_FULL                                    (1300)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
+///
+/// no response
+///
+/// Will be raised when the replica does not receive any or an incomplete
+/// response from the master.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_NO_RESPONSE                                 (1400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1401: ERROR_REPLICATION_INVALID_RESPONSE
+///
+/// invalid response
+///
+/// Will be raised when the replica receives an invalid response from the
+/// master.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_INVALID_RESPONSE                            (1401)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1402: ERROR_REPLICATION_MASTER_ERROR
+///
+/// master error
+///
+/// Will be raised when the replica receives a server error from the master.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_MASTER_ERROR                                (1402)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1403: ERROR_REPLICATION_MASTER_INCOMPATIBLE
+///
+/// master incompatible
+///
+/// Will be raised when the master the replica connects to has an incompatible
+/// version.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         (1403)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1404: ERROR_REPLICATION_MASTER_CHANGE
+///
+/// master change
+///
+/// Will be raised when the master the replica connects is changed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_MASTER_CHANGE                               (1404)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1405: ERROR_REPLICATION_LOOP
+///
+/// loop detected
+///
+/// Will be raised when the replica connects to itself for replication.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_LOOP                                        (1405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1406: ERROR_REPLICATION_UNEXPECTED_MARKER
+///
+/// unexpected marker
+///
+/// Will be raised when an unexpected marker is found in the replication stream.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_UNEXPECTED_MARKER                           (1406)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -1613,6 +1707,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1754: ERROR_APPLICATION_UPLOAD_FAILED
+///
+/// application upload failed
+///
+/// Will be raised when an application upload from the client to the ArangoDB
+/// server failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_UPLOAD_FAILED                               (1754)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

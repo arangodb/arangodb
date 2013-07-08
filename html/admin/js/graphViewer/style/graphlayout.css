@@ -45,3 +45,46 @@ div.mousepointer {
   margin: 0;
   padding: 5px;  
 }
+
+button.graphViewer-icon-button {
+  border: medium none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  padding: 0px;
+  background-color: transparent;
+}
+
+button.graphViewer-icon-button > img {
+  width:20px;
+  height:20px;
+  padding-bottom: 10px;
+}
+
+
+.modal-body th.actionCell {
+  width: 30px;
+  text-align: center;
+}
+
+.modal-body th.actionCell > button {
+  margin-top: -12px;
+}
+
+.modal-body th.keyCell {
+  width: 170px;
+  text-align: center;
+}
+
+.modal-body th.valueCell {
+  width: 300px;
+  text-align: center;
+}
+
+.modal-body th.keyCell input {
+  width: 150px;
+}
+
+.modal-body th.valueCell input {
+  width: 290px;
+}

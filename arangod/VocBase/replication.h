@@ -32,7 +32,7 @@
 
 #include "BasicsC/locks.h"
 
-#include "VocBase/document-collection.h"
+#include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -71,7 +71,19 @@ struct TRI_vocbase_s;
 /// @brief default size for each log file
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_REPLICATION_DEFAULT_LOG_SIZE  (64 * 1024 * 1024)
+#define TRI_REPLICATION_DEFAULT_LOG_SIZE (64 * 1024 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief HTTP response header for "check for more data?"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_REPLICATION_HEADER_CHECKMORE "x-arango-checkmore"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief HTTP response header for "last found tick"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_REPLICATION_HEADER_LASTFOUND "x-arango-lastfound"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -94,19 +106,20 @@ typedef struct TRI_replication_dump_s {
   struct TRI_string_buffer_s*  _buffer;
   TRI_voc_tick_t               _lastFoundTick;
   bool                         _hasMore;
+  bool                         _bufferFull;
 }
 TRI_replication_dump_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief state information about replication
+/// @brief state information about replication logging
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_replication_state_s {
+typedef struct TRI_replication_log_state_s {
   TRI_voc_tick_t  _firstTick;
   TRI_voc_tick_t  _lastTick;
   bool            _active;
 }
-TRI_replication_state_t;
+TRI_replication_log_state_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context information for replication logging
@@ -119,7 +132,7 @@ typedef struct TRI_replication_logger_s {
   struct TRI_transaction_s*            _trx;
   struct TRI_transaction_collection_s* _trxCollection;
 
-  TRI_replication_state_t              _state;
+  TRI_replication_log_state_t          _state;
 
   bool                                 _waitForSync;
   int64_t                              _logSize;
@@ -175,7 +188,7 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StateReplicationLogger (TRI_replication_logger_t*,
-                                TRI_replication_state_t*);
+                                TRI_replication_log_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -338,6 +351,148 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
 #else
 
 #define TRI_DumpCollectionReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           REPLICATION APPLICATION
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state information about replication master
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_master_info_s {
+  char*                        _endpoint;
+  TRI_server_id_t              _serverId;
+  int                          _majorVersion;
+  int                          _minorVersion;
+  TRI_replication_log_state_t  _state;
+}
+TRI_replication_master_info_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state information about replication application
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_apply_state_s {
+  TRI_voc_tick_t    _lastTick;
+  TRI_server_id_t   _serverId;
+}
+TRI_replication_apply_state_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a master info struct
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+void TRI_InitMasterInfoReplication (TRI_replication_master_info_t*,
+                                    const char*);
+
+#else
+
+#define TRI_InitMasterInfoReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a master info struct
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t*);
+
+#else
+
+#define TRI_DestroyMasterInfoReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log information about the master state
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+      
+void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const*,
+                                   const char*);
+
+#else
+
+#define TRI_LogMasterInfoReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply state struct
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+void TRI_InitApplyStateReplication (TRI_replication_apply_state_t*);
+
+#else
+
+#define TRI_InitApplyStateReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save the replication application state to a file
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+int TRI_SaveApplyStateReplication (struct TRI_vocbase_s*,
+                                   TRI_replication_apply_state_t const*,
+                                   bool);
+
+#else
+
+#define TRI_SaveApplyStateReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load the replication application state from a file
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+int TRI_LoadApplyStateReplication (struct TRI_vocbase_s*,
+                                   TRI_replication_apply_state_t*);
+
+#else
+
+#define TRI_LoadApplyStateReplication(...)
 
 #endif
 
