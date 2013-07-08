@@ -779,7 +779,8 @@
       
       it('should remove all edges of a community if it is joined', function() {
         var n1, n2, n3, n4,
-          e1, e2, e3, e4;
+          e1, e2, e3, e4,
+          eout, ein;
         n1 = {
           _id: "n1"
         };
@@ -812,6 +813,16 @@
           _from: n4._id,
           _to: n1._id
         };
+        eout = {
+          _id: "n1-1",
+          _from: n1._id,
+          _to: source._id
+        };
+        ein = {
+          _id: "2-n1",
+          _from: target._id,
+          _to: n1._id
+        };
         adapter.insertNode(n1);
         adapter.insertNode(n2);
         adapter.insertNode(n3);
@@ -821,6 +832,8 @@
         adapter.insertEdge(e2);
         adapter.insertEdge(e3);
         adapter.insertEdge(e4);
+        adapter.insertEdge(eout);
+        adapter.insertEdge(ein);
       
         spyOn(mockWrapper, "call").andCallFake(function(name) {
           if (name === "getCommunity") {
@@ -837,7 +850,10 @@
         expect(mockWrapper.call).wasCalledWith("deleteEdge", n2._id, n3._id);
         expect(mockWrapper.call).wasCalledWith("deleteEdge", n3._id, n4._id);
         expect(mockWrapper.call).wasCalledWith("deleteEdge", n4._id, n1._id);
-      
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, source._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", target._id, n1._id);
+        // 1 time getCommunity, 7 times deleteEdge
+        expect(mockWrapper.call.calls.length).toEqual(7);
       });
       
       it('should not be informed of edges connected to communities', function() {

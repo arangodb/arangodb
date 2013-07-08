@@ -74,12 +74,9 @@ function ModularityJoiner() {
         }
       },
       keys: nativeKeys || function(obj) {
-        /* As we are only working wiht internal vars
-        *  typesafenes is guaranteed
         if (obj !== Object(obj)) {
           throw new TypeError('Invalid object');
         }
-        */
         var keys = [], key;
         for (key in obj) {
           if (obj.hasOwnProperty(key)) {
