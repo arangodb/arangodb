@@ -45,6 +45,8 @@ For detailed instructions the following section.
 All-In-One Version{#CompilingAIO}
 =================================
 
+Note: there are separate instructions for the **devel** version in the next section.
+
 Basic System Requirements{#CompilingAIOPrerequisites}
 -----------------------------------------------------
 

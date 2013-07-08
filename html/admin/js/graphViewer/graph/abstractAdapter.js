@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _ */
-/*global NodeReducer */
+/*global NodeReducer, ModularityJoiner, WebWorkerWrapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -46,6 +46,7 @@ function AbstractAdapter(nodes, edges) {
     joinedInCommunities = {},
     limit,
     reducer,
+    joiner,
     childLimit,
     exports = {},
 
@@ -288,6 +289,27 @@ function AbstractAdapter(nodes, edges) {
       });
       nodes.push(commNode);
     },
+    
+    joinerCb = function (d) {
+      var data = d.data;
+      if (data.cmd === "getCommunity") {
+        collapseCommunity(data.result);
+      }
+    },
+    
+    requestCollapse = function (focus) {
+      if (focus) {
+        joiner.call("getCommunity", limit, focus._id);
+      } else {
+        joiner.call("getCommunity", limit);
+      }
+    },
+  
+    checkNodeLimit = function (focus) {
+      if (limit < nodes.length) {
+        requestCollapse(focus);
+      }
+    },
   
     expandCommunity = function (commNode) {
       var commId = commNode._id,
@@ -296,8 +318,7 @@ function AbstractAdapter(nodes, edges) {
         com;
       removeNode(commNode);
       if (limit < nodes.length + nodesToAdd.length) {
-        com = reducer.getCommunity(limit);
-        collapseCommunity(com);
+        requestCollapse();
       }
       _.each(nodesToAdd, function(n) {
         delete joinedInCommunities[n._id];
@@ -336,21 +357,11 @@ function AbstractAdapter(nodes, edges) {
       }
     },
     
-    checkNodeLimit = function (focus) {
-      if (limit < nodes.length) {
-        var com = reducer.getCommunity(limit, focus);
-        collapseCommunity(com);
-      }
-    },
-    
     setNodeLimit = function (pLimit, callback) {
       limit = pLimit;
-      if (limit < nodes.length) {
-        var com = reducer.getCommunity(limit);
-        collapseCommunity(com);
-        if (callback !== undefined) {
-          callback();
-        }
+      checkNodeLimit();
+      if (callback !== undefined) {
+        callback();
       }
     },
     
@@ -361,6 +372,7 @@ function AbstractAdapter(nodes, edges) {
   childLimit = Number.POSITIVE_INFINITY;
   
   reducer = new NodeReducer(nodes, edges);
+  joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
   
   initialX.getStart = function() {return 0;};
   initialY.getStart = function() {return 0;};

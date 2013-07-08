@@ -1781,13 +1781,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       return false;
     }
 
-    res = TRI_AppendCharStringBuffer(buffer, '"');
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return false;
-    }
-
-    res = TRI_AppendCharStringBuffer(buffer, ':');
+    res = TRI_AppendString2StringBuffer(buffer, "\":", 2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;
@@ -1866,13 +1860,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       return false;
     }
 
-    res = TRI_AppendCharStringBuffer(buffer, '"');
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return false;
-    }
-
-    res = TRI_AppendCharStringBuffer(buffer, ':');
+    res = TRI_AppendString2StringBuffer(buffer, "\":", 2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return false;

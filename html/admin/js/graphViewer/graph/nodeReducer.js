@@ -1,5 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console, alert, ModularityJoiner*/
+/*global _*/
+// Will be injected by WebWorkers
+/*global self*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -36,93 +38,17 @@ function NodeReducer(nodes, edges) {
   if (edges === undefined) {
     throw "Edges have to be given.";
   }
-  
-  var self = this,
-    isRunning = false,
-    joiner = new ModularityJoiner(nodes, edges),
-    
-    neighbors = function(sID) {
-      var neigh = [];
-      _.each(edges, function(e) {
-        if (e.source._id === sID) {
-          neigh.push(e.target._id);
-          return;
-        }
-        if (e.target._id === sID) {
-          neigh.push(e.source._id);
-          return;
-        }
-      });
-      return neigh;
-    },
-    
-    floatDistStep = function(dist, depth, todo) {
-      if (todo.length === 0) {
-        return true;
-      }
-      var nextTodo = [];
-      _.each(todo, function(t) {
-        if (dist[t] !== Number.POSITIVE_INFINITY) {
-          return;
-        }
-        dist[t] = depth;
-        nextTodo = nextTodo.concat(neighbors(t));
-      });
-      return floatDistStep(dist, depth+1, nextTodo);
-    },
-   
-    floatDist = function(sID) {
-      var dist = {};
-      _.each(_.pluck(nodes, "_id"), function(n) {
-        dist[n] = Number.POSITIVE_INFINITY;
-      });
-      dist[sID] = 0;
-      if (floatDistStep(dist, 1, neighbors(sID))) {
-        return dist;
-      }
-      throw "FAIL!";
-    },
-    
-    minDist = function(dist) {
-      return function(a) {
-        return dist[a];
-      };
-    },
-    
 
-/*   
-   dijkstra = function(sID) {
-     var dist = {},
-       leftOvers, next, neigh,
-       filterNotNext = function(e) {
-         return e !== next;
-       },
-       computeNeighbours = function(v) {
-         if (_.contains(leftOvers, v)) {
-           if (dist[v] > dist[next] + 1) {
-             dist[v] = dist[next] + 1;
-           }
-         }
-       };
-       
-     leftOvers = _.pluck(nodes, "_id");
-     _.each(leftOvers, function(n) {
-       dist[n] = Number.POSITIVE_INFINITY;
-     });
-     dist[sID] = 0;
-     while(leftOvers.length > 0) {
-       next = _.min(leftOvers, minDist(dist));
-       if (next === Number.POSITIVE_INFINITY) {
-         break;
-       }
-       leftOvers = leftOvers.filter(filterNotNext);
-       neigh = neighbors(next);
-       _.each(neigh, computeNeighbours);
-     }
-     return dist;
-   },
-   
-   */
+  var 
+
+    ////////////////////////////////////
+    // Private functions              //
+    //////////////////////////////////// 
+    
+    /////////////////////////////
+    // Functions for Buckets   //
+    /////////////////////////////
+    
    addNode = function(bucket, node) {
      bucket.push(node);
    },
@@ -147,66 +73,10 @@ function NodeReducer(nodes, edges) {
      propCount++;
      countMatch++;
      return countMatch / propCount;
-   };
+   },
    
-  self.getCommunity = function(limit, focus) {
-    if (isRunning === true) {
-      throw "Still running.";
-    }
-    isRunning = true;
-    var coms = {},
-      res = [],
-      dist = {},
-      best,
-      getBest = function (communities) {
-        var bestQ = Number.NEGATIVE_INFINITY,
-          bestC;
-        _.each(communities, function (obj) {
-          if (obj.q > bestQ) {
-            bestQ = obj.q;
-            bestC = obj.nodes;
-          }
-        });
-        return bestC;
-      },
-      sortByDistance = function (a, b) {
-        var d1 = dist[_.min(a,minDist(dist))],
-          d2 = dist[_.min(b,minDist(dist))],
-          val = d2 - d1;
-        if (val === 0) {
-          val = coms[b[b.length-1]].q - coms[a[a.length-1]].q;
-        }
-        return val;
-      };
-    if (nodes.length === 0 || edges.length === 0) {
-      isRunning = false;
-      throw "Load some nodes first.";
-    }
-    joiner.setup();
-    best = joiner.getBest();
-    while (best !== null) {
-      joiner.joinCommunity(best);
-      best = joiner.getBest();
-    }
-    coms = joiner.getCommunities();
-    
-    if (focus !== undefined) {
-      _.each(coms, function(obj, key) {
-        if (_.contains(obj.nodes, focus._id)) {
-          delete coms[key];
-        }
-      });
-      res = _.pluck(_.values(coms), "nodes");
-      dist = floatDist(focus._id);
-      res.sort(sortByDistance);
-      isRunning = false;
-      return res[0];
-    }
-    isRunning = false;
-    return getBest(coms);
-  };
-  
-  self.bucketNodes = function(toSort, numBuckets) {
+
+  bucketNodes = function(toSort, numBuckets) {
     var res = [],
     threshold = 0.5;
     if (toSort.length <= numBuckets) {
@@ -234,5 +104,11 @@ function NodeReducer(nodes, edges) {
     });
     return res;
   };
+  
+  ////////////////////////////////////
+  // Public functions               //
+  ////////////////////////////////////
+   
+  this.bucketNodes = bucketNodes;
   
 }

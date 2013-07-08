@@ -383,6 +383,20 @@ int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compares two transaction ids
+////////////////////////////////////////////////////////////////////////////////
+
+static int TidCompare (void const* l, void const* r) {
+  TRI_voc_tid_t const* left  = l;
+  TRI_voc_tid_t const* right = r;
+
+  if (*left != *right) {
+    return (*left < *right) ? -1 : 1;
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the status of the transaction as a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -524,6 +538,9 @@ static int WriteCollectionAbort (TRI_transaction_collection_t* trxCollection) {
   
   trx = trxCollection->_transaction;
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+  
+  // what should we do if this fails?  
+  res = TRI_AddIdFailedTransaction(&document->_failedTransactions, trx->_id);
     
   // create the "commit transaction" marker
   res = TRI_CreateMarkerAbortTransaction(trx, &abortMarker);
@@ -708,7 +725,16 @@ static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = primary->insert(trxCollection, coordinator->_key, &coordinator->_mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, NULL, false, false);
+  res = primary->insert(trxCollection, 
+                        coordinator->_key, 
+                        0, 
+                        &coordinator->_mptr, 
+                        TRI_DOC_MARKER_KEY_DOCUMENT, 
+                        shaped, 
+                        NULL, 
+                        false, 
+                        false);
+
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
   return res;
@@ -1766,6 +1792,53 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollect
   }
 
   return trxCollection->_locked;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief as the id of a failed transaction to a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AddIdFailedTransaction (TRI_vector_t* vector,
+                                TRI_voc_tid_t tid) {
+  size_t n;
+  int res;
+  bool mustSort;
+
+  if (tid == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  mustSort = false;
+  n        = vector->_length;
+
+  if (n > 0) {
+    TRI_voc_tid_t* lastTid = TRI_AtVector(vector, n - 1);
+
+    if (tid == *lastTid) {
+      // no need to insert same id
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (tid < *lastTid) {
+      // for some reason, the id of the transaction just inserted is lower than
+      // the last id in the vector
+      // this means we need to re-sort the list of transaction ids. 
+      // this case should almost never occur, but we need to handle it if it occurs
+      mustSort = true;
+    }
+  }
+
+  res = TRI_PushBackVector(vector, &tid);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (mustSort) {
+    qsort(TRI_BeginVector(vector), n + 1, sizeof(TRI_voc_tid_t), TidCompare);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

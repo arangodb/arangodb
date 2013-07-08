@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* issue #565: add description line to aal.listAvailable()
+
 * fixed several out-of-memory situations when double freeing or invalid memory
   accesses could happen
 

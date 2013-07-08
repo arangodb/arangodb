@@ -73,6 +73,10 @@
 #include "RestServer/VocbaseManager.h"
 #include "V8/JSLoader.h"
 
+#ifdef TRI_ENABLE_REPLICATION
+#include "Replication/ReplicationFetcher.h"
+#endif
+
 #include "unicode/timezone.h"
 #include "unicode/utypes.h"
 #include "unicode/datefmt.h"
@@ -3057,6 +3061,36 @@ static v8::Handle<v8::Value> JS_StopReplication (v8::Arguments const& argv) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication");
   }
+
+  return scope.Close(v8::True());
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sync data from a replication master
+/// TODO: this is here for testing only and will be moved out of vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNC(<master>)");
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  const string masterEndpoint = TRI_ObjectToString(argv[0]);
+
+  ReplicationFetcher rf(vocbase, masterEndpoint, 600);
+  rf.run();
 
   return scope.Close(v8::True());
 }
@@ -7445,7 +7479,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   if (key[0] == '_') {
-    if (key == "_id" || key == "_rev" || key == "_key") {
+    if (key == "_id" || key == TRI_VOC_ATTRIBUTE_REV || key == TRI_VOC_ATTRIBUTE_KEY) {
       return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
     }
   }
@@ -7996,6 +8030,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 #ifdef TRI_ENABLE_REPLICATION
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_START", JS_StartReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_STOP", JS_StopReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNC", JS_SyncReplication);
 #endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);

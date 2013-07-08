@@ -76,7 +76,11 @@
         _data: {
           _rev: 2,
           _key: 2,
-          _id: 2
+          _id: 2,
+          name: {
+            first: "Bob",
+            sir: "Bobbington"
+          }
         }
       }];
       edges = [{
@@ -88,7 +92,11 @@
           _key: 12,
           _from: 1,
           _to: 2,
-          label: "oldLabel"
+          label: "oldLabel",
+          nested: {
+            from: "1",
+            to: "2"
+          }
         }
         
       }];
@@ -291,13 +299,22 @@
 
     });
     
-    it('should be able to add an edit control to the list', function() {
-      runs(function() {
+    describe('the edit control', function() {
+      
+      var id = "control_event_edit",
+        nodeId = "control_event_node_edit",
+        edgeId = "control_event_edge_edit";
+      
+      beforeEach(function() {
         dispatcherUI.addControlEdit();
+      });
       
-        expect($("#control_event_list #control_event_edit").length).toEqual(1);
+      it('should be added', function() {
+        expect($("#control_event_list #"+ id).length).toEqual(1);
+      });
       
-        helper.simulateMouseEvent("click", "control_event_edit");
+      it('should activate actions on nodes and edges if clicked', function() {
+        helper.simulateMouseEvent("click", id);
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
@@ -314,46 +331,240 @@
         });
       
         expect(mousePointerbox.className).toEqual("mousepointer icon-pencil");
-      
-        helper.simulateMouseEvent("click", "1");
-      
-        expect($("#control_event_node_edit_modal").length).toEqual(1);
-      
-        $("#control_event_node_edit_name_value").val("Bob");
-        
-        helper.simulateMouseEvent("click", "control_event_node_edit_submit");
-        expect(adapter.patchNode).toHaveBeenCalledWith(
-          nodes[0],
-          {
-            name: "Bob"
-          },
-          jasmine.any(Function));
-        });
-      
-      waitsFor(function() {
-        return $("#control_event_node_edit_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");
-      
-      runs(function() {
-        helper.simulateMouseEvent("click", "1-2");
-      
-        expect($("#control_event_edge_edit_modal").length).toEqual(1);
-      
-        $("#control_event_edge_edit_label_value").val("newLabel");
-        helper.simulateMouseEvent("click", "control_event_edge_edit_submit");
-
-        expect(adapter.patchEdge).toHaveBeenCalledWith(
-          edges[0],
-          {
-            label: "newLabel"
-          },
-          jasmine.any(Function));
       });
       
-      waitsFor(function() {
-        return $("#control_event_edge_edit_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");
-           
+      it('should be possible to edit nodes', function() {
+        
+        runs(function() {
+          helper.simulateMouseEvent("click", id);
+          
+          helper.simulateMouseEvent("click", "1");
+        
+          expect($("#" + nodeId + "_modal").length).toEqual(1);
+        
+          $("#" + nodeId + "_name_value").val("Bob");
+        
+          helper.simulateMouseEvent("click", nodeId + "_submit");
+          expect(adapter.patchNode).toHaveBeenCalledWith(
+            nodes[0],
+            {
+              name: "Bob"
+            },
+            jasmine.any(Function)
+          );
+        });
+      
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should be possible to add new attributes to nodes', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1");
+      
+          helper.simulateMouseEvent("click", nodeId + "_new");
+          
+          expect($("#" + nodeId + "_new_1_delete").length).toEqual(1);
+          expect($("#" + nodeId + "_new_1_key").length).toEqual(1);
+          expect($("#" + nodeId + "_new_1_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", nodeId + "_new");
+          
+          expect($("#" + nodeId + "_new_2_delete").length).toEqual(1);
+          expect($("#" + nodeId + "_new_2_key").length).toEqual(1);
+          expect($("#" + nodeId + "_new_2_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", nodeId + "_new_2_delete");
+          
+          expect($("#" + nodeId + "_new_2_delete").length).toEqual(0);
+          expect($("#" + nodeId + "_new_2_key").length).toEqual(0);
+          expect($("#" + nodeId + "_new_2_value").length).toEqual(0);
+          
+          $("#" + nodeId + "_new_1_key").val("newKey");
+          $("#" + nodeId + "_new_1_value").val("newVal");
+          
+          helper.simulateMouseEvent("click", nodeId + "_submit");
+
+          expect(adapter.patchNode).toHaveBeenCalledWith(
+            nodes[0],
+            {
+              name: "Alice",
+              newKey: "newVal"
+            },
+            jasmine.any(Function)
+          );
+          
+        });
+        
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should be possible to delete values from nodes', function() {
+        
+        runs(function() {
+          helper.simulateMouseEvent("click", id);
+          
+          helper.simulateMouseEvent("click", "1");
+        
+          expect($("#" + nodeId + "_name_delete").length).toEqual(1);
+        
+          helper.simulateMouseEvent("click", nodeId + "_name_delete");
+        
+          expect($("#" + nodeId + "_name_delete").length).toEqual(0);
+
+          helper.simulateMouseEvent("click", nodeId + "_submit");
+          expect(adapter.patchNode).toHaveBeenCalledWith(
+            nodes[0],
+            {},
+            jasmine.any(Function)
+          );
+        });
+      
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should display nested attributes', function() {
+        
+        runs(function() {
+          helper.simulateMouseEvent("click", id);
+        
+          helper.simulateMouseEvent("click", "2");
+      
+          expect($("#" + nodeId + "_modal").length).toEqual(1);
+        
+          expect($("#" + nodeId + "_name_value").val()).toEqual(
+            JSON.stringify(nodes[1]._data.name
+          ));
+
+          helper.simulateMouseEvent("click", nodeId + "_modal_dismiss");
+        });
+        
+        waitsFor(function() {
+          return $("#" + nodeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+
+
+      });
+      
+      it('should be possible to edit edges', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1-2");
+      
+          expect($("#" + edgeId + "_modal").length).toEqual(1);
+      
+          expect($("#" + edgeId + "_nested_value").val()).toEqual(nested);
+      
+          $("#" + edgeId + "_label_value").val("newLabel");
+          
+          helper.simulateMouseEvent("click", edgeId + "_submit");
+
+          expect(adapter.patchEdge).toHaveBeenCalledWith(
+            edges[0],
+            {
+              label: "newLabel",
+              nested: nested
+            },
+            jasmine.any(Function)
+          );
+        });
+        
+        waitsFor(function() {
+          return $("#" + edgeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should be possible to add new attributes to edges', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1-2");
+      
+          helper.simulateMouseEvent("click", edgeId + "_new");
+          
+          expect($("#" + edgeId + "_new_1_delete").length).toEqual(1);
+          expect($("#" + edgeId + "_new_1_key").length).toEqual(1);
+          expect($("#" + edgeId + "_new_1_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", edgeId + "_new");
+          
+          expect($("#" + edgeId + "_new_2_delete").length).toEqual(1);
+          expect($("#" + edgeId + "_new_2_key").length).toEqual(1);
+          expect($("#" + edgeId + "_new_2_value").length).toEqual(1);
+          
+          helper.simulateMouseEvent("click", edgeId + "_new_2_delete");
+          
+          expect($("#" + edgeId + "_new_2_delete").length).toEqual(0);
+          expect($("#" + edgeId + "_new_2_key").length).toEqual(0);
+          expect($("#" + edgeId + "_new_2_value").length).toEqual(0);
+          
+          $("#" + edgeId + "_new_1_key").val("newKey");
+          $("#" + edgeId + "_new_1_value").val("newVal");
+          
+          helper.simulateMouseEvent("click", edgeId + "_submit");
+
+          expect(adapter.patchEdge).toHaveBeenCalledWith(
+            edges[0],
+            {
+              label: "oldLabel",
+              nested: nested,
+              newKey: "newVal"
+            },
+            jasmine.any(Function)
+          );
+        });
+        
+        waitsFor(function() {
+          return $("#" + edgeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
+      it('should be possible to remove attributes from edges', function() {
+        
+        runs(function() {
+          var nested = JSON.stringify(edges[0]._data.nested);
+          helper.simulateMouseEvent("click", id);
+          helper.simulateMouseEvent("click", "1-2");
+            
+          expect($("#" + edgeId + "_label_delete").length).toEqual(1);
+        
+          helper.simulateMouseEvent("click", edgeId + "_label_delete");
+        
+          expect($("#" + edgeId + "_label_delete").length).toEqual(0);
+          
+          helper.simulateMouseEvent("click", edgeId + "_submit");
+
+          expect(adapter.patchEdge).toHaveBeenCalledWith(
+            edges[0],
+            {
+              nested: nested
+            },
+            jasmine.any(Function)
+          );
+        });
+        
+        waitsFor(function() {
+          return $("#" + edgeId + "_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+      });
+      
     });
     
     it('should be able to add an expand control to the list', function() {

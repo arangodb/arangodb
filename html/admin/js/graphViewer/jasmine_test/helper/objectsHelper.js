@@ -38,7 +38,7 @@ var helper = helper || {};
     var i;
     for (i = 0; i < n; i++) {
       nodes.push({
-        _id: i,
+        _id: String(i),
         _inboundCounter: 0,
         _outboundCounter: 0,
         position: {
@@ -67,18 +67,25 @@ var helper = helper || {};
     return nodes;
   };
   
+  helper.insertSimpleNode = function (nodes, id) {
+    var n = {
+      _id: String(id),
+      _inboundCounter: 0,
+      _outboundCounter: 0,
+      position: {
+        x: 1,
+        y: 1,
+        z: 1
+      }
+    },
+    index = nodes.length;
+    nodes.push(n);
+    return index;
+  };
+  
   helper.insertSimpleNodes = function (nodes, ids) {
     _.each(ids, function(i) {
-      nodes.push({
-        _id: i,
-        _inboundCounter: 0,
-        _outboundCounter: 0,
-        position: {
-          x: 1,
-          y: 1,
-          z: 1
-        }
-      });
+      helper.insertSimpleNode(nodes, i);
     });
   };
   
@@ -100,5 +107,16 @@ var helper = helper || {};
       }
     }
   };
+  
+  helper.insertSatelite = function(nodes, edges, source, size) {
+    var i, s, t;
+    s = helper.insertSimpleNode(nodes, source);
+    for (i = 0; i < size; i++) {
+      t = helper.insertSimpleNode(nodes, source + "_" + i);
+      edges.push(helper.createSimpleEdge(nodes, s, t));
+    }
+    return s;
+  };
+  
   
 }());

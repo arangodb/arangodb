@@ -1,7 +1,0 @@
-  HTTP/1.1 202 Accepted
-  connection: Keep-Alive
-  content-type: application/json
-  server: triagens GmbH High-Performance HTTP Server
-  content-length: 41
-
-  {"changed":true,"error":false,"code":202}

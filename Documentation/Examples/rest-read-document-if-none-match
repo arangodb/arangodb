@@ -1,5 +1,0 @@
-> curl -X GET '-H if-none-match: "28542766"' --dump - http://localhost:8529/_api/document/73482/28542766
-
-HTTP/1.1 304 Not Modified
-content-type: text/plain;charset=utf-8
-etag: "28542766"

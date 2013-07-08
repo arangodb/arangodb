@@ -34,6 +34,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/replication.h"
+#include "VocBase/server-id.h"
 
 #ifdef TRI_ENABLE_REPLICATION
 
@@ -132,7 +133,7 @@ Handler::status_e RestReplicationHandler::execute() {
       handleCommandState();
     }
     else if (command == "inventory") {
-      if (type != HttpRequest::HTTP_REQUEST_POST) {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandInventory();
@@ -257,7 +258,7 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::addState (TRI_json_t* dst, 
-                                       TRI_replication_state_t const* state) {
+                                       TRI_replication_log_state_t const* state) {
 
   TRI_json_t* stateJson = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
 
@@ -328,7 +329,7 @@ void RestReplicationHandler::handleCommandStop () {
 void RestReplicationHandler::handleCommandState () {
   assert(_vocbase->_replicationLogger != 0);
 
-  TRI_replication_state_t state;
+  TRI_replication_log_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
 
@@ -341,6 +342,16 @@ void RestReplicationHandler::handleCommandState () {
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     
     addState(&result, &state);
+    
+    // add server info
+    TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+
+    TRI_server_id_t serverId = TRI_GetServerId();  
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
 
     generateResult(&result);
   
@@ -358,9 +369,9 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
   
   // collections
-  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, &filterCollection, &tick);
+  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, true, &filterCollection, &tick);
 
-  TRI_replication_state_t state;
+  TRI_replication_log_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
 
@@ -374,12 +385,9 @@ void RestReplicationHandler::handleCommandInventory () {
   
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
-    // add server info
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
-    
-    // add collections state
+    // add collections data
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
-
+    
     addState(&result, &state);
   
     generateResult(&result);
@@ -393,7 +401,7 @@ void RestReplicationHandler::handleCommandInventory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandDump () {
-  static const uint64_t minChunkSize = 16 * 1024;
+  static const uint64_t minChunkSize = 64 * 1024;
 
   char const* collection = _request->value("collection");
     
@@ -477,9 +485,16 @@ void RestReplicationHandler::handleCommandDump () {
   if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
     _response = createResponse(HttpResponse::OK);
+
     _response->setContentType("application/x-arango-dump; charset=utf-8");
-    _response->setHeader("x-arango-hasmore", (dump._hasMore ? "true" : "false"));
-    _response->setHeader("x-arango-lastfound", StringUtils::itoa(dump._lastFoundTick));
+
+    // set headers
+    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE, 
+                         strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
+                         ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTFOUND, 
+                         strlen(TRI_REPLICATION_HEADER_LASTFOUND), 
+                         StringUtils::itoa(dump._lastFoundTick));
 
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
