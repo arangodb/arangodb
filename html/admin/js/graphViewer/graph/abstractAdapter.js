@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _ */
-/*global NodeReducer */
+/*global NodeReducer, ModularityJoiner, WebWorkerWrapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -46,6 +46,7 @@ function AbstractAdapter(nodes, edges) {
     joinedInCommunities = {},
     limit,
     reducer,
+    joiner,
     childLimit,
     exports = {},
 
@@ -289,9 +290,19 @@ function AbstractAdapter(nodes, edges) {
       nodes.push(commNode);
     },
     
+    joinerCb = function (d) {
+      var data = d.data;
+      if (data.cmd === "getCommunity") {
+        collapseCommunity(data.result);
+      }
+    },
+    
     requestCollapse = function (focus) {
-      var com = reducer.getCommunity(limit, focus);
-      collapseCommunity(com);
+      if (focus) {
+        joiner.call("getCommunity", limit, focus._id);
+      } else {
+        joiner.call("getCommunity", limit);
+      }
     },
   
     checkNodeLimit = function (focus) {
@@ -361,6 +372,7 @@ function AbstractAdapter(nodes, edges) {
   childLimit = Number.POSITIVE_INFINITY;
   
   reducer = new NodeReducer(nodes, edges);
+  joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
   
   initialX.getStart = function() {return 0;};
   initialY.getStart = function() {return 0;};

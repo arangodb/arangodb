@@ -86,10 +86,7 @@
               if (data.cmd === "construct") {
                 created = data.result;
                 error = data.error;
-              } else if (data.cmd === "logger") {
-                console.log(data.result);
               }
-              
             },
             w = new WebWorkerWrapper(ModularityJoiner, cb);
         });
@@ -651,7 +648,6 @@
             joiner.insertEdge(e.source._id, e.target._id);
           });
           var com = joiner.getCommunity(6, nodes[3]._id);
-          console.log(JSON.stringify(com));
           expect(com).toContainNodes(["6", "7", "8"]);
         });
         /*
@@ -1768,7 +1764,6 @@
         });
         
         runs(function() {
-          console.log(JSON.stringify(result));
           expect(result).toContainNodes(["6", "7", "8"]);
           expect(error).toBeUndefined();
         });
