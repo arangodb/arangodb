@@ -126,6 +126,25 @@
         ).not.toThrow();
       });
       
+      it('should create a NodeReducer instance', function() {
+        spyOn(window, "NodeReducer");
+        var nodes = [],
+          edges = [],
+          t = new AbstractAdapter(nodes, edges);
+        expect(window.NodeReducer).wasCalledWith(nodes, edges);
+      });
+      
+      it('should create a ModularityJoiner worker', function() {
+        spyOn(window, "WebWorkerWrapper");
+        var nodes = [],
+          edges = [],
+          t = new AbstractAdapter(nodes, edges);
+        expect(window.WebWorkerWrapper).wasCalledWith(
+          window.ModularityJoiner,
+          jasmine.any(Function)
+        );
+      });
+      
     });
     
     describe('checking the interface', function() {
@@ -453,9 +472,14 @@
     
     describe('checking communities', function() {
       
-      var adapter, mockReducer;
+      var adapter,
+        mockReducer,
+        mockWrapper,
+        workerCB;
       
       beforeEach(function() {
+        mockWrapper = {};
+        mockWrapper.call = function() {};
         mockReducer = {};
         mockReducer.getCommunity = function() {};
         mockReducer.bucketNodes = function() {};
@@ -472,24 +496,40 @@
             }
           };
         });
+        spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
+          workerCB = cb;
+          return {
+            call: function() {
+              mockWrapper.call.apply(
+                mockWrapper,
+                Array.prototype.slice.call(arguments)
+              );
+            }
+          };
+        });
         adapter = new AbstractAdapter(nodes, edges);
       });
       
       it('should not take any action if no limit is set', function() {
-        spyOn(mockReducer, "getCommunity");
+        spyOn(mockWrapper, "call");
         adapter.insertNode({_id: 1});
         adapter.insertNode({_id: 2});
         adapter.insertNode({_id: 3});
         adapter.insertNode({_id: 4});
         adapter.insertNode({_id: 5});
         adapter.checkNodeLimit();
-        expect(mockReducer.getCommunity).wasNotCalled();
+        expect(mockWrapper.call).wasNotCalled();
       });
       
       it('should take a given focus into account', function() {
         var n1, limit;
-        spyOn(mockReducer, "getCommunity").andCallFake(function() {
-          return [2, 4];
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          workerCB({
+            data: {
+              cmd: name,
+              result: [2, 4]
+            }
+          });
         });
         limit = 2;
         adapter.setNodeLimit(limit);
@@ -499,20 +539,26 @@
         adapter.insertNode({_id: 4});
         adapter.insertNode({_id: 5});
         adapter.checkNodeLimit(n1);
-        expect(mockReducer.getCommunity).toHaveBeenCalledWith(limit, n1);
+        expect(mockWrapper.call).toHaveBeenCalledWith("getCommunity", limit, n1._id);
       });
       
       it('should create a community if too many nodes are added', function() {
         var n1, n2, commId;
-        spyOn(mockReducer, "getCommunity").andCallFake(function() {
-          return [1, 2];
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          workerCB({
+            data: {
+              cmd: name,
+              result: [1, 2]
+            }
+          });
         });
         adapter.setNodeLimit(2);
         n1 = adapter.insertNode({_id: 1});
         n2 = adapter.insertNode({_id: 2});
+        
         adapter.insertNode({_id: 3});
         adapter.checkNodeLimit();
-        expect(mockReducer.getCommunity).wasCalledWith(2);
+        expect(mockWrapper.call).wasCalledWith("getCommunity", 2);
         expect(getCommunityNodesIds().length).toEqual(1);
         notExistNode([1, 2]);
         existNode(3);
@@ -520,14 +566,19 @@
       
       it('should create a community if limit is set to small', function() {
         var n1, n2, commId;
-        spyOn(mockReducer, "getCommunity").andCallFake(function() {
-          return [1, 2];
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          workerCB({
+            data: {
+              cmd: name,
+              result: [1, 2]
+            }
+          });
         });
         n1 = adapter.insertNode({_id: 1});
         n2 = adapter.insertNode({_id: 2});
         adapter.insertNode({_id: 3});
         adapter.setNodeLimit(2);
-        expect(mockReducer.getCommunity).wasCalledWith(2);
+        expect(mockWrapper.call).wasCalledWith("getCommunity", 2);
         expect(getCommunityNodesIds().length).toEqual(1);
         notExistNode([1, 2]);
         existNode(3);
@@ -535,8 +586,13 @@
       
       it('should connect edges to communities', function() {
         var n1, n2, comm, e1, e2, e3;
-        spyOn(mockReducer, "getCommunity").andCallFake(function() {
-          return [1, 2];
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          workerCB({
+            data: {
+              cmd: name,
+              result: [1, 2]
+            }
+          });
         });
         n1 = adapter.insertNode({_id: 1});
         n2 = adapter.insertNode({_id: 2});
@@ -567,12 +623,20 @@
       describe('if a community allready exists', function() {
         
         var n1, n2, n3, n4, 
-        e1, e2, e3, comm;
+        e1, e2, e3, comm,
+        fakeData;
         
         beforeEach(function() {
-          mockReducer.getCommunity = function() {
-            return [1, 2];
-          };
+          fakeData = [1, 2];
+          spyOn(mockWrapper, "call").andCallFake(function(name) {
+            workerCB({
+              data: {
+                cmd: name,
+                result: fakeData
+              }
+            });
+          });
+
           n1 = adapter.insertNode({_id: 1});
           n2 = adapter.insertNode({_id: 2});
           n3 = adapter.insertNode({_id: 3});
@@ -611,28 +675,25 @@
         });
         
         it('should collapse another community if limit is to small', function() {
-          spyOn(mockReducer, "getCommunity").andCallFake(function() {
-            return [3, 4];
-          });
+          fakeData = [3, 4];
+
           adapter.expandCommunity(comm);
           expect(getCommunityNodes().length).toEqual(1);
           var comm2 = getCommunityNodes()[0];
           expect(comm).not.toEqual(comm2);
-          expect(mockReducer.getCommunity).wasCalled();
+          expect(mockWrapper.call).wasCalled();
           expect(nodes.length).toEqual(3);
           existNodes([1, 2]);
           notExistNodes([3, 4]);
         });
         
         it('should collapse another community if limit is further reduced', function() {
-          spyOn(mockReducer, "getCommunity").andCallFake(function() {
-            return [3, 4];
-          });
+          fakeData = [3, 4];
           adapter.setNodeLimit(2);
           expect(getCommunityNodes().length).toEqual(2);
           var comm2 = getCommunityNodes()[1];
           expect(comm).not.toEqual(comm2);
-          expect(mockReducer.getCommunity).wasCalled();
+          expect(mockWrapper.call).wasCalled();
           expect(nodes.length).toEqual(2);
           notExistNodes([1, 2, 3, 4]);
         });
@@ -640,6 +701,260 @@
       });
       
     });
+    
+    describe('checking information of modularity joiner', function() {
+      
+      var adapter,
+      source,
+      target,
+      sourceid,
+      targetid,
+      mockWrapper,
+      workerCB;
+      
+      beforeEach(function() {
+        mockWrapper = {};
+        mockWrapper.call = function() {};
+        spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
+          workerCB = cb;
+          return {
+            call: function() {
+              mockWrapper.call.apply(
+                mockWrapper,
+                Array.prototype.slice.call(arguments)
+              );
+            }
+          };
+        });
+        adapter = new AbstractAdapter(nodes, edges);
+        source = adapter.insertNode({_id: 1});
+        target = adapter.insertNode({_id: 2});
+        sourceid = source._id;
+        targetid = target._id;
+      });
+      
+      it('should be informed if an edge is inserted', function() {
+        spyOn(mockWrapper, "call");
+        adapter.insertEdge({
+          _id: "1-2",
+          _from: sourceid,
+          _to: targetid
+        });
+        expect(mockWrapper.call).wasCalledWith("insertEdge", sourceid, targetid);
+      });
+      
+      it('should be informed if an edge is removed', function() {
+        var toDelete = {
+          _id: "1-2",
+          _from: sourceid,
+          _to: targetid
+        },
+        edgeToDel = adapter.insertEdge(toDelete);
+        spyOn(mockWrapper, "call");
+        adapter.removeEdge(edgeToDel);
+        
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", sourceid, targetid);
+      });
+      
+      it('should be informed if all edges for a node are removed', function() {
+        var toDelete1 = {
+            _id: "1-2",
+            _from: sourceid,
+            _to: targetid
+          },
+          toDelete2 = {
+            _id: "2-1",
+            _from: targetid,
+            _to: sourceid
+          };
+        adapter.insertEdge(toDelete1);
+        adapter.insertEdge(toDelete2);
+        spyOn(mockWrapper, "call");
+        
+        adapter.removeEdgesForNode(source);
+        
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", sourceid, targetid);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", targetid, sourceid);
+      });
+      
+      it('should remove all edges of a community if it is joined', function() {
+        var n1, n2, n3, n4,
+          e1, e2, e3, e4,
+          eout, ein;
+        n1 = {
+          _id: "n1"
+        };
+        n2 = {
+          _id: "n2"
+        };
+        n3 = {
+          _id: "n3"
+        };
+        n4 = {
+          _id: "n4"
+        };
+        e1 = {
+          _id: "n1-n2",
+          _from: n1._id,
+          _to: n2._id
+        };
+        e2 = {
+          _id: "n2-n3",
+          _from: n2._id,
+          _to: n3._id
+        };
+        e3 = {
+          _id: "n3-n4",
+          _from: n3._id,
+          _to: n4._id
+        };
+        e4 = {
+          _id: "n4-n1",
+          _from: n4._id,
+          _to: n1._id
+        };
+        eout = {
+          _id: "n1-1",
+          _from: n1._id,
+          _to: source._id
+        };
+        ein = {
+          _id: "2-n1",
+          _from: target._id,
+          _to: n1._id
+        };
+        adapter.insertNode(n1);
+        adapter.insertNode(n2);
+        adapter.insertNode(n3);
+        adapter.insertNode(n4);
+      
+        adapter.insertEdge(e1);
+        adapter.insertEdge(e2);
+        adapter.insertEdge(e3);
+        adapter.insertEdge(e4);
+        adapter.insertEdge(eout);
+        adapter.insertEdge(ein);
+      
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [n1._id, n2._id, n3._id, n4._id]
+              }
+            });
+          }
+        });
+        adapter.setNodeLimit(3);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, n2._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n2._id, n3._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n3._id, n4._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n4._id, n1._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, source._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", target._id, n1._id);
+        // 1 time getCommunity, 7 times deleteEdge
+        expect(mockWrapper.call.calls.length).toEqual(7);
+      });
+      
+      it('should not be informed of edges connected to communities', function() {
+        var n1, n2, n3,
+          e1, e2;
+        n1 = {
+          _id: "n1"
+        };
+        n2 = {
+          _id: "n2"
+        };
+        n3 = {
+          _id: "n3"
+        };
+        e1 = {
+          _id: "n1-n2",
+          _from: n1._id,
+          _to: n2._id
+        };
+        e2 = {
+          _id: "n2-n3",
+          _from: n2._id,
+          _to: n3._id
+        };
+
+        adapter.insertNode(n1);
+        adapter.insertNode(n2);
+        adapter.insertNode(n3);
+      
+        adapter.insertEdge(e1);
+        
+      
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [n1._id, n2._id]
+              }
+            });
+          }
+        });
+        adapter.setNodeLimit(3);
+                
+        adapter.insertEdge(e2);
+        expect(mockWrapper.call).not.wasCalledWith("insertEdge", n2._id, n3._id);
+        
+      });
+      
+      it('should be informed if a community is expanded', function() {
+        var n1, n2, n3,
+          e1, e2;
+        n1 = {
+          _id: "n1"
+        };
+        n2 = {
+          _id: "n2"
+        };
+        n3 = {
+          _id: "n3"
+        };
+        e1 = {
+          _id: "n1-n2",
+          _from: n1._id,
+          _to: n2._id
+        };
+        e2 = {
+          _id: "n2-n3",
+          _from: n2._id,
+          _to: n3._id
+        };
+
+        adapter.insertNode(n1);
+        adapter.insertNode(n2);
+        adapter.insertNode(n3);
+      
+        adapter.insertEdge(e1);
+        adapter.insertEdge(e2);
+      
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [n1._id, n2._id, n3._id]
+              }
+            });
+          }
+        });
+        adapter.setNodeLimit(3);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, n2._id);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", n2._id, n3._id);
+        adapter.setNodeLimit(100);
+        adapter.expandCommunity(getCommunityNodes()[0]);
+        expect(mockWrapper.call).wasCalledWith("insertEdge", n1._id, n2._id);
+        expect(mockWrapper.call).wasCalledWith("insertEdge", n2._id, n3._id);
+      });
+      
+    });
+    
+    
     
     describe('checking many child nodes', function() {
       

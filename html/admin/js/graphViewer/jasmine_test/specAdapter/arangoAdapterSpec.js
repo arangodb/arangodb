@@ -324,6 +324,24 @@
         );
         expect(window.NodeReducer).wasCalledWith(nodes, edges);
       });
+      
+      it('should create the ModularityJoiner as a worker', function() {
+        spyOn(window, "WebWorkerWrapper");
+        var adapter = new ArangoAdapter(
+          nodes,
+          edges,
+          {
+            nodeCollection: nodesCollection,
+            edgeCollection: edgesCollection,
+            width: 100,
+            height: 40
+          }
+        );
+        expect(window.WebWorkerWrapper).wasCalledWith(
+          window.ModularityJoiner,
+          jasmine.any(Function)
+        );
+      });
     
       describe('setup correctly', function() {
         
@@ -331,28 +349,37 @@
           filterQuery,
           childrenQuery,
           loadGraph,
-          requests;
+          requests,
+          mockWrapper,
+          workerCB;
         
         beforeEach(function() {  
           var self = this,
            host = window.location.protocol + "//" + window.location.host,
            apibase = host + "/_api/",
            apiCursor = apibase + 'cursor';
-          self.fakeReducerRequest = function() {};
           self.fakeReducerBucketRequest = function() {};
+          mockWrapper = {};
+          mockWrapper.call = function() {};
           spyOn(window, "NodeReducer").andCallFake(function(v, e) {
             return {
-              getCommunity: function(limit, focus) {
-                if (focus !== undefined) {
-                  return self.fakeReducerRequest(limit, focus);
-                }
-                return self.fakeReducerRequest(limit);
-              },
               bucketNodes: function(toSort, numBuckets) {
                 return self.fakeReducerBucketRequest(toSort, numBuckets);
               }
             };
           });
+          spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
+            workerCB = cb;
+            return {
+              call: function() {
+                mockWrapper.call.apply(
+                  mockWrapper,
+                  Array.prototype.slice.call(arguments)
+                );
+              }
+            };
+          });
+          
           adapter = new ArangoAdapter(
             nodes,
             edges,
@@ -1165,11 +1192,16 @@
         
             runs(function() {
               adapter.setNodeLimit(6);
-              spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                return [c0];
+              spyOn(mockWrapper, "call").andCallFake(function(name) {
+                workerCB({
+                  data: {
+                    cmd: name,
+                    result: [c0]
+                  }
+                });
               });
               adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
-              expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, nodeWithID(c1));
+              expect(mockWrapper.call).toHaveBeenCalledWith("getCommunity", 6, c1);
             });
           });
           
@@ -1177,19 +1209,30 @@
           describe('checking community nodes', function() {
             
             it('should not trigger the reducer if the limit is set large enough', function() {
-              spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                return [c0];
+              spyOn(mockWrapper, "call").andCallFake(function(name) {
+                workerCB({
+                  data: {
+                    cmd: name,
+                    result: [c0]
+                  }
+                });
               });
+
               adapter.setNodeLimit(10);
-              expect(this.fakeReducerRequest).not.toHaveBeenCalled();
+              expect(mockWrapper.call).not.toHaveBeenCalled();
             });
           
             it('should trigger the reducer if the limit is set too small', function() {
-              spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                return [c0];
+              spyOn(mockWrapper, "call").andCallFake(function(name) {
+                workerCB({
+                  data: {
+                    cmd: name,
+                    result: [c0]
+                  }
+                });
               });
               adapter.setNodeLimit(2);
-              expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
+              expect(mockWrapper.call).toHaveBeenCalledWith("getCommunity", 2);
             });
             
             it('should create a community node if limit is set too small', function() {
@@ -1197,8 +1240,13 @@
               
               runs(function() {
                 callbackCheck = false;
-                spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                  return [c0, c1, c2];
+                spyOn(mockWrapper, "call").andCallFake(function(name) {
+                  workerCB({
+                    data: {
+                      cmd: name,
+                      result: [c0, c1, c2]
+                    }
+                  });
                 });
                 adapter.setNodeLimit(2, checkCallbackFunction);
               });
@@ -1222,8 +1270,13 @@
             it('should create a community node if too many nodes are added', function() {
               runs(function() {
                 adapter.setNodeLimit(6);
-                spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                  return [c0, c1, c2, c3];
+                spyOn(mockWrapper, "call").andCallFake(function(name) {
+                  workerCB({
+                    data: {
+                      cmd: name,
+                      result: [c0, c1, c2, c3]
+                    }
+                  });
                 });
                 adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
               });
@@ -1276,8 +1329,13 @@
                   counterCallback = function() {
                     called++;
                   };
-                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                    return [v1, v3, v4];
+                  spyOn(mockWrapper, "call").andCallFake(function(name) {
+                    workerCB({
+                      data: {
+                        cmd: name,
+                        result: [v1, v3, v4]
+                      }
+                    });
                   });
                   adapter.setNodeLimit(3);
                   
@@ -1360,8 +1418,13 @@
                   counterCallback = function() {
                     called++;
                   };
-                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                    return [v1, v3, v4];
+                  spyOn(mockWrapper, "call").andCallFake(function(name) {
+                    workerCB({
+                      data: {
+                        cmd: name,
+                        result: [v1, v3, v4]
+                      }
+                    });
                   });
                   adapter.setNodeLimit(3);
                   
@@ -1419,8 +1482,13 @@
                   callbackCheck = false;
                   adapter.setNodeLimit(7);
                   fakeResult = [c0, c2];
-                  spyOn(this, "fakeReducerRequest").andCallFake(function() {
-                    return fakeResult;
+                  spyOn(mockWrapper, "call").andCallFake(function(name) {
+                    workerCB({
+                      data: {
+                        cmd: name,
+                        result: fakeResult
+                      }
+                    });
                   });
                   adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
                 });

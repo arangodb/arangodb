@@ -21,6 +21,7 @@ var shellView = Backbone.View.extend({
     $("#shell_workspace").splitter({
       dock: true
     });
+    $("#shell_workspace").trigger("resize", [ 150 ]);
 
     $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
     this.resize();
@@ -38,10 +39,11 @@ var shellView = Backbone.View.extend({
   resize: function () {
     // prevent endless recursion
     if (! this.resizing) {
+      var editorWidth = $('#editor').width();
       this.resizing = true;
       var windowHeight = $(window).height() - 200;
       $('#shell_workspace').height(windowHeight);
-      $("#shell_workspace").trigger("resize", [ 200 ]);
+      $("#shell_workspace").trigger("resize", [ editorWidth ]);
       this.resizing = false;
     }
   },
