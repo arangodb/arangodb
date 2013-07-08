@@ -17,8 +17,7 @@ are stored in documents in regular collections.
 Example:
 - the "edge" collection stores the information that a company's reception is
   sub-unit to the services unit and the services unit is sub-unit to the
-  CEO. You would express this relationship with the @LIT{_from} and
-  `_to` property
+  CEO. You would express this relationship with the `to` and `_to` attributes.
 - the "normal" collection stores all the properties about the reception,
   e.g. that 20 people are working there and the room number etc.
 - `_from` is the document handle of the linked vertex (incoming relation),
@@ -63,6 +62,13 @@ See @ref RestDocument for details.
 @RESTHEADER{PUT /_api/edge,updates an edge}
 
 @REST{PUT /_api/edge/@FA{document-handle}}
+
+See @ref RestDocument for details.
+
+@anchor RestEdgePatch
+@RESTHEADER{PATCH /_api/edge,partially updates an edge}
+
+@REST{PATCH /_api/edge/@FA{document-handle}}
 
 See @ref RestDocument for details.
 
