@@ -31,6 +31,7 @@
 #include "BasicsC/common.h"
 
 #include "BasicsC/locks.h"
+#include "ShapedJson/shaped-json.h"
 
 #include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
@@ -48,6 +49,7 @@ struct TRI_df_marker_s;
 struct TRI_document_collection_s;
 struct TRI_doc_mptr_s;
 struct TRI_json_s;
+struct TRI_shape_s;
 struct TRI_string_buffer_s;
 struct TRI_transaction_s;
 struct TRI_transaction_collection_s;
@@ -105,6 +107,9 @@ struct TRI_vocbase_s;
 typedef struct TRI_replication_dump_s {
   struct TRI_string_buffer_s*  _buffer;
   TRI_voc_tick_t               _lastFoundTick;
+  TRI_shape_sid_t              _lastSid;
+  struct TRI_shape_s const*    _lastShape;
+  bool                         _failed;
   bool                         _hasMore;
   bool                         _bufferFull;
 }
@@ -382,6 +387,20 @@ int TRI_DumpLogReplication (struct TRI_vocbase_s*,
 #else
 
 #define TRI_DumpLogReplication(...)
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a replication dump container
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+void TRI_InitDumpReplication (TRI_replication_dump_t*);
+
+#else
+
+#define TRI_InitDumpReplication(...)
 
 #endif
 
