@@ -1962,7 +1962,7 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   TRI_fulltext_index_t* fulltextIndex;
   TRI_fulltext_wordlist_t* wordlist;
   TRI_shaped_json_t shaped;
-  TRI_shaped_json_t json;
+  TRI_shaped_json_t shapedJson;
   TRI_shape_t const* shape;
   TRI_doc_mptr_t* doc;
   char* text;
@@ -1975,14 +1975,15 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
 
   // extract the shape
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, doc->_data);
-  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->_shaper, &shaped, 0, fulltextIndex->_attribute, &json, &shape);
+  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->_shaper, &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);
 
   if (! ok || shape == NULL) {
     return NULL;
   }
 
   // extract the string value for the indexed attribute
-  ok = TRI_StringValueShapedJson(shape, &json, &text, &textLength);
+  ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
+
   if (! ok) {
     return NULL;
   }

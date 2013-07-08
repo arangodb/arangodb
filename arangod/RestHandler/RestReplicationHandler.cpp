@@ -456,6 +456,7 @@ void RestReplicationHandler::handleCommandDump () {
 
   // initialise the dump container
   TRI_replication_dump_t dump; 
+  TRI_InitDumpReplication(&dump);
   dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
 
   if (dump._buffer == 0) {
@@ -528,6 +529,7 @@ void RestReplicationHandler::handleCommandFollow () {
   
   // initialise the dump container
   TRI_replication_dump_t dump; 
+  TRI_InitDumpReplication(&dump);
   dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
 
   if (dump._buffer == 0) {

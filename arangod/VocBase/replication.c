@@ -635,7 +635,7 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
     TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
     TRI_shaped_json_t shaped;
     
-    APPEND_STRING(buffer, "\",\"doc\":{");
+    APPEND_STRING(buffer, "\",\"data\":{");
     
     // common document meta-data
     APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
@@ -725,12 +725,12 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify a raw marker from a datafile
+/// @brief stringify a raw marker from a datafile for a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
-                                        TRI_document_collection_t* document,
-                                        TRI_df_marker_t const* marker) {
+static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
+                                 TRI_document_collection_t* document,
+                                 TRI_df_marker_t const* marker) {
   const char* typeName;
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
@@ -771,7 +771,7 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
     TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
     TRI_shaped_json_t shaped;
     
-    APPEND_STRING(buffer, "\",\"doc\":{");
+    APPEND_STRING(buffer, "\",\"data\":{");
     
     // common document meta-data
     APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
@@ -804,6 +804,132 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
   }
   else {
     APPEND_STRING(buffer, "\"}\n");
+  }
+  
+  return true;
+}
+
+
+
+
+
+
+
+static bool IterateShape (TRI_shaper_t* shaper,
+                          TRI_shape_t const* shape,
+                          char const* name,
+                          char const* data,
+                          uint64_t size,
+                          void* ptr) {
+  TRI_replication_dump_t* dump;
+  TRI_string_buffer_t* buffer;
+  char* value;
+  size_t length;
+  int res;
+   
+  dump = (TRI_replication_dump_t*) ptr;
+  buffer = dump->_buffer;
+  
+  if (TRI_EqualString(name, "data")) {
+    if (! TRI_LastCharStringBuffer(buffer) != '{') {
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        dump->_failed = true;
+        return false;
+      }
+    }
+
+    TRI_StringValueShapedJson(shape, data, &value, &length);
+
+    if (value != NULL && length > 2) {
+      res = TRI_AppendString2StringBuffer(dump->_buffer, value + 1, length - 2);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        dump->_failed = true;
+        return false;
+      }
+    }
+  }
+  else if (TRI_EqualString(name, "type")) {
+    if (TRI_LastCharStringBuffer(buffer) != '{') {
+      res = TRI_AppendCharStringBuffer(buffer, ',');
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        dump->_failed = true;
+        return false;
+      }
+    }
+
+    res = TRI_AppendCharStringBuffer(buffer, '"');
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      dump->_failed = true;
+      return false;
+    }
+    
+    res = TRI_AppendStringStringBuffer(buffer, name);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      dump->_failed = true;
+      return false;
+    }
+    
+    res = TRI_AppendStringStringBuffer(buffer, "\":\"");
+    
+    TRI_StringValueShapedJson(shape, data, &value, &length);
+
+    if (value != NULL && length > 0) {
+      res = TRI_AppendString2StringBuffer(dump->_buffer, value, length);
+    }
+    
+    res = TRI_AppendCharStringBuffer(buffer, '"');
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      dump->_failed = true;
+      return false;
+    }
+  }
+
+  // continue iterating
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a raw marker from a datafile for a log dump
+////////////////////////////////////////////////////////////////////////////////
+
+static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
+                                TRI_document_collection_t* document,
+                                TRI_df_marker_t const* marker) {
+
+  TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
+  TRI_shaper_t* shaper;
+  TRI_shaped_json_t shaped;
+  
+  assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
+  shaper = document->base._shaper;
+
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
+
+  if (shaped._sid != 0) {
+    TRI_shape_t const* shape;
+
+    if (shaped._sid != dump->_lastSid || dump->_lastShape == NULL) {
+      shape = shaper->lookupShapeId(shaper, shaped._sid);
+      dump->_lastSid   = shaped._sid;
+      dump->_lastShape = shape;
+    }
+    else {
+      shape            = dump->_lastShape;
+    }
+  
+    APPEND_CHAR(dump->_buffer, '{');
+    TRI_IterateShapeDataArray(shaper, shape, shaped._data.data, &IterateShape, dump); 
+    APPEND_STRING(dump->_buffer, "}\n");
+  }
+  else {
+    return false;
   }
   
   return true;
@@ -971,7 +1097,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     while (ptr < end) {
       TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
       TRI_voc_tick_t foundTick;
-      TRI_voc_tid_t  tid;
+      TRI_voc_tid_t tid;
 
       if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
         // end of datafile
@@ -1033,7 +1159,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         }
       }
 
-      if (! StringifyMarkerReplication(buffer, document, marker)) {
+      if (! StringifyMarkerDump(buffer, document, marker)) {
         res = TRI_ERROR_INTERNAL;
 
         goto NEXT_DF;
@@ -1093,69 +1219,135 @@ static int DumpLog (TRI_replication_dump_t* dump,
                     TRI_voc_tick_t tickMin,
                     TRI_voc_tick_t tickMax,
                     uint64_t chunkSize) {
+  TRI_vector_t datafiles;
   TRI_document_collection_t* document;
-  TRI_doc_mptr_t* mptr;
   TRI_string_buffer_t* buffer;
+  TRI_voc_tick_t lastFoundTick;
+  size_t i; 
   int res;
+  bool hasMore;
+  bool bufferFull;
     
-  LOG_TRACE("dumping log %llu, tick range %llu - %llu, chunk size %llu", 
+  LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
             (unsigned long long) primary->base._info._cid,
             (unsigned long long) tickMin,
             (unsigned long long) tickMax,
             (unsigned long long) chunkSize);
 
+  buffer         = dump->_buffer;
+  datafiles      = GetRangeDatafiles(primary, tickMin, tickMax);
+  document       = (TRI_document_collection_t*) primary;
+ 
   // setup some iteration state
-  buffer              = dump->_buffer;
-  dump->_bufferFull   = false;
-  dump->_hasMore      = false;
-  dump->_lastFoundTick= 0;
-  
-  res                 = TRI_ERROR_NO_ERROR;
-  document            = (TRI_document_collection_t*) primary;
-  
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  lastFoundTick  = 0;
+  res            = TRI_ERROR_NO_ERROR;
+  hasMore        = true;
+  bufferFull     = false;
 
-  mptr = document->_headers->front(document->_headers);
+  for (i = 0; i < datafiles._length; ++i) {
+    df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
+    TRI_datafile_t* datafile = e->_data;
+    char const* ptr;
+    char const* end;
 
-  while (mptr != NULL) {
-    TRI_df_marker_t* marker;
-    TRI_voc_tick_t foundTick;
-    
-    marker  = (TRI_df_marker_t*) mptr->_data;
-    
-    // get the marker's tick and check whether we should include it
-    foundTick = marker->_tick;
-      
-    // note the last tick we processed
-    dump->_lastFoundTick = foundTick;
-
-    if (foundTick > tickMax) {
-      // marker too new
-      dump->_hasMore = false;
-      break;
+    // we are reading from a journal that might be modified in parallel
+    // so we must read-lock it
+    if (e->_isJournal) {
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
+    else {
+      assert(datafile->_isSealed);
     }
     
-    if (foundTick > tickMin) {
-      // marker should be included
-      if (! StringifyMarkerReplication(buffer, document, marker)) {
-        res = TRI_ERROR_INTERNAL;
+    ptr = datafile->_data;
+
+    if (res == TRI_ERROR_NO_ERROR) { 
+      // no error so far. start iterating
+      end = ptr + datafile->_currentSize;
+    }
+    else {
+      // some error occurred. don't iterate
+      end = ptr;
+    }
+
+    while (ptr < end) {
+      TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+      TRI_voc_tick_t foundTick;
+
+      if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+        // end of datafile
         break;
+      }
+      
+      ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+          
+      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT) {
+        continue;
+      }
+
+      // get the marker's tick and check whether we should include it
+      foundTick = marker->_tick;
+      
+      if (foundTick <= tickMin) {
+        // marker too old
+        continue;
+      }
+
+      if (foundTick > tickMax) {
+        // marker too new
+        hasMore = false;
+        goto NEXT_DF;
+      }
+
+      // note the last tick we processed
+      lastFoundTick = foundTick;
+
+      if (! StringifyMarkerLog(dump, document, marker)) {
+        res = TRI_ERROR_INTERNAL;
+
+        goto NEXT_DF;
       }
 
       if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
         // abort the iteration
-        dump->_bufferFull = true;
-        break;
+        bufferFull = true;
+
+        goto NEXT_DF;
       }
     }
 
-    mptr = mptr->_next;
-  }
+NEXT_DF:
+    if (e->_isJournal) {
+      // read-unlock the journal
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    }
 
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
+      break;
+    }
+  }
+  
+  TRI_DestroyVector(&datafiles);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (lastFoundTick > 0) {
+      // data available for requested range
+      dump->_lastFoundTick = lastFoundTick;
+      dump->_hasMore       = hasMore;
+      dump->_bufferFull    = bufferFull;
+    }
+    else {
+      // no data available for requested range
+      dump->_lastFoundTick = 0;
+      dump->_hasMore       = false;
+      dump->_bufferFull    = false;
+    }
+  }
 
   return res;
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get current state from the replication logger
@@ -1936,6 +2128,20 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   TRI_ReleaseCollectionVocBase(vocbase, col);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a replication dump container
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitDumpReplication (TRI_replication_dump_t* dump) {
+  dump->_buffer        = NULL;
+  dump->_lastFoundTick = 0;
+  dump->_lastSid       = 0;
+  dump->_lastShape     = NULL;
+  dump->_failed        = false;
+  dump->_bufferFull    = false;
+  dump->_hasMore       = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

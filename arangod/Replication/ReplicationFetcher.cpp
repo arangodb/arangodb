@@ -216,7 +216,7 @@ int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection
 
   if (TRI_EqualString(type, "marker-document") ||
       TRI_EqualString(type, "marker-edge")) {
-    // {"type":"marker-document","key":"230274209405676","doc":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+    // {"type":"marker-document","key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
@@ -401,7 +401,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
           }
         }
 
-        else if (TRI_EqualString(attributeName, "doc")) {
+        else if (TRI_EqualString(attributeName, "data")) {
           if (value == 0 || 
               value->_type != TRI_JSON_ARRAY) {
             isValid = false;
