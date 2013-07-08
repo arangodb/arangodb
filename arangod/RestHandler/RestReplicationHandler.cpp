@@ -401,7 +401,7 @@ void RestReplicationHandler::handleCommandInventory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandDump () {
-  static const uint64_t minChunkSize = 16 * 1024;
+  static const uint64_t minChunkSize = 64 * 1024;
 
   char const* collection = _request->value("collection");
     
@@ -485,9 +485,16 @@ void RestReplicationHandler::handleCommandDump () {
   if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
     _response = createResponse(HttpResponse::OK);
+
     _response->setContentType("application/x-arango-dump; charset=utf-8");
-    _response->setHeader("x-arango-hasmore", (dump._hasMore ? "true" : "false"));
-    _response->setHeader("x-arango-lastfound", StringUtils::itoa(dump._lastFoundTick));
+
+    // set headers
+    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE, 
+                         strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
+                         ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTFOUND, 
+                         strlen(TRI_REPLICATION_HEADER_LASTFOUND), 
+                         StringUtils::itoa(dump._lastFoundTick));
 
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));

@@ -275,7 +275,7 @@ bool RestImportHandler::createByDocumentsLines () {
       TRI_doc_mptr_t document;
 
       if (isEdgeCollection) {
-        const char* from = extractJsonStringValue(values, "_from");
+        const char* from = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_FROM);
 
         if (from == 0) {
           LOGGER_WARNING("missing '_from' attribute at position " << i);
@@ -284,7 +284,7 @@ bool RestImportHandler::createByDocumentsLines () {
           continue;
         }
 
-        const char* to = extractJsonStringValue(values, "_to");
+        const char* to = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_TO);
         if (to == 0) {
           LOGGER_WARNING("missing '_to' attribute at position " << i);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
@@ -454,7 +454,7 @@ bool RestImportHandler::createByDocumentsList () {
       TRI_doc_mptr_t document;
 
       if (isEdgeCollection) {
-        const char* from = extractJsonStringValue(values, "_from");
+        const char* from = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_FROM);
 
         if (from == 0) {
           LOGGER_WARNING("missing '_from' attribute at position " << (i + 1));
@@ -462,7 +462,7 @@ bool RestImportHandler::createByDocumentsList () {
           continue;
         }
 
-        const char* to = extractJsonStringValue(values, "_to");
+        const char* to = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_TO);
         if (to == 0) {
           LOGGER_WARNING("missing '_to' attribute at position " << (i + 1));
           ++numError;
@@ -696,7 +696,7 @@ bool RestImportHandler::createByKeyValueList () {
       TRI_doc_mptr_t document;
 
       if (isEdgeCollection) {
-        const char* from = extractJsonStringValue(json, "_from");
+        const char* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
 
         if (from == 0) {
           LOGGER_WARNING("missing '_from' attribute at line " << lineNumber);
@@ -705,7 +705,7 @@ bool RestImportHandler::createByKeyValueList () {
           continue;
         }
 
-        const char* to = extractJsonStringValue(json, "_to");
+        const char* to = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
         if (to == 0) {
           LOGGER_WARNING("missing '_to' attribute at line " << lineNumber);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

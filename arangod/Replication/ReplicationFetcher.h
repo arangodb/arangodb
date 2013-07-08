@@ -39,7 +39,9 @@
 // -----------------------------------------------------------------------------
   
 struct TRI_json_s;
+struct TRI_transaction_collection_s;
 struct TRI_vocbase_s;
+struct TRI_vocbase_col_s;
 
 namespace triagens {
 
@@ -77,9 +79,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         typedef enum {
+          PHASE_VALIDATE,
           PHASE_DROP,
           PHASE_CREATE,
-          PHASE_DATA
+          PHASE_DATA,
+          PHASE_INDEXES
         }
         setup_phase_e;
 
@@ -134,6 +138,13 @@ namespace triagens {
         int run ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator to sort collections
+/// sort order is by collection type first (vertices before edges), then name 
+////////////////////////////////////////////////////////////////////////////////
+
+        static int sortCollections (const void*, const void*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -152,9 +163,20 @@ namespace triagens {
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDump (TRI_voc_cid_t,
+        int applyMarker (struct TRI_transaction_collection_s*,
+                         char const*,
+                         const TRI_voc_key_t,
+                         struct TRI_json_s const*,
+                         string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the data from a collection dump
+////////////////////////////////////////////////////////////////////////////////
+
+        int applyCollectionDump (struct TRI_transaction_collection_s*,
                                  httpclient::SimpleHttpResult*,
-                                 string&);
+                                 string&,
+                                 uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get local replication apply state
@@ -178,7 +200,7 @@ namespace triagens {
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollectionDump (TRI_voc_cid_t,
+        int handleCollectionDump (struct TRI_transaction_collection_s*,
                                   TRI_voc_tick_t,
                                   string&);
 
@@ -186,7 +208,8 @@ namespace triagens {
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollectionInitial (struct TRI_json_s const*, 
+        int handleCollectionInitial (struct TRI_json_s const*,
+                                     struct TRI_json_s const*, 
                                      string&, 
                                      setup_phase_e);
 
@@ -202,6 +225,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleInventoryResponse (struct TRI_json_s const*, string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over all collections from a list and apply an action
+////////////////////////////////////////////////////////////////////////////////
+  
+        int iterateCollections (struct TRI_json_s const*,
+                                string&,
+                                setup_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

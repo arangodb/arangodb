@@ -53,32 +53,39 @@ static int FillIndex (TRI_document_collection_t*,
                       TRI_index_t*);
 
 static int CapConstraintFromJson (TRI_document_collection_t*,
-                                  TRI_json_t*,
-                                  TRI_idx_iid_t);
+                                  TRI_json_t const*,
+                                  TRI_idx_iid_t,
+                                  TRI_index_t**);
 
 static int BitarrayIndexFromJson (TRI_document_collection_t*,
-                                  TRI_json_t*,
-                                  TRI_idx_iid_t);
+                                  TRI_json_t const*,
+                                  TRI_idx_iid_t,
+                                  TRI_index_t**);
 
 static int GeoIndexFromJson (TRI_document_collection_t*,
-                             TRI_json_t*,
-                             TRI_idx_iid_t);
+                             TRI_json_t const*,
+                             TRI_idx_iid_t,
+                             TRI_index_t**);
 
 static int HashIndexFromJson (TRI_document_collection_t*,
-                              TRI_json_t*,
-                              TRI_idx_iid_t);
+                              TRI_json_t const*,
+                              TRI_idx_iid_t,
+                              TRI_index_t**);
 
 static int SkiplistIndexFromJson (TRI_document_collection_t*,
-                                  TRI_json_t*,
-                                  TRI_idx_iid_t);
+                                  TRI_json_t const*,
+                                  TRI_idx_iid_t,
+                                  TRI_index_t**);
 
 static int FulltextIndexFromJson (TRI_document_collection_t*,
-                                  TRI_json_t*,
-                                  TRI_idx_iid_t);
+                                  TRI_json_t const*,
+                                  TRI_idx_iid_t,
+                                  TRI_index_t**);
 
 static int PriorityQueueFromJson (TRI_document_collection_t*,
-                                  TRI_json_t*,
-                                  TRI_idx_iid_t);
+                                  TRI_json_t const*,
+                                  TRI_idx_iid_t,
+                                  TRI_index_t**);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -396,6 +403,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
 
 static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                  TRI_voc_tid_t tid,
+                                 TRI_voc_tick_t tick,
                                  TRI_doc_document_key_marker_t** result,
                                  TRI_voc_size_t* totalSize,
                                  char** keyBody, 
@@ -408,7 +416,6 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   char* position;
   char keyBuffer[TRI_VOC_KEY_MAX_LENGTH + 1]; 
   TRI_voc_size_t keyBodySize;
-  TRI_voc_tick_t tick;
   size_t markerSize;
   size_t keySize;
   size_t fromSize;
@@ -416,7 +423,10 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   int res;
 
   *result = NULL;
-  tick = TRI_NewTickVocBase();
+
+  if (tick == 0) {
+    tick = TRI_NewTickVocBase();
+  }
 
   // generate the key
   keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
@@ -1477,6 +1487,7 @@ static int NotifyTransaction (TRI_primary_collection_t* primary,
 
 static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
+                             TRI_voc_rid_t rid,
                              TRI_doc_mptr_t* mptr,
                              TRI_df_marker_type_e markerType,
                              TRI_shaped_json_t const* shaped,
@@ -1502,7 +1513,8 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
   // this does not require any locks
 
   res = CreateDocumentMarker(primary, 
-                             TRI_GetMarkerIdTransaction(trxCollection->_transaction), 
+                             TRI_GetMarkerIdTransaction(trxCollection->_transaction),
+                             (TRI_voc_tick_t) rid, 
                              &marker, 
                              &totalSize, 
                              &keyBody, 
@@ -2612,12 +2624,7 @@ static bool FillInternalIndexes (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OpenIndexIterator (char const* filename, void* data) {
-  TRI_idx_iid_t iid;
-  TRI_json_t* iis;
   TRI_json_t* json;
-  TRI_json_t* type;
-  TRI_document_collection_t* document;
-  char const* typeStr;
   char* error;
   int res;
 
@@ -2625,7 +2632,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 
   // load json description of the index
   json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
-
+  
   // json must be a index description
   if (json == NULL) {
     if (error != NULL) {
@@ -2637,147 +2644,24 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     }
     return false;
   }
-
+  
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot read index definition from '%s': expecting an array", filename);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return false;
-  }
-
-  // extract the type
-  type = TRI_LookupArrayJson(json, "type");
-
-  if (type->_type != TRI_JSON_STRING) {
-    LOG_ERROR("cannot read index definition from '%s': expecting a string for type", filename);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return false;
-  }
-
-  typeStr = type->_value._string.data;
-
-  // extract the index identifier
-  iis = TRI_LookupArrayJson(json, "id");
-
-  if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
-    iid = (TRI_idx_iid_t) iis->_value._number;
-  }
-  else if (iis != NULL && iis->_type == TRI_JSON_STRING) {
-    iid = (TRI_idx_iid_t) TRI_UInt64String(iis->_value._string.data);
-  }
-  else {
-    LOG_ERROR("ignoring index, index identifier could not be located");
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return false;
   }
-    
-  TRI_UpdateTickVocBase(iid);
 
-  // document collection of the index
-  document = (TRI_document_collection_t*) data;
+  res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) data, json, NULL);
+  TRI_Free(TRI_CORE_MEM_ZONE, json);
 
-  // ...........................................................................
-  // CAP CONSTRAINT
-  // ...........................................................................
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot read index definition from '%s': %s", filename, TRI_errno_string(res));
 
-  if (TRI_EqualString(typeStr, "cap")) {
-    res = CapConstraintFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
-  }
-
-
-  // ...........................................................................
-  // BITARRAY INDEX
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "bitarray")) {
-    res = BitarrayIndexFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
-  }
-
-  // ...........................................................................
-  // GEO INDEX (list or attribute)
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "geo1") || TRI_EqualString(typeStr, "geo2")) {
-    res = GeoIndexFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
-  }
-
-  // ...........................................................................
-  // HASH INDEX
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "hash")) {
-    res = HashIndexFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
-  }
-
-  // ...........................................................................
-  // SKIPLIST INDEX
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "skiplist")) {
-    res = SkiplistIndexFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
-  }
-
-  // ...........................................................................
-  // FULLTEXT INDEX
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "fulltext")) {
-    res = FulltextIndexFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
-  }
-
-  // ...........................................................................
-  // PRIORITY QUEUE
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "priorityqueue")) {
-    res = PriorityQueueFromJson(document, json, iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return res == TRI_ERROR_NO_ERROR;
+    return false;
   }
   
-  // ...........................................................................
-  // EDGES INDEX
-  // ...........................................................................
-  
-  else if (TRI_EqualString(typeStr, "edge")) {
-    // we should never get here, as users cannot create their own edge indexes
-    LOG_ERROR("logic error. there should never be a JSON file describing an edges index");
-    return false;
-  }
-
-  // .........................................................................
-  // oops, unknown index type
-  // .........................................................................
-
-  else {
-    LOG_ERROR("ignoring unknown index type '%s' for index %llu",
-              typeStr,
-              (unsigned long long) iid);
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    return false;
-  }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3114,6 +2998,145 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index, based on a JSON description
+////////////////////////////////////////////////////////////////////////////////
+  
+int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
+                                         TRI_json_t const* json,
+                                         TRI_index_t** idx) {
+  TRI_json_t const* type;
+  TRI_json_t const* iis;
+  char const* typeStr;
+  TRI_idx_iid_t iid;
+ 
+  assert(json != NULL); 
+  assert(json->_type == TRI_JSON_ARRAY); 
+
+  if (idx != NULL) {
+    *idx = NULL;
+  }
+
+  // extract the type
+  type = TRI_LookupArrayJson(json, "type");
+
+  if (type->_type != TRI_JSON_STRING || type->_value._string.data == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  typeStr = type->_value._string.data;
+
+  // extract the index identifier
+  iis = TRI_LookupArrayJson(json, "id");
+
+  if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
+    iid = (TRI_idx_iid_t) iis->_value._number;
+  }
+  else if (iis != NULL && iis->_type == TRI_JSON_STRING) {
+    iid = (TRI_idx_iid_t) TRI_UInt64String(iis->_value._string.data);
+  }
+  else {
+    LOG_ERROR("ignoring index, index identifier could not be located");
+
+    return TRI_ERROR_INTERNAL;
+  }
+    
+  TRI_UpdateTickVocBase(iid);
+
+  // ...........................................................................
+  // CAP CONSTRAINT
+  // ...........................................................................
+
+  if (TRI_EqualString(typeStr, "cap")) {
+    int res = CapConstraintFromJson(document, json, iid, idx);
+
+    return res;
+  }
+
+  // ...........................................................................
+  // BITARRAY INDEX
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "bitarray")) {
+    int res = BitarrayIndexFromJson(document, json, iid, idx);
+
+    return res;
+  }
+
+  // ...........................................................................
+  // GEO INDEX (list or attribute)
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "geo1") || TRI_EqualString(typeStr, "geo2")) {
+    int res = GeoIndexFromJson(document, json, iid, idx);
+
+    return res;
+  }
+
+  // ...........................................................................
+  // HASH INDEX
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "hash")) {
+    int res = HashIndexFromJson(document, json, iid, idx);
+
+    return res;
+  }
+
+  // ...........................................................................
+  // SKIPLIST INDEX
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "skiplist")) {
+    int res = SkiplistIndexFromJson(document, json, iid, idx);
+
+    return res;
+  }
+
+  // ...........................................................................
+  // FULLTEXT INDEX
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "fulltext")) {
+    int res = FulltextIndexFromJson(document, json, iid, idx);
+
+    return res;
+  }
+
+  // ...........................................................................
+  // PRIORITY QUEUE
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "priorityqueue")) {
+    int res = PriorityQueueFromJson(document, json, iid, idx);
+
+    return res;
+  }
+  
+  // ...........................................................................
+  // EDGES INDEX
+  // ...........................................................................
+  
+  else if (TRI_EqualString(typeStr, "edge")) {
+    // we should never get here, as users cannot create their own edge indexes
+    LOG_ERROR("logic error. there should never be a JSON file describing an edges index");
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // .........................................................................
+  // oops, unknown index type
+  // .........................................................................
+
+  else {
+    LOG_ERROR("ignoring unknown index type '%s' for index %llu",
+              typeStr,
+              (unsigned long long) iid);
+
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief rolls back a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3441,7 +3464,9 @@ pid_name_t;
 /// @brief converts extracts a field list from a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* ExtractFields (TRI_json_t* json, size_t* fieldCount, TRI_idx_iid_t iid) {
+static TRI_json_t* ExtractFields (TRI_json_t const* json, 
+                                  size_t* fieldCount, 
+                                  TRI_idx_iid_t iid) {
   TRI_json_t* fld;
   size_t j;
 
@@ -3479,7 +3504,9 @@ static TRI_json_t* ExtractFields (TRI_json_t* json, size_t* fieldCount, TRI_idx_
 /// as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount, TRI_idx_iid_t iid) {
+static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex, 
+                                       size_t* fieldCount, 
+                                       TRI_idx_iid_t iid) {
   TRI_json_t* keyValues;
   size_t j;
 
@@ -3558,7 +3585,8 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
 /// @brief initialises an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
+static int FillIndex (TRI_document_collection_t* document, 
+                      TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   TRI_primary_collection_t* primary;
   uint64_t inserted;
@@ -3724,14 +3752,15 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
-                                       TRI_json_t* definition,
+                                       TRI_json_t const* definition,
                                        TRI_idx_iid_t iid,
                                        TRI_index_t* (*creator)(TRI_document_collection_t*,
                                                                const TRI_vector_pointer_t*,
                                                                const TRI_vector_pointer_t*,
                                                                TRI_idx_iid_t,
                                                                bool,
-                                                               bool*, int*, char**)) {
+                                                               bool*, int*, char**),
+                                       TRI_index_t** dst) {
   TRI_index_t* idx;
   TRI_json_t* uniqueIndex;
   TRI_json_t* supportUndefIndex;
@@ -3746,11 +3775,16 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   int errorNum;
   char* errorStr;
 
+  if (dst != NULL) {
+    *dst = NULL;
+  }
+
   // ...........................................................................
   // extract fields list (which is a list of key/value pairs for a bitarray index
   // ...........................................................................
 
   keyValues = ExtractFieldValues(definition, &fieldCount, iid);
+
   if (keyValues == NULL) {
     return TRI_errno();
   }
@@ -3850,6 +3884,10 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
     return errorNum;
   }
 
+  if (dst != NULL) {
+    *dst = idx;
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3859,13 +3897,14 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int PathBasedIndexFromJson (TRI_document_collection_t* document,
-                                   TRI_json_t* definition,
+                                   TRI_json_t const* definition,
                                    TRI_idx_iid_t iid,
                                    TRI_index_t* (*creator)(TRI_document_collection_t*,
                                                            TRI_vector_pointer_t const*,
                                                            TRI_idx_iid_t,
                                                            bool,
-                                                           bool*)) {
+                                                           bool*),
+                                   TRI_index_t** dst) {
   TRI_index_t* idx;
   TRI_json_t* bv;
   TRI_json_t* fld;
@@ -3874,6 +3913,10 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   bool unique;
   size_t fieldCount;
   size_t j;
+
+  if (dst != NULL) {
+    *dst = NULL;
+  }
 
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
@@ -3914,6 +3957,10 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   // create the index
   idx = creator(document, &attributes, iid, unique, NULL);
+
+  if (dst != NULL) {
+    *dst = idx;
+  }
 
   // cleanup
   TRI_DestroyVectorPointer(&attributes);
@@ -4241,13 +4288,18 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CapConstraintFromJson (TRI_document_collection_t* document,
-                                  TRI_json_t* definition,
-                                  TRI_idx_iid_t iid) {
+                                  TRI_json_t const* definition,
+                                  TRI_idx_iid_t iid,
+                                  TRI_index_t** dst) {
   TRI_json_t* val1;
   TRI_json_t* val2;
   TRI_index_t* idx;
   size_t count;
   int64_t size;
+
+  if (dst != NULL) {
+    *dst = NULL;
+  } 
 
   val1 = TRI_LookupArrayJson(definition, "size");
   val2 = TRI_LookupArrayJson(definition, "byteSize");
@@ -4280,6 +4332,9 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
   }
   
   idx = CreateCapConstraintDocumentCollection(document, count, size, iid, NULL);
+  if (dst != NULL) {
+    *dst = idx;
+  }
 
   return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
 }
@@ -4499,8 +4554,9 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GeoIndexFromJson (TRI_document_collection_t* document,
-                             TRI_json_t* definition,
-                             TRI_idx_iid_t iid) {
+                             TRI_json_t const* definition,
+                             TRI_idx_iid_t iid,
+                             TRI_index_t** dst) {
   TRI_index_t* idx;
   TRI_json_t* bv;
   TRI_json_t* fld;
@@ -4508,6 +4564,10 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   bool ignoreNull;
   char const* typeStr;
   size_t fieldCount;
+
+  if (dst != NULL) {
+    *dst = NULL;
+  }
 
   typeStr = TRI_LookupArrayJson(definition, "type")->_value._string.data;
 
@@ -4569,6 +4629,10 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
                                         ignoreNull,
                                         iid,
                                         NULL);
+  
+      if (dst != NULL) {
+        *dst = idx;
+      }
 
       return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
     }
@@ -4598,6 +4662,10 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
                                         ignoreNull,
                                         iid,
                                         NULL);
+      
+      if (dst != NULL) {
+        *dst = idx;
+      }
 
       return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
     }
@@ -4919,9 +4987,10 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 
 static int HashIndexFromJson (TRI_document_collection_t* document,
-                              TRI_json_t* definition,
-                              TRI_idx_iid_t iid) {
-  return PathBasedIndexFromJson(document, definition, iid, CreateHashIndexDocumentCollection);
+                              TRI_json_t const* definition,
+                              TRI_idx_iid_t iid,
+                              TRI_index_t** dst) {
+  return PathBasedIndexFromJson(document, definition, iid, CreateHashIndexDocumentCollection, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5147,9 +5216,10 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 static int SkiplistIndexFromJson (TRI_document_collection_t* document,
-                                  TRI_json_t* definition,
-                                  TRI_idx_iid_t iid) {
-  return PathBasedIndexFromJson(document, definition, iid, CreateSkiplistIndexDocumentCollection);
+                                  TRI_json_t const* definition,
+                                  TRI_idx_iid_t iid,
+                                  TRI_index_t** dst) {
+  return PathBasedIndexFromJson(document, definition, iid, CreateSkiplistIndexDocumentCollection, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5390,8 +5460,9 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FulltextIndexFromJson (TRI_document_collection_t* document,
-                                  TRI_json_t* definition,
-                                  TRI_idx_iid_t iid) {
+                                  TRI_json_t const* definition,
+                                  TRI_idx_iid_t iid,
+                                  TRI_index_t** dst) {
   TRI_index_t* idx;
   TRI_json_t* attribute;
   TRI_json_t* fld;
@@ -5401,6 +5472,10 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   size_t fieldCount;
   bool doIndexSubstrings;
   int minWordLengthValue;
+
+  if (dst != NULL) {
+    *dst = NULL;
+  }
 
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
@@ -5439,6 +5514,10 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   if (idx == NULL) {
     bool created;
     idx = CreateFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue, iid, &created);
+  }
+
+  if (dst != NULL) {
+    *dst = idx;
   }
 
   if (idx == NULL) {
@@ -5683,9 +5762,10 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
 ////////////////////////////////////////////////////////////////////////////////
 
 static int PriorityQueueFromJson (TRI_document_collection_t* document,
-                                  TRI_json_t* definition,
-                                  TRI_idx_iid_t iid) {
-  return PathBasedIndexFromJson(document, definition, iid, CreatePriorityQueueIndexDocumentCollection);
+                                  TRI_json_t const* definition,
+                                  TRI_idx_iid_t iid,
+                                  TRI_index_t** dst) {
+  return PathBasedIndexFromJson(document, definition, iid, CreatePriorityQueueIndexDocumentCollection, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5976,9 +6056,10 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BitarrayIndexFromJson (TRI_document_collection_t* document,
-                                  TRI_json_t* definition,
-                                  TRI_idx_iid_t iid) {
-  return BitarrayBasedIndexFromJson(document, definition, iid, CreateBitarrayIndexDocumentCollection);
+                                  TRI_json_t const* definition,
+                                  TRI_idx_iid_t iid,
+                                  TRI_index_t** dst) {
+  return BitarrayBasedIndexFromJson(document, definition, iid, CreateBitarrayIndexDocumentCollection, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

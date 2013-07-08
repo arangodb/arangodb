@@ -1227,6 +1227,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
   if (datafile->_tickMin == 0) {
     datafile->_tickMin = tick;
   }
+
   datafile->_tickMax = tick;
    
   assert(markerSize > 0);
