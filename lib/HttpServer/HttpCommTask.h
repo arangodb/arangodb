@@ -489,7 +489,7 @@ namespace triagens {
                     response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
                     LOGGER_TRACE("client requested validation of the following headers " << allowHeaders);
                   }
-                  // set caching time (hard-coded to 1 day)
+                  // set caching time (hard-coded value)
                   response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
                 }
                 // End of CORS handling
@@ -604,12 +604,13 @@ namespace triagens {
           LOGGER_TRACE("HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str());
 
           // disable the following statement to prevent excessive logging of incoming requests
-          LOGGER_USAGE(this->_connectionInfo.clientAddress << " \"" << 
-                       HttpRequest::translateMethod(this->_requestType) << " " <<
-                       this->_fullUrl << " " <<
-                       HttpRequest::translateVersion(this->_httpVersion) << "\" " << 
-                       response->responseCode() << " " << 
-                       response->body().length());
+          LOGGER_USAGE(",\"http-request\",\"" << this->_connectionInfo.clientAddress << "\",\"" << 
+                       HttpRequest::translateMethod(this->_requestType) << "\",\"" <<
+                       HttpRequest::translateVersion(this->_httpVersion) << "\"," << 
+                       response->responseCode() << "," <<
+                       this->_bodyLength << "," << 
+                       response->body().length() << ",\"" <<
+                       this->_fullUrl << "\"");
 
           // clear body
           response->body().clear();

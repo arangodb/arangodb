@@ -188,6 +188,9 @@ extern "C" {
 ///   Will be raised when the master the replica connects is changed.
 /// - 1405: @LIT{loop detected}
 ///   Will be raised when the replica connects to itself for replication.
+/// - 1406: @LIT{unexpected marker}
+///   Will be raised when an unexpected marker is found in the replication
+///   stream.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1259,6 +1262,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_LOOP                                        (1405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1406: ERROR_REPLICATION_UNEXPECTED_MARKER
+///
+/// unexpected marker
+///
+/// Will be raised when an unexpected marker is found in the replication stream.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_UNEXPECTED_MARKER                           (1406)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

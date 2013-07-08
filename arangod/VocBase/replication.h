@@ -71,7 +71,19 @@ struct TRI_vocbase_s;
 /// @brief default size for each log file
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_REPLICATION_DEFAULT_LOG_SIZE  (64 * 1024 * 1024)
+#define TRI_REPLICATION_DEFAULT_LOG_SIZE (64 * 1024 * 1024)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief HTTP response header for "check for more data?"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_REPLICATION_HEADER_CHECKMORE "x-arango-checkmore"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief HTTP response header for "last found tick"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_REPLICATION_HEADER_LASTFOUND "x-arango-lastfound"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -94,6 +106,7 @@ typedef struct TRI_replication_dump_s {
   struct TRI_string_buffer_s*  _buffer;
   TRI_voc_tick_t               _lastFoundTick;
   bool                         _hasMore;
+  bool                         _bufferFull;
 }
 TRI_replication_dump_t;
 

@@ -365,6 +365,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
   res = primary->insert(logger->_trxCollection, 
                         NULL, 
+                        0,
                         &mptr, 
                         TRI_DOC_MARKER_KEY_DOCUMENT, 
                         shaped, 
@@ -565,6 +566,10 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   TRI_voc_key_t key;
   TRI_voc_rid_t oldRev;
   TRI_voc_rid_t rid;
+
+  if (! TRI_ReserveStringBuffer(buffer, 256)) {
+    return false;
+  }
   
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     oldRev = 0;
@@ -631,9 +636,9 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
     APPEND_STRING(buffer, "\",\"doc\":{");
     
     // common document meta-data
-    APPEND_STRING(buffer, "\"_key\":\"");
+    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"_rev\":\"");
+    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
@@ -642,11 +647,11 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
       TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
-      APPEND_STRING(buffer, ",\"_from\":\"");
+      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"_to\":\"");
+      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_toCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, toKey);
@@ -757,8 +762,6 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
   APPEND_STRING(buffer, "\",\"key\":\""); 
   // key is user-defined, but does not need escaping
   APPEND_STRING(buffer, key); 
-  APPEND_STRING(buffer, "\",\"rid\":\""); 
-  APPEND_UINT64(buffer, (uint64_t) rid); 
 
   // document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
@@ -769,9 +772,9 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
     APPEND_STRING(buffer, "\",\"doc\":{");
     
     // common document meta-data
-    APPEND_STRING(buffer, "\"_key\":\"");
+    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"_rev\":\"");
+    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
@@ -780,11 +783,11 @@ static bool StringifyMarkerReplication (TRI_string_buffer_t* buffer,
       TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
-      APPEND_STRING(buffer, ",\"_from\":\"");
+      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_fromCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"_to\":\"");
+      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
       APPEND_UINT64(buffer, (uint64_t) e->_toCid);
       APPEND_CHAR(buffer, '/');
       APPEND_STRING(buffer, toKey);
@@ -890,12 +893,12 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
-  TRI_voc_tick_t firstFoundTick;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
   size_t i; 
   int res;
   bool hasMore;
+  bool bufferFull;
   bool ignoreMarkers;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
@@ -909,11 +912,11 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   document       = (TRI_document_collection_t*) primary;
  
   // setup some iteration state
-  firstFoundTick = 0;
   lastFoundTick  = 0;
   lastTid        = 0;
   res            = TRI_ERROR_NO_ERROR;
   hasMore        = true;
+  bufferFull     = false;
   ignoreMarkers  = false;
 
   for (i = 0; i < datafiles._length; ++i) {
@@ -984,7 +987,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
-      if (foundTick < tickMin) {
+      if (foundTick <= tickMin) {
         // marker too old
         continue;
       }
@@ -996,9 +999,6 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
       // note the last tick we processed
-      if (firstFoundTick == 0) {
-        firstFoundTick = foundTick;
-      }
       lastFoundTick = foundTick;
 
 
@@ -1039,7 +1039,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
       if ((uint64_t) TRI_LengthStringBuffer(buffer) > chunkSize) {
         // abort the iteration
-        hasMore = ((ptr < end) || (i < datafiles._length - 1));
+        bufferFull = true;
 
         goto NEXT_DF;
       }
@@ -1057,7 +1057,7 @@ NEXT_DF:
       }
     }
 
-    if (res != TRI_ERROR_NO_ERROR || ! hasMore) {
+    if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
       break;
     }
   }
@@ -1065,15 +1065,17 @@ NEXT_DF:
   TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (datafiles._length > 0) {
+    if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;
       dump->_hasMore       = hasMore;
+      dump->_bufferFull    = bufferFull;
     }
     else {
       // no data available for requested range
       dump->_lastFoundTick = 0;
       dump->_hasMore       = false;
+      dump->_bufferFull    = false;
     }
   }
 
@@ -1196,6 +1198,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 
   res = LogEvent(logger, 0, true, OPERATION_REPLICATION_STOP, buffer); 
   
+  TRI_CommitTransaction(logger->_trx, 0);
   TRI_FreeTransaction(logger->_trx);
   
   LOG_INFO("stopped replication logger for database '%s', last id: %llu", 
