@@ -125,6 +125,79 @@ function CompactionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test figures after truncate and rotate, with compaction disabled
+////////////////////////////////////////////////////////////////////////////////
+
+    testFiguresNoCompact : function () {
+      var maxWait;
+      var cn = "example";
+      var n = 400;
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
+
+      for (var i = 0; i < 5; ++i) {
+        payload += payload;
+      }
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576, "doCompact" : false } );
+
+      for (var i = 0; i < n; ++i) {
+        c1.save({ _key: "test" + i, value : i, payload : payload });
+      }
+      
+      c1.unload();
+      internal.wait(5);
+
+      var fig = c1.figures();
+      assertEqual(n, c1.count());
+      assertEqual(n, fig["alive"]["count"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      c1.truncate();
+      c1.rotate();
+
+      var fig = c1.figures();
+
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertTrue(0 < fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["size"]);
+      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      // wait for compactor to run
+      require("console").log("waiting for compactor to run");
+
+      // set max wait time
+      if (internal.valgrind) {
+        maxWait = 120;
+      }
+      else {
+        maxWait = 15;
+      }
+
+      internal.wait(maxWait);
+            
+      fig = c1.figures();
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertTrue(0 < fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["size"]);
+      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertTrue(0 < fig["datafiles"]["count"]);
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test document presence after compaction
 ////////////////////////////////////////////////////////////////////////////////
 

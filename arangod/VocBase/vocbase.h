@@ -47,6 +47,7 @@ extern "C" {
 
 struct TRI_primary_collection_s;
 struct TRI_col_info_s;
+struct TRI_json_s;
 struct TRI_shadow_store_s;
 struct TRI_transaction_context_s;
 
@@ -189,6 +190,36 @@ struct TRI_transaction_context_s;
 extern size_t PageSize;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the _from attribute
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ATTRIBUTE_FROM  "_from"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the _to attribute
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ATTRIBUTE_TO    "_to"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the _key attribute
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ATTRIBUTE_KEY   "_key"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the _rev attribute
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ATTRIBUTE_REV   "_rev"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the system database
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_SYSTEM_DATABASE "_system"
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief id regex
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -289,60 +320,73 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
-  char* _path;               // path to the data directory
-  char* _shutdownFilename;   // absolute filename of the file that contains the shutdown information
+  char*                     _path;                // path to the data directory
 
-  bool _authInfoLoaded;      // flag indicating whether the authentication info was loaded successfully
-  bool _removeOnDrop;        // wipe collection from disk after dropping
-  bool _removeOnCompacted;   // wipe datafile from disk after compaction
-  bool _defaultWaitForSync;
-  bool _forceSyncShapes;     // force syncing of shape data to disk
-  bool _forceSyncProperties; // force syncing of shape data to disk
+  TRI_voc_size_t            _defaultMaximalSize;
+#ifdef TRI_ENABLE_REPLICATION
+  int64_t                   _replicationLogSize;  
+#endif  
+  bool                      _removeOnDrop;        // wipe collection from disk after dropping
+  bool                      _removeOnCompacted;   // wipe datafile from disk after compaction
+  bool                      _defaultWaitForSync;
+  bool                      _forceSyncShapes;     // force syncing of shape data to disk
+  bool                      _forceSyncProperties; // force syncing of shape data to disk
+#ifdef TRI_ENABLE_REPLICATION
+  bool                      _replicationEnable;
+  bool                      _replicationWaitForSync;
+#endif
+  bool                       _isSystem;
+  bool                       _requireAuthentication;  
+  bool                       _authenticateSystemOnly;
   
-  char* _name;
+  char*                      _name;               // database name
 
-  TRI_voc_size_t _defaultMaximalSize;
+  TRI_read_write_lock_t      _lock;               // collection iterator lock
+  TRI_vector_pointer_t       _collections;        // pointers to ALL collections
+  TRI_vector_pointer_t       _deadCollections;    // pointers to collections dropped that can be removed later
 
-  TRI_read_write_lock_t _lock;
-  TRI_vector_pointer_t  _collections;
-  TRI_vector_pointer_t  _deadCollections; // pointers to collections dropped that can be removed later
+  TRI_associative_pointer_t  _collectionsByName;  // collections by name
+  TRI_associative_pointer_t  _collectionsById;    // collections by id
 
-  TRI_associative_pointer_t _collectionsByName;
-  TRI_associative_pointer_t _collectionsById;
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_read_write_lock_t      _objectLock;         // object lock needed when replication is assessing the state of the vocbase
+#endif
 
-  TRI_associative_pointer_t _authInfo;
-  TRI_read_write_lock_t     _authInfoLock;
-  bool                      _authInfoFlush;
+  TRI_associative_pointer_t  _authInfo;
+  TRI_read_write_lock_t      _authInfoLock;
+  bool                       _authInfoFlush;
+  bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
 
   struct TRI_transaction_context_s* _transactionContext;
+
+#ifdef TRI_ENABLE_REPLICATION
+  struct TRI_replication_logger_s* _replicationLogger;
+#endif
 
   // state of the database
   // 0 = inactive
   // 1 = normal operation/running
   // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
   // 3 = shutdown in progress/waiting for cleanup thread to finish
-  sig_atomic_t _state;
+  sig_atomic_t               _state;
 
-  TRI_thread_t _synchroniser;
-  TRI_thread_t _compactor;
-  TRI_thread_t _cleanup;
+  TRI_thread_t               _synchroniser;
+  TRI_thread_t               _compactor;
+  TRI_thread_t               _cleanup;
   
   // the index garbage collection  
-  TRI_thread_t _indexGC;
+  TRI_thread_t               _indexGC;
   
   
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 
-  TRI_condition_t _cleanupCondition;
-  TRI_condition_t _syncWaitersCondition;
-  int64_t _syncWaiters;
+  TRI_condition_t            _cleanupCondition;
+  TRI_condition_t            _syncWaitersCondition;
+  int64_t                    _syncWaiters;
   
-  char* _lockFile;
-  
-  bool _isSystem;
-  bool _requireAuthentication;  
-
+  char*                      _lockFile;
+  char*                      _shutdownFilename;   // absolute filename of the file that contains the shutdown information
 }
 TRI_vocbase_t;
 
@@ -370,17 +414,21 @@ TRI_vocbase_col_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t* const _vocbase;
+  TRI_vocbase_t* const          _vocbase;
 
-  TRI_col_type_t const _type;                    // collection type
-  TRI_voc_cid_t const _cid;                      // collecttion identifier
+  TRI_col_type_t const          _type;               // collection type
+  TRI_voc_cid_t const           _cid;                // collecttion identifier
 
-  TRI_read_write_lock_t _lock;                   // lock protecting the status and name
+  TRI_read_write_lock_t         _lock;               // lock protecting the status and name
 
-  TRI_vocbase_col_status_e _status;              // status of the collection
+  TRI_vocbase_col_status_e      _status;             // status of the collection
   struct TRI_primary_collection_s* _collection;  // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
+
+  bool                          _canDrop;
+  bool                          _canUnload;
+  bool                          _canRename;
 }
 TRI_vocbase_col_t;
 
@@ -389,13 +437,21 @@ TRI_vocbase_col_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_defaults_s {
-  bool removeOnDrop;
-  bool removeOnCompacted;
-  uint64_t defaultMaximalSize;
-  bool defaultWaitForSync;
-  bool forceSyncShapes;
-  bool forceSyncProperties;
-  bool requireAuthentication;
+  TRI_voc_size_t defaultMaximalSize;
+#ifdef TRI_ENABLE_REPLICATION  
+  int64_t        replicationLogSize; 
+#endif  
+  bool           removeOnDrop;
+  bool           removeOnCompacted;
+  bool           defaultWaitForSync;
+  bool           forceSyncShapes;
+  bool           forceSyncProperties;
+  bool           requireAuthentication;
+  bool           authenticateSystemOnly;
+#ifdef TRI_ENABLE_REPLICATION  
+  bool           replicationEnable;
+  bool           replicationWaitForSync;
+#endif  
 }
 TRI_vocbase_defaults_t;
 
@@ -431,6 +487,12 @@ TRI_voc_tick_t TRI_NewTickVocBase (void);
 void TRI_UpdateTickVocBase (TRI_voc_tick_t tick);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current tick counter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t TRI_CurrentTickVocBase (void);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -463,6 +525,18 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name,
 void TRI_DestroyVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the system defaults
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetSystemDefaultsVocBase (TRI_vocbase_defaults_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the system defaults
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_GetDefaultsVocBase (TRI_vocbase_t const*, TRI_vocbase_defaults_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief load authentication information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -473,6 +547,16 @@ void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all known (document) collections with their parameters
+/// and optionally indexes
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_ParametersCollectionsVocBase (TRI_vocbase_t*,
+                                                     bool,
+                                                     bool (*)(TRI_vocbase_col_t*, void*),
+                                                     void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id

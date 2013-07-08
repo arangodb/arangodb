@@ -437,12 +437,12 @@ function require (path) {
     }
 
     if (! manifest.hasOwnProperty("name")) {
-      console.error("cannot manifest file is missing a name '%s'", file);
+      console.error("manifest file '%s' is missing a name attribute", file);
       return null;
     }
         
     if (! manifest.hasOwnProperty("version")) {
-      console.error("cannot manifest file is missing a version '%s'", file);
+      console.error("manifest file '%s' is missing a version attribute", file);
       return null;
     }
         

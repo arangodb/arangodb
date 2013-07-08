@@ -165,6 +165,38 @@ static SignalTask* localSignalTask;
       }
   };
 #endif
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles sigusr1 signals
+////////////////////////////////////////////////////////////////////////////////
+
+  class Sigusr1Task : public SignalTask {
+    public:
+      Sigusr1Task (ApplicationScheduler* scheduler)
+        : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
+#ifndef _WIN32
+        addSignal(SIGUSR1);
+#endif
+      }
+
+    public:
+      bool handleSignal () {
+        Scheduler* scheduler = this->_scheduler->scheduler();
+
+        if (scheduler != 0) {
+          bool isActive = scheduler->isActive();
+
+          LOGGER_INFO("sigusr1 received - setting active flag to " << (! isActive));
+
+          scheduler->setActive(! isActive);
+        }
+
+        return true;
+      }
+
+    private:
+      ApplicationScheduler* _scheduler;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces a scheduler status report
@@ -614,6 +646,12 @@ void ApplicationScheduler::buildControlCHandler () {
 
   _scheduler->registerTask(hangup);
   _tasks.push_back(hangup);
+  
+  // sigusr handler
+  Task* sigusr = new Sigusr1Task(this);
+
+  _scheduler->registerTask(sigusr);
+  _tasks.push_back(sigusr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

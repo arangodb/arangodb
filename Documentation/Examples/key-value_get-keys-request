@@ -1,2 +1,0 @@
-  GET /_api/keys/example_collection/example_key HTTP/1.1
-  Host: localhost:9000

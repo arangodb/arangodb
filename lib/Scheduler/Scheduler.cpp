@@ -58,7 +58,8 @@ using namespace triagens::rest;
 Scheduler::Scheduler (size_t nrThreads)
   : nrThreads(nrThreads),
     stopping(0),
-    nextLoop(0) {
+    nextLoop(0),
+    _active(true) {
 
   // check for multi-threading scheduler
   multiThreading = (nrThreads > 1);

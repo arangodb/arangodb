@@ -36,6 +36,7 @@ dist_man_MANS += \
 DOXYGEN = \
 	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
+	Doxygen/js/actions/api-current-database.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
 	Doxygen/js/actions/api-explain.c \
@@ -94,6 +95,7 @@ WIKI = \
 	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
+	HttpCurrentDatabase \
 	HttpCursor \
 	HttpGraph \
 	HttpImport \
@@ -377,14 +379,24 @@ examples:
 		@srcdir@/arangod/RestHandler/*.cpp \
 		> /tmp/arangosh.examples
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
 
 	@builddir@/bin/arangosh \
 		-s \
 		-c @srcdir@/etc/relative/arangosh.conf \
 		--server.password "" \
-		--server.endpoint unix://$(VOCDIR)/arango.sock \
+		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
 		--javascript.execute /tmp/arangosh.examples
+
+################################################################################
+### @brief generate complete documentation including examples
+################################################################################
+
+.PHONY: documentation-complete
+
+documentation-complete: examples doxygen swagger
+
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

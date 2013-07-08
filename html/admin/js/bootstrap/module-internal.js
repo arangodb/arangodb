@@ -13,7 +13,7 @@
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER,
+  REQUEST_TIME_DISTRIBUTION, ADMIN_DIRECTORY, DEVELOPMENT_MODE, THREAD_NUMBER,
   SYS_PLATFORM */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +104,17 @@
   if (typeof THREAD_NUMBER !== "undefined") {
     exports.threadNumber = THREAD_NUMBER;
     delete THREAD_NUMBER;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adminDirectory
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.adminDirectory = null;
+  
+  if (typeof ADMIN_DIRECTORY !== "undefined") {
+    exports.adminDirectory = ADMIN_DIRECTORY;
+    delete ADMIN_DIRECTORY;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,52 @@
+<ul class="thumbnails2">
+  <div id="dashboardHeader">
+    <div class="pull-left">
+      <h4 class="dashboardH4">Applications</h4>
+    </div>
+    <div class="btn-group pull-right">
+      <button class="btn btn-inverse btn-small disabledHover">Filter:</button>
+      <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle"><span class="caret"></span></button>
+      <ul class="dropdown-menu">
+        <li class="nav-header">Type</li>
+        <li><a href="#">
+            <label class="checkbox checkboxLabel">
+              <input class="css-checkbox" type="checkbox" id="checkActive">
+            <label class="css-label"></label>Active
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkDevel">
+            <label class="css-label"></label>Development
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkInactive">
+            <label class="css-label"></label>Inactive
+          </label>
+        </a></li>
+      </ul>
+    </div>
+  </div>
+</ul>
+
+
+<ul class="thumbnails foxxList">
+  <li id="installed" class="span12 applicationList">
+    <div class="boxHeader applicationListHeader">
+      <i id="toggleInstalled" class="pull-right icon-minus icon-white toggle-icon"></i>
+      <h5>Installed</h5>
+    </div>
+    <div id="installedList"></div>
+  </li>
+  <li id="available" class="span12 applicationList">
+    <div class="boxHeader applicationListHeader">
+      <i id="toggleAvailable" class="pull-right icon-minus icon-white toggle-icon"></i>
+      <h5>Available</h5>
+    </div>
+    <div id="availableList"></div>
+  </li>
+</ul>

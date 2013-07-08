@@ -45,6 +45,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/replication.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -210,7 +211,8 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
+int TRI_SaveIndex (TRI_primary_collection_t* collection, 
+                   TRI_index_t* idx) {
   TRI_json_t* json;
   char* filename;
   char* name;
@@ -221,7 +223,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   json = idx->json(idx, collection);
 
   if (json == NULL) {
-    LOG_TRACE("cannot save index definition: index cannot be jsonfied");
+    LOG_TRACE("cannot save index definition: index cannot be jsonified");
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
 
@@ -235,14 +237,19 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
 
   // and save
   ok = TRI_SaveJson(filename, json, collection->base._vocbase->_forceSyncProperties);
-
+  
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
     LOG_ERROR("cannot save index definition: %s", TRI_last_error());
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
     return TRI_errno();
   }
+
+  TRI_CreateIndexReplication(collection->base._vocbase, collection->base._info._cid, idx->_iid, json);
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -412,7 +419,7 @@ char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNamePrimary (const TRI_index_t const* idx) {
+static const char* TypeNamePrimary (TRI_index_t const* idx) {
   return "primary";
 }
 
@@ -739,8 +746,8 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* p
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_from"));
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_to"));
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -767,13 +774,33 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   TRI_edge_index_t* edgeIndex;
   TRI_index_t* idx;
   char* id;
+  int res;
 
   // create index
   edgeIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false);
+
+  if (edgeIndex == NULL) {
+    return NULL;
+  }
+  
+  res = TRI_InitMultiPointer(&edgeIndex->_edges,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             HashElementEdge,
+                             HashElementEdge,
+                             IsEqualKeyEdge,
+                             IsEqualElementEdge);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
+
+    return NULL;
+  }
+
+
   idx = &edgeIndex->base;
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
-  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
+  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
   TRI_PushBackVectorString(&idx->_fields, id);
  
   idx->typeName = TypeNameEdge;
@@ -782,13 +809,6 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
-
-  TRI_InitMultiPointer(&edgeIndex->_edges,
-                       TRI_UNKNOWN_MEM_ZONE,
-                       HashElementEdge,
-                       HashElementEdge,
-                       IsEqualKeyEdge,
-                       IsEqualElementEdge);
 
   return idx;
 }
@@ -988,7 +1008,7 @@ static int InsertPriorityQueueIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNamePriorityQueueIndex (const TRI_index_t const* idx) {
+static const char* TypeNamePriorityQueueIndex (TRI_index_t const* idx) {
   return "priorityqueue";
 }
 
@@ -1653,7 +1673,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameSkiplistIndex (const TRI_index_t const* idx) {
+static const char* TypeNameSkiplistIndex (TRI_index_t const* idx) {
   return "skiplist";
 }
 
@@ -1820,7 +1840,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   idx = &skiplistIndex->base;
 
   idx->typeName = TypeNameSkiplistIndex;
-  TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, false);
+  TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, true);
 
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
@@ -2030,7 +2050,7 @@ static int InsertFulltextIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameFulltextIndex (const TRI_index_t const* idx) {
+static const char* TypeNameFulltextIndex (TRI_index_t const* idx) {
   return "fulltext";
 }
 
@@ -2567,7 +2587,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameBitarrayIndex (const TRI_index_t const* idx) {
+static const char* TypeNameBitarrayIndex (TRI_index_t const* idx) {
   return "bitarray";
 }
 

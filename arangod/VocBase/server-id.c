@@ -147,7 +147,7 @@ int TRI_WriteServerId (char const* filename) {
   assert(filename != NULL);
 
   // create a json object
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == NULL) {
     // out of memory
@@ -158,18 +158,18 @@ int TRI_WriteServerId (char const* filename) {
   assert(ServerId != 0);
 
   idString = TRI_StringUInt64((uint64_t) ServerId);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString));
   TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
 
   tt = time(0);
   TRI_gmtime(tt, &tb);
   len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "createdTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, buffer, len));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "createdTime", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, buffer, len));
 
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
   ok = TRI_SaveJson(filename, json, true);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
     LOG_ERROR("could not save server id in file '%s': %s", filename, TRI_last_error());

@@ -105,6 +105,12 @@ void TRI_SetFileToLog (string const& file) {
 static string LoggerFormat = "%Z;1;%S;%C;%H;%p-%t;%F;%A;%f;%m;%K;%f:%l;%x;%P;%u;%V;%U;%E";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief logger format for raw logging
+////////////////////////////////////////////////////////////////////////////////
+
+static string LoggerRawFormat = "\"%Z\"%x";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief special characters which must be escaped
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -128,8 +134,18 @@ static string const SpecialCharacters = ";%\r\t\n";
 ////////////////////////////////////////////////////////////////////////////////
 
 static void OutputMachine (string const& text, LoggerData::Info const& info) {
-  char const* format = LoggerFormat.c_str();
-  char const* end = format + LoggerFormat.size();
+  char const* format; 
+  char const* end; 
+  
+  if (info._severity == TRI_LOG_SEVERITY_USAGE) {
+    format = LoggerRawFormat.c_str();
+    end    = format + LoggerRawFormat.size();
+  }
+  else {
+    format = LoggerFormat.c_str();
+    end    = format + LoggerFormat.size();
+  }
+
   time_t tt = time(0);
 
   StringBuffer line(TRI_CORE_MEM_ZONE);
@@ -298,6 +314,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
           switch (info._severity) {
             case TRI_LOG_SEVERITY_EXCEPTION: line.appendInteger(2);  break;
             case TRI_LOG_SEVERITY_FUNCTIONAL: line.appendInteger(5);  break;
+            case TRI_LOG_SEVERITY_USAGE: line.appendInteger(5);  break;
             case TRI_LOG_SEVERITY_TECHNICAL: line.appendInteger(6);  break;
             case TRI_LOG_SEVERITY_DEVELOPMENT: line.appendInteger(7);  break;
             default: line.appendInteger(7);  break;
@@ -389,7 +406,6 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
           if (! info._prefix.empty()) {
             line.appendText(StringUtils::escapeHex(info._prefix, SpecialCharacters));
           }
-
           line.appendText(StringUtils::escapeHex(text, SpecialCharacters));
 
           break;
@@ -418,7 +434,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
     }
   }
 
-  TRI_RawLog(info._level, info._severity, line.c_str(), line.length() - 1);
+  TRI_RawLog(info._level, info._severity, line.c_str(), line.length());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +550,6 @@ Logger::~Logger () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::output (string const& text, LoggerData::Info const& info) {
-
   // human readable
   if (info._severity == TRI_LOG_SEVERITY_HUMAN) {
     if (! TRI_IsHumanLogging()) {
@@ -547,12 +562,18 @@ void Logger::output (string const& text, LoggerData::Info const& info) {
             info._level,
             info._severity,
             "%s", text.c_str());
+
+    return;
+  }
+  // usage logging
+  else if (info._severity == TRI_LOG_SEVERITY_USAGE) {
+    if (! TRI_IsUsageLogging()) {
+      return;
+    }
   }
 
   // machine readable logging
-  else {
-    OutputMachine(text, info);
-  }
+  OutputMachine(text, info);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

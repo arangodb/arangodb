@@ -58,7 +58,11 @@ static TRI_json_t* NodeType (const TRI_aql_node_t* const node) {
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_AppendStringStringBuffer(&buffer, TRI_NodeGroupAql(node, true));
+  if (TRI_ERROR_NO_ERROR != TRI_AppendStringStringBuffer(&buffer, TRI_NodeGroupAql(node, true))) {
+    TRI_DestroyStringBuffer(&buffer);
+
+    return NULL;
+  }
 
   result = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
 
@@ -79,7 +83,11 @@ static TRI_json_t* NodeDescription (const TRI_aql_node_t* const node) {
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_NodeStringAql(&buffer, node);
+  if (! TRI_NodeStringAql(&buffer, node)) {
+    TRI_DestroyStringBuffer(&buffer);
+
+    return NULL;
+  }
 
   result = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
   TRI_DestroyStringBuffer(&buffer);
@@ -97,11 +105,13 @@ static bool AddNodeValue (TRI_json_t* row, TRI_aql_node_t* const node) {
   TRI_json_t* value;
 
   result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (result == NULL) {
     return false;
   }
 
   type = NodeType(node);
+
   if (type != NULL) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
@@ -150,6 +160,7 @@ static inline TRI_json_t* GetRowProtoType (TRI_aql_explain_t* const explain,
   TRI_json_t* row;
 
   row = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (row == NULL) {
     return NULL;
   }
@@ -191,6 +202,7 @@ static TRI_aql_explain_t* CreateExplain (TRI_aql_context_t* context) {
   explain->_level = 0;
 
   explain->_result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
   if (explain->_result == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, explain);
 
@@ -248,156 +260,193 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     }
 
     case TRI_AQL_NODE_EXPAND: {
-      TRI_aql_node_t* variableNode;
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, TRI_AQL_NODE_REFERENCE);
-      variableNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "resultVariable",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
 
-      AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 2));
-      AddRow(explain, row);
+      if (row != NULL) {
+        TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
 
-      row = GetRowProtoType(explain, TRI_AQL_NODE_EXPAND);
-      variableNode = TRI_AQL_NODE_MEMBER(node, 1);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "resultVariable",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-
-      AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 3));
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_SUBQUERY: {
-      TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "resultVariable",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_FOR: {
-      TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
-      TRI_aql_for_hint_t* hint;
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "resultVariable",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-
-      hint = TRI_AQL_NODE_DATA(node);
-      if (hint != NULL &&
-          hint->_limit._status == TRI_AQL_LIMIT_USE) {
         TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              row,
-                             "limit",
-                             TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+                             "resultVariable",
+                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
+
+        AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 2));
+        AddRow(explain, row);
       }
 
-      AddNodeValue(row, expressionNode);
-      AddRow(explain, row);
-      break;
-    }
+      row = GetRowProtoType(explain, TRI_AQL_NODE_EXPAND);
 
-    case TRI_AQL_NODE_RETURN:
-    case TRI_AQL_NODE_RETURN_EMPTY: {
-      TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-      AddNodeValue(row, expressionNode);
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_FILTER: {
-      TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-      AddNodeValue(row, expressionNode);
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_LET: {
-      TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "resultVariable",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-
-      AddNodeValue(row, expressionNode);
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_SORT: {
-      TRI_aql_node_t* listNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-      AddNodeValue(row, listNode);
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_LIMIT: {
-      TRI_aql_node_t* offsetNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_aql_node_t* countNode  = TRI_AQL_NODE_MEMBER(node, 1);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "offset",
-                           TRI_NodeJsonAql(explain->_context, offsetNode));
-
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
-                           row,
-                           "count",
-                           TRI_NodeJsonAql(explain->_context, countNode));
-
-      AddRow(explain, row);
-      break;
-    }
-
-    case TRI_AQL_NODE_COLLECT: {
-      TRI_aql_node_t* listNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_json_t* row;
-
-      row = GetRowProtoType(explain, node->_type);
-
-      if (node->_members._length > 1) {
+      if (row != NULL) {
         TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 1);
 
         TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              row,
                              "resultVariable",
                              TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-      }
 
-      AddNodeValue(row, listNode);
-      AddRow(explain, row);
+        AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 3));
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_SUBQUERY: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                             row,
+                             "resultVariable",
+                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
+
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_FOR: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+      
+      if (row != NULL) {
+        TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
+        TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
+        TRI_aql_for_hint_t* hint;
+
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                             row,
+                             "resultVariable",
+                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
+
+        hint = TRI_AQL_NODE_DATA(node);
+        if (hint != NULL &&
+            hint->_limit._status == TRI_AQL_LIMIT_USE) {
+          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                               row,
+                               "limit",
+                               TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+        }
+
+        AddNodeValue(row, expressionNode);
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_RETURN:
+    case TRI_AQL_NODE_RETURN_EMPTY: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+        AddNodeValue(row, expressionNode);
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_FILTER: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+        AddNodeValue(row, expressionNode);
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_LET: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
+        TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
+
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                             row,
+                             "resultVariable",
+                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
+
+        AddNodeValue(row, expressionNode);
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_SORT: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* listNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+        AddNodeValue(row, listNode);
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_LIMIT: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* offsetNode = TRI_AQL_NODE_MEMBER(node, 0);
+        TRI_aql_node_t* countNode  = TRI_AQL_NODE_MEMBER(node, 1);
+
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                             row,
+                             "offset",
+                             TRI_NodeJsonAql(explain->_context, offsetNode));
+
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                             row,
+                             "count",
+                             TRI_NodeJsonAql(explain->_context, countNode));
+
+        AddRow(explain, row);
+      }
+      break;
+    }
+
+    case TRI_AQL_NODE_COLLECT: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* listNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+        if (node->_members._length > 1) {
+          TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 1);
+  
+          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                               row,
+                               "resultVariable",
+                               TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
+        }
+
+        AddNodeValue(row, listNode);
+        AddRow(explain, row);
+      }
       break;
     }
 
@@ -431,6 +480,7 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
   TRI_json_t* result;
 
   explain = CreateExplain(context);
+
   if (explain == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 

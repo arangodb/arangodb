@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, document, arangoCollection, arangoHelper, dashboardView */
-/*global FoxxInstalledListView, FoxxActiveListView*/
 
 $(document).ready(function() {
 
@@ -23,6 +22,7 @@ $(document).ready(function() {
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
+      "applications"                        : "applications",
       "application/documentation/:key"     : "appDocumentation",
       "graph"                               : "graph"
       
@@ -156,6 +156,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('logs-menu');
     },
     dashboard: function() {
+      this.naviView.selectMenuItem('dashboard-menu');
       /*
       var self = this;
       window.arangoCollectionsStore.fetch({
@@ -189,12 +190,25 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('graph-menu'); 
     },
 
+    applications: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsView === undefined) {
+        this.applicationsView = new window.ApplicationsView({
+          collection: this.foxxList
+        });
+      }
+      this.applicationsView.reload();
+      this.naviView.selectMenuItem('applications-menu');
+    },
+
     applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
       if (this.applicationsInstalledView === undefined) {
-        this.applicationsInstalledView = new FoxxInstalledListView({
+        this.applicationsInstalledView = new window.FoxxInstalledListView({
           collection: this.foxxList
         });
       }
@@ -207,7 +221,7 @@ $(document).ready(function() {
         this.foxxList = new window.FoxxCollection();
       }
       if (this.applicationsActiveView === undefined) {
-        this.applicationsActiveView = new FoxxActiveListView({
+        this.applicationsActiveView = new window.FoxxActiveListView({
           collection: this.foxxList
         });
       }

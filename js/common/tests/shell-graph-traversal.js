@@ -1066,7 +1066,6 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
       
-      
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
     
@@ -1142,7 +1141,7 @@ function MemoryTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
 
       var expectedPaths = [
-        [ "vertices/World"]
+        [ "vertices/World" ]
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));

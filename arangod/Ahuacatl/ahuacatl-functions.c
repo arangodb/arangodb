@@ -570,7 +570,8 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
 
 TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   TRI_associative_pointer_t* functions;
-  bool result = true;
+  bool result;
+  int res;
 
   functions = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false);
 
@@ -578,12 +579,18 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
     return NULL;
   }
 
-  TRI_InitAssociativePointer(functions,
-                             TRI_UNKNOWN_MEM_ZONE,
-                             TRI_HashStringKeyAssociativePointer,
-                             HashFunction,
-                             EqualName,
-                             NULL);
+  res = TRI_InitAssociativePointer(functions,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   TRI_HashStringKeyAssociativePointer,
+                                   HashFunction,
+                                   EqualName,
+                                   NULL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, functions);
+
+    return NULL;
+  }
 
   // . = argument of any type (except collection)
   // c = collection name, will be converted into list with documents
@@ -596,6 +603,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // l = list
   // a = (hash) array/document
   // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
+
+  result = true;
 
   // type check functions
   REGISTER_FUNCTION("IS_NULL", "IS_NULL", true, false, ".", NULL);
@@ -685,6 +694,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 
   if (! result) {
     TRI_FreeFunctionsAql(functions);
+
     return NULL;
   }
 

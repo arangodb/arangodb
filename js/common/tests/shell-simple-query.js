@@ -312,6 +312,57 @@ function SimpleQueryByExampleSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleHash1 : function () {
+      var d, s;
+      var example = { "a" : { "b" : true, "c" : "foo" }, "d" : true };
+     
+      collection.ensureHashIndex("d");
+       
+      d = collection.save(example);
+      s = collection.firstExample({ "d" : true });
+      assertEqual(d._id, s._id);
+      
+      s = collection.firstExample({ "d" : false });
+      assertEqual(null, s);
+      
+      s = collection.firstExample({ "a.b" : true });
+      assertEqual(d._id, s._id);
+      
+      s = collection.firstExample({ "a.c" : "foo" });
+      assertEqual(d._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleHash2 : function () {
+      var d1, d2, s;
+      var example1 = { "a" : { "b" : true } };
+      var example2 = { "a" : { "b" : "foo" } };
+     
+      collection.ensureHashIndex("a.b");
+       
+      d1 = collection.save(example1);
+      d2 = collection.save(example2);
+
+      s = collection.firstExample({ "a.b" : true });
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample({ "a.b" : "foo" });
+      assertEqual(d2._id, s._id);
+      s = collection.firstExample({ "a.b" : false });
+      assertEqual(null, s);
+      
+      s = collection.firstExample(example1);
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample(example2);
+      assertEqual(d2._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: byExample, using _key
 ////////////////////////////////////////////////////////////////////////////////
 

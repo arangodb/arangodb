@@ -38,48 +38,115 @@ var modalDialogHelper = modalDialogHelper || {};
       callbackCapsule = function() {
         callback(tableToJSON);
       },
-      table =  modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule);
+      table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule),
+      firstRow = document.createElement("tr"),
+      firstCell = document.createElement("th"),
+      secondCell = document.createElement("th"),
+      thirdCell = document.createElement("th"),
+      addRow = document.createElement("button"),
+      addImg = document.createElement("img"),
+      newCounter = 1,
+      insertRow;
       
     tableToJSON = function() {
       var result = {};
+      _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
         
-      _.each($("#" + idprefix + "table tr"), function(tr) {
-        var key = tr.children[0].children[0].value,
-          value = tr.children[1].children[0].value;
-        
+        var key = $(".keyCell input", tr).val(),
+          value = $(".valueCell input", tr).val();
         result[key] = value;
       });
       return result;
     };
-    _.each(object, function(value, key) {
+    
+    table.appendChild(firstRow);
+    firstRow.id = "first_row";
+    firstRow.appendChild(firstCell);
+    firstCell.className = "keyCell";
+    
+    firstRow.appendChild(secondCell);
+    secondCell.className = "valueCell";
+    
+    firstRow.appendChild(thirdCell);
+    
+    thirdCell.className = "actionCell";
+    thirdCell.appendChild(addRow);
+    
+    
+    addRow.id = idprefix + "new";
+    addRow.className = "graphViewer-icon-button";
+    
+    addRow.appendChild(addImg);
+    addImg.className = "plusIcon";
+    addImg.src = "img/plus_icon.png";
+    addImg.width = "16";
+    addImg.height = "16";
+    
+    insertRow = function(value, key) {
       var internalRegex = /^_(id|rev|key|from|to)/,
         tr = document.createElement("tr"),
+        actTh = document.createElement("th"),
         keyTh = document.createElement("th"),
         valueTh = document.createElement("th"),
+        deleteInput,
         keyInput,
-        valueInput;
-        
+        valueInput,
+        delImg;
       if (internalRegex.test(key)) {
         return;
       }
       table.appendChild(tr);
+      
       tr.appendChild(keyTh);
-      keyTh.className = "collectionTh";
+      keyTh.className = "keyCell";
       keyInput = document.createElement("input");
       keyInput.type = "text";
       keyInput.id = idprefix + key + "_key";
       keyInput.value = key;
       keyTh.appendChild(keyInput);
       
+      
       tr.appendChild(valueTh);
-      valueTh.className = "collectionTh";
+      valueTh.className = "valueCell";
       valueInput = document.createElement("input");
       valueInput.type = "text";
       valueInput.id = idprefix + key + "_value";
-      valueInput.value = value;
-      valueTh.appendChild(valueInput);
+      if ("object" === typeof value) {
+        valueInput.value = JSON.stringify(value);
+      } else {
+        valueInput.value = value;
       }
-    );
+      
+      valueTh.appendChild(valueInput);
+      
+
+      tr.appendChild(actTh);
+      actTh.className = "actionCell";
+      deleteInput = document.createElement("button");
+      deleteInput.id = idprefix + key + "_delete";
+      deleteInput.className = "graphViewer-icon-button";
+      
+      actTh.appendChild(deleteInput);
+      
+      delImg = document.createElement("img");
+      delImg.src = "img/icon_delete.png";
+      delImg.width = "16";
+      delImg.height = "16";
+      
+      deleteInput.appendChild(delImg);
+      
+      deleteInput.onclick = function() {
+        table.removeChild(tr);
+      };
+      
+    };
+    
+    addRow.onclick = function() {
+      insertRow("", "new_" + newCounter);
+      newCounter++;
+    };
+    
+    _.each(object, insertRow);
     $("#" + idprefix + "modal").modal('show');
   };
   
@@ -112,7 +179,7 @@ var modalDialogHelper = modalDialogHelper || {};
     };
       
     headerDiv.className = "modal-header";
-    
+    buttonDismiss.id = idprefix + "modal_dismiss";
     buttonDismiss.className = "close";
     buttonDismiss.dataDismiss = "modal";
     buttonDismiss.ariaHidden = "true";

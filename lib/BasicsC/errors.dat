@@ -30,6 +30,7 @@ ERROR_HTTP_BAD_PARAMETER,400,"bad parameter","Will be raised when the HTTP reque
 ERROR_HTTP_FORBIDDEN,403,"forbidden","Will be raised when the operation is forbidden."
 ERROR_HTTP_NOT_FOUND,404,"not found","Will be raised when an URI is unknown."
 ERROR_HTTP_METHOD_NOT_ALLOWED,405,"method not supported","Will be raised when an unsupported HTTP method is used for an operation."
+ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 
 ################################################################################
@@ -46,7 +47,7 @@ ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised w
 ################################################################################
 
 ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be raised when the datafile is not in the required state."
-ERROR_ARANGO_SHAPER_FAILED,1001,"illegal shaper","Internal error that will be raised when the shaper encountered a porblem."
+ERROR_ARANGO_SHAPER_FAILED,1001,"could not shape document","Internal error that will be raised when the shaper encountered a problem."
 ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be raised when trying to write to a datafile."
 ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE,1003,"unknown type","Internal error that will be raised when an unknown collection type is encountered."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
@@ -112,6 +113,18 @@ ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised 
 ################################################################################
 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
+
+################################################################################
+## ArangoDB replication errors
+################################################################################
+
+ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replica does not receive any or an incomplete response from the master."
+ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replica receives an invalid response from the master."
+ERROR_REPLICATION_MASTER_ERROR,1402,"master error","Will be raised when the replica receives a server error from the master."
+ERROR_REPLICATION_MASTER_INCOMPATIBLE,1403,"master incompatible","Will be raised when the master the replica connects to has an incompatible version."
+ERROR_REPLICATION_MASTER_CHANGE,1404,"master change","Will be raised when the master the replica connects is changed."
+ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replica connects to itself for replication."
+ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication stream."
 
 ################################################################################
 ## ArangoDB query errors
@@ -184,6 +197,7 @@ ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an
 ERROR_APPLICATION_INVALID_NAME,1751,"invalid application name","Will be raised when an invalid application name is specified."
 ERROR_APPLICATION_INVALID_MOUNT,1752,"invalid mount","Will be raised when an invalid mount is specified."
 ERROR_APPLICATION_DOWNLOAD_FAILED,1753,"application download failed","Will be raised when an application download from the central repository failed."
+ERROR_APPLICATION_UPLOAD_FAILED,1754,"application upload failed","Will be raised when an application upload from the client to the ArangoDB server failed."
 
 ################################################################################
 ## Key value access
@@ -198,7 +212,7 @@ ERROR_KEYVALUE_KEY_NOT_REMOVED,1805,"key value not removed","Will be raised when
 ERROR_KEYVALUE_NO_VALUE,1806,"missing value","Will be raised when the value is missing"
 
 ################################################################################
-## Graph errors
+## Graph / traversal errors
 ################################################################################
 
 ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid name is passed to the server"
@@ -209,6 +223,7 @@ ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX,1905,"could not change vertex","Will be rais
 ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edge id is passed to the server"
 ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised when the edge could not be created"
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed"
+ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations","Will be raised when too many iterations are done in a graph traversal"
 
 ################################################################################
 ## Session errors

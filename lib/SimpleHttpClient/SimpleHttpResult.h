@@ -61,39 +61,8 @@ namespace triagens {
         UNKNOWN
       };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http response codes
-////////////////////////////////////////////////////////////////////////////////
-
-      enum http_status_codes {
-        HTTP_STATUS_OK = 200,
-        HTTP_STATUS_CREATED = 201,
-        HTTP_STATUS_ACCEPTED = 202,
-        HTTP_STATUS_PARTIAL = 203,
-        HTTP_STATUS_NO_RESPONSE = 204,
-
-        HTTP_STATUS_MOVED_PERMANENTLY = 301,
-        HTTP_STATUS_FOUND = 302,
-        HTTP_STATUS_SEE_OTHER = 303,
-        HTTP_STATUS_NOT_MODIFIED = 304,
-        HTTP_STATUS_TEMPORARY_REDIRECT = 307,
-
-        HTTP_STATUS_BAD = 400,
-        HTTP_STATUS_UNAUTHORIZED = 401,
-        HTTP_STATUS_PAYMENT = 402,
-        HTTP_STATUS_FORBIDDEN = 403,
-        HTTP_STATUS_NOT_FOUND = 404,
-        HTTP_STATUS_METHOD_NOT_ALLOWED = 405,
-        HTTP_STATUS_UNPROCESSABLE_ENTITY = 422,
-
-        HTTP_STATUS_SERVER_ERROR = 500,
-        HTTP_STATUS_NOT_IMPLEMENTED = 501,
-        HTTP_STATUS_BAD_GATEWAY = 502,
-        HTTP_STATUS_SERVICE_UNAVAILABLE = 503 // Retry later
-      };
-
-
     public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +82,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void clear ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether the response contains an HTTP error
+////////////////////////////////////////////////////////////////////////////////
+
+      bool wasHttpError () const {
+        return (_returnCode >= 400);
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the http return code

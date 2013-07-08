@@ -70,7 +70,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _type(HTTP_REQUEST_ILLEGAL),
     _prefix(),
     _suffix(),
-    _version(HTTP_1_0),
+    _version(HTTP_UNKNOWN),
     _user(),
     _requestContext(0) {
 
@@ -101,7 +101,7 @@ HttpRequest::HttpRequest ()
     _type(HTTP_REQUEST_ILLEGAL),
     _prefix(),
     _suffix(),
-    _version(HTTP_1_0),
+    _version(HTTP_UNKNOWN),
     _user(),
     _requestContext(0) {
 }
@@ -756,8 +756,11 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                   if (e[7] == '1') {
                     _version = HTTP_1_1;
                   }
-                  else {
+                  else if (e[7] == '0') {
                     _version = HTTP_1_0;
+                  }
+                  else {
+                    _version = HTTP_UNKNOWN;
                   }
 
                   e += versionLength;
@@ -1186,6 +1189,19 @@ void HttpRequest::addRequestContext (RequestContext* requestContext) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate the HTTP protocol version
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpRequest::translateVersion (HttpVersion version) {
+  switch (version) {
+    case HTTP_1_0:      return "HTTP/1.0";
+    case HTTP_1_1:      return "HTTP/1.1";
+    case HTTP_UNKNOWN:   
+    default:            return "HTTP/1.0";
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate an enum value into an HTTP method string

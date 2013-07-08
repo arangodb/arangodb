@@ -45,6 +45,41 @@ function DatabaseSuite () {
 
     testVersion : function () {
       assertMatch(/^1\.4/, internal.db._version());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _name function
+////////////////////////////////////////////////////////////////////////////////
+
+    testName : function () {
+      assertEqual("_system", internal.db._name());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _path function
+////////////////////////////////////////////////////////////////////////////////
+
+    testPath : function () {
+      assertTrue(typeof internal.db._path() === "string");
+      assertTrue(internal.db._path() !== "");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _isSystem function
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsSystem : function () {
+      assertTrue(typeof internal.db._isSystem() === "boolean");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQuery : function () {
+      assertEqual([ 1 ], internal.db._query("return 1").toArray());
+      assertEqual([ [ 1, 2, 9, "foo" ] ], internal.db._query("return [ 1, 2, 9, \"foo\" ]").toArray());
+      assertEqual([ [ 1, 454 ] ], internal.db._query("return [ @low, @high ]", { low : 1, high : 454 }).toArray());
     }
 
   };

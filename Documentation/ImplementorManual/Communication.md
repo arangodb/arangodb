@@ -4,8 +4,16 @@ HTTP Handling in ArangoDB {#Communication}
 @NAVIGATE_Communication
 @EMBEDTOC{CommunicationTOC}
 
+Clients sending requests to ArangoDB must use either HTTP 1.0 or HTTP 1.1.
+Other HTTP versions are not supported by ArangoDB and any attempt to send 
+a different HTTP version signature will result in the server responding with
+an HTTP 505 (HTTP version not supported) error.
+
 ArangoDB will always respond to client requests with HTTP 1.1. Clients
-should therefore support HTTP version 1.1.
+should therefore support HTTP version 1.1. 
+
+The maximum URL length accepted by ArangoDB is 16K. Incoming requests with
+longer URLs will be rejected with an HTTP 414 (Request-URI too long) error.
 
 Keep-Alive and Authentication {#CommunicationKeepAlive}
 =======================================================
@@ -21,18 +29,33 @@ ArangoDB will close connections automatically for clients that send requests
 using HTTP 1.0, except if they send an `Connection: Keep-Alive` header.
 
 The default Keep-Alive timeout can be specified at server start using the
-`\-\-server.keep\-alive\-timeout` parameter.
+`--server.keep-alive-timeout` parameter.
 
 Client authentication is done by using the `Authorization` HTTP header.
 ArangoDB supports Basic authentication.
 
 Authentication is optional. To enforce authentication for incoming requested,
-the server must be started with the option `\-\-server.disable-authentication`.
+the server must be started with the option `--server.disable-authentication`.
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
 requests (see @ref CommunicationCors). The response to an HTTP OPTIONS request
 will be generic and not expose any private data.
+
+Please note that when authentication is turned on in ArangoDB, it will by
+default affect all incoming requests. Since ArangoDB 1.4, there is an additional
+option to restrict authentication to requests to the ArangoDB internal APIs and
+the admin interface. 
+This option can be used to expose a public API built with ArangoDB to the outside
+world without the need for HTTP authentication, but to still protect the usage of the
+ArangoDB API (i.e. `/_api/*`) and the admin interface (i.e. `/_admin/*`) with
+HTTP authentication.
+
+This behavior can be controlled with the option `--server.authenticate-system-only`
+startup parameter. It is set to `false` by default so when using authentication,
+all incoming requests need HTTP authentication. Setting the option to `false` will
+only require requests to the internal functionality require authentication but 
+will allow unauthenticated requests to all other URLs.
 
 Error Handling {#CommunicationErrors}
 =====================================

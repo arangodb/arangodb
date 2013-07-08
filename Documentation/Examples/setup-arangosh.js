@@ -5,7 +5,7 @@ db.demo.save({
   "firstName" : "Hugo",
   "lastName" : "Schlonz",
   "address" : {
-    "street" : "Strasse 1",
+   "street" : "Strasse 1",
     "city" : "Hier"
   },
   "hobbies" : [
@@ -16,4 +16,4 @@ db.demo.save({
 });
 
 db._drop("animals");
-db._create("animals");
+db._create("animals"); 

@@ -1,8 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, window, arangoCollection, $, arangoHelper, data */
-/*global arrayContainer:true, SliderInstance:true, DomObjects:true */
+/*global window, $  */
 
-arangoHelper = {
+window.arangoHelper = {
   CollectionTypes: {},
   systemAttributes: function () {
     return {
@@ -35,6 +34,9 @@ arangoHelper = {
       text: message,
       sticky: true,
       before_open: function(){
+        if($('.gritter-item-wrapper').length == 3) {
+          return false;
+        }
         returnVal = true;
       }
     });
@@ -95,7 +97,7 @@ arangoHelper = {
       sIndent = "";
     }
     var sIndentStyle = " ";
-    var sDataType = arangoHelper.RealTypeOf(oData);
+    var sDataType = self.RealTypeOf(oData);
 
     if (sDataType === "array") {
       if (oData.length === 0) {
@@ -126,7 +128,7 @@ arangoHelper = {
       }
 
       // display relevant data type
-      switch (arangoHelper.RealTypeOf(vValue)) {
+      switch (self.RealTypeOf(vValue)) {
         case "array":
           case "object":
           sHTML += self.FormatJSON(vValue, (sIndent + sIndentStyle));

@@ -51,39 +51,58 @@ using namespace std;
 
 string HttpResponse::responseString (HttpResponseCode code) {
   switch (code) {
+    //  Informational 1xx
+    case CONTINUE:                        return "100 Continue";
+    case SWITCHING_PROTOCOLS:             return "101 Switching Protocols";
+
     //  Success 2xx
-    case OK:                   return "200 OK";
-    case CREATED:              return "201 Created";
-    case ACCEPTED:             return "202 Accepted";
-    case PARTIAL:              return "203 Partial Information";
-    case NO_CONTENT:           return "204 No Content";
+    case OK:                              return "200 OK";
+    case CREATED:                         return "201 Created";
+    case ACCEPTED:                        return "202 Accepted";
+    case PARTIAL:                         return "203 Partial Information";
+    case NO_CONTENT:                      return "204 No Content";
+    case RESET_CONTENT:                   return "205 Reset Content";
+    case PARTIAL_CONTENT:                 return "206 Partial Content";
 
     //  Redirection 3xx
-    case MOVED_PERMANENTLY:    return "301 Moved";
-    case FOUND:                return "302 Found";
-    case SEE_OTHER:            return "303 See Other";
-    case NOT_MODIFIED:         return "304 Not Modified";
-    case TEMPORARY_REDIRECT:   return "307 Temporary Redirect";
+    case MOVED_PERMANENTLY:               return "301 Moved";
+    case FOUND:                           return "302 Found";
+    case SEE_OTHER:                       return "303 See Other";
+    case NOT_MODIFIED:                    return "304 Not Modified";
+    case TEMPORARY_REDIRECT:              return "307 Temporary Redirect";
+    case PERMANENT_REDIRECT:              return "308 Permanent Redirect";
 
     //  Error 4xx, 5xx
-    case BAD:                  return "400 Bad Request";
-    case UNAUTHORIZED:         return "401 Unauthorized";
-    case PAYMENT:              return "402 Payment Required";
-    case FORBIDDEN:            return "403 Forbidden";
-    case NOT_FOUND:            return "404 Not Found";
-    case METHOD_NOT_ALLOWED:   return "405 Method Not Supported";
-    case CONFLICT:             return "409 Conflict";
-    case LENGTH_REQUIRED:      return "411 Length Required";
-    case PRECONDITION_FAILED:  return "412 Precondition Failed";
-    case ENTITY_TOO_LARGE:     return "413 Request Entity Too Large";
-    case I_AM_A_TEAPOT:        return "418 I'm a teapot";
-    case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
-    case HEADER_TOO_LARGE:     return "431 Request Header Fields Too Large";
+    case BAD:                             return "400 Bad Request";
+    case UNAUTHORIZED:                    return "401 Unauthorized";
+    case PAYMENT_REQUIRED:                return "402 Payment Required";
+    case FORBIDDEN:                       return "403 Forbidden";
+    case NOT_FOUND:                       return "404 Not Found";
+    case METHOD_NOT_ALLOWED:              return "405 Method Not Supported";
+    case NOT_ACCEPTABLE:                  return "406 Not Acceptable";
+    case REQUEST_TIMEOUT:                 return "408 Request Timeout";
+    case CONFLICT:                        return "409 Conflict";
+    case GONE:                            return "410 Gone";
+    case LENGTH_REQUIRED:                 return "411 Length Required";
+    case PRECONDITION_FAILED:             return "412 Precondition Failed";
+    case REQUEST_ENTITY_TOO_LARGE:        return "413 Request Entity Too Large";
+    case REQUEST_URI_TOO_LONG:            return "414 Request-URI Too Long";
+    case UNSUPPORTED_MEDIA_TYPE:          return "415 Unsupported Media Type";
+    case REQUESTED_RANGE_NOT_SATISFIABLE: return "416 Requested Range Not Satisfiable";
+    case EXPECTATION_FAILED:              return "417 Expectation Failed";
+    case I_AM_A_TEAPOT:                   return "418 I'm a teapot";
+    case UNPROCESSABLE_ENTITY:            return "422 Unprocessable Entity";
+    case PRECONDITION_REQUIRED:           return "428 Precondition Required"; 
+    case TOO_MANY_REQUESTS:               return "429 Too Many Requests";
+    case REQUEST_HEADER_FIELDS_TOO_LARGE: return "431 Request Header Fields Too Large";
 
-    case SERVER_ERROR:         return "500 Internal Error";
-    case NOT_IMPLEMENTED:      return "501 Not Implemented";
-    case BAD_GATEWAY:          return "502 Bad Gateway";
-    case SERVICE_UNAVAILABLE:  return "503 Service Temporarily Unavailable";
+    case SERVER_ERROR:                    return "500 Internal Error";
+    case NOT_IMPLEMENTED:                 return "501 Not Implemented";
+    case BAD_GATEWAY:                     return "502 Bad Gateway";
+    case SERVICE_UNAVAILABLE:             return "503 Service Temporarily Unavailable";
+    case HTTP_VERSION_NOT_SUPPORTED:      return "505 HTTP Version Not Supported";
+    case BANDWIDTH_LIMIT_EXCEEDED:        return "509 Bandwidth Limit Exceeded";
+    case NOT_EXTENDED:                    return "510 Not Extended";
 
     // default
     default:
@@ -100,33 +119,54 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
   int number = ::atoi(str.c_str());
 
   switch (number) {
+    case 100: return CONTINUE;
+    case 101: return SWITCHING_PROTOCOLS;
+
     case 200: return OK;
     case 201: return CREATED;
     case 202: return ACCEPTED;
     case 203: return PARTIAL;
     case 204: return NO_CONTENT;
+    case 205: return RESET_CONTENT;
+    case 206: return PARTIAL_CONTENT;
 
     case 301: return MOVED_PERMANENTLY;
     case 302: return FOUND;
     case 303: return SEE_OTHER;
     case 304: return NOT_MODIFIED;
     case 307: return TEMPORARY_REDIRECT;
+    case 308: return PERMANENT_REDIRECT;
 
     case 400: return BAD;
     case 401: return UNAUTHORIZED;
-    case 402: return PAYMENT;
+    case 402: return PAYMENT_REQUIRED;
     case 403: return FORBIDDEN;
     case 404: return NOT_FOUND;
     case 405: return METHOD_NOT_ALLOWED;
+    case 406: return NOT_ACCEPTABLE;
+    case 408: return REQUEST_TIMEOUT;
     case 409: return CONFLICT;
+    case 410: return GONE;
+    case 411: return LENGTH_REQUIRED;
     case 412: return PRECONDITION_FAILED;
+    case 413: return REQUEST_ENTITY_TOO_LARGE;
+    case 414: return REQUEST_URI_TOO_LONG;
+    case 415: return UNSUPPORTED_MEDIA_TYPE;
+    case 416: return REQUESTED_RANGE_NOT_SATISFIABLE;
+    case 417: return EXPECTATION_FAILED;
     case 418: return I_AM_A_TEAPOT;
     case 422: return UNPROCESSABLE_ENTITY;
+    case 428: return PRECONDITION_REQUIRED;
+    case 429: return TOO_MANY_REQUESTS;
+    case 431: return REQUEST_HEADER_FIELDS_TOO_LARGE;
 
     case 500: return SERVER_ERROR;
     case 501: return NOT_IMPLEMENTED;
     case 502: return BAD_GATEWAY;
     case 503: return SERVICE_UNAVAILABLE;
+    case 505: return HTTP_VERSION_NOT_SUPPORTED;
+    case 509: return BANDWIDTH_LIMIT_EXCEEDED;
+    case 510: return NOT_EXTENDED;
 
     default:  return NOT_IMPLEMENTED;
   }

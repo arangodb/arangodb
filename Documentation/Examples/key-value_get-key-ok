@@ -1,7 +1,0 @@
-  HTTP/1.1 200 OK
-  x-voc-created: 2010-09-15T09:35:01Z
-  x-voc-expires: 2011-09-29T08:00:00Z
-  x-voc-extended: {"option1":35,"option2":"x"}
-  ...
-
-  13

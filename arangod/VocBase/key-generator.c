@@ -111,6 +111,7 @@ static int TraditionalInit (TRI_key_generator_t* const generator,
   traditional_keygen_t* data;
 
   data = (traditional_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(traditional_keygen_t), false);
+
   if (data == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -167,7 +168,7 @@ static void TraditionalFree (TRI_key_generator_t* const generator) {
 
 static int TraditionalGenerate (TRI_key_generator_t* const generator,
                                 const size_t maxLength,
-                                const TRI_voc_rid_t rid,
+                                const TRI_voc_tick_t tick,
                                 const char* const userKey,
                                 char* const outBuffer,
                                 size_t* const outLength) {
@@ -207,8 +208,8 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
     current += userKeyLength;
   }
   else {
-    // user has not specified a key, generate one based on rid
-    current += TRI_StringUInt64InPlace(rid, outBuffer);
+    // user has not specified a key, generate one based on tick
+    current += TRI_StringUInt64InPlace(tick, outBuffer);
   }
 
   // add 0 byte
@@ -234,11 +235,11 @@ static TRI_json_t* TraditionalToJson (const TRI_key_generator_t* const generator
   data = (traditional_keygen_t*) generator->_data;
   assert(data != NULL);
 
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json != NULL) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TraditionalName));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, data->_allowUserKeys));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TraditionalName));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, data->_allowUserKeys));
   }
 
   return json;
@@ -314,6 +315,7 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
   autoincrement_keygen_t* data;
 
   data = (autoincrement_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(autoincrement_keygen_t), false);
+
   if (data == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -423,7 +425,7 @@ static uint64_t AutoIncrementNext (const uint64_t lastValue,
 
 static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
                                   const size_t maxLength,
-                                  const TRI_voc_rid_t rid,
+                                  const TRI_voc_tick_t tick,
                                   const char* const userKey,
                                   char* const outBuffer,
                                   size_t* const outLength) {
@@ -466,7 +468,7 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
     }
   }
   else {
-    // user has not specified a key, generate one based on rid
+    // user has not specified a key, generate one based on algorithm
     uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
 
     // bounds and sanity checks
@@ -525,13 +527,13 @@ static TRI_json_t* AutoIncrementToJson (const TRI_key_generator_t* const generat
   data = (autoincrement_keygen_t*) generator->_data;
   assert(data != NULL);
 
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json != NULL) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, AutoIncrementName));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, data->_allowUserKeys));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) data->_offset));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "increment", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) data->_increment));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, AutoIncrementName));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, data->_allowUserKeys));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) data->_offset));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "increment", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) data->_increment));
   }
 
   return json;
@@ -656,11 +658,13 @@ int TRI_CreateKeyGenerator (const TRI_json_t* const parameters,
   }
 
   generator = CreateGenerator(options);
+
   if (generator == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   res = generator->init(generator, options);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeKeyGenerator(generator);
 

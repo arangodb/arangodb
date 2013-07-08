@@ -1,3 +1,0 @@
-/* this is a comment */ RETURN 1
-
-/* these */ RETURN /* are */ 1 /* multiple */ + /* comments */ 1

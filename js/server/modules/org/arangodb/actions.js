@@ -1853,8 +1853,14 @@ function resultException (req, res, err, headers, verbose) {
     switch (num) {
       case arangodb.ERROR_INTERNAL: 
       case arangodb.ERROR_OUT_OF_MEMORY: 
+      case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS: 
         code = exports.HTTP_SERVER_ERROR; 
         break;
+      
+      case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND: 
+      case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND: 
+        code = exports.HTTP_NOT_FOUND;
+        break; 
 
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 

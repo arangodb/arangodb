@@ -1,4 +1,0 @@
-  HTTP/1.1 404 Bad Request
-  ...
-  
-  {"error":true,"code":404,"errorNum":41404,"errorMessage":"Key value pair not found"}

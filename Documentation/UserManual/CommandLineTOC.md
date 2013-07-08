@@ -14,8 +14,10 @@ TOC {#CommandLineTOC}
     - @ref CommandLineGid "gid"
     - @ref CommandLinePidFile "pid-file"
   - @ref CommandLineArangod
+    - @ref CommandLineConsole "console"
     - @ref CommandLineArangoEndpoint "server.endpoint"
     - @ref CommandLineArangoDisableAuthentication "server.disable-authentication"
+    - @ref CommandLineArangoAuthenticateSystemOnly "server.authenticate-system-only"
     - @ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"
     - @ref CommandLineArangoKeyFile "server.keyfile"
     - @ref CommandLineArangoCaFile "server.cafile"
@@ -34,9 +36,12 @@ TOC {#CommandLineTOC}
     - @ref CommandLineArangoJsGcFrequency "javascript.gc-frequency"
     - @ref CommandLineArangoJsGcInterval "javascript.gc-interval"
     - @ref CommandLineArangoJsV8Options "javascript.v8-options"
+  - @ref CommandLineDevelopment
+    - @ref CommandLineArangoDevelopmentMode "development-mode"
   - @ref CommandLineLogging
     - @ref CommandLineLoggingGeneral
       - @ref CommandLineLoggingLogFile "log.file"
+      - @ref CommandLineLoggingLogRequestsFile "log.requests-file"
       - @ref CommandLineLoggingLogSeverity "log.severity"
       - @ref CommandLineLoggingLogSyslog "log.syslog"
     - @ref CommandLineLoggingHuman
@@ -44,7 +49,8 @@ TOC {#CommandLineTOC}
       - @ref CommandLineLoggingLogLineNumber "log.line-number"
       - @ref CommandLineLoggingLogPrefix "log.prefix"
       - @ref CommandLineLoggingLogThread "log.thread"
-      - @ref CommandLineLoggingLogFilter "log.filter"
+      - @ref CommandLineLoggingLogSourceFilter "log.source-filter"
+      - @ref CommandLineLoggingLogContentFilter "log.content-filter"
     - @ref CommandLineLoggingMachine
       - @ref CommandLineLoggingLogApplication "log.application"
       - @ref CommandLineLoggingLogFacility "log.facility"

@@ -1,7 +1,0 @@
-> curl --data @- -X POST --dump - http://localhost:8529/_api/transaction
-{ "collections" : { "read" : "users" }, "action" : "function () { throw \"doh!\"; }" }
-
-HTTP/1.1 500 Internal Error
-content-type: application/json; charset=utf-8
-
-{ "error" : true, "code" : 500, "errorNum" : 500, "errorMessage" : "doh!" }

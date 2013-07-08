@@ -112,6 +112,12 @@ bool TRI_CaseEqualString2 (char const* left, char const* right, size_t n);
 bool TRI_IsPrefixString (char const* full, char const* prefix);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if second string is contained in the first
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsContainedString (char const* full, char const* part);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string, without using a memory zone
 ///
 /// This function can be used when strings need to be returned to other system
@@ -169,6 +175,22 @@ char* TRI_Concatenate2String (char const*, char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate2StringZ (TRI_memory_zone_t*, char const*, char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2String (char const*, size_t, char const*, size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate two strings, with known lengths, using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t*, 
+                                    char const*, 
+                                    size_t, 
+                                    char const*, 
+                                    size_t); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
@@ -268,7 +290,11 @@ char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen);
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLength);
+char* TRI_EscapeControlsCString (TRI_memory_zone_t*, 
+                                 char const* in, 
+                                 size_t inLength, 
+                                 size_t* outLength, 
+                                 bool appendNewline);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using C escapes

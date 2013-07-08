@@ -723,12 +723,14 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name, TRI_json_t* subobject) {
-  TRI_Insert2ArrayJson(zone, object, name, subobject);
-  TRI_Free(zone, subobject);
+  if (object != NULL && subobject != NULL) {
+    TRI_Insert2ArrayJson(zone, object, name, subobject);
+    TRI_Free(zone, subobject);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new attribute name and valuer
+/// @brief adds a new attribute name and value
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject) {

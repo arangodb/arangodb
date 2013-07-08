@@ -90,6 +90,7 @@ int32_t TRI_GetVocBaseColType ();
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
                           TRI_vocbase_t*,
+                          const std::string&,
                           const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////

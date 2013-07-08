@@ -1,5 +1,5 @@
 arango> db.examples.ensureCapConstraint(10);
-{ "id" : "147879/934311", "type" : "cap", "size" : 10, "isNewlyCreated" : true }
+{ "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
 
 arango> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
 

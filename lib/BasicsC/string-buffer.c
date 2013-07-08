@@ -162,7 +162,7 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
 
 void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
   self->_memoryZone = zone;
-  self->_buffer = 0;
+  self->_buffer = NULL;
   self->_current = 0;
   self->_len = 0;
 
@@ -292,9 +292,8 @@ size_t TRI_LengthStringBuffer (TRI_string_buffer_t const * self) {
 /// @brief increases length of the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IncreaseLengthStringBuffer (TRI_string_buffer_t * self, size_t n)
-{
-	self->_current += n;
+void TRI_IncreaseLengthStringBuffer (TRI_string_buffer_t * self, size_t n) {
+  self->_current += n;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,8 +309,10 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
-  self->_current = self->_buffer;
-  memset(self->_buffer, 0, self->_len + 1);
+  if (self->_buffer != NULL) {
+    self->_current = self->_buffer;
+    memset(self->_buffer, 0, self->_len + 1);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

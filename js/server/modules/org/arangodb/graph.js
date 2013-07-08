@@ -36,7 +36,8 @@ var arangodb = require("org/arangodb"),
   Edge = common.Edge,
   Graph = common.Graph,
   Vertex = common.Vertex,
-  GraphArray = common.GraphArray;
+  GraphArray = common.GraphArray,
+  Iterator = common.Iterator;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
@@ -60,8 +61,7 @@ var findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = db._create(name);
-  } 
-  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
+  } else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -81,8 +81,7 @@ var findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = db._createEdgeCollection(name);
-  }
-  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
+  } else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
@@ -98,27 +97,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                              Edge
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoGraph
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new edge object
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -126,74 +104,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the to vertex
-///
-/// @FUN{@FA{edge}.getInVertex()}
-///
-/// Returns the vertex at the head of the @FA{edge}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-in-vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getInVertex = function () {
-  return this._graph.constructVertex(this._properties._to);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the from vertex
-///
-/// @FUN{@FA{edge}.getOutVertex()}
-///
-/// Returns the vertex at the tail of the @FA{edge}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-get-out-vertex
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getOutVertex = function () {
-  return this._graph.constructVertex(this._properties._from);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the other vertex
-///
-/// @FUN{@FA{edge}.getPeerVertex(@FA{vertex})}
-///
-/// Returns the peer vertex of the @FA{edge} and the @FA{vertex}.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arango> v1 = g.addVertex("1");
-/// Vertex("1")
-///
-/// arango> v2 = g.addVertex("2");
-/// Vertex("2")
-///
-/// arango> e = g.addEdge(v1, v2, "1->2", "knows");
-/// Edge("1->2")
-///
-/// arango> e.getPeerVertex(v1);
-/// Vertex(2)
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-Edge.prototype.getPeerVertex = function (vertex) {
-  if (vertex._properties._id === this._properties._to) {
-    return this._graph.constructVertex(this._properties._from);
-  }
-
-  if (vertex._properties._id === this._properties._from) {
-    return this._graph.constructVertex(this._properties._to);
-  }
-
-  return null;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a property of an edge
@@ -417,50 +327,31 @@ Vertex.prototype.setProperty = function (name, value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of edges
-///
-/// @FUN{@FA{vertex}.degree()}
-///
-/// Returns the number of edges of the @FA{vertex}.
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.degree = function () {
-  return this._graph._edges.edges(this._properties._id).length;
+  return this.getEdges().length;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of in-edges
-///
-/// @FUN{@FA{vertex}.inDegree()}
-///
-/// Returns the number of inbound edges of the @FA{vertex}.
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.inDegree = function () {
-  return this._graph._edges.inEdges(this._properties._id).length;
+  return this.getInEdges().length;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of out-edges
-///
-/// @FUN{@FA{vertex}.outDegree()}
-///
-/// Returns the number of outbound edges of the @FA{vertex}.
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.outDegree = function () {
-  return this._graph._edges.outEdges(this._properties._id).length;
+  return this.getOutEdges().length;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Graph
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -638,7 +529,7 @@ Graph.prototype.drop = function (waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an edge to the graph
+/// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitForSync) {
@@ -649,46 +540,21 @@ Graph.prototype._saveEdge = function(id, out_vertex, in_vertex, shallow, waitFor
   }
 
   var ref = this._edges.save(out_vertex._properties._id,
-                             in_vertex._properties._id, shallow, waitForSync);
+    in_vertex._properties._id,
+    shallow,
+    waitForSync);
+
   return this.constructEdge(ref._id);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a vertex to the graph
-///
-/// @FUN{@FA{graph}.addVertex(@FA{id})}
-///
-/// Creates a new vertex and returns the vertex object. The identifier
-/// @FA{id} must be a unique identifier or null.
-///
-/// @FUN{@FA{graph}.addVertex(@FA{id}, @FA{data})}
-///
-/// Creates a new vertex and returns the vertex object. The vertex contains
-/// the properties defined in @FA{data}.
-///
-/// @EXAMPLES
-///
-/// Without any properties:
-///
-/// @verbinclude graph-graph-add-vertex
-///
-/// With given properties:
-///
-/// @verbinclude graph-graph-add-vertex2
+/// @brief saves a vertex to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addVertex = function (id, data, waitForSync) {
+Graph.prototype._saveVertex = function (id, shallow, waitForSync) {
   var ref;
-  var shallow;
 
-  if (data === null || typeof data !== "object") {
-    shallow = {};
-  }
-  else {
-    shallow = data._shallowCopy || {};
-  }
-
-  if (id !== undefined && id !== null) {
+  if (is.existy(id)) {
     shallow._key = String(id);
   }
 
@@ -710,24 +576,20 @@ Graph.prototype.addVertex = function (id, data, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
-  var ref;
-  var vertex;
+  var ref, vertex;
 
   try {
     ref = this._vertices.document(id);
-  }
-  catch (e) {
+  } catch (e) {
     ref = null;
   }
 
   if (ref !== null) {
     vertex = this.constructVertex(ref);
-  }
-  else {
+  } else {
     try {
       vertex = this.constructVertex(id);
-    }
-    catch (e1) {
+    } catch (e1) {
       vertex = null;
     }
   }
@@ -749,30 +611,12 @@ Graph.prototype.getVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
-  var that = this;
-  var all = this._vertices.all();
-  var v;
-  var Iterator;
-
-  Iterator = function () {
-    this.next = function next() {
-      if (all.hasNext()) {
-        return that.constructVertex(all.next());
-      }
-
-      return undefined;
+  var all = this._vertices.all(),
+    graph = this,
+    wrapper = function(object) {
+        return graph.constructVertex(object);
     };
-
-    this.hasNext = function hasNext() {
-      return all.hasNext();
-    };
-
-    this._PRINT = function (context) {
-      context.output += "[vertex iterator]";
-    };
-  };
-
-  return new Iterator();
+  return new Iterator(wrapper, graph.constructVertex, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -788,24 +632,20 @@ Graph.prototype.getVertices = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdge = function (id) {
-  var ref;
-  var edge;
+  var ref, edge;
 
   try {
     ref = this._edges.document(id);
-  }
-  catch (e) {
+  } catch (e) {
     ref = null;
   }
 
   if (ref !== null) {
     edge = this.constructEdge(ref);
-  }
-  else {
+  } else {
     try {
       edge = this.constructEdge(id);
-    }
-    catch (e1) {
+    } catch (e1) {
       edge = null;
     }
   }
@@ -827,30 +667,12 @@ Graph.prototype.getEdge = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
-  var that = this;
-  var all = this._edges.all();
-  var v;
-  var Iterator;
-
-  Iterator = function () {
-    this.next = function next() {
-      if (all.hasNext()) {
-        return that.constructEdge(all.next());
-      }
-
-      return undefined;
+  var all = this._edges.all(),
+    graph = this,
+    wrapper = function(object) {
+        return graph.constructEdge(object);
     };
-
-    this.hasNext = function hasNext() {
-      return all.hasNext();
-    };
-
-    this._PRINT = function (context) {
-      context.output += "[edge iterator]";
-    };
-  };
-
-  return new Iterator();
+  return new Iterator(wrapper, all, "[edge iterator]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -866,15 +688,14 @@ Graph.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex, waitForSync) {
-  var result;
-  var graph = this;
+  var result, graph = this;
 
   this.emptyCachedPredecessors();
 
   if (vertex._properties) {
     result = this._vertices.remove(vertex._properties, true, waitForSync);
 
-    if (! result) {
+    if (!result) {
       throw "cannot delete vertex";
     }
 
@@ -913,26 +734,6 @@ Graph.prototype.removeEdge = function (edge, waitForSync) {
     this._edgesCache[edge._properties._id] = undefined;
     edge._properties = undefined;
   }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of vertices
-///
-/// @FUN{@FA{graph}.order()}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.order = function () {
-  return this._vertices.count();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of edges
-///
-/// @FUN{@FA{graph}.size()}
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype.size = function () {
-  return this._edges.count();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -997,8 +798,7 @@ Graph.prototype.constructVertex = function (data) {
 
   if (typeof data === "string") {
     id = data;
-  }
-  else {
+  } else {
     id = data._id;
   }
 
@@ -1022,21 +822,20 @@ Graph.prototype.constructVertex = function (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function (data) {
-  var id;
+  var id, edge, properties;
 
   if (typeof data === "string") {
     id = data;
-  }
-  else {
+  } else {
     id = data._id;
   }
 
-  var edge = this._edgesCache[id];
+  edge = this._edgesCache[id];
 
   if (edge === undefined) {
-    var properties = this._edges.document(id);
+    properties = this._edges.document(id);
 
-    if (! properties) {
+    if (!properties) {
       throw "accessing a deleted edge";
     }
 

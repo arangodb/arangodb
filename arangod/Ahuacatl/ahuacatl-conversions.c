@@ -242,77 +242,81 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
       break;
 
     case TRI_JSON_LIST: {
-      size_t i;
-      size_t n;
-
       node = TRI_CreateNodeListAql(context);
-      n = json->_value._objects._length;
 
-      for (i = 0; i < n; ++i) {
-        TRI_json_t* subJson;
-        TRI_aql_node_t* member;
+      if (node != NULL) {
+        size_t i, n;
 
-        subJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-        member = TRI_JsonNodeAql(context, subJson);
+        n = json->_value._objects._length;
 
-        if (member) {
-          TRI_PushBackVectorPointer(&node->_members, (void*) member);
-        }
-        else {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
+        for (i = 0; i < n; ++i) {
+          TRI_json_t* subJson;
+          TRI_aql_node_t* member;
+
+          subJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+          member = TRI_JsonNodeAql(context, subJson);
+
+          if (member) {
+            TRI_PushBackVectorPointer(&node->_members, (void*) member);
+          }
+          else {
+            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            return NULL;
+          }
         }
       }
       break;
     }
     case TRI_JSON_ARRAY: {
-      size_t i;
-      size_t n;
-
       node = TRI_CreateNodeArrayAql(context);
-      n = json->_value._objects._length;
 
-      for (i = 0; i < n; i += 2) {
-        TRI_json_t* nameJson;
-        TRI_json_t* valueJson;
-        TRI_aql_node_t* member;
-        TRI_aql_node_t* valueNode;
-        char* name;
+      if (node != NULL) {
+        size_t i, n;
 
-        // json_t containing the array element name
-        nameJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-        assert(nameJson);
-        assert(nameJson->_value._string.data);
-        name = TRI_RegisterStringAql(context, nameJson->_value._string.data, strlen(nameJson->_value._string.data), false);
-        if (! name) {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
-        }
+        n = json->_value._objects._length;
 
-        // json_t containing the array element value
-        valueJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
-        assert(valueJson);
+        for (i = 0; i < n; i += 2) {
+          TRI_json_t* nameJson;
+          TRI_json_t* valueJson;
+          TRI_aql_node_t* member;
+          TRI_aql_node_t* valueNode;
+          char* name;
 
-        valueNode = TRI_JsonNodeAql(context, valueJson);
-        if (! valueNode) {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
-        }
+          // json_t containing the array element name
+          nameJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+          assert(nameJson);
+          assert(nameJson->_value._string.data);
+          name = TRI_RegisterStringAql(context, nameJson->_value._string.data, strlen(nameJson->_value._string.data), false);
+          if (! name) {
+            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            return NULL;
+          }
 
-        member = TRI_CreateNodeArrayElementAql(context, name, valueNode);
-        if (member) {
-          TRI_PushBackVectorPointer(&node->_members, (void*) member);
-        }
-        else {
-          TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-          return NULL;
+          // json_t containing the array element value
+          valueJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
+          assert(valueJson);
+
+          valueNode = TRI_JsonNodeAql(context, valueJson);
+          if (! valueNode) {
+            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            return NULL;
+          }
+
+          member = TRI_CreateNodeArrayElementAql(context, name, valueNode);
+          if (member) {
+            TRI_PushBackVectorPointer(&node->_members, (void*) member);
+          }
+          else {
+            TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+            return NULL;
+          }
         }
       }
       break;
     }
   }
 
-  if (! node) {
+  if (node == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 

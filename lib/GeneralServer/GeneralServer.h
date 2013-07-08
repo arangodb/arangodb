@@ -415,7 +415,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool openEndpoint (Endpoint* endpoint) {
-          ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), endpoint, true);
+          ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), endpoint);
 
           // ...................................................................
           // For some reason we have failed in our endeavour to bind to the socket -

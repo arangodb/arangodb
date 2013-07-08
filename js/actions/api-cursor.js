@@ -57,10 +57,10 @@ var QUERY = internal.AQL_QUERY;
 /// @RESTBODYPARAM{query,json,required}
 /// The following attributes can be used inside the JSON object:
 /// - `query`: contains the query string to be executed (mandatory)
-/// - `count`: boolean flag that indicates whether the number of documents
-///   found should be returned as "count" attribute in the result set (optional).
-///   Calculating the "count" attribute might have a performance penalty for
-///   some queries so this option is turned off by default.
+/// - `count`: boolean flag that indicates whether the total number of documents
+///   in the result set should be returned in the "count" attribute of the result
+///   (optional). Calculating the "count" attribute might in the future have a 
+///   performance impact for some queries so this option is turned off by default.
 /// - `batchSize`: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
@@ -76,9 +76,10 @@ var QUERY = internal.AQL_QUERY;
 /// - `query`: contains the query string to be executed (mandatory)
 ///
 /// - `count`: boolean flag that indicates whether the number of documents
-///   found should be returned as "count" attribute in the result set (optional).
-///   Calculating the "count" attribute might have a performance penalty for
-///   some queries so this option is turned off by default.
+///   in the result set should be returned in the "count" attribute of the result (optional).
+///   Calculating the "count" attribute might in the future have a performance 
+///   impact for some queries so this option is turned off by default, and "count" 
+///   is only returned when requested.
 ///
 /// - `batchSize`: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
@@ -136,6 +137,10 @@ var QUERY = internal.AQL_QUERY;
 /// is returned if the JSON representation is malformed or the query specification is
 /// missing from the request.
 ///
+/// @RESTRETURNCODE{404}
+/// The server will respond with `HTTP 404` in case a non-existing collection is
+/// accessed in the query.
+///
 /// @EXAMPLES
 ///
 /// Executes a query and extract the result in a single go:
@@ -149,13 +154,13 @@ var QUERY = internal.AQL_QUERY;
 ///     db.products.save({"hello2":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 2 RETURN p", ' +
-///       '"count" : true, ' + 
-///       '"batchSize" : 2 ' +
-///     '}';
+///     var body = {
+///       query: "FOR p IN products LIMIT 2 RETURN p",
+///       count: true, 
+///       batchSize: 2
+///     };
 /// 
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
 ///     assert(response.code === 201);
 /// 
@@ -176,13 +181,13 @@ var QUERY = internal.AQL_QUERY;
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' +
-///       '"count" : true, ' +
-///       '"batchSize" : 2 ' +
-///     '}';
+///     var body = { 
+///       query: "FOR p IN products LIMIT 5 RETURN p",
+///       count: true,
+///       batchSize: 2
+///     };
 /// 
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
 ///     assert(response.code === 201);
 /// 
@@ -207,15 +212,15 @@ var QUERY = internal.AQL_QUERY;
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
-///     var body = '{ ' + 
-///       '"query" : "FOR u IN unknowncoll LIMIT 2 RETURN u", ' +
-///       '"count" : true, ' + 
-///       '"batchSize" : 2 ' +
-///     '}';
+///     var body = { 
+///       query: "FOR u IN unknowncoll LIMIT 2 RETURN u", 
+///       count: true, 
+///       batchSize: 2 
+///     };
 /// 
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
-///     assert(response.code === 400);
+///     assert(response.code === 404);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -313,12 +318,12 @@ function post_api_cursor(req, res) {
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' +
-///       '"count" : true, ' +
-///       '"batchSize" : 2 ' +
-///     '}';
-///     var response = logCurlRequest('POST', url, body);
+///     var body = {
+///       query: "FOR p IN products LIMIT 5 RETURN p", 
+///       count: true, 
+///       batchSize: 2 
+///     };
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;
@@ -425,12 +430,12 @@ function put_api_cursor (req, res) {
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = '{ ' +
-///       '"query" : "FOR p IN products LIMIT 5 RETURN p", ' + 
-///       '"count" : true, ' +
-///       '"batchSize" : 2 ' +
-///     '}';
-///     var response = logCurlRequest('POST', url, body);
+///     var body = {
+///       query: "FOR p IN products LIMIT 5 RETURN p", 
+///       count: true,
+///       batchSize: 2
+///     };
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///     logJsonResponse(response);
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;

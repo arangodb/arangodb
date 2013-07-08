@@ -43,16 +43,32 @@
 
 TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
   TRI_aql_parser_t* parser;
+  int res;
 
   assert(query);
 
   parser = (TRI_aql_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_parser_t), false);
-  if (!parser) {
+
+  if (parser == NULL) {
     return NULL;
   }
 
-  TRI_InitVectorPointer(&parser->_scopes, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&parser->_stack, TRI_UNKNOWN_MEM_ZONE);
+  res = TRI_InitVectorPointer2(&parser->_scopes, TRI_UNKNOWN_MEM_ZONE, 4);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parser);
+
+    return NULL;
+  }
+
+  res = TRI_InitVectorPointer2(&parser->_stack, TRI_UNKNOWN_MEM_ZONE, 4);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorPointer(&parser->_scopes);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, parser);
+
+    return NULL;
+  }
 
   parser->_buffer = (char*) query;
   parser->_length = strlen(query);
@@ -65,11 +81,11 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeParserAql (TRI_aql_parser_t* const parser) {
-  TRI_DestroyVectorPointer(&parser->_scopes);
-  TRI_DestroyVectorPointer(&parser->_stack);
+  if (parser != NULL) {
+    TRI_DestroyVectorPointer(&parser->_scopes);
+    TRI_DestroyVectorPointer(&parser->_stack);
 
-  // free lexer
-  if (parser) {
+    // free lexer
     Ahuacatllex_destroy(parser->_scanner);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parser);
   }
