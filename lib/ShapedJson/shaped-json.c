@@ -2128,7 +2128,7 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringifies a data blob into a json object
+/// @brief stringifies a data blob into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
@@ -2543,6 +2543,18 @@ bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
   *length = 0;
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringifies a data blob into a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringifyJsonShapeData (TRI_shaper_t* shaper,
+                                 TRI_string_buffer_t* buffer,
+                                 TRI_shape_t const* shape,
+                                 char const* data,
+                                 uint64_t size) {
+  return StringifyJsonShapeData(shaper, buffer, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
