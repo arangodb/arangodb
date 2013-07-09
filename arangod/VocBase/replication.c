@@ -1634,9 +1634,13 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 
 int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
                                 TRI_replication_log_state_t* state) {
+  TRI_vocbase_t* vocbase;
   int res;
 
   res = TRI_ERROR_NO_ERROR;
+  vocbase = logger->_vocbase;
+
+  TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
   
   TRI_WriteLockReadWriteLock(&logger->_statusLock);
 
@@ -1650,6 +1654,8 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
   }
 
   TRI_WriteUnlockReadWriteLock(&logger->_statusLock);
+  
+  TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
 
   return res;
 } 
