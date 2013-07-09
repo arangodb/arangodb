@@ -177,17 +177,12 @@
         },
         toConformToToolbox: function() {
           var box = this.actual;
-          _.each(box.children, function(div) {
-            expect(div).toBeTag("div");
-            expect(div).toBeOfClass("btn btn-group");
-            expect(div.children.length).toEqual(2);
-            _.each(div.children, function(btn) {
-              expect(btn).toBeTag("button");
-              expect(btn).toBeOfClass("btn btn-icon");
-              expect(btn.children.length).toEqual(1);
-              expect(btn.firstChild).toBeTag("i");
-              expect(btn.firstChild.className).toMatch(/^icon-\S+ icon-white$/);
-            });
+          _.each(box.children, function(btn) {
+            expect(btn).toBeTag("button");
+            expect(btn).toBeOfClass("btn btn-icon");
+            expect(btn.children.length).toEqual(1);
+            expect(btn.firstChild).toBeTag("i");
+            expect(btn.firstChild.className).toMatch(/^icon-\S+ icon-white$/);
           });          
           return true;
         }
