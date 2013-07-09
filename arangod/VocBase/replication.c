@@ -2255,6 +2255,29 @@ void TRI_InitApplyStateReplication (TRI_replication_apply_state_t* state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the replication application state file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveApplyStateReplication (TRI_vocbase_t* vocbase) {
+  char* filename;
+  int res;
+
+  filename = GetApplyStateFilename(vocbase);
+
+  if (filename == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (TRI_ExistsFile(filename)) {
+    res = TRI_UnlinkFile(filename);
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application state to a file
 ////////////////////////////////////////////////////////////////////////////////
 

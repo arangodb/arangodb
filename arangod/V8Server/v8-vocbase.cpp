@@ -3094,8 +3094,14 @@ static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
     forceFullSync = TRI_ObjectToBoolean(argv[1]);
   }
 
+  string errorMsg;
+
   ReplicationFetcher rf(vocbase, masterEndpoint, 600);
-  rf.run(forceFullSync);
+  int res = rf.run(forceFullSync, errorMsg);
+
+  if (res !=  TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
+  }
 
   return scope.Close(v8::True());
 }
