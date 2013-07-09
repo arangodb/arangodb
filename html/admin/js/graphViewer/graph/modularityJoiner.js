@@ -74,7 +74,7 @@ function ModularityJoiner() {
         }
       },
       keys: nativeKeys || function(obj) {
-        if (obj !== Object(obj)) {
+        if (typeof obj !== "object" || Array.isArray(obj)) {
           throw new TypeError('Invalid object');
         }
         var keys = [], key;
@@ -351,13 +351,6 @@ function ModularityJoiner() {
         if (degrees[t]._in === 0 && degrees[t]._out === 0) {
           delete degrees[t];
         }
-      } else {
-        /*
-        self.postMessage({
-          cmd: "debug",
-          result: "Source not stored",
-        });
-        */
       }
     },
   
@@ -531,6 +524,7 @@ function ModularityJoiner() {
     var s = comm.sID,
       l = comm.lID,
       q = comm.val;
+    
     comms[s] = comms[s] || {nodes: [s], q: 0};
     if (comms[l]) {
       comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
@@ -586,10 +580,6 @@ function ModularityJoiner() {
   ////////////////////////////////////
    
   getCommunity = function(limit, focus) {
-    if (isRunning) {
-      throw "Still running.";
-    }
-    isRunning = true;
     var coms = {},
       res = [],
       dist = {},
@@ -616,14 +606,12 @@ function ModularityJoiner() {
           delete coms[key];
         }
       });
-      
+    
       res = _.pluck(_.values(coms), "nodes");
       dist = floatDist(focus);
       res.sort(sortByDistance);
-      isRunning = false;
       return res[0];
     }
-    isRunning = false;
     return getBestCommunity(coms);
   };
   
