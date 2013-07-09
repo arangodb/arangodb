@@ -109,11 +109,11 @@ static inline bool IsVisible (TRI_doc_mptr_t const* header) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection revision id with the marker's tick value
+/// @brief set the collection tick with the marker's tick value
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void SetRevision (TRI_document_collection_t* document,
-                                TRI_voc_tick_t tick) {
+static inline void SetTick (TRI_document_collection_t* document,
+                            TRI_voc_tick_t tick) {
   TRI_col_info_t* info = &document->base.base._info;
 
   if (tick > info->_tick) {
@@ -849,21 +849,24 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
                               TRI_doc_document_key_marker_t* marker,
                               TRI_doc_mptr_t* header,
                               TRI_voc_size_t totalSize,
+                              TRI_df_marker_t** result,
                               bool waitForSync) {
-  TRI_df_marker_t* result;
   TRI_voc_fid_t fid;
   int res;
 
-  res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, &result, waitForSync);
+  assert(totalSize == marker->base._size);
+  res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, result, waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // writing the element into the datafile has succeeded
     TRI_doc_datafile_info_t* dfi;
+    
+    assert(*result != NULL);
 
     // update the header with the correct fid and the positions in the datafile
     header->_fid  = fid;
-    header->_data = ((char*) result);
-    header->_key  = ((char*) result) + marker->_offsetKey; 
+    header->_data = ((char*) *result);
+    header->_key  = ((char*) *result) + marker->_offsetKey; 
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid, true);
@@ -983,16 +986,19 @@ static int WriteRemoveMarker (TRI_document_collection_t* document,
                               TRI_doc_deletion_key_marker_t* marker,
                               TRI_doc_mptr_t* header,
                               TRI_voc_size_t totalSize,
+                              TRI_df_marker_t** result,
                               bool waitForSync) {
-  TRI_df_marker_t* result;
   TRI_voc_fid_t fid;
   int res;
 
-  res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, &result, waitForSync);
+  assert(totalSize == marker->base._size);
+  res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, result, waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // writing the element into the datafile has succeeded
     TRI_doc_datafile_info_t* dfi;
+    
+    assert(*result != NULL);
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, header->_fid, true);
@@ -1153,24 +1159,24 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
                               TRI_doc_mptr_t* header,
                               const TRI_doc_mptr_t* oldHeader,
                               TRI_voc_size_t totalSize,
+                              TRI_df_marker_t** result,
                               bool waitForSync) {
-  TRI_df_marker_t* result;
   TRI_voc_fid_t fid;
   int res;
 
   assert(totalSize == marker->base._size);
-  res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, &result, waitForSync);
+  res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, result, waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // writing the element into the datafile has succeeded
     TRI_doc_datafile_info_t* dfi;
 
-    assert(result != NULL);
+    assert(*result != NULL);
 
     // update the header with the correct fid and the positions in the datafile
     header->_fid  = fid;
-    header->_data = ((char*) result);
-    header->_key  = ((char*) result) + marker->_offsetKey;  
+    header->_data = ((char*) *result);
+    header->_key  = ((char*) *result) + marker->_offsetKey;  
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid, true);
@@ -1955,7 +1961,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid, true);
   }
   
-  SetRevision(document, (TRI_voc_tick_t) d->_rid);
+  SetTick(document, marker->_tick);
 
 #ifdef TRI_ENABLE_LOGGER
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
@@ -2097,7 +2103,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   marker = operation->_marker;
   d = (TRI_doc_deletion_key_marker_t const*) marker;
   
-  SetRevision(document, (TRI_voc_tick_t) d->_rid);
+  SetTick(document, marker->_tick);
   
   if (state->_fid != operation->_fid) {
     // update the state
@@ -3197,6 +3203,9 @@ int TRI_WriteMarkerDocumentCollection (TRI_document_collection_t* document,
     if (forceSync) {
       WaitSync(document, journal, ((char const*) *result) + totalSize);
     }
+    
+    // update tick
+    SetTick(document, (*result)->_tick);
   }
   else {
     // writing the element into the datafile has failed
@@ -3217,6 +3226,7 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
                                           TRI_doc_mptr_t* oldData,
                                           TRI_df_marker_t* marker,
                                           TRI_voc_size_t totalSize,
+                                          TRI_df_marker_t** result,
                                           bool waitForSync) {
   int res;
 
@@ -3227,17 +3237,17 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t* document,
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     assert(oldHeader == NULL);
     assert(newHeader != NULL);
-    res = WriteInsertMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, totalSize, waitForSync);
+    res = WriteInsertMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, totalSize, result, waitForSync);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     assert(oldHeader != NULL);
     assert(newHeader != NULL);
-    res = WriteUpdateMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, oldHeader, totalSize, waitForSync);
+    res = WriteUpdateMarker(document, (TRI_doc_document_key_marker_t*) marker, newHeader, oldHeader, totalSize, result, waitForSync);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     assert(oldHeader != NULL);
     assert(newHeader == NULL);
-    res = WriteRemoveMarker(document, (TRI_doc_deletion_key_marker_t*) marker, oldHeader, totalSize, waitForSync);
+    res = WriteRemoveMarker(document, (TRI_doc_deletion_key_marker_t*) marker, oldHeader, totalSize, result, waitForSync);
   }
   else {
     res = TRI_ERROR_INTERNAL;
@@ -6337,13 +6347,12 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection revision id
+/// @brief set the collection tick
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetRevisionDocumentCollection (TRI_document_collection_t* document,
-                                        TRI_voc_tick_t tick) {
-  TRI_col_info_t* info = &document->base.base._info;
-  info->_tick = tick;
+void TRI_SetTickDocumentCollection (TRI_document_collection_t* document,
+                                    TRI_voc_tick_t tick) {
+  SetTick(document, tick);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
