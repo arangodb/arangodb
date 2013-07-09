@@ -126,13 +126,9 @@ typedef enum {
   TRANSACTION_START   = 2200,
   TRANSACTION_COMMIT  = 2201,
 
-  DOCUMENT_INSERT     = 2300,
-  DOCUMENT_UPDATE     = 2301,
-  DOCUMENT_REMOVE     = 2302,
-
-  MARKER_DOCUMENT     = 2400,
-  MARKER_EDGE         = 2401,
-  MARKER_REMOVE       = 2402,
+  MARKER_DOCUMENT     = 2300,
+  MARKER_EDGE         = 2301,
+  MARKER_REMOVE       = 2302,
 
   REPLICATION_MAX
 }
@@ -488,10 +484,12 @@ TRI_replication_master_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_state_s {
-  TRI_voc_tick_t    _firstContinuousTick;
-  TRI_voc_tick_t    _lastContinuousTick;
-  TRI_voc_tick_t    _lastInitialTick;
-  TRI_server_id_t   _serverId;
+  struct TRI_transaction_s* _trx;
+  TRI_voc_tid_t             _externalTid;
+  TRI_voc_tick_t            _firstContinuousTick;
+  TRI_voc_tick_t            _lastContinuousTick;
+  TRI_voc_tick_t            _lastInitialTick;
+  TRI_server_id_t           _serverId;
 }
 TRI_replication_apply_state_t;
 
