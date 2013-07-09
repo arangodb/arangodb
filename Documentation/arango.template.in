@@ -224,7 +224,7 @@ ALIASES += \
   "RESTHEADERPARAMETERS=@htmlonly<H3>HTTP header parameters</H3>@endhtmlonly" \
   "RESTHEADERPARAM{3}=@htmlonly<div class=\"restheaderparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
   "RESTBODYPARAM{3}=@htmlonly<H3>Body parameters</H3><div class=\"restbodyparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
-  "RESTRETURNCODES=@htmlonly<div class=\"restreturncodes\">Return Codes</div>@endhtmlonly" \
+  "RESTRETURNCODES=@htmlonly<H3>Return Codes</H3>@endhtmlonly" \
   "RESTRETURNCODE{1}=@htmlonly<p></p><div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
   "RESTDESCRIPTION=@htmlonly<H3 class=\"space-before\">Description</H3>@endhtmlonly" \
 
@@ -241,7 +241,7 @@ ALIASES += \
 
 # examples
 ALIASES += \
-  "EXAMPLES=@htmlonly<div class=\"example\">Examples</div>@endhtmlonly" \
+  "EXAMPLES=@htmlonly<H3>Examples</H3>@endhtmlonly" \
   "EXAMPLE_ARANGOSH_OUTPUT{1}=@verbinclude \1.generated@if IGNORE" \
   "END_EXAMPLE_ARANGOSH_OUTPUT=@endif" \
   "EXAMPLE_ARANGOSH_RUN{1}=@verbinclude \1.generated@if IGNORE" \
