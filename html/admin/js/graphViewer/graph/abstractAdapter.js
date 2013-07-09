@@ -44,6 +44,7 @@ function AbstractAdapter(nodes, edges, descendant) {
   }
   
   var self = this,
+    isRunning = false,
     initialX = {},
     initialY = {},
     cachedCommunities = {},
@@ -241,7 +242,10 @@ function AbstractAdapter(nodes, edges, descendant) {
             edgeToPush.type = "s";
             edgeToPush._id = edges[i]._id;
             edgeToPush.source = s;
-            joiner.call("deleteEdge", s._id, t._id);
+            
+            if (!/^\*community/.test(t._id)) {
+              joiner.call("deleteEdge", s._id, t._id);
+            }            
           }
           if (t === nodes[j]) {
             if (edgeToPush.type !== undefined) {
@@ -257,7 +261,9 @@ function AbstractAdapter(nodes, edges, descendant) {
             edgeToPush.type = "t";
             edgeToPush._id = edges[i]._id;
             edgeToPush.target = t;
-            joiner.call("deleteEdge", s._id, t._id);
+            if (!/^\*community/.test(s._id)) {
+              joiner.call("deleteEdge", s._id, t._id);
+            }            
           }
         }
         if (edgeToPush.type !== undefined) {
@@ -311,6 +317,7 @@ function AbstractAdapter(nodes, edges, descendant) {
         removeNode(n);
       });
       nodes.push(commNode);
+      isRunning = false;
     },
     
     joinerCb = function (d) {
@@ -322,9 +329,9 @@ function AbstractAdapter(nodes, edges, descendant) {
       }
       switch (data.cmd) {
         case "debug": 
-          console.log(data.result);
+          //console.log(data.result);
           break;
-        case "getCommunity": 
+        case "getCommunity":
           collapseCommunity(data.result);
           break;
         default:
@@ -332,6 +339,10 @@ function AbstractAdapter(nodes, edges, descendant) {
     },
     
     requestCollapse = function (focus) {
+      if (isRunning) {
+        return;
+      }
+      isRunning = true;
       if (focus) {
         joiner.call("getCommunity", limit, focus._id);
       } else {
@@ -364,12 +375,16 @@ function AbstractAdapter(nodes, edges, descendant) {
           case "t":
             edge = findEdge(e._id);
             edge.target = e.target;
-            joiner.call("insertEdge", edge.source._id, edge.target._id);
+            if (!/^\*community/.test(edge.source._id)) {
+              joiner.call("insertEdge", edge.source._id, edge.target._id);
+            }
             break;
           case "s":
             edge = findEdge(e._id);
             edge.source = e.source;
-            joiner.call("insertEdge", edge.source._id, edge.target._id);
+            if (!/^\*community/.test(edge.target._id)) {
+              joiner.call("insertEdge", edge.source._id, edge.target._id);
+            }
             break;
           case "b":
             edges.push(e.edge);
