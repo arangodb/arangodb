@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function AbstractAdapter(nodes, edges) {
+function AbstractAdapter(nodes, edges, descendant) {
   "use strict";
   
   if (nodes === undefined) {
@@ -37,6 +37,9 @@ function AbstractAdapter(nodes, edges) {
   }
   if (edges === undefined) {
     throw "The edges have to be given.";
+  }
+  if (descendant === undefined) {
+    throw "An inheriting class has to be given.";
   }
   
   var self = this,
@@ -269,7 +272,7 @@ function AbstractAdapter(nodes, edges) {
         i;
         for ( i = 0; i < edges.length; i++ ) {
           if ( edges[i].source === node ) {
-            removed.push(edges[i]);
+            removed.push(edges[i].target);
             node._outboundCounter--;
             edges[i].target._inboundCounter--;
             removeEdgeWithIndex(i);
@@ -287,7 +290,6 @@ function AbstractAdapter(nodes, edges) {
       if (!community || community.length === 0) {
         return;
       }
-      console.log("Collapsing:", community);
       var commId = "*community_" + Math.floor(Math.random()* 1000000),
         commNode = {
           _id: commId,
@@ -313,18 +315,20 @@ function AbstractAdapter(nodes, edges) {
     joinerCb = function (d) {
       var data = d.data;
       if (data.error) {
+        console.log(data.cmd);
         console.log(data.error);
         return;
       }
       switch (data.cmd) {
+        case "debug": 
+          console.log(data.result);
+          break;
         case "getCommunity": 
           collapseCommunity(data.result);
           break;
         case "insertEdge":
-          console.log("Inserted");
           break;
         case "deleteEdge":
-          console.log("Deleted");
           break;
       }
     },
@@ -403,6 +407,35 @@ function AbstractAdapter(nodes, edges) {
     
     setChildLimit = function (pLimit) {
       childLimit = pLimit;
+    },
+    
+    collapseNode = function(node) {
+      node._expanded = false;
+      var subNodes = removeOutboundEdgesFromNode(node);
+      _.each(subNodes, function (n) {
+        if (n._inboundCounter === 0) {
+          collapseNode(n);
+          removeNode(n);
+        }
+      });
+    },
+  
+    expandNode = function(n, startCallback) {
+      if (/^\*community/.test(n._id)) {
+        exports.expandCommunity(n, startCallback);
+      } else {
+        n._expanded = true;
+        descendant.loadNode(n._id, startCallback);
+      }
+    },
+    
+    explore = function (node, startCallback) {
+      if (!node._expanded) {
+        expandNode(node, startCallback);
+      } else {
+        collapseNode(node);
+      }
+      
     };
   
   childLimit = Number.POSITIVE_INFINITY;
@@ -429,6 +462,8 @@ function AbstractAdapter(nodes, edges) {
   
   exports.checkSizeOfInserted = checkSizeOfInserted;
   exports.checkNodeLimit = checkNodeLimit;
+  
+  exports.explore = explore;
   
   return exports;
 }
