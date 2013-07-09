@@ -28,6 +28,7 @@ module.exports = function(karma) {
       'helper/objectsHelper.js',
       'helper/mocks.js',
       'helper/commMock.js',
+      'helper/uiMatchers.js',
 
     // Core Modules
       '../graphViewer.js',
