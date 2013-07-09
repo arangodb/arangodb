@@ -48,7 +48,7 @@ function ArangoAdapter(nodes, edges, config) {
   }
   
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges),
+    absAdapter = new AbstractAdapter(nodes, edges, this),
     api = {},
     queries = {},
     nodeCollection,
@@ -120,14 +120,21 @@ function ArangoAdapter(nodes, edges, config) {
       result = result[0];
       var inserted = {},
         n = absAdapter.insertNode(result[0].vertex),
+        oldLength = nodes.length,
         com, buckets; 
       _.each(result, function(visited) {
         var node = absAdapter.insertNode(visited.vertex),
           path = visited.path;
-        inserted[node._id] = node;
+        if (oldLength < nodes.length) {
+          inserted[node._id] = node;
+          oldLength = nodes.length;
+        }
         _.each(path.vertices, function(connectedNode) {
           var ins = absAdapter.insertNode(connectedNode);
-          inserted[ins._id] = ins;
+          if (oldLength < nodes.length) {
+            inserted[ins._id] = ins;
+            oldLength = nodes.length;
+          }
         });
         _.each(path.edges, function(edge) {
           absAdapter.insertEdge(edge);
@@ -248,6 +255,9 @@ function ArangoAdapter(nodes, edges, config) {
     });
   };
   */
+  
+  self.explore = absAdapter.explore;
+  
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };

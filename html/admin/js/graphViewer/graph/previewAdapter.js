@@ -39,7 +39,7 @@ function PreviewAdapter(nodes, edges, config) {
   }
 
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges),
+    absAdapter = new AbstractAdapter(nodes, edges, this),
     
     parseConfig = function(config) {
       if (config.width !== undefined) {
@@ -62,8 +62,6 @@ function PreviewAdapter(nodes, edges, config) {
         absAdapter.insertEdge(e);
       });
       delete inserted[first._id];
-      absAdapter.checkSizeOfInserted(inserted);
-      absAdapter.checkNodeLimit(first);
       if (callback !== undefined && _.isFunction(callback)) {
         callback(first);
       }
@@ -147,6 +145,8 @@ function PreviewAdapter(nodes, edges, config) {
     
     parseResult(result, callback);
   };
+
+  self.explore = absAdapter.explore;
 
   self.requestCentralityChildren = function(nodeId, callback) {};
   

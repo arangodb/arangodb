@@ -381,12 +381,13 @@ static int LogEvent (TRI_replication_logger_t* logger,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+
+  assert(mptr._data != NULL);
   
   // note the last id that we've logged
   TRI_LockSpin(&logger->_idLock);
-  logger->_state._lastTick = (TRI_voc_tick_t) mptr._rid;
+  logger->_state._lastTick = ((TRI_df_marker_t*) mptr._data)->_tick;
   TRI_UnlockSpin(&logger->_idLock);
-  
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -833,9 +834,6 @@ static bool IterateShape (TRI_shaper_t* shaper,
     append = true;
     withName = true;
   }
-  else {
-    append = false;
-  }
 
   if (append) {
     TRI_replication_dump_t* dump;
@@ -844,11 +842,12 @@ static bool IterateShape (TRI_shaper_t* shaper,
     size_t length;
     int res;
   
-    dump = (TRI_replication_dump_t*) ptr;
+    res    = TRI_ERROR_NO_ERROR;
+    dump   = (TRI_replication_dump_t*) ptr;
     buffer = dump->_buffer;
 
     // append ,
-    if (! TRI_LastCharStringBuffer(buffer) != '{') {
+    if (TRI_LastCharStringBuffer(buffer) != '{') {
       res = TRI_AppendCharStringBuffer(buffer, ',');
     }
 
@@ -889,13 +888,9 @@ static bool IterateShape (TRI_shaper_t* shaper,
 
       if (value != NULL && length > 2) {
         res = TRI_AppendString2StringBuffer(dump->_buffer, value + 1, length - 2);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          dump->_failed = true;
-          return false;
-        }
       }
     }
+
 
     if (res != TRI_ERROR_NO_ERROR) {
       dump->_failed = true;
@@ -1359,8 +1354,6 @@ NEXT_DF:
   return res;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get current state from the replication logger
 /// note: must hold the lock when calling this
@@ -1436,10 +1429,10 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   assert(logger->_trxCollection != NULL);
   assert(logger->_state._active == false);
 
-  logger->_state._lastTick = (TRI_voc_tick_t) ((TRI_collection_t*) collection->_collection)->_info._tick; 
+  logger->_state._lastTick = ((TRI_collection_t*) collection->_collection)->_info._tick; 
   logger->_state._active   = true;
   
-  LOG_INFO("started replication logger for database '%s', last id: %llu", 
+  LOG_INFO("started replication logger for database '%s', last tick: %llu", 
            logger->_databaseName,
            (unsigned long long) logger->_state._lastTick);
 
@@ -1480,7 +1473,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   TRI_CommitTransaction(logger->_trx, 0);
   TRI_FreeTransaction(logger->_trx);
   
-  LOG_INFO("stopped replication logger for database '%s', last id: %llu", 
+  LOG_INFO("stopped replication logger for database '%s', last tick: %llu", 
            logger->_databaseName,
            (unsigned long long) lastTick);
 

@@ -320,6 +320,7 @@ int TRI_WriteOperationDocumentCollection (TRI_document_collection_t*,
                                           TRI_doc_mptr_t*,
                                           TRI_df_marker_t*,
                                           TRI_voc_size_t,
+                                          struct TRI_df_marker_s**,
                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -700,11 +701,11 @@ int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
                                           TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection revision id
+/// @brief set the collection tick
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetRevisionDocumentCollection (TRI_document_collection_t*,
-                                        TRI_voc_tick_t);
+void TRI_SetTickDocumentCollection (TRI_document_collection_t*,
+                                    TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection
