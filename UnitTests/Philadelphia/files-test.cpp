@@ -29,6 +29,7 @@
 
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
+#include "BasicsC/json.h"
 
 using namespace triagens::basics;
 
@@ -181,6 +182,50 @@ BOOST_AUTO_TEST_CASE (tst_absolute_paths) {
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
   BOOST_CHECK_EQUAL("c:file/to/file", path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test slurp file
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_slurp) {
+  size_t length;
+  char* path;
+  char* filename;
+  char* result;
+
+  path = TRI_GetTempPath();
+  filename = TRI_Concatenate2File(path, "files-unittest.tmp");
+
+  // remove file if it exists
+  TRI_UnlinkFile(filename);
+
+  // non-existing file
+  result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, &length);
+  BOOST_CHECK_EQUAL((char*) 0, result);
+
+  TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, "{ \"this\" : true, \"is\" : [ \"a\", \"test\" ] }");
+  bool ok = TRI_SaveJson(filename, json, false);
+  BOOST_CHECK_EQUAL(true, ok);
+
+  // file exists now
+  result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, &length);
+
+  BOOST_CHECK_EQUAL(0, strcmp("{\"this\":true,\"is\":[\"a\",\"test\"]}\n", result));
+  BOOST_CHECK_EQUAL(length, strlen("{\"this\":true,\"is\":[\"a\",\"test\"]}\n"));
+  TRI_Free(TRI_CORE_MEM_ZONE, result);
+
+  // test without length
+  length = 42;
+  result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, 0);
+
+  BOOST_CHECK_EQUAL(0, strcmp("{\"this\":true,\"is\":[\"a\",\"test\"]}\n", result));
+  BOOST_CHECK_EQUAL(42, length);
+  TRI_Free(TRI_CORE_MEM_ZONE, result);
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  TRI_Free(TRI_CORE_MEM_ZONE, filename);
+  TRI_Free(TRI_CORE_MEM_ZONE, path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
