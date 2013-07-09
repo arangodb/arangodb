@@ -347,40 +347,6 @@ static int LogEvent (TRI_replication_logger_t* logger,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify the id of a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-static bool StringifyIdTransaction (TRI_string_buffer_t* buffer,
-                                    const TRI_voc_tid_t tid) {
-  if (buffer == NULL) {
-    return false;
-  }
-
-  APPEND_STRING(buffer, "\"tid\":\"");
-  APPEND_UINT64(buffer, (uint64_t) tid);
-  APPEND_CHAR(buffer, '"');
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify an index context
-////////////////////////////////////////////////////////////////////////////////
-
-static bool StringifyIndex (TRI_string_buffer_t* buffer,
-                            const TRI_idx_iid_t iid) {
-  if (buffer == NULL) {
-    return false;
-  }
-
-  APPEND_STRING(buffer, "\"index\":{\"id\":\"");
-  APPEND_UINT64(buffer, (uint64_t) iid);
-  APPEND_STRING(buffer, "\"}");
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify a collection context 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -458,10 +424,10 @@ static bool StringifyRenameCollection (TRI_string_buffer_t* buffer,
     return false;
   }
 
-  APPEND_STRING(buffer, ",\"name\":\"");
+  APPEND_STRING(buffer, ",\"collection\":{\"name\":\"");
   // name is user-defined, but does not need escaping as collection names are "safe"
   APPEND_STRING(buffer, name);
-  APPEND_STRING(buffer, "\"}");
+  APPEND_STRING(buffer, "\"}}");
 
   return true;
 }
@@ -499,13 +465,9 @@ static bool StringifyDropIndex (TRI_string_buffer_t* buffer,
     return false;
   }
   
-  APPEND_CHAR(buffer, ','); 
-
-  if (! StringifyIndex(buffer, iid)) {
-    return false;
-  }
-  
-  APPEND_CHAR(buffer, '}'); 
+  APPEND_STRING(buffer, ",\"id\":\"");
+  APPEND_UINT64(buffer, (uint64_t) iid);
+  APPEND_STRING(buffer, "\"}");
 
   return true;
 }
@@ -637,13 +599,7 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
   size_t i, n;
   bool printed;
 
-  APPEND_CHAR(buffer, '{');
-   
-  if (! StringifyIdTransaction(buffer, trx->_id)) {
-    return false;
-  }
-
-  APPEND_STRING(buffer, ",\"collections\":[");
+  APPEND_STRING(buffer, "{\"collections\":[");
 
   printed = false;
   n = trx->_collections._length;
@@ -764,11 +720,9 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
   return true;
 }
 
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over the attributes of a replication log marker (shaped json)
+////////////////////////////////////////////////////////////////////////////////
 
 static bool IterateShape (TRI_shaper_t* shaper,
                           TRI_shape_t const* shape,
@@ -776,7 +730,7 @@ static bool IterateShape (TRI_shaper_t* shaper,
                           char const* data,
                           uint64_t size,
                           void* ptr) {
-  bool append = false;
+  bool append   = false;
   bool withName = false;
 
   if (TRI_EqualString(name, "data")) {
@@ -792,8 +746,6 @@ static bool IterateShape (TRI_shaper_t* shaper,
   if (append) {
     TRI_replication_dump_t* dump;
     TRI_string_buffer_t* buffer;
-    char* value;
-    size_t length;
     int res;
   
     res    = TRI_ERROR_NO_ERROR;
@@ -821,23 +773,44 @@ static bool IterateShape (TRI_shaper_t* shaper,
         return false;
       }
 
-      res = TRI_AppendStringStringBuffer(buffer, "\":\"");
+      res = TRI_AppendStringStringBuffer(buffer, "\":");
 
-      TRI_StringValueShapedJson(shape, data, &value, &length);
+      if (shape->_type == TRI_SHAPE_NUMBER) {
+        if (! TRI_StringifyJsonShapeData(shaper, buffer, shape, data, size)) {
+          res = TRI_ERROR_OUT_OF_MEMORY;
+        }
+      }
+      else if (shape->_type == TRI_SHAPE_SHORT_STRING ||
+               shape->_type == TRI_SHAPE_LONG_STRING) {
+        char* value;
+        size_t length;
 
-      if (value != NULL && length > 0) {
-        res = TRI_AppendString2StringBuffer(dump->_buffer, value, length);
-
+        res = TRI_AppendCharStringBuffer(buffer, '"');
+      
         if (res != TRI_ERROR_NO_ERROR) {
           dump->_failed = true;
           return false;
         }
-      }
+
+        TRI_StringValueShapedJson(shape, data, &value, &length);
+
+        if (value != NULL && length > 0) {
+          res = TRI_AppendString2StringBuffer(dump->_buffer, value, length);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            dump->_failed = true;
+            return false;
+          }
+        }
     
-      res = TRI_AppendCharStringBuffer(buffer, '"');
+        res = TRI_AppendCharStringBuffer(buffer, '"');
+      }
     }
     else {
       // append raw value
+      char* value;
+      size_t length;
+
       TRI_StringValueShapedJson(shape, data, &value, &length);
 
       if (value != NULL && length > 2) {
