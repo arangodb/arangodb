@@ -890,6 +890,77 @@
           
         });
         
+        it('should not bucket existing nodes', function() {
+          var lastCallWith, n0, n1, n2, n3, n4, n5, n6;
+          
+          runs(function() {
+            var connectToAllButSelf = function(source, ns) {
+                _.each(ns, function(target) {
+                  if (source !== target) {
+                    insertEdge(edgesCollection, source, target);
+                  }
+                });
+              };
+            
+            n0 = insertNode(nodesCollection, 0);
+            n1 = insertNode(nodesCollection, 1);
+            n2 = insertNode(nodesCollection, 2);
+            n3 = insertNode(nodesCollection, 3);
+            n4 = insertNode(nodesCollection, 4);
+            n5 = insertNode(nodesCollection, 5);
+            n6 = insertNode(nodesCollection, 6);
+
+            connectToAllButSelf(n0, [n1, n2, n3]);
+            
+            insertEdge(edgesCollection, n1, n0);
+            insertEdge(edgesCollection, n1, n2);
+            insertEdge(edgesCollection, n1, n4);
+            insertEdge(edgesCollection, n1, n5);
+            insertEdge(edgesCollection, n1, n6);
+            
+            adapter.setChildLimit(2);
+            
+            spyOn($, "ajax").andCallFake(function(request) {
+              var vars = JSON.parse(request.data).bindVars;
+              if (vars !== undefined) {
+                request.success({result: loadGraph(vars)});
+              }
+            });
+            spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
+              lastCallWith = _.pluck(ns, "_id");
+              return [[ns[0]], [ns[1], ns[2]]];
+            });
+            
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(n0, checkCallbackFunction);
+            
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          }, 1000);
+          
+          runs(function() {
+            expect(lastCallWith).toEqual([n1, n2, n3]);
+            
+            expect(getCommunityNodes().length).toEqual(1);
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(n1, checkCallbackFunction);
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          }, 1000);
+          
+          runs(function() {
+            expect(lastCallWith).toEqual([n4, n5, n6]);
+            
+            expect(getCommunityNodes().length).toEqual(2);;
+          });
+          
+        });
+        
+        
         it('should not replace single nodes by communities', function() {
           var inNodeCol, callNodes;
           
