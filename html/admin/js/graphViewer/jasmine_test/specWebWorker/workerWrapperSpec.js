@@ -117,7 +117,7 @@
         });
       });
       
-      it('should be informed if cunstruction failed', function() {
+      it('should be informed if construction failed', function() {
         var created, error;
         
         runs(function() {
