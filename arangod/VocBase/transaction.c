@@ -478,6 +478,7 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
                                    TRI_df_marker_t* marker,
                                    size_t totalSize) {
   TRI_transaction_operation_t trxOperation;
+  TRI_document_collection_t* document;
   int res;
   
   TRI_DEBUG_INTENTIONAL_FAIL_IF("AddCollectionOperation-OOM") {
@@ -511,16 +512,17 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
-  if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+  document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
+  if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     document->_headers->moveBack(document->_headers, newHeader, oldData);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
-
     document->_headers->unlink(document->_headers, oldHeader);
   }
+
+  // update collection tick
+  TRI_SetTickDocumentCollection(document, marker->_tick);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -554,7 +556,7 @@ static int WriteCollectionAbort (TRI_transaction_collection_t* trxCollection) {
                                           abortMarker->base._size,
                                           NULL,
                                           &result, 
-                                          false /* trxCollection->_waitForSync */);
+                                          false);
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, abortMarker);
 
@@ -680,6 +682,7 @@ static int WriteCollectionOperations (TRI_transaction_collection_t* trxCollectio
                                                &trxOperation->_oldData, 
                                                trxOperation->_marker, 
                                                trxOperation->_markerSize, 
+                                               &result,
                                                false);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1024,7 +1027,7 @@ static int RollbackCollectionOperations (TRI_transaction_collection_t* trxCollec
     
   }
 
-  TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision);
+  TRI_SetTickDocumentCollection(document, trxCollection->_originalTick);
   
   return res;
 }
@@ -1178,7 +1181,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_globalInstance   = globalInstance;
 #endif
   trxCollection->_operations       = NULL;
-  trxCollection->_originalRevision = 0;
+  trxCollection->_originalTick     = 0;
   trxCollection->_locked           = false;
   trxCollection->_compactionLocked = false;
   trxCollection->_waitForSync      = false;
@@ -1868,12 +1871,13 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
   trx = trxCollection->_transaction;
   primary = trxCollection->_collection->_collection;
 
-  if (trxCollection->_originalRevision == 0) {
-    trxCollection->_originalRevision = primary->base._info._tick;
+  if (trxCollection->_originalTick == 0) {
+    trxCollection->_originalTick = primary->base._info._tick;
   }
  
   if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {
     // just one operation in the transaction. we can write the marker directly
+    TRI_df_marker_t* result = NULL;
     const bool doSync = (syncRequested || trxCollection->_waitForSync || trx->_waitForSync);
 
     res = TRI_WriteOperationDocumentCollection((TRI_document_collection_t*) primary,
@@ -1883,8 +1887,10 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                                oldData,
                                                marker, 
                                                totalSize,
+                                               &result,
                                                doSync);
     *directOperation = true;
+
     
 #ifdef TRI_ENABLE_REPLICATION
     if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
@@ -1915,15 +1921,7 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
   else if (trxCollection->_waitForSync) {
     trx->_waitForSync = true;
   }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    // operation succeeded, now update the revision id for the collection  
-
-    // the tick value of a marker must always be greater than the tick value of any other
-    // existing marker in the collection 
-    TRI_SetRevisionDocumentCollection((TRI_document_collection_t*) primary, (TRI_voc_tick_t) rid);
-  }
-
+  
   return res;
 }
 

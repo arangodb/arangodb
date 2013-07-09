@@ -1143,9 +1143,9 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
 /// "parameter.json" file. This function does not require the collection to be
-/// loaded.
-/// The caller must make sure that the files is not modified while this 
-/// function is called.
+/// loaded. 
+/// The caller must make sure that the "parameter.json" file is not modified 
+/// while this function is called.
 ////////////////////////////////////////////////////////////////////////////////
   
 TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
@@ -1173,62 +1173,51 @@ TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return JSON information about the indexes of a collection from the 
-/// collection's index files. This function does not require the collection to 
-/// be loaded.
+/// @brief iterate over the index (JSON) files of a collection, using a callback
+/// function for each.
+/// This function does not require the collection to be loaded.
 /// The caller must make sure that the files is not modified while this 
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
   
-TRI_json_t* TRI_ReadJsonIndexInfo (TRI_vocbase_col_t* collection) {
-  TRI_json_t* json;
+int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
+                                          int (*filter)(TRI_vocbase_col_t*, char const*, void*),
+                                          void* data) {
   TRI_vector_string_t files;
   regex_t re;
   size_t i, n;
+  int res;
 
   if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
-    return NULL;
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   files = TRI_FilesDirectory(collection->_path);
   n = files._length;
-  
-  json = TRI_CreateList2Json(TRI_CORE_MEM_ZONE, n);
-
-  if (json == NULL) {
-    TRI_DestroyVectorString(&files);
-
-    return NULL;
-  }
+  res = TRI_ERROR_NO_ERROR;
   
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
        
     if (regexec(&re, file, (size_t) 0, NULL, 0) == 0) {
-      TRI_json_t* indexJson;
       char* fqn = TRI_Concatenate2File(collection->_path, file);
-      char* error = NULL;
-       
-      indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, fqn, &error);
+
+      res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 
-      if (error != NULL) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-      }
-
-      if (indexJson != NULL) {
-        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, indexJson);
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
       }
     }
   }
-
+  
   TRI_DestroyVectorString(&files);
 
   regfree(&re);
 
-  return json;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
