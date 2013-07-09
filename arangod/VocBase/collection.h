@@ -255,7 +255,7 @@ typedef struct TRI_col_info_s {
   TRI_col_version_t  _version;         // collection version
   TRI_col_type_e     _type;            // collection type
   TRI_voc_cid_t      _cid;             // collection identifier
-  TRI_voc_tick_t     _tick;            // last revision id
+  TRI_voc_tick_t     _tick;            // last tick
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
@@ -385,14 +385,16 @@ void TRI_FreeCollection (TRI_collection_t*);
 struct TRI_json_s* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return JSON information about the indexes of a collection from the 
-/// collection's index files. This function does not require the collection to 
-/// be loaded.
+/// @brief iterate over the index (JSON) files of a collection, using a callback
+/// function for each.
+/// This function does not require the collection to be loaded.
 /// The caller must make sure that the files is not modified while this 
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
   
-struct TRI_json_s* TRI_ReadJsonIndexInfo (struct TRI_vocbase_col_s*);
+int TRI_IterateJsonIndexesCollectionInfo (struct TRI_vocbase_col_s*,
+                                          int (*)(struct TRI_vocbase_col_s*, char const*, void*),
+                                          void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief syncs the active journal of a collection
