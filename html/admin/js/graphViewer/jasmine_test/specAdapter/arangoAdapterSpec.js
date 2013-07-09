@@ -955,7 +955,7 @@
           runs(function() {
             expect(lastCallWith).toEqual([n4, n5, n6]);
             
-            expect(getCommunityNodes().length).toEqual(2);;
+            expect(getCommunityNodes().length).toEqual(2);
           });
           
         });
