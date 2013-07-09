@@ -175,11 +175,15 @@ function FoxxAdapter(nodes, edges, route, config) {
 
     parseResult = function (result, callback) {
       var inserted = {},
-        first = result.first;
+        first = result.first,
+        oldLength = nodes.length;
       first = absAdapter.insertNode(first);
       _.each(result.nodes, function(n) {
         n = absAdapter.insertNode(n);
-        inserted[n._id] = n;
+        if (oldLength < nodes.length) {
+          inserted[n._id] = n;
+          oldLength = nodes.length;
+        }
       });
       _.each(result.edges, function(e) {
         absAdapter.insertEdge(e);
