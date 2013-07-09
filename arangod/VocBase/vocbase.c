@@ -1218,15 +1218,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
       TRI_document_collection_t* document;
 
-#ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
-#endif
-
       document = TRI_OpenDocumentCollection(vocbase, collection->_path);
-
-#ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
-#endif
 
       if (document == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1878,10 +1870,10 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 /// that there will be consistent view of collections & their properties 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
-                                              TRI_voc_tick_t maxTick,
-                                              bool (*filter)(TRI_vocbase_col_t*, void*),
-                                              void* data) {
+TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                             TRI_voc_tick_t maxTick,
+                                             bool (*filter)(TRI_vocbase_col_t*, void*),
+                                             void* data) {
   TRI_vector_pointer_t collections;
   TRI_json_t* json;
   size_t i, n;
