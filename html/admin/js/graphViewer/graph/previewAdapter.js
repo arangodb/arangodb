@@ -62,8 +62,6 @@ function PreviewAdapter(nodes, edges, config) {
         absAdapter.insertEdge(e);
       });
       delete inserted[first._id];
-      absAdapter.checkSizeOfInserted(inserted);
-      absAdapter.checkNodeLimit(first);
       if (callback !== undefined && _.isFunction(callback)) {
         callback(first);
       }
