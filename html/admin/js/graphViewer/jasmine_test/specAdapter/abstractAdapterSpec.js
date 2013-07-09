@@ -2,7 +2,7 @@
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor, waits */
-/*global window, eb, loadFixtures, document */
+/*global window, document, setTimeout */
 /*global $, _, d3*/
 /*global describeInterface*/
 /*global AbstractAdapter*/
@@ -492,7 +492,7 @@
       
       it('should expand a collapsed node', function() {
         var node = {
-          _id: "0",
+          _id: "0"
         },
         loaded = 0,
         loadedNodes = [];
@@ -531,13 +531,13 @@
       
       it('should collapse a tree', function() {
         var root = {
-          _id: "0",
+          _id: "0"
         },
         c1 = {
-          _id: "1",
+          _id: "1"
         },
         c2 = {
-          _id: "2",
+          _id: "2"
         },
         e1 = {
           _id: "0-1",
@@ -572,16 +572,16 @@
       
       it('should not remove referenced nodes on collapsing ', function() {
         var root = {
-          _id: "0",
+          _id: "0"
         },
         c1 = {
-          _id: "1",
+          _id: "1"
         },
         c2 = {
-          _id: "2",
+          _id: "2"
         },
         c3 = {
-          _id: "3",
+          _id: "3"
         },
         e1 = {
           _id: "0-1",
@@ -690,7 +690,7 @@
                 _id: "0"
               },
               c1 = {
-                _id: "1",
+                _id: "1"
               },
               comm = {
                 _id: "*community_1"

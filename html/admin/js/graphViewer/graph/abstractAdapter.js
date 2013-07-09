@@ -168,7 +168,6 @@ function AbstractAdapter(nodes, edges, descendant) {
         target._inboundCounter++;
       }
       if (informJoiner) {
-        console.log("i " + source._id + " " + target._id);
         joiner.call("insertEdge", source._id, target._id);
       }
       return edge;
@@ -189,7 +188,6 @@ function AbstractAdapter(nodes, edges, descendant) {
         s = e.source._id,
         t = e.target._id;
       edges.splice(index, 1);
-      console.log("d " + s + " " + t);
       joiner.call("deleteEdge",s , t);
     },
   
@@ -341,9 +339,10 @@ function AbstractAdapter(nodes, edges, descendant) {
     },
     
     requestCollapse = function (focus) {
-      if (isRunning) return;
+      if (isRunning) {
+        return;
+      }
       isRunning = true;
-      console.log("gC");
       if (focus) {
         joiner.call("getCommunity", limit, focus._id);
       } else {
