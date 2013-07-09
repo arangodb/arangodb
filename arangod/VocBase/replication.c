@@ -96,51 +96,6 @@
 #define APPEND_JSON(buffer, json)   FAIL_IFNOT(TRI_StringifyJson, buffer, json)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication operations
-////////////////////////////////////////////////////////////////////////////////
-
-#define OPERATION_REPLICATION_STOP   "replication-stop"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection operations
-////////////////////////////////////////////////////////////////////////////////
-
-#define OPERATION_COLLECTION_CREATE  "collection-create"
-#define OPERATION_COLLECTION_DROP    "collection-drop"
-#define OPERATION_COLLECTION_RENAME  "collection-rename"
-#define OPERATION_COLLECTION_CHANGE  "collection-change"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index operations
-////////////////////////////////////////////////////////////////////////////////
-
-#define OPERATION_INDEX_CREATE       "index-create"
-#define OPERATION_INDEX_DROP         "index-drop"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction control operations
-////////////////////////////////////////////////////////////////////////////////
-
-#define OPERATION_TRANSACTION_START  "transaction-start"
-#define OPERATION_TRANSACTION_COMMIT "transaction-commit"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document operations
-////////////////////////////////////////////////////////////////////////////////
-
-#define OPERATION_DOCUMENT_INSERT    "document-insert"
-#define OPERATION_DOCUMENT_UPDATE    "document-update"
-#define OPERATION_DOCUMENT_REMOVE    "document-remove"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief marker types 
-////////////////////////////////////////////////////////////////////////////////
-
-#define OPERATION_MARKER_DOCUMENT    "marker-document"
-#define OPERATION_MARKER_EDGE        "marker-edge" 
-#define OPERATION_MARKER_DELETE      "marker-deletion"
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,17 +212,18 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
 /// @brief translate a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TranslateDocumentOperation (TRI_voc_document_operation_e type) {
+static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type) {
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    return OPERATION_DOCUMENT_INSERT;
+    return DOCUMENT_INSERT;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    return OPERATION_DOCUMENT_UPDATE;
+    return DOCUMENT_UPDATE;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    return OPERATION_DOCUMENT_REMOVE;
+    return DOCUMENT_REMOVE;
   }
-  return NULL;
+
+  return REPLICATION_INVALID;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +265,7 @@ static void ReturnBuffer (TRI_replication_logger_t* logger,
 static int LogEvent (TRI_replication_logger_t* logger,
                      TRI_voc_tid_t tid,
                      bool lock,
-                     const char* eventName,
+                     TRI_replication_operation_e type,
                      TRI_string_buffer_t* buffer) {
   TRI_primary_collection_t* primary;
   TRI_shaped_json_t* shaped;
@@ -341,11 +297,9 @@ static int LogEvent (TRI_replication_logger_t* logger,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, eventName));
-  if (tid == 0) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tid", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, "0", 1));
-  }
-  else {
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) type));
+
+  if (tid != 0) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tid", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(tid)));
   }
 
@@ -732,7 +686,7 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
 static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
                                  TRI_document_collection_t* document,
                                  TRI_df_marker_t const* marker) {
-  const char* typeName;
+  TRI_replication_operation_e type;
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
 
@@ -741,28 +695,28 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
   if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     TRI_doc_deletion_key_marker_t const* m = (TRI_doc_deletion_key_marker_t const*) marker; 
     key = ((char*) m) + m->_offsetKey;
-    typeName = OPERATION_MARKER_DELETE;
+    type = MARKER_REMOVE;
     rid = m->_rid;
   }
   else if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
     key = ((char*) m) + m->_offsetKey;
-    typeName = OPERATION_MARKER_DOCUMENT;
+    type = MARKER_DOCUMENT;
     rid = m->_rid;
   }
   else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
     key = ((char*) m) + m->_offsetKey;
-    typeName = OPERATION_MARKER_EDGE;
+    type = MARKER_EDGE;
     rid = m->_rid;
   }
   else {
     return false;
   }
 
-  APPEND_STRING(buffer, "\"type\":\""); 
-  APPEND_STRING(buffer, typeName); 
-  APPEND_STRING(buffer, "\",\"key\":\""); 
+  APPEND_STRING(buffer, "\"type\":"); 
+  APPEND_UINT64(buffer, (uint64_t) type); 
+  APPEND_STRING(buffer, ",\"key\":\""); 
   // key is user-defined, but does not need escaping
   APPEND_STRING(buffer, key); 
 
@@ -1468,7 +1422,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_REPLICATION_STOP, buffer); 
+  res = LogEvent(logger, 0, true, REPLICATION_STOP, buffer); 
   
   TRI_CommitTransaction(logger->_trx, 0);
   TRI_FreeTransaction(logger->_trx);
@@ -1681,7 +1635,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
    
-  res = LogEvent(logger, trx->_id, false, OPERATION_TRANSACTION_START, buffer);
+  res = LogEvent(logger, trx->_id, false, TRANSACTION_START, buffer);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1709,7 +1663,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 
     for (j = 0; j < k; ++j) {
       TRI_transaction_operation_t* trxOperation;
-      const char* typeName;
+      TRI_replication_operation_e type;
 
       trxOperation = TRI_AtVector(trxCollection->_operations, j);
   
@@ -1726,15 +1680,15 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
         return false;
       }
 
-      typeName = TranslateDocumentOperation(trxOperation->_type);
+      type = TranslateDocumentOperation(trxOperation->_type);
 
-      if (typeName == NULL) {
+      if (type == REPLICATION_INVALID) {
         ReturnBuffer(logger, buffer);
 
         return TRI_ERROR_INTERNAL;
       }
 
-      res = LogEvent(logger, trx->_id, false, typeName, buffer);
+      res = LogEvent(logger, trx->_id, false, type, buffer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -1752,7 +1706,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
-  res = LogEvent(logger, trx->_id, false, OPERATION_TRANSACTION_COMMIT, buffer);
+  res = LogEvent(logger, trx->_id, false, TRANSACTION_COMMIT, buffer);
 
   return res;
 }
@@ -1820,7 +1774,7 @@ int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_COLLECTION_CREATE, buffer);
+  res = LogEvent(logger, 0, true, COLLECTION_CREATE, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
@@ -1854,7 +1808,7 @@ int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_COLLECTION_DROP, buffer);
+  res = LogEvent(logger, 0, true, COLLECTION_DROP, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
@@ -1889,7 +1843,7 @@ int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_COLLECTION_RENAME, buffer);
+  res = LogEvent(logger, 0, true, COLLECTION_RENAME, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
@@ -1924,7 +1878,7 @@ int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_COLLECTION_CHANGE, buffer);
+  res = LogEvent(logger, 0, true, COLLECTION_CHANGE, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
@@ -1960,7 +1914,7 @@ int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_INDEX_CREATE, buffer);
+  res = LogEvent(logger, 0, true, INDEX_CREATE, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
@@ -1995,7 +1949,7 @@ int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, OPERATION_INDEX_DROP, buffer);
+  res = LogEvent(logger, 0, true, INDEX_DROP, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
@@ -2007,12 +1961,12 @@ int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
 
 int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
                                 TRI_document_collection_t* document,
-                                TRI_voc_document_operation_e type,
+                                TRI_voc_document_operation_e docType,
                                 TRI_df_marker_t const* marker,
                                 TRI_doc_mptr_t const* oldHeader) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
-  const char* typeName;
+  TRI_replication_operation_e type;
   int res;
 
   logger = vocbase->_replicationLogger;
@@ -2024,8 +1978,9 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
   
-  typeName = TranslateDocumentOperation(type);
-  if (typeName == NULL) {
+  type = TranslateDocumentOperation(docType);
+
+  if (type == REPLICATION_INVALID) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_INTERNAL;
@@ -2033,14 +1988,14 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
 
   buffer = GetBuffer(logger);
 
-  if (! StringifyDocumentOperation(buffer, document, type, marker, oldHeader, true)) {
+  if (! StringifyDocumentOperation(buffer, document, docType, marker, oldHeader, true)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = LogEvent(logger, 0, true, typeName, buffer);
+  res = LogEvent(logger, 0, true, type, buffer);
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
