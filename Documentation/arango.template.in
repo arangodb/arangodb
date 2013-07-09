@@ -207,7 +207,7 @@ ALIASES = \
   "FA{1}=@latexonly\functionargument{@endlatexonly@htmlonly<span class=\"functionargument\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly</computeroutput>@endxmlonly" \
   "FN{1}=@latexonly\functionname{@endlatexonly@htmlonly<span class=\"functionname\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly</computeroutput>@endxmlonly"
 
-# command line option 
+# command line option
 ALIASES += \
   "CMDOPT{1}=@latexonly\commandlineoption{@endlatexonly@htmlonly<div class=\"commandlineoption\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly</computeroutput>@endxmlonly" \
   "CA{1}=@latexonly\commandlineargument{@endlatexonly@htmlonly<span class=\"commandlineargument\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly</computeroutput>@endxmlonly" \
@@ -215,18 +215,18 @@ ALIASES += \
 
 # rest calls
 ALIASES += \
-  "RESTHEADER{2}=@latexonly\restheader{@endlatexonly@htmlonly<div class=\"restheader\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly,@endlatexonly@htmlonly<div class=\"restheaderremark\">(@endhtmlonly@xmlonly</computeroutput> - @endxmlonly\2@latexonly}@endlatexonly@htmlonly)</div></div>@endhtmlonly@xmlonly@endxmlonly" \
+  "RESTHEADER{2}=@latexonly\restheader{@endlatexonly@htmlonly</p><div class=\"restheader\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly,@endlatexonly@htmlonly<div class=\"restheaderremark\">(@endhtmlonly@xmlonly</computeroutput> - @endxmlonly\2@latexonly}@endlatexonly@htmlonly)</div></div>@endhtmlonly@xmlonly@endxmlonly" \
   "REST{1}=@latexonly\restcall{@endlatexonly@htmlonly<div class=\"restcall\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly</computeroutput>@endxmlonly" \
-  "RESTURLPARAMETERS=@htmlonly<div class=\"resturlparameters\">URL parameters</div>@endhtmlonly" \
+  "RESTURLPARAMETERS=@htmlonly<H3>URL parameters</H3>@endhtmlonly" \
   "RESTURLPARAM{3}=@htmlonly<div class=\"resturlparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
-  "RESTQUERYPARAMETERS=@htmlonly<div class=\"restqueryparameters\">Query Parameters</div>@endhtmlonly" \
+  "RESTQUERYPARAMETERS=@htmlonly<H3>Query Parameters</H3>@endhtmlonly" \
   "RESTQUERYPARAM{3}=@htmlonly<div class=\"restqueryparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
-  "RESTHEADERPARAMETERS=@htmlonly<div class=\"restheaderparameters\">HTTP header parameters</div>@endhtmlonly" \
+  "RESTHEADERPARAMETERS=@htmlonly<H3>HTTP header parameters</H3>@endhtmlonly" \
   "RESTHEADERPARAM{3}=@htmlonly<div class=\"restheaderparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
-  "RESTBODYPARAM{3}=@htmlonly<div class=\"restbodyparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \ 
+  "RESTBODYPARAM{3}=@htmlonly<H3>Body parameters</H3><div class=\"restbodyparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
   "RESTRETURNCODES=@htmlonly<div class=\"restreturncodes\">Return Codes</div>@endhtmlonly" \
-  "RESTRETURNCODE{1}=@htmlonly<div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
-  "RESTDESCRIPTION=@htmlonly<div class=\"restdescription\">Description</div>@endhtmlonly" \
+  "RESTRETURNCODE{1}=@htmlonly<p></p><div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
+  "RESTDESCRIPTION=@htmlonly<H3 class=\"space-before\">Description</H3>@endhtmlonly" \
 
 # navigation
 ALIASES += \
@@ -958,7 +958,7 @@ IGNORE_PREFIX          =
 # If the GENERATE_HTML tag is set to YES (the default) Doxygen will
 # generate HTML output.
 
-GENERATE_HTML          = NO
+GENERATE_HTML          = YES
 
 # The HTML_OUTPUT tag is used to specify where the HTML docs will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be

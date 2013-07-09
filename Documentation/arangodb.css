@@ -40,6 +40,10 @@
     margin: 0 0 20px;
     text-align: left;
 }
+#content div.arangodb h3 {
+    margin-top: 20px;
+    margin-bottom: 14px;
+}
 
 #content div.arangodb div.headertitle {
   border-bottom: 1px solid #EFECE9;
@@ -86,7 +90,12 @@
 }
 
 #content div.arangodb ul ul {
-  margin-bottom: 0px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+#content div.arangodb ul {
+    margin-top: 14px;
+    margin-bottom: 14px;
 }
 
 /* ************************************************************************** */
@@ -115,18 +124,26 @@
 /* ************************************************************************** */
 /* rest call                                                                  */
 /* ************************************************************************** */
-
+.space-before {
+    margin-top: 14px;
+}
 #content div.arangodb div.restheader {
-  font-size: 18px;
+  font-size: 14px;
+  font-weight: bold;
   font-family: monospace,fixed;
-  border-bottom: 1px dotted;
+  border: 2px dotted;
+  background-color: #F8F8F8;
+  padding: 10px;
+  margin-top: 14px;
   margin-bottom: 14px;
 }
-
+#content div.arangodb div.restheaderremark {
+    float: right;
+}
 #content div.arangodb div.restbodyparam {
-  font-size: 18px;
-  float: right;
   font-family: "Helvetica",sans-serif;
+  font-size: 16px;
+  margin-bottom: 14px;
 }
 
 #content div.arangodb div.resturlparameters {
@@ -137,6 +154,7 @@
 
 #content div.arangodb div.resturlparam {
   font-style: italic;
+  margin-bottom: 14px;
 }
 
 #content div.arangodb div.restheaderparameters {
@@ -168,11 +186,14 @@
 #content div.arangodb div.restreturncodes {
   font-weight: bold;
   margin-top: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 0px;
 }
-
+#content div.arangodb div.restreturncodes p {
+    margin: 0px;
+}
 #content div.arangodb div.restreturncode {
   font-style: italic;
+  display: inline;
 }
 
 /* ************************************************************************** */
