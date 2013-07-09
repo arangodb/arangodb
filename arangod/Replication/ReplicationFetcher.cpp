@@ -50,6 +50,8 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::httpclient;
+
+#define LOGGER_REPLICATION LOGGER_INFO
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -144,12 +146,12 @@ int ReplicationFetcher::run () {
 
   bool fullSynchronisation = false;
 
-  if (_applyState._lastTick == 0) {
+  if (_applyState._lastInitialTick == 0) {
     // we had never sychronised anything
     fullSynchronisation = true;
   }
-  else if (_applyState._lastTick > 0 && 
-           _applyState._lastTick < _masterInfo._state._firstTick) {
+  else if (_applyState._lastContinuousTick > 0 && 
+           _applyState._lastContinuousTick < _masterInfo._state._firstLogTick) {
     // we had synchronised something before, but that point was
     // before the start of the master logs. this would mean a gap
     // in the data, so we'll do a complete re-sync
@@ -465,13 +467,19 @@ int ReplicationFetcher::getLocalState (string& errorMsg) {
       errorMsg = "could not save replication state information";
     }
   }
-  else {
+  else if (res == TRI_ERROR_NO_ERROR) {
     if (_masterInfo._serverId != _applyState._serverId) {
       res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
       errorMsg = "encountered wrong master id in replication state file. " 
                  "found: " + StringUtils::itoa(_masterInfo._serverId) + ", " 
                  "expected: " + StringUtils::itoa(_applyState._serverId);
     }
+  }
+  else {
+    // some error occurred
+    assert(res != TRI_ERROR_NO_ERROR);
+
+    errorMsg = TRI_errno_string(res);
   }
 
   return res;
@@ -487,10 +495,12 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
   }
 
   map<string, string> headers;
+  const string url = "/_api/replication/state";
 
   // send request
+  LOGGER_REPLICATION("fetching master state from " << url);
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
-                                                "/_api/replication/state",
+                                                url,
                                                 0, 
                                                 0,  
                                                 headers); 
@@ -525,6 +535,12 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
+      else {
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    
+        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                   ": invalid JSON";
+      }
     }
     // std::cout << response->getBody().str() << std::endl;
   }
@@ -544,10 +560,12 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
   }
 
   map<string, string> headers;
+  const string url = "/_api/replication/inventory";
 
   // send request
+  LOGGER_REPLICATION("fetching master inventory from " << url);
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
-                                                "/_api/replication/inventory",
+                                                url,
                                                 0, 
                                                 0,  
                                                 headers); 
@@ -603,8 +621,6 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
 int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxCollection,
                                               TRI_voc_tick_t maxTick,
                                               string& errorMsg) {
-  static const uint64_t chunkSize = 2 * 1024 * 1024; 
-
   if (_client == 0) {
     return TRI_ERROR_INTERNAL;
   }
@@ -612,7 +628,7 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
 
   const string baseUrl = "/_api/replication/dump"  
                          "?collection=" + StringUtils::itoa(trxCollection->_cid) + 
-                         "&chunkSize=" + StringUtils::itoa(chunkSize);
+                         "&chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
 
@@ -620,11 +636,12 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
   uint64_t       markerCount = 0;
 
   while (true) {
-    string url = baseUrl + 
-                 "&from=" + StringUtils::itoa(fromTick) + 
-                 "&to=" + StringUtils::itoa(maxTick);
+    const string url = baseUrl + 
+                       "&from=" + StringUtils::itoa(fromTick) + 
+                       "&to=" + StringUtils::itoa(maxTick);
 
     // send request
+    LOGGER_REPLICATION("fetching master collection dump from " << url);
     SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                   url,
                                                   0, 
@@ -871,10 +888,43 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
       res = TRI_ERROR_INTERNAL;
     }
     else {
-      res = handleCollectionDump(trxCollection, _masterInfo._state._lastTick, errorMsg);
+      res = handleCollectionDump(trxCollection, _masterInfo._state._lastLogTick, errorMsg);
     }
 
 
+    if (res == TRI_ERROR_NO_ERROR) {
+      // now create indexes
+      const size_t n = indexes->_value._objects._length;
+
+      if (n > 0) {
+        LOGGER_INFO("creating indexes for collection '" << masterName->_value._string.data << "', id " << cid);
+
+        for (size_t i = 0; i < n; ++i) {
+          TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
+          TRI_index_t* idx = 0;
+ 
+          // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+  
+          res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) trxCollection->_collection->_collection, idxDef, &idx);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            errorMsg = "could not create index: " + string(TRI_errno_string(res));
+            break;
+          }
+          else {
+            assert(idx != 0);
+
+            res = TRI_SaveIndex((TRI_primary_collection_t*) trxCollection->_collection->_collection, idx);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              errorMsg = "could not save index: " + string(TRI_errno_string(res));
+              break;
+            }
+          }
+        }
+      }
+    }
+    
     if (res == TRI_ERROR_NO_ERROR) {
       TRI_CommitTransaction(trx, 0);
     }
@@ -883,54 +933,8 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
 
     return res;
   }
+
   
-  // create indexes
-  // -------------------------------------------------------------------------------------
-  
-  else if (phase == PHASE_INDEXES) {
-
-    const size_t n = indexes->_value._objects._length;
-    int res = TRI_ERROR_NO_ERROR;
-
-    if (n > 0) {
-      LOGGER_INFO("creating indexes for collection '" << masterName->_value._string.data << "', id " << cid);
-
-      TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
-
-      if (col == 0 || col->_collection == 0) {
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-      }
-      
-      for (size_t i = 0; i < n; ++i) {
-        TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-        TRI_index_t* idx = 0;
-
-        // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-
-        res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) col->_collection, idxDef, &idx);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "could not create index: " + string(TRI_errno_string(res));
-          break;
-        }
-        else {
-          assert(idx != 0);
-
-          res = TRI_SaveIndex((TRI_primary_collection_t*) col->_collection, idx);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            errorMsg = "could not save index: " + string(TRI_errno_string(res));
-            break;
-          }
-        }
-      }
-
-      TRI_ReleaseCollectionVocBase(_vocbase, col);
-    }
-
-    return res;
-  }
-
   // we won't get here
   assert(false);
   return TRI_ERROR_INTERNAL;
@@ -952,21 +956,21 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  // state."firstTick"
-  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "firstTick");
+  // state."firstLogTick"
+  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "firstLogTick");
 
   if (! JsonHelper::isString(tick)) {
-    errorMsg = "firstTick is missing from response";
+    errorMsg = "firstLogTick is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   const TRI_voc_tick_t firstTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
 
-  // state."lastTick"
-  tick = JsonHelper::getArrayElement(state, "lastTick");
+  // state."lastLogTick"
+  tick = JsonHelper::getArrayElement(state, "lastLogTick");
 
   if (! JsonHelper::isString(tick)) {
-    errorMsg = "lastTick is missing from response";
+    errorMsg = "lastLogTick is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -1035,12 +1039,12 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
-  _masterInfo._majorVersion     = major;
-  _masterInfo._minorVersion     = minor;
-  _masterInfo._serverId         = masterId;
-  _masterInfo._state._firstTick = firstTick;
-  _masterInfo._state._lastTick  = lastTick;
-  _masterInfo._state._active    = running;
+  _masterInfo._majorVersion        = major;
+  _masterInfo._minorVersion        = minor;
+  _masterInfo._serverId            = masterId;
+  _masterInfo._state._firstLogTick = firstTick;
+  _masterInfo._state._lastLogTick  = lastTick;
+  _masterInfo._state._active       = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
 
@@ -1107,7 +1111,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   }
 
 
-  // STEP 4: sync collection data from master
+  // STEP 4: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
   
   res = iterateCollections(collections, errorMsg, PHASE_DATA);
@@ -1115,17 +1119,14 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
- 
   
-  // STEP 5: create indexes
-  // ----------------------------------------------------------------------------------
-  
-  res = iterateCollections(collections, errorMsg, PHASE_INDEXES);
+  _applyState._lastInitialTick = _masterInfo._state._lastLogTick;   
+  res = TRI_SaveApplyStateReplication(_vocbase, &_applyState, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    errorMsg = "could not save replication state information";
   }
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1183,19 +1184,18 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  static const uint64_t chunkSize = 2 * 1024 * 1024; 
-
-  const string baseUrl = "/_api/replication/log"  
-                         "?chunkSize=" + StringUtils::itoa(chunkSize);
+  const string baseUrl = "/_api/replication/follow"  
+                         "?chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
 
-  TRI_voc_tick_t fromTick = 0;
+  TRI_voc_tick_t fromTick = _masterInfo._state._lastLogTick;
 
   while (true) {
-    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick); 
+    const string url = baseUrl + "&from=" + StringUtils::itoa(fromTick); 
 
     // send request
+    LOGGER_REPLICATION("fetching master log from " << url);
     SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                   url,
                                                   0, 
@@ -1229,6 +1229,8 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
 
     int res;
     bool checkMore = false;
+    bool active    = false;
+
     bool found;
     string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
 
@@ -1240,6 +1242,11 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
                  ": header '" TRI_REPLICATION_HEADER_CHECKMORE "' is missing";
+    }
+
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
+    if (found) {
+      active = StringUtils::boolean(header);
     }
    
     if (checkMore) { 
@@ -1275,12 +1282,27 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
 
     if (! checkMore || fromTick == 0) {
       // nothing to do. sleep before we poll again
-      sleep(1);
+      if (active) {
+        sleep(1);
+      }
+      else {
+        sleep(10);
+      }
     }
   }
   
   assert(false);
   return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get chunk size for a transfer
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t ReplicationFetcher::getChunkSize () const {
+  static const uint64_t chunkSize = 4 * 1024 * 1024; 
+
+  return chunkSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

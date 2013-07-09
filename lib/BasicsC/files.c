@@ -53,6 +53,25 @@
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Files
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read buffer size (used for bulk file reading)
+////////////////////////////////////////////////////////////////////////////////
+
+#define READBUFFER_SIZE 8192
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -845,11 +864,11 @@ bool TRI_fsync (int fd) {
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename, size_t* length) {
+char* TRI_SlurpFile (TRI_memory_zone_t* zone, 
+                     char const* filename, 
+                     size_t* length) {
   TRI_string_buffer_t result;
-  char buffer[10240];
   int fd;
-  int res;
 
   fd = TRI_OPEN(filename, O_RDONLY);
 
@@ -861,9 +880,20 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename, size_t* leng
   TRI_InitStringBuffer(&result, zone);
 
   while (true) {
+    int res;
     ssize_t n;
 
-    n = TRI_READ(fd, buffer, sizeof(buffer));
+    res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_CLOSE(fd);
+      TRI_AnnihilateStringBuffer(&result);
+      
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      return NULL;
+    }
+
+    n = TRI_READ(fd, (void*) TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -877,16 +907,8 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename, size_t* leng
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       return NULL;
     }
-
-    res = TRI_AppendString2StringBuffer(&result, buffer, n);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_CLOSE(fd);
-
-      TRI_AnnihilateStringBuffer(&result);
-
-      return NULL;
-    }
+    
+    TRI_IncreaseLengthStringBuffer(&result, (size_t) n);
   }
 
   if (length != NULL) {
