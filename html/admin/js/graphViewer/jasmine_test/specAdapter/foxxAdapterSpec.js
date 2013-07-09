@@ -381,7 +381,7 @@
           runs(function() {
             checkCallbackFunction = function() {
               callbackCheck = true;
-            }
+            };
             callbackCheck = false;
             isFirstCall = true;
             spyOn($, "ajax").andCallFake(function(req) {
@@ -417,7 +417,7 @@
                     "1-2": {_id: "1-2", _from: "1", _to: "2"},
                     "1-4": {_id: "1-4", _from: "1", _to: "4"},
                     "1-5": {_id: "1-5", _from: "1", _to: "5"},
-                    "1-6": {_id: "1-6", _from: "1", _to: "6"},
+                    "1-6": {_id: "1-6", _from: "1", _to: "6"}
                   }
                 });
               }

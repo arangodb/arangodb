@@ -211,7 +211,7 @@
           
           this.failure = function() {
             throw "Failed";
-          };
+          };          
         }
         var cb = function(d){
           if (d.data.cmd !== "construct") {
@@ -299,6 +299,7 @@
           expect(returned.error).toEqual("Failed");
         });
       });
+      
     });
   });
   
