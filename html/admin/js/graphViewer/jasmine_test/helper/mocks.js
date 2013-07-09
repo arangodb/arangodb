@@ -48,7 +48,8 @@ var mocks = mocks || {};
     deleteEdge: function(){},
     patchEdge: function(){},
     loadNode: function(){},
-    expandCommunity: function(){}
+    expandCommunity: function(){},
+    explore: function(){}
   };
     
 }());
