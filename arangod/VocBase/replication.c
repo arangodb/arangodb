@@ -212,15 +212,15 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
 /// @brief translate a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type) {
-  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    return DOCUMENT_INSERT;
-  }
-  else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    return DOCUMENT_UPDATE;
+static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type,
+                                                               TRI_document_collection_t const* document) {
+  const bool isEdge = (document->base.base._info._type == TRI_COL_TYPE_EDGE);
+
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT || type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    return isEdge ? MARKER_EDGE : MARKER_DOCUMENT;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    return DOCUMENT_REMOVE;
+    return MARKER_REMOVE;
   }
 
   return REPLICATION_INVALID;
@@ -1647,13 +1647,13 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
                                        trxOperation->_type, 
                                        trxOperation->_marker, 
                                        trxOperation->_oldHeader, 
-                                       false)) {
+                                       true)) {
         ReturnBuffer(logger, buffer);
 
         return false;
       }
 
-      type = TranslateDocumentOperation(trxOperation->_type);
+      type = TranslateDocumentOperation(trxOperation->_type, document);
 
       if (type == REPLICATION_INVALID) {
         ReturnBuffer(logger, buffer);
@@ -1951,7 +1951,7 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
   
-  type = TranslateDocumentOperation(docType);
+  type = TranslateDocumentOperation(docType, document);
 
   if (type == REPLICATION_INVALID) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
@@ -1961,7 +1961,12 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
 
   buffer = GetBuffer(logger);
 
-  if (! StringifyDocumentOperation(buffer, document, docType, marker, oldHeader, true)) {
+  if (! StringifyDocumentOperation(buffer, 
+                                   document, 
+                                   docType, 
+                                   marker, 
+                                   oldHeader, 
+                                   true)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
