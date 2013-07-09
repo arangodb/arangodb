@@ -219,12 +219,12 @@ ALIASES += \
   "REST{1}=@latexonly\restcall{@endlatexonly@htmlonly<div class=\"restcall\">@endhtmlonly@xmlonly<computeroutput>@endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly</computeroutput>@endxmlonly" \
   "RESTURLPARAMETERS=@htmlonly<H3>URL parameters</H3>@endhtmlonly" \
   "RESTURLPARAM{3}=@htmlonly<div class=\"resturlparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
-  "RESTQUERYPARAMETERS=@htmlonly<H3>Query Parameters</H3>@endhtmlonly" \
+  "RESTQUERYPARAMETERS=@htmlonly<H3>Query parameters</H3>@endhtmlonly" \
   "RESTQUERYPARAM{3}=@htmlonly<div class=\"restqueryparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
   "RESTHEADERPARAMETERS=@htmlonly<H3>HTTP header parameters</H3>@endhtmlonly" \
   "RESTHEADERPARAM{3}=@htmlonly<div class=\"restheaderparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
   "RESTBODYPARAM{3}=@htmlonly<H3>Body parameters</H3><div class=\"restbodyparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
-  "RESTRETURNCODES=@htmlonly<H3>Return Codes</H3>@endhtmlonly" \
+  "RESTRETURNCODES=@htmlonly<H3>Return codes</H3>@endhtmlonly" \
   "RESTRETURNCODE{1}=@htmlonly<p></p><div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
   "RESTDESCRIPTION=@htmlonly<H3 class=\"space-before\">Description</H3>@endhtmlonly" \
 
