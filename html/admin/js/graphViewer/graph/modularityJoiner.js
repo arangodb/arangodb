@@ -323,14 +323,26 @@ function ModularityJoiner() {
   
     deleteEdge = function(s, t) {
       if (matrix[s]) {
-        delete matrix[s][t];
-        delete backwardMatrix[t][s];
+        matrix[s][t]--;
+        if (matrix[s][t] === 0) {
+          delete matrix[s][t];
+        }
+        backwardMatrix[t][s]--;
+        if (backwardMatrix[t][s] === 0) {
+          delete backwardMatrix[t][s];
+        }
         degrees[s]._out--;
         degrees[t]._in--;
         m--;
-        revM = Math.pow(m, -1);
+        if (m > 0) {
+          revM = Math.pow(m, -1);
+        } else {
+          revM = 0;
+        }
         if (_.isEmpty(matrix[s])) {
           delete matrix[s];
+        }
+        if (_.isEmpty(backwardMatrix[t])) {
           delete backwardMatrix[t];
         }
         if (degrees[s]._in === 0 && degrees[s]._out === 0) {
@@ -339,6 +351,13 @@ function ModularityJoiner() {
         if (degrees[t]._in === 0 && degrees[t]._out === 0) {
           delete degrees[t];
         }
+      } else {
+        /*
+        self.postMessage({
+          cmd: "debug",
+          result: "Source not stored",
+        });
+        */
       }
     },
   
@@ -632,7 +651,5 @@ function ModularityJoiner() {
   
   this.joinCommunity = joinCommunity;
   
-  this.getCommunity = getCommunity;
-  
-  
+  this.getCommunity = getCommunity;  
 }
