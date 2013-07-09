@@ -2244,6 +2244,9 @@ int TRI_RemoveApplyStateReplication (TRI_vocbase_t* vocbase) {
   if (TRI_ExistsFile(filename)) {
     res = TRI_UnlinkFile(filename);
   }
+  else {
+    res = TRI_ERROR_NO_ERROR;
+  }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
