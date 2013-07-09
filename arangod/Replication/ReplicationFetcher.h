@@ -134,7 +134,7 @@ namespace triagens {
 /// @brief run method
 ////////////////////////////////////////////////////////////////////////////////
 
-        int run ();
+        int run (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
@@ -159,11 +159,11 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply the data from a collection dump
+/// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
         int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
-                                       char const*,
+                                       TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        struct TRI_json_s const*,
                                        string&);
@@ -176,6 +176,20 @@ namespace triagens {
                                  httpclient::SimpleHttpResult*,
                                  string&,
                                  uint64_t&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply a single marker from the continuous log
+////////////////////////////////////////////////////////////////////////////////
+
+        int applyLogMarker (TRI_json_t const*,
+                            string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the data from the continuous log
+////////////////////////////////////////////////////////////////////////////////
+
+        int applyLog (httpclient::SimpleHttpResult*,
+                      string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get local replication apply state
