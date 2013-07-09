@@ -554,7 +554,7 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_json_s* TRI_ParametersCollectionsVocBase (TRI_vocbase_t*,
-                                                     bool,
+                                                     TRI_voc_tick_t,
                                                      bool (*)(TRI_vocbase_col_t*, void*),
                                                      void*);
 
