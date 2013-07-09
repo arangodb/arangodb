@@ -125,17 +125,19 @@ ReplicationFetcher::~ReplicationFetcher () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ReplicationFetcher::run () {
-  int res;
   string errorMsg;
+  int res;
 
   res = getMasterState(errorMsg);
   if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: return proper error message
     std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
     return res;
   }
   
   res = getLocalState(errorMsg);
   if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: return proper error message
     std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
     return res;
   }
@@ -160,9 +162,20 @@ int ReplicationFetcher::run () {
     // nothing applied so far. do a full sync of collections
     res = getMasterInventory(errorMsg);
     if (res != TRI_ERROR_NO_ERROR) {
+      // TODO: return proper error message
       std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
       return res;
     }
+  }
+
+  LOGGER_INFO("starting incremental synchronisation with master");
+
+  res = runContinuous(errorMsg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: return proper error message
+    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
+    return res;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -208,15 +221,15 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-int ReplicationFetcher::applyMarker (TRI_transaction_collection_t* trxCollection,
-                                     char const* type,
-                                     const TRI_voc_key_t key,
-                                     TRI_json_t const* json,
-                                     string& errorMsg) {
+int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
+                                                   char const* type,
+                                                   const TRI_voc_key_t key,
+                                                   TRI_json_t const* json,
+                                                   string& errorMsg) {
 
   if (TRI_EqualString(type, "marker-document") ||
       TRI_EqualString(type, "marker-edge")) {
-    // {"type":"marker-document","key":"230274209405676","doc":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+    // {"type":"marker-document","key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
@@ -401,7 +414,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
           }
         }
 
-        else if (TRI_EqualString(attributeName, "doc")) {
+        else if (TRI_EqualString(attributeName, "data")) {
           if (value == 0 || 
               value->_type != TRI_JSON_ARRAY) {
             isValid = false;
@@ -420,7 +433,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
  
-    int res = applyMarker(trxCollection, type, (const TRI_voc_key_t) key, doc, errorMsg);
+    int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, doc, errorMsg);
       
     if (res != TRI_ERROR_NO_ERROR) {
       std::cout << JsonHelper::toString(json);
@@ -1159,6 +1172,115 @@ int ReplicationFetcher::iterateCollections (TRI_json_t const* collections,
 
   // all ok
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the continuous synchronisation
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::runContinuous (string& errorMsg) {
+  if (_client == 0) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  static const uint64_t chunkSize = 2 * 1024 * 1024; 
+
+  const string baseUrl = "/_api/replication/log"  
+                         "?chunkSize=" + StringUtils::itoa(chunkSize);
+
+  map<string, string> headers;
+
+  TRI_voc_tick_t fromTick = 0;
+
+  while (true) {
+    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick); 
+
+    // send request
+    SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
+                                                  url,
+                                                  0, 
+                                                  0,  
+                                                  headers); 
+
+    if (response == 0) {
+      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
+
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    if (! response->isComplete()) {
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": " + _client->getErrorMessage();
+
+      delete response;
+
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    if (response->wasHttpError()) {
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+                 ": " + response->getHttpReturnMessage();
+      
+      delete response;
+
+      return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    }
+
+    int res;
+    bool checkMore = false;
+    bool found;
+    string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+
+    if (found) {
+      checkMore = StringUtils::boolean(header);
+      res = TRI_ERROR_NO_ERROR;
+    }
+    else {
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": header '" TRI_REPLICATION_HEADER_CHECKMORE "' is missing";
+    }
+   
+    if (checkMore) { 
+      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTFOUND, found);
+
+      if (found) {
+        TRI_voc_tick_t tick = StringUtils::uint64(header);
+
+        if (tick > fromTick) {
+          fromTick = tick;
+        }
+        else {
+          // we got the same tick again, this indicates we're at the end
+          checkMore = false;
+        }
+      }
+      else {
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                   ": header '" TRI_REPLICATION_HEADER_LASTFOUND "' is missing";
+      }
+    }
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      std::cout << "GOT: " << response->getBody().str().c_str() << "\n\n\n\n";
+    }
+
+    delete response;
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    if (! checkMore || fromTick == 0) {
+      // nothing to do. sleep before we poll again
+      sleep(1);
+    }
+  }
+  
+  assert(false);
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
