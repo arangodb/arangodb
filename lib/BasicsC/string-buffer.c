@@ -206,10 +206,10 @@ void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
 
 void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
   if (self->_buffer != NULL) {
-
     // somewhat paranoid? don't ask me
     memset(self->_buffer, 0, self->_len);
     TRI_Free(self->_memoryZone, self->_buffer);
+    self->_buffer = NULL;
   }
 }
 

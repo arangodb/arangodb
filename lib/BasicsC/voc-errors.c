@@ -91,6 +91,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_REPLICATION_MASTER_CHANGE, "master change");
   REG_ERROR(ERROR_REPLICATION_LOOP, "loop detected");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
+  REG_ERROR(ERROR_REPLICATION_INVALID_APPLY_STATE, "invalid apply state");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
