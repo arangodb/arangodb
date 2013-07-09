@@ -42,7 +42,7 @@ function FoxxAdapter(nodes, edges, route, config) {
   }
 
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges),
+    absAdapter = new AbstractAdapter(nodes, edges, this),
     routes = {},
     baseRoute = route,
     requestBase = {
@@ -197,6 +197,8 @@ function FoxxAdapter(nodes, edges, route, config) {
   parseConfig(config);
   fillRoutes();
 
+  self.explore = absAdapter.explore;
+  
   self.loadNode = function(nodeId, callback) {
     sendGet("query", nodeId, function(result) {
       parseResult(result, callback);

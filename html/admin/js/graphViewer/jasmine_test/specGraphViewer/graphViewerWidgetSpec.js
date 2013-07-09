@@ -136,7 +136,8 @@
       
       it('should try to load a starting node if one is given', function() {
         var mockObj = {
-            loadNode: function() {}
+            loadNode: function() {},
+            explore: function() {}
           },
           startNode = "nodes/123",
           ui;
@@ -152,7 +153,8 @@
       
       it('should not try to load a starting node if none is given', function() {
         var mockObj = {
-            loadNode: function() {}
+            loadNode: function() {},
+            explore: function() {}
           },
           ui;
         spyOn(window, "FoxxAdapter").andCallFake(function() {

@@ -2514,30 +2514,26 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
-                                const TRI_shaped_json_t* const shapedJson,
+                                const char* data,
                                 char** value,
                                 size_t* length) {
   if (shape->_type == TRI_SHAPE_SHORT_STRING) {
     TRI_shape_length_short_string_t l;
-    char* data;
 
-    data = shapedJson->_data.data;
     l = * (TRI_shape_length_short_string_t const*) data;
     data += sizeof(TRI_shape_length_short_string_t);
     *length = l - 1;
-    *value = data;
+    *value = (char*) data;
 
     return true;
   }
   else if (shape->_type == TRI_SHAPE_LONG_STRING) {
     TRI_shape_length_long_string_t l;
-    char* data;
 
-    data = shapedJson->_data.data;
     l = * (TRI_shape_length_long_string_t const*) data;
     data += sizeof(TRI_shape_length_long_string_t);
     *length = l - 1;
-    *value = data;
+    *value = (char*) data;
 
     return true;
   }
@@ -2547,6 +2543,126 @@ bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
   *length = 0;
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a shaped json array, using a callback function
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
+                                TRI_shape_t const* shape,
+                                char const* data,
+                                bool (*filter)(TRI_shaper_t*, TRI_shape_t const*, char const*, char const*, uint64_t, void*),
+                                void* ptr) {
+  TRI_array_shape_t const* s;
+  TRI_shape_aid_t const* aids;
+  TRI_shape_sid_t const* sids;
+  TRI_shape_size_t const* offsetsF;
+  TRI_shape_size_t const* offsetsV;
+  TRI_shape_size_t f;
+  TRI_shape_size_t i;
+  TRI_shape_size_t n;
+  TRI_shape_size_t v;
+  TRI_shape_sid_t cachedSid;
+  TRI_shape_t const* cachedShape;
+  char const* qtr;
+
+  s = (TRI_array_shape_t const*) shape;
+  f = s->_fixedEntries;
+  v = s->_variableEntries;
+  n = f + v;
+
+  qtr = (char const*) shape;
+  qtr += sizeof(TRI_array_shape_t);
+
+  sids = (TRI_shape_sid_t const*) qtr;
+  qtr += n * sizeof(TRI_shape_sid_t);
+
+  aids = (TRI_shape_aid_t const*) qtr;
+  qtr += n * sizeof(TRI_shape_aid_t);
+
+  offsetsF = (TRI_shape_size_t const*) qtr;
+
+  cachedSid = 0;
+  cachedShape = NULL;
+
+  for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
+    TRI_shape_aid_t aid;
+    TRI_shape_sid_t sid;
+    TRI_shape_size_t offset;
+    TRI_shape_t const* subshape;
+    char const* name;
+
+    sid = *sids;
+    aid = *aids;
+    offset = *offsetsF;
+
+    // use last sid if in cache
+    if (sid == cachedSid && cachedSid > 0) {
+      subshape = cachedShape;
+    }
+    else {
+      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
+      cachedSid = sid;
+    }
+
+    name = shaper->lookupAttributeId(shaper, aid);
+
+    if (subshape == NULL) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+      continue;
+    }
+
+    if (name == NULL) {
+      LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
+      continue;
+    }
+
+    if (! filter(shaper, subshape, name, data + offset, offsetsF[1] - offset, ptr)) {
+      return;
+    }
+  }
+
+  offsetsV = (TRI_shape_size_t const*) data;
+
+  for (i = 0;  i < v;  ++i, ++sids, ++aids, ++offsetsV) {
+    TRI_shape_sid_t sid;
+    TRI_shape_aid_t aid;
+    TRI_shape_size_t offset;
+    TRI_shape_t const* subshape;
+    char const* name;
+
+    sid = *sids;
+    aid = *aids;
+    offset = *offsetsV;
+   
+    // use last sid if in cache 
+    if (sid == cachedSid && cachedSid > 0) {
+      subshape = cachedShape;
+    }
+    else {
+      cachedShape = subshape = shaper->lookupShapeId(shaper, sid);
+      cachedSid = sid;
+    }
+
+    name = shaper->lookupAttributeId(shaper, aid);
+    
+    if (subshape == NULL) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+      continue;
+    }
+
+    if (name == NULL) {
+      LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
+      continue;
+    }
+    
+    if (! filter(shaper, subshape, name, data + offset, offsetsV[1] - offset, ptr)) {
+      return;
+    }
+  }
+
+  return;
 }
 
 // Local Variables:
