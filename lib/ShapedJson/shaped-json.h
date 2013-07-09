@@ -1088,9 +1088,19 @@ void TRI_PrintShape (struct TRI_shaper_s* shaper, TRI_shape_t const* shape, int 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StringValueShapedJson (const TRI_shape_t* const,
-                                const TRI_shaped_json_t* const,
+                                const char*,
                                 char**,
                                 size_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a shaped json array, using a callback function
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IterateShapeDataArray (struct TRI_shaper_s*,
+                                TRI_shape_t const*,
+                                char const*,
+                                bool (*)(struct TRI_shaper_s*, TRI_shape_t const*, char const*, char const*, uint64_t, void*),
+                                void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
