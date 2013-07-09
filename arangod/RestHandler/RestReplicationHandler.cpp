@@ -262,11 +262,11 @@ void RestReplicationHandler::addState (TRI_json_t* dst,
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
   
-  char* firstString = TRI_StringUInt64(state->_firstTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "firstTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
+  char* firstString = TRI_StringUInt64(state->_firstLogTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "firstLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
 
-  char* lastString = TRI_StringUInt64(state->_lastTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
+  char* lastString = TRI_StringUInt64(state->_lastLogTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
   
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, dst, "state", stateJson);
 }
@@ -547,7 +547,7 @@ void RestReplicationHandler::handleCommandFollow () {
   res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
   
   if (res == TRI_ERROR_NO_ERROR) {
-    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastTick);
+    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
 
     // generate the result
     _response = createResponse(HttpResponse::OK);

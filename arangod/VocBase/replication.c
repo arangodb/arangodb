@@ -386,7 +386,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
   
   // note the last id that we've logged
   TRI_LockSpin(&logger->_idLock);
-  logger->_state._lastTick = ((TRI_df_marker_t*) mptr._data)->_tick;
+  logger->_state._lastLogTick = ((TRI_df_marker_t*) mptr._data)->_tick;
   TRI_UnlockSpin(&logger->_idLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -1388,7 +1388,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
   assert(logger->_trx == NULL);
   assert(logger->_trxCollection == NULL);
-  assert(logger->_state._lastTick == 0);
+  assert(logger->_state._lastLogTick == 0);
 
   vocbase = logger->_vocbase;
   collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
@@ -1429,12 +1429,12 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   assert(logger->_trxCollection != NULL);
   assert(logger->_state._active == false);
 
-  logger->_state._lastTick = ((TRI_collection_t*) collection->_collection)->_info._tick; 
+  logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._tick; 
   logger->_state._active   = true;
   
   LOG_INFO("started replication logger for database '%s', last tick: %llu", 
            logger->_databaseName,
-           (unsigned long long) logger->_state._lastTick);
+           (unsigned long long) logger->_state._lastLogTick);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1454,7 +1454,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   }
 
   TRI_LockSpin(&logger->_idLock);
-  lastTick = logger->_state._lastTick;
+  lastTick = logger->_state._lastLogTick;
   TRI_UnlockSpin(&logger->_idLock);
 
   assert(logger->_trx != NULL);
@@ -1478,10 +1478,10 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
            (unsigned long long) lastTick);
 
 
-  logger->_trx             = NULL;
-  logger->_trxCollection   = NULL;
-  logger->_state._lastTick = 0;
-  logger->_state._active   = false;
+  logger->_trx                = NULL;
+  logger->_trxCollection      = NULL;
+  logger->_state._lastLogTick = 0;
+  logger->_state._active      = false;
 
   return res;
 }
@@ -1507,9 +1507,9 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
 
   primary = (TRI_primary_collection_t*) col->_collection;
 
-  dst->_active    = false;
-  dst->_firstTick = 0;
-  dst->_lastTick  = primary->base._info._tick;
+  dst->_active       = false;
+  dst->_firstLogTick = 0;
+  dst->_lastLogTick  = primary->base._info._tick;
 
   TRI_ReleaseCollectionVocBase(vocbase, col);
 
@@ -1545,15 +1545,15 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   TRI_InitReadWriteLock(&logger->_statusLock);
   TRI_InitSpin(&logger->_idLock);
 
-  logger->_vocbase          = vocbase;
-  logger->_trx              = NULL;
-  logger->_trxCollection    = NULL;
-  logger->_state._firstTick = 0;
-  logger->_state._lastTick  = 0;
-  logger->_state._active    = false;
-  logger->_logSize          = vocbase->_replicationLogSize;
-  logger->_waitForSync      = vocbase->_replicationWaitForSync;
-  logger->_databaseName     = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+  logger->_vocbase             = vocbase;
+  logger->_trx                 = NULL;
+  logger->_trxCollection       = NULL;
+  logger->_state._firstLogTick = 0;
+  logger->_state._lastLogTick  = 0;
+  logger->_state._active       = false;
+  logger->_logSize             = vocbase->_replicationLogSize;
+  logger->_waitForSync         = vocbase->_replicationWaitForSync;
+  logger->_databaseName        = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
 
   assert(logger->_databaseName != NULL);
 
@@ -2173,6 +2173,33 @@ void TRI_InitDumpReplication (TRI_replication_dump_t* dump) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read a tick value from a JSON struct
+////////////////////////////////////////////////////////////////////////////////
+    
+static int ReadTick (TRI_json_t const* json,
+                     char const* attributeName,
+                     TRI_voc_tick_t* dst) {
+  TRI_json_t* tick;
+
+  assert(json != NULL);
+  assert(json->_type == TRI_JSON_ARRAY);
+                                     
+  tick = TRI_LookupArrayJson(json, attributeName);
+
+  if (tick == NULL || 
+      tick->_type != TRI_JSON_STRING || 
+      tick->_value._string.data == NULL) {
+    *dst = 0;
+
+    return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
+  }
+
+  *dst = (TRI_voc_tick_t) TRI_UInt64String(tick->_value._string.data);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the filename of the replication application file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2187,19 +2214,25 @@ static char* GetApplyStateFilename (TRI_vocbase_t* vocbase) {
 static TRI_json_t* ApplyStateToJson (TRI_replication_apply_state_t const* state) {
   TRI_json_t* json;
   char* serverId;
-  char* lastTick;
+  char* firstContinuousTick;
+  char* lastContinuousTick;
+  char* lastInitialTick;
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 4);
 
   if (json == NULL) {
     return NULL;
   }
 
+  firstContinuousTick = TRI_StringUInt64(state->_firstContinuousTick);
+  lastContinuousTick = TRI_StringUInt64(state->_lastContinuousTick);
+  lastInitialTick = TRI_StringUInt64(state->_lastInitialTick);
   serverId = TRI_StringUInt64(state->_serverId);
-  lastTick = TRI_StringUInt64(state->_lastTick);
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastTick));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "firstContinuousTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstContinuousTick));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastContinuousTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastContinuousTick));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastInitialTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastInitialTick));
 
   return json;
 }
@@ -2223,13 +2256,13 @@ static TRI_json_t* ApplyStateToJson (TRI_replication_apply_state_t const* state)
 
 void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
                                     const char* endpoint) {
-  info->_endpoint         = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
-  info->_serverId         = 0;
-  info->_majorVersion     = 0;
-  info->_minorVersion     = 0;
-  info->_state._firstTick = 0;
-  info->_state._lastTick  = 0;
-  info->_state._active    = false;
+  info->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  info->_serverId            = 0;
+  info->_majorVersion        = 0;
+  info->_minorVersion        = 0;
+  info->_state._firstLogTick = 0;
+  info->_state._lastLogTick  = 0;
+  info->_state._active       = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2252,8 +2285,8 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
            prefix,
            info->_endpoint,
            (unsigned long long) info->_serverId,
-           (unsigned long long) info->_state._firstTick,
-           (unsigned long long) info->_state._lastTick,
+           (unsigned long long) info->_state._firstLogTick,
+           (unsigned long long) info->_state._lastLogTick,
            info->_majorVersion,
            info->_minorVersion);
 }
@@ -2263,8 +2296,7 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitApplyStateReplication (TRI_replication_apply_state_t* state) {
-  state->_serverId = 0;
-  state->_lastTick = 0;
+  memset(state, 0, sizeof(TRI_replication_apply_state_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2307,7 +2339,6 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
                                    TRI_replication_apply_state_t* state) {
   TRI_json_t* json;
   TRI_json_t* serverId;
-  TRI_json_t* lastTick;
   char* filename;
   char* error;
   int res;
@@ -2328,7 +2359,7 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
       TRI_Free(TRI_CORE_MEM_ZONE, error);
     }
 
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
 
   res = TRI_ERROR_NO_ERROR;
@@ -2339,22 +2370,17 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
   if (serverId == NULL || 
       serverId->_type != TRI_JSON_STRING || 
       serverId->_value._string.data == NULL) {
-    res = TRI_ERROR_INTERNAL;
+    res = TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
   else {
     state->_serverId = TRI_UInt64String(serverId->_value._string.data);
   }
 
-  // read the last tick
-  lastTick = TRI_LookupArrayJson(json, "lastTick");
-
-  if (lastTick == NULL || 
-      lastTick->_type != TRI_JSON_STRING || 
-      lastTick->_value._string.data == NULL) {
-    res = TRI_ERROR_INTERNAL;
-  }
-  else {
-    state->_lastTick = TRI_UInt64String(lastTick->_value._string.data);
+  if (res == TRI_ERROR_NO_ERROR) {
+    // read the ticks
+    res |= ReadTick(json, "firstContinuousTick", &state->_firstContinuousTick); 
+    res |= ReadTick(json, "lastContinuousTick", &state->_lastContinuousTick); 
+    res |= ReadTick(json, "lastInitialTick", &state->_lastInitialTick); 
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, json);

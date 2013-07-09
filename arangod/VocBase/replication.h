@@ -126,8 +126,8 @@ TRI_replication_dump_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_log_state_s {
-  TRI_voc_tick_t  _firstTick;
-  TRI_voc_tick_t  _lastTick;
+  TRI_voc_tick_t  _firstLogTick;
+  TRI_voc_tick_t  _lastLogTick;
   bool            _active;
 }
 TRI_replication_log_state_t;
@@ -445,7 +445,9 @@ TRI_replication_master_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_state_s {
-  TRI_voc_tick_t    _lastTick;
+  TRI_voc_tick_t    _firstContinuousTick;
+  TRI_voc_tick_t    _lastContinuousTick;
+  TRI_voc_tick_t    _lastInitialTick;
   TRI_server_id_t   _serverId;
 }
 TRI_replication_apply_state_t;
