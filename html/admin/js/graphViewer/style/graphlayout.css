@@ -13,6 +13,8 @@
 }
 
 .toolbox > .btn {
+  width: 40px;
+  height: 40px;
   padding: 0px;
   background-color: rgb(51, 51, 51);
 }

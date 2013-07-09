@@ -46,12 +46,14 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   }
   
   var self = this,
-    firstButton = true,
+    /* archive
+    firstButton = true, 
     currentListGroup,
     placeHolderBtn = uiComponentsHelper.createIconButton(
       "none",
       ""
     ),
+    */
     baseClass = "event",
     eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
@@ -61,6 +63,8 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
     },
     
     appendToList = function(button) {
+      list.appendChild(button);
+      /* archive
       if (firstButton) {
         currentListGroup = document.createElement("div");
         currentListGroup.className = "btn btn-group";
@@ -73,6 +77,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
         currentListGroup.appendChild(button);
         firstButton = true;
       }
+      */
     },
     createButton = function(title, callback) {
       uiComponentsHelper.createButton(
