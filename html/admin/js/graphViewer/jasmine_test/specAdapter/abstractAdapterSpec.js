@@ -41,6 +41,7 @@
   describe('Abstract Adapter', function () {
     
     var nodes, edges,
+    descendant,
     
     getCommunityNodes = function() {
       return _.filter(nodes, function(n) {
@@ -98,6 +99,9 @@
     beforeEach(function() {
       nodes = [];
       edges = [];
+      descendant = {
+        loadNode: {}
+      };
     });
     
     describe('setup process', function() {
@@ -118,10 +122,18 @@
         ).toThrow("The edges have to be given.");
       });
       
-      it('should not throw an error if setup correctly', function() {
+      it('should throw an error if no inheriting class is given', function() {
         expect(
           function() {
             var t = new AbstractAdapter([], []);
+          }
+        ).toThrow("An inheriting class has to be given.");
+      });
+      
+      it('should not throw an error if setup correctly', function() {
+        expect(
+          function() {
+            var t = new AbstractAdapter([], [], descendant);
           }
         ).not.toThrow();
       });
@@ -130,7 +142,7 @@
         spyOn(window, "NodeReducer");
         var nodes = [],
           edges = [],
-          t = new AbstractAdapter(nodes, edges);
+          t = new AbstractAdapter(nodes, edges, descendant);
         expect(window.NodeReducer).wasCalledWith(nodes, edges);
       });
       
@@ -138,7 +150,7 @@
         spyOn(window, "WebWorkerWrapper");
         var nodes = [],
           edges = [],
-          t = new AbstractAdapter(nodes, edges);
+          t = new AbstractAdapter(nodes, edges, descendant);
         expect(window.WebWorkerWrapper).wasCalledWith(
           window.ModularityJoiner,
           jasmine.any(Function)
@@ -151,7 +163,7 @@
       var testee;
       
       beforeEach(function() {
-        testee = new AbstractAdapter([], []);
+        testee = new AbstractAdapter([], [], descendant);
         this.addMatchers({
           toHaveFunction: function(func, argCounter) {
             var obj = this.actual;
@@ -228,7 +240,7 @@
       var adapter;
       
       beforeEach(function() {
-        adapter = new AbstractAdapter(nodes, []);
+        adapter = new AbstractAdapter(nodes, [], descendant);
       });
       
       it('should be possible to insert a node', function() {
@@ -322,7 +334,7 @@
       targetid;
       
       beforeEach(function() {
-        adapter = new AbstractAdapter(nodes, edges);
+        adapter = new AbstractAdapter(nodes, edges, descendant);
         source = adapter.insertNode({_id: 1});
         target = adapter.insertNode({_id: 2});
         sourceid = source._id;
@@ -470,6 +482,256 @@
       
     });
     
+    describe('checking node exploration', function() {
+      
+      var adapter;
+      
+      beforeEach(function() {
+        adapter = new AbstractAdapter(nodes, edges, descendant);
+      });
+      
+      it('should expand a collapsed node', function() {
+        var node = {
+          _id: "0",
+        },
+        loaded = 0,
+        loadedNodes = [];
+        adapter.insertNode(node);
+        spyOn(descendant, "loadNode").andCallFake(function(node) {
+          loaded++;
+          loadedNodes.push(node);
+        });
+        
+        adapter.explore(node);
+        
+        expect(descendant.loadNode).wasCalled();
+        
+        expect(node._expanded).toBeTruthy();
+        expect(loaded).toEqual(1);
+        expect(loadedNodes.length).toEqual(1);
+        expect(loadedNodes[0]).toEqual(node._id);
+        
+      });
+      
+      it('should collapse an expanded node', function() {
+        var node = {
+          _id: "0"
+        };
+        node = adapter.insertNode(node);
+        node._expanded = true;
+        spyOn(descendant, "loadNode");
+        
+        
+        adapter.explore(node);
+        
+        expect(node._expanded).toBeFalsy();
+
+        expect(descendant.loadNode).wasNotCalled();
+      });
+      
+      it('should collapse a tree', function() {
+        var root = {
+          _id: "0",
+        },
+        c1 = {
+          _id: "1",
+        },
+        c2 = {
+          _id: "2",
+        },
+        e1 = {
+          _id: "0-1",
+          _from: "0",
+          _to: "1"
+        },
+        e2 = {
+          _id: "0-2",
+          _from: "0",
+          _to: "2"
+        };
+        
+        root = adapter.insertNode(root);
+        // Fake expansion of node
+        root._expanded = true;
+        
+        adapter.insertNode(c1);
+        adapter.insertNode(c2);
+        
+        adapter.insertEdge(e1);
+        adapter.insertEdge(e2);
+
+        spyOn(descendant, "loadNode");
+        adapter.explore(root);
+        
+        expect(root._expanded).toBeFalsy();
+
+        expect(descendant.loadNode).wasNotCalled();
+        expect(nodes.length).toEqual(1);
+        expect(edges.length).toEqual(0);
+      });
+      
+      it('should not remove referenced nodes on collapsing ', function() {
+        var root = {
+          _id: "0",
+        },
+        c1 = {
+          _id: "1",
+        },
+        c2 = {
+          _id: "2",
+        },
+        c3 = {
+          _id: "3",
+        },
+        e1 = {
+          _id: "0-1",
+          _from: "0",
+          _to: "1"
+        },
+        e2 = {
+          _id: "0-3",
+          _from: "0",
+          _to: "3"
+        },
+        e3 = {
+          _id: "2-1",
+          _from: "2",
+          _to: "1"
+        };
+        
+        root = adapter.insertNode(root);
+        root._expanded = true;
+        c1 = adapter.insertNode(c1);
+        c2 = adapter.insertNode(c2);
+        adapter.insertNode(c3);
+        adapter.insertEdge(e1);
+        adapter.insertEdge(e2);
+        adapter.insertEdge(e3);
+        
+        spyOn(descendant, "loadNode");
+        adapter.explore(root);
+        
+        expect(root._expanded).toBeFalsy();
+        expect(descendant.loadNode).wasNotCalled();
+        expect(nodes.length).toEqual(3);
+        expect(edges.length).toEqual(1);
+        
+        expect(root._outboundCounter).toEqual(0);
+        expect(c1._inboundCounter).toEqual(1);
+        expect(c2._outboundCounter).toEqual(1);
+      });
+      
+      describe('with community nodes', function() {
+        
+        it('should expand a community node properly', function() {
+          var comm = {
+            _id: "*community_1"
+          };
+          comm = adapter.insertNode(comm);
+        
+          spyOn(adapter, "expandCommunity");
+          adapter.explore(comm, function() {});
+        
+          expect(adapter.expandCommunity).toHaveBeenCalledWith(comm, jasmine.any(Function));
+        });
+        
+        it('should remove a community if last pointer to it is collapsed', function() {
+          
+          runs(function() {
+            var c0 = {
+                _id: "0"
+              },
+              c1 = {
+                _id: "1"
+              },
+              comm = {
+                _id: "*community_1"
+              },
+              c2 = {
+                _id: "2"
+              },
+              e0 = {
+                _id: "0-1",
+                _from: "0",
+                _to: "1"
+              },
+              e1 = {
+                _id: "1-c",
+                _from: "1",
+                _to: "*community_1"
+              },
+              e2 = {
+                _id: "c-2",
+                _from: "*community_1",
+                _to: "2"
+              };
+            
+              
+            
+            c0 = adapter.insertNode(c0);
+            c1 = adapter.insertNode(c1);
+            c1._expanded = true;
+            adapter.insertNode(comm);
+            adapter.insertNode(c2);
+            e0 = adapter.insertEdge(e0);
+            adapter.insertEdge(e1);
+            adapter.insertEdge(e2);
+            
+            adapter.explore(c1);
+            
+            expect(nodes).toEqual([c0, c1]);
+            expect(edges).toEqual([e0]);
+          });
+        
+        });
+        
+        it('should not remove a community if a pointer to it still exists', function() {
+          
+          runs(function() {
+            var c0 = {
+                _id: "0"
+              },
+              c1 = {
+                _id: "1",
+              },
+              comm = {
+                _id: "*community_1"
+              },
+              e0 = {
+                _id: "0-1",
+                _from: "0",
+                _to: "1"
+              },
+              e1 = {
+                _id: "0-c",
+                _from: "0",
+                _to: "*community_1"
+              },
+              e2 = {
+                _id: "1-c",
+                _from: "1",
+                _to: "*community_1"
+              };
+            c0 = adapter.insertNode(c0);
+            c1 = adapter.insertNode(c1);
+            c1._expanded = true;
+            comm = adapter.insertNode(comm);
+            e0 = adapter.insertEdge(e0);
+            e1 = adapter.insertEdge(e1);
+            adapter.insertEdge(e2);
+            
+            adapter.explore(c1);
+            
+            expect(nodes).toEqual([c0, c1, comm]);
+            expect(edges).toEqual([e0, e1]);
+          });
+        
+        });
+        
+      });
+      
+    });
+    
     describe('checking communities', function() {
       
       var adapter,
@@ -507,7 +769,7 @@
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges);
+        adapter = new AbstractAdapter(nodes, edges, descendant);
       });
       
       it('should not take any action if no limit is set', function() {
@@ -710,9 +972,19 @@
       sourceid,
       targetid,
       mockWrapper,
+      mockReducer,
       workerCB;
       
       beforeEach(function() {
+        mockReducer = {};
+        mockReducer.bucketNodes = function() {};
+        spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+          return {
+            bucketNodes: function(toSort, numBuckets) {
+              return mockReducer.bucketNodes(toSort, numBuckets);
+            }
+          };
+        });
         mockWrapper = {};
         mockWrapper.call = function() {};
         spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
@@ -726,9 +998,9 @@
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges);
-        source = adapter.insertNode({_id: 1});
-        target = adapter.insertNode({_id: 2});
+        adapter = new AbstractAdapter(nodes, edges, descendant);
+        source = adapter.insertNode({_id: "1"});
+        target = adapter.insertNode({_id: "2"});
         sourceid = source._id;
         targetid = target._id;
       });
@@ -952,6 +1224,176 @@
         expect(mockWrapper.call).wasCalledWith("insertEdge", n2._id, n3._id);
       });
       
+      it('should be informed to remove edges if nodes are added to a bucket', function() {
+        var centroid = {
+          _id: "center"
+        },
+        s1 = {
+          _id: "s_1"
+        },
+        s2 = {
+          _id: "s_2"
+        },
+        s3 = {
+          _id: "s_3"
+        },
+        s4 = {
+          _id: "s_4"
+        },
+        s5 = {
+          _id: "s_5"
+        },
+        s6 = {
+          _id: "s_6"
+        },
+        s7 = {
+          _id: "s_7"
+        },
+        s8 = {
+          _id: "s_8"
+        },
+        ec1 = {
+          _id: "c1",
+          _from: "center",
+          _to: "s_1"
+        },
+        ec2 = {
+          _id: "c2",
+          _from: "center",
+          _to: "s_2"
+        },
+        ec3 = {
+          _id: "c3",
+          _from: "center",
+          _to: "s_3"
+        },
+        ec4 = {
+          _id: "c4",
+          _from: "center",
+          _to: "s_4"
+        },
+        ec5 = {
+          _id: "c5",
+          _from: "center",
+          _to: "s_5"
+        },
+        ec6 = {
+          _id: "c6",
+          _from: "center",
+          _to: "s_6"
+        },
+        ec7 = {
+          _id: "c7",
+          _from: "center",
+          _to: "s_7"
+        },
+        ec8 = {
+          _id: "c8",
+          _from: "center",
+          _to: "s_8"
+        },
+        inserted = [s1, s2, s3, s4, s5, s6, s7, s8],
+        limit = 3;
+        spyOn(mockReducer, "bucketNodes").andCallFake(function() {
+          return [
+            [s1, s2],
+            [s3, s4, s5, s6, s7],
+            [s8]
+          ];
+        });
+        adapter.setChildLimit(limit);
+        
+        adapter.insertNode(centroid);
+        adapter.insertNode(s1);
+        adapter.insertNode(s2);
+        adapter.insertNode(s3);
+        adapter.insertNode(s4);
+        adapter.insertNode(s5);
+        adapter.insertNode(s6);
+        adapter.insertNode(s7);
+        adapter.insertNode(s8);
+        
+        adapter.insertEdge(ec1);
+        adapter.insertEdge(ec2);
+        adapter.insertEdge(ec3);
+        adapter.insertEdge(ec4);
+        adapter.insertEdge(ec5);
+        adapter.insertEdge(ec6);
+        adapter.insertEdge(ec7);
+        adapter.insertEdge(ec8);
+        
+        spyOn(mockWrapper, "call");
+        
+        adapter.checkSizeOfInserted(inserted);
+        expect(mockReducer.bucketNodes).wasCalledWith(inserted, limit);
+        
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_1");
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_2");
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_3");
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_4");
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_5");
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_6");
+        expect(mockWrapper.call).toHaveBeenCalledWith("deleteEdge", "center", "s_7");
+        expect(mockWrapper.call.calls.length).toEqual(7);
+
+      });
+      
+      it('should not be informed about edges targeting at communities', function() {
+        var centroid = {
+          _id: "center"
+        },
+        s1 = {
+          _id: "s_1"
+        },
+        s2 = {
+          _id: "s_2"
+        },
+        ec1 = {
+          _id: "c1",
+          _from: "center",
+          _to: "s_1"
+        },
+        ec2 = {
+          _id: "c2",
+          _from: "center",
+          _to: "s_2"
+        },
+        comSource = {
+          _id: "comsource",
+          _from: "s_1",
+          _to: "1"
+        },
+        comTarget = {
+          _id: "comtarget",
+          _from: "1",
+          _to: "s_1"
+        },
+        inserted = [s1, s2],
+        limit = 1;
+        spyOn(mockReducer, "bucketNodes").andCallFake(function() {
+          return [
+            [s1, s2]
+          ];
+        });
+        adapter.setChildLimit(limit);
+        
+        adapter.insertNode(centroid);
+        adapter.insertNode(s1);
+        adapter.insertNode(s2);
+
+        
+        adapter.insertEdge(ec1);
+        adapter.insertEdge(ec2);
+        adapter.checkSizeOfInserted(inserted);
+        expect(mockReducer.bucketNodes).wasCalledWith(inserted, limit);
+        spyOn(mockWrapper, "call");
+        
+        adapter.insertEdge(comSource);
+        adapter.insertEdge(comTarget);
+        
+        expect(mockWrapper.call).wasNotCalled();
+      });
+      
     });
     
     
@@ -962,22 +1404,15 @@
       
       beforeEach(function() {
         mockReducer = {};
-        mockReducer.getCommunity = function() {};
         mockReducer.bucketNodes = function() {};
         spyOn(window, "NodeReducer").andCallFake(function(v, e) {
           return {
-            getCommunity: function(limit, focus) {
-              if (focus !== undefined) {
-                return mockReducer.getCommunity(limit, focus);
-              }
-              return mockReducer.getCommunity(limit);
-            },
             bucketNodes: function(toSort, numBuckets) {
               return mockReducer.bucketNodes(toSort, numBuckets);
             }
           };
         });
-        adapter = new AbstractAdapter(nodes, edges);
+        adapter = new AbstractAdapter(nodes, edges, descendant);
       });
       
       it('should not take any action if the limit is high enough', function() {
@@ -1010,11 +1445,11 @@
           ];
         });
         adapter.setChildLimit(limit);
-        n1 = adapter.insertNode({_id: 1 });
-        n2 = adapter.insertNode({_id: 2 });
-        n3 = adapter.insertNode({_id: 3 });
-        n4 = adapter.insertNode({_id: 4 });
-        n5 = adapter.insertNode({_id: 5 });
+        n1 = adapter.insertNode({_id: "1" });
+        n2 = adapter.insertNode({_id: "2" });
+        n3 = adapter.insertNode({_id: "3" });
+        n4 = adapter.insertNode({_id: "4" });
+        n5 = adapter.insertNode({_id: "5" });
         _.each(nodes, function(n) {
           inserted.push(n);
         });
@@ -1024,7 +1459,7 @@
         
         expect(nodes.length).toEqual(2);
         expect(getCommunityNodes().length).toEqual(2);
-        notExistNodes([1, 2, 3, 4, 5]);
+        notExistNodes(["1", "2", "3", "4", "5"]);
       });
       
       it('should not display single nodes as buckets', function() {
@@ -1039,11 +1474,11 @@
           ];
         });
         adapter.setChildLimit(limit);
-        n1 = adapter.insertNode({_id: 1 });
-        n2 = adapter.insertNode({_id: 2 });
-        n3 = adapter.insertNode({_id: 3 });
-        n4 = adapter.insertNode({_id: 4 });
-        n5 = adapter.insertNode({_id: 5 });
+        n1 = adapter.insertNode({_id: "1" });
+        n2 = adapter.insertNode({_id: "2" });
+        n3 = adapter.insertNode({_id: "3" });
+        n4 = adapter.insertNode({_id: "4" });
+        n5 = adapter.insertNode({_id: "5" });
         _.each(nodes, function(n) {
           inserted.push(n);
         });
@@ -1053,8 +1488,8 @@
         
         expect(nodes.length).toEqual(3);
         expect(getCommunityNodes().length).toEqual(1);
-        notExistNodes([3, 4, 5]);
-        existNodes([1, 2]);
+        notExistNodes(["3", "4", "5"]);
+        existNodes(["1", "2"]);
       });
       
     });
