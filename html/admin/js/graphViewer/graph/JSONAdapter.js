@@ -170,4 +170,8 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   
   };
   
+  self.explore = function (node, callback) {
+  
+  };
+  
 }

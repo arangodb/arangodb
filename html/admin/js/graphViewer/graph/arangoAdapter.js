@@ -48,7 +48,7 @@ function ArangoAdapter(nodes, edges, config) {
   }
   
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges),
+    absAdapter = new AbstractAdapter(nodes, edges, this),
     api = {},
     queries = {},
     nodeCollection,
@@ -248,6 +248,9 @@ function ArangoAdapter(nodes, edges, config) {
     });
   };
   */
+  
+  self.explore = absAdapter.explore;
+  
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
