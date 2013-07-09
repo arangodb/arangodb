@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _ */
+/*global console */
 /*global NodeReducer, ModularityJoiner, WebWorkerWrapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
