@@ -125,6 +125,7 @@ ERROR_REPLICATION_MASTER_INCOMPATIBLE,1403,"master incompatible","Will be raised
 ERROR_REPLICATION_MASTER_CHANGE,1404,"master change","Will be raised when the master the replica connects is changed."
 ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replica connects to itself for replication."
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication stream."
+ERROR_REPLICATION_INVALID_APPLY_STATE,1407,"invalid apply state","Will be raised when an invalid apply state file is found."
 
 ################################################################################
 ## ArangoDB query errors
