@@ -326,10 +326,7 @@ function AbstractAdapter(nodes, edges, descendant) {
         case "getCommunity": 
           collapseCommunity(data.result);
           break;
-        case "insertEdge":
-          break;
-        case "deleteEdge":
-          break;
+        default:
       }
     },
     

@@ -323,8 +323,32 @@
             });
           });
           
+          it('should only remove one of the edges on delete', function() {
+            joiner.insertEdge("1", "2");
+            joiner.insertEdge("1", "2");
+            
+            joiner.deleteEdge("1", "2");
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": {
+                "1": 1,
+                "3": 1
+              },
+              "1": {
+                "2": 2
+              },
+              "2": {
+                "1": 1,
+                "3": 1
+              },
+              "3": {
+                "0": 1,
+                "1": 1,
+                "2": 1
+              }
+            });
+          });
+          
         });
-        
         
         describe('the degrees', function() {
         
@@ -381,7 +405,6 @@
           });
           
         });
-        
         
         describe('the deltaQ', function() {
         
@@ -643,7 +666,6 @@
         
         });
         
-        
         describe('checking multiple executions', function() {
           
           it('should be able to recompute the joining', function() {
@@ -673,7 +695,23 @@
           
         });
         
-        
+        describe('checking massively insertion/deletion of edges', function() {
+          
+          it('should be possible to keep a consistent adj. matrix', function() {
+
+            joiner.deleteEdge("0", "1");
+            joiner.deleteEdge("0", "3");
+            joiner.deleteEdge("1", "2");
+            joiner.deleteEdge("2", "1");
+            joiner.deleteEdge("2", "3");
+            joiner.deleteEdge("3", "0");
+            joiner.deleteEdge("3", "1");
+            joiner.deleteEdge("3", "2");
+            
+            expect(joiner.getAdjacencyMatrix()).toEqual({});
+          });
+          
+        });
         
       });
       
@@ -1114,7 +1152,7 @@
         });
         
       });
-      
+      /*
       describe('checking large networks', function() {
         
         it('should be able to handle 1000 nodes', function() {
@@ -1673,7 +1711,7 @@
         });
         
       });
-      
+      */
     
       /*
       it('should be able to handle 10000 nodes', function() {
