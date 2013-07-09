@@ -3077,8 +3077,8 @@ static v8::Handle<v8::Value> JS_StopReplication (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNC(<master>)");
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNC(<master>, <forceFullSync>)");
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3088,9 +3088,14 @@ static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
   }
 
   const string masterEndpoint = TRI_ObjectToString(argv[0]);
+  bool forceFullSync = false;
+
+  if (argv.Length() > 1) {
+    forceFullSync = TRI_ObjectToBoolean(argv[1]);
+  }
 
   ReplicationFetcher rf(vocbase, masterEndpoint, 600);
-  rf.run();
+  rf.run(forceFullSync);
 
   return scope.Close(v8::True());
 }
