@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, alert*/
+/*gloabel AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -33,6 +34,7 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   var self = this,
   initialX = {},
   initialY = {},
+  absAdapter = new AbstractAdapter(nodes, edges, this),
   findNode = function(n) {    
     var res = $.grep(nodes, function(e){
       return e._id === n._id;
@@ -170,8 +172,6 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   
   };
   
-  self.explore = function (node, callback) {
-  
-  };
+  self.explore = absAdapter.explore;
   
 }

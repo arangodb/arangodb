@@ -59,6 +59,7 @@ var describeInterface = function (testee) {
       
       // Add functions to load here:
       expect(testee).toHaveFunction("loadNode", 2);
+      expect(testee).toHaveFunction("explore", 2);
 //      expect(testee).toHaveFunction("loadNodeFromTreeById", 2);
       expect(testee).toHaveFunction("requestCentralityChildren", 2);
 //      expect(testee).toHaveFunction("loadNodeFromTreeByAttributeValue", 3);
@@ -119,11 +120,12 @@ var describeIntegeration = function(constructor) {
         setNodeLimit: function(){},
         setChildLimit: function(){},
         checkSizeOfInserted: function(){},
-        checkNodeLimit: function(){}
+        checkNodeLimit: function(){},
+        explore: function(){}
       };
       
       
-      spyOn(window, "AbstractAdapter").andCallFake(function(nodes, edges) {
+      spyOn(window, "AbstractAdapter").andCallFake(function(nodes, edges, descendant) {
         mockedAbstract.nodes = nodes;
         mockedAbstract.edges = edges;
         return mockedAbstract;
@@ -135,6 +137,16 @@ var describeIntegeration = function(constructor) {
       testee = constructor();
       testee.setNodeLimit(5, function(){});
       expect(mockedAbstract.setNodeLimit).wasCalledWith(5, jasmine.any(Function));
+    });
+    
+    it('should call explore on the abstract', function() {
+      spyOn(mockedAbstract, "explore");
+      testee = constructor();
+      var node = {
+        _id: "1"
+      };
+      testee.explore(node, function(){});
+      expect(mockedAbstract.explore).wasCalledWith(node, jasmine.any(Function));
     });
     
     it('should call setChildLimit on the abstract', function() {

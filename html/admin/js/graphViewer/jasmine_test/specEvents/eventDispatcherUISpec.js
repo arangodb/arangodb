@@ -54,6 +54,7 @@
       spyOn(adapter, "deleteEdge");
       spyOn(adapter, "loadNode");
       spyOn(adapter, "expandCommunity");
+      spyOn(adapter, "explore");
     };
 
 
@@ -592,7 +593,7 @@
 
         helper.simulateMouseEvent("click", "1");
         
-        expect(adapter.loadNode).toHaveBeenCalledWith(nodes[0]._id, jasmine.any(Function));
+        expect(adapter.explore).toHaveBeenCalledWith(nodes[0], jasmine.any(Function));
         
       });      
     });
