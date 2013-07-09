@@ -146,12 +146,12 @@ int ReplicationFetcher::run () {
 
   bool fullSynchronisation = false;
 
-  if (_applyState._lastTick == 0) {
+  if (_applyState._lastInitialTick == 0) {
     // we had never sychronised anything
     fullSynchronisation = true;
   }
-  else if (_applyState._lastTick > 0 && 
-           _applyState._lastTick < _masterInfo._state._firstTick) {
+  else if (_applyState._lastContinuousTick > 0 && 
+           _applyState._lastContinuousTick < _masterInfo._state._firstLogTick) {
     // we had synchronised something before, but that point was
     // before the start of the master logs. this would mean a gap
     // in the data, so we'll do a complete re-sync
@@ -467,13 +467,19 @@ int ReplicationFetcher::getLocalState (string& errorMsg) {
       errorMsg = "could not save replication state information";
     }
   }
-  else {
+  else if (res == TRI_ERROR_NO_ERROR) {
     if (_masterInfo._serverId != _applyState._serverId) {
       res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
       errorMsg = "encountered wrong master id in replication state file. " 
                  "found: " + StringUtils::itoa(_masterInfo._serverId) + ", " 
                  "expected: " + StringUtils::itoa(_applyState._serverId);
     }
+  }
+  else {
+    // some error occurred
+    assert(res != TRI_ERROR_NO_ERROR);
+
+    errorMsg = TRI_errno_string(res);
   }
 
   return res;
@@ -882,7 +888,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
       res = TRI_ERROR_INTERNAL;
     }
     else {
-      res = handleCollectionDump(trxCollection, _masterInfo._state._lastTick, errorMsg);
+      res = handleCollectionDump(trxCollection, _masterInfo._state._lastLogTick, errorMsg);
     }
 
 
@@ -950,21 +956,21 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  // state."firstTick"
-  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "firstTick");
+  // state."firstLogTick"
+  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "firstLogTick");
 
   if (! JsonHelper::isString(tick)) {
-    errorMsg = "firstTick is missing from response";
+    errorMsg = "firstLogTick is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   const TRI_voc_tick_t firstTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
 
-  // state."lastTick"
-  tick = JsonHelper::getArrayElement(state, "lastTick");
+  // state."lastLogTick"
+  tick = JsonHelper::getArrayElement(state, "lastLogTick");
 
   if (! JsonHelper::isString(tick)) {
-    errorMsg = "lastTick is missing from response";
+    errorMsg = "lastLogTick is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -1033,12 +1039,12 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
-  _masterInfo._majorVersion     = major;
-  _masterInfo._minorVersion     = minor;
-  _masterInfo._serverId         = masterId;
-  _masterInfo._state._firstTick = firstTick;
-  _masterInfo._state._lastTick  = lastTick;
-  _masterInfo._state._active    = running;
+  _masterInfo._majorVersion        = major;
+  _masterInfo._minorVersion        = minor;
+  _masterInfo._serverId            = masterId;
+  _masterInfo._state._firstLogTick = firstTick;
+  _masterInfo._state._lastLogTick  = lastTick;
+  _masterInfo._state._active       = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
 
@@ -1113,7 +1119,13 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
- 
+  
+  _applyState._lastInitialTick = _masterInfo._state._lastLogTick;   
+  res = TRI_SaveApplyStateReplication(_vocbase, &_applyState, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "could not save replication state information";
+  }
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -1177,7 +1189,7 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
 
   map<string, string> headers;
 
-  TRI_voc_tick_t fromTick = _masterInfo._state._lastTick;
+  TRI_voc_tick_t fromTick = _masterInfo._state._lastLogTick;
 
   while (true) {
     const string url = baseUrl + "&from=" + StringUtils::itoa(fromTick); 
