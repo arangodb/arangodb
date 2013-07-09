@@ -162,6 +162,8 @@ struct TRI_json_s;
     }                                                                                                                  \
     else {                                                                                                             \
       (dst)._sid = 0;                                                                                                  \
+      (dst)._data.length = 0;                                                                                          \
+      (dst)._data.data = NULL;                                                                                         \
     }                                                                                                                  \
   } while (0)
 

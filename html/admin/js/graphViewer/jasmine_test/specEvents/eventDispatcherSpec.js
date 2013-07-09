@@ -64,6 +64,7 @@
         spyOn(adapter, "deleteEdge");
         spyOn(adapter, "loadNode");
         spyOn(adapter, "expandCommunity");
+        spyOn(adapter, "explore");
       };
     
     beforeEach(function() {
@@ -83,8 +84,6 @@
       };
       
       expandConfig = {
-        edges: edges,
-        nodes: nodes,
         startCallback: function() {},
         adapter: adapter,
         reshapeNodes: function() {}
@@ -436,19 +435,11 @@
         });
         
         waitsFor(function() {
-          return adapter.loadNode.wasCalled;
-        }, 1000, "The loadNode function should have been called.");
+          return adapter.explore.wasCalled;
+        }, 1000, "The explore function should have been called.");
         
         runs(function() {
-          expect(nodes[0]._expanded).toBeTruthy();
-          helper.simulateMouseEvent("click", "1");
-        });
-        
-        waitsFor(function() {
-          return !nodes[0]._expanded;
-        }, 1000, "The loadNode function should have been called.");
-        
-        runs(function() {
+          // Just do be displayed in the list
           expect(true).toBeTruthy();
         });
       });

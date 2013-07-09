@@ -65,7 +65,7 @@ function WebWorkerWrapper(Class, callback) {
           self.postMessage({
             cmd: "construct",
             result: false,
-            error: err
+            error: err.message || err
           });
         }
         break;
@@ -79,7 +79,7 @@ function WebWorkerWrapper(Class, callback) {
           } catch (err1) {
             self.postMessage({
               cmd: e.data.cmd,
-              error: err1
+              error: err1.message || err1
             });
           }
         } else {

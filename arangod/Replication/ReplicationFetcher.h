@@ -163,11 +163,11 @@ namespace triagens {
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyMarker (struct TRI_transaction_collection_s*,
-                         char const*,
-                         const TRI_voc_key_t,
-                         struct TRI_json_s const*,
-                         string&);
+        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+                                       char const*,
+                                       const TRI_voc_key_t,
+                                       struct TRI_json_s const*,
+                                       string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump
@@ -233,6 +233,12 @@ namespace triagens {
         int iterateCollections (struct TRI_json_s const*,
                                 string&,
                                 setup_phase_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the continuous synchronisation
+////////////////////////////////////////////////////////////////////////////////
+
+        int runContinuous (string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

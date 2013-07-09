@@ -5365,9 +5365,11 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         TRI_V8_EXCEPTION(scope, res);
       }
 
+#ifdef TRI_ENABLE_REPLICATION
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
-      TRI_ChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, json); 
+      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, json); 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+#endif
     }
   }
 
