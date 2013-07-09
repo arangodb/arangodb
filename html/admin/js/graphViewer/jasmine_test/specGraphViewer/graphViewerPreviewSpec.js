@@ -125,7 +125,8 @@
       
       it('should automatically load the first node', function() {
         var mockObj = {
-            loadNode: function() {}
+            loadNode: function() {},
+            explore: function() {}
           },
           startNode = "1",
           ui;
