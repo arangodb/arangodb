@@ -126,7 +126,7 @@ ReplicationFetcher::~ReplicationFetcher () {
 /// @brief run method
 ////////////////////////////////////////////////////////////////////////////////
 
-int ReplicationFetcher::run () {
+int ReplicationFetcher::run (bool forceFullSynchronisation) {
   string errorMsg;
   int res;
 
@@ -144,21 +144,19 @@ int ReplicationFetcher::run () {
     return res;
   }
 
-  bool fullSynchronisation = false;
-
   if (_applyState._lastInitialTick == 0) {
     // we had never sychronised anything
-    fullSynchronisation = true;
+    forceFullSynchronisation = true;
   }
   else if (_applyState._lastContinuousTick > 0 && 
            _applyState._lastContinuousTick < _masterInfo._state._firstLogTick) {
     // we had synchronised something before, but that point was
     // before the start of the master logs. this would mean a gap
     // in the data, so we'll do a complete re-sync
-    fullSynchronisation = true;
+    forceFullSynchronisation = true;
   }
 
-  if (fullSynchronisation) {
+  if (forceFullSynchronisation) {
     LOGGER_INFO("performing full synchronisation with master");
 
     // nothing applied so far. do a full sync of collections
@@ -224,14 +222,13 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
-                                                   char const* type,
+                                                   TRI_replication_operation_e type,
                                                    const TRI_voc_key_t key,
                                                    TRI_json_t const* json,
                                                    string& errorMsg) {
 
-  if (TRI_EqualString(type, "marker-document") ||
-      TRI_EqualString(type, "marker-edge")) {
-    // {"type":"marker-document","key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+  if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
+    // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
@@ -248,7 +245,7 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
         // insert
         const TRI_voc_rid_t rid = StringUtils::uint64(JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_REV, ""));
 
-        if (type[7] == 'e') {
+        if (type == MARKER_EDGE) {
           // edge
           if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
@@ -305,8 +302,8 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
     return res; 
   }
 
-  else if (TRI_EqualString(type, "marker-deletion")) {
-    // {"type":"marker-deletion","key":"592063"}
+  else if (type == MARKER_REMOVE) {
+    // {"type":2402,"key":"592063"}
 
     TRI_doc_update_policy_t policy;
     TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
@@ -329,7 +326,7 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
   }
 
   else {
-    errorMsg = "unexpected marker type '" + string(type) + "'";
+    errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
     return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
   }
@@ -373,7 +370,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    const char* type = 0;
+    TRI_replication_operation_e type = REPLICATION_INVALID;
     const char* key  = 0;
     TRI_json_t const* doc = 0;
     bool isValid     = true;
@@ -396,12 +393,11 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
         
         if (TRI_EqualString(attributeName, "type")) {
           if (value == 0 || 
-              value->_type != TRI_JSON_STRING ||
-              value->_value._string.data == 0) {
+              value->_type != TRI_JSON_NUMBER) {
             isValid = false;
           }
           else {
-            type = value->_value._string.data;
+            type = (TRI_replication_operation_e) value->_value._number;
           }
         }
 
@@ -428,7 +424,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
       }
     }
 
-    if (! isValid) {
+    if (! isValid || key == 0 || doc == 0) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       errorMsg = invalidMsg;
       
@@ -437,10 +433,111 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
  
     int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, doc, errorMsg);
       
-    if (res != TRI_ERROR_NO_ERROR) {
-      std::cout << JsonHelper::toString(json);
-    }
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply a single marker from the continuous log
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::applyLogMarker (TRI_json_t const* json,
+                                        string& errorMsg) {
+  static const string invalidMsg = "received invalid JSON data";
+
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    errorMsg = invalidMsg;
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_json_t const* typeJson = TRI_LookupArrayJson(json, "type");
+
+  if (typeJson == 0 || typeJson->_type != TRI_JSON_NUMBER) {
+    errorMsg = invalidMsg;
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_replication_operation_e type = (TRI_replication_operation_e) typeJson->_value._number;
+
+  if (type == DOCUMENT_INSERT) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  else if (type == DOCUMENT_REMOVE) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == COLLECTION_CREATE) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == COLLECTION_DROP) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == COLLECTION_RENAME) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == INDEX_CREATE) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == INDEX_DROP) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == TRANSACTION_START) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else if (type == TRANSACTION_COMMIT) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  else if (type == REPLICATION_STOP) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  else {
+    errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+
+    return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply the data from the continuous log
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::applyLog (SimpleHttpResult* response,
+                                  string& errorMsg) {
+  
+  std::stringstream& data = response->getBody();
+
+  while (true) {
+    string line;
+    
+    std::getline(data, line, '\n');
+
+    if (line.size() < 2) {
+      // we are done
+      return TRI_ERROR_NO_ERROR;
+    }
+      
+    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
+
+    if (line.size() < 256) {
+
+    std::cout << "JSON: " << JsonHelper::toString(json) << "\n";
+    }
+    
+    int res = applyLogMarker(json, errorMsg);
+      
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -495,7 +592,7 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
   }
 
   map<string, string> headers;
-  const string url = "/_api/replication/state";
+  static const string url = "/_api/replication/state";
 
   // send request
   LOGGER_REPLICATION("fetching master state from " << url);
@@ -560,7 +657,7 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
   }
 
   map<string, string> headers;
-  const string url = "/_api/replication/inventory";
+  static const string url = "/_api/replication/inventory";
 
   // send request
   LOGGER_REPLICATION("fetching master inventory from " << url);
@@ -1189,7 +1286,7 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
 
   map<string, string> headers;
 
-  TRI_voc_tick_t fromTick = _masterInfo._state._lastLogTick;
+  TRI_voc_tick_t fromTick = _applyState._lastInitialTick;
 
   while (true) {
     const string url = baseUrl + "&from=" + StringUtils::itoa(fromTick); 
@@ -1249,29 +1346,27 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
       active = StringUtils::boolean(header);
     }
    
-    if (checkMore) { 
-      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTFOUND, found);
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTFOUND, found);
 
-      if (found) {
-        TRI_voc_tick_t tick = StringUtils::uint64(header);
+    if (found) {
+      TRI_voc_tick_t tick = StringUtils::uint64(header);
 
-        if (tick > fromTick) {
-          fromTick = tick;
-        }
-        else {
-          // we got the same tick again, this indicates we're at the end
-          checkMore = false;
-        }
+      if (tick > fromTick) {
+        fromTick = tick;
       }
       else {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                   ": header '" TRI_REPLICATION_HEADER_LASTFOUND "' is missing";
+       // we got the same tick again, this indicates we're at the end
+        checkMore = false;
       }
+    }
+    else {
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+                 ": header '" TRI_REPLICATION_HEADER_LASTFOUND "' is missing";
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      std::cout << "GOT: " << response->getBody().str().c_str() << "\n\n\n\n";
+      res = applyLog(response, errorMsg);
     }
 
     delete response;
