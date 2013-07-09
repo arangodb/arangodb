@@ -218,6 +218,8 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
 
 void ReplicationFetcher::abortOngoingTransaction () {
   if (_applyState._trx != 0) {
+    LOGGER_REPLICATION("aborting transaction " << _applyState._externalTid); 
+
     TRI_FreeTransaction(_applyState._trx);
     _applyState._trx = 0;
     _applyState._externalTid = 0;
@@ -231,17 +233,13 @@ void ReplicationFetcher::abortOngoingTransaction () {
 TRI_transaction_t* ReplicationFetcher::createSingleOperationTransaction (TRI_voc_cid_t cid) {
   TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
 
-std::cout << "PROC TRX " << cid << "\n";
-std::cout << "PROC TRX " << TRI_LookupCollectionByIdVocBase(_vocbase, cid) << "\n";
   if (trx == 0) {
-std::cout << "PROC TRX1\n";
     return 0;
   }
 
   int res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
 
   if (res != TRI_ERROR_NO_ERROR) {
-std::cout << "PROC TRX2 " << cid << "\n";
     TRI_FreeTransaction(trx);
 
     return 0;
@@ -252,7 +250,6 @@ std::cout << "PROC TRX2 " << cid << "\n";
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeTransaction(trx);
 
-std::cout << "PROC TRX3 " << res << "\n";
     return 0;
   }
 
@@ -395,7 +392,8 @@ int ReplicationFetcher::startTransaction (TRI_json_t const* json) {
   if (collections == 0 || collections->_type != TRI_JSON_LIST) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-   
+  
+  LOGGER_REPLICATION("starting transaction " << tid); 
   TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
 
   if (trx == 0) {
@@ -484,9 +482,14 @@ int ReplicationFetcher::commitTransaction (TRI_json_t const* json) {
 
     return TRI_ERROR_INTERNAL; 
   }
+  
+  LOGGER_REPLICATION("committing transaction " << tid); 
 
   int res = TRI_CommitTransaction(_applyState._trx, TRI_TRANSACTION_TOP_LEVEL);
-  abortOngoingTransaction();
+
+  TRI_FreeTransaction(_applyState._trx);
+  _applyState._trx = 0;
+  _applyState._externalTid = 0;
 
   return res;
 }
