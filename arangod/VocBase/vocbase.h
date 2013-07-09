@@ -553,10 +553,10 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
 /// and optionally indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_ParametersCollectionsVocBase (TRI_vocbase_t*,
-                                                     TRI_voc_tick_t,
-                                                     bool (*)(TRI_vocbase_col_t*, void*),
-                                                     void*);
+struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
+                                                    TRI_voc_tick_t,
+                                                    bool (*)(TRI_vocbase_col_t*, void*),
+                                                    void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id

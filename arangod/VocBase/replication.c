@@ -570,7 +570,7 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   TRI_voc_rid_t oldRev;
   TRI_voc_rid_t rid;
 
-  if (! TRI_ReserveStringBuffer(buffer, 256)) {
+  if (TRI_ReserveStringBuffer(buffer, 256) != TRI_ERROR_NO_ERROR) {
     return false;
   }
   
@@ -2014,7 +2014,7 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
   TRI_replication_logger_t* logger;
   const char* typeName;
   int res;
-  
+
   logger = vocbase->_replicationLogger;
   TRI_ReadLockReadWriteLock(&logger->_statusLock);
 

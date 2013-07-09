@@ -366,7 +366,7 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
   
   // collections
-  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
+  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
 
   TRI_replication_log_state_t state;
 
