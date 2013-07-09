@@ -55,305 +55,67 @@
 
     describe('Expand', function() {
       
-      var loaded,
-      reshaped,
-      nodes,
-      edges,
-      loadedNodes,
-      started,
-      reshapeNodesCallback = function() {
-        reshaped++;
-      },
-      startCallback = function() {
-        started++;
-      },
-      config,
-      testee;
+      var 
+        dummy = {},
+        config,
+        testee;
       
       beforeEach(function() {
-        loaded = 0;
-        reshaped = 0;
-        started = 0;
-      
-        nodes = [];
-        edges = [];
-        loadedNodes = [];
+        adapterDummy.explore = function(){};
         config = {
-          edges: edges,
-          nodes: nodes,
-          startCallback: startCallback,
+          startCallback: function() {},
           adapter: adapterDummy,
-          reshapeNodes: reshapeNodesCallback
+          reshapeNodes: function() {}
         };
       });
       
-      it('should expand a collapsed node', function() {
+      it('should call explore on the adapter', function() {
         var node = {
-          _id: 0,
-          _outboundCounter: 0,
-          _inboundCounter: 0
+          _id: "0"
         };
-        nodes.push(node);
-        spyOn(adapterDummy, "loadNode").andCallFake(function(node) {
-          loaded++;
-          loadedNodes.push(node);
-        });
+
+        spyOn(adapterDummy, "explore");
         //config.adapter = adapterDummy.loadNode;
         testee = eventLib.Expand(config);
         testee(node);
         
-        expect(node._expanded).toBeTruthy();
-        expect(started).toEqual(1);
-        expect(reshaped).toEqual(1);
-        expect(loaded).toEqual(1);
-        expect(loadedNodes.length).toEqual(1);
-        expect(loadedNodes[0]).toEqual(node._id);
+        expect(adapterDummy.explore).wasCalledWith(node, config.startCallback);
         
       });
       
-      it('should collapse an expanded node', function() {
+      it('should call reshape nodes', function() {
         var node = {
-          id: 0,
-          _expanded: true,
-          _outboundCounter: 0,
-          _inboundCounter: 0
+          _id: "0"
         };
-        nodes.push(node);
+        spyOn(config, "reshapeNodes");
         testee = eventLib.Expand(config);
         testee(node);
         
-        expect(node._expanded).toBeFalsy();
-        expect(started).toEqual(1);
-        expect(reshaped).toEqual(1);
-        expect(loaded).toEqual(0);
+        expect(config.reshapeNodes).wasCalled();
+        
       });
       
-      it('should collapse a tree', function() {
-        var root = {
-          id: 0,
-          _expanded: true,
-          _outboundCounter: 2,
-          _inboundCounter: 0
-        },
-        c1 = {
-          id: 1,
-          _outboundCounter: 0,
-          _inboundCounter: 1
-        },
-        c2 = {
-          id: 2,
-          _outboundCounter: 0,
-          _inboundCounter: 1
+      it('should call the start callback', function() {
+        var node = {
+          _id: "0"
         };
-        
-        nodes.push(root);
-        nodes.push(c1);
-        nodes.push(c2);
-        edges.push({source: root, target: c1});
-        edges.push({source: root, target: c2});
-        
+
+        spyOn(config, "startCallback");
+
         testee = eventLib.Expand(config);
-        testee(root);
+        testee(node);
         
-        expect(root._expanded).toBeFalsy();
-        expect(started).toEqual(1);
-        expect(reshaped).toEqual(1);
-        expect(loaded).toEqual(0);
-        expect(nodes.length).toEqual(1);
-        expect(edges.length).toEqual(0);
+        expect(config.startCallback).wasCalled();
+
       });
       
-      it('should not remove referenced nodes on collapsing ', function() {
-        var root = {
-          _id: 0,
-          _expanded: true,
-          _outboundCounter: 2,
-          _inboundCounter: 0
-        },
-        c1 = {
-          _id: 1,
-          _outboundCounter: 0,
-          _inboundCounter: 2
-        },
-        c2 = {
-          _id: 2,
-          _outboundCounter: 1,
-          _inboundCounter: 0
-        },
-        c3 = {
-          _id: 3,
-          _outboundCounter: 0,
-          _inboundCounter: 1
-        };
-        
-        nodes.push(root);
-        nodes.push(c1);
-        nodes.push(c2);
-        nodes.push(c3);
-        edges.push({source: root, target: c1});
-        edges.push({source: root, target: c3});
-        edges.push({source: c2, target: c1});
-        
-        testee = eventLib.Expand(config);
-        testee(root);
-        
-        expect(root._expanded).toBeFalsy();
-        expect(started).toEqual(1);
-        expect(reshaped).toEqual(1);
-        expect(loaded).toEqual(0);
-        expect(nodes.length).toEqual(3);
-        expect(edges.length).toEqual(1);
-        
-        expect(root._outboundCounter).toEqual(0);
-        expect(c1._inboundCounter).toEqual(1);
-        expect(c2._outboundCounter).toEqual(1);
-      });
-      
-      describe('with community nodes', function() {
-        
-        it('should expand a community node properly', function() {
-          var comm = {
-            _id: "*community_1"
-          };
-          nodes.push(comm);
-        
-          spyOn(adapterDummy, "expandCommunity");
-        
-          testee = eventLib.Expand(config);
-          testee(comm);
-        
-          expect(adapterDummy.expandCommunity).toHaveBeenCalledWith(comm, jasmine.any(Function));
-        });
-        
-        it('should remove a community if last pointer to it is collapsed', function() {
-          
-          runs(function() {
-            var c0 = {
-                _id: 0,
-                _outboundCounter: 1,
-                _inboundCounter: 0
-              },
-              c1 = {
-                _id: 1,
-                _expanded: true,
-                _outboundCounter: 1,
-                _inboundCounter: 1
-              },
-              comm = {
-                _id: "*community_1",
-                _outboundCounter: 1,
-                _inboundCounter: 1
-              },
-              c2 = {
-                _id: 1,
-                _outboundCounter: 0,
-                _inboundCounter: 1
-              },
-              e0 = {
-                source: c0,
-                target: c1
-              },
-              e1 = {
-                source: c1,
-                target: comm
-              },
-              e2 = {
-                source: comm,
-                target: c2
-              };
-            nodes.push(c0);
-            nodes.push(c1);
-            nodes.push(comm);
-            nodes.push(c2);
-            edges.push(e0);
-            edges.push(e1);
-            edges.push(e2);
+
             
-            testee = eventLib.Expand(config);
-            testee(c1);
-            
-            expect(nodes).toEqual([c0, c1]);
-            expect(edges).toEqual([e0]);
-          });
-        
-        });
-        
-        it('should not remove a community if a pointer to it still exists', function() {
-          
-          runs(function() {
-            var c0 = {
-                _id: 0,
-                _outboundCounter: 2,
-                _inboundCounter: 0
-              },
-              c1 = {
-                _id: 1,
-                _expanded: true,
-                _outboundCounter: 1,
-                _inboundCounter: 1
-              },
-              comm = {
-                _id: "*community_1",
-                _outboundCounter: 0,
-                _inboundCounter: 2
-              },
-              e0 = {
-                source: c0,
-                target: c1
-              },
-              e1 = {
-                source: c0,
-                target: comm
-              },
-              e2 = {
-                source: c1,
-                target: comm
-              };
-            nodes.push(c0);
-            nodes.push(c1);
-            nodes.push(comm);
-            edges.push(e0);
-            edges.push(e1);
-            edges.push(e2);
-            
-            testee = eventLib.Expand(config);
-            testee(c1);
-            
-            expect(nodes).toEqual([c0, c1, comm]);
-            expect(edges).toEqual([e0, e1]);
-          });
-        
-        });
-        
-      });
-      
-      
-      
-      
       describe('setup process', function() {
         
         var testConfig = {};
-              
-        it('should throw an error if edges are not given', function() {          
-          expect(
-            function() {
-              eventLib.Expand(testConfig);
-            }
-          ).toThrow("Edges have to be defined");
-        });
-        
-        it('should throw an error if nodes are not given', function() {
-          testConfig.edges = [];
-          expect(
-            function() {
-              eventLib.Expand(testConfig);
-            }
-          ).toThrow("Nodes have to be defined");
-        });
-        
+     
         it('should throw an error if start callback is not given', function() {
-          testConfig.edges = [];
-          testConfig.nodes = [];
           expect(
             function() {
               eventLib.Expand(testConfig);
@@ -362,8 +124,6 @@
         });
         
         it('should throw an error if load node callback is not given', function() {
-          testConfig.edges = [];
-          testConfig.nodes = [];
           testConfig.startCallback = function(){};
           expect(
             function() {
@@ -373,8 +133,6 @@
         });
         
         it('should throw an error if reshape node callback is not given', function() {
-          testConfig.edges = [];
-          testConfig.nodes = [];
           testConfig.startCallback = function(){};
           testConfig.adapter = adapterDummy;
           expect(
