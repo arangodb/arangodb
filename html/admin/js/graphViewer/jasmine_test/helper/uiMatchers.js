@@ -80,7 +80,7 @@ var uiMatchers = uiMatchers || {};
         }
         return true;
       },
-      
+            
       toConformToToolboxLayout: function() {
         var box = this.actual;
         expect(box).toBeTag("div");

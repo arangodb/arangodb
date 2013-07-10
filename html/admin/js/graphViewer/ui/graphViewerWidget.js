@@ -50,7 +50,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
     createTB,
     adapterConfig,
     dispatcherUI,
-    mousePointerBox = document.createElement("div"),
+    //mousePointerBox = document.createElement("div"),
     
     
     createSVG = function() {
@@ -112,17 +112,19 @@ function GraphViewerWidget(viewerConfig, startNode) {
       var toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
         toolbox,
-        mousePointerBox,
+        //mousePointerBox,
         viewer.nodeShaper,
         viewer.edgeShaper,
         viewer.dispatcherConfig
       );
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
+      container.appendChild(toolbox);
+      /*
       mousePointerBox.id = "mousepointer";
       mousePointerBox.className = "mousepointer";
-      container.appendChild(toolbox);
       container.appendChild(mousePointerBox);
+      */
       _.each(config, function(v, k) {
         switch(k) {
           case "expand":
@@ -149,7 +151,7 @@ function GraphViewerWidget(viewerConfig, startNode) {
       var toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
         toolbox,
-        mousePointerBox,
+//        mousePointerBox,
         viewer.nodeShaper,
         viewer.edgeShaper,
         viewer.dispatcherConfig

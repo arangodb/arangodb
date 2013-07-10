@@ -69,7 +69,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
         $(img).toggleClass("active", false);
       });
       $(i).toggleClass("active", true);
-      callback()
+      callback();
     };
     return button;
   };
