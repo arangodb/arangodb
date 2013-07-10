@@ -258,6 +258,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       var intSVG = $("#graphViewerSVG");
       colourList.style.top = intSVG.position().top.toFixed(1) + "px";
       colourList.style.left = (intSVG.position().left + intSVG.width()).toFixed(1) + "px";
+      colourList.style.height = intSVG.height() + "px";
+      colourList.style.overflow = "auto";
       container.appendChild(colourList);
     };
   container.appendChild(menubar);
