@@ -299,10 +299,11 @@ static int LogEvent (TRI_replication_logger_t* logger,
                      TRI_string_buffer_t* buffer) {
   TRI_primary_collection_t* primary;
   TRI_shaped_json_t* shaped;
-  TRI_json_t* json;
+  TRI_json_t json;
   TRI_doc_mptr_t mptr;
   size_t len;
   int res;
+  bool withTid;
 
   assert(logger != NULL);
   assert(buffer != NULL);
@@ -315,32 +316,53 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
     return TRI_ERROR_NO_ERROR;
   }
- 
-  // printf("REPLICATION: %s: tid: %llu, %s\n", eventName, (unsigned long long) tid, buffer->_buffer);
 
+  withTid = (tid > 0);
+ 
   // TODO: instead of using JSON here, we could directly use ShapedJson.
   // this will be a performance optimisation
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &json, withTid ? 3 : 2);
 
-  if (json == NULL) {
-    // should not happen in CORE_MEM_ZONE, but you never know
-    ReturnBuffer(logger, buffer);
+  // add "type" attribute
+  {
+    TRI_json_t typeAttribute;
+    TRI_InitNumberJson(&typeAttribute, (double) type);
 
-    return TRI_ERROR_OUT_OF_MEMORY;
+    TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
+                         &json, 
+                         "type", 
+                         4, // strlen("type")
+                         &typeAttribute);
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) type));
+  // "tid" attribute
+  if (withTid) {
+    TRI_json_t tidAttribute;
+    TRI_InitStringJson(&tidAttribute, TRI_StringUInt64(tid));
 
-  if (tid != 0) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tid", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(tid)));
+    TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
+                         &json, 
+                         "tid", 
+                         3, // strlen("tid")
+                         &tidAttribute);
   }
 
-  // pass the string-buffer buffer pointer to the JSON
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "data", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StealStringBuffer(buffer)));
+  // "data" attribute
+  {
+    TRI_json_t dataAttribute;
+    // pass the string-buffer buffer pointer to the JSON
+    TRI_InitString2Json(&dataAttribute, TRI_StealStringBuffer(buffer), TRI_LengthStringBuffer(buffer));
+
+    TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
+                         &json, 
+                         "data", 
+                         4, // strlen("data")
+                         &dataAttribute);
+  }
   
   primary = logger->_trxCollection->_collection->_collection;
-  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  shaped = TRI_ShapedJsonJson(primary->_shaper, &json);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 
   if (shaped == NULL) {
     ReturnBuffer(logger, buffer);
@@ -1335,6 +1357,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   TRI_transaction_t* trx;
   TRI_vocbase_col_t* collection;
   TRI_vocbase_t* vocbase;
+  TRI_transaction_hint_t hint;
   TRI_voc_cid_t cid;
   int res;
   
@@ -1370,8 +1393,12 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
     return TRI_ERROR_INTERNAL;
   }
-    
-  res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION, TRI_TRANSACTION_TOP_LEVEL);
+
+  // the SINGLE_OPERATION hint is actually a hack:
+  // the logger does not write just one operation, but it is used to prevent locking the collection
+  // for the entire duration of the transaction
+  hint = (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION;
+  res = TRI_BeginTransaction(trx, hint, TRI_TRANSACTION_TOP_LEVEL);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeTransaction(trx);
@@ -1386,7 +1413,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   assert(logger->_state._active == false);
 
   logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._tick; 
-  logger->_state._active   = true;
+  logger->_state._active = true;
   
   LOG_INFO("started replication logger for database '%s', last tick: %llu", 
            logger->_databaseName,
