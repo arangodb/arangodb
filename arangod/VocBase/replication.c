@@ -249,15 +249,21 @@ static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
   assert(logger != NULL);
   buffer = NULL;
 
+  // locked section
+  // ---------------------------------------
   TRI_LockSpin(&logger->_bufferLock);
 
   n = logger->_buffers._length;
 
   if (n > 0) {
-    buffer = TRI_RemoveVectorPointer(&logger->_buffers, n);
+    buffer = TRI_RemoveVectorPointer(&logger->_buffers, (size_t) (n - 1));
   }
 
   TRI_UnlockSpin(&logger->_bufferLock);
+  // ---------------------------------------
+  // locked section end
+
+  assert(buffer != NULL);
 
   return buffer;
 }
@@ -279,12 +285,16 @@ static void ReturnBuffer (TRI_replication_logger_t* logger,
     TRI_ResetStringBuffer(buffer);
   }
 
+  // locked section
+  // ---------------------------------------
   TRI_LockSpin(&logger->_bufferLock);
 
   TRI_PushBackVectorPointer(&logger->_buffers, buffer);
   assert(logger->_buffers._length <= NUM_BUFFERS);
   
   TRI_UnlockSpin(&logger->_bufferLock);
+  // ---------------------------------------
+  // locked section end
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +342,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
                          &json, 
                          "type", 
                          4, // strlen("type")
-                         &typeAttribute);
+                         &typeAttribute,
+                         true);
   }
 
   // "tid" attribute
@@ -344,7 +355,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
                          &json, 
                          "tid", 
                          3, // strlen("tid")
-                         &tidAttribute);
+                         &tidAttribute,
+                         true);
   }
 
   // "data" attribute
@@ -357,7 +369,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
                          &json, 
                          "data", 
                          4, // strlen("data")
-                         &dataAttribute);
+                         &dataAttribute,
+                         true);
   }
   
   primary = logger->_trxCollection->_collection->_collection;
@@ -1514,6 +1527,8 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
 static void FreeBuffers (TRI_replication_logger_t* logger) {
   size_t i, n;
 
+  LOG_TRACE("freeing buffers");
+
   n = logger->_buffers._length;
 
   for (i = 0; i < n; ++i) {
@@ -1533,6 +1548,10 @@ static void FreeBuffers (TRI_replication_logger_t* logger) {
 static int InitBuffers (TRI_replication_logger_t* logger) {
   size_t i;
   int res;
+
+  assert(NUM_BUFFERS > 0);
+  
+  LOG_TRACE("initialising buffers");
 
   res = TRI_InitVectorPointer2(&logger->_buffers, TRI_CORE_MEM_ZONE, NUM_BUFFERS);
 
