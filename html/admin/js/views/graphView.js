@@ -49,7 +49,7 @@ window.graphView = Backbone.View.extend({
 
 
   render: function() {
-    $(this.el).html(this.template.text);
+    $(this.el).html(this.template.render({col: this.collection}));
 
     return this;
   }
