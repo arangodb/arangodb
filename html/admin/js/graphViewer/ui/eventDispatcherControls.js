@@ -53,13 +53,29 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       "none",
       ""
     ),
+    icons = {
+      expand: "plus",
+      add: "plus-sign",
+      trash: "trash",
+      drag: "move",
+      edge: "resize-horizontal",
+      edit: "pencil"
+    },
     */
+    icons = {
+      expand: "expand",
+      add: "add",
+      trash: "trash",
+      drag: "drag",
+      edge: "connect",
+      edit: "edit"
+    },
     baseClass = "event",
     eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
     setCursorIcon = function(icon) {
-      cursorIconBox.className = "mousepointer icon-" + icon;
+      //cursorIconBox.className = "mousepointer icon-" + icon;
     },
     
     appendToList = function(button) {
@@ -278,7 +294,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   
   
   this.addControlNewNode = function() {
-    var icon = "plus-sign",
+    var icon = icons.add,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.newNodeRebinds());
@@ -289,7 +305,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   this.addControlDrag = function() {
     var prefix = "control_event_drag",
       idprefix = prefix + "_",
-      icon = "move",
+      icon = icons.drag,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.dragRebinds());
@@ -298,7 +314,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlEdit = function() {
-    var icon = "pencil",
+    var icon = icons.edit,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.editRebinds());
@@ -307,7 +323,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlExpand = function() {
-    var icon = "plus",
+    var icon = icons.expand,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.expandRebinds());
@@ -316,7 +332,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlDelete = function() {
-    var icon = "trash",
+    var icon = icons.trash,
       callback = function() {
         setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
@@ -331,7 +347,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlConnect = function() {
-    var icon = "resize-horizontal",
+    var icon = icons.edge,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.connectNodesRebinds());
