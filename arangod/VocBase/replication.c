@@ -803,8 +803,11 @@ static bool IterateShape (TRI_shaper_t* shaper,
     buffer = dump->_buffer;
 
     // append ,
-    if (TRI_LastCharStringBuffer(buffer) != '{') {
-      res = TRI_AppendCharStringBuffer(buffer, ',');
+    res = TRI_AppendCharStringBuffer(buffer, ',');
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      dump->_failed = true;
+      return false;
     }
 
     if (withName) {
@@ -908,7 +911,9 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
       shape            = dump->_lastShape;
     }
   
-    APPEND_CHAR(dump->_buffer, '{');
+    APPEND_STRING(dump->_buffer, "{\"tick\":\"");
+    APPEND_UINT64(dump->_buffer, (uint64_t) marker->_tick);
+    APPEND_CHAR(dump->_buffer, '"');
     TRI_IterateShapeDataArray(shaper, shape, shaped._data.data, &IterateShape, dump); 
     APPEND_STRING(dump->_buffer, "}\n");
   }
@@ -1266,6 +1271,10 @@ static int DumpLog (TRI_replication_dump_t* dump,
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
           
       if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT) {
+        // we're only interested in document markers here
+        // the replication collection does not contain any edge markers
+        // and deletion markers in the replication collection
+        // will not be replicated
         continue;
       }
 
