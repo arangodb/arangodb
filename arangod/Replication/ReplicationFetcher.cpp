@@ -126,21 +126,19 @@ ReplicationFetcher::~ReplicationFetcher () {
 /// @brief run method
 ////////////////////////////////////////////////////////////////////////////////
 
-int ReplicationFetcher::run (bool forceFullSynchronisation) {
-  string errorMsg;
+int ReplicationFetcher::run (bool forceFullSynchronisation,
+                             string& errorMsg) {
   int res;
 
   res = getMasterState(errorMsg);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: return proper error message
-    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
     return res;
   }
   
-  res = getLocalState(errorMsg);
+  res = getLocalState(errorMsg, forceFullSynchronisation);
+
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: return proper error message
-    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
     return res;
   }
 
@@ -161,9 +159,8 @@ int ReplicationFetcher::run (bool forceFullSynchronisation) {
 
     // nothing applied so far. do a full sync of collections
     res = getMasterInventory(errorMsg);
+
     if (res != TRI_ERROR_NO_ERROR) {
-      // TODO: return proper error message
-      std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
       return res;
     }
   }
@@ -173,8 +170,6 @@ int ReplicationFetcher::run (bool forceFullSynchronisation) {
   res = runContinuous(errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: return proper error message
-    std::cout << "RES: " << res << ", MSG: " << errorMsg << "\n";
     return res;
   }
 
@@ -190,7 +185,7 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
-  int leftType  = (int) JsonHelper::getNumberValue(left, "type", 2);
+  int leftType  = (int) JsonHelper::getNumberValue(left,  "type", 2);
   int rightType = (int) JsonHelper::getNumberValue(right, "type", 2);
 
 
@@ -198,7 +193,7 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
     return leftType - rightType;
   }
 
-  string leftName  = JsonHelper::getStringValue(left, "name", "");
+  string leftName  = JsonHelper::getStringValue(left,  "name", "");
   string rightName = JsonHelper::getStringValue(right, "name", "");
 
   return strcmp(leftName.c_str(), rightName.c_str());
@@ -218,6 +213,486 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief abort any ongoing transaction
+////////////////////////////////////////////////////////////////////////////////
+
+void ReplicationFetcher::abortOngoingTransaction () {
+  if (_applyState._trx != 0) {
+    LOGGER_REPLICATION("aborting transaction " << _applyState._externalTid); 
+
+    TRI_FreeTransaction(_applyState._trx);
+    _applyState._trx = 0;
+    _applyState._externalTid = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a transaction for a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_t* ReplicationFetcher::createSingleOperationTransaction (TRI_voc_cid_t cid) {
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
+
+  if (trx == 0) {
+    return 0;
+  }
+
+  int res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeTransaction(trx);
+
+    return 0;
+  }
+  
+  res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION, TRI_TRANSACTION_TOP_LEVEL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeTransaction(trx);
+
+    return 0;
+  }
+
+  return trx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection id from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_cid_t ReplicationFetcher::getCid (TRI_json_t const* json) const {
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    return 0;
+  }
+
+  TRI_json_t const* id = JsonHelper::getArrayElement(json, "cid");
+
+  if (JsonHelper::isString(id)) {
+    return StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
+  }
+  else if (JsonHelper::isNumber(id)) {
+    return (TRI_voc_cid_t) id->_value._number;
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a document, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::processDocument (TRI_replication_operation_e type,
+                                         TRI_json_t const* json, 
+                                         string& errorMsg) {
+  // extract "cid"
+  TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  // extract "key"
+  TRI_json_t const* keyJson = JsonHelper::getArrayElement(json, "key");
+
+  if (keyJson == 0 || keyJson->_type != TRI_JSON_STRING || keyJson->_value._string.data == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  // extract "data"
+  TRI_json_t const* doc = JsonHelper::getArrayElement(json, "data");
+
+  // extract "tid"
+  const string id = JsonHelper::getStringValue(json, "tid", "");
+  TRI_voc_tid_t tid;
+
+  if (id.empty()) {
+    tid = 0;
+  }
+  else {
+    tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
+  }
+    
+  if (tid != _applyState._externalTid) {
+    // unexpected transaction id. TODO: fix error number
+    abortOngoingTransaction();
+    
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (_applyState._trx != 0) {
+    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_applyState._trx, cid, TRI_TRANSACTION_WRITE);
+  
+    if (trxCollection == 0) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+
+    int res = applyCollectionDumpMarker(trxCollection, 
+                                        type, 
+                                        (const TRI_voc_key_t) keyJson->_value._string.data, 
+                                        doc, 
+                                        errorMsg);
+
+    return res;
+  }
+
+  else {
+    TRI_transaction_t* trx = createSingleOperationTransaction(cid);
+  
+    if (trx == 0) {
+      errorMsg = "unable to create transaction";
+
+      return TRI_ERROR_INTERNAL;
+    }
+    
+    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
+    
+    if (trxCollection == 0) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+    
+    int res = applyCollectionDumpMarker(trxCollection, 
+                                        type, 
+                                        (const TRI_voc_key_t) keyJson->_value._string.data, 
+                                        doc, 
+                                        errorMsg);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
+    }
+    else {
+      TRI_AbortTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
+    }
+
+    TRI_FreeTransaction(trx);
+
+    return res;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a transaction, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+int ReplicationFetcher::startTransaction (TRI_json_t const* json) {
+  // {"type":2200,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
+
+  abortOngoingTransaction();
+
+  const string id = JsonHelper::getStringValue(json, "tid", "");
+
+  if (id.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  // transaction id
+  TRI_voc_tid_t tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
+
+  TRI_json_t const* collections = JsonHelper::getArrayElement(json, "collections");
+
+  if (collections == 0 || collections->_type != TRI_JSON_LIST) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  LOGGER_REPLICATION("starting transaction " << tid); 
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
+
+  if (trx == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  int res;
+  uint64_t totalOperations = 0;
+
+  const size_t n = collections->_value._objects._length;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
+
+    if (collection == 0 || collection->_type != TRI_JSON_ARRAY) {
+      TRI_FreeTransaction(trx);
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    TRI_voc_cid_t cid = getCid(collection);
+
+    if (cid == 0) {
+      TRI_FreeTransaction(trx);
+
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+
+    uint64_t numOperations = (uint64_t) JsonHelper::getNumberValue(collection, "operations", 0);
+
+    if (numOperations > 0) {
+      res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_FreeTransaction(trx);
+
+        return res;
+      }
+
+      totalOperations += numOperations;
+    }
+  }
+    
+  TRI_transaction_hint_t hint = 0; 
+  if (totalOperations == 1) {
+    hint = (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION;
+  }
+
+  res = TRI_BeginTransaction(trx, hint, TRI_TRANSACTION_TOP_LEVEL);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeTransaction(trx);
+
+    return res;
+  }
+
+  _applyState._trx = trx;
+  _applyState._externalTid = tid;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief commits a transaction, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::commitTransaction (TRI_json_t const* json) {
+  // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
+  const string id = JsonHelper::getStringValue(json, "tid", "");
+  
+  if (id.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  // transaction id
+  const TRI_voc_tid_t tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
+
+  if (_applyState._trx == 0) {
+    // invalid state, no transaction was started. TODO: fix error number
+    return TRI_ERROR_INTERNAL; 
+  }
+
+  if (_applyState._externalTid != tid) {
+    // unexpected transaction id. TODO: fix error number
+    abortOngoingTransaction();
+
+    return TRI_ERROR_INTERNAL; 
+  }
+  
+  LOGGER_REPLICATION("committing transaction " << tid); 
+
+  int res = TRI_CommitTransaction(_applyState._trx, TRI_TRANSACTION_TOP_LEVEL);
+
+  TRI_FreeTransaction(_applyState._trx);
+  _applyState._trx = 0;
+  _applyState._externalTid = 0;
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::createCollection (TRI_json_t const* json,
+                                          TRI_vocbase_col_t** dst) {
+  if (dst != 0) {
+    *dst = 0;
+  }
+
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const string name = JsonHelper::getStringValue(json, "name", "");
+
+  if (name.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  const TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumberValue(json, "type", (double) TRI_COL_TYPE_DOCUMENT);
+
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col != 0 && 
+      (TRI_col_type_t) col->_type == (TRI_col_type_t) type) {
+    // collection already exists. TODO: compare attributes
+    return TRI_ERROR_NO_ERROR;
+  }
+
+
+  TRI_json_t* keyOptions = 0;
+
+  if (JsonHelper::isArray(JsonHelper::getArrayElement(json, "keyOptions"))) {
+    keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
+  }
+  
+  TRI_col_info_t params;
+  TRI_InitCollectionInfo(_vocbase, 
+                         &params, 
+                         name.c_str(),
+                         type,
+                         (TRI_voc_size_t) JsonHelper::getNumberValue(json, "maximalSize", (double) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+                         keyOptions);
+
+  params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
+  params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_defaultWaitForSync);
+  params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
+
+  LOGGER_INFO("creating collection '" << name << "', id " << cid);
+
+  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid);
+  TRI_FreeCollectionInfoOptions(&params);
+
+  if (col == NULL) {
+    return TRI_errno();
+  }
+
+  if (dst != 0) {
+    *dst = col;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::dropCollection (TRI_json_t const* json) {
+  const TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  return TRI_DropCollectionVocBase(_vocbase, col);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief renames a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::renameCollection (TRI_json_t const* json) {
+  const TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+  const string name = JsonHelper::getStringValue(collectionJson, "name", "");
+
+  if (name.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  return TRI_RenameCollectionVocBase(_vocbase, col, name.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an index, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::createIndex (TRI_json_t const* json) {
+  const TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_json_t const* indexJson = JsonHelper::getArrayElement(json, "index");
+
+  if (indexJson == 0 || indexJson->_type != TRI_JSON_ARRAY) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == 0 || col->_collection == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  TRI_index_t* idx;
+  TRI_primary_collection_t* primary = col->_collection;
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  int res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, indexJson, &idx);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_SaveIndex(primary, idx);
+  }
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  TRI_ReleaseCollectionVocBase(_vocbase, col);
+  
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+    
+int ReplicationFetcher::dropIndex (TRI_json_t const* json) {
+  const TRI_voc_cid_t cid = getCid(json);
+
+  if (cid == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  const string id = JsonHelper::getStringValue(json, "id", "");
+
+  if (id.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  
+  const TRI_idx_iid_t iid = StringUtils::uint64(id);
+
+  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == 0 || col->_collection == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  TRI_document_collection_t* document = (TRI_document_collection_t*) col->_collection;
+
+  bool result = TRI_DropIndexDocumentCollection(document, iid);
+
+  TRI_ReleaseCollectionVocBase(_vocbase, col);
+
+  if (! result) {
+    // TODO: index not found, should we care??
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -229,6 +704,8 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
 
   if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+
+    assert(json != 0);
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
@@ -373,58 +850,43 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
     TRI_replication_operation_e type = REPLICATION_INVALID;
     const char* key  = 0;
     TRI_json_t const* doc = 0;
-    bool isValid     = true;
 
     const size_t n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; i += 2) {
       TRI_json_t const* element = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
 
-      if (element == 0 || 
-          element->_type != TRI_JSON_STRING ||
-          element->_value._string.data == 0 ||
-          (i + 1) == n) {
-        isValid = false;
+      if (element == 0 || element->_type != TRI_JSON_STRING) { 
+        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        errorMsg = invalidMsg;
+      
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
- 
-      if (isValid) {
-        const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
-        
-        if (TRI_EqualString(attributeName, "type")) {
-          if (value == 0 || 
-              value->_type != TRI_JSON_NUMBER) {
-            isValid = false;
-          }
-          else {
-            type = (TRI_replication_operation_e) value->_value._number;
-          }
-        }
 
-        else if (TRI_EqualString(attributeName, "key")) {
-          if (value == 0 || 
-              value->_type != TRI_JSON_STRING ||
-              value->_value._string.data == 0) {
-            isValid = false;
-          }
-          else {
-            key = value->_value._string.data;
-          }
-        }
+      const char* attributeName = element->_value._string.data;
+      TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
 
-        else if (TRI_EqualString(attributeName, "data")) {
-          if (value == 0 || 
-              value->_type != TRI_JSON_ARRAY) {
-            isValid = false;
-          }
-          else {
-            doc = value;
-          }
+      if (TRI_EqualString(attributeName, "type")) {
+        if (value != 0 && value->_type == TRI_JSON_NUMBER) {
+          type = (TRI_replication_operation_e) value->_value._number;
+        }
+      }
+
+      else if (TRI_EqualString(attributeName, "key")) {
+        if (value != 0 && value->_type == TRI_JSON_STRING &&value->_value._string.data != 0) {
+          key = value->_value._string.data;
+        }
+      }
+
+      else if (TRI_EqualString(attributeName, "data")) {
+        if (value != 0 && value->_type == TRI_JSON_ARRAY) {
+          doc = value;
         }
       }
     }
 
-    if (! isValid || key == 0 || doc == 0) {
+    // key must not be 0, but doc can be 0!
+    if (key == 0) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       errorMsg = invalidMsg;
       
@@ -463,42 +925,40 @@ int ReplicationFetcher::applyLogMarker (TRI_json_t const* json,
 
   TRI_replication_operation_e type = (TRI_replication_operation_e) typeJson->_value._number;
 
-  if (type == DOCUMENT_INSERT) {
-    return TRI_ERROR_NO_ERROR;
+  if (type == MARKER_DOCUMENT || type == MARKER_EDGE || type == MARKER_REMOVE) {
+    return processDocument(type, json, errorMsg);
   }
 
-  else if (type == DOCUMENT_REMOVE) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  else if (type == COLLECTION_CREATE) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  else if (type == COLLECTION_DROP) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  else if (type == COLLECTION_RENAME) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  else if (type == INDEX_CREATE) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  else if (type == INDEX_DROP) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
   else if (type == TRANSACTION_START) {
-    return TRI_ERROR_NO_ERROR;
+    return startTransaction(json);
   }
   
   else if (type == TRANSACTION_COMMIT) {
-    return TRI_ERROR_NO_ERROR;
+    return commitTransaction(json);
   }
 
+  else if (type == COLLECTION_CREATE) {
+    TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+
+    return createCollection(collectionJson, 0);
+  }
+  
+  else if (type == COLLECTION_DROP) {
+    return dropCollection(json);
+  }
+  
+  else if (type == COLLECTION_RENAME) {
+    return renameCollection(json);
+  }
+  
+  else if (type == INDEX_CREATE) {
+    return createIndex(json);
+  }
+  
+  else if (type == INDEX_DROP) {
+    return dropIndex(json); 
+  }
+  
   else if (type == REPLICATION_STOP) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -541,6 +1001,8 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = TRI_errno_string(res);
+
       return res;
     }
   }
@@ -550,8 +1012,13 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
 /// @brief get local replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-int ReplicationFetcher::getLocalState (string& errorMsg) {
+int ReplicationFetcher::getLocalState (string& errorMsg, 
+                                       bool forceFullSynchronisation) {
   int res;
+
+  if (forceFullSynchronisation) {
+    TRI_RemoveApplyStateReplication(_vocbase);
+  }
 
   res = TRI_LoadApplyStateReplication(_vocbase, &_applyState);
 
@@ -627,7 +1094,7 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
     else {
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
 
-      if (json != 0) {
+      if (json != 0 && json->_type == TRI_JSON_ARRAY) {
         res = handleStateResponse(json, errorMsg);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -639,7 +1106,6 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
                    ": invalid JSON";
       }
     }
-    // std::cout << response->getBody().str() << std::endl;
   }
 
   delete response;
@@ -867,13 +1333,6 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
   
   TRI_voc_cid_t cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
   
-  TRI_json_t const* masterType = JsonHelper::getArrayElement(parameters, "type");
-
-  if (! JsonHelper::isNumber(masterType)) {
-    errorMsg = "collection type is missing in response";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
@@ -912,31 +1371,11 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
   // -------------------------------------------------------------------------------------
 
   else if (phase == PHASE_CREATE) {
-    TRI_json_t* keyOptions = 0;
+    TRI_vocbase_col_t* col = 0;
 
-    if (JsonHelper::isArray(JsonHelper::getArrayElement(parameters, "keyOptions"))) {
-      keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getArrayElement(parameters, "keyOptions"));
-    }
+    int res = createCollection(parameters, &col);
 
-    TRI_col_info_t params;
-    TRI_InitCollectionInfo(_vocbase, 
-                           &params, 
-                           masterName->_value._string.data, 
-                           (TRI_col_type_e) masterType->_value._number,
-                           (TRI_voc_size_t) JsonHelper::getNumberValue(parameters, "maximalSize", (double) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-                           keyOptions);
-
-    params._doCompact =   JsonHelper::getBooleanValue(parameters, "doCompact", true); 
-    params._waitForSync = JsonHelper::getBooleanValue(parameters, "waitForSync", _vocbase->_defaultWaitForSync);
-    params._isVolatile =  JsonHelper::getBooleanValue(parameters, "isVolatile", false); 
-
-    LOGGER_INFO("creating collection '" << masterName->_value._string.data << "', id " << cid);
-
-    TRI_vocbase_col_t* col = TRI_CreateCollectionVocBase(_vocbase, &params, cid);
-
-    if (col == 0) {
-      int res = TRI_errno();
-
+    if (res != TRI_ERROR_NO_ERROR) {
       LOGGER_ERROR("unable to create collection " << cid << ": " << TRI_errno_string(res));
 
       return res;
@@ -1023,7 +1462,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
     }
     
     if (res == TRI_ERROR_NO_ERROR) {
-      TRI_CommitTransaction(trx, 0);
+      TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
     }
       
     TRI_FreeTransaction(trx);

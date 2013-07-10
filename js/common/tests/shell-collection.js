@@ -831,6 +831,143 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test checksum
+////////////////////////////////////////////////////////////////////////////////
+
+    testChecksum : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      // empty collection, checksum should be 0
+      var r1 = c1.checksum();
+      assertTypeOf("string", r1.revision);
+      assertTrue(r1.revision !== "");
+      assertTrue(r1.revision.match(/^[0-9]+$/));
+      assertTypeOf("number", r1.checksum);
+      assertEqual(0, r1.checksum); 
+
+      // inserting a doc, checksum should change
+      c1.save({ a : 1 });
+      var r2 = c1.checksum();
+      assertNotEqual(r1.revision, r2.revision);
+      assertTypeOf("string", r2.revision);
+      assertTrue(r2.revision !== "");
+      assertTrue(r2.revision.match(/^[0-9]+$/));
+      assertTypeOf("number", r2.checksum);
+      assertNotEqual(0, r2.checksum); 
+      
+      // inserting another doc, checksum should change
+      c1.save({ a : 2 });
+      var r3 = c1.checksum();
+      assertNotEqual(r1.revision, r3.revision);
+      assertNotEqual(r2.revision, r3.revision);
+      assertTypeOf("string", r3.revision);
+      assertTrue(r3.revision !== "");
+      assertTrue(r3.revision.match(/^[0-9]+$/));
+      assertTypeOf("number", r3.checksum);
+      assertNotEqual(0, r3.checksum); 
+      assertNotEqual(r2.checksum, r3.checksum); 
+
+      // test after unloading
+      c1.unload();
+      var r4 = c1.checksum();
+      assertTypeOf("string", r4.revision);
+      assertEqual(r3.revision, r4.revision);
+      assertTypeOf("number", r4.checksum);
+      assertNotEqual(0, r4.checksum); 
+      assertEqual(r3.checksum, r4.checksum);
+      
+      // test withData
+      var r5 = c1.checksum(true);
+      assertTypeOf("string", r5.revision);
+      assertEqual(r4.revision, r5.revision);
+      assertTypeOf("number", r5.checksum);
+      assertNotEqual(0, r5.checksum); 
+      assertNotEqual(r4.checksum, r5.checksum);
+
+      // test after truncation
+      c1.truncate();
+      var r6 = c1.checksum();
+      assertTypeOf("string", r6.revision);
+      assertNotEqual(r4.revision, r6.revision);
+      assertNotEqual(r5.revision, r6.revision);
+      assertTypeOf("number", r6.checksum);
+      assertEqual(0, r6.checksum);
+      
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test checksum
+////////////////////////////////////////////////////////////////////////////////
+
+    testChecksumEdge : function () {
+      var cn = "example";
+      var vn = "example2";
+
+      db._drop(cn);
+      db._drop(vn);
+      db._create(vn);
+      var c1 = db._createEdgeCollection(cn);
+
+      var r1 = c1.checksum();
+      assertTypeOf("string", r1.revision);
+      assertTrue(r1.revision !== "");
+      assertTrue(r1.revision.match(/^[0-9]+$/));
+      assertTypeOf("number", r1.checksum);
+      assertEqual(0, r1.checksum); 
+
+      c1.save(vn + "/1", vn + "/2", { a : 1 });
+      var r2 = c1.checksum();
+      assertNotEqual(r1.revision, r2.revision);
+      assertTypeOf("string", r2.revision);
+      assertTrue(r2.revision !== "");
+      assertTrue(r2.revision.match(/^[0-9]+$/));
+      assertTypeOf("number", r2.checksum);
+      assertNotEqual(0, r2.checksum); 
+      
+      c1.save(vn + "/1", vn + "/2", { a : 2 });
+      var r3 = c1.checksum();
+      assertNotEqual(r1.revision, r3.revision);
+      assertNotEqual(r2.revision, r3.revision);
+      assertTypeOf("string", r3.revision);
+      assertTrue(r3.revision !== "");
+      assertTrue(r3.revision.match(/^[0-9]+$/));
+      assertTypeOf("number", r3.checksum);
+      assertNotEqual(0, r3.checksum); 
+      assertNotEqual(r2.checksum, r3.checksum); 
+
+      c1.unload();
+      var r4 = c1.checksum();
+      assertTypeOf("string", r4.revision);
+      assertEqual(r3.revision, r4.revision);
+      assertTypeOf("number", r4.checksum);
+      assertEqual(r3.checksum, r4.checksum);
+      
+      // test withData
+      var r5 = c1.checksum(true);
+      assertTypeOf("string", r5.revision);
+      assertEqual(r4.revision, r5.revision);
+      assertTypeOf("number", r5.checksum);
+      assertNotEqual(0, r5.checksum); 
+      assertNotEqual(r4.checksum, r5.checksum);
+
+      // test after truncation
+      c1.truncate();
+      var r6 = c1.checksum();
+      assertTypeOf("string", r6.revision);
+      assertNotEqual(r4.revision, r6.revision);
+      assertNotEqual(r5.revision, r6.revision);
+      assertTypeOf("number", r6.checksum);
+      assertEqual(0, r6.checksum);
+      
+      db._drop(cn);
+      db._drop(vn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test revision id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -864,6 +1001,8 @@ function CollectionSuite () {
       var r4 = c1.revision();
       assertTypeOf("string", r4);
       assertEqual(r3, r4);
+      
+      db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

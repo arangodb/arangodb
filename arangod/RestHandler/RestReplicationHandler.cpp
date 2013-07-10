@@ -486,7 +486,7 @@ void RestReplicationHandler::handleCommandDump () {
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
-    dump._buffer->_buffer = 0;
+    TRI_StealStringBuffer(dump._buffer);
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -570,7 +570,7 @@ void RestReplicationHandler::handleCommandFollow () {
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
-    dump._buffer->_buffer = 0;
+    TRI_StealStringBuffer(dump._buffer);
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
