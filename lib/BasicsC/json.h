@@ -325,7 +325,7 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t*, TRI_json_t* object, char const* n
 /// the JSON struct created takes ownership of the name* passed
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject);
+void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute in a json array

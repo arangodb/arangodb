@@ -1505,7 +1505,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
           if (*str != 0) {
             // move the string pointer into the JSON object
-            TRI_Insert4ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, *str, str.length(), result);
+            TRI_Insert4ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, *str, str.length(), result, false);
             // this passes ownership for the utf8 string to the JSON object
             str.disown();
           }

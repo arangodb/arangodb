@@ -624,9 +624,6 @@ void TRI_InitArray2Json (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
-  size_t n;
-  size_t i;
-
   switch (object->_type) {
     case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
@@ -643,7 +640,8 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
       break;
 
     case TRI_JSON_ARRAY:
-    case TRI_JSON_LIST:
+    case TRI_JSON_LIST: {
+      size_t i, n;
       n = object->_value._objects._length;
 
       for (i = 0;  i < n;  ++i) {
@@ -653,6 +651,7 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
 
       TRI_DestroyVector(&object->_value._objects);
       break;
+    }
   }
 }
 
@@ -816,11 +815,17 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 /// @brief adds a new attribute name and value
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject) {
+void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject, bool asReference) {
   TRI_json_t copy;
 
   // attribute name
-  InitString(&copy, nameLength, name);
+  if (asReference) {
+    InitStringReference(&copy, nameLength, name);
+  }
+  else {
+    InitString(&copy, nameLength, name);
+  }
+
   TRI_PushBackVector(&object->_value._objects, &copy);
 
   // attribute value
