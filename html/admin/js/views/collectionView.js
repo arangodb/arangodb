@@ -185,7 +185,6 @@ var collectionView = Backbone.View.extend({
     $('#reallyDeleteColDiv').show();
   },
   abortDeleteCollection: function() {
-    console.log("asdasd");
     $('#reallyDeleteColDiv').hide();
   },
   confirmDeleteCollection: function () {
