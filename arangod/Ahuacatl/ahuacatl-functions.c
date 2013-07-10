@@ -777,6 +777,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
   }
 
   function->_externalName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
+
   if (function->_externalName == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
@@ -784,6 +785,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
 
   // normalize name by upper-casing it
   function->_internalName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, internalName);
+
   if (function->_internalName == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
@@ -791,6 +793,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
   }
   
   function->_argPattern = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, argPattern);
+
   if (function->_argPattern == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_internalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);

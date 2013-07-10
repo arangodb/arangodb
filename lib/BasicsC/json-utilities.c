@@ -136,6 +136,8 @@ static int TypeWeight (const TRI_json_t* const value) {
     case TRI_JSON_NUMBER:
       return 2;
     case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
+      // a string reference has the same weight as a regular string
       return 3;
     case TRI_JSON_LIST:
       return 4;
@@ -181,7 +183,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   for (i = 0 ; i < n; i += 2) {
     TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i);
 
-    assert(key->_type == TRI_JSON_STRING);
+    assert(TRI_IsStringJson(key));
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
   }
 
@@ -191,7 +193,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   for (i = 0 ; i < n; i += 2) {
     TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i);
 
-    assert(key->_type == TRI_JSON_STRING);
+    assert(TRI_IsStringJson(key));
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
   }
 
@@ -271,13 +273,14 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
       return 1;
 
     case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
+      // same for STRING and STRING_REFERENCE
       return strcmp(lhs->_value._string.data, rhs->_value._string.data);
 
     case TRI_JSON_LIST: {
       size_t nl = lhs->_value._objects._length;
       size_t nr = rhs->_value._objects._length;
-      size_t n;
-      size_t i;
+      size_t i, n;
 
       if (nl > nr) {
         n = nl;
@@ -321,8 +324,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
           int result;
 
           keyElement = TRI_AtVector(&keys->_value._objects, i);
-          assert(keyElement->_type == TRI_JSON_STRING);
-          assert(keyElement->_value._string.data);
+          assert(TRI_IsStringJson(keyElement));
 
           lhsValue = TRI_LookupArrayJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
           rhsValue = TRI_LookupArrayJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
@@ -709,7 +711,7 @@ bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
 
         key = TRI_AtVector(&object->_value._objects, i);
 
-        if (key->_type != TRI_JSON_STRING) {
+        if (! TRI_IsStringJson(key)) {
           continue;
         }
 

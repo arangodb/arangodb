@@ -351,7 +351,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
   {
     TRI_json_t dataAttribute;
     // pass the string-buffer buffer pointer to the JSON
-    TRI_InitString2Json(&dataAttribute, TRI_StealStringBuffer(buffer), TRI_LengthStringBuffer(buffer));
+    TRI_InitStringReference2Json(&dataAttribute, TRI_BeginStringBuffer(buffer), TRI_LengthStringBuffer(buffer));
 
     TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
                          &json, 
@@ -363,10 +363,10 @@ static int LogEvent (TRI_replication_logger_t* logger,
   primary = logger->_trxCollection->_collection->_collection;
   shaped = TRI_ShapedJsonJson(primary->_shaper, &json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+  
+  ReturnBuffer(logger, buffer);
 
   if (shaped == NULL) {
-    ReturnBuffer(logger, buffer);
-
     return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
 
@@ -381,7 +381,6 @@ static int LogEvent (TRI_replication_logger_t* logger,
                         false);
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
-  ReturnBuffer(logger, buffer);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -2240,15 +2239,11 @@ static int ReadTick (TRI_json_t const* json,
                                      
   tick = TRI_LookupArrayJson(json, attributeName);
 
-  if (tick == NULL || 
-      tick->_type != TRI_JSON_STRING || 
-      tick->_value._string.data == NULL) {
-    *dst = 0;
-
+  if (! TRI_IsStringJson(tick)) {
     return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
 
-  *dst = (TRI_voc_tick_t) TRI_UInt64String(tick->_value._string.data);
+  *dst = (TRI_voc_tick_t) TRI_UInt64String2(tick->_value._string.data, tick->_value._string.length -1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2447,13 +2442,11 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
   // read the server id
   serverId = TRI_LookupArrayJson(json, "serverId");
 
-  if (serverId == NULL || 
-      serverId->_type != TRI_JSON_STRING || 
-      serverId->_value._string.data == NULL) {
+  if (! TRI_IsStringJson(serverId)) {
     res = TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
   else {
-    state->_serverId = TRI_UInt64String(serverId->_value._string.data);
+    state->_serverId = TRI_UInt64String2(serverId->_value._string.data, serverId->_value._string.length - 1);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {

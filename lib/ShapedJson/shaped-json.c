@@ -1003,6 +1003,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TR
       return FillShapeValueNumber(shaper, dst, json);
 
     case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
       return FillShapeValueString(shaper, dst, json);
 
     case TRI_JSON_ARRAY:

@@ -27,6 +27,7 @@
 
 #include "RestImportHandler.h"
 
+#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
@@ -843,7 +844,7 @@ TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
     TRI_json_t* key   = (TRI_json_t*) TRI_AtVector(&keys->_value._objects, i);
     TRI_json_t* value = (TRI_json_t*) TRI_AtVector(&values->_value._objects, i);
 
-    if (key->_type == TRI_JSON_STRING && value->_type > TRI_JSON_NULL) {
+    if (JsonHelper::isString(key) && value->_type > TRI_JSON_NULL) {
       TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, result, key->_value._string.data, value);
     }
   }
@@ -868,8 +869,8 @@ bool RestImportHandler::checkKeys (TRI_json_t* keys) {
 
   for (size_t i = 0;  i < n;  ++i) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&keys->_value._objects, i);
-
-    if (key->_type != TRI_JSON_STRING) {
+ 
+    if (! JsonHelper::isString(key)) {
       return false;
     }
   }

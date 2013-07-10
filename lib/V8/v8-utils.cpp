@@ -2285,7 +2285,7 @@ void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json) {
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
 
-    if (key->_type != TRI_JSON_STRING) {
+    if (! TRI_IsStringJson(key)) {
       continue;
     }
 

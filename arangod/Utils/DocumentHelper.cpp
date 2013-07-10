@@ -135,14 +135,14 @@ int DocumentHelper::getKey (TRI_json_t const* json,
     return TRI_ERROR_NO_ERROR;
   }
 
-  // check _key is there
+  // check if _key is there
   const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, TRI_VOC_ATTRIBUTE_KEY);
-
+ 
   if (k == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (k->_type != TRI_JSON_STRING) {
+  if (! TRI_IsStringJson(k)) {
     // _key is there but not a string
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
