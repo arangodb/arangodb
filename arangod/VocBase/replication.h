@@ -31,6 +31,7 @@
 #include "BasicsC/common.h"
 
 #include "BasicsC/locks.h"
+#include "BasicsC/vector.h"
 #include "ShapedJson/shaped-json.h"
 
 #include "VocBase/server-id.h"
@@ -178,6 +179,8 @@ TRI_replication_log_state_t;
 typedef struct TRI_replication_logger_s {
   TRI_read_write_lock_t                _statusLock;
   TRI_spin_t                           _idLock;
+  TRI_spin_t                           _bufferLock;
+  TRI_vector_pointer_t                 _buffers;
   struct TRI_vocbase_s*                _vocbase;
   struct TRI_transaction_s*            _trx;
   struct TRI_transaction_collection_s* _trxCollection;
