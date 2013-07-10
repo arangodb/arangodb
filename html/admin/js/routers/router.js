@@ -63,7 +63,9 @@ $(document).ready(function() {
       this.footerView = new window.footerView();
       this.naviView.render();
       this.footerView.render();
-      this.graphView = new window.graphView();
+      this.graphView = new window.graphView({
+        collection: window.arangoCollectionsStore
+      });
     },
     collections: function() {
       var naviView = this.naviView;
@@ -186,8 +188,13 @@ $(document).ready(function() {
     },
 
     graph: function() {
-      this.graphView.render();
-      this.naviView.selectMenuItem('graph-menu'); 
+      var self = this;
+      window.arangoCollectionsStore.fetch({
+        success: function () {
+          self.graphView.render();
+          self.naviView.selectMenuItem('graph-menu');
+        }
+      });
     },
 
     applications: function() {
