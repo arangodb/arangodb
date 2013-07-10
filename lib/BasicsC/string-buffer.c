@@ -300,7 +300,7 @@ void TRI_IncreaseLengthStringBuffer (TRI_string_buffer_t * self, size_t n) {
 /// @brief returns true if buffer is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
+bool TRI_EmptyStringBuffer (TRI_string_buffer_t const* self) {
   return self->_buffer == self->_current;
 }
 
@@ -308,10 +308,24 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
 /// @brief clears the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
+void TRI_ClearStringBuffer (TRI_string_buffer_t* self) {
   if (self->_buffer != NULL) {
     self->_current = self->_buffer;
     memset(self->_buffer, 0, self->_len + 1);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resets the buffer (without clearing)
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ResetStringBuffer (TRI_string_buffer_t* self) {
+  if (self->_buffer != NULL) {
+    self->_current = self->_buffer;
+
+    if (self->_len > 0) {
+      *self->_current = '\0';
+    }
   }
 }
 

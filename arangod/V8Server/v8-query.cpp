@@ -29,6 +29,7 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
+#include "BasicsC/string-buffer.h"
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "FulltextIndex/fulltext-index.h"
@@ -36,6 +37,7 @@
 #include "FulltextIndex/fulltext-query.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utilities/ResourceHolder.h"
+#include "Utils/Barrier.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/EmbeddableTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
@@ -1019,7 +1021,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute skiplist query");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Object> err;
@@ -1210,7 +1212,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1504,7 +1506,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch edges");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1713,14 +1715,14 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   res = trx.read(docs, &barrier, skip, limit, &total);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   const size_t n = docs.size();
@@ -1791,14 +1793,14 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   res = trx.readOffset(docs, &barrier, internalSkip, batchSize, skip, &total);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   const size_t n = docs.size();
@@ -1869,7 +1871,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   res = trx.readRandom(&document, &barrier);
@@ -1879,7 +1881,8 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     if (barrier != 0) {
       TRI_FreeBarrier(barrier);
     }
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");
+
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   if (document._data == 0 || document._key == 0) {
@@ -1929,7 +1932,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot query by example");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -2156,7 +2159,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot query by example");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Object> err;
@@ -2216,6 +2219,135 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
   std::string signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
 
   return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
+}
+
+typedef struct collection_checksum_s {
+  uint32_t            _checksum;
+  TRI_string_buffer_t _buffer;
+}
+collection_checksum_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback for checksum calculation, WD = with data
+////////////////////////////////////////////////////////////////////////////////
+
+template<bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
+                                                  TRI_primary_collection_t* primary, 
+                                                  void* data) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
+  collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
+  uint32_t localCrc;
+
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    // must convert _rid into string for portability (little vs. big endian etc.)
+    const string key = string(mptr->_key) + StringUtils::itoa(mptr->_rid);
+    localCrc = TRI_Crc32HashPointer(key.c_str(), key.size());
+  }
+  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
+
+    // must convert _rid, _fromCid, _toCid into strings for portability
+    const string key = string(mptr->_key) + StringUtils::itoa(mptr->_rid) + 
+                       StringUtils::itoa(e->_toCid) + string(((char*) marker) + e->_offsetToKey) +
+                       StringUtils::itoa(e->_fromCid) + string(((char*) marker) + e->_offsetFromKey); 
+    
+    localCrc = TRI_Crc32HashPointer(key.c_str(), key.size());
+  }
+  else {
+    return true;
+  }
+
+  if (WD) {
+    // with data
+    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
+
+    TRI_shaped_json_t shaped;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, d);
+
+    TRI_StringifyArrayShapedJson(primary->_shaper, &helper->_buffer, &shaped, false);
+    localCrc += TRI_Crc32HashPointer(TRI_BeginStringBuffer(&helper->_buffer), TRI_LengthStringBuffer(&helper->_buffer));
+    TRI_ResetStringBuffer(&helper->_buffer);
+  }
+
+  helper->_checksum += localCrc;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculates a checksum for the data in a collection
+///
+/// @FUN{@FA{collection}.checksum(@FA{withData})}
+///
+/// The @FN{checksum} operation calculates a CRC32 checksum of the meta-data 
+/// (keys and revision ids) contained in collection @FA{collection}. 
+/// 
+/// If the optional argument @FA{withData} is set to @LIT{true}, then the 
+/// actual document data is also checksummed. Including the document data in
+/// checksumming will make the calculation slower, but is more accurate.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  bool withData = false;
+  if (argv.Length() > 0) {
+    withData = TRI_ObjectToBoolean(argv[0]);
+  }
+
+  CollectionNameResolver resolver(col->_vocbase);
+  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+
+  Barrier barrier(primary);
+  
+  collection_checksum_t helper;
+  helper._checksum = 0;
+    
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  trx.lockRead();
+  // get last tick
+  const string tick = StringUtils::itoa(primary->base._info._tick);
+
+  if (withData) {
+    TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
+
+    TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true>);
+
+    TRI_DestroyStringBuffer(&helper._buffer);
+  }
+  else {
+    TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false>);
+  }
+
+  trx.finish(res);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8::String::New("checksum"), v8::Number::New(helper._checksum));
+  result->Set(v8::String::New("revision"), v8::String::New(tick.c_str(), tick.size()));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2304,7 +2436,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeQueryFulltextIndex(query);
 
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "invalid value for <query>");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
@@ -2312,7 +2444,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   if (isSubstringQuery && ! fulltextIndex->_indexSubstrings) {
     TRI_FreeQueryFulltextIndex(query);
 
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "index does not support substring matching");
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->_fulltextIndex, query);
@@ -2393,7 +2525,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute fulltext query");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Object> err;
@@ -2465,7 +2597,7 @@ static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
     int res = StoreGeoResult(trx, collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot add document to geo-index");
+      TRI_V8_EXCEPTION(scope, res);
     }
   }
 
@@ -2492,7 +2624,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute near query");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Object> err;
@@ -2560,7 +2692,7 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute pqueue query");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Object> err;
@@ -2655,7 +2787,7 @@ static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
     int res = StoreGeoResult(trx, collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot add document to geo-index");
+      TRI_V8_EXCEPTION(scope, res);
     }
   }
 
@@ -2682,7 +2814,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute within query");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Object> err;
@@ -2749,6 +2881,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY", JS_ByExampleBitarray);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
+  TRI_AddMethodVocbase(rt, "checksum", JS_ChecksumCollection);
   TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
   TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
