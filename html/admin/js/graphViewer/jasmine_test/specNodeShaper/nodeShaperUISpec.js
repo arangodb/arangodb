@@ -303,19 +303,34 @@
       var div = shaperUI.createColourMappingList(),
         list = div.firstChild,
         blue = list.children[0],
-        green = list.children[1];
+        green = list.children[1],
+        blue1 = blue.children[0],
+        blue2 = blue.children[1],
+        green1 = green.children[0],
+        green2 = green.children[1];
+
       expect(shaper.getColourMapping).wasCalled();
       expect(shaper.setColourMappingListener).wasCalledWith(jasmine.any(Function));
       expect(div).toBeTag("div");
       expect($(div).attr("id")).toEqual("node_colour_list");
       expect(list).toBeTag("ul");
-      expect(blue).toBeTag("li");
-      expect($(blue).text()).toEqual("bl, ue");
+      expect(blue).toBeTag("ul");
+      expect(blue.children.length).toEqual(2);
       expect(blue.style.backgroundColor).toEqual("blue");
-    
-      expect(green).toBeTag("li");
-      expect($(green).text()).toEqual("gr, een");
+      
+      expect(blue1).toBeTag("li");
+      expect($(blue1).text()).toEqual("bl");
+      expect(blue2).toBeTag("li");
+      expect($(blue2).text()).toEqual("ue");
+      
+      expect(green).toBeTag("ul");
+      expect(green.children.length).toEqual(2);
       expect(green.style.backgroundColor).toEqual("green");
+      
+      expect(green1).toBeTag("li");
+      expect($(green1).text()).toEqual("gr");
+      expect(green2).toBeTag("li");
+      expect($(green2).text()).toEqual("een");
     
     });
     
