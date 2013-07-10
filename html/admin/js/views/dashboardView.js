@@ -89,6 +89,7 @@ var dashboardView = Backbone.View.extend({
 
   render: function() {
     var self = this;
+    self.updateNOW = true;
     $(this.el).html(this.template.text);
 
     //Client calculated charts
@@ -120,7 +121,6 @@ var dashboardView = Backbone.View.extend({
     $.each(this.options.description.models[0].attributes.figures, function () {
       self.renderFigure(this);
     });
-
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
 
     if (this.collection.models[0] === undefined) {
@@ -139,6 +139,7 @@ var dashboardView = Backbone.View.extend({
       self.calculateSeries();
       self.renderCharts();
     }
+
     return this;
   },
 
