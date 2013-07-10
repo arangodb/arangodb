@@ -159,6 +159,7 @@ static bool GetSorts (TRI_aql_statement_walker_t* const walker,
 
     if (! expression) {
       TRI_DestroyStringBuffer(&buffer);
+
       return false;
     }
 
@@ -171,16 +172,20 @@ static bool GetSorts (TRI_aql_statement_walker_t* const walker,
       TRI_NodeStringAql(&buffer, expression);
 
       copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
+
       if (copy == NULL) {
         // out of memory
         TRI_DestroyStringBuffer(&buffer);
+
         return false;
       }
+
       TRI_PushBackVectorPointer(sorts, copy);
     }
     else {
       // order is descending
       TRI_DestroyStringBuffer(&buffer);
+
       return false;
     }
   }
@@ -387,6 +392,7 @@ static void AttachSort (TRI_aql_scope_t* const scope,
     tmp[offset + len] = '\0';
 
     copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp, offset + len);
+
     if (copy == NULL) {
       // out of memory. now free all criteria we have collected
       size_t j;
@@ -1449,6 +1455,7 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     assert(fieldAccess->_variableNameLength > 0);
 
     variableName = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName, fieldAccess->_variableNameLength);
+
     if (variableName == NULL) {
       // out of memory!
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -1503,6 +1510,7 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
 
       if (expressionNode->_type == TRI_AQL_NODE_COLLECTION) {
         TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(expressionNode));
+
         if (hint->_variableName == NULL) {
           // note the variable name used for the collection (e.g. "u" for "FOR u IN users")
           hint->_variableName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, variableName);

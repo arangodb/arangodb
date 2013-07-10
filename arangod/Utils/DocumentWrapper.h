@@ -25,16 +25,20 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_DOCUMENT_WRAPPER_HELPER_H
-#define TRIAGENS_UTILS_DOCUMENT_WRAPPER_HELPER_H 1
+#ifndef TRIAGENS_UTILS_DOCUMENT_WRAPPER_H
+#define TRIAGENS_UTILS_DOCUMENT_WRAPPER_H 1
 
-#include "Logger/Logger.h"
 #include "BasicsC/json.h"
+#include "Basics/JsonHelper.h"
+#include "Logger/Logger.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-collection.h"
+      
+using namespace triagens::basics;
 
 namespace triagens {
   namespace arango {
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class DocumentHelper
@@ -97,50 +101,32 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         bool isArrayDocument () {
-          return _json != 0 && _json->_type == TRI_JSON_ARRAY;
+          return JsonHelper::isArray(_json);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns then value of a boolean attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool getBooleanValue (string const& name, bool defaultValue) {
-        TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
-
-        if (b != 0 && b->_type == TRI_JSON_BOOLEAN) {
-          return b->_value._boolean;
+        bool getBooleanValue (string const& name, bool defaultValue) {
+          return JsonHelper::getBooleanValue(_json, name.c_str(), defaultValue);
         }
-
-        return defaultValue;
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns then value of a numeric attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-      double getNumericValue (string const& name, double defaultValue) {
-        TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
-
-        if (b != 0 && b->_type == TRI_JSON_NUMBER) {
-          return b->_value._number;
+        double getNumericValue (string const& name, double defaultValue) {
+          return JsonHelper::getNumberValue(_json, name.c_str(), defaultValue);
         }
-
-        return defaultValue;
-      }
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns then value of a string attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-      string getStringValue (string const& name, string const& defaultValue) {
-        TRI_json_t const* b = TRI_LookupArrayJson(_json, name.c_str());
-
-        if (b != 0 && b->_type == TRI_JSON_STRING) {
-          return string(b->_value._string.data, b->_value._string.length - 1);
+        string getStringValue (string const& name, string const& defaultValue) {
+          return JsonHelper::getStringValue(_json, name.c_str(), defaultValue);
         }
-
-        return defaultValue;
-      }
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

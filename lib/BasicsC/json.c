@@ -59,10 +59,11 @@ static int StringifyJson (TRI_memory_zone_t* zone,
   int res;
 
   switch (object->_type) {
-    case TRI_JSON_UNUSED:
+    case TRI_JSON_UNUSED: {
       break;
+    }
 
-    case TRI_JSON_NULL:
+    case TRI_JSON_NULL: {
       res = TRI_AppendString2StringBuffer(buffer, "null", 4); // strlen("null")
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -70,8 +71,9 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       break;
+    }
 
-    case TRI_JSON_BOOLEAN:
+    case TRI_JSON_BOOLEAN: {
       if (object->_value._boolean) {
         res = TRI_AppendString2StringBuffer(buffer, "true", 4); // strlen("true")
       }
@@ -84,8 +86,9 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       break;
+    }
 
-    case TRI_JSON_NUMBER:
+    case TRI_JSON_NUMBER: {
       res = TRI_AppendDoubleStringBuffer(buffer, object->_value._number);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -93,8 +96,10 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       break;
+    }
 
     case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE: {
       res = TRI_AppendCharStringBuffer(buffer, '\"');
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -129,8 +134,9 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       break;
+    }
 
-    case TRI_JSON_ARRAY:
+    case TRI_JSON_ARRAY: {
       if (braces) {
         res = TRI_AppendCharStringBuffer(buffer, '{');
 
@@ -178,8 +184,9 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       break;
+    }
 
-    case TRI_JSON_LIST:
+    case TRI_JSON_LIST: {
       if (braces) {
         res = TRI_AppendCharStringBuffer(buffer, '[');
 
@@ -215,6 +222,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       break;
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -249,7 +257,7 @@ static inline void InitNumber (TRI_json_t* result,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a string  object in place
+/// @brief initialise a string object in place
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitString (TRI_json_t* result, 
@@ -258,6 +266,18 @@ static inline void InitString (TRI_json_t* result,
   result->_type = TRI_JSON_STRING;
   result->_value._string.length = length + 1;
   result->_value._string.data = value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a string reference object in place
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void InitStringReference (TRI_json_t* result, 
+                                        size_t length, 
+                                        const char* value) {
+  result->_type = TRI_JSON_STRING_REFERENCE;
+  result->_value._string.length = length + 1;
+  result->_value._string.data = (char*) value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,6 +315,15 @@ static inline void InitArray (TRI_memory_zone_t* zone,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine whether a JSON value is of type string
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool IsString (TRI_json_t const* json) {
+  return (json != NULL && 
+          (json->_type == TRI_JSON_STRING || json->_type == TRI_JSON_STRING_REFERENCE) &&
+          json->_value._string.data != NULL);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -461,6 +490,48 @@ void TRI_InitString2Json (TRI_json_t* result, char* value, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a string reference object
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateStringReferenceJson (TRI_memory_zone_t* zone, const char* value) {
+  return TRI_CreateStringReference2Json(zone, value, strlen(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a string reference object with given length
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateStringReference2Json (TRI_memory_zone_t* zone, const char* value, size_t length) {
+  TRI_json_t* result;
+
+  result = (TRI_json_t*) TRI_Allocate(zone, sizeof(TRI_json_t), false);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  InitStringReference(result, length, value);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a string reference object
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitStringReferenceJson (TRI_json_t* result, const char* value) {
+  InitStringReference(result, strlen(value), value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a string reference object
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitStringReference2Json (TRI_json_t* result, const char* value, size_t length) {
+  InitStringReference(result, length, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a list object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -566,6 +637,10 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
     case TRI_JSON_STRING:
       TRI_DestroyBlob(zone, &object->_value._string);
       break;
+    
+    case TRI_JSON_STRING_REFERENCE:
+      // we will not be destroying the string!!
+      break;
 
     case TRI_JSON_ARRAY:
     case TRI_JSON_LIST:
@@ -602,6 +677,14 @@ void TRI_FreeJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
 /// @addtogroup Json
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines whether the JSON passed is of type string
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsStringJson (TRI_json_t const* json) {
+  return IsString(json);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object to a list object, copying it
@@ -762,7 +845,7 @@ TRI_json_t* TRI_LookupArrayJson (const TRI_json_t* const object, char const* nam
 
     key = TRI_AtVector(&object->_value._objects, i);
 
-    if (key->_type != TRI_JSON_STRING) {
+    if (! IsString(key)) {
       continue;
     }
 
@@ -792,7 +875,7 @@ bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char cons
 
     key = TRI_AtVector(&object->_value._objects, i);
 
-    if (key->_type != TRI_JSON_STRING) {
+    if (! IsString(key)) {
       continue;
     }
 
@@ -838,7 +921,7 @@ bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 
     key = TRI_AtVector(&object->_value._objects, i);
 
-    if (key->_type != TRI_JSON_STRING) {
+    if (! IsString(key)) {
       continue;
     }
 
@@ -1019,6 +1102,9 @@ int TRI_CopyToJson (TRI_memory_zone_t* zone,
 
     case TRI_JSON_STRING:
       return TRI_CopyToBlob(zone, &dst->_value._string, &src->_value._string);
+    
+    case TRI_JSON_STRING_REFERENCE:
+      return TRI_AssignToBlob(zone, &dst->_value._string, &src->_value._string);
 
     case TRI_JSON_ARRAY:
     case TRI_JSON_LIST:
@@ -1107,7 +1193,8 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
       return (left->_value._number == right->_value._number);
     }
 
-    case TRI_JSON_STRING: {
+    case TRI_JSON_STRING: 
+    case TRI_JSON_STRING_REFERENCE: {
       return ((left->_value._string.length == right->_value._string.length) && 
               (strcmp(left->_value._string.data, right->_value._string.data) == 0));
     }

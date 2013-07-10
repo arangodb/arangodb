@@ -111,20 +111,16 @@ MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
         // look up "server" value (this returns a pointer, not a copy)
         TRI_json_t* server = TRI_LookupArrayJson(json, "server");
 
-        if (server) {
-
+        if (TRI_IsStringJson(server)) {
           // "server" value is a string and content is "arango"
-          if (server->_type == TRI_JSON_STRING && TRI_EqualString(server->_value._string.data, "arango")) {
+          if (TRI_EqualString(server->_value._string.data, "arango")) {
 
             // look up "version" value (this returns a pointer, not a copy)
             TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
 
-            if (vs) {
-
+            if (TRI_IsStringJson(vs)) {
               // "version" value is a string
-              if (vs->_type == TRI_JSON_STRING) {
-                _version = string(vs->_value._string.data, vs->_value._string.length);
-              }
+              _version = string(vs->_value._string.data, vs->_value._string.length);
             }
           }
 

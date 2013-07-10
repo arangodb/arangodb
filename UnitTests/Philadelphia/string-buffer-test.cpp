@@ -469,6 +469,68 @@ BOOST_AUTO_TEST_CASE (tst_length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_clear
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_clear) {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+
+  // clear an empty buffer
+  TRI_ClearStringBuffer(&sb);
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+
+  TRI_AppendStringStringBuffer(&sb, "foo bar baz");
+  BOOST_CHECK_EQUAL(11, (int) TRI_LengthStringBuffer(&sb));
+
+  const char* ptr = TRI_BeginStringBuffer(&sb);
+  TRI_ClearStringBuffer(&sb);
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+
+  // buffer should still point to ptr
+  BOOST_CHECK_EQUAL(ptr, TRI_BeginStringBuffer(&sb));
+
+  TRI_DestroyStringBuffer(&sb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_steal
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_steal) {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_AppendStringStringBuffer(&sb, "foo bar baz");
+
+  const char* ptr = TRI_BeginStringBuffer(&sb);
+ 
+  // steal the buffer
+  char* stolen = TRI_StealStringBuffer(&sb);
+  
+  // buffer is now empty
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+  BOOST_CHECK_EQUAL((void*) 0, TRI_BeginStringBuffer(&sb));
+
+  // stolen should still point to ptr
+  BOOST_CHECK_EQUAL(stolen, ptr);
+  BOOST_CHECK_EQUAL(0, strcmp(stolen, ptr));
+
+  TRI_DestroyStringBuffer(&sb);
+
+  // destroying the string buffer should not affect us
+  BOOST_CHECK_EQUAL(stolen, ptr);
+  BOOST_CHECK_EQUAL(0, strcmp(stolen, ptr));
+
+  // must manually free the string
+  TRI_Free(TRI_CORE_MEM_ZONE, stolen);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief tst_last_char
 ////////////////////////////////////////////////////////////////////////////////
 

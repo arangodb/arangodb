@@ -54,7 +54,8 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
   TRI_aql_context_t* context;
   char* name;
 
-  if (!node || node->_type != TRI_AQL_NODE_PARAMETER) {
+  if (node == NULL || 
+      node->_type != TRI_AQL_NODE_PARAMETER) {
     return node;
   }
 
@@ -69,13 +70,14 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
   assert(name);
 
   bind = (TRI_aql_bind_parameter_t*) TRI_LookupByKeyAssociativePointer(bindValues, name);
+
   if (bind) {
     if (*name == '@') {
       // a collection name bind parameter
-      if (bind->_value->_type == TRI_JSON_STRING) {
+      if (TRI_IsStringJson(bind->_value)) {
         char* collectionName = TRI_RegisterStringAql(context,
                                                      bind->_value->_value._string.data,
-                                                     strlen(bind->_value->_value._string.data),
+                                                     bind->_value->_value._string.length - 1,
                                                      false);
 
         node = TRI_CreateNodeCollectionAql(context, collectionName);
@@ -102,6 +104,7 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
+                                                  const size_t nameLength,
                                                   const TRI_json_t* const value) {
   TRI_aql_bind_parameter_t* parameter;
 
@@ -109,11 +112,13 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
   assert(value);
 
   parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t), false);
-  if (!parameter) {
+
+  if (parameter == NULL) {
     return NULL;
   }
 
-  parameter->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+  parameter->_name = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name, nameLength);
+
   if (parameter->_name == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
 
@@ -121,6 +126,7 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
   }
 
   parameter->_value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) value);
+
   if (parameter->_value == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
@@ -228,13 +234,16 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
     TRI_json_t* value = TRI_AtVector(&parameters->_value._objects, i + 1);
     TRI_aql_bind_parameter_t* parameter;
 
-    assert(name);
-    assert(name->_type == TRI_JSON_STRING);
+    assert(TRI_IsStringJson(name));
     assert(value);
 
-    parameter = CreateParameter(name->_value._string.data, value);
+    parameter = CreateParameter(name->_value._string.data, 
+                                name->_value._string.length - 1,
+                                value);
+
     if (parameter == NULL) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
       return false;
     }
 

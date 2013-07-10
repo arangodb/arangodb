@@ -1363,7 +1363,7 @@ int TRI_LoadCollectionInfo (char const* path,
     key = TRI_AtVector(&json->_value._objects, i);
     value = TRI_AtVector(&json->_value._objects, i + 1);
 
-    if (key->_type != TRI_JSON_STRING) {
+    if (! TRI_IsStringJson(key)) {
       continue;
     }
 
@@ -1381,7 +1381,7 @@ int TRI_LoadCollectionInfo (char const* path,
         parameter->_maximalSize = value->_value._number;
       }
     }
-    else if (value->_type == TRI_JSON_STRING && value->_value._string.data != NULL) {
+    else if (TRI_IsStringJson(value)) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
 

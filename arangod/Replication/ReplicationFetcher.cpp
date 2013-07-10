@@ -52,6 +52,25 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 
 #define LOGGER_REPLICATION LOGGER_INFO
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base url of the replication API
+////////////////////////////////////////////////////////////////////////////////
+
+const string ReplicationFetcher::BaseUrl = "/_api/replication";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -294,7 +313,7 @@ int ReplicationFetcher::processDocument (TRI_replication_operation_e type,
   // extract "key"
   TRI_json_t const* keyJson = JsonHelper::getArrayElement(json, "key");
 
-  if (keyJson == 0 || keyJson->_type != TRI_JSON_STRING || keyJson->_value._string.data == 0) {
+  if (! JsonHelper::isString(keyJson)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
@@ -856,7 +875,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
     for (size_t i = 0; i < n; i += 2) {
       TRI_json_t const* element = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
 
-      if (element == 0 || element->_type != TRI_JSON_STRING) { 
+      if (! JsonHelper::isString(element)) {
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         errorMsg = invalidMsg;
       
@@ -873,7 +892,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
       }
 
       else if (TRI_EqualString(attributeName, "key")) {
-        if (value != 0 && value->_type == TRI_JSON_STRING &&value->_value._string.data != 0) {
+        if (JsonHelper::isString(value)) {
           key = value->_value._string.data;
         }
       }
@@ -1059,7 +1078,7 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
   }
 
   map<string, string> headers;
-  static const string url = "/_api/replication/state";
+  static const string url = BaseUrl + "/state";
 
   // send request
   LOGGER_REPLICATION("fetching master state from " << url);
@@ -1123,7 +1142,7 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
   }
 
   map<string, string> headers;
-  static const string url = "/_api/replication/inventory";
+  static const string url = BaseUrl + "/inventory";
 
   // send request
   LOGGER_REPLICATION("fetching master inventory from " << url);
@@ -1189,7 +1208,7 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
   }
 
 
-  const string baseUrl = "/_api/replication/dump"  
+  const string baseUrl = BaseUrl + "/dump"  
                          "?collection=" + StringUtils::itoa(trxCollection->_cid) + 
                          "&chunkSize=" + StringUtils::itoa(getChunkSize());
 
@@ -1543,7 +1562,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   }
 
   // validate all values we got
-  const TRI_server_id_t masterId = StringUtils::uint64(serverId->_value._string.data, serverId->_value._string.length);
+  const TRI_server_id_t masterId = StringUtils::uint64(serverId->_value._string.data, serverId->_value._string.length - 1);
 
   if (masterId == 0) {
     // invalid master id
@@ -1562,15 +1581,17 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   int major = 0;
   int minor = 0;
 
-  if (sscanf(version->_value._string.data, "%d.%d", &major, &minor) != 2) {
-    errorMsg = "invalid master version info: " + string(version->_value._string.data);
+  const string versionString = string(version->_value._string.data, version->_value._string.length - 1);
+
+  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
+    errorMsg = "invalid master version info: " + versionString;
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
   if (major != 1 ||
       (major == 1 && minor != 4)) {
-    errorMsg = "incompatible master version: " + string(version->_value._string.data);
+    errorMsg = "incompatible master version: " + versionString;
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
@@ -1720,7 +1741,7 @@ int ReplicationFetcher::runContinuous (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  const string baseUrl = "/_api/replication/follow"  
+  const string baseUrl = BaseUrl + "/follow"  
                          "?chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;

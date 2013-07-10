@@ -2659,7 +2659,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   }
 
   res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) data, json, NULL);
-  TRI_Free(TRI_CORE_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot read index definition from '%s': %s", filename, TRI_errno_string(res));
@@ -3025,7 +3025,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   // extract the type
   type = TRI_LookupArrayJson(json, "type");
 
-  if (type->_type != TRI_JSON_STRING || type->_value._string.data == NULL) {
+  if (! TRI_IsStringJson(type)) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -3037,8 +3037,9 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
     iid = (TRI_idx_iid_t) iis->_value._number;
   }
-  else if (iis != NULL && iis->_type == TRI_JSON_STRING) {
-    iid = (TRI_idx_iid_t) TRI_UInt64String(iis->_value._string.data);
+  else if (TRI_IsStringJson(iis)) {
+    iid = (TRI_idx_iid_t) TRI_UInt64String2(iis->_value._string.data, 
+                                            iis->_value._string.length - 1);
   }
   else {
     LOG_ERROR("ignoring index, index identifier could not be located");
@@ -3494,7 +3495,7 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
   for (j = 0;  j < *fieldCount;  ++j) {
     TRI_json_t* sub = TRI_AtVector(&fld->_value._objects, j);
 
-    if (sub->_type != TRI_JSON_STRING) {
+    if (! TRI_IsStringJson(sub)) {
       LOG_ERROR("ignoring index %llu, 'fields' must be a list of attribute paths", (unsigned long long) iid);
 
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -3567,7 +3568,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
 
     key = TRI_AtVector(&keyValue->_value._objects, 0);
 
-    if (key == NULL || key->_type != TRI_JSON_STRING) {
+    if (! TRI_IsStringJson(key)) {
       LOG_ERROR("ignoring index %llu, key in 'fields' pair must be an attribute (string)", (unsigned long long) iid);
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       return NULL;
@@ -4570,6 +4571,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
                              TRI_idx_iid_t iid,
                              TRI_index_t** dst) {
   TRI_index_t* idx;
+  TRI_json_t* type;
   TRI_json_t* bv;
   TRI_json_t* fld;
   bool unique;
@@ -4581,7 +4583,13 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
     *dst = NULL;
   }
 
-  typeStr = TRI_LookupArrayJson(definition, "type")->_value._string.data;
+  type = TRI_LookupArrayJson(definition, "type");
+
+  if (! TRI_IsStringJson(type)) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  typeStr = type->_value._string.data;
 
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
@@ -4594,6 +4602,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   unique = false;
   // first try "unique" attribute
   bv = TRI_LookupArrayJson(definition, "unique");
+
   if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
     unique = bv->_value._boolean;
   }
@@ -5504,6 +5513,11 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   }
 
   attribute = TRI_AtVector(&fld->_value._objects, 0);
+
+  if (! TRI_IsStringJson(attribute)) {
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
   attributeName = attribute->_value._string.data;
 
   // 2013-01-17: deactivated substring indexing
@@ -5516,6 +5530,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
   minWordLength = TRI_LookupArrayJson(definition, "minLength");
   minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+
   if (minWordLength != NULL && minWordLength->_type == TRI_JSON_NUMBER) {
     minWordLengthValue = (int) minWordLength->_value._number;
   }
