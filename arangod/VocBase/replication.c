@@ -57,6 +57,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief number of pre-allocated string buffers for logging
+////////////////////////////////////////////////////////////////////////////////
+
+#define NUM_BUFFERS 8
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pre-allocated size for each log buffer
+////////////////////////////////////////////////////////////////////////////////
+
+#define BUFFER_SIZE 256
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -228,38 +240,56 @@ static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a buffer to write an event in
-/// TODO: some optimisations can go here so that we do not create new buffers
-/// over and over...
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
   TRI_string_buffer_t* buffer;
-
+  size_t n;
+   
   assert(logger != NULL);
- 
-  buffer = TRI_CreateStringBuffer(TRI_CORE_MEM_ZONE);
+  buffer = NULL;
+
+  TRI_LockSpin(&logger->_bufferLock);
+
+  n = logger->_buffers._length;
+
+  if (n > 0) {
+    buffer = TRI_RemoveVectorPointer(&logger->_buffers, n);
+  }
+
+  TRI_UnlockSpin(&logger->_bufferLock);
+
   return buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a buffer
-/// TODO: some optimisations can go here so that we do not dispose unused 
-/// buffers but recycle them
+/// @brief returns a buffer to the list of available buffers
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ReturnBuffer (TRI_replication_logger_t* logger,
                           TRI_string_buffer_t* buffer) {
   assert(logger != NULL);
+  assert(buffer != NULL);
 
-  if (buffer == NULL) {
-    return;
+  // make the buffer usable again
+  if (buffer->_buffer == NULL) {
+    TRI_InitSizedStringBuffer(buffer, TRI_CORE_MEM_ZONE, BUFFER_SIZE);
+  }
+  else {
+    TRI_ResetStringBuffer(buffer);
   }
 
-  TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, buffer);
+  TRI_LockSpin(&logger->_bufferLock);
+
+  TRI_PushBackVectorPointer(&logger->_buffers, buffer);
+  assert(logger->_buffers._length <= NUM_BUFFERS);
+  
+  TRI_UnlockSpin(&logger->_bufferLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a replication event contained in the buffer
+/// the function will always free the buffer passed
 ////////////////////////////////////////////////////////////////////////////////
 
 static int LogEvent (TRI_replication_logger_t* logger,
@@ -294,6 +324,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
   if (json == NULL) {
     // should not happen in CORE_MEM_ZONE, but you never know
+    ReturnBuffer(logger, buffer);
+
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -304,11 +336,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
   }
 
   // pass the string-buffer buffer pointer to the JSON
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "data", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, buffer->_buffer));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "data", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StealStringBuffer(buffer)));
   
-  // this will make sure we won't double-free the buffer
-  buffer->_buffer = NULL;
-
   primary = logger->_trxCollection->_collection->_collection;
   shaped = TRI_ShapedJsonJson(primary->_shaper, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -1444,6 +1473,56 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free all allocated buffers
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeBuffers (TRI_replication_logger_t* logger) {
+  size_t i, n;
+
+  n = logger->_buffers._length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_string_buffer_t* buffer = (TRI_string_buffer_t*) TRI_AtVectorPointer(&logger->_buffers, i);
+
+    assert(buffer != NULL);
+    TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, buffer);
+  }
+
+  TRI_DestroyVectorPointer(&logger->_buffers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise buffers
+////////////////////////////////////////////////////////////////////////////////
+
+static int InitBuffers (TRI_replication_logger_t* logger) {
+  size_t i;
+  int res;
+
+  res = TRI_InitVectorPointer2(&logger->_buffers, TRI_CORE_MEM_ZONE, NUM_BUFFERS);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  for (i = 0; i < NUM_BUFFERS; ++i) {
+    TRI_string_buffer_t* buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, BUFFER_SIZE);
+
+    if (buffer == NULL) {
+      FreeBuffers(logger);
+
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    TRI_PushBackVectorPointer(&logger->_buffers, buffer);
+  }
+
+  assert(logger->_buffers._length == NUM_BUFFERS);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1462,15 +1541,27 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
 
 TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   TRI_replication_logger_t* logger;
+  int res;
 
   logger = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_replication_logger_t), false);
 
   if (logger == NULL) {
     return NULL;
   }
+ 
+  // init string buffers 
+  res = InitBuffers(logger);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // out of memory
+    TRI_Free(TRI_CORE_MEM_ZONE, logger);
+
+    return NULL;
+  }
 
   TRI_InitReadWriteLock(&logger->_statusLock);
   TRI_InitSpin(&logger->_idLock);
+  TRI_InitSpin(&logger->_bufferLock);
 
   logger->_vocbase             = vocbase;
   logger->_trx                 = NULL;
@@ -1493,8 +1584,11 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
 
 void TRI_DestroyReplicationLogger (TRI_replication_logger_t* logger) {
   TRI_StopReplicationLogger(logger);
+
+  FreeBuffers(logger);
  
   TRI_FreeString(TRI_CORE_MEM_ZONE, logger->_databaseName);
+  TRI_DestroySpin(&logger->_bufferLock);
   TRI_DestroySpin(&logger->_idLock);
   TRI_DestroyReadWriteLock(&logger->_statusLock);
 }
