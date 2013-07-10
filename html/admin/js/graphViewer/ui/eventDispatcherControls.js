@@ -29,15 +29,20 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+/* Archive
 function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, dispatcherConfig) {
+*/
+function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig) {
   "use strict";
   
   if (list === undefined) {
     throw "A list element has to be given.";
   }
+  /*
   if (cursorIconBox === undefined) {
     throw "The cursor decoration box has to be given.";
   }
+  */
   if (nodeShaper === undefined) {
     throw "The NodeShaper has to be given.";
   }
@@ -137,8 +142,8 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       pos.x -= $('svg').offset().left;
       pos.y -= $('svg').offset().top;
       return pos;
-    },
-    
+    };
+    /* Archive
     moveCursorBox = function(ev) {
       var pos = getCursorPosition(ev);
       pos.x += 7;
@@ -147,7 +152,8 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       cursorIconBox.style.left  = pos.x + 'px';
       cursorIconBox.style.top = pos.y + 'px';
     };
-  
+    */
+  /* Archive
   dispatcher.fixSVG("mousemove", moveCursorBox);
   dispatcher.fixSVG("mouseout", function() {
     cursorIconBox.style.display = "none";
@@ -155,7 +161,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   dispatcher.fixSVG("mouseover", function() {
     cursorIconBox.style.display = "block";
   });
-  
+  */
   /*******************************************
   * Raw rebind objects
   *

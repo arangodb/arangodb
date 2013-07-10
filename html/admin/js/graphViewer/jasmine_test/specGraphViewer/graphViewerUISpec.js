@@ -141,6 +141,7 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
+      /* Archive
       it('should create the additional mouse-icon box', function() {
         var pointerBox = $("#contentDiv #mousepointer");
         expect(pointerBox.length).toEqual(1);
@@ -164,7 +165,7 @@
         expect(pointerBox.offset().left).toEqual(x + 7);
         expect(pointerBox.offset().top).toEqual(y + 12);
       });
-      
+      */
     });
     
     describe('checking the menubar', function() {
