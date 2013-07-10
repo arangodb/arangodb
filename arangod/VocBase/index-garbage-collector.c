@@ -530,6 +530,7 @@ void InnerThreadLoop (bool* goToSleep) {
     
   result = TRI_GetGlobalTransactionFigures(stats);
   if (result != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, stats);
     LOG_TRACE("the index garbage collector inner loop failed due transactions figures being unavailable");
     *goToSleep = true;
     return;
@@ -548,6 +549,7 @@ void InnerThreadLoop (bool* goToSleep) {
     // ........................................................................
 
     if (currentNode == NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, stats);
       *goToSleep = true;
        return;
     }
@@ -559,6 +561,7 @@ void InnerThreadLoop (bool* goToSleep) {
 
     if (!TRI_CompareIntegerUInt32 (&(currentNode->_nodeFlag), 
                                    INDEX_GC_NODE_NORMAL_FLAG) ) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, stats);
       *goToSleep = true;
       return;
     }    
@@ -660,6 +663,7 @@ void InnerThreadLoop (bool* goToSleep) {
     
   } // end of while loop
   
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, stats);
 }
 
 
