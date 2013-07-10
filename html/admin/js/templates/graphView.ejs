@@ -1,3 +1,17 @@
+<%
+var ds = [], es = [];
+col.each(function(m) {
+  switch (m.get("type")) {
+    case "document":
+      ds.push(m.get("name"));
+      break;
+    case "edge":
+      es.push(m.get("name"));
+      break;
+  }
+});
+console.log(ds, es);
+%>
 <div class="thumbnails" id="background">
   <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
     <fieldset>
@@ -5,16 +19,32 @@
       <div class="control-group">
         <label for="nodeCollection" class="control-label">Node Collection</label>
         <div class="controls">
-          <input id="nodeCollection" type="text" name="nodeCollection" placeholder="Node Collection" maxlength="75" class="input-xlarge" value="Classes">
+          <select id="nodeCollection" name="nodeCollection">
+          <%_.each(ds, function(d) {%>
+            <option value="<%= d %>"><%= d %></option>
+          <%}); %>
+          </select>
         </div>
       </div>
+      
       <div class="control-group">
         <label for="edgeCollection" class="control-label">Edge Collection</label>
         <div class="controls">
-          <input id="edgeCollection" type="text" name="edgeCollection" placeholder="Edge Collection" maxlength="75" class="input-xlarge" value="Connections">
+          <select id="edgeCollection" name="edgeCollection">
+          <%_.each(es, function(e) {%>
+            <option value="<%= e %>"><%= e %></option>
+          <%}); %>
+          </select>
         </div>
       </div>
-    
+      
+      <div class="control-group">
+        <label for="undirected" class="control-label">Undirected Graph</label>
+        <div class="controls">
+          <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
+        </div>
+      </div>
+      
       <div class="accordion" id="advancedGraphOptions">
 
         <div class="accordion-group">
@@ -26,12 +56,7 @@
 
           <div id="advancedOptions" class="accordion-body collapse out">
             <div class="accordion-inner">
-              <div class="control-group">
-                <label for="undirected" class="control-label">Undirected Graph</label>
-                <div class="controls">
-                  <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
-                </div>
-              </div>
+              
               <div class="control-group">
                 <label for="nodeLabel" class="control-label">Node Label</label>
                 <div class="controls">

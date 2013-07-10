@@ -29,15 +29,20 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+/* Archive
 function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, dispatcherConfig) {
+*/
+function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig) {
   "use strict";
   
   if (list === undefined) {
     throw "A list element has to be given.";
   }
+  /*
   if (cursorIconBox === undefined) {
     throw "The cursor decoration box has to be given.";
   }
+  */
   if (nodeShaper === undefined) {
     throw "The NodeShaper has to be given.";
   }
@@ -53,13 +58,29 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       "none",
       ""
     ),
+    icons = {
+      expand: "plus",
+      add: "plus-sign",
+      trash: "trash",
+      drag: "move",
+      edge: "resize-horizontal",
+      edit: "pencil"
+    },
     */
+    icons = {
+      expand: "expand",
+      add: "add",
+      trash: "trash",
+      drag: "drag",
+      edge: "connect",
+      edit: "edit"
+    },
     baseClass = "event",
     eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
     setCursorIcon = function(icon) {
-      cursorIconBox.className = "mousepointer icon-" + icon;
+      //cursorIconBox.className = "mousepointer icon-" + icon;
     },
     
     appendToList = function(button) {
@@ -121,8 +142,8 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       pos.x -= $('svg').offset().left;
       pos.y -= $('svg').offset().top;
       return pos;
-    },
-    
+    };
+    /* Archive
     moveCursorBox = function(ev) {
       var pos = getCursorPosition(ev);
       pos.x += 7;
@@ -131,7 +152,8 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
       cursorIconBox.style.left  = pos.x + 'px';
       cursorIconBox.style.top = pos.y + 'px';
     };
-  
+    */
+  /* Archive
   dispatcher.fixSVG("mousemove", moveCursorBox);
   dispatcher.fixSVG("mouseout", function() {
     cursorIconBox.style.display = "none";
@@ -139,7 +161,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   dispatcher.fixSVG("mouseover", function() {
     cursorIconBox.style.display = "block";
   });
-  
+  */
   /*******************************************
   * Raw rebind objects
   *
@@ -278,7 +300,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   
   
   this.addControlNewNode = function() {
-    var icon = "plus-sign",
+    var icon = icons.add,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.newNodeRebinds());
@@ -289,7 +311,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   this.addControlDrag = function() {
     var prefix = "control_event_drag",
       idprefix = prefix + "_",
-      icon = "move",
+      icon = icons.drag,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.dragRebinds());
@@ -298,7 +320,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlEdit = function() {
-    var icon = "pencil",
+    var icon = icons.edit,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.editRebinds());
@@ -307,7 +329,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlExpand = function() {
-    var icon = "plus",
+    var icon = icons.expand,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.expandRebinds());
@@ -316,7 +338,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlDelete = function() {
-    var icon = "trash",
+    var icon = icons.trash,
       callback = function() {
         setCursorIcon(icon);
         rebindNodes({click: dispatcher.events.DELETENODE(function() {
@@ -331,7 +353,7 @@ function EventDispatcherControls(list, cursorIconBox, nodeShaper, edgeShaper, di
   };
   
   this.addControlConnect = function() {
-    var icon = "resize-horizontal",
+    var icon = icons.edge,
       callback = function() {
         setCursorIcon(icon);
         self.rebindAll(self.connectNodesRebinds());

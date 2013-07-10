@@ -90,3 +90,52 @@ button.graphViewer-icon-button > img {
 .modal-body th.valueCell input {
   width: 290px;
 }
+
+img.gv-icon-btn{
+  width:36px;
+  height:36px;
+}
+
+img.gv-icon-btn.edit{
+  content:url("../img/gv_edit.png");
+}
+img.gv-icon-btn.edit.active{
+  content:url("../img/gv_edit_reverse.png");
+}
+
+img.gv-icon-btn.add{
+  content:url("../img/gv_add.png");
+}
+
+img.gv-icon-btn.add.active{
+  content:url("../img/gv_add_reverse.png");
+}
+
+img.gv-icon-btn.expand{
+  content:url("../img/gv_expand.png");
+}
+img.gv-icon-btn.expand.active{
+  content:url("../img/gv_expand_reverse.png");
+}
+
+img.gv-icon-btn.drag{
+  content:url("../img/gv_drag.png");
+}
+img.gv-icon-btn.drag.active{
+  content:url("../img/gv_drag_reverse.png");
+}
+
+img.gv-icon-btn.connect{
+  content:url("../img/gv_connect.png");
+}
+img.gv-icon-btn.connect.active{
+  content:url("../img/gv_connect_reverse.png");
+}
+
+img.gv-icon-btn.trash{
+  content:url("../img/gv_trash.png");
+}
+img.gv-icon-btn.trash.active{
+  content:url("../img/gv_trash_reverse.png");
+}
+

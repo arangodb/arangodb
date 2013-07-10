@@ -287,7 +287,7 @@
         );
       });
       
-      
+      /*
       it('should create the additional mouse-icon box', function() {
         var toolboxConf = {
             expand: true
@@ -325,16 +325,14 @@
         expect(pointerBox.offset().left).toEqual(x + 7);
         expect(pointerBox.offset().top).toEqual(y + 12);
       });
-      
+      */
       it('should not add a toolbox if no buttons are defined', function() {
         var toolboxConf = {},
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerWidget(config),
-          pointerBox = $("#mousepointer");
+          ui = new GraphViewerWidget(config);
         expect($(toolboxSelector).length).toEqual(0);
-        expect(pointerBox.length).toEqual(0);
       });
       
       it('should be able to add the expand button', function() {
@@ -357,10 +355,8 @@
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerWidget(config),
-          pointerBox = $("#mousepointer");
+          ui = new GraphViewerWidget(config);
         expect($(toolboxSelector).length).toEqual(0);
-        expect(pointerBox.length).toEqual(0);
       });
       
       it('should be able to add the expand button', function() {
