@@ -196,33 +196,27 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 string value from an internal uint64_t id value
+/// @brief create a v8 tick id value from the internal tick id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8StringId (const uint64_t id) {
+static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
   v8::HandleScope scope;
 
-  const string idStr = StringUtils::itoa(id);
+  const string id = StringUtils::itoa(tick);
 
-  v8::Handle<v8::Value> result = v8::String::New(idStr.c_str(), idStr.size());
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 collection id value from the internal collection id
-////////////////////////////////////////////////////////////////////////////////
-
-static inline v8::Handle<v8::Value> V8CollectionId (const uint64_t cid) {
-  return V8StringId(cid);
+  return scope.Close(v8::String::New(id.c_str(), id.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8RevisionId (const uint64_t rid) {
-  return V8StringId(rid);
+static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
+  v8::HandleScope scope;
+
+  const string id = StringUtils::itoa(rid);
+
+  return scope.Close(v8::String::New(id.c_str(), id.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,9 +229,7 @@ static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
 
   const string id = DocumentHelper::assembleDocumentId(collectionName, key);
 
-  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
-
-  return scope.Close(result);
+  return scope.Close(v8::String::New(id.c_str(), id.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2595,7 +2587,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   if (id != 0) {
-    return scope.Close(V8StringId(id));
+    return scope.Close(V8TickId(id));
   }
 
   TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
@@ -3094,8 +3086,14 @@ static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
     forceFullSync = TRI_ObjectToBoolean(argv[1]);
   }
 
+  string errorMsg;
+
   ReplicationFetcher rf(vocbase, masterEndpoint, 600);
-  rf.run(forceFullSync);
+  int res = rf.run(forceFullSync, errorMsg);
+
+  if (res !=  TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
+  }
 
   return scope.Close(v8::True());
 }
@@ -7718,7 +7716,9 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             const_cast<TRI_vocbase_col_t*>(collection));
   
   if (! result.IsEmpty()) {
-    result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+    const string cidString = StringUtils::itoa(collection->_cid);
+
+    result->Set(v8g->_IdKey, v8::String::New(cidString.c_str(), cidString.size()), v8::ReadOnly);
   }
 
   return scope.Close(result);

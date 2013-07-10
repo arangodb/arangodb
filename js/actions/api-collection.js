@@ -312,7 +312,7 @@ function get_api_collections (req, res) {
 
   excludeSystem = false;
   if (req.parameters.hasOwnProperty('excludeSystem')) {
-    var value = req.parameters.excludeSystem;
+    var value = req.parameters.excludeSystem.toLowerCase();
     if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
       excludeSystem = true;
     }
@@ -586,6 +586,50 @@ function get_api_collections (req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////
+///
+/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, returns a checksum for the collection
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTURLPARAM{withData,boolean,optional}
+///
+/// @RESTDESCRIPTION
+/// Will calculate checksum of the meta-data (keys and revision ids) and 
+/// optionally document data in the collection.
+///
+/// The checksum can be used to compare if two collections on different ArangoDB
+/// instances contain the same contents. The current revision of the collection is 
+/// returned too so one can make sure the checksums are calculated for the same 
+/// state of data.
+///
+/// By default, the checksum will only be calculated on the `_key` and `_rev` 
+/// system attributes of the documents contained in the collection. 
+/// For edge collections, the system attributes `_from` and `_to` will also be 
+/// included in the calculation.
+///
+/// By providing the optional URL parameter `withData` with a value of `true`, 
+/// the user-defined document attributes will be included in the calculation too. 
+/// Note that including user-defined attributes will make the checksumming slower.
+///
+/// - `checksum`: The calculated checksum as a number.
+///
+/// - `revision`: The collection revision id as a string.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the `collection-name` is missing, then a `HTTP 400` is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404`
+/// is returned.
+///
+////////////////////////////////////////////////////////////////////////////////
+
 function get_api_collection (req, res) {
   var name;
   var result;
@@ -630,10 +674,30 @@ function get_api_collection (req, res) {
     sub = decodeURIComponent(req.suffix[1]);
 
     // .............................................................................
+    // /_api/collection/<identifier>/checksum
+    // .............................................................................
+
+    if (sub === "checksum") {
+      var withData = false;
+      if (req.parameters.hasOwnProperty('withData')) {
+        var value = req.parameters.withData.toLowerCase();
+        if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+          withData = true;
+        }
+      }
+
+      result = collectionRepresentation(collection, false, false, false);
+      var checksum = collection.checksum(withData);
+      result.checksum = checksum.checksum;
+      result.revision = checksum.revision;
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    
+    // .............................................................................
     // /_api/collection/<identifier>/figures
     // .............................................................................
 
-    if (sub === "figures") {
+    else if (sub === "figures") {
       result = collectionRepresentation(collection, true, true, true);
       headers = { location : "/" + API + "/" + collection.name() + "/figures" };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
