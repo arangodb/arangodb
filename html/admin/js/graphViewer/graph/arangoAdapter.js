@@ -117,6 +117,14 @@ function ArangoAdapter(nodes, edges, config) {
     },
   
     parseResultOfTraversal = function (result, callback) {
+      if (result.length === 0) {
+        if (callback) {
+          callback({
+            errorCode: 404
+          });
+        }
+        return;
+      }
       result = result[0];
       var inserted = {},
         n = absAdapter.insertNode(result[0].vertex),
