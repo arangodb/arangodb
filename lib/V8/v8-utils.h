@@ -51,7 +51,7 @@ class TRI_Utf8ValueNFC {
     char* operator* () { return _str; }
     const char* operator* () const { return _str; }
     size_t length () const { return _length; }
-    void disown () { _str = 0; }
+    char* steal () { char* tmp = _str; _str = 0; return tmp; }
   private:
     char* _str;
     size_t _length;
