@@ -133,6 +133,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
     addCommunityLabel = function(g) {
       g.append("text") // Append a label for the node
+        .attr("fill", colourMapper.getForegroundCommunityColour())
         .attr("text-anchor", "middle") // Define text-anchor
         .text(function(d) {
           return d._size;
