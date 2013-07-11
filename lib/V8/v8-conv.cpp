@@ -1459,7 +1459,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
     if (*str != 0) {
       TRI_json_t* j = TRI_CreateString2Json(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
       // this passes ownership for the utf8 string to the JSON object
-      str.disown();
+      str.steal();
     
       // the Utf8ValueNFC dtor won't free the string now
       return j;
@@ -1507,7 +1507,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
             // move the string pointer into the JSON object
             TRI_Insert4ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, *str, str.length(), result, false);
             // this passes ownership for the utf8 string to the JSON object
-            str.disown();
+            str.steal();
           }
 
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
