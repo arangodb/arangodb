@@ -361,19 +361,21 @@ static int ReadShutdownInfo (char const* filename) {
   }
   
   shutdownTime = TRI_LookupArrayJson(json, "shutdownTime");
-  if (shutdownTime != NULL && shutdownTime->_type == TRI_JSON_STRING) {
+
+  if (TRI_IsStringJson(shutdownTime)) {
     LOG_DEBUG("server was shut down cleanly last time at '%s'", shutdownTime->_value._string.data);
   }
 
   tickString = TRI_LookupArrayJson(json, "tick");
 
-  if (tickString == NULL || tickString->_type != TRI_JSON_STRING) {
+  if (! TRI_IsStringJson(tickString)) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_ERROR_INTERNAL;
   }
 
-  foundTick = TRI_UInt64String(tickString->_value._string.data);
+  foundTick = TRI_UInt64String2(tickString->_value._string.data,
+                                tickString->_value._string.length - 1);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
@@ -1292,7 +1294,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
   }
 
   // index id is a string
-  else if (id != NULL && id->_type == TRI_JSON_STRING) {
+  else if (TRI_IsStringJson(id)) {
     uint64_t iid = TRI_UInt64String2(id->_value._string.data, id->_value._string.length - 1);
 
     if (iid >= (uint64_t) ij->_maxTick) {

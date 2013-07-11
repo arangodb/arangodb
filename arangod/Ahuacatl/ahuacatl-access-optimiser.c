@@ -184,6 +184,7 @@ static char* StringifyFieldAccess (TRI_aql_context_t* const context,
   char* result;
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+
   if (buffer._buffer == NULL) {
     // out of memory
     return NULL;
@@ -222,7 +223,7 @@ static char* StringifyFieldAccess (TRI_aql_context_t* const context,
     }
   }
 
-  result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
+  result = TRI_StealStringBuffer(&buffer);
   TRI_DestroyStringBuffer(&buffer);
 
   return result;
@@ -298,6 +299,7 @@ static bool InsertOrs (TRI_aql_context_t* const context,
       }
 
       orElement->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName);
+
       if (orElement->_name == NULL) {
         // out of memory
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, orElement->_condition);
@@ -401,6 +403,7 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
   TRI_aql_field_access_t* fieldAccess;
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
+
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -408,6 +411,7 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
   }
 
   fieldAccess->_fullName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fullName);
+
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
@@ -2157,6 +2161,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   TRI_ASSERT_MAINTAINER(node != NULL);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
+
   if (fieldAccess == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -2165,6 +2170,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   }
 
   fieldAccess->_fullName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, field->_name._buffer);
+
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);

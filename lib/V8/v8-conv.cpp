@@ -1273,7 +1273,7 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
 
-    if (key->_type != TRI_JSON_STRING || key->_value._string.data == 0) {
+    if (! TRI_IsStringJson(key)) {
       continue;
     }
 
@@ -1358,6 +1358,7 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
       return scope.Close(ObjectJsonNumber(json));
 
     case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
       return scope.Close(ObjectJsonString(json));
 
     case TRI_JSON_ARRAY:
@@ -1504,7 +1505,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
           if (*str != 0) {
             // move the string pointer into the JSON object
-            TRI_Insert4ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, *str, str.length(), result);
+            TRI_Insert4ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, *str, str.length(), result, false);
             // this passes ownership for the utf8 string to the JSON object
             str.disown();
           }

@@ -569,7 +569,8 @@ static generator_type_e GeneratorType (const TRI_json_t* const parameters) {
   }
 
   type = TRI_LookupArrayJson(parameters, "type");
-  if (type == NULL || type->_type != TRI_JSON_STRING) {
+
+  if (! TRI_IsStringJson(type)) {
     return TYPE_TRADITIONAL;
   }
 
