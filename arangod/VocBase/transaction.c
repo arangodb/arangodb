@@ -34,7 +34,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-collection.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/vocbase.h"
 
 #define LOG_TRX(trx, level, format, ...) \

@@ -45,7 +45,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------

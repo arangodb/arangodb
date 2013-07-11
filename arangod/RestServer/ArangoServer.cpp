@@ -79,7 +79,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
-#include "VocBase/replication.h"
 
 #include "RestServer/VocbaseManager.h"
 
@@ -206,9 +205,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnCompacted(true),
     _removeOnDrop(true),
 #ifdef TRI_ENABLE_REPLICATION    
-    _replicationEnable(false),
-    _replicationLogSize(TRI_REPLICATION_DEFAULT_LOG_SIZE),
-    _replicationWaitForSync(false),
+    _replicationEnableLogger(false),
 #endif    
     _vocbase(0) {
 
@@ -369,9 +366,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifdef TRI_ENABLE_REPLICATION 
   additional[ApplicationServer::OPTIONS_REPLICATION + ":help-replication"]
-    ("replication.maximal-log-size", &_replicationLogSize, "maximum size of each replication log")
-    ("replication.force-sync-logs", &_replicationWaitForSync, "force syncing of replication log files to disk")
-    ("replication.enable", &_replicationEnable, "enable replication logging")
+    ("replication.enable-logger", &_replicationEnableLogger, "enable replication logger")
   ;
 #endif  
 
@@ -1180,12 +1175,8 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
   defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
           systemDefaults->authenticateSystemOnly);
 #ifdef TRI_ENABLE_REPLICATION
-  defaults.replicationEnable = doc.getBooleanValue("replicationEnable", 
-          systemDefaults->replicationEnable);
-  defaults.replicationWaitForSync = doc.getBooleanValue("replicationWaitForSync", 
-          systemDefaults->replicationWaitForSync);
-  defaults.replicationLogSize = (int64_t) doc.getNumericValue("replicationLogSize", 
-          systemDefaults->replicationLogSize);
+  defaults.replicationEnableLogger = doc.getBooleanValue("replicationEnableLogger", 
+          systemDefaults->replicationEnableLogger);
 #endif
   
   // open/load database
@@ -1399,9 +1390,6 @@ void ArangoServer::openDatabases () {
 
   // override with command-line options 
   defaults.defaultMaximalSize            = _defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationLogSize            = _replicationLogSize;
-#endif  
   defaults.removeOnDrop                  = _removeOnDrop;
   defaults.removeOnCompacted             = _removeOnCompacted;
   defaults.defaultWaitForSync            = _defaultWaitForSync;
@@ -1410,8 +1398,7 @@ void ArangoServer::openDatabases () {
   defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationWaitForSync        = _replicationWaitForSync;
-  defaults.replicationEnable             = _replicationEnable;
+  defaults.replicationEnableLogger       = _replicationEnableLogger;
 #endif  
   
   // store these settings as initial system defaults
