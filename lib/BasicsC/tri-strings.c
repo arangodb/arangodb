@@ -1411,7 +1411,6 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char * qtr;
   char const * ptr;
   char const * end;
-  char * utf8_nfc;
   size_t tmpLength = 0;
 
   buffer = TRI_Allocate(zone, inLength + 1, false);
@@ -1510,6 +1509,8 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *outLength = (size_t) (qtr - buffer);
 
   if (*outLength > 0) {
+    char * utf8_nfc;
+
     utf8_nfc = TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
     if (utf8_nfc) {
       *outLength = tmpLength;

@@ -811,7 +811,6 @@ static bool IterateShape (TRI_shaper_t* shaper,
     TRI_string_buffer_t* buffer;
     int res;
   
-    res    = TRI_ERROR_NO_ERROR;
     dump   = (TRI_replication_dump_t*) ptr;
     buffer = dump->_buffer;
 
@@ -960,7 +959,7 @@ static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
     size_t i;
 
     for (i = 0; i < n; ++i) {
-      TRI_voc_tid_t* tid = tid = TRI_AtVector(list, i);
+      TRI_voc_tid_t* tid = TRI_AtVector(list, i);
 
       if (*tid == search) {
         return true;

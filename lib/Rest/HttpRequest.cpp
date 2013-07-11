@@ -890,11 +890,10 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
       char* keyBegin = lineBegin;
       char* keyEnd = e;
 
-      char* valueBegin = 0;
-      char* valueEnd = 0;
-
       // we found a colon (*end is '\0')
       if (*e == ':') {
+        char* valueBegin = 0;
+        char* valueEnd = 0;
 
         // extract the value
         keyEnd = e++;
