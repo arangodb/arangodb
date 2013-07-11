@@ -163,21 +163,35 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     self.layouter.start();
   };
   
-  self.loadGraph = function(nodeId) {
+  self.loadGraph = function(nodeId, callback) {
     nodes.length = 0;
     edges.length = 0;
     self.adapter.loadNode(nodeId, function (node) {
+      if (node.errorCode) {
+        callback(node);
+        return;
+      }
       node._expanded = true;
       self.start();
+      if (_.isFunction(callback)) {
+        callback();
+      }
     });
   };
   
-  self.loadGraphWithAttributeValue = function(attribute, value) {
+  self.loadGraphWithAttributeValue = function(attribute, value, callback) {
     nodes.length = 0;
     edges.length = 0;
     self.adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
+      if (node.errorCode) {
+        callback(node);
+        return;
+      }
       node._expanded = true;
       self.start();
+      if (_.isFunction(callback)) {
+        callback();
+      }
     });
   };
   
