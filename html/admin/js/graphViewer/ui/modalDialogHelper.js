@@ -33,7 +33,20 @@ var modalDialogHelper = modalDialogHelper || {};
 (function dialogHelper() {
   "use strict";
   
-  var createDialogWithObject = function (title, buttonTitle, idprefix, object, callback) {
+  var 
+    bindSubmit = function(button) {
+      $(document).bind("keypress.key13", function(e) {
+        if (e.which && e.which === 13) {
+          $(button).click();
+        }
+      });
+    },
+  
+    unbindSubmit = function() {
+      $(document).unbind("keypress.key13");
+    },
+  
+    createDialogWithObject = function (title, buttonTitle, idprefix, object, callback) {
     var tableToJSON,
       callbackCapsule = function() {
         callback(tableToJSON);
@@ -47,7 +60,7 @@ var modalDialogHelper = modalDialogHelper || {};
       addImg = document.createElement("img"),
       newCounter = 1,
       insertRow;
-      
+
     tableToJSON = function() {
       var result = {};
       _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
@@ -175,6 +188,7 @@ var modalDialogHelper = modalDialogHelper || {};
     div.setAttribute("aria-hidden", true);
     div.style.display = "none";
     div.onhidden = function() {
+      unbindSubmit();
       document.body.removeChild(div);
     };
       
@@ -217,16 +231,19 @@ var modalDialogHelper = modalDialogHelper || {};
     
     // Add click events
     buttonDismiss.onclick = function() {
+      unbindSubmit();
       $("#" + idprefix + "modal").modal('hide');
     };
     buttonCancel.onclick = function() {
+      unbindSubmit();
       $("#" + idprefix + "modal").modal('hide');
     };
     buttonSubmit.onclick = function() {
+      unbindSubmit();
       callback();
       $("#" + idprefix + "modal").modal('hide');
     };
-    
+    bindSubmit(buttonSubmit);
     // Return the table which has to be filled somewhere else
     return bodyTable;
   };

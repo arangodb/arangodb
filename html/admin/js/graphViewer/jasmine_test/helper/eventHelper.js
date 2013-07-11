@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global document, window*/
+/*global document, window, $*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -75,6 +75,13 @@ var helper = helper || {};
     evt.initMouseEvent("DOMMouseScroll", true, true, window,
       -10, 0, 0, 0, 0, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
+  };
+  
+  helper.simulateReturnEvent = function() {
+    var press = $.Event("keypress");
+    press.ctrlKey = false;
+    press.which = 13;
+    $("body").trigger(press);
   };
   
 }());
