@@ -104,7 +104,10 @@ void TRI_FreeErrorAql (TRI_aql_error_t* const);
 /// @brief get a format query error message
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetContextErrorAql (const char* const, const size_t, const size_t);
+char* TRI_GetContextErrorAql (const char* const, 
+                              const size_t, 
+                              const size_t, 
+                              const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn, waits */
 /*global document, window, helper */
 /*global $, _, d3*/
-/*global GraphViewerPreview, mocks*/
+/*global GraphViewerPreview, mocks, uiMatchers*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -48,50 +48,7 @@
       document.body.appendChild(cont);
       cont.style.height = height + "px";
       cont.style.width =  width + "px";
-      this.addMatchers({
-        toBeTag: function(name) {
-          var el = this.actual;
-          this.message = function() {
-            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
-          };
-          return el.tagName.toLowerCase() === name;
-        },
-      
-        toBeOfClass: function(name) {
-          var el = this.actual;
-          this.message = function() {
-            return "Expected " + el.className + " to be " + name; 
-          };
-          return el.className === name;
-        },
-      
-        toBeADropdownMenu: function() {
-          var div = this.actual,
-            btn = div.children[0],
-            list = div.children[1],
-            msg = "";
-          this.message = function() {
-            return "Expected " + msg;
-          };
-          expect(div).toBeOfClass("btn-group");
-          expect(btn).toBeTag("button");
-          expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
-          if (btn.getAttribute("data-toggle") !== "dropdown") {
-            msg = "first elements data-toggle to be dropdown";
-            return false;
-          }
-          if (btn.children[0].tagName.toLowerCase() !== "span"
-            && btn.children[0].getAttribute("class") !== "caret") {
-            msg = "first element to contain a caret";
-            return false;
-          }
-          if (list.getAttribute("class") !== "dropdown-menu") {
-            msg = "list element to be of class dropdown-menu";
-            return false;
-          }
-          return true;
-        }
-      });
+      uiMatchers.define(this);
     });
     
     afterEach(function() {
@@ -347,25 +304,7 @@
     
     describe('testing toolbox', function() {
       var toolboxSelector = "#toolbox";
-      
-      beforeEach(function() {
-        this.addMatchers({
-          toConformToToolboxLayout: function() {
-            var box = this.actual;
-            expect(box).toBeTag("div");
-            expect(box.id).toEqual("toolbox");
-            expect(box).toBeOfClass("btn-group btn-group-vertical pull-left toolbox");
-            _.each(box.children, function(group) {
-              expect(group).toBeTag("div");
-              expect(group).toBeOfClass("btn btn-group");
-              expect(group.children.length).toEqual(2);
-              // Correctness of buttons is checked in eventDispatcherUISpec.
-            });
-            return true;
-          }
-        });
-      });
-      
+            
       it('should append the toolbox if any tool is added', function() {
         var toolboxConf = {
             expand: true
@@ -401,7 +340,7 @@
         );
       });
       
-      
+      /*
       it('should create the additional mouse-icon box', function() {
         var toolboxConf = {
             expand: true
@@ -409,13 +348,12 @@
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerPreview(cont, config),
-          pointerBox = $("#mousepointer");
+          ui = new GraphViewerPreview(cont, config);
         expect(pointerBox.length).toEqual(1);
         expect(pointerBox[0]).toBeTag("div");
-        expect(pointerBox[0]).toBeOfClass("mousepointer");
       });
-      
+      */
+      /*
       it('should position the mouse-icon box next to the mouse pointer', function() {
         var toolboxConf = {
             expand: true
@@ -439,16 +377,14 @@
         expect(pointerBox.offset().left).toEqual(x + 7);
         expect(pointerBox.offset().top).toEqual(y + 12);
       });
-      
+      */
       it('should not add a toolbox if no buttons are defined', function() {
         var toolboxConf = {},
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerPreview(cont, config),
-          pointerBox = $("#mousepointer");
+          ui = new GraphViewerPreview(cont, config);
         expect($(toolboxSelector).length).toEqual(0);
-        expect(pointerBox.length).toEqual(0);
       });
       
       it('should be able to add the expand button', function() {
@@ -471,10 +407,7 @@
           config = {
             toolbox: toolboxConf
           },
-          ui = new GraphViewerPreview(cont, config),
-          pointerBox = $("#mousepointer");
-        expect($(toolboxSelector).length).toEqual(0);
-        expect(pointerBox.length).toEqual(0);
+          ui = new GraphViewerPreview(cont, config);
       });
       
       it('should be able to add the expand button', function() {

@@ -31,6 +31,7 @@
 #include "BasicsC/common.h"
 
 #include "BasicsC/locks.h"
+#include "BasicsC/vector.h"
 #include "ShapedJson/shaped-json.h"
 
 #include "VocBase/server-id.h"
@@ -79,13 +80,19 @@ struct TRI_vocbase_s;
 /// @brief HTTP response header for "check for more data?"
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_REPLICATION_HEADER_CHECKMORE "x-arango-checkmore"
+#define TRI_REPLICATION_HEADER_CHECKMORE "x-arango-replication-checkmore"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP response header for "last found tick"
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_REPLICATION_HEADER_LASTFOUND "x-arango-lastfound"
+#define TRI_REPLICATION_HEADER_LASTFOUND "x-arango-replication-lastfound"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief HTTP response header for "replication active"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_REPLICATION_HEADER_ACTIVE    "x-arango-replication-active"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -99,6 +106,45 @@ struct TRI_vocbase_s;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication operations
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  REPLICATION_INVALID = 0,
+
+  REPLICATION_STOP    = 1000,
+
+  COLLECTION_CREATE   = 2000,
+  COLLECTION_DROP     = 2001,
+  COLLECTION_RENAME   = 2002,
+  COLLECTION_CHANGE   = 2003,
+
+  INDEX_CREATE        = 2100,
+  INDEX_DROP          = 2101,
+
+  TRANSACTION_START   = 2200,
+  TRANSACTION_COMMIT  = 2201,
+
+  MARKER_DOCUMENT     = 2300,
+  MARKER_EDGE         = 2301,
+  MARKER_REMOVE       = 2302,
+
+  REPLICATION_MAX
+}
+TRI_replication_operation_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document operations
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief marker types 
+////////////////////////////////////////////////////////////////////////////////
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication dump container
@@ -120,8 +166,8 @@ TRI_replication_dump_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_log_state_s {
-  TRI_voc_tick_t  _firstTick;
-  TRI_voc_tick_t  _lastTick;
+  TRI_voc_tick_t  _firstLogTick;
+  TRI_voc_tick_t  _lastLogTick;
   bool            _active;
 }
 TRI_replication_log_state_t;
@@ -133,6 +179,8 @@ TRI_replication_log_state_t;
 typedef struct TRI_replication_logger_s {
   TRI_read_write_lock_t                _statusLock;
   TRI_spin_t                           _idLock;
+  TRI_spin_t                           _bufferLock;
+  TRI_vector_pointer_t                 _buffers;
   struct TRI_vocbase_s*                _vocbase;
   struct TRI_transaction_s*            _trx;
   struct TRI_transaction_collection_s* _trxCollection;
@@ -439,8 +487,12 @@ TRI_replication_master_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_state_s {
-  TRI_voc_tick_t    _lastTick;
-  TRI_server_id_t   _serverId;
+  struct TRI_transaction_s* _trx;
+  TRI_voc_tid_t             _externalTid;
+  TRI_voc_tick_t            _firstContinuousTick;
+  TRI_voc_tick_t            _lastContinuousTick;
+  TRI_voc_tick_t            _lastInitialTick;
+  TRI_server_id_t           _serverId;
 }
 TRI_replication_apply_state_t;
 
@@ -530,6 +582,21 @@ int TRI_SaveApplyStateReplication (struct TRI_vocbase_s*,
 #define TRI_SaveApplyStateReplication(...)
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the replication application state file
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+int TRI_RemoveApplyStateReplication (struct TRI_vocbase_s*);
+
+#else
+
+#define TRI_RemoveApplyStateReplication(...)
+
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application state from a file

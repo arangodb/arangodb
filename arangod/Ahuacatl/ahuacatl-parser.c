@@ -41,7 +41,8 @@
 /// @brief create the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
+TRI_aql_parser_t* TRI_CreateParserAql (const char* const query,
+                                       const size_t queryLength) {
   TRI_aql_parser_t* parser;
   int res;
 
@@ -71,7 +72,8 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query) {
   }
 
   parser->_buffer = (char*) query;
-  parser->_length = strlen(query);
+  parser->_queryLength = queryLength;
+  parser->_length = (size_t) queryLength;
 
   return parser;
 }

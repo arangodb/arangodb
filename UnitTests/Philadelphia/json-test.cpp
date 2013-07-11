@@ -72,6 +72,7 @@ BOOST_AUTO_TEST_CASE (tst_json_null) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("null", STRING_VALUE);
@@ -87,6 +88,7 @@ BOOST_AUTO_TEST_CASE (tst_json_true) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("true", STRING_VALUE);
@@ -102,6 +104,7 @@ BOOST_AUTO_TEST_CASE (tst_json_false) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("false", STRING_VALUE);
@@ -117,6 +120,7 @@ BOOST_AUTO_TEST_CASE (tst_json_number0) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0.0);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("0", STRING_VALUE);
@@ -132,6 +136,7 @@ BOOST_AUTO_TEST_CASE (tst_json_number_positive1) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1.0);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("1", STRING_VALUE);
@@ -147,6 +152,7 @@ BOOST_AUTO_TEST_CASE (tst_json_number_positive2) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 46281);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("46281", STRING_VALUE);
@@ -162,6 +168,7 @@ BOOST_AUTO_TEST_CASE (tst_json_number_negative1) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -1.0);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("-1", STRING_VALUE);
@@ -177,6 +184,7 @@ BOOST_AUTO_TEST_CASE (tst_json_number_negative2) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -2342);
+  BOOST_CHECK_EQUAL(false, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("-2342", STRING_VALUE);
@@ -192,6 +200,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string_empty) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "");
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"\"", STRING_VALUE);
@@ -207,6 +216,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string1) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox");
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"the quick brown fox\"", STRING_VALUE);
@@ -222,11 +232,56 @@ BOOST_AUTO_TEST_CASE (tst_json_string2) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "The Quick Brown Fox");
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"The Quick Brown Fox\"", STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string reference value
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_json_string_reference) {
+  INIT_BUFFER
+
+  const char* data = "The Quick Brown Fox";
+  char copy[64];
+
+  memset(copy, 0, sizeof(copy));
+  memcpy(copy, data, strlen(data));
+
+  TRI_json_t* json = TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy);
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("\"The Quick Brown Fox\"", STRING_VALUE);
+  FREE_BUFFER
+  
+  FREE_JSON
+
+  // freeing JSON should not affect our string  
+  BOOST_CHECK_EQUAL("The Quick Brown Fox", copy);
+
+  json = TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy);
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
+
+  // modify the string we're referring to
+  copy[0] = '*';
+  copy[1] = '/';
+  copy[2] = '+';
+  copy[strlen(copy) - 1] = '!';
+  
+  sb = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  STRINGIFY
+  BOOST_CHECK_EQUAL("\"*/+ Quick Brown Fo!\"", STRING_VALUE);
+  FREE_BUFFER
+  
+  BOOST_CHECK_EQUAL("*/+ Quick Brown Fo!", copy);
+
+  FREE_JSON
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,6 +292,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string_escaped) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "\"the quick \"fox\" jumped over the \\brown\\ dog '\n\\\" \\' \\\\ lazy");
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"\\\"the quick \\\"fox\\\" jumped over the \\\\brown\\\\ dog '\\n\\\\\\\" \\\\' \\\\\\\\ lazy\"", STRING_VALUE);
@@ -252,6 +308,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string_utf8_1) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기");
+  BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"\\uCF54\\uB9AC\\uC544\\uB2F7\\uCEF4 \\uBA54\\uC77C\\uC54C\\uB9AC\\uBBF8 \\uC11C\\uBE44\\uC2A4 \\uC911\\uB2E8\\uC548\\uB0B4 [\\uC548\\uB0B4] \\uAC1C\\uC778\\uC815\\uBCF4\\uCDE8\\uAE09\\uBC29\\uCE68 \\uBCC0\\uACBD \\uC548\\uB0B4 \\uD68C\\uC0AC\\uC18C\\uAC1C | \\uAD11\\uACE0\\uC548\\uB0B4 | \\uC81C\\uD734\\uC548\\uB0B4 | \\uAC1C\\uC778\\uC815\\uBCF4\\uCDE8\\uAE09\\uBC29\\uCE68 | \\uCCAD\\uC18C\\uB144\\uBCF4\\uD638\\uC815\\uCC45 | \\uC2A4\\uD338\\uBC29\\uC9C0\\uC815\\uCC45 | \\uC0AC\\uC774\\uBC84\\uACE0\\uAC1D\\uC13C\\uD130 | \\uC57D\\uAD00\\uC548\\uB0B4 | \\uC774\\uBA54\\uC77C \\uBB34\\uB2E8\\uC218\\uC9D1\\uAC70\\uBD80 | \\uC11C\\uBE44\\uC2A4 \\uC804\\uCCB4\\uBCF4\\uAE30\"", STRING_VALUE); 

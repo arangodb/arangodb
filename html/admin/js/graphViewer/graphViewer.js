@@ -118,7 +118,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         edges,
         adapterConfig
       );
-      self.adapter.setChildLimit(5);
+      self.adapter.setChildLimit(10);
       break;
     case "foxx":
       adapterConfig.width = width;

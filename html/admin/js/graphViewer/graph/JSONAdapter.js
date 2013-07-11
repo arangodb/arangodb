@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, alert*/
-/*gloabel AbstractAdapter*/
+/*global AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///

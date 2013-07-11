@@ -49,9 +49,9 @@ extern "C" {
 
 typedef struct TRI_string_buffer_s {
   TRI_memory_zone_t* _memoryZone;
-  char* _buffer;
-  char* _current;
-  size_t _len;
+  char*              _buffer;
+  char*              _current;
+  size_t             _len;
 }
 TRI_string_buffer_t;
 
@@ -180,7 +180,19 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self);
 /// @brief clears the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearStringBuffer (TRI_string_buffer_t * self);
+void TRI_ClearStringBuffer (TRI_string_buffer_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resets the buffer (without clearing)
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ResetStringBuffer (TRI_string_buffer_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steals the buffer of a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StealStringBuffer (TRI_string_buffer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the character at the end of the string buffer

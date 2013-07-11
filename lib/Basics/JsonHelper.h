@@ -29,8 +29,7 @@
 #define TRIAGENS_BASICS_JSON_HELPER_H 1
 
 #include "Basics/Common.h"
-
-struct TRI_json_s;
+#include "BasicsC/json.h"
 
 namespace triagens {
   namespace basics {
@@ -74,50 +73,60 @@ namespace triagens {
 /// @brief stringify json
 ////////////////////////////////////////////////////////////////////////////////
         
-        static std::string toString (struct TRI_json_s const*);
+        static std::string toString (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isArray (struct TRI_json_s const*);
+        static inline bool isArray (TRI_json_t const* json) {
+          return json != 0 && json->_type == TRI_JSON_ARRAY;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for lists
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isList (struct TRI_json_s const*);
+        static inline bool isList (TRI_json_t const* json) {
+          return json != 0 && json->_type == TRI_JSON_LIST;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for strings
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isString (struct TRI_json_s const*);
+        static inline bool isString (TRI_json_t const* json) {
+          return TRI_IsStringJson(json);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for numbers
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isNumber (struct TRI_json_s const*);
+        static inline bool isNumber (TRI_json_t const* json) {
+          return json != 0 && json->_type == TRI_JSON_NUMBER;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for booleans
 ////////////////////////////////////////////////////////////////////////////////
         
-        static bool isBoolean (struct TRI_json_s const*);
+        static inline bool isBoolean (TRI_json_t const* json) {
+          return json != 0 && json->_type == TRI_JSON_BOOLEAN;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an array sub-element
 ////////////////////////////////////////////////////////////////////////////////
         
-        static struct TRI_json_s* getArrayElement (struct TRI_json_s const*, 
+        static TRI_json_t* getArrayElement (TRI_json_t const*, 
                                                    const char* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
-        static std::string getStringValue (struct TRI_json_s const*, 
+        static std::string getStringValue (TRI_json_t const*, 
                                            const char*, 
                                            const std::string&);
 
@@ -125,7 +134,7 @@ namespace triagens {
 /// @brief returns a numeric sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-        static double getNumberValue (struct TRI_json_s const*, 
+        static double getNumberValue (TRI_json_t const*, 
                                       const char*, 
                                       double);
 
@@ -133,7 +142,7 @@ namespace triagens {
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
-        static double getBooleanValue (struct TRI_json_s const*, 
+        static double getBooleanValue (TRI_json_t const*, 
                                        const char*, 
                                        bool);
 

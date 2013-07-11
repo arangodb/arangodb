@@ -443,18 +443,7 @@
       return createSystemCollection("_replication", { waitForSync : false });
     });
 
-    // add index for replication tick
-    addTask("addReplicationTick", "setup _replication tick index", function () {
-      var c = getCollection("_replication");
-        
-      if (! c) {
-        return false;
-      }
 
-      c.ensureSkiplist("tick");
-
-      return true;
-    });
 
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "

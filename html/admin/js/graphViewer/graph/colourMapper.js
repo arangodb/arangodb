@@ -80,6 +80,10 @@ function ColourMapper() {
     return mapping[value].back;
   };
 
+  this.getCommunityColour = function() {
+    return "#333333";
+  };
+
   this.getForegroundColour = function(value) {
     if (mapping[value] === undefined) {
       mapping[value] = colours[nextColour];
@@ -100,6 +104,11 @@ function ColourMapper() {
     }
     return mapping[value].front;
   };
+  
+  this.getForegroundCommunityColour = function() {
+    return "white";
+  };
+  
 
   
   this.reset = function() {

@@ -136,6 +136,25 @@ int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief assigns a blob value by reference into given destination 
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
+  dst->length = src->length;
+
+  if (src->length == 0 || src->data == NULL) {
+    dst->length = 0;
+    dst->data = NULL;
+  }
+  else {
+    dst->length = src->length;
+    dst->data = src->data;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

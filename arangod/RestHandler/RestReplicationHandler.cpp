@@ -44,7 +44,7 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 
   
-const uint64_t RestReplicationHandler::minChunkSize = 64 * 1024;
+const uint64_t RestReplicationHandler::minChunkSize = 512 * 1024;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -201,15 +201,14 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
     return false;
   }
 
-  if (*name == '_' && TRI_ExcludeCollectionReplication(name)) {
-    // system collection
+  if (collection->_type != (TRI_col_type_t) TRI_COL_TYPE_DOCUMENT && 
+      collection->_type != (TRI_col_type_t) TRI_COL_TYPE_EDGE) {
+    // invalid type
     return false;
   }
 
-  TRI_voc_tick_t* tick = (TRI_voc_tick_t*) data;
-
-  if (collection->_cid > *tick) {
-    // collection is too new?
+  if (*name == '_' && TRI_ExcludeCollectionReplication(name)) {
+    // system collection
     return false;
   }
 
@@ -262,12 +261,12 @@ void RestReplicationHandler::addState (TRI_json_t* dst,
 
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
+  
+  char* firstString = TRI_StringUInt64(state->_firstLogTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "firstLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
 
-  char* firstString = TRI_StringUInt64(state->_firstTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "firstTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
-
-  char* lastString = TRI_StringUInt64(state->_lastTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
+  char* lastString = TRI_StringUInt64(state->_lastLogTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
   
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, dst, "state", stateJson);
 }
@@ -367,7 +366,7 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
   
   // collections
-  TRI_json_t* collections = TRI_ParametersCollectionsVocBase(_vocbase, true, &filterCollection, &tick);
+  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
 
   TRI_replication_log_state_t state;
 
@@ -461,8 +460,8 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (dump._buffer == 0) {
     TRI_ReleaseCollectionVocBase(_vocbase, col);
-    
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+
     return;
   }
 
@@ -487,7 +486,7 @@ void RestReplicationHandler::handleCommandDump () {
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
-    dump._buffer->_buffer = 0;
+    TRI_StealStringBuffer(dump._buffer);
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -525,6 +524,14 @@ void RestReplicationHandler::handleCommandFollow () {
     return;
   }
   
+  TRI_replication_log_state_t state;
+
+  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+  
   const uint64_t chunkSize = determineChunkSize(); 
   
   // initialise the dump container
@@ -537,9 +544,11 @@ void RestReplicationHandler::handleCommandFollow () {
     return;
   }
 
-  int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
+  res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
   
   if (res == TRI_ERROR_NO_ERROR) {
+    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
+
     // generate the result
     _response = createResponse(HttpResponse::OK);
 
@@ -548,16 +557,20 @@ void RestReplicationHandler::handleCommandFollow () {
     // set headers
     _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE, 
                          strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
-                         ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
+                         checkMore ? "true" : "false");
 
     _response->setHeader(TRI_REPLICATION_HEADER_LASTFOUND, 
                          strlen(TRI_REPLICATION_HEADER_LASTFOUND), 
                          StringUtils::itoa(dump._lastFoundTick));
+    
+    _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE, 
+                         strlen(TRI_REPLICATION_HEADER_ACTIVE), 
+                         state._active ? "true" : "false");
 
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
-    dump._buffer->_buffer = 0;
+    TRI_StealStringBuffer(dump._buffer);
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);

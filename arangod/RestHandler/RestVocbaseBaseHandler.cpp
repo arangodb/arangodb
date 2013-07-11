@@ -27,6 +27,7 @@
 
 #include "RestVocbaseBaseHandler.h"
 
+#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/string-buffer.h"
@@ -618,7 +619,7 @@ char const* RestVocbaseBaseHandler::extractJsonStringValue (const TRI_json_t* co
   }
 
   TRI_json_t* value = TRI_LookupArrayJson(json, name);
-  if (value == 0 || value->_type != TRI_JSON_STRING) {
+  if (! JsonHelper::isString(value)) {
     return 0;
   }
 

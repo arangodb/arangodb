@@ -380,9 +380,9 @@ describe ArangoDB do
         r2 = doc.parsed_response['revision']
         r2.should_not eq("");
         r2.should_not eq(r1);
-
-        # truncate
-        doc = ArangoDB.log_put("#{prefix}-get-collection-revision", "/_api/collection/#{@cn}/truncate", :body => "")
+        
+        # create another document
+        doc = ArangoDB.log_post("#{prefix}-get-collection-revision", "/_api/document/?collection=" + @cn, :body => body)
         
         # fetch revision again
         doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
@@ -397,6 +397,124 @@ describe ArangoDB do
         r3.should_not eq("");
         r3.should_not eq(r1);
         r3.should_not eq(r2);
+
+        # truncate
+        doc = ArangoDB.log_put("#{prefix}-get-collection-revision", "/_api/collection/#{@cn}/truncate", :body => "")
+        
+        # fetch revision again
+        doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['revision'].should be_kind_of(String)
+
+        r4 = doc.parsed_response['revision']
+        r4.should_not eq("");
+        r4.should_not eq(r1);
+        r4.should_not eq(r2);
+        r4.should_not eq(r3);
+      end
+      
+      # checksum
+      it "calculating the checksum for a collection" do
+        cmd = api + "/" + @cn + "/checksum"
+        doc = ArangoDB.log_get("#{prefix}-get-collection-checksum", cmd)
+
+        # empty collection
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should eq(@cid)
+        doc.parsed_response['name'].should eq(@cn)
+        doc.parsed_response['status'].should eq(3)
+        r1 = doc.parsed_response['revision']
+        r1.should be_kind_of(String)
+        r1.should_not eq("");
+        c1 = doc.parsed_response['checksum']
+        c1.should be_kind_of(Integer)
+        c1.should eq(0);
+
+        # create a new document
+        body = "{ \"test\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}-get-collection-checksum", "/_api/document/?collection=" + @cn, :body => body)
+        
+        # fetch checksum again
+        doc = ArangoDB.log_get("#{prefix}-get-collection-checksum", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        r2 = doc.parsed_response['revision']
+        r2.should_not eq("");
+        r2.should_not eq(r1);
+        c2 = doc.parsed_response['checksum']
+        c2.should be_kind_of(Integer)
+        c2.should_not eq(0);
+        c2.should_not eq(c1);
+
+        # create another document
+        doc = ArangoDB.log_post("#{prefix}-get-collection-checksum", "/_api/document/?collection=" + @cn, :body => body)
+        
+        # fetch checksum again
+        doc = ArangoDB.log_get("#{prefix}-get-collection-checksum", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        r3 = doc.parsed_response['revision']
+        r3.should_not eq("");
+        r3.should_not eq(r1);
+        r3.should_not eq(r2);
+        c3 = doc.parsed_response['checksum']
+        c3.should be_kind_of(Integer)
+        c3.should_not eq(0);
+        c3.should_not eq(c1);
+        c3.should_not eq(c2);
+        
+        # fetch checksum <withData>
+        doc = ArangoDB.log_get("#{prefix}-get-collection-checksum", cmd + "?withData=true")
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        r4 = doc.parsed_response['revision']
+        r4.should eq(r3);
+        c4 = doc.parsed_response['checksum']
+        c4.should be_kind_of(Integer)
+        c4.should_not eq(0);
+        c4.should_not eq(c1);
+        c4.should_not eq(c2);
+        c4.should_not eq(c3);
+
+        # truncate
+        doc = ArangoDB.log_put("#{prefix}-get-collection-checksum", "/_api/collection/#{@cn}/truncate", :body => "")
+        
+        # fetch checksum again
+        doc = ArangoDB.log_get("#{prefix}-get-collection-checksum", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        r5 = doc.parsed_response['revision']
+        r5.should_not eq("");
+        r5.should_not eq(r1);
+        r5.should_not eq(r2);
+        r5.should_not eq(r3);
+        r5.should_not eq(r4);
+        c5 = doc.parsed_response['checksum']
+        c5.should be_kind_of(Integer)
+        c5.should eq(0);
       end
     end
 
