@@ -67,15 +67,12 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/key-generator.h"
+#include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 #include "RestServer/VocbaseManager.h"
 #include "V8/JSLoader.h"
-
-#ifdef TRI_ENABLE_REPLICATION
-#include "Replication/ReplicationFetcher.h"
-#endif
 
 #include "unicode/timezone.h"
 #include "unicode/utypes.h"
@@ -3000,16 +2997,16 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the replication manually
+/// @brief start the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_REPLICATION
 
-static v8::Handle<v8::Value> JS_StartReplication (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_START()");
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_START()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3021,7 +3018,7 @@ static v8::Handle<v8::Value> JS_StartReplication (v8::Arguments const& argv) {
   int res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
   
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication");
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication logger");
   }
 
   return scope.Close(v8::True());
@@ -3030,16 +3027,16 @@ static v8::Handle<v8::Value> JS_StartReplication (v8::Arguments const& argv) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication manually
+/// @brief stop the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_REPLICATION
 
-static v8::Handle<v8::Value> JS_StopReplication (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_STOP()");
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_STOP()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3051,7 +3048,7 @@ static v8::Handle<v8::Value> JS_StopReplication (v8::Arguments const& argv) {
   int res = TRI_StopReplicationLogger(vocbase->_replicationLogger);
   
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication");
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication logger");
   }
 
   return scope.Close(v8::True());
@@ -3060,25 +3057,59 @@ static v8::Handle<v8::Value> JS_StopReplication (v8::Arguments const& argv) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sync data from a replication master
-/// TODO: this is here for testing only and will be moved out of vocbase
+/// @brief get the state of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_REPLICATION
 
-static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNC(<master>, <forceFullSync>)");
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_STATE()");
   }
-  
+
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
+  TRI_replication_log_state_t state;
+  int res = TRI_StateReplicationLogger(vocbase->_replicationLogger, &state);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(TRI_V8_SYMBOL("running"), state._active ? v8::True() : v8::False());
+  result->Set(TRI_V8_SYMBOL("lastLogTick"), V8TickId(state._lastLogTick));
+
+  return scope.Close(result);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the replication applier manually
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<master>, <forceFullSync>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+  
   const string masterEndpoint = TRI_ObjectToString(argv[0]);
   bool forceFullSync = false;
   uint64_t ignoreCount = 0;
@@ -3091,13 +3122,44 @@ static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
     ignoreCount = TRI_ObjectToUInt64(argv[2], false);
   }
 
-  string errorMsg;
+  int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, 
+                                            masterEndpoint.c_str(),
+                                            600.0,
+                                            forceFullSync, 
+                                            ignoreCount);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication applier");
+  }
 
-  ReplicationFetcher rf(vocbase, masterEndpoint, 600);
-  int res = rf.run(forceFullSync, ignoreCount, errorMsg);
+  return scope.Close(v8::True());
+}
 
-  if (res !=  TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier manually
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_STOP()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  int res = TRI_StopReplicationApplier(vocbase->_replicationApplier);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication applier");
   }
 
   return scope.Close(v8::True());
@@ -8032,9 +8094,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
   
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_START", JS_StartReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_STOP", JS_StopReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNC", JS_SyncReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
 #endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);

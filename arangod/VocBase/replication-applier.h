@@ -29,7 +29,9 @@
 #define TRIAGENS_VOC_BASE_REPLICATION_APPLIER_H 1
 
 #include "BasicsC/common.h"
-
+#include "BasicsC/locks.h"
+#include "BasicsC/threads.h"
+#include "Replication/replication-static.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/server-id.h"
 #include "VocBase/voc-types.h"
@@ -59,16 +61,33 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief apply phases
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  PHASE_NONE,
+  PHASE_INIT,
+  PHASE_COLLECTIONS,
+  PHASE_DUMP,
+  PHASE_FOLLOW
+}
+TRI_replication_apply_phase_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief state information about replication application
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_state_s {
-  struct TRI_transaction_s*   _trx;
-  TRI_voc_tid_t               _externalTid;
-  TRI_voc_tick_t              _lastProcessedContinuousTick;
-  TRI_voc_tick_t              _lastAppliedContinuousTick;
-  TRI_voc_tick_t              _lastAppliedInitialTick;
-  TRI_server_id_t             _serverId;
+  struct TRI_transaction_s*      _trx;
+  TRI_voc_tid_t                  _externalTid;
+  TRI_voc_tick_t                 _lastProcessedContinuousTick;
+  TRI_voc_tick_t                 _lastAppliedContinuousTick;
+  bool                           _active;
+  int                            _lastError;
+  TRI_replication_apply_phase_e  _phase;
+  TRI_voc_tick_t                 _lastAppliedInitialTick;
+  TRI_server_id_t                _serverId;
+  char*                          _endpoint;
 }
 TRI_replication_apply_state_t;
 
@@ -77,7 +96,14 @@ TRI_replication_apply_state_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_applier_s {
-  struct TRI_vocbase_s*       _vocbase;
+  struct TRI_vocbase_s*          _vocbase;
+  TRI_read_write_lock_t          _statusLock;
+  TRI_spin_t                     _threadLock;
+  bool                           _terminateThread;
+  TRI_replication_apply_state_t  _state;
+  TRI_thread_t                   _thread;
+  void*                          _fetcher;
+  char*                          _databaseName;
 }
 TRI_replication_applier_t;
 
@@ -138,6 +164,16 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t*);
 int TRI_StopReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ConfigureReplicationApplier (TRI_replication_applier_t*,
+                                     char const*,
+                                     double,
+                                     bool,
+                                     uint64_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,6 +185,12 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitApplyStateReplication (TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy an apply state struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyApplyStateReplication (TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application state to a file

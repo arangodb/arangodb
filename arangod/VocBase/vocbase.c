@@ -1457,6 +1457,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   bool iterateMarkers;
   bool isSystem;
   int res;
+  int res2;
 
   assert(defaults != NULL);
 
@@ -1658,11 +1659,13 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   if (vocbase->_replicationApplier == NULL) {
     LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
   }
+ 
+  res2 = TRI_StartReplicationApplier(vocbase->_replicationApplier);
 
-  res = TRI_StartReplicationApplier(vocbase->_replicationApplier);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_FATAL_AND_EXIT("unable to start replication applier for database '%s'", name);
+  if (res2 != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("unable to start replication applier for database '%s': %s", 
+                name, 
+                TRI_errno_string(res2));
   }
 #endif
     

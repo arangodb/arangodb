@@ -72,7 +72,6 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_log_state_s {
-  TRI_voc_tick_t                       _firstLogTick;
   TRI_voc_tick_t                       _lastLogTick;
   bool                                 _active;
 }

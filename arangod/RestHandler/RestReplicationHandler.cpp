@@ -264,14 +264,11 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 void RestReplicationHandler::addState (TRI_json_t* dst, 
                                        TRI_replication_log_state_t const* state) {
 
-  TRI_json_t* stateJson = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
+  TRI_json_t* stateJson = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
 
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
   
-  char* firstString = TRI_StringUInt64(state->_firstLogTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "firstLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, firstString));
-
   char* lastString = TRI_StringUInt64(state->_lastLogTick);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
   
