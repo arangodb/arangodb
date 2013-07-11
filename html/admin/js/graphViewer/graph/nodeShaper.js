@@ -376,7 +376,6 @@ function NodeShaper(parent, flags, idfunc) {
       switch (color.type) {
         case "single":
           addColor = function (g) {
-            g.attr("stroke", color.stroke);
             g.attr("fill", color.fill);
           };
           addLabelColor = function (d) {
@@ -391,38 +390,25 @@ function NodeShaper(parent, flags, idfunc) {
               }
               return color.collapsed;
             });
-            g.attr("stroke", function(n) {
-              if (n._expanded) {
-                return color.expanded;
-              }
-              return color.collapsed;
-            });
           };
           addLabelColor = function (d) {
-            return "black";
+            return "white";
           };
           break;
         case "attribute":
           addColor = function (g) {
              g.attr("fill", function(n) {
                if (n._data === undefined) {
-                 return colourMapper.getColour(undefined);
-               }
-               return colourMapper.getColour(n._data[color.key]);
-             });
-             g.attr("stroke", function(n) {
-               if (n._data === undefined) {
-                 return colourMapper.getColour(undefined);
+                 return colourMapper.getCommunityColour();
                }
                return colourMapper.getColour(n._data[color.key]);
              });
           };
           addLabelColor = function (n) {
             if (n._data === undefined) {
-              return colourMapper.getForegroundColour(undefined);
+              return colourMapper.getForegroundCommunityColour();
             }
             return colourMapper.getForegroundColour(n._data[color.key]);
-            
           };
           break; 
         default:
@@ -464,13 +450,7 @@ function NodeShaper(parent, flags, idfunc) {
   unbindEvents();
   
   if (flags === undefined) {
-    flags = {
-      color: {
-        type: "single",
-        fill: "#FF8F35",
-        stroke: "#8AA051"
-      }
-    };
+    flags = {};
   }
   
   if (flags.shape === undefined) {
@@ -482,8 +462,8 @@ function NodeShaper(parent, flags, idfunc) {
   if (flags.color === undefined) {
     flags.color = {
       type: "single",
-      fill: "#FF8F35",
-      stroke: "#8AA051"
+      fill: "#333333",
+      stroke: "white"
     }; 
   }
   

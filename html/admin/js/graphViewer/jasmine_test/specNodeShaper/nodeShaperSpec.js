@@ -140,10 +140,8 @@
         shaper = new NodeShaper(d3.select("svg"));
         shaper.drawNodes(nodes);
         
-        expect($("#1").attr("stroke")).toEqual("#8AA051");
-        expect($("#1").attr("fill")).toEqual("#FF8F35");
-        expect($("#2").attr("stroke")).toEqual("#8AA051");
-        expect($("#2").attr("fill")).toEqual("#FF8F35");
+        expect($("#1").attr("fill")).toEqual("#333333");
+        expect($("#2").attr("fill")).toEqual("#333333");
       });
       
       it('should be able to use the same colour for all nodes', function() {
@@ -159,9 +157,7 @@
         shaper.drawNodes(nodes);
         
         expect($("#1").attr("fill")).toEqual("#123456");
-        expect($("#1").attr("stroke")).toEqual("#654321");
         expect($("#2").attr("fill")).toEqual("#123456");
-        expect($("#2").attr("stroke")).toEqual("#654321");
         
       });
       
@@ -195,19 +191,13 @@
             key: "label"
           }
         }),
-        c1f, c2f, c3f, c4f,
-        c1s, c2s, c3s, c4s;
+        c1f, c2f, c3f, c4f;
         shaper.drawNodes(nodes);
         
         c1f = $("#1").attr("fill");
         c2f = $("#2").attr("fill");
         c3f = $("#3").attr("fill");
         c4f = $("#4").attr("fill");
-        
-        c1s = $("#1").attr("stroke");
-        c2s = $("#2").attr("stroke");
-        c3s = $("#3").attr("stroke");
-        c4s = $("#4").attr("stroke");
         
         expect(c1f).toBeDefined();
         expect(c2f).toBeDefined();
@@ -218,16 +208,6 @@
         expect(c1f).not.toEqual(c2f);
         expect(c1f).not.toEqual(c3f);
         expect(c2f).not.toEqual(c3f);
-        
-        expect(c1s).toBeDefined();
-        expect(c2s).toBeDefined();
-        expect(c3s).toBeDefined();
-        expect(c4s).toBeDefined();
-        
-        expect(c1s).toEqual(c4s);
-        expect(c1s).not.toEqual(c2s);
-        expect(c1s).not.toEqual(c3s);
-        expect(c2s).not.toEqual(c3s);
       });
       
       it('should be able to use colours based on _expanded attribute', function() {
@@ -257,9 +237,6 @@
         c2f = $("#2").attr("fill");
         c3f = $("#3").attr("fill");
         
-        c1s = $("#1").attr("stroke");
-        c2s = $("#2").attr("stroke");
-        c3s = $("#3").attr("stroke");
         
         expect(c1f).toBeDefined();
         expect(c2f).toBeDefined();
@@ -269,13 +246,6 @@
         expect(c2f).toEqual("#654321");
         expect(c3f).toEqual("#654321");
         
-        expect(c1s).toBeDefined();
-        expect(c2s).toBeDefined();
-        expect(c3s).toBeDefined();
-        
-        expect(c1s).toEqual("#123456");
-        expect(c2s).toEqual("#654321");
-        expect(c3s).toEqual("#654321");
       });
       
       it('should be able to receive the color <-> label mapping', function() {
@@ -1003,7 +973,7 @@
         textEl;
         shaper.drawNodes(node);
         textEl = $("svg .node text");
-        expect(textEl.attr("fill")).toEqual("#8AA051");
+        expect(textEl.attr("fill")).toEqual("white");
         expect(textEl.attr("stroke")).toEqual("none");
       });
 
