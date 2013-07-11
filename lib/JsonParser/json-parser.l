@@ -310,7 +310,7 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
         return false;
       }
 
-      TRI_Insert4ArrayJson(yyextra._memoryZone, result, name, nameLen, &sub);
+      TRI_Insert4ArrayJson(yyextra._memoryZone, result, name, nameLen, &sub, false);
     }
 
     c = yylex(scanner);

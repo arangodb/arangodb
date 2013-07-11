@@ -113,12 +113,14 @@ int TRI_ReadServerId (char const* filename) {
 
   idString = TRI_LookupArrayJson(json, "serverId");
 
-  if (idString == NULL || idString->_type != TRI_JSON_STRING) {
+  if (! TRI_IsStringJson(idString)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_INTERNAL;
   }
 
-  foundId = TRI_UInt64String(idString->_value._string.data);
+  foundId = TRI_UInt64String2(idString->_value._string.data,
+                              idString->_value._string.length - 1);
+
   LOG_TRACE("using existing server id: %llu", (unsigned long long) foundId);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 

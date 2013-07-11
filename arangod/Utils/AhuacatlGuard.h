@@ -63,7 +63,7 @@ namespace triagens {
 
         AhuacatlGuard (TRI_vocbase_t* vocbase, const string& query) :
           _context(0) {
-            _context = TRI_CreateContextAql(vocbase, query.c_str());
+            _context = TRI_CreateContextAql(vocbase, query.c_str(), query.size());
 
             if (_context == 0) {
               LOGGER_DEBUG("failed to create context for query %s" << query);

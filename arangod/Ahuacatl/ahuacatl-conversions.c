@@ -237,7 +237,12 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
       break;
 
     case TRI_JSON_STRING:
-      value = TRI_RegisterStringAql(context, json->_value._string.data, strlen(json->_value._string.data), true);
+    case TRI_JSON_STRING_REFERENCE:
+      // the conversion is the same for both...
+      value = TRI_RegisterStringAql(context, 
+                                    json->_value._string.data, 
+                                    json->_value._string.length - 1, 
+                                    true);
       node = TRI_CreateNodeValueStringAql(context, value);
       break;
 
@@ -284,10 +289,13 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
 
           // json_t containing the array element name
           nameJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-          assert(nameJson);
-          assert(nameJson->_value._string.data);
-          name = TRI_RegisterStringAql(context, nameJson->_value._string.data, strlen(nameJson->_value._string.data), false);
-          if (! name) {
+
+          assert(TRI_IsStringJson(nameJson));
+          name = TRI_RegisterStringAql(context, 
+                                       nameJson->_value._string.data, 
+                                       nameJson->_value._string.length - 1, 
+                                       false);
+          if (name == NULL) {
             TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
             return NULL;
           }

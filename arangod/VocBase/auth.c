@@ -86,16 +86,18 @@ static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
   }
 
   json = TRI_JsonShapedJson(shaper, &shaped);
-
-  if (json == NULL) {
+  if (json == 0) {
     return NULL;
   }
 
-  if (json->_type != TRI_JSON_STRING) {
+  if (! TRI_IsStringJson(json)) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
     return NULL;
   }
 
-  result = TRI_DuplicateString2(json->_value._string.data, json->_value._string.length);
+  result = TRI_DuplicateString2(json->_value._string.data, 
+                                json->_value._string.length - 1);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -135,6 +137,8 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
   }
 
   if (json->_type != TRI_JSON_BOOLEAN) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
     return false;
   }
 

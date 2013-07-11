@@ -101,7 +101,8 @@ TRI_aql_context_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_context_t* TRI_CreateContextAql (struct TRI_vocbase_s*,
-                                         const char* const);
+                                         const char* const,
+                                         const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a context

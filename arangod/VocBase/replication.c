@@ -249,15 +249,21 @@ static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
   assert(logger != NULL);
   buffer = NULL;
 
+  // locked section
+  // ---------------------------------------
   TRI_LockSpin(&logger->_bufferLock);
 
   n = logger->_buffers._length;
 
   if (n > 0) {
-    buffer = TRI_RemoveVectorPointer(&logger->_buffers, n);
+    buffer = TRI_RemoveVectorPointer(&logger->_buffers, (size_t) (n - 1));
   }
 
   TRI_UnlockSpin(&logger->_bufferLock);
+  // ---------------------------------------
+  // locked section end
+
+  assert(buffer != NULL);
 
   return buffer;
 }
@@ -279,12 +285,16 @@ static void ReturnBuffer (TRI_replication_logger_t* logger,
     TRI_ResetStringBuffer(buffer);
   }
 
+  // locked section
+  // ---------------------------------------
   TRI_LockSpin(&logger->_bufferLock);
 
   TRI_PushBackVectorPointer(&logger->_buffers, buffer);
   assert(logger->_buffers._length <= NUM_BUFFERS);
   
   TRI_UnlockSpin(&logger->_bufferLock);
+  // ---------------------------------------
+  // locked section end
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +342,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
                          &json, 
                          "type", 
                          4, // strlen("type")
-                         &typeAttribute);
+                         &typeAttribute,
+                         true);
   }
 
   // "tid" attribute
@@ -344,29 +355,31 @@ static int LogEvent (TRI_replication_logger_t* logger,
                          &json, 
                          "tid", 
                          3, // strlen("tid")
-                         &tidAttribute);
+                         &tidAttribute,
+                         true);
   }
 
   // "data" attribute
   {
     TRI_json_t dataAttribute;
     // pass the string-buffer buffer pointer to the JSON
-    TRI_InitString2Json(&dataAttribute, TRI_StealStringBuffer(buffer), TRI_LengthStringBuffer(buffer));
+    TRI_InitStringReference2Json(&dataAttribute, TRI_BeginStringBuffer(buffer), TRI_LengthStringBuffer(buffer));
 
     TRI_Insert4ArrayJson(TRI_CORE_MEM_ZONE, 
                          &json, 
                          "data", 
                          4, // strlen("data")
-                         &dataAttribute);
+                         &dataAttribute,
+                         true);
   }
   
   primary = logger->_trxCollection->_collection->_collection;
   shaped = TRI_ShapedJsonJson(primary->_shaper, &json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+  
+  ReturnBuffer(logger, buffer);
 
   if (shaped == NULL) {
-    ReturnBuffer(logger, buffer);
-
     return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
 
@@ -381,7 +394,6 @@ static int LogEvent (TRI_replication_logger_t* logger,
                         false);
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
-  ReturnBuffer(logger, buffer);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -804,8 +816,11 @@ static bool IterateShape (TRI_shaper_t* shaper,
     buffer = dump->_buffer;
 
     // append ,
-    if (TRI_LastCharStringBuffer(buffer) != '{') {
-      res = TRI_AppendCharStringBuffer(buffer, ',');
+    res = TRI_AppendCharStringBuffer(buffer, ',');
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      dump->_failed = true;
+      return false;
     }
 
     if (withName) {
@@ -909,7 +924,9 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
       shape            = dump->_lastShape;
     }
   
-    APPEND_CHAR(dump->_buffer, '{');
+    APPEND_STRING(dump->_buffer, "{\"tick\":\"");
+    APPEND_UINT64(dump->_buffer, (uint64_t) marker->_tick);
+    APPEND_CHAR(dump->_buffer, '"');
     TRI_IterateShapeDataArray(shaper, shape, shaped._data.data, &IterateShape, dump); 
     APPEND_STRING(dump->_buffer, "}\n");
   }
@@ -1267,6 +1284,10 @@ static int DumpLog (TRI_replication_dump_t* dump,
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
           
       if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT) {
+        // we're only interested in document markers here
+        // the replication collection does not contain any edge markers
+        // and deletion markers in the replication collection
+        // will not be replicated
         continue;
       }
 
@@ -1506,6 +1527,8 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
 static void FreeBuffers (TRI_replication_logger_t* logger) {
   size_t i, n;
 
+  LOG_TRACE("freeing buffers");
+
   n = logger->_buffers._length;
 
   for (i = 0; i < n; ++i) {
@@ -1525,6 +1548,10 @@ static void FreeBuffers (TRI_replication_logger_t* logger) {
 static int InitBuffers (TRI_replication_logger_t* logger) {
   size_t i;
   int res;
+
+  assert(NUM_BUFFERS > 0);
+  
+  LOG_TRACE("initialising buffers");
 
   res = TRI_InitVectorPointer2(&logger->_buffers, TRI_CORE_MEM_ZONE, NUM_BUFFERS);
 
@@ -2240,15 +2267,11 @@ static int ReadTick (TRI_json_t const* json,
                                      
   tick = TRI_LookupArrayJson(json, attributeName);
 
-  if (tick == NULL || 
-      tick->_type != TRI_JSON_STRING || 
-      tick->_value._string.data == NULL) {
-    *dst = 0;
-
+  if (! TRI_IsStringJson(tick)) {
     return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
 
-  *dst = (TRI_voc_tick_t) TRI_UInt64String(tick->_value._string.data);
+  *dst = (TRI_voc_tick_t) TRI_UInt64String2(tick->_value._string.data, tick->_value._string.length -1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2447,13 +2470,11 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
   // read the server id
   serverId = TRI_LookupArrayJson(json, "serverId");
 
-  if (serverId == NULL || 
-      serverId->_type != TRI_JSON_STRING || 
-      serverId->_value._string.data == NULL) {
+  if (! TRI_IsStringJson(serverId)) {
     res = TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
   else {
-    state->_serverId = TRI_UInt64String(serverId->_value._string.data);
+    state->_serverId = TRI_UInt64String2(serverId->_value._string.data, serverId->_value._string.length - 1);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
