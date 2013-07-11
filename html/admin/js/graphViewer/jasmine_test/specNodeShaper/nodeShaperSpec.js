@@ -1423,8 +1423,9 @@
           text;
         nodes.push(commNode);
         shaper.drawNodes(nodes);
-        text = $("svg #\\*community_42 text")[0].textContent;
+        text = $("svg #\\*community_42 text").text();
         expect(text).toEqual("4");
+        expect($("svg #\\*community_42 text").attr("fill")).toEqual("white");
       });
       
     });
