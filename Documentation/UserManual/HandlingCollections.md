@@ -85,6 +85,10 @@ Collection Methods {#HandlingCollectionsCollectionMethods}
 @copydetails JS_RevisionVocbaseCol
 
 @CLEARPAGE
+@anchor HandlingCollectionsChecksum
+@copydetails JS_ChecksumCollection
+
+@CLEARPAGE
 @anchor HandlingCollectionsUnload
 @copydetails JS_UnloadVocbaseCol
 
