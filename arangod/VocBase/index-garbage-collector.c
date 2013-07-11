@@ -515,10 +515,12 @@ void InnerThreadLoop (bool* goToSleep) {
   TRI_index_gc_t* indexData;
   linked_list_node_t* currentNode = &(INDEX_GC_LINKED_LIST->_startNode);
   linked_list_node_t* tempNode    = NULL;
-  uint64_t lastCompleteGlobalTransID = 0;
+  // this variable is not used. suppres compiler warning
+  // uint64_t lastCompleteGlobalTransID = 0;
   TRI_transaction_global_stats_t* stats = NULL;
   int result;
-  TRI_vocbase_t* vocbase = (TRI_vocbase_t*)(INDEX_GC_DATA); 
+  // this variable is not used. suppres compiler warning
+  // TRI_vocbase_t* vocbase = (TRI_vocbase_t*)(INDEX_GC_DATA); 
 
   stats = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_global_stats_t), true);
   if (stats == NULL) {
