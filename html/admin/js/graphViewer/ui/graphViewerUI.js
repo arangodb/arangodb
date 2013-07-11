@@ -157,14 +157,40 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         ),
         */
         
+        showSpinner = function() {
+          $(background).css("cursor", "progress");
+        },
+        
+        hideSpinner = function() {
+          $(background).css("cursor", "");
+        },
+        
+        alertError = function(msg) {
+          window.alert(msg);
+        },
+        
+        resultCB = function(res) {
+          hideSpinner();
+          if (res && res.errorCode && res.errorCode === 404) {
+            alertError("Sorry could not find a matching node.");
+            return;
+          }
+          return;
+        },
+        
         searchFunction = function() {
+          showSpinner();
           if (searchAttrField.value === ""
             || searchAttrField.value === undefined) {
-            graphViewer.loadGraph(searchValueField.value);
+            graphViewer.loadGraph(
+              searchValueField.value,
+              resultCB
+            );
           } else {
             graphViewer.loadGraphWithAttributeValue(
               searchAttrField.value,
-              searchValueField.value
+              searchValueField.value,
+              resultCB
             );
           }
         };
