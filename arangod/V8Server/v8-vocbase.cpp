@@ -67,7 +67,7 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/key-generator.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 #include "RestServer/VocbaseManager.h"
@@ -3081,15 +3081,20 @@ static v8::Handle<v8::Value> JS_SyncReplication (v8::Arguments const& argv) {
 
   const string masterEndpoint = TRI_ObjectToString(argv[0]);
   bool forceFullSync = false;
+  uint64_t ignoreCount = 0;
 
   if (argv.Length() > 1) {
     forceFullSync = TRI_ObjectToBoolean(argv[1]);
   }
 
+  if (argv.Length() > 2) {
+    ignoreCount = TRI_ObjectToUInt64(argv[2], false);
+  }
+
   string errorMsg;
 
   ReplicationFetcher rf(vocbase, masterEndpoint, 600);
-  int res = rf.run(forceFullSync, errorMsg);
+  int res = rf.run(forceFullSync, ignoreCount, errorMsg);
 
   if (res !=  TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
@@ -7062,9 +7067,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
 #ifdef TRI_ENABLE_REPLICATION
-  v8::Local<v8::String> keyReplicationEnable = v8::String::New("replicationEnable");
-  v8::Local<v8::String> keyReplicationWaitForSync = v8::String::New("replicationWaitForSync");
-  v8::Local<v8::String> keyReplicationLogSize = v8::String::New("replicationLogSize");
+  v8::Local<v8::String> keyReplicationEnableLogger = v8::String::New("replicationEnableLogger");
 #endif
 
   // get database defaults from system vocbase
@@ -7108,14 +7111,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     }
 
 #ifdef TRI_ENABLE_REPLICATION    
-    if (options->Has(keyReplicationEnable)) {
-      defaults.replicationEnable = options->Get(keyReplicationEnable)->BooleanValue();
-    }
-    if (options->Has(keyReplicationWaitForSync)) {
-      defaults.replicationWaitForSync = options->Get(keyReplicationWaitForSync)->BooleanValue();
-    }
-    if (options->Has(keyReplicationLogSize)) {
-      defaults.replicationLogSize = (int64_t) options->Get(keyReplicationLogSize)->IntegerValue();
+    if (options->Has(keyReplicationEnableLogger)) {
+      defaults.replicationEnableLogger = options->Get(keyReplicationEnableLogger)->BooleanValue();
     }
 #endif
   }

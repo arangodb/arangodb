@@ -41,7 +41,7 @@
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
 
