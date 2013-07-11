@@ -307,6 +307,7 @@ function AbstractAdapter(nodes, edges, descendant) {
         });
       commNode.x = nodesToRemove[0].x;
       commNode.y = nodesToRemove[0].y;
+      commNode._size = community.length;
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
