@@ -59,7 +59,7 @@ static char* GetIndexIdString (TRI_aql_collection_hint_t* const hint) {
   TRI_AppendCharStringBuffer(&buffer, '/');
   TRI_AppendUInt64StringBuffer(&buffer, hint->_index->_idx->_iid);
 
-  result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
+  result = TRI_StealStringBuffer(&buffer);
   TRI_DestroyStringBuffer(&buffer);
 
   return result;

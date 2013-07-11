@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper, mocks, JSONAdapter:true*/
+/*global helper, mocks, JSONAdapter:true, uiMatchers*/
 /*global GraphViewerUI, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,52 +74,7 @@
       adapterConfig = {type: "json", path: "../test_data/"};
       document.body.appendChild(div);
       ui = new GraphViewerUI(div, adapterConfig);
-      this.addMatchers({
-        toBeTag: function(name) {
-          var el = this.actual;
-          this.message = function() {
-            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
-          };
-          return el.tagName.toLowerCase() === name;
-        },
-        
-        toBeOfClass: function(name) {
-          var el = this.actual;
-          this.message = function() {
-            return "Expected " + el.className + " to be " + name; 
-          };
-          return el.className === name;
-        },
-        
-        toBeADropdownMenu: function() {
-          var div = this.actual,
-            btn = div.children[0],
-            list = div.children[1],
-            msg = "";
-          this.message = function() {
-            return "Expected " + msg;
-          };
-          expect(div).toBeOfClass("btn-group");
-          expect(btn).toBeTag("button");
-          expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
-          if (btn.getAttribute("data-toggle") !== "dropdown") {
-            msg = "first elements data-toggle to be dropdown";
-            return false;
-          }
-          if (btn.children[0].tagName.toLowerCase() !== "span"
-            && btn.children[0].getAttribute("class") !== "caret") {
-            msg = "first element to contain a caret";
-            return false;
-          }
-
-          // Check the list
-          if (list.getAttribute("class") !== "dropdown-menu") {
-            msg = "list element to be of class dropdown-menu";
-            return false;
-          }
-          return true;
-        }
-      });
+      uiMatchers.define(this);
     });
     
     afterEach(function() {
@@ -169,25 +124,7 @@
     
     describe('checking the toolbox', function() {
       var toolboxSelector = "#contentDiv #toolbox";
-      
-      beforeEach(function() {
-        this.addMatchers({
-          toConformToToolboxLayout: function() {
-            var box = this.actual;
-            expect(box).toBeTag("div");
-            expect(box.id).toEqual("toolbox");
-            expect(box).toBeOfClass("btn-group btn-group-vertical pull-left toolbox");
-            _.each(box.children, function(group) {
-              expect(group).toBeTag("div");
-              expect(group).toBeOfClass("btn btn-group");
-              expect(group.children.length).toEqual(2);
-              // Correctness of buttons is checked in eventDispatcherUISpec.
-            });
-            return true;
-          }
-        });
-      });
-      
+            
       it('should append the toolbox', function() {
         expect($(toolboxSelector).length).toEqual(1);
       });
@@ -204,6 +141,7 @@
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
       
+      /* Archive
       it('should create the additional mouse-icon box', function() {
         var pointerBox = $("#contentDiv #mousepointer");
         expect(pointerBox.length).toEqual(1);
@@ -227,7 +165,7 @@
         expect(pointerBox.offset().left).toEqual(x + 7);
         expect(pointerBox.offset().top).toEqual(y + 12);
       });
-      
+      */
     });
     
     describe('checking the menubar', function() {

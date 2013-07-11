@@ -323,8 +323,32 @@
             });
           });
           
+          it('should only remove one of the edges on delete', function() {
+            joiner.insertEdge("1", "2");
+            joiner.insertEdge("1", "2");
+            
+            joiner.deleteEdge("1", "2");
+            expect(joiner.getAdjacencyMatrix()).toEqual({
+              "0": {
+                "1": 1,
+                "3": 1
+              },
+              "1": {
+                "2": 2
+              },
+              "2": {
+                "1": 1,
+                "3": 1
+              },
+              "3": {
+                "0": 1,
+                "1": 1,
+                "2": 1
+              }
+            });
+          });
+          
         });
-        
         
         describe('the degrees', function() {
         
@@ -381,7 +405,6 @@
           });
           
         });
-        
         
         describe('the deltaQ', function() {
         
@@ -643,7 +666,6 @@
         
         });
         
-        
         describe('checking multiple executions', function() {
           
           it('should be able to recompute the joining', function() {
@@ -673,7 +695,23 @@
           
         });
         
-        
+        describe('checking massively insertion/deletion of edges', function() {
+          
+          it('should be possible to keep a consistent adj. matrix', function() {
+
+            joiner.deleteEdge("0", "1");
+            joiner.deleteEdge("0", "3");
+            joiner.deleteEdge("1", "2");
+            joiner.deleteEdge("2", "1");
+            joiner.deleteEdge("2", "3");
+            joiner.deleteEdge("3", "0");
+            joiner.deleteEdge("3", "1");
+            joiner.deleteEdge("3", "2");
+            
+            expect(joiner.getAdjacencyMatrix()).toEqual({});
+          });
+          
+        });
         
       });
       
@@ -1114,7 +1152,7 @@
         });
         
       });
-      
+      /*
       describe('checking large networks', function() {
         
         it('should be able to handle 1000 nodes', function() {
@@ -1673,7 +1711,7 @@
         });
         
       });
-      
+      */
     
       /*
       it('should be able to handle 10000 nodes', function() {
@@ -1713,11 +1751,13 @@
         testNetFour,
         called,
         result,
+        custom,
         error;
       
       beforeEach(function () {
         
         runs(function() {
+          custom = function() {};
           called = false;
           result = "";
           error = "";
@@ -1738,6 +1778,7 @@
             });
           };
           var callback = function(d) {
+            custom(d);
             if (d.data.cmd === "insertEdge") {
               return;
             }
@@ -1866,6 +1907,152 @@
         runs(function() {
           expect(result).toContainNodes(["0", "1", "2"]);
           expect(error).toBeUndefined();
+        });
+      });
+      
+      it('should be possible to send many getCommunity requests without crashing', function() {
+        
+        var customCounter, s0, s1, s2, s3, s4, ts, comResults, errors;
+        
+        runs(function() {
+          customCounter = [];
+          comResults = [];
+          errors = [];
+          s0 = helper.insertSatelite(nodes, edges, 0, 500);
+          s1 = helper.insertSatelite(nodes, edges, 1, 300);
+          s2 = helper.insertSatelite(nodes, edges, 2, 313);
+          s3 = helper.insertSatelite(nodes, edges, 3, 461);
+          s4 = helper.insertSatelite(nodes, edges, 4, 251);
+        
+          edges.push(helper.createSimpleEdge(nodes, s0, s1));
+          edges.push(helper.createSimpleEdge(nodes, s0, s2));
+          edges.push(helper.createSimpleEdge(nodes, s1, s3));
+          edges.push(helper.createSimpleEdge(nodes, s1, s4));
+          edges.push(helper.createSimpleEdge(nodes, s2, s1));
+          edges.push(helper.createSimpleEdge(nodes, s2, s4));
+          edges.push(helper.createSimpleEdge(nodes, s3, s0));
+          edges.push(helper.createSimpleEdge(nodes, s4, s1));
+        
+          custom = function(d) {
+            var data = d.data;
+            customCounter.push(((new Date()).getTime() - ts) + ": " + data.cmd);
+            if (d.data.cmd === "getCommunity") {
+              comResults.push(data.result || data.error);
+            }
+            if (data.error) {
+              errors.push(data.cmd + ": " + data.error);
+            }
+            
+          };
+          
+          ts = (new Date()).getTime();
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
+          
+          ts = (new Date()).getTime();
+        });
+        
+        waitsFor(function() {
+          return customCounter.length === 1833;
+        });
+        
+        runs(function() {
+          customCounter = [];
+          joiner.call("getCommunity", 800);
+          /*
+          joiner.call("deleteEdge", s0._id, s1._id);
+          joiner.call("deleteEdge", s2._id, s1._id);
+          joiner.call("deleteEdge", s3._id, s0._id);
+        
+          joiner.call("insertEdge", s3._id, s0._id);
+          joiner.call("insertEdge", s2._id, s1._id);
+          joiner.call("insertEdge", s0._id, s1._id);
+          */
+          joiner.call("getCommunity", 800);
+        });
+        
+        waitsFor(function() {
+          return comResults.length === 2;
+        });
+        
+        runs(function() {
+          expect(comResults[0]).toEqual(comResults[1]);
+          expect(errors).toEqual([]);
+        });
+      });
+      
+      it('should not crash because of insertion/deletion of edges', function() {
+        
+        var customCounter, s0, s1, s2, s3, s4, ts, comResults, errors, adjResults;
+        
+        runs(function() {
+          customCounter = [];
+          comResults = [];
+          errors = [];
+          adjResults = [];
+          s0 = helper.insertSatelite(nodes, edges, 0, 500);
+          s1 = helper.insertSatelite(nodes, edges, 1, 300);
+          s2 = helper.insertSatelite(nodes, edges, 2, 313);
+          s3 = helper.insertSatelite(nodes, edges, 3, 461);
+          s4 = helper.insertSatelite(nodes, edges, 4, 251);
+        
+          edges.push(helper.createSimpleEdge(nodes, s0, s1));
+          edges.push(helper.createSimpleEdge(nodes, s0, s2));
+          edges.push(helper.createSimpleEdge(nodes, s1, s3));
+          edges.push(helper.createSimpleEdge(nodes, s1, s4));
+          edges.push(helper.createSimpleEdge(nodes, s2, s1));
+          edges.push(helper.createSimpleEdge(nodes, s2, s4));
+          edges.push(helper.createSimpleEdge(nodes, s3, s0));
+          edges.push(helper.createSimpleEdge(nodes, s4, s1));
+        
+          custom = function(d) {
+            var data = d.data;
+            customCounter.push(((new Date()).getTime() - ts) + ": " + data.cmd);
+            if (data.cmd === "getCommunity") {
+              comResults.push(data.result || data.error);
+            }
+            if (data.error) {
+              errors.push(data.cmd + ": " + data.error);
+            }
+            
+          };
+          
+          ts = (new Date()).getTime();
+          _.each(edges, function(e) {
+            joiner.call("insertEdge", e.source._id, e.target._id);
+          });
+          
+          ts = (new Date()).getTime();
+        });
+        
+        waitsFor(function() {
+          return customCounter.length === 1833;
+        });
+        
+        runs(function() {
+          customCounter = [];
+          joiner.call("getCommunity", 800);
+          
+          joiner.call("deleteEdge", "0", "1");
+          joiner.call("deleteEdge", "2", "1");
+          joiner.call("deleteEdge", "3", "0");
+          
+          joiner.call("insertEdge", "3", "0");
+          joiner.call("insertEdge", "2", "1");
+          joiner.call("insertEdge", "0", "1");
+          
+          joiner.call("getCommunity", 800);
+        });
+        
+        waitsFor(function() {
+          return comResults.length === 2;
+        });
+        
+        runs(function() {
+          expect(adjResults[0]).toEqual(adjResults[1]);
+          expect(comResults[0]).toEqual(comResults[1]);
+          expect(errors).toEqual([]);
         });
       });
       

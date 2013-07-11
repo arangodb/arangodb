@@ -1,6 +1,13 @@
 v1.4
 ----
 
+* added collection.checksum(<withData>) method to calculate CRC checksums for
+  collections
+
+  This can be used to 
+  - check if data in a collection has changed
+  - compare the contents of two collections on different ArangoDB instances
+
 * issue #565: add description line to aal.listAvailable()
 
 * fixed several out-of-memory situations when double freeing or invalid memory

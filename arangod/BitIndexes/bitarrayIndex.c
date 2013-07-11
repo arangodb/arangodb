@@ -796,7 +796,8 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
       return (left->_value._number == right->_value._number);
     }
 
-    case TRI_JSON_STRING: {
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE: {
       return (strcmp(left->_value._string.data, right->_value._string.data) == 0);
     }
 

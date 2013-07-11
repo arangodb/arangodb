@@ -70,23 +70,24 @@ function WebWorkerWrapper(Class, callback) {
         }
         break;
       default:
+        var msg = {
+          cmd: e.data.cmd
+        },
+        res;
         if (w && typeof w[e.data.cmd] === "function") {
           try {
-            self.postMessage({
-              cmd: e.data.cmd,
-              result: w[e.data.cmd].apply(w, e.data.args)
-            });
+            res = w[e.data.cmd].apply(w, e.data.args);
+            if (res) {
+              msg.result = res;
+            }
+            self.postMessage(msg);
           } catch (err1) {
-            self.postMessage({
-              cmd: e.data.cmd,
-              error: err1.message || err1
-            });
+            msg.error = err1.message || err1;
+            self.postMessage(msg);
           }
         } else {
-          self.postMessage({
-            cmd: e.data.cmd,
-            error: "Method not known"
-          });
+          msg.error = "Method not known";
+          self.postMessage(msg);
         }
     }
   },

@@ -29,6 +29,8 @@ var collectionView = Backbone.View.extend({
     "click #delete-modified-collection"   :    "deleteCollection",
     "click #load-modified-collection"     :    "loadCollection",
     "click #unload-modified-collection"   :    "unloadCollection",
+    "click #confirmDeleteCollection"      :    "confirmDeleteCollection",
+    "click #abortDeleteCollection"       :    "abortDeleteCollection",
     "keydown #change-collection-name"     :    "listenKey",
     "keydown #change-collection-size"     :    "listenKey"
   },
@@ -180,6 +182,12 @@ var collectionView = Backbone.View.extend({
     $('#change-collection').modal('hide');
   },
   deleteCollection: function () {
+    $('#reallyDeleteColDiv').show();
+  },
+  abortDeleteCollection: function() {
+    $('#reallyDeleteColDiv').hide();
+  },
+  confirmDeleteCollection: function () {
     var self = this;
     var collName = self.myCollection.name;
     var returnval = window.arangoCollectionsStore.deleteCollection(collName);

@@ -47,12 +47,17 @@ function ForceLayouter(config) {
   "use strict";
   var self = this,
     force = d3.layout.force(),
+    /*
     distance = config.distance || 240, // 80
     gravity = config.gravity || 0.01, // 0.08
     charge = config.charge || -1000, // -240
+    */
+    distance = config.distance || 160,
+    gravity = config.gravity || 0.08,
+    charge = config.charge ||  -600,
     onUpdate = config.onUpdate || function () {},
-    width = config.width || 940,
-    height = config.height || 640,
+    width = config.width || 880,
+    height = config.height || 680,
     parseConfig = function(config) {
       if (config.distance) {
         force.linkDistance(config.distance);

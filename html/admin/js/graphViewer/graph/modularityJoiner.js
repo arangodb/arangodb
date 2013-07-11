@@ -74,7 +74,7 @@ function ModularityJoiner() {
         }
       },
       keys: nativeKeys || function(obj) {
-        if (obj !== Object(obj)) {
+        if (typeof obj !== "object" || Array.isArray(obj)) {
           throw new TypeError('Invalid object');
         }
         var keys = [], key;
@@ -323,14 +323,26 @@ function ModularityJoiner() {
   
     deleteEdge = function(s, t) {
       if (matrix[s]) {
-        delete matrix[s][t];
-        delete backwardMatrix[t][s];
+        matrix[s][t]--;
+        if (matrix[s][t] === 0) {
+          delete matrix[s][t];
+        }
+        backwardMatrix[t][s]--;
+        if (backwardMatrix[t][s] === 0) {
+          delete backwardMatrix[t][s];
+        }
         degrees[s]._out--;
         degrees[t]._in--;
         m--;
-        revM = Math.pow(m, -1);
+        if (m > 0) {
+          revM = Math.pow(m, -1);
+        } else {
+          revM = 0;
+        }
         if (_.isEmpty(matrix[s])) {
           delete matrix[s];
+        }
+        if (_.isEmpty(backwardMatrix[t])) {
           delete backwardMatrix[t];
         }
         if (degrees[s]._in === 0 && degrees[s]._out === 0) {
@@ -512,6 +524,7 @@ function ModularityJoiner() {
     var s = comm.sID,
       l = comm.lID,
       q = comm.val;
+    
     comms[s] = comms[s] || {nodes: [s], q: 0};
     if (comms[l]) {
       comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
@@ -567,10 +580,6 @@ function ModularityJoiner() {
   ////////////////////////////////////
    
   getCommunity = function(limit, focus) {
-    if (isRunning) {
-      throw "Still running.";
-    }
-    isRunning = true;
     var coms = {},
       res = [],
       dist = {},
@@ -597,14 +606,12 @@ function ModularityJoiner() {
           delete coms[key];
         }
       });
-      
+    
       res = _.pluck(_.values(coms), "nodes");
       dist = floatDist(focus);
       res.sort(sortByDistance);
-      isRunning = false;
       return res[0];
     }
-    isRunning = false;
     return getBestCommunity(coms);
   };
   
@@ -632,7 +639,5 @@ function ModularityJoiner() {
   
   this.joinCommunity = joinCommunity;
   
-  this.getCommunity = getCommunity;
-  
-  
+  this.getCommunity = getCommunity;  
 }

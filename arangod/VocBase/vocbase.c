@@ -99,6 +99,29 @@ static TRI_vocbase_defaults_t SystemDefaults;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief auxiliary struct for index iteration
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct index_json_helper_s {
+  TRI_json_t*    _list;
+  TRI_voc_tick_t _maxTick;
+}
+index_json_helper_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             DICTIONARY FUNCTOIONS
 // -----------------------------------------------------------------------------
 
@@ -338,19 +361,21 @@ static int ReadShutdownInfo (char const* filename) {
   }
   
   shutdownTime = TRI_LookupArrayJson(json, "shutdownTime");
-  if (shutdownTime != NULL && shutdownTime->_type == TRI_JSON_STRING) {
+
+  if (TRI_IsStringJson(shutdownTime)) {
     LOG_DEBUG("server was shut down cleanly last time at '%s'", shutdownTime->_value._string.data);
   }
 
   tickString = TRI_LookupArrayJson(json, "tick");
 
-  if (tickString == NULL || tickString->_type != TRI_JSON_STRING) {
+  if (! TRI_IsStringJson(tickString)) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_ERROR_INTERNAL;
   }
 
-  foundTick = TRI_UInt64String(tickString->_value._string.data);
+  foundTick = TRI_UInt64String2(tickString->_value._string.data,
+                                tickString->_value._string.length - 1);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
@@ -1195,15 +1220,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
       TRI_document_collection_t* document;
 
-#ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
-#endif
-
       document = TRI_OpenDocumentCollection(vocbase, collection->_path);
-
-#ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
-#endif
 
       if (document == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1233,6 +1250,63 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return TRI_set_errno(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief filter callback function for indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int FilterCollectionIndex (TRI_vocbase_col_t* collection, 
+                                  char const* filename,
+                                  void* data) {
+  TRI_json_t* indexJson;
+  TRI_json_t* id;
+  char* error = NULL;
+  index_json_helper_t* ij = (index_json_helper_t*) data;
+
+  indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+
+  if (error != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+  }
+
+  if (indexJson == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // compare index id with tick value
+  id = TRI_LookupArrayJson(indexJson, "id");
+
+  // index id is numeric
+  if (id != NULL && id->_type == TRI_JSON_NUMBER) {
+    uint64_t iid = (uint64_t) id->_value._number;
+
+    if (iid >= (uint64_t) ij->_maxTick) {
+      // index too new
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
+    }
+    else {
+      // convert "id" to string
+      char* idString = TRI_StringUInt64(iid);
+      TRI_InitStringJson(id, idString);
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
+    }
+  }
+
+  // index id is a string
+  else if (TRI_IsStringJson(id)) {
+    uint64_t iid = TRI_UInt64String2(id->_value._string.data, id->_value._string.length - 1);
+
+    if (iid >= (uint64_t) ij->_maxTick) {
+      // index too new
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
+    }
+    else {
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1793,15 +1867,15 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
-/// and optionally indexes
+/// and indexes, up to a specific tick value
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
-                                              bool withIndexes,
-                                              bool (*filter)(TRI_vocbase_col_t*, void*),
-                                              void* data) {
+TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                             TRI_voc_tick_t maxTick,
+                                             bool (*filter)(TRI_vocbase_col_t*, void*),
+                                             void* data) {
   TRI_vector_pointer_t collections;
   TRI_json_t* json;
   size_t i, n;
@@ -1839,6 +1913,12 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
+        
+    if (collection->_cid >= maxTick) {
+      // collection is too new
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      continue;
+    }
 
     // check if we want this collection
     if (filter != NULL && ! filter(collection, data)) {
@@ -1857,9 +1937,13 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
       if (collectionInfo != NULL) {
         TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
 
-        indexesInfo = TRI_ReadJsonIndexInfo(collection);
-
+        indexesInfo = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
         if (indexesInfo != NULL) {
+          index_json_helper_t ij;
+          ij._list    = indexesInfo;
+          ij._maxTick = maxTick;
+
+          TRI_IterateJsonIndexesCollectionInfo(collection, &FilterCollectionIndex, &ij);
           TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
         }
       }

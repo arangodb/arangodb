@@ -469,6 +469,134 @@ BOOST_AUTO_TEST_CASE (tst_length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_clear
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_clear) {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+
+  // clear an empty buffer
+  TRI_ClearStringBuffer(&sb);
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+
+  TRI_AppendStringStringBuffer(&sb, "foo bar baz");
+  BOOST_CHECK_EQUAL(11, (int) TRI_LengthStringBuffer(&sb));
+
+  const char* ptr = TRI_BeginStringBuffer(&sb);
+  TRI_ClearStringBuffer(&sb);
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+
+  // buffer should still point to ptr
+  BOOST_CHECK_EQUAL(ptr, TRI_BeginStringBuffer(&sb));
+
+  TRI_DestroyStringBuffer(&sb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_steal
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_steal) {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_AppendStringStringBuffer(&sb, "foo bar baz");
+
+  const char* ptr = TRI_BeginStringBuffer(&sb);
+ 
+  // steal the buffer
+  char* stolen = TRI_StealStringBuffer(&sb);
+  
+  // buffer is now empty
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+  BOOST_CHECK_EQUAL((void*) 0, TRI_BeginStringBuffer(&sb));
+
+  // stolen should still point to ptr
+  BOOST_CHECK_EQUAL(stolen, ptr);
+  BOOST_CHECK_EQUAL(0, strcmp(stolen, ptr));
+
+  TRI_DestroyStringBuffer(&sb);
+
+  // destroying the string buffer should not affect us
+  BOOST_CHECK_EQUAL(stolen, ptr);
+  BOOST_CHECK_EQUAL(0, strcmp(stolen, ptr));
+
+  // must manually free the string
+  TRI_Free(TRI_CORE_MEM_ZONE, stolen);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_last_char
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_last_char) {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+
+  TRI_AppendStringStringBuffer(&sb, "f");
+  BOOST_CHECK_EQUAL('f', TRI_LastCharStringBuffer(&sb));
+
+  TRI_AppendCharStringBuffer(&sb, '1');
+  BOOST_CHECK_EQUAL('1', TRI_LastCharStringBuffer(&sb));
+  
+  TRI_AppendCharStringBuffer(&sb, '\n');
+  BOOST_CHECK_EQUAL('\n', TRI_LastCharStringBuffer(&sb));
+
+  TRI_ClearStringBuffer(&sb);
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+  
+  for (size_t i = 0; i < 100; ++i) {
+    TRI_AppendStringStringBuffer(&sb, "the quick brown fox jumped over the lazy dog");
+    BOOST_CHECK_EQUAL('g', TRI_LastCharStringBuffer(&sb));
+  }
+  TRI_AppendCharStringBuffer(&sb, '.');
+  BOOST_CHECK_EQUAL('.', TRI_LastCharStringBuffer(&sb));
+  
+  TRI_AnnihilateStringBuffer(&sb);
+  BOOST_CHECK_EQUAL('\0', TRI_LastCharStringBuffer(&sb));
+
+  TRI_DestroyStringBuffer(&sb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_reserve
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_reserve) {
+  TRI_string_buffer_t sb;
+
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+  
+  TRI_ReserveStringBuffer(&sb, 0);
+  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+
+  TRI_ReserveStringBuffer(&sb, 1000);
+  BOOST_CHECK_EQUAL(0, TRI_LengthStringBuffer(&sb));
+
+  TRI_AppendStringStringBuffer(&sb, "f");
+  BOOST_CHECK_EQUAL(1, TRI_LengthStringBuffer(&sb));
+
+  for (size_t i = 0; i < 5000; ++i) {
+    TRI_AppendCharStringBuffer(&sb, '.');
+  }
+  BOOST_CHECK_EQUAL(5001, TRI_LengthStringBuffer(&sb));
+  
+  TRI_ReserveStringBuffer(&sb, 1000);
+  BOOST_CHECK_EQUAL(5001, TRI_LengthStringBuffer(&sb));
+
+  TRI_DestroyStringBuffer(&sb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief tst_timing
 ////////////////////////////////////////////////////////////////////////////////
 

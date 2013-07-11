@@ -380,6 +380,22 @@ ArangoCollection.prototype.figures = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the checksum of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.checksum = function (withData) {
+  var append = withData ? "?withData=true" : "";
+  var requestResult = this._database._connection.GET(this._baseurl("checksum") + append);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return { 
+    checksum: requestResult.checksum, 
+    revision: requestResult.revision 
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the revision id of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
