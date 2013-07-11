@@ -844,6 +844,28 @@
         existNode(3);
       });
       
+      it('should create proper attributes for the community', function() {
+        var n1, n2, n3, n4, n5, com;
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          workerCB({
+            data: {
+              cmd: name,
+              result: [1, 2, 3, 4, 5]
+            }
+          });
+        });
+        n1 = adapter.insertNode({_id: 1});
+        n2 = adapter.insertNode({_id: 2});
+        n3 = adapter.insertNode({_id: 3});
+        n4 = adapter.insertNode({_id: 4});
+        n5 = adapter.insertNode({_id: 5});
+        adapter.setNodeLimit(2);
+        com = getCommunityNodes()[0];
+        expect(com.x).toBeDefined();
+        expect(com.y).toBeDefined();
+        expect(com._size).toEqual(5);
+      });
+      
       it('should not trigger getCommunity multiple times', function() {
         spyOn(mockWrapper, "call").andCallFake(function(name) {
           setTimeout(function() {
@@ -1525,8 +1547,6 @@
       });
       
     });
-    
-    
     
     describe('checking many child nodes', function() {
       
