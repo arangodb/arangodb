@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication master info
+/// @brief replication data fetcher
 ///
 /// @file
 ///
@@ -22,67 +22,56 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "replication-master.h"
+#ifndef TRIAGENS_REPLICATION_REPLICATION_STATIC_H
+#define TRIAGENS_REPLICATION_REPLICATION_STATIC_H 1
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "BasicsC/common.h"
 
-
-#ifdef TRI_ENABLE_REPLICATION
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           REPLICATION MASTER INFO
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+  
+struct TRI_vocbase_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a master info struct
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
-                                    const char* endpoint) {
-  info->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
-  info->_serverId            = 0;
-  info->_majorVersion        = 0;
-  info->_minorVersion        = 0;
-  info->_state._lastLogTick  = 0;
-  info->_state._active       = false;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a master info struct
+/// @brief static factory method
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
-  if (info->_endpoint != NULL) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, info->_endpoint);
-  }
-}
+void* TRI_CreateFetcherReplication (struct TRI_vocbase_s*,
+                                    const char*,
+                                    double); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log information about the master state
+/// @brief static run method
 ////////////////////////////////////////////////////////////////////////////////
-      
-void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
-                                   const char* prefix) {
-  LOG_INFO("%s master at %s, id %llu, version %d.%d, last log tick %llu", 
-           prefix,
-           info->_endpoint,
-           (unsigned long long) info->_serverId,
-           info->_majorVersion,
-           info->_minorVersion,
-           (unsigned long long) info->_state._lastLogTick);
-}
+
+int TRI_RunFetcherReplication (void*,
+                               bool,
+                               uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

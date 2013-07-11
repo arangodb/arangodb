@@ -109,6 +109,8 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 ReplicationFetcher::~ReplicationFetcher () {
+  abortOngoingTransaction();
+
   // shutdown everything properly
   if (_client != 0) {
     delete _client;
@@ -139,12 +141,13 @@ ReplicationFetcher::~ReplicationFetcher () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method
+/// @brief non-static run method
 ////////////////////////////////////////////////////////////////////////////////
 
 int ReplicationFetcher::run (bool forceFullSynchronisation,
                              uint64_t ignoreCount,
                              string& errorMsg) {
+
   int res;
 
   res = getMasterState(errorMsg);
@@ -163,13 +166,11 @@ int ReplicationFetcher::run (bool forceFullSynchronisation,
     // we had never sychronised anything
     forceFullSynchronisation = true;
   }
-  else if (_applyState._lastAppliedContinuousTick > 0 && 
-           _applyState._lastAppliedContinuousTick < _masterInfo._state._firstLogTick) {
-    // we had synchronised something before, but that point was
-    // before the start of the master logs. this would mean a gap
-    // in the data, so we'll do a complete re-sync
-    forceFullSynchronisation = true;
-  }
+
+  // TODO:
+  // if we have synchronised something before, but that point was
+  // before the start of the master logs, this would mean a gap
+  // in the data. in this case we'd need a complete re-sync
 
   if (forceFullSynchronisation) {
     LOGGER_INFO("performing full synchronisation with master");
@@ -1657,8 +1658,6 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-  const TRI_voc_tick_t firstTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
-
   // state."lastLogTick"
   tick = JsonHelper::getArrayElement(state, "lastLogTick");
 
@@ -1737,7 +1736,6 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   _masterInfo._majorVersion        = major;
   _masterInfo._minorVersion        = minor;
   _masterInfo._serverId            = masterId;
-  _masterInfo._state._firstLogTick = firstTick;
   _masterInfo._state._lastLogTick  = lastTick;
   _masterInfo._state._active       = running;
 

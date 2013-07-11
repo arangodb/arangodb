@@ -786,7 +786,6 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
   primary = (TRI_primary_collection_t*) col->_collection;
 
   dst->_active       = false;
-  dst->_firstLogTick = 0;
   dst->_lastLogTick  = primary->base._info._tick;
 
   TRI_ReleaseCollectionVocBase(vocbase, col);
@@ -989,7 +988,6 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   logger->_vocbase             = vocbase;
   logger->_trx                 = NULL;
   logger->_trxCollection       = NULL;
-  logger->_state._firstLogTick = 0;
   logger->_state._lastLogTick  = 0;
   logger->_state._active       = false;
   logger->_databaseName        = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);

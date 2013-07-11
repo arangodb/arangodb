@@ -125,7 +125,8 @@ endif
 if ENABLE_REPLICATION
 
 bin_arangod_SOURCES += \
-	arangod/Replication/ReplicationFetcher.cpp
+	arangod/Replication/ReplicationFetcher.cpp \
+	arangod/Replication/replication-static.cpp
 endif
 
 ################################################################################
