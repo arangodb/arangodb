@@ -731,7 +731,7 @@ namespace triagens {
 
                         // correct unicode
                         if ((e & 0xC0) == 0x80) {
-                          // TO DO:
+                          // TODO: if & else branch are the same
                           *qtr = *ptr;
                         }
                         // corrupted unicode
@@ -2915,7 +2915,8 @@ namespace triagens {
 
       bool unicodeToUTF8 (const char* inputStr, const size_t& len, string& outputStr) {
         uint32_t outputInt = 0;
-        bool ok = true;
+        bool ok;
+
         ok = parseHexanumber(inputStr, len, &outputInt);
         if (ok == false) {
           outputStr = string(inputStr, len);

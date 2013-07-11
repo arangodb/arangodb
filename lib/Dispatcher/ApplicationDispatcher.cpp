@@ -232,14 +232,14 @@ bool ApplicationDispatcher::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::stop () {
-  size_t const MAX_TRIES = 10;
-
   if (_dispatcherReporterTask != 0) {
     _applicationScheduler->scheduler()->destroyTask(_dispatcherReporterTask);
     _dispatcherReporterTask = 0;
   }
 
   if (_dispatcher != 0) {
+    static size_t const MAX_TRIES = 10;
+
     _dispatcher->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {

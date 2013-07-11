@@ -555,9 +555,8 @@ bool ApplicationScheduler::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::stop () {
-  size_t const MAX_TRIES = 10;
-
   if (_scheduler != 0) {
+    static size_t const MAX_TRIES = 10;
 
     // remove all helper tasks
     for (vector<Task*>::iterator i = _tasks.begin();  i != _tasks.end();  ++i) {

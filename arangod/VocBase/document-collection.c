@@ -2881,7 +2881,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  res = TRI_InitVector2(&document->_failedTransactions, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tid_t), 64);
+  res = TRI_InitVector2(&document->_failedTransactions, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tid_t), 32);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeKeyGenerator(keyGenerator);

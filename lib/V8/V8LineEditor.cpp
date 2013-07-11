@@ -82,7 +82,6 @@ static char WordBreakCharacters[] = {
 static char* CompletionGenerator (char const* text, int state) {
   static size_t currentIndex;
   static vector<string> result;
-  char* prefix;
 
   // compute the possible completion
   if (state == 0) {
@@ -93,6 +92,7 @@ static char* CompletionGenerator (char const* text, int state) {
     // locate global object or sub-object
     v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
     string path;
+    char* prefix;
 
     if (*text != '\0') {
       TRI_vector_string_t splitted = TRI_SplitString(text, '.');

@@ -538,6 +538,7 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a cookie
 ////////////////////////////////////////////////////////////////////////////////
+
 void HttpResponse::setCookie (string const& name, string const& value, 
         int lifeTimeSeconds, string const& path, string const& domain,
         bool secure, bool httpOnly) {
@@ -553,8 +554,6 @@ void HttpResponse::setCookie (string const& name, string const& value,
   
   if (lifeTimeSeconds != 0) {
     time_t rawtime;
-    struct tm * timeinfo;
-    char buffer2 [80];
 
     time(&rawtime);    
     if (lifeTimeSeconds > 0) {
@@ -565,6 +564,9 @@ void HttpResponse::setCookie (string const& name, string const& value,
     }
 
     if (rawtime > 0) {
+      struct tm * timeinfo;
+      char buffer2[80];
+
       timeinfo = gmtime(&rawtime);
       strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
       buffer->appendText("; expires=");

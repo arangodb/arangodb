@@ -421,31 +421,47 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief count the number of write collections
+/// @brief prepare the failed transactions lists for each involved collection,
+/// and additionally count the number of write collections
+/// these two operations are combined so we don't need to traverse the list of
+/// collections twice
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CountWriteCollections (TRI_transaction_t* const trx) {
-  int numCollections;
-
-  numCollections = 0;
+static int PrepareFailedLists (TRI_transaction_t* const trx, 
+                               size_t* numCollections) {
+  size_t j = 0;
 
   if (trx->_hasOperations) {
+    TRI_document_collection_t* document;
     size_t i, n;
 
     n = trx->_collections._length;
 
     for (i = 0; i < n; ++i) {
       TRI_transaction_collection_t* trxCollection;
+      int res;
 
       trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
 
       if (trxCollection->_operations != NULL) {
-        numCollections++;
+        j++;
+      }
+
+      document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+      assert(document != NULL);
+
+      res = TRI_EnsureSpareCapacityVector(&document->_failedTransactions, 1);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
     }
   }
 
-  return numCollections;
+  // number of collections
+  *numCollections = j;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,8 +557,14 @@ static int WriteCollectionAbort (TRI_transaction_collection_t* trxCollection) {
   trx = trxCollection->_transaction;
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
   
-  // what should we do if this fails?  
+  // this should never fail in reality, as we have reserved some space in the vector
+  // at the start of writing
   res = TRI_AddIdFailedTransaction(&document->_failedTransactions, trx->_id);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("adding failed transaction to list of failed transactions failed: %s",  
+                TRI_errno_string(res));
+  }
     
   // create the "commit transaction" marker
   res = TRI_CreateMarkerAbortTransaction(trx, &abortMarker);
@@ -560,7 +582,7 @@ static int WriteCollectionAbort (TRI_transaction_collection_t* trxCollection) {
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, abortMarker);
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -593,7 +615,7 @@ static int WriteCollectionCommit (TRI_transaction_collection_t* trxCollection) {
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, commitMarker);
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -626,7 +648,7 @@ static int WriteCollectionPrepare (TRI_transaction_collection_t* trxCollection) 
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, prepareMarker);
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -976,7 +998,14 @@ static int WriteOperations (TRI_transaction_t* const trx) {
   if (trx->_hasOperations) {
     size_t numCollections;
     
-    numCollections = CountWriteCollections(trx);
+    // reserve space in the list of failed transactions of each collection 
+    // if this fails (due to out of memory), we'll abort the transaction
+    res = PrepareFailedLists(trx, &numCollections);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
     TRI_ASSERT_MAINTAINER(numCollections > 0);
 
     if (numCollections == 1) {
