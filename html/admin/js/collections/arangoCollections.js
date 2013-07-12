@@ -169,6 +169,24 @@ window.arangoCollections = Backbone.Collection.extend({
         });
         return data2;
       },
+      getFigures: function (id) {
+        var data2;
+        $.ajax({
+          type: "GET",
+          cache: false,
+          url: "/_api/collection/" + id + "/figures",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            data2 = data;
+          },
+          error: function(data) {
+            data2 = data;
+          }
+        });
+        return data2;
+      },
       checkCollectionName: function (name) {
       },
       newCollection: function (collName, wfs, isSystem, journalSize, collType) {
