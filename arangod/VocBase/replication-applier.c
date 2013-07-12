@@ -326,12 +326,12 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase)
     return NULL;
   }
   
-  res = TRI_LoadApplyStateReplication(vocbase, &applier->_state);
+  res = TRI_LoadStateFileReplicationApplier(vocbase, &applier->_state);
 
   if (res != TRI_ERROR_NO_ERROR && 
       res != TRI_ERROR_FILE_NOT_FOUND) {
     TRI_set_errno(res);
-    TRI_DestroyApplyStateReplication(&applier->_state);
+    TRI_DestroyApplyStateReplicationApplier(&applier->_state);
     TRI_Free(TRI_CORE_MEM_ZONE, applier);
 
     return NULL;
@@ -368,7 +368,7 @@ void TRI_DestroyReplicationApplier (TRI_replication_applier_t* applier) {
 
   TRI_JoinThread(&applier->_thread);
 
-  TRI_DestroyApplyStateReplication(&applier->_state);
+  TRI_DestroyApplyStateReplicationApplier(&applier->_state);
   TRI_FreeString(TRI_CORE_MEM_ZONE, applier->_databaseName);
   TRI_DestroySpin(&applier->_threadLock);
   TRI_DestroyReadWriteLock(&applier->_statusLock);
@@ -462,12 +462,12 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
 
     if (fullSync) {
       // re-init
-      TRI_InitApplyStateReplication(&applier->_state);
+      TRI_InitApplyStateReplicationApplier(&applier->_state);
     }
 
     applier->_state._endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
       
-    TRI_SaveApplyStateReplication(applier->_vocbase, &applier->_state, true);
+    TRI_SaveStateFileReplicationApplier(applier->_vocbase, &applier->_state, true);
 
     res = StartApplier(applier);
   }
@@ -483,7 +483,7 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
 
 int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
                                  TRI_replication_apply_state_t* state) {
-  TRI_InitApplyStateReplication(state);
+  TRI_InitApplyStateReplicationApplier(state);
 
   TRI_ReadLockReadWriteLock(&applier->_statusLock);
   
@@ -608,7 +608,7 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
 /// @brief initialise an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitApplyStateReplication (TRI_replication_apply_state_t* state) {
+void TRI_InitApplyStateReplicationApplier (TRI_replication_apply_state_t* state) {
   memset(state, 0, sizeof(TRI_replication_apply_state_t));
 
   state->_active          = false;
@@ -620,7 +620,7 @@ void TRI_InitApplyStateReplication (TRI_replication_apply_state_t* state) {
 /// @brief destroy an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyApplyStateReplication (TRI_replication_apply_state_t* state) {
+void TRI_DestroyApplyStateReplicationApplier (TRI_replication_apply_state_t* state) {
   if (state->_progress != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, state->_progress);
   }
@@ -639,7 +639,7 @@ void TRI_DestroyApplyStateReplication (TRI_replication_apply_state_t* state) {
 /// @brief remove the replication application state file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveApplyStateReplication (TRI_vocbase_t* vocbase) {
+int TRI_RemoveStateFileReplicationApplier (TRI_vocbase_t* vocbase) {
   char* filename;
   int res;
 
@@ -665,9 +665,9 @@ int TRI_RemoveApplyStateReplication (TRI_vocbase_t* vocbase) {
 /// @brief save the replication application state to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveApplyStateReplication (TRI_vocbase_t* vocbase,
-                                   TRI_replication_apply_state_t const* state,
-                                   bool sync) {
+int TRI_SaveStateFileReplicationApplier (TRI_vocbase_t* vocbase,
+                                         TRI_replication_apply_state_t const* state,
+                                         bool sync) {
   TRI_json_t* json;
   char* filename;
   int res;
@@ -701,8 +701,8 @@ int TRI_SaveApplyStateReplication (TRI_vocbase_t* vocbase,
 /// @brief load the replication application state from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
-                                   TRI_replication_apply_state_t* state) {
+int TRI_LoadStateFileReplicationApplier (TRI_vocbase_t* vocbase,
+                                         TRI_replication_apply_state_t* state) {
   TRI_json_t* json;
   TRI_json_t* serverId;
   TRI_json_t* endpoint;
@@ -710,7 +710,7 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
   char* error;
   int res;
    
-  TRI_InitApplyStateReplication(state);
+  TRI_InitApplyStateReplicationApplier(state);
   filename = GetApplyStateFilename(vocbase);
 
   if (! TRI_ExistsFile(filename)) {
@@ -766,6 +766,34 @@ int TRI_LoadApplyStateReplication (TRI_vocbase_t* vocbase,
   TRI_Free(TRI_CORE_MEM_ZONE, json);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t* config,
+                                                   char* endpoint,
+                                                   double timeout,
+                                                   uint64_t ignoreErrors,
+                                                   int maxConnectRetries) {
+  assert(endpoint != NULL);
+
+  config->_endpoint          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  config->_timeout           = timeout;
+  config->_ignoreErrors      = ignoreErrors;
+  config->_maxConnectRetries = maxConnectRetries;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy an apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t* config) {
+  if (config->_endpoint != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
+    config->_endpoint = NULL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

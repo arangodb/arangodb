@@ -47,6 +47,8 @@
 
 void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
                                     const char* endpoint) {
+  assert(endpoint != NULL);
+
   info->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
   info->_serverId            = 0;
   info->_majorVersion        = 0;
@@ -62,6 +64,7 @@ void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
 void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
   if (info->_endpoint != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, info->_endpoint);
+    info->_endpoint = NULL;
   }
 }
 
@@ -71,6 +74,8 @@ void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
       
 void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
                                    const char* prefix) {
+  assert(info->_endpoint != NULL);
+
   LOG_INFO("%s master at %s, id %llu, version %d.%d, last log tick %llu", 
            prefix,
            info->_endpoint,

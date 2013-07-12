@@ -3195,7 +3195,7 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
   }
  
   TRI_json_t* json = TRI_JsonStateReplicationApplier(&state);
-  TRI_DestroyApplyStateReplication(&state);
+  TRI_DestroyApplyStateReplicationApplier(&state);
 
   v8::Handle<v8::Value> result = TRI_ObjectJson(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
