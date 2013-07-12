@@ -128,6 +128,7 @@ ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised whe
 ERROR_REPLICATION_INVALID_APPLY_STATE,1407,"invalid apply state","Will be raised when an invalid apply state file is found."
 ERROR_REPLICATION_UNEXPECTED_TRANSACTION,1408,"invalid transaction","Will be raised when an unexpected transaction id is found."
 ERROR_REPLICATION_STOPPED,1409,"replication stopped","Will be raised when the replication application is stopped."
+ERROR_REPLICATION_INVALID_CONFIGURATION,1410,"invalid replication apply configuration","Will be raised when the configuration for the replication application is invalid."
 
 ################################################################################
 ## ArangoDB query errors
