@@ -127,9 +127,17 @@ function NodeShaper(parent, flags, idfunc) {
     addShape = noop,
     addLabel = noop,
     addLabelColor = function() {return "black";},
-    addCommunityShape = function(g) {
+    addCommunityShape = function(g, id) {
+      var move = 9;
+      g.attr("stroke", colourMapper.getForegroundCommunityColour());
+      addShape(g, 9);
+      addShape(g, 6);
+      addShape(g, 3);
+      addShape(g);
+      /* Archive
       g.append("polygon")
       .attr("points", "0,-25 -16,20 23,-10 -23,-10 16,20");
+      */
     },
     addCommunityLabel = function(g) {
       g.append("text") // Append a label for the node
@@ -239,10 +247,14 @@ function NodeShaper(parent, flags, idfunc) {
           break;
         case NodeShaper.shapes.CIRCLE:
           radius = shape.radius || 25;
-          addShape = function (node) {
+          addShape = function (node, shift) {
             node
               .append("circle") // Display nodes as circles
               .attr("r", radius); // Set radius
+            if (shift) {
+              node.attr("cx", -shift)
+                .attr("cy", -shift);
+            }
           };
           break;
         case NodeShaper.shapes.RECT:
@@ -253,21 +265,26 @@ function NodeShaper(parent, flags, idfunc) {
               return -(width(d) / 2);
             };
           } else {
-            translateX = -(width / 2);
+            translateX = function(d) {
+              return -(width / 2);
+            };
           }
           if (_.isFunction(height)) {
             translateY = function(d) {
               return -(height(d) / 2);
             };
           } else {
-            translateY = -(height / 2);
+            translateY = function() {
+              return -(height / 2);
+            }
           }
-          addShape = function(node) {
+          addShape = function(node, shift) {
+            shift = shift || 0;
             node.append("rect") // Display nodes as rectangles
               .attr("width", width) // Set width
               .attr("height", height) // Set height
-              .attr("x", translateX)
-              .attr("y", translateY)
+              .attr("x", function(d) { return translateX(d) - shift;})
+              .attr("y", function(d) { return translateY(d) - shift;})
               .attr("rx", "8")
               .attr("ry", "8");
           };
