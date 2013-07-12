@@ -1457,7 +1457,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   bool iterateMarkers;
   bool isSystem;
   int res;
+#ifdef TRI_ENABLE_REPLICATION
   int res2;
+#endif
 
   assert(defaults != NULL);
 
