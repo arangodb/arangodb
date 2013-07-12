@@ -47,7 +47,7 @@
   box-shadow: 0 0 0  !important;
 }
 
-.icon-edit, .icon-info-sign {
+.span3 .icon-edit, .span3 .icon-info-sign {
   position: absolute;
   margin-top: 3px;
   margin-right: 5px;
@@ -55,11 +55,11 @@
   cursor: pointer;
 }
 
-.icon-edit {
+.span3 .icon-edit {
   right: 0px;
 }
 
-.icon-info-sign {
+.span3 .icon-info-sign {
   right: 20px;
 }
 
