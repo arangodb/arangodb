@@ -124,6 +124,7 @@ ReplicationFetcher::~ReplicationFetcher () {
     delete _endpoint;
   }
 
+  TRI_DestroyApplyStateReplicationApplier(&_applyState);
   TRI_DestroyMasterInfoReplication(&_masterInfo);
 }
 
