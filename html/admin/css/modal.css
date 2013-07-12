@@ -3,6 +3,26 @@
   text-align:left;
 }
 
+.collectinInfoTable {
+  width: 200px !important;
+  max-width: 200px !important;
+}
+
+.collectionInfoTh {
+  text-align:left;
+  min-width: 60px;
+}
+
+.modal-body-right, .modal-body-left {
+  float:left;
+  width:50%;
+  max-width: 50% !important;
+}
+
+.tooltipInfoTh {
+  width: 10%;
+}
+
 .modal-body .icon-info-sign {
   padding-bottom: 5px;
   margin-bottom: 10px;
