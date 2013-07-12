@@ -75,3 +75,24 @@
   background: none repeat scroll 0 0 #383434;
   color: #FFFFFF;
 }
+
+.footer-left {
+  background: none repeat scroll 0 0 #383434;
+  color: #FFFFFF;
+  width: 33.3%;
+  float: left;
+}
+
+.footer-mid {
+  background: none repeat scroll 0 0 #383434;
+  color: #FFFFFF;
+  width: 33.3%;
+  float: left;
+}
+
+.footer-right {
+  background: none repeat scroll 0 0 #383434;
+  color: #383434;
+  width: 33.3%;
+  float: left;
+}
