@@ -50,7 +50,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/primary-collection.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-applier.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/synchroniser.h"
@@ -252,9 +253,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
                           TRI_vocbase_defaults_t* dst) {
   dst->defaultMaximalSize           = src->defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationLogSize           = src->replicationLogSize;
-#endif
   dst->removeOnDrop                 = src->removeOnDrop;
   dst->removeOnCompacted            = src->removeOnCompacted;
   dst->defaultWaitForSync           = src->defaultWaitForSync;
@@ -263,8 +261,7 @@ static void CopyDefaults (TRI_vocbase_defaults_t const* src,
   dst->requireAuthentication        = src->requireAuthentication;    
   dst->authenticateSystemOnly       = src->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationEnable            = src->replicationEnable;
-  dst->replicationWaitForSync       = src->replicationWaitForSync;
+  dst->replicationEnableLogger      = src->replicationEnableLogger;
 #endif
 }  
 
@@ -276,9 +273,6 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
                            TRI_vocbase_defaults_t const* defaults) {
 
   vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationLogSize           = defaults->replicationLogSize;
-#endif
   vocbase->_removeOnDrop                 = defaults->removeOnDrop;
   vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
   vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
@@ -287,8 +281,7 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
   vocbase->_requireAuthentication        = defaults->requireAuthentication;    
   vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationEnable            = defaults->replicationEnable;
-  vocbase->_replicationWaitForSync       = defaults->replicationWaitForSync;
+  vocbase->_replicationEnableLogger      = defaults->replicationEnableLogger;
 #endif
 }
 
@@ -300,9 +293,6 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
                          TRI_vocbase_defaults_t* defaults) {
 
   defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationLogSize          = vocbase->_replicationLogSize;
-#endif
   defaults->removeOnDrop                = vocbase->_removeOnDrop;
   defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
   defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
@@ -311,8 +301,7 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
   defaults->requireAuthentication       = vocbase->_requireAuthentication;    
   defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationEnable           = vocbase->_replicationEnable;
-  defaults->replicationWaitForSync      = vocbase->_replicationWaitForSync;
+  defaults->replicationEnableLogger     = vocbase->_replicationEnableLogger;
 #endif
 }
 
@@ -1468,6 +1457,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   bool iterateMarkers;
   bool isSystem;
   int res;
+#ifdef TRI_ENABLE_REPLICATION
+  int res2;
+#endif
 
   assert(defaults != NULL);
 
@@ -1653,15 +1645,29 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
 
   if (vocbase->_replicationLogger == NULL) {
-    LOG_FATAL_AND_EXIT("initialising replication for data '%s' failed", name);
+    LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
   }
 
-  if (defaults->replicationEnable) {
+  if (defaults->replicationEnableLogger) {
     res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("unable to start replication in database '%s'", name);
+      LOG_FATAL_AND_EXIT("unable to start replication logger for database '%s'", name);
     }
+  }
+  
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+
+  if (vocbase->_replicationApplier == NULL) {
+    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
+  }
+ 
+  res2 = TRI_StartReplicationApplier(vocbase->_replicationApplier);
+
+  if (res2 != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("unable to start replication applier for database '%s': %s", 
+                name, 
+                TRI_errno_string(res2));
   }
 #endif
     
@@ -1730,6 +1736,9 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 #ifdef TRI_ENABLE_REPLICATION
   TRI_FreeReplicationLogger(vocbase->_replicationLogger);
   vocbase->_replicationLogger = NULL;
+  
+  TRI_FreeReplicationApplier(vocbase->_replicationApplier);
+  vocbase->_replicationApplier = NULL;
 #endif
 
   // this will signal the synchroniser and the compactor threads to do one last iteration

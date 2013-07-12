@@ -372,7 +372,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
                           bool journal) {
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* found;
-  TRI_doc_mptr_t* found2;
   TRI_document_collection_t* document;
   TRI_primary_collection_t* primary;
   compaction_context_t* context;
@@ -385,7 +384,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+
     TRI_doc_document_key_marker_t const* d;
+    TRI_doc_mptr_t* found2;
     TRI_voc_key_t key;
     bool deleted;
 

@@ -193,6 +193,10 @@ extern "C" {
 ///   stream.
 /// - 1407: @LIT{invalid apply state}
 ///   Will be raised when an invalid apply state file is found.
+/// - 1408: @LIT{invalid transaction}
+///   Will be raised when an unexpected transaction id is found.
+/// - 1409: @LIT{replication stopped}
+///   Will be raised when the replication application is stopped.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1284,6 +1288,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_INVALID_APPLY_STATE                         (1407)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1408: ERROR_REPLICATION_UNEXPECTED_TRANSACTION
+///
+/// invalid transaction
+///
+/// Will be raised when an unexpected transaction id is found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION                      (1408)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1409: ERROR_REPLICATION_STOPPED
+///
+/// replication stopped
+///
+/// Will be raised when the replication application is stopped.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_STOPPED                                     (1409)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

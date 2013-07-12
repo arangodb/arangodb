@@ -97,7 +97,11 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/key-generator.c \
 	arangod/VocBase/marker.c \
 	arangod/VocBase/primary-collection.c \
-	arangod/VocBase/replication.c \
+	arangod/VocBase/replication-applier.c \
+	arangod/VocBase/replication-common.c \
+	arangod/VocBase/replication-dump.c \
+	arangod/VocBase/replication-logger.c \
+	arangod/VocBase/replication-master.c \
 	arangod/VocBase/server-id.c \
 	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
@@ -121,7 +125,8 @@ endif
 if ENABLE_REPLICATION
 
 bin_arangod_SOURCES += \
-	arangod/Replication/ReplicationFetcher.cpp
+	arangod/Replication/ReplicationFetcher.cpp \
+	arangod/Replication/replication-static.cpp
 endif
 
 ################################################################################

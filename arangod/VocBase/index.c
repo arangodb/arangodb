@@ -45,7 +45,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -341,15 +341,15 @@ void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyFieldsVector (TRI_vector_string_t* dst, TRI_vector_pointer_t* src) {
-  char** qtr;
-  void** ptr;
-  void** end;
-
   TRI_InitVectorString(dst, TRI_CORE_MEM_ZONE);
 
   TRI_ClearVectorString(dst);
 
   if (0 < src->_length) {
+    char** qtr;
+    void** ptr;
+    void** end;
+
     TRI_ResizeVectorString (dst, src->_length);
 
     ptr = src->_buffer;

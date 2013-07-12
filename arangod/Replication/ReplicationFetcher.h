@@ -31,7 +31,9 @@
 #include "Basics/Common.h"
 
 #include "Logger/Logger.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-applier.h"
+#include "VocBase/replication-dump.h"
+#include "VocBase/replication-master.h"
 #include "VocBase/server-id.h"
 
 // -----------------------------------------------------------------------------
@@ -62,33 +64,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class ReplicationFetcher {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replication apply setup phase
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef enum {
-          PHASE_VALIDATE,
-          PHASE_DROP,
-          PHASE_CREATE,
-          PHASE_DATA
-        }
-        setup_phase_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -131,11 +106,12 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method
+/// @brief non-static run method
 ////////////////////////////////////////////////////////////////////////////////
 
         int run (bool, 
-                 string&);
+                 uint64_t,
+                 std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
@@ -160,16 +136,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update the tick id of the apply state
-////////////////////////////////////////////////////////////////////////////////
-
-        void updateTick (TRI_voc_tick_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief save the current apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int saveApplyState (string&);
+        int saveApplyState ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get chunk size for a transfer
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t getChunkSize () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON
@@ -187,7 +163,8 @@ namespace triagens {
 /// @brief creates a transaction for a single operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_transaction_s* createSingleOperationTransaction (TRI_voc_cid_t);
+        struct TRI_transaction_s* createSingleOperationTransaction (TRI_voc_cid_t,
+                                                                    int*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a transaction, based on the JSON provided
@@ -207,7 +184,8 @@ namespace triagens {
     
         int processDocument (TRI_replication_operation_e,
                              struct TRI_json_s const*,
-                             string&);
+                             bool&,
+                             std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the JSON provided
@@ -248,7 +226,7 @@ namespace triagens {
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        struct TRI_json_s const*,
-                                       string&);
+                                       std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump
@@ -256,50 +234,51 @@ namespace triagens {
 
         int applyCollectionDump (struct TRI_transaction_collection_s*,
                                  httpclient::SimpleHttpResult*,
-                                 string&,
-                                 uint64_t&);
+                                 std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
         int applyLogMarker (struct TRI_json_s const*,
-                            string&);
+                            bool&,
+                            std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
         int applyLog (httpclient::SimpleHttpResult*,
-                      string&,
+                      std::string&,
                       uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get local replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getLocalState (string&,  
+        int getLocalState (std::string&,  
                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getMasterState (string&);
+        int getMasterState (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get master inventory
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getMasterInventory (string&);
+        int getMasterInventory (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleCollectionDump (struct TRI_transaction_collection_s*,
+                                  const std::string&,
                                   TRI_voc_tick_t,
-                                  string&);
+                                  std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the information about a collection
@@ -307,41 +286,36 @@ namespace triagens {
 
         int handleCollectionInitial (struct TRI_json_s const*,
                                      struct TRI_json_s const*, 
-                                     string&, 
-                                     setup_phase_e);
+                                     std::string&, 
+                                     TRI_replication_apply_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the state response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleStateResponse (struct TRI_json_s const*, 
-                                 string&);
+                                 std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the inventory response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleInventoryResponse (struct TRI_json_s const*, string&);
+        int handleInventoryResponse (struct TRI_json_s const*, std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all collections from a list and apply an action
 ////////////////////////////////////////////////////////////////////////////////
   
         int iterateCollections (struct TRI_json_s const*,
-                                string&,
-                                setup_phase_e);
+                                std::string&,
+                                TRI_replication_apply_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the continuous synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
-        int runContinuous (string&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get chunk size for a transfer
-////////////////////////////////////////////////////////////////////////////////
-
-        uint64_t getChunkSize () const;
+        int runContinuous (std::string&,
+                           uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

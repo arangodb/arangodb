@@ -340,6 +340,11 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   regex_t re;
   size_t i, n;
   
+  TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&structure._datafiles, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&structure._indexes, TRI_CORE_MEM_ZONE);
+  
   if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
@@ -349,11 +354,6 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   // check files within the directory
   files = TRI_FilesDirectory(path);
   n = files._length;
-
-  TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
-  TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
-  TRI_InitVectorString(&structure._datafiles, TRI_CORE_MEM_ZONE);
-  TRI_InitVectorString(&structure._indexes, TRI_CORE_MEM_ZONE);
 
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
