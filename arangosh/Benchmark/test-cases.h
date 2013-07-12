@@ -186,9 +186,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
+      char* ptr = TRI_StealStringBuffer(buffer); 
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -307,9 +305,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
+      char* ptr = TRI_StealStringBuffer(buffer); 
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -430,9 +426,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
+      char* ptr = TRI_StealStringBuffer(buffer); 
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -539,9 +533,7 @@ struct SkiplistTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
+      char* ptr = TRI_StealStringBuffer(buffer); 
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -648,9 +640,7 @@ struct HashTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
+      char* ptr = TRI_StealStringBuffer(buffer); 
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -814,8 +804,8 @@ struct CollectionCreationTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
 
     // this will free the string buffer frame, but not the string
-    data = buffer->_buffer;
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+    data = TRI_StealStringBuffer(buffer); 
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     *mustFree = true;
     return (const char*) data;
@@ -932,9 +922,7 @@ struct TransactionAqlTest : public BenchmarkOperation {
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
-    char* ptr = buffer->_buffer;
-    buffer->_buffer = NULL;
-
+    char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return (const char*) ptr;
@@ -999,9 +987,7 @@ struct TransactionCountTest : public BenchmarkOperation {
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
-    char* ptr = buffer->_buffer;
-    buffer->_buffer = NULL;
-
+    char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return (const char*) ptr;
@@ -1092,9 +1078,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
-    char* ptr = buffer->_buffer;
-    buffer->_buffer = NULL;
-
+    char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return (const char*) ptr;

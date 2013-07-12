@@ -42,7 +42,7 @@
     var svg, dispatcherUI, list, $list,
     nodeShaper, edgeShaper, layouter,
     nodes, edges, adapter,
-    mousePointerbox,
+    //mousePointerbox,
     
     addSpies = function() {
       spyOn(layouter, "drag");
@@ -54,6 +54,7 @@
       spyOn(adapter, "deleteEdge");
       spyOn(adapter, "loadNode");
       spyOn(adapter, "expandCommunity");
+      spyOn(adapter, "explore");
     };
 
 
@@ -142,18 +143,28 @@
       document.body.appendChild(list);
       list.id = "control_event_list";
       $list = $(list);
+      
+      nodeShaper.drawNodes(nodes);
+      edgeShaper.drawEdges(edges);
+      
+      /* Archive
       mousePointerbox = document.createElement("div");
       mousePointerbox.id = "mousepointer";
       mousePointerbox.className = "mousepointer";
       
       document.body.appendChild(mousePointerbox);
       
-      nodeShaper.drawNodes(nodes);
-      edgeShaper.drawEdges(edges);
+      
       
       dispatcherUI = new EventDispatcherControls(
         list, mousePointerbox, nodeShaper, edgeShaper, completeConfig
       );
+      */
+      
+      dispatcherUI = new EventDispatcherControls(
+        list, nodeShaper, edgeShaper, completeConfig
+      );
+      
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
       
@@ -172,23 +183,40 @@
           this.message = function() {
             return "Expected " + item.className + " to be " + name; 
           };
-          return item.className === name;
+          return $(item).hasClass(name);
         },
-        toConformToToolbox: function() {
+        toConformToToolboxBKP: function() {
           var box = this.actual;
-          _.each(box.children, function(div) {
-            expect(div).toBeTag("div");
-            expect(div).toBeOfClass("btn btn-group");
-            expect(div.children.length).toEqual(2);
-            _.each(div.children, function(btn) {
-              expect(btn).toBeTag("button");
-              expect(btn).toBeOfClass("btn btn-icon");
-              expect(btn.children.length).toEqual(1);
-              expect(btn.firstChild).toBeTag("i");
-              expect(btn.firstChild.className).toMatch(/^icon-\S+ icon-white$/);
-            });
+          _.each(box.children, function(btn) {
+            expect(btn).toBeTag("button");
+            expect(btn).toBeOfClass("btn btn-icon");
+            expect(btn.children.length).toEqual(1);
+            expect(btn.firstChild).toBeTag("i");
+            expect(btn.firstChild.className).toMatch(/^icon-\S+ icon-white$/);
           });          
           return true;
+        },
+        
+        toConformToToolbox: function() {
+          var box = this.actual,
+            foundActive = false,
+            failed = false;
+          _.each(box.children, function(btn) {
+            expect(btn).toBeTag("button");
+            expect(btn).toBeOfClass("btn btn-icon");
+            expect(btn.children.length).toEqual(1);
+            expect(btn.firstChild).toBeTag("img");
+            expect(btn.firstChild).toBeOfClass("gv-icon-btn");
+            if ($(btn.firstChild).hasClass("active")) {
+              if (foundActive) {
+                failed = true;
+              } else {
+                foundActive = true;
+              }
+            }
+          });
+          this.message = "Did find more than one active button.";        
+          return !failed;
         }
       });
       
@@ -198,22 +226,34 @@
       expect(list).toConformToToolbox();
       document.body.removeChild(list);
       document.body.removeChild(svg);
-      document.body.removeChild(mousePointerbox);
+      //document.body.removeChild(mousePointerbox);
     });
 
     it('should throw errors if not setup correctly', function() {
       expect(function() {
         var e = new EventDispatcherControls();
       }).toThrow("A list element has to be given.");
+      /* Archive
       expect(function() {
         var e = new EventDispatcherControls(list);
       }).toThrow("The cursor decoration box has to be given.");
+      
       expect(function() {
         var e = new EventDispatcherControls(list, mousePointerbox);
       }).toThrow("The NodeShaper has to be given.");
       expect(function() {
         var e = new EventDispatcherControls(list, mousePointerbox, nodeShaper);
       }).toThrow("The EdgeShaper has to be given.");
+      */
+            
+      expect(function() {
+        var e = new EventDispatcherControls(list);
+      }).toThrow("The NodeShaper has to be given.");
+      
+      expect(function() {
+        var e = new EventDispatcherControls(list, nodeShaper);
+      }).toThrow("The EdgeShaper has to be given.");
+      
     });
     
     it('should be able to add a new node control to the list', function() {
@@ -236,7 +276,7 @@
           }
         });
         
-        expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign");
+        //expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign");
       
         helper.simulateMouseEvent("click", "svg");
       
@@ -290,7 +330,7 @@
           }
         });
         
-        expect(mousePointerbox.className).toEqual("mousepointer icon-move");
+        //expect(mousePointerbox.className).toEqual("mousepointer icon-move");
         
         helper.simulateDragEvent("1");
         
@@ -330,7 +370,7 @@
           }
         });
       
-        expect(mousePointerbox.className).toEqual("mousepointer icon-pencil");
+        //expect(mousePointerbox.className).toEqual("mousepointer icon-pencil");
       });
       
       it('should be possible to edit nodes', function() {
@@ -588,11 +628,11 @@
           }
         });
 
-        expect(mousePointerbox.className).toEqual("mousepointer icon-plus");
+        //expect(mousePointerbox.className).toEqual("mousepointer icon-plus");
 
         helper.simulateMouseEvent("click", "1");
         
-        expect(adapter.loadNode).toHaveBeenCalledWith(nodes[0]._id, jasmine.any(Function));
+        expect(adapter.explore).toHaveBeenCalledWith(nodes[0], jasmine.any(Function));
         
       });      
     });
@@ -619,7 +659,7 @@
           }
         });
       
-        expect(mousePointerbox.className).toEqual("mousepointer icon-trash");
+        //expect(mousePointerbox.className).toEqual("mousepointer icon-trash");
       
         helper.simulateMouseEvent("click", "1");
         
@@ -662,7 +702,7 @@
             }
           });
         
-          expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
+          //expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
         
           helper.simulateMouseEvent("mousedown", "2");
         

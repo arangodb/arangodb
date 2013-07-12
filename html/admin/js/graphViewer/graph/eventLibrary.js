@@ -58,16 +58,10 @@ function EventLibrary() {
   var self = this;
   
   this.checkExpandConfig = function(config) {
-    if (config.edges === undefined) {
-      throw "Edges have to be defined";
-    }
-    if (config.nodes === undefined) {
-      throw "Nodes have to be defined";
-    }
     if (config.startCallback === undefined) {
       throw "A callback to the Start-method has to be defined";
     }
-    if (config.adapter === undefined) {
+    if (config.adapter === undefined || config.adapter.explore === undefined) {
       throw "An adapter to load data has to be defined";
     }
     if (config.reshapeNodes === undefined) {
@@ -78,70 +72,12 @@ function EventLibrary() {
   
   this.Expand = function (config) {
     self.checkExpandConfig(config);
-    var edges = config.edges,
-    nodes = config.nodes,
-    startCallback = config.startCallback,
-    adapter = config.adapter,
-    loadNode = adapter.loadNode,
-    expandCom = adapter.expandCommunity,
-    reshapeNodes = config.reshapeNodes,
-    removeNode = function (node) {
-      var i;
-      for ( i = 0; i < nodes.length; i++ ) {
-        if ( nodes[i] === node ) {
-          nodes.splice( i, 1 );
-          return;
-        }
-      }
-    },
-  
-    // Helper function to easily remove all outbound edges for one node
-    removeOutboundEdgesFromNode = function ( node ) {
-      if (node._outboundCounter > 0) {
-        var subNodes = [],
-        i;
-        for ( i = 0; i < edges.length; i++ ) {
-          if ( edges[i].source === node ) {
-            subNodes.push(edges[i].target);
-            node._outboundCounter--;
-            edges[i].target._inboundCounter--;
-            edges.splice( i, 1 );
-            if (node._outboundCounter === 0) {
-              break;
-            }
-            i--;
-          }
-        }
-        return subNodes;
-      }
-    },
-  
-    collapseNode = function(node) {
-      node._expanded = false;
-      var subNodes = removeOutboundEdgesFromNode(node);    
-      _.each(subNodes, function (n) {
-        if (n._inboundCounter === 0) {
-          collapseNode(n);
-          removeNode(n);
-        }
-      });
-    },
-  
-    expandNode = function(n) {
-      if (/^\*community/.test(n._id)) {
-        expandCom(n, startCallback);
-      } else {
-        n._expanded = true;
-        loadNode(n._id, startCallback);
-      }
-    };
-  
+    var 
+      startCallback = config.startCallback,
+      explore = config.adapter.explore,
+      reshapeNodes = config.reshapeNodes;
     return function(n) {
-      if (!n._expanded) {
-        expandNode(n);
-      } else {
-        collapseNode(n);
-      }
+      explore(n, startCallback);
       reshapeNodes();
       startCallback();
     };

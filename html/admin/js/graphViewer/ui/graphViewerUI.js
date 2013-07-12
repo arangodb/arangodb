@@ -51,7 +51,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     colourList,
     nodeShaperUI,
     adapterUI,
-    mousePointerBox = document.createElement("div"),
+    //mousePointerBox = document.createElement("div"),
     svg,
     
     makeBootstrapDropdown = function (div, id, title) {
@@ -84,17 +84,19 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       var toolbox = document.createElement("div"),
         dispatcherUI = new EventDispatcherControls(
           toolbox,
-          mousePointerBox,
+          //mousePointerBox,
           graphViewer.nodeShaper,
           graphViewer.edgeShaper,
           graphViewer.dispatcherConfig
         );
       toolbox.id = "toolbox";
       toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
+      background.appendChild(toolbox);
+      /*
       mousePointerBox.id = "mousepointer";
       mousePointerBox.className = "mousepointer";
-      background.appendChild(toolbox);
       background.appendChild(mousePointerBox);
+      */
       dispatcherUI.addAll();
     },
     createMenu = function() {
@@ -155,14 +157,40 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         ),
         */
         
+        showSpinner = function() {
+          $(background).css("cursor", "progress");
+        },
+        
+        hideSpinner = function() {
+          $(background).css("cursor", "");
+        },
+        
+        alertError = function(msg) {
+          window.alert(msg);
+        },
+        
+        resultCB = function(res) {
+          hideSpinner();
+          if (res && res.errorCode && res.errorCode === 404) {
+            alertError("Sorry could not find a matching node.");
+            return;
+          }
+          return;
+        },
+        
         searchFunction = function() {
+          showSpinner();
           if (searchAttrField.value === ""
             || searchAttrField.value === undefined) {
-            graphViewer.loadGraph(searchValueField.value);
+            graphViewer.loadGraph(
+              searchValueField.value,
+              resultCB
+            );
           } else {
             graphViewer.loadGraphWithAttributeValue(
               searchAttrField.value,
-              searchValueField.value
+              searchValueField.value,
+              resultCB
             );
           }
         };
@@ -256,6 +284,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       var intSVG = $("#graphViewerSVG");
       colourList.style.top = intSVG.position().top.toFixed(1) + "px";
       colourList.style.left = (intSVG.position().left + intSVG.width()).toFixed(1) + "px";
+      colourList.style.height = intSVG.height() + "px";
+      colourList.style.overflow = "auto";
       container.appendChild(colourList);
     };
   container.appendChild(menubar);

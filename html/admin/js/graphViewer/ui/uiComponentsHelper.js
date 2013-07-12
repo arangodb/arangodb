@@ -46,7 +46,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
     button.onclick = callback;
   };
   
-  uiComponentsHelper.createIconButton = function(icon, prefix, callback) {
+  uiComponentsHelper.createIconButtonBKP = function(icon, prefix, callback) {
     var button = document.createElement("button"),
       i = document.createElement("i");
     button.className = "btn btn-icon";
@@ -54,6 +54,23 @@ var uiComponentsHelper = uiComponentsHelper || {};
     button.appendChild(i);
     i.className = "icon-" + icon + " icon-white";
     button.onclick = callback;
+    return button;
+  };
+  
+  uiComponentsHelper.createIconButton = function(icon, prefix, callback) {
+    var button = document.createElement("button"),
+      i = document.createElement("img");
+    button.className = "btn btn-icon";
+    button.id = prefix;
+    i.className = "gv-icon-btn " + icon;
+    button.appendChild(i);
+    button.onclick = function() {
+      $(".gv-icon-btn").each(function(i, img) {
+        $(img).toggleClass("active", false);
+      });
+      $(i).toggleClass("active", true);
+      callback();
+    };
     return button;
   };
   

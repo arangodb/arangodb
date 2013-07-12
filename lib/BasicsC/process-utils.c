@@ -245,7 +245,6 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 
 #ifdef TRI_HAVE_MACH
   {
-    int i;
     kern_return_t rc;
     thread_array_t array;
     mach_msg_type_number_t count;
@@ -253,6 +252,8 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     rc = task_threads(mach_task_self(), &array, &count);
 
     if (rc == KERN_SUCCESS) {
+      int i;
+
       result._numberThreads = count;
 
       for (i = 0;  i < count;  ++i) {

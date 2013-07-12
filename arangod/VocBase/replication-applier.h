@@ -1,0 +1,303 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication applier
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRIAGENS_VOC_BASE_REPLICATION_APPLIER_H
+#define TRIAGENS_VOC_BASE_REPLICATION_APPLIER_H 1
+
+#include "BasicsC/common.h"
+#include "BasicsC/locks.h"
+#include "BasicsC/threads.h"
+#include "Replication/replication-static.h"
+#include "VocBase/replication-common.h"
+#include "VocBase/server-id.h"
+#include "VocBase/voc-types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_json_s;
+struct TRI_transaction_s;
+struct TRI_vocbase_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               REPLICATION APPLIER
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply phases
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication apply setup phase
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  PHASE_NONE,
+  PHASE_INIT,
+  PHASE_DROP,
+  PHASE_CREATE,
+  PHASE_DUMP,
+  PHASE_FOLLOW
+}
+TRI_replication_apply_phase_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct containing a replication apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_apply_configuration_s {
+  char*         _endpoint;
+  double        _timeout;
+  uint64_t      _ignoreErrors;
+  int           _maxConnectRetries;
+}
+TRI_replication_apply_configuration_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct containing a replication apply error
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_apply_error_s {
+  int         _code;
+  char*       _msg;
+}
+TRI_replication_apply_error_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state information about replication application
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_apply_state_s {
+  struct TRI_transaction_s*              _trx;
+  TRI_voc_tid_t                          _externalTid;
+  TRI_voc_tick_t                         _lastProcessedContinuousTick;
+  TRI_voc_tick_t                         _lastAppliedContinuousTick;
+  bool                                   _active;
+  TRI_replication_apply_phase_e          _phase;
+  char*                                  _progress;
+  TRI_voc_tick_t                         _lastAppliedInitialTick;
+  TRI_server_id_t                        _serverId;
+  TRI_replication_apply_error_t          _lastError;
+  TRI_replication_apply_configuration_t  _configuration;
+  char*                          _endpoint;
+}
+TRI_replication_apply_state_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_applier_s {
+  struct TRI_vocbase_s*          _vocbase;
+  TRI_read_write_lock_t          _statusLock;
+  TRI_spin_t                     _threadLock;
+  bool                           _terminateThread;
+  TRI_replication_apply_state_t  _state;
+  TRI_thread_t                   _thread;
+  void*                          _fetcher;
+  char*                          _databaseName;
+}
+TRI_replication_applier_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_replication_applier_t* TRI_CreateReplicationApplier (struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyReplicationApplier (TRI_replication_applier_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeReplicationApplier (TRI_replication_applier_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StartReplicationApplier (TRI_replication_applier_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StopReplicationApplier (TRI_replication_applier_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ConfigureReplicationApplier (TRI_replication_applier_t*,
+                                     char const*,
+                                     double,
+                                     bool,
+                                     uint64_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current replication apply state
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StateReplicationApplier (TRI_replication_applier_t*,
+                                 TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of an applier state
+////////////////////////////////////////////////////////////////////////////////
+  
+struct TRI_json_s* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an applier error
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SetErrorReplicationApplier (TRI_replication_applier_t*,
+                                    int,
+                                    char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current phase
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetPhaseReplicationApplier (TRI_replication_applier_t*,
+                                     TRI_replication_apply_phase_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the progress
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetProgressReplicationApplier (TRI_replication_applier_t*,
+                                        char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply state struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitApplyStateReplicationApplier (TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy an apply state struct
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyApplyStateReplicationApplier (TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save the replication application state to a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SaveStateFileReplicationApplier (struct TRI_vocbase_s*,
+                                         TRI_replication_apply_state_t const*,
+                                         bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the replication application state file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveStateFileReplicationApplier (struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load the replication application state from a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LoadStateFileReplicationApplier (struct TRI_vocbase_s*,
+                                         TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*,
+                                                   char*,
+                                                   double,
+                                                   uint64_t,
+                                                   int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy an apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

@@ -28,10 +28,12 @@ module.exports = function(karma) {
       'helper/objectsHelper.js',
       'helper/mocks.js',
       'helper/commMock.js',
+      'helper/uiMatchers.js',
 
     // Core Modules
       '../graphViewer.js',
       '../graph/colourMapper.js',
+      '../graph/webWorkerWrapper.js',
       '../graph/nodeShaper.js',
       '../graph/abstractAdapter.js',
       '../graph/jsonAdapter.js',
@@ -83,6 +85,7 @@ module.exports = function(karma) {
       'specGraphViewer/graphViewerPreviewSpec.js',
       'specNodeReducer/nodeReducerSpec.js',
       'specNodeReducer/modularityJoinerSpec.js',
+      'specWebWorker/workerWrapperSpec.js',
       'specJSLint/jsLintSpec.js'
     ],
 

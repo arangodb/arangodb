@@ -50,7 +50,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/primary-collection.h"
-#include "VocBase/replication.h"
+#include "VocBase/replication-applier.h"
+#include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/synchroniser.h"
@@ -93,6 +94,29 @@ static TRI_spin_t TickLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_defaults_t SystemDefaults;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief auxiliary struct for index iteration
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct index_json_helper_s {
+  TRI_json_t*    _list;
+  TRI_voc_tick_t _maxTick;
+}
+index_json_helper_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -229,9 +253,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
                           TRI_vocbase_defaults_t* dst) {
   dst->defaultMaximalSize           = src->defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationLogSize           = src->replicationLogSize;
-#endif
   dst->removeOnDrop                 = src->removeOnDrop;
   dst->removeOnCompacted            = src->removeOnCompacted;
   dst->defaultWaitForSync           = src->defaultWaitForSync;
@@ -240,8 +261,7 @@ static void CopyDefaults (TRI_vocbase_defaults_t const* src,
   dst->requireAuthentication        = src->requireAuthentication;    
   dst->authenticateSystemOnly       = src->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  dst->replicationEnable            = src->replicationEnable;
-  dst->replicationWaitForSync       = src->replicationWaitForSync;
+  dst->replicationEnableLogger      = src->replicationEnableLogger;
 #endif
 }  
 
@@ -253,9 +273,6 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
                            TRI_vocbase_defaults_t const* defaults) {
 
   vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationLogSize           = defaults->replicationLogSize;
-#endif
   vocbase->_removeOnDrop                 = defaults->removeOnDrop;
   vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
   vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
@@ -264,8 +281,7 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
   vocbase->_requireAuthentication        = defaults->requireAuthentication;    
   vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  vocbase->_replicationEnable            = defaults->replicationEnable;
-  vocbase->_replicationWaitForSync       = defaults->replicationWaitForSync;
+  vocbase->_replicationEnableLogger      = defaults->replicationEnableLogger;
 #endif
 }
 
@@ -277,9 +293,6 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
                          TRI_vocbase_defaults_t* defaults) {
 
   defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationLogSize          = vocbase->_replicationLogSize;
-#endif
   defaults->removeOnDrop                = vocbase->_removeOnDrop;
   defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
   defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
@@ -288,8 +301,7 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
   defaults->requireAuthentication       = vocbase->_requireAuthentication;    
   defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  defaults->replicationEnable           = vocbase->_replicationEnable;
-  defaults->replicationWaitForSync      = vocbase->_replicationWaitForSync;
+  defaults->replicationEnableLogger     = vocbase->_replicationEnableLogger;
 #endif
 }
 
@@ -338,19 +350,21 @@ static int ReadShutdownInfo (char const* filename) {
   }
   
   shutdownTime = TRI_LookupArrayJson(json, "shutdownTime");
-  if (shutdownTime != NULL && shutdownTime->_type == TRI_JSON_STRING) {
+
+  if (TRI_IsStringJson(shutdownTime)) {
     LOG_DEBUG("server was shut down cleanly last time at '%s'", shutdownTime->_value._string.data);
   }
 
   tickString = TRI_LookupArrayJson(json, "tick");
 
-  if (tickString == NULL || tickString->_type != TRI_JSON_STRING) {
+  if (! TRI_IsStringJson(tickString)) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_ERROR_INTERNAL;
   }
 
-  foundTick = TRI_UInt64String(tickString->_value._string.data);
+  foundTick = TRI_UInt64String2(tickString->_value._string.data,
+                                tickString->_value._string.length - 1);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   LOG_TRACE("using existing tick from shutdown info file: %llu", (unsigned long long) foundTick);
@@ -456,7 +470,9 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  TRI_DropCollectionReplication(vocbase, collection->_cid);
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_LogDropCollectionReplication(vocbase, collection->_cid);
+#endif
 
   return true;
 }
@@ -1193,15 +1209,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
       TRI_document_collection_t* document;
 
-#ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
-#endif
-
       document = TRI_OpenDocumentCollection(vocbase, collection->_path);
-
-#ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
-#endif
 
       if (document == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1231,6 +1239,63 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return TRI_set_errno(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief filter callback function for indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int FilterCollectionIndex (TRI_vocbase_col_t* collection, 
+                                  char const* filename,
+                                  void* data) {
+  TRI_json_t* indexJson;
+  TRI_json_t* id;
+  char* error = NULL;
+  index_json_helper_t* ij = (index_json_helper_t*) data;
+
+  indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+
+  if (error != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+  }
+
+  if (indexJson == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // compare index id with tick value
+  id = TRI_LookupArrayJson(indexJson, "id");
+
+  // index id is numeric
+  if (id != NULL && id->_type == TRI_JSON_NUMBER) {
+    uint64_t iid = (uint64_t) id->_value._number;
+
+    if (iid >= (uint64_t) ij->_maxTick) {
+      // index too new
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
+    }
+    else {
+      // convert "id" to string
+      char* idString = TRI_StringUInt64(iid);
+      TRI_InitStringJson(id, idString);
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
+    }
+  }
+
+  // index id is a string
+  else if (TRI_IsStringJson(id)) {
+    uint64_t iid = TRI_UInt64String2(id->_value._string.data, id->_value._string.length - 1);
+
+    if (iid >= (uint64_t) ij->_maxTick) {
+      // index too new
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
+    }
+    else {
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1392,6 +1457,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   bool iterateMarkers;
   bool isSystem;
   int res;
+#ifdef TRI_ENABLE_REPLICATION
+  int res2;
+#endif
 
   assert(defaults != NULL);
 
@@ -1577,15 +1645,29 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
 
   if (vocbase->_replicationLogger == NULL) {
-    LOG_FATAL_AND_EXIT("initialising replication for data '%s' failed", name);
+    LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
   }
 
-  if (defaults->replicationEnable) {
+  if (defaults->replicationEnableLogger) {
     res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("unable to start replication in database '%s'", name);
+      LOG_FATAL_AND_EXIT("unable to start replication logger for database '%s'", name);
     }
+  }
+  
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+
+  if (vocbase->_replicationApplier == NULL) {
+    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
+  }
+ 
+  res2 = TRI_StartReplicationApplier(vocbase->_replicationApplier);
+
+  if (res2 != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("unable to start replication applier for database '%s': %s", 
+                name, 
+                TRI_errno_string(res2));
   }
 #endif
     
@@ -1654,6 +1736,9 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 #ifdef TRI_ENABLE_REPLICATION
   TRI_FreeReplicationLogger(vocbase->_replicationLogger);
   vocbase->_replicationLogger = NULL;
+  
+  TRI_FreeReplicationApplier(vocbase->_replicationApplier);
+  vocbase->_replicationApplier = NULL;
 #endif
 
   // this will signal the synchroniser and the compactor threads to do one last iteration
@@ -1791,15 +1876,15 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
-/// and optionally indexes
+/// and indexes, up to a specific tick value
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
-                                              bool withIndexes,
-                                              bool (*filter)(TRI_vocbase_col_t*, void*),
-                                              void* data) {
+TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                             TRI_voc_tick_t maxTick,
+                                             bool (*filter)(TRI_vocbase_col_t*, void*),
+                                             void* data) {
   TRI_vector_pointer_t collections;
   TRI_json_t* json;
   size_t i, n;
@@ -1837,6 +1922,12 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
+        
+    if (collection->_cid >= maxTick) {
+      // collection is too new
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      continue;
+    }
 
     // check if we want this collection
     if (filter != NULL && ! filter(collection, data)) {
@@ -1855,9 +1946,13 @@ TRI_json_t* TRI_ParametersCollectionsVocBase (TRI_vocbase_t* vocbase,
       if (collectionInfo != NULL) {
         TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
 
-        indexesInfo = TRI_ReadJsonIndexInfo(collection);
-
+        indexesInfo = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
         if (indexesInfo != NULL) {
+          index_json_helper_t ij;
+          ij._list    = indexesInfo;
+          ij._maxTick = maxTick;
+
+          TRI_IterateJsonIndexesCollectionInfo(collection, &FilterCollectionIndex, &ij);
           TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
         }
       }
@@ -1993,7 +2088,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_collection_t* col;
   TRI_primary_collection_t* primary = NULL;
   TRI_document_collection_t* document;
+#ifdef TRI_ENABLE_REPLICATION
   TRI_json_t* json;
+#endif
   TRI_col_type_e type;
   char const* name;
   void const* found;
@@ -2085,10 +2182,12 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   // release the lock on the list of collections
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+#ifdef TRI_ENABLE_REPLICATION
   // replicate and finally unlock the collection
   json = TRI_CreateJsonCollectionInfo(&col->_info);
-  TRI_CreateCollectionReplication(vocbase, cid, json);
+  TRI_LogCreateCollectionReplication(vocbase, cid, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+#endif
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2499,8 +2598,10 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+#ifdef TRI_ENABLE_REPLICATION
   // stay inside the outer lock to protect against unloading
-  TRI_RenameCollectionReplication(vocbase, collection->_cid, newName);
+  TRI_LogRenameCollectionReplication(vocbase, collection->_cid, newName);
+#endif
   
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     

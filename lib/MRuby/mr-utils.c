@@ -135,6 +135,8 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       return mrb_float_value(json->_value._number);
 
     case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
+      // same for STRING and STRING_REFERENCE
       return mrb_str_new(mrb, json->_value._string.data, json->_value._string.length - 1);
 
     case TRI_JSON_ARRAY: {
@@ -150,8 +152,8 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
 
       for (i = 0;  i < n;  i += 2) {
         sub = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-
-        if (sub->_type != TRI_JSON_STRING) {
+ 
+        if (! TRI_IsStringJson(sub)) {
           continue;
         }
 

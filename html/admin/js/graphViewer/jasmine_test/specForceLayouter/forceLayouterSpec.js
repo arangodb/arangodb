@@ -397,10 +397,10 @@
         expect(mock.gravity).wasCalledWith(0.08);
         expect(mock.charge).wasCalledWith(-240);
         */
-        expect(mock.size).wasCalledWith([940, 640]);
-        expect(mock.linkDistance).wasCalledWith(240);
-        expect(mock.gravity).wasCalledWith(0.01);
-        expect(mock.charge).wasCalledWith(-1000);
+        expect(mock.size).wasCalledWith([880, 680]);
+        expect(mock.linkDistance).wasCalledWith(160);
+        expect(mock.gravity).wasCalledWith(0.08);
+        expect(mock.charge).wasCalledWith(-600);
       });
       
       it('should be able to switch the distance', function() {

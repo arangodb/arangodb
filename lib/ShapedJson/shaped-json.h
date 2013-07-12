@@ -1079,7 +1079,9 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShape (struct TRI_shaper_s* shaper, TRI_shape_t const* shape, int indent);
+void TRI_PrintShape (struct TRI_shaper_s* shaper,    
+                     TRI_shape_t const* shape, 
+                     int indent);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string value encoded in a shaped json
@@ -1088,9 +1090,29 @@ void TRI_PrintShape (struct TRI_shaper_s* shaper, TRI_shape_t const* shape, int 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StringValueShapedJson (const TRI_shape_t* const,
-                                const TRI_shaped_json_t* const,
+                                const char*,
                                 char**,
                                 size_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringifies a data blob into a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringifyJsonShapeData (struct TRI_shaper_s*,
+                                 struct TRI_string_buffer_s*,
+                                 TRI_shape_t const*,
+                                 char const*,
+                                 uint64_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a shaped json array, using a callback function
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IterateShapeDataArray (struct TRI_shaper_s*,
+                                TRI_shape_t const*,
+                                char const*,
+                                bool (*)(struct TRI_shaper_s*, TRI_shape_t const*, char const*, char const*, uint64_t, void*),
+                                void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
