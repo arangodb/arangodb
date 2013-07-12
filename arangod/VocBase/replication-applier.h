@@ -80,12 +80,24 @@ typedef enum {
 TRI_replication_apply_phase_e;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief struct containing a replication apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_apply_configuration_s {
+  char*         _endpoint;
+  double        _timeout;
+  uint64_t      _ignoreErrors;
+  int           _maxConnectRetries;
+}
+TRI_replication_apply_configuration_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief struct containing a replication apply error
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_error_s {
-  int     _code;
-  char*   _msg;
+  int         _code;
+  char*       _msg;
 }
 TRI_replication_apply_error_t;
 
@@ -94,17 +106,18 @@ TRI_replication_apply_error_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_state_s {
-  struct TRI_transaction_s*      _trx;
-  TRI_voc_tid_t                  _externalTid;
-  TRI_voc_tick_t                 _lastProcessedContinuousTick;
-  TRI_voc_tick_t                 _lastAppliedContinuousTick;
-  bool                           _active;
-  TRI_replication_apply_phase_e  _phase;
-  char*                          _progress;
-  TRI_voc_tick_t                 _lastAppliedInitialTick;
-  TRI_server_id_t                _serverId;
+  struct TRI_transaction_s*              _trx;
+  TRI_voc_tid_t                          _externalTid;
+  TRI_voc_tick_t                         _lastProcessedContinuousTick;
+  TRI_voc_tick_t                         _lastAppliedContinuousTick;
+  bool                                   _active;
+  TRI_replication_apply_phase_e          _phase;
+  char*                                  _progress;
+  TRI_voc_tick_t                         _lastAppliedInitialTick;
+  TRI_server_id_t                        _serverId;
+  TRI_replication_apply_error_t          _lastError;
+  TRI_replication_apply_configuration_t  _configuration;
   char*                          _endpoint;
-  TRI_replication_apply_error_t  _lastError;
 }
 TRI_replication_apply_state_t;
 
@@ -229,34 +242,50 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t*,
 /// @brief initialise an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitApplyStateReplication (TRI_replication_apply_state_t*);
+void TRI_InitApplyStateReplicationApplier (TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyApplyStateReplication (TRI_replication_apply_state_t*);
+void TRI_DestroyApplyStateReplicationApplier (TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application state to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveApplyStateReplication (struct TRI_vocbase_s*,
-                                   TRI_replication_apply_state_t const*,
-                                   bool);
+int TRI_SaveStateFileReplicationApplier (struct TRI_vocbase_s*,
+                                         TRI_replication_apply_state_t const*,
+                                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the replication application state file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveApplyStateReplication (struct TRI_vocbase_s*);
+int TRI_RemoveStateFileReplicationApplier (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application state from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadApplyStateReplication (struct TRI_vocbase_s*,
-                                   TRI_replication_apply_state_t*);
+int TRI_LoadStateFileReplicationApplier (struct TRI_vocbase_s*,
+                                         TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise an apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*,
+                                                   char*,
+                                                   double,
+                                                   uint64_t,
+                                                   int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy an apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
