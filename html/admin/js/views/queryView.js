@@ -19,7 +19,7 @@ var queryView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/queryView.ejs'}),
 
   render: function() {
-
+    var self = this;
     $(this.el).html(this.template.text);
     var editor = ace.edit("aqlEditor");
     var editor2 = ace.edit("queryOutput");
@@ -36,8 +36,10 @@ var queryView = Backbone.View.extend({
       handles: "s",
       ghost: true,
       stop: function () {
-        var editor2 = ace.edit("queryOutput");
-        editor2.resize();
+        setTimeout(function (){
+          var editor2 = ace.edit("queryOutput");
+          editor2.resize();
+        },200);
       }
     });
     $('#aqlEditor').resizable({
@@ -45,8 +47,10 @@ var queryView = Backbone.View.extend({
       ghost: true,
       //helper: "resizable-helper",
       stop: function () {
-        var editor = ace.edit("aqlEditor");
-        editor.resize();
+        setTimeout(function (){
+          var editor = ace.edit("aqlEditor");
+          editor.resize();
+        },200);
       }
     });
 
