@@ -3082,9 +3082,10 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(TRI_V8_SYMBOL("running"), state._active ? v8::True() : v8::False());
-  result->Set(TRI_V8_SYMBOL("lastLogTick"), V8TickId(state._lastLogTick));
+  TRI_json_t* json = TRI_JsonStateReplicationLogger(&state);
+
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   return scope.Close(result);
 }
@@ -3163,6 +3164,43 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
   }
 
   return scope.Close(v8::True());
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the state of the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_STATE()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  TRI_replication_apply_state_t state;
+  int res = TRI_StateReplicationApplier(vocbase->_replicationApplier, &state);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+ 
+  TRI_json_t* json = TRI_JsonStateReplicationApplier(&state);
+  TRI_DestroyApplyStateReplication(&state);
+
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return scope.Close(result);
 }
 
 #endif
@@ -8099,6 +8137,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);
 #endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);

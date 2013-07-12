@@ -33,6 +33,7 @@
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
+#include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
@@ -258,24 +259,6 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add replication state to a JSON array
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::addState (TRI_json_t* dst, 
-                                       TRI_replication_log_state_t const* state) {
-
-  TRI_json_t* stateJson = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
-
-  // add replication state
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
-  
-  char* lastString = TRI_StringUInt64(state->_lastLogTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, stateJson, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
-  
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, dst, "state", stateJson);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remotely start the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -342,7 +325,7 @@ void RestReplicationHandler::handleCommandLogState () {
     
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     
-    addState(&result, &state);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationLogger(&state)); 
     
     // add server info
     TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -473,7 +456,7 @@ void RestReplicationHandler::handleCommandInventory () {
     // add collections data
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
     
-    addState(&result, &state);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationLogger(&state)); 
   
     generateResult(&result);
   
@@ -588,12 +571,11 @@ void RestReplicationHandler::handleCommandDump () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplyState () {
-  /*
-  assert(_vocbase->_replicationLogger != 0);
+  assert(_vocbase->_replicationApplier != 0);
 
-  TRI_replication_log_state_t state;
+  TRI_replication_apply_state_t state;
 
-  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
+  int res = TRI_StateReplicationApplier(_vocbase->_replicationApplier, &state);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -602,8 +584,8 @@ void RestReplicationHandler::handleCommandApplyState () {
     TRI_json_t result;
     
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    
-    addState(&result, &state);
+  
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationApplier(&state));
     
     // add server info
     TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -616,10 +598,10 @@ void RestReplicationHandler::handleCommandApplyState () {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
 
     generateResult(&result);
-  
+
+    TRI_DestroyApplyStateReplication(&state);
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
   }
-  */
 }
 
 

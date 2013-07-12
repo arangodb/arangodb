@@ -153,13 +153,13 @@ int ReplicationFetcher::run (bool forceFullSynchronisation,
   res = getMasterState(errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return TRI_SetErrorReplicationApplier(_vocbase->_replicationApplier, res, errorMsg.c_str());
   }
   
   res = getLocalState(errorMsg, forceFullSynchronisation);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return TRI_SetErrorReplicationApplier(_vocbase->_replicationApplier, res, errorMsg.c_str());
   }
 
   if (_applyState._lastAppliedInitialTick == 0) {
@@ -173,25 +173,23 @@ int ReplicationFetcher::run (bool forceFullSynchronisation,
   // in the data. in this case we'd need a complete re-sync
 
   if (forceFullSynchronisation) {
-    LOGGER_INFO("performing full synchronisation with master");
+    TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, "performing full synchronisation with master");
 
     // nothing applied so far. do a full sync of collections
     res = getMasterInventory(errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      return TRI_SetErrorReplicationApplier(_vocbase->_replicationApplier, res, errorMsg.c_str());
     }
   }
 
-  LOGGER_INFO("starting incremental synchronisation with master");
+  TRI_SetPhaseReplicationApplier(_vocbase->_replicationApplier, PHASE_FOLLOW);
 
   while (true) {
     res = runContinuous(errorMsg, ignoreCount);
 
     if (res == TRI_ERROR_REPLICATION_STOPPED) {
       // stopped replication apply
-      LOGGER_INFO("stopping incremental synchronisation with master");
-
       res = TRI_ERROR_NO_ERROR;
       break;
     }
@@ -638,7 +636,8 @@ int ReplicationFetcher::createCollection (TRI_json_t const* json,
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_defaultWaitForSync);
   params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
 
-  LOGGER_INFO("creating collection '" << name << "', id " << cid);
+  const string progress = "creating collection '" + name + "', id " + StringUtils::itoa(cid);
+  TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
 
   col = TRI_CreateCollectionVocBase(_vocbase, &params, cid);
   TRI_FreeCollectionInfoOptions(&params);
@@ -904,8 +903,7 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
 
 int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCollection,
                                              SimpleHttpResult* response,
-                                             string& errorMsg,
-                                             uint64_t& markerCount) {
+                                             string& errorMsg) {
   
   const string invalidMsg = "received invalid JSON data for collection " + 
                             StringUtils::itoa(trxCollection->_cid);
@@ -922,8 +920,6 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
       return TRI_ERROR_NO_ERROR;
     }
       
-    ++markerCount;
-
     TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
 
     if (! JsonHelper::isArray(json)) {
@@ -1142,10 +1138,10 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
 
       if (ignoreCount == 0) {
         if (line.size() > 128) {
-          LOGGER_WARNING("replication error: " << errorMsg << ", offending marker: " << line.substr(128) << "...");
+          errorMsg += ", offending marker: " + line.substr(128) + "...";
         }
         else {
-          LOGGER_WARNING("replication error: " << errorMsg << ", offending marker: " << line);
+          errorMsg += ", offending marker: " + line;;
         }
 
         return res;
@@ -1191,7 +1187,8 @@ int ReplicationFetcher::getLocalState (string& errorMsg,
     }
   }
   else if (res == TRI_ERROR_NO_ERROR) {
-    if (_masterInfo._serverId != _applyState._serverId) {
+    if (_masterInfo._serverId != _applyState._serverId &&
+        _applyState._serverId != 0) {
       res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
       errorMsg = "encountered wrong master id in replication state file. " 
                  "found: " + StringUtils::itoa(_masterInfo._serverId) + ", " 
@@ -1221,7 +1218,9 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
   static const string url = BaseUrl + "/log-state";
 
   // send request
-  LOGGER_TRACE("fetching master state from " << url);
+  const string progress = "fetching master state from " + url;
+  TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
+
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                 url,
                                                 0, 
@@ -1285,7 +1284,9 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
   static const string url = BaseUrl + "/inventory";
 
   // send request
-  LOGGER_TRACE("fetching master inventory from " << url);
+  const string progress = "fetching master inventory from " + url;
+  TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
+
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                 url,
                                                 0, 
@@ -1341,20 +1342,22 @@ int ReplicationFetcher::getMasterInventory (string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
     
 int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxCollection,
+                                              const string& collectionName,
                                               TRI_voc_tick_t maxTick,
                                               string& errorMsg) {
   if (_client == 0) {
     return TRI_ERROR_INTERNAL;
   }
 
+  const string cid = StringUtils::itoa(trxCollection->_cid);
 
-  const string baseUrl = BaseUrl + "/dump?collection=" + StringUtils::itoa(trxCollection->_cid) + 
+  const string baseUrl = BaseUrl + "/dump?collection=" + cid +
                          "&chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
 
-  TRI_voc_tick_t fromTick    = 0;
-  uint64_t       markerCount = 0;
+  TRI_voc_tick_t fromTick = 0;
+  int batch = 1;
 
   while (true) {
     const string url = baseUrl + 
@@ -1362,7 +1365,11 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                        "&to=" + StringUtils::itoa(maxTick);
 
     // send request
-    LOGGER_TRACE("fetching master collection dump from " << url);
+    const string progress = "fetching master collection dump for collection '" + collectionName + 
+                            "', id " + cid + ", batch " + StringUtils::itoa(batch);
+
+    TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
+
     SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                   url,
                                                   0, 
@@ -1431,7 +1438,7 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = applyCollectionDump(trxCollection, response, errorMsg, markerCount);
+      res = applyCollectionDump(trxCollection, response, errorMsg);
     }
 
     delete response;
@@ -1442,12 +1449,10 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
 
     if (! checkMore || fromTick == 0) {
       // done
-      if (markerCount > 0) {
-        LOGGER_INFO("successfully transferred " << markerCount << " data markers");
-      }
-      
       return res;
     }
+
+    batch++;
   }
   
   assert(false);
@@ -1461,17 +1466,19 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
 int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
                                                  TRI_json_t const* indexes,
                                                  string& errorMsg,
-                                                 setup_phase_e phase) {
-  
-  TRI_json_t const* masterName = JsonHelper::getArrayElement(parameters, "name");
+                                                 TRI_replication_apply_phase_e phase) {
 
-  if (! JsonHelper::isString(masterName)) {
+  TRI_SetPhaseReplicationApplier(_vocbase->_replicationApplier, phase);
+  
+  const string masterName = JsonHelper::getStringValue(parameters, "name", "");
+
+  if (masterName.empty()) {
     errorMsg = "collection name is missing in response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  if (TRI_IsSystemCollectionName(masterName->_value._string.data)) {
+  if (TRI_IsSystemCollectionName(masterName.c_str())) {
     // we will not care about system collections
     return TRI_ERROR_NO_ERROR;
   }
@@ -1490,10 +1497,11 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
   }
   
   TRI_voc_cid_t cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
-  
+  const string collectionMsg = "collection '" + masterName + "', id " + StringUtils::itoa(cid); 
+ 
 
   // phase handling
-  if (phase == PHASE_VALIDATE) {
+  if (phase == PHASE_INIT) {
     // validation phase just returns ok if we got here (aborts above if data is invalid)
     return TRI_ERROR_NO_ERROR;
   }
@@ -1507,16 +1515,17 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
 
     if (col == 0) {
       // not found, try name next
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName->_value._string.data);
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
     }
 
     if (col != 0) {
-      LOGGER_INFO("dropping collection '" << col->_name << "', id " << cid);
+      const string progress = "dropping " + collectionMsg;
+      TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
 
       int res = TRI_DropCollectionVocBase(_vocbase, col);
  
       if (res != TRI_ERROR_NO_ERROR) {
-        LOGGER_ERROR("unable to drop collection " << cid << ": " << TRI_errno_string(res));
+        errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
 
         return res;
       }
@@ -1530,11 +1539,14 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
 
   else if (phase == PHASE_CREATE) {
     TRI_vocbase_col_t* col = 0;
+      
+    const string progress = "creating " + collectionMsg;
+    TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
 
     int res = createCollection(parameters, &col);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOGGER_ERROR("unable to create collection " << cid << ": " << TRI_errno_string(res));
+      errorMsg = "unable to create " + collectionMsg + ": " + TRI_errno_string(res);
 
       return res;
     }
@@ -1545,11 +1557,12 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
   // sync collection data
   // -------------------------------------------------------------------------------------
 
-  else if (phase == PHASE_DATA) {
+  else if (phase == PHASE_DUMP) {
     int res;
+    
+    const string progress = "syncing data for " + collectionMsg;
+    TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
   
-    LOGGER_INFO("syncing data for collection '" << masterName->_value._string.data << "', id " << cid);
-
     TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
 
     if (trx == 0) {
@@ -1562,7 +1575,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_FreeTransaction(trx);
-      errorMsg = "unable to start transaction";
+      errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
 
       return res;
     }
@@ -1571,7 +1584,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_FreeTransaction(trx);
-      errorMsg = "unable to start transaction";
+      errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
     
       return TRI_ERROR_INTERNAL;
     }
@@ -1580,9 +1593,10 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
 
     if (trxCollection == NULL) {
       res = TRI_ERROR_INTERNAL;
+      errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
     }
     else {
-      res = handleCollectionDump(trxCollection, _masterInfo._state._lastLogTick, errorMsg);
+      res = handleCollectionDump(trxCollection, masterName, _masterInfo._state._lastLogTick, errorMsg);
     }
 
 
@@ -1591,7 +1605,8 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
       const size_t n = indexes->_value._objects._length;
 
       if (n > 0) {
-        LOGGER_INFO("creating indexes for collection '" << masterName->_value._string.data << "', id " << cid);
+        const string progress = "creating indexes for " + collectionMsg;
+        TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
 
         for (size_t i = 0; i < n; ++i) {
           TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
@@ -1650,16 +1665,8 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  // state."firstLogTick"
-  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "firstLogTick");
-
-  if (! JsonHelper::isString(tick)) {
-    errorMsg = "firstLogTick is missing from response";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
   // state."lastLogTick"
-  tick = JsonHelper::getArrayElement(state, "lastLogTick");
+  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "lastLogTick");
 
   if (! JsonHelper::isString(tick)) {
     errorMsg = "lastLogTick is missing from response";
@@ -1771,7 +1778,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   // ----------------------------------------------------------------------------------
 
   // iterate over all collections from the master...
-  res = iterateCollections(collections, errorMsg, PHASE_VALIDATE);
+  res = iterateCollections(collections, errorMsg, PHASE_INIT);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1807,7 +1814,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   // STEP 4: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
   
-  res = iterateCollections(collections, errorMsg, PHASE_DATA);
+  res = iterateCollections(collections, errorMsg, PHASE_DUMP);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1829,7 +1836,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   
 int ReplicationFetcher::iterateCollections (TRI_json_t const* collections,
                                             string& errorMsg,
-                                            setup_phase_e phase) {
+                                            TRI_replication_apply_phase_e phase) {
   const size_t n = collections->_value._objects._length;
 
   for (size_t i = 0; i < n; ++i) {
@@ -1878,6 +1885,8 @@ int ReplicationFetcher::runContinuous (string& errorMsg,
     return TRI_ERROR_INTERNAL;
   }
 
+  TRI_SetPhaseReplicationApplier(_vocbase->_replicationApplier, PHASE_FOLLOW);
+
   const string baseUrl = BaseUrl + "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
@@ -1896,10 +1905,13 @@ int ReplicationFetcher::runContinuous (string& errorMsg,
   LOGGER_TRACE("starting continuous replication with tick " << fromTick);
 
   while (true) {
-    const string url = baseUrl + "&from=" + StringUtils::itoa(fromTick); 
+    const string tickString = StringUtils::itoa(fromTick); 
+    const string url = baseUrl + "&from=" + tickString;
 
     // send request
-    LOGGER_DEBUG("fetching master log from " << url);
+    const string progress = "fetching master log from offset " + tickString;
+    TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, progress.c_str());
+
     SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                   url,
                                                   0, 
