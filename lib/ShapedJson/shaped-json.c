@@ -1576,8 +1576,6 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
                                                char const* data,
                                                uint64_t size) {
   TRI_shape_length_short_string_t l;
-  char* unicoded;
-  size_t out;
   int res;
 
   l = * (TRI_shape_length_short_string_t const*) data;
@@ -1590,6 +1588,9 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
   }
 
   if (l > 1) {
+    char* unicoded;
+    size_t out;
+
     unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, data, (size_t) (l - 1), true, &out, false);
 
     if (unicoded == NULL) {
@@ -2299,7 +2300,6 @@ bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
                                    TRI_shaped_json_t const* shaped,
                                    bool prepend) {
   TRI_shape_t const* shape;
-  TRI_array_shape_t const* s;
   bool ok;
   uint64_t num;
 
@@ -2310,6 +2310,8 @@ bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
   }
 
   if (prepend) {
+    TRI_array_shape_t const* s;
+
     s = (TRI_array_shape_t const*) shape;
     if (s->_fixedEntries + s->_variableEntries > 0) {
       TRI_AppendCharStringBuffer(buffer, ',');

@@ -95,12 +95,12 @@ static bool FindEdges (const TRI_edge_direction_e direction,
                        TRI_edge_header_t* entry,
                        const int matchType) {
   TRI_vector_pointer_t found;
-  TRI_edge_header_t* edge;
 
   entry->_flags = TRI_LookupFlagsEdge(direction);
   found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, idx, entry);
 
   if (found._length > 0) {
+    TRI_edge_header_t* edge;
     size_t i;
 
     if (result->_capacity == 0) {

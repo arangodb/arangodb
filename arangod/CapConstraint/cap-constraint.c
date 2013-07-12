@@ -129,7 +129,6 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
   else {
     TRI_vocbase_t* vocbase;
     TRI_transaction_t* trx;
-    TRI_transaction_collection_t* trxCollection;
     TRI_voc_cid_t cid;
     int res;
 
@@ -145,6 +144,8 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
 
     if (res == TRI_ERROR_NO_ERROR) {
+      TRI_transaction_collection_t* trxCollection;
+
       trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
 
       if (trxCollection != NULL) {

@@ -442,9 +442,9 @@ void* TRI_WrappedReallocate (void* ptr, long size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseMemory () {
-  static size_t const reserveSize = 1024 * 1024 * 10;
-
   if (CoreInitialised == 0) {
+    static size_t const reserveSize = 1024 * 1024 * 10;
+
     TriCoreMemZone._zid = 0;
     TriCoreMemZone._failed = false;
     TriCoreMemZone._failable = false;

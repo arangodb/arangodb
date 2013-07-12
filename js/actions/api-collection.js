@@ -584,11 +584,28 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
+/// @EXAMPLES
+///
+/// Retrieving the revision of a collection
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionRevision}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: false });
+///     var url = "/_api/collection/"+ coll._id + "/revision";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, returns a checksum for the collection
+/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, returns a checksum for the collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -628,6 +645,24 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
+/// @EXAMPLES
+///
+/// Retrieving the checksum of a collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionChecksum}
+///     var cn = "products";
+///     db._drop(cn);
+///     var coll = db._create(cn, { waitForSync: false });
+///     coll.save({ foo: "bar" });
+///     var url = "/_api/collection/"+ coll._id + "/checksum";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collection (req, res) {
