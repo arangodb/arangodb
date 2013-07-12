@@ -44,6 +44,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_json_s;
 struct TRI_transaction_s;
 struct TRI_vocbase_s;
 
@@ -64,14 +65,29 @@ struct TRI_vocbase_s;
 /// @brief apply phases
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication apply setup phase
+////////////////////////////////////////////////////////////////////////////////
+
 typedef enum {
   PHASE_NONE,
   PHASE_INIT,
-  PHASE_COLLECTIONS,
+  PHASE_DROP,
+  PHASE_CREATE,
   PHASE_DUMP,
   PHASE_FOLLOW
 }
 TRI_replication_apply_phase_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct containing a replication apply error
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_replication_apply_error_s {
+  int     _code;
+  char*   _msg;
+}
+TRI_replication_apply_error_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state information about replication application
@@ -83,11 +99,12 @@ typedef struct TRI_replication_apply_state_s {
   TRI_voc_tick_t                 _lastProcessedContinuousTick;
   TRI_voc_tick_t                 _lastAppliedContinuousTick;
   bool                           _active;
-  int                            _lastError;
   TRI_replication_apply_phase_e  _phase;
+  char*                          _progress;
   TRI_voc_tick_t                 _lastAppliedInitialTick;
   TRI_server_id_t                _serverId;
   char*                          _endpoint;
+  TRI_replication_apply_error_t  _lastError;
 }
 TRI_replication_apply_state_t;
 
@@ -179,6 +196,34 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t*,
 
 int TRI_StateReplicationApplier (TRI_replication_applier_t*,
                                  TRI_replication_apply_state_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of an applier state
+////////////////////////////////////////////////////////////////////////////////
+  
+struct TRI_json_s* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an applier error
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SetErrorReplicationApplier (TRI_replication_applier_t*,
+                                    int,
+                                    char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current phase
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetPhaseReplicationApplier (TRI_replication_applier_t*,
+                                     TRI_replication_apply_phase_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the progress
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetProgressReplicationApplier (TRI_replication_applier_t*,
+                                        char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise an apply state struct
