@@ -8,6 +8,7 @@ $(document).ready(function() {
     routes: {
       ""                                    : "collections",
       "collection/:colid"                   : "collection",
+      "collectionInfo/:colid"               : "collectionInfo",
       "new"                                 : "newCollection",
       "collection/:colid/documents/:pageid" : "documents",
       "collection/:colid/:docid"            : "document",
@@ -25,19 +26,23 @@ $(document).ready(function() {
       "applications"                        : "applications",
       "application/documentation/:key"     : "appDocumentation",
       "graph"                               : "graph"
-      
+
     },
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
-      
+
       window.collectionsView = new window.collectionsView({
         collection: window.arangoCollectionsStore
       });
       window.arangoCollectionsStore.fetch();
-      
+
       window.collectionView = new window.collectionView({
+        model: arangoCollection
+      });
+
+      window.collectionInfoView = new window.collectionInfoView({
         model: arangoCollection
       });
 
@@ -79,6 +84,10 @@ $(document).ready(function() {
     collection: function(colid) {
       window.collectionView.options.colId = colid;
       window.collectionView.render();
+    },
+    collectionInfo: function(colid) {
+      window.collectionInfoView.options.colId = colid;
+      window.collectionInfoView.render();
     },
     newCollection: function() {
       if (!this.newCollectionView) {

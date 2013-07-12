@@ -1384,7 +1384,7 @@
         expect($("svg #\\*community_42")[0]).toBeDefined();
       });
       
-      it('should render communtiy nodes as stars', function() {
+      it('should render communtiy nodes as stacks', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
           commNode = {
             _id: "*community_42",
@@ -1397,14 +1397,23 @@
               z: 1
             }
           },
-          star;
+          stack,
+          sortFunc = function(a, b) {
+            return a.getAttribute("x") - b.getAttribute("x");
+          };
         nodes.push(commNode);
         shaper.drawNodes(nodes);
         expect($("svg .communitynode").length).toEqual(1);
         expect($("svg #\\*community_42")[0]).toBeDefined();
-        star = $("svg #\\*community_42 polygon");
-        expect(star.length).toEqual(1);
-        expect(star.attr("points")).toEqual("0,-25 -16,20 23,-10 -23,-10 16,20");        
+        stack = $("svg #\\*community_42 rect").sort(sortFunc);
+        
+        expect(stack.length).toEqual(4);
+        expect(stack[0].getAttribute("x")).toEqual(String(stack[1].getAttribute("x") - 3));
+        expect(stack[0].getAttribute("y")).toEqual(String(stack[1].getAttribute("y") - 3));
+        expect(stack[1].getAttribute("x")).toEqual(String(stack[2].getAttribute("x") - 3));
+        expect(stack[1].getAttribute("y")).toEqual(String(stack[2].getAttribute("y") - 3)); 
+        expect(stack[2].getAttribute("x")).toEqual(String(stack[3].getAttribute("x") - 3));
+        expect(stack[2].getAttribute("y")).toEqual(String(stack[3].getAttribute("y") - 3));      
       });
       
       it('should print the size of the capsulated community', function() {
