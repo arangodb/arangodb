@@ -599,7 +599,7 @@ void RestReplicationHandler::handleCommandApplyState () {
 
     generateResult(&result);
 
-    TRI_DestroyApplyStateReplication(&state);
+    TRI_DestroyApplyStateReplicationApplier(&state);
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
   }
 }

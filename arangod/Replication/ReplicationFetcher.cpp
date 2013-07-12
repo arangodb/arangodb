@@ -93,7 +93,7 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _client(0) {
  
   TRI_InitMasterInfoReplication(&_masterInfo, masterEndpoint.c_str());
-  TRI_InitApplyStateReplication(&_applyState);
+  TRI_InitApplyStateReplicationApplier(&_applyState);
 
   if (_endpoint != 0) { 
     _connection = GeneralClientConnection::factory(_endpoint, timeout, timeout, 3);
@@ -252,7 +252,7 @@ int ReplicationFetcher::saveApplyState () {
   LOGGER_TRACE("saving replication apply state. "
                "last applied continuous tick: " << _applyState._lastAppliedContinuousTick);
 
-  int res = TRI_SaveApplyStateReplication(_vocbase, &_applyState, false);
+  int res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applyState, false);
         
   if (res != TRI_ERROR_NO_ERROR) {
     LOGGER_WARNING("unable to save replication apply state: " << TRI_errno_string(res));
@@ -1171,16 +1171,16 @@ int ReplicationFetcher::getLocalState (string& errorMsg,
   int res;
 
   if (forceFullSynchronisation) {
-    TRI_RemoveApplyStateReplication(_vocbase);
+    TRI_RemoveStateFileReplicationApplier(_vocbase);
   }
 
-  res = TRI_LoadApplyStateReplication(_vocbase, &_applyState);
+  res = TRI_LoadStateFileReplicationApplier(_vocbase, &_applyState);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // no state file found, so this is the initialisation
     _applyState._serverId = _masterInfo._serverId;
 
-    res = TRI_SaveApplyStateReplication(_vocbase, &_applyState, true);
+    res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applyState, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not save replication state information";
@@ -1821,7 +1821,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   }
   
   _applyState._lastAppliedInitialTick = _masterInfo._state._lastLogTick;   
-  res = TRI_SaveApplyStateReplication(_vocbase, &_applyState, true);
+  res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applyState, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "could not save replication state information";
