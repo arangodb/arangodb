@@ -14,6 +14,7 @@ window.CollectionListItemView = Backbone.View.extend({
   events: {
     'click .pull-left' : 'noop',
     'click .icon-edit' : 'editProperties',
+    'click .icon-info-sign' : 'showProperties',
     'click': 'selectCollection'
   },
   render: function () {
@@ -24,6 +25,13 @@ window.CollectionListItemView = Backbone.View.extend({
   editProperties: function (event) {
     event.stopPropagation();
     window.App.navigate("collection/" + encodeURIComponent(this.model.get("id")), {trigger: true});
+  },
+
+  showProperties: function(event) {
+    event.stopPropagation();
+    window.App.navigate(
+      "collectionInfo/" + encodeURIComponent(this.model.get("id")), {trigger: true}
+    );
   },
   
   selectCollection: function() {
