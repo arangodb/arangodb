@@ -1107,6 +1107,25 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of a logger state
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_log_state_t const* state) {
+  TRI_json_t* json; 
+  char* lastString;
+
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+
+  // add replication state
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
+  
+  lastString = TRI_StringUInt64(state->_lastLogTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
+  
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
