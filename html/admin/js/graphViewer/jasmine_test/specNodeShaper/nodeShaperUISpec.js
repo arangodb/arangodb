@@ -334,6 +334,35 @@
     
     });
     
+    
+    it('should be able to submit the controls with return', function() {
+      runs(function() {
+        shaperUI.addControlOpticExpandColour();
+      
+        expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
+        expect($("#control_node_list #control_node_expandcolour")[0]).toConformToListCSS();
+      
+        helper.simulateMouseEvent("click", "control_node_expandcolour");
+        $("#control_node_expandcolour_expanded").attr("value", "#123456");
+        $("#control_node_expandcolour_collapsed").attr("value", "#654321");
+        
+        helper.simulateReturnEvent();
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "expand",
+            expanded: "#123456",
+            collapsed: "#654321"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_node_expandcolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });    
+    
     describe('checking to change colour and label at once', function() {
       
       it('should be able to add the control and create the mapping list', function() {
@@ -347,8 +376,6 @@
           helper.simulateMouseEvent("click", "control_node_labelandcolour");
           $("#control_node_labelandcolour_key").attr("value", "label");
           helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
-          
-          
           
           expect(shaper.changeTo).toHaveBeenCalledWith({
             label: "label",

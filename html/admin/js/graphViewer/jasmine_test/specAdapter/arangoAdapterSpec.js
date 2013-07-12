@@ -649,6 +649,20 @@
           });
         });
         
+        it('should callback with proper errorcode if no results are found', function() {
+          var dummy = {
+            cb: function() {}
+          };
+          spyOn(dummy, "cb");
+          spyOn($, "ajax").andCallFake(function(request) {
+            request.success({result: []});
+          });
+          adapter.loadNode("node", dummy.cb);
+          expect(dummy.cb).wasCalledWith({
+            errorCode: 404
+          });
+        });
+        
         it('should be able to request the number of children centrality', function() {
           var c0,
           children;
@@ -959,7 +973,6 @@
           });
           
         });
-        
         
         it('should not replace single nodes by communities', function() {
           var inNodeCol, callNodes;
