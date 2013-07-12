@@ -140,7 +140,10 @@ void TRI_FreeErrorAql (TRI_aql_error_t* const error) {
 /// @brief get a formatted query error message
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetContextErrorAql (const char* const query, const size_t line, const size_t column) {
+char* TRI_GetContextErrorAql (const char* const query, 
+                              const size_t queryLength, 
+                              const size_t line, 
+                              const size_t column) {
   const char* p;
   char* temp;
   char* result;
@@ -183,12 +186,13 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
 
   offset = (size_t) (p - query);
 
-  if (strlen(query) < offset + SNIPPET_LENGTH) {
-    return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, strlen(query) - offset);
+  if (queryLength < offset + SNIPPET_LENGTH) {
+    return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, queryLength - offset);
   }
 
   temp = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, SNIPPET_LENGTH);
-  if (!temp) {
+
+  if (temp == NULL) {
     // out of memory
     return NULL;
   }

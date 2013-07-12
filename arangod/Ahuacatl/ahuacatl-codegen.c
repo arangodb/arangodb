@@ -384,6 +384,7 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
   TRI_aql_codegen_variable_t* variable;
 
   variable = (TRI_aql_codegen_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_variable_t), false);
+
   if (variable == NULL) {
     return NULL;
   }
@@ -986,6 +987,7 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ";\n");
 
       copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, variable->_name);
+
       if (copy == NULL) {
         generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
       }

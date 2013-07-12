@@ -27,24 +27,184 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function ModularityJoiner(nodes, edges) {
+function ModularityJoiner() {
   "use strict";
   
-  if (nodes === undefined) {
-    throw "Nodes have to be given.";
-  }
-  if (edges === undefined) {
-    throw "Edges have to be given.";
-  }
-  
-  var matrix = null,
-    backwardMatrix = null,
-    self = this,
+  var 
+  // Copy of underscore.js. importScripts doesn't work
+    breaker = {},
+    nativeForEach = Array.prototype.forEach,
+    nativeKeys = Object.keys,
+    nativeIsArray = Array.isArray,
+    toString = Object.prototype.toString,
+    nativeIndexOf = Array.prototype.indexOf,
+    nativeMap = Array.prototype.map,
+    nativeSome = Array.prototype.some,
+    _ = {
+      isArray: nativeIsArray || function(obj) {
+        return toString.call(obj) === '[object Array]';
+      },
+      isFunction: function(obj) {
+        return typeof obj === 'function';
+      },
+      isString: function(obj) {
+        return toString.call(obj) === '[object String]';
+      },
+      each: function(obj, iterator, context) {
+        if (obj === null || obj === undefined) {
+          return;
+        }
+        var i, l, key;
+        if (nativeForEach && obj.forEach === nativeForEach) {
+          obj.forEach(iterator, context);
+        } else if (obj.length === +obj.length) {
+          for (i = 0, l = obj.length; i < l; i++) {
+            if (iterator.call(context, obj[i], i, obj) === breaker) {
+              return;
+            }
+          }
+        } else {
+          for (key in obj) {
+            if (obj.hasOwnProperty(key)) {
+              if (iterator.call(context, obj[key], key, obj) === breaker) {
+                return;
+              }
+            }
+          }
+        }
+      },
+      keys: nativeKeys || function(obj) {
+        if (typeof obj !== "object" || Array.isArray(obj)) {
+          throw new TypeError('Invalid object');
+        }
+        var keys = [], key;
+        for (key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            keys[keys.length] = key;
+          }
+        }
+        return keys;
+      },
+      min: function(obj, iterator, context) {
+        if (!iterator && _.isArray(obj) && obj[0] === +obj[0] && obj.length < 65535) {
+          return Math.min.apply(Math, obj);
+        }
+        if (!iterator && _.isEmpty(obj)) {
+          return Infinity;
+        }
+        var result = {computed : Infinity, value: Infinity};
+        _.each(obj, function(value, index, list) {
+          var computed = iterator ? iterator.call(context, value, index, list) : value;
+          if (computed < result.computed) {
+            result = {value : value, computed : computed};
+          }
+        });
+        return result.value;
+      },
+      map: function(obj, iterator, context) {
+        var results = [];
+        if (obj === null) {
+          return results;
+        }
+        if (nativeMap && obj.map === nativeMap) {
+          return obj.map(iterator, context);
+        }
+        _.each(obj, function(value, index, list) {
+          results[results.length] = iterator.call(context, value, index, list);
+        });
+        return results;
+      },
+      pluck: function(obj, key) {
+        return _.map(obj, function(value){ return value[key]; });
+      },
+      uniq: function(array, isSorted, iterator, context) {
+        if (_.isFunction(isSorted)) {
+          context = iterator;
+          iterator = isSorted;
+          isSorted = false;
+        }
+        var initial = iterator ? _.map(array, iterator, context) : array,
+          results = [],
+          seen = [];
+        _.each(initial, function(value, index) {
+          if (isSorted) {
+            if (!index || seen[seen.length - 1] !== value) {
+              seen.push(value);
+              results.push(array[index]);
+            }
+          } else if (!_.contains(seen, value)) {
+            seen.push(value);
+            results.push(array[index]);
+          }
+        });
+        return results;
+      },
+      union: function() {
+        return _.uniq(Array.prototype.concat.apply(Array.prototype, arguments));
+      },
+      isEmpty: function(obj) {
+        var key;
+        if (obj === null) {
+          return true;
+        }
+        if (_.isArray(obj) || _.isString(obj)) {
+          return obj.length === 0;
+        }
+        for (key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            return false;
+          }
+        }
+        return true;
+      },
+      any: function(obj, iterator, context) {
+        iterator =  iterator || _.identity;
+        var result = false;
+        if (obj === null) {
+          return result;
+        }
+        if (nativeSome && obj.some === nativeSome) {
+          return obj.some(iterator, context);
+        }
+        _.each(obj, function(value, index, list) {
+          if (result) {
+            return breaker;
+          }
+          result = iterator.call(context, value, index, list);
+          return breaker;
+        });
+        return !!result;
+      },
+      contains: function(obj, target) {
+        if (obj === null) {
+          return false;
+        }
+        if (nativeIndexOf && obj.indexOf === nativeIndexOf) {
+          return obj.indexOf(target) !== -1;
+        }
+        return _.any(obj, function(value) {
+          return value === target;
+        });
+      },
+      values: function(obj) {
+        var values = [], key;
+        for (key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            values.push(obj[key]);
+          }
+        }
+        return values;
+      }
+    },
+    matrix = {},
+    backwardMatrix = {},
+    degrees = {},
     m = 0,
     revM = 0,
     a = null,
     dQ = null,
     heap = null,
+    isRunning = false,
     comms = {},
  
     ////////////////////////////////////
@@ -147,92 +307,92 @@ function ModularityJoiner(nodes, edges) {
       a[low]._out += a[high]._out;
       delete a[high];
     }, 
-    
-    makeAdjacencyMatrix = function() {
-      matrix = {};
-      _.each(edges, function (e) {
-        var s = e.source._id,
-          t = e.target._id;
-        matrix[s] = matrix[s] || {};
-        matrix[s][t] = (matrix[s][t] || 0) + 1;
-      });
-      m = edges.length;
-      revM = 1/m;
-      return matrix;
+
+    insertEdge = function(s, t) {
+      matrix[s] = matrix[s] || {};
+      matrix[s][t] = (matrix[s][t] || 0) + 1;
+      backwardMatrix[t] = backwardMatrix[t] || {};
+      backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
+      degrees[s] = degrees[s] || {_in: 0, _out:0}; 
+      degrees[t] = degrees[t] || {_in: 0, _out:0};
+      degrees[s]._out++;
+      degrees[t]._in++;
+      m++;
+      revM = Math.pow(m, -1);
+    },
+  
+    deleteEdge = function(s, t) {
+      if (matrix[s]) {
+        matrix[s][t]--;
+        if (matrix[s][t] === 0) {
+          delete matrix[s][t];
+        }
+        backwardMatrix[t][s]--;
+        if (backwardMatrix[t][s] === 0) {
+          delete backwardMatrix[t][s];
+        }
+        degrees[s]._out--;
+        degrees[t]._in--;
+        m--;
+        if (m > 0) {
+          revM = Math.pow(m, -1);
+        } else {
+          revM = 0;
+        }
+        if (_.isEmpty(matrix[s])) {
+          delete matrix[s];
+        }
+        if (_.isEmpty(backwardMatrix[t])) {
+          delete backwardMatrix[t];
+        }
+        if (degrees[s]._in === 0 && degrees[s]._out === 0) {
+          delete degrees[s];
+        }
+        if (degrees[t]._in === 0 && degrees[t]._out === 0) {
+          delete degrees[t];
+        }
+      }
     },
   
     makeInitialDegrees = function() {
       a = {};
-      _.each(nodes, function (n) {
-        a[n._id] = {
-          _in: n._inboundCounter / m,
-          _out: n._outboundCounter / m
+      _.each(degrees, function (n, id) {
+        a[id] = {
+          _in: n._in / m,
+          _out: n._out / m
         };
       });
       return a;
-    },
-    
-    makeInitialDQBKP = function() {
-      dQ = {};
-      _.each(nodes, function(n1) {
-        var s = n1._id;
-        _.each(nodes, function(n2) {
-          var t = n2._id,
-            ast;
-          if (matrix[s] && matrix[s][t]) {
-            ast = matrix[s][t];
-          } else {
-            ast = 0;
-          }
-          if (s < t) {
-            dQ[s] = dQ[s] || {};
-            dQ[s][t] = (dQ[s][t] || 0) + ast * revM - a[s]._in * a[t]._out;
-            return;
-          }
-          if (t < s) {
-            dQ[t] = dQ[t] || {};
-            dQ[t][s] = (dQ[t][s] || 0) + ast * revM - a[s]._in * a[t]._out;
-            return;
-          }
-        });
-      });      
     },
     
     notConnectedPenalty = function(s, t) {
       return a[s]._out * a[t]._in + a[s]._in * a[t]._out;
     },
     
+    neighbors = function(sID) {
+      var outbound = _.keys(matrix[sID] || {}),
+        inbound = _.keys(backwardMatrix[sID] || {});
+      return _.union(outbound, inbound);
+    },
     
     makeInitialDQ = function() {
       dQ = {};
-      _.each(nodes, function(n1) {
-        var s = n1._id;
-        _.each(nodes, function(n2) {
-          var t = n2._id,
-            ast = 0,
+      _.each(matrix, function(tars, s) {
+        var bw = backwardMatrix[s] || {},
+          keys = neighbors(s);
+        _.each(keys, function(t) {
+          var ast = (tars[t] || 0),
             value;
-          if (t <= s) {
-            return;
-          }
-          if (matrix[s] && matrix[s][t]) {
-            ast += matrix[s][t];
-          }
-          if (matrix[t] && matrix[t][s]) {
-            ast += matrix[t][s];
-          }
-          if (ast === 0) {
-            return;
-          }
+          ast += (bw[t] || 0);
           value = ast * revM - notConnectedPenalty(s, t);
           if (value > 0) {
             setDQVal(s, t, value);
           }
           return;
         });
-      });      
+      });
+  
     },
-
-    
     
     makeInitialHeap = function() {
       heap = {};
@@ -240,53 +400,6 @@ function ModularityJoiner(nodes, edges) {
       return heap;
     },
     
-    updateDQAndHeapBKP = function (low, high) {
-      _.each(dQ, function (list, s) {
-        if (s < low) {
-          list[low] += list[high];
-          delete list[high];
-          if (heap[s] === low || heap[s] === high) {
-            setHeapToMaxInList(list, s);
-          } else {
-            if (dQ[s][heap[s]] < list[low]) {
-              heap[s] = low;
-            }
-          }
-          return;
-        }
-        if (s === low) {
-          delete list[high];
-          if (_.isEmpty(list)) {
-            delete dQ[s];
-            delete heap[s];
-            return;
-          }
-          _.each(list, function(v, k) {
-            if (k < high) {
-              list[k] += dQ[k][high];
-              delete dQ[k][high];
-              return;
-            }
-            if (high < k) {
-              list[k] += dQ[high][k];
-              return;
-            }
-            return;
-          });
-          setHeapToMaxInList(list, s);
-          return;
-        }
-        if (_.isEmpty(list)) {
-          delete dQ[s];
-          delete heap[s];
-        }
-        return;
-      });
-      delete dQ[high];
-      delete heap[high];
-    },
-    
-
     // i < j && i != j != k
     updateDQAndHeapValue = function (i, j, k) {
       var val;
@@ -334,37 +447,33 @@ function ModularityJoiner(nodes, edges) {
         }
         updateDQAndHeapValue(low, high, s);
       });
-    };
+    },
 
-  ////////////////////////////////////
-  // Public functions               //
-  ////////////////////////////////////
-  
   ////////////////////////////////////
   // getters                        //
   ////////////////////////////////////
   
-  this.getAdjacencyMatrix = function() {
+  getAdjacencyMatrix = function() {
     return matrix;
-  };
+  },
   
-  this.getHeap = function() {
+  getHeap = function() {
     return heap;
-  };
+  },
   
-  this.getDQ = function() {
+  getDQ = function() {
     return dQ;
-  };
+  },
   
-  this.getDegrees = function() {
+  getDegrees = function() {
     return a;
-  };
+  },
   
-  this.getCommunities = function() {
+  getCommunities = function() {
     return comms;
-  };
+  },
   
-  this.getBest = function() {
+  getBest = function() {
     var bestL, bestS, bestV = Number.NEGATIVE_INFINITY;
     _.each(heap, function(lID, sID) {
       if (bestV < dQ[sID][lID]) {
@@ -381,30 +490,41 @@ function ModularityJoiner(nodes, edges) {
       lID: bestL,
       val: bestV
     };
-  };
+  },
   
+  getBestCommunity = function (communities) {
+    var bestQ = Number.NEGATIVE_INFINITY,
+      bestC;
+    _.each(communities, function (obj) {
+      if (obj.q > bestQ) {
+        bestQ = obj.q;
+        bestC = obj.nodes;
+      }
+    });
+    return bestC;
+  },
   
   ////////////////////////////////////
   // setup                          //
   ////////////////////////////////////
   
-  this.setup = function() {
-    makeAdjacencyMatrix();
+  setup = function() {
     makeInitialDegrees();
     makeInitialDQ();
     makeInitialHeap();
     comms = {};
-  };
+  },
   
   
   ////////////////////////////////////
   // computation                    //
   ////////////////////////////////////
     
-  this.joinCommunity = function(comm) {
+  joinCommunity = function(comm) {
     var s = comm.sID,
       l = comm.lID,
       q = comm.val;
+    
     comms[s] = comms[s] || {nodes: [s], q: 0};
     if (comms[l]) {
       comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
@@ -416,5 +536,108 @@ function ModularityJoiner(nodes, edges) {
     comms[s].q += q;
     updateDQAndHeap(s, l);
     updateDegrees(s, l);
+  },
+  
+  //////////////////////////////////////////////
+  // Evaluate value of community by distance  //
+  //////////////////////////////////////////////
+  
+  floatDistStep = function(dist, depth, todo) {
+    if (todo.length === 0) {
+      return true;
+    }
+    var nextTodo = [];
+    _.each(todo, function(t) {
+      if (dist[t] !== Number.POSITIVE_INFINITY) {
+        return;
+      }
+      dist[t] = depth;
+      nextTodo = nextTodo.concat(neighbors(t));
+    });
+    return floatDistStep(dist, depth+1, nextTodo);
+  },
+ 
+  floatDist = function(sID) {
+    var dist = {};
+    _.each(matrix, function(u, n) {
+      dist[n] = Number.POSITIVE_INFINITY;
+    });
+    dist[sID] = 0;
+    if (floatDistStep(dist, 1, neighbors(sID))) {
+      return dist;
+    }
+    throw "FAIL!";
+  },
+  
+  minDist = function(dist) {
+    return function(a) {
+      return dist[a];
+    };
+  },
+  
+  ////////////////////////////////////
+  // Get only the Best Community    //
+  ////////////////////////////////////
+   
+  getCommunity = function(limit, focus) {
+    var coms = {},
+      res = [],
+      dist = {},
+      best,
+      sortByDistance = function (a, b) {
+        var d1 = dist[_.min(a,minDist(dist))],
+          d2 = dist[_.min(b,minDist(dist))],
+          val = d2 - d1;
+        if (val === 0) {
+          val = coms[b[b.length-1]].q - coms[a[a.length-1]].q;
+        }
+        return val;
+      };
+    setup();
+    best = getBest();
+    while (best !== null) {
+      joinCommunity(best);
+      best = getBest();
+    }
+    coms = getCommunities();
+    if (focus !== undefined) {
+      _.each(coms, function(obj, key) {
+        if (_.contains(obj.nodes, focus)) {
+          delete coms[key];
+        }
+      });
+    
+      res = _.pluck(_.values(coms), "nodes");
+      dist = floatDist(focus);
+      res.sort(sortByDistance);
+      return res[0];
+    }
+    return getBestCommunity(coms);
   };
+  
+  ////////////////////////////////////
+  // Public functions               //
+  ////////////////////////////////////
+  
+  this.insertEdge = insertEdge;
+  
+  this.deleteEdge = deleteEdge;
+  
+  this.getAdjacencyMatrix = getAdjacencyMatrix;
+ 
+  this.getHeap = getHeap;
+ 
+  this.getDQ = getDQ;
+ 
+  this.getDegrees = getDegrees;
+ 
+  this.getCommunities = getCommunities;
+ 
+  this.getBest = getBest;
+  
+  this.setup = setup;
+  
+  this.joinCommunity = joinCommunity;
+  
+  this.getCommunity = getCommunity;  
 }

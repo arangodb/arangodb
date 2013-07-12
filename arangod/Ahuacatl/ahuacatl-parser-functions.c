@@ -88,11 +88,15 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
   assert(context->_query);
   assert(message);
 
-  region = TRI_GetContextErrorAql(context->_query, (size_t) line, (size_t) column);
+  region = TRI_GetContextErrorAql(context->_query, 
+                                  context->_parser->_queryLength, 
+                                  (size_t) line, 
+                                  (size_t) column);
 
-  if (!region) {
+  if (region == NULL) {
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
     return;
   }
 
@@ -117,8 +121,9 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
                             const void* const value) {
   assert(context);
 
-  if (!value) {
+  if (value == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+
     return NULL;
   }
 
@@ -155,13 +160,14 @@ void* TRI_PeekStackParseAql (TRI_aql_context_t* const context) {
 
 char* TRI_GetNameParseAql (TRI_aql_context_t* const context) {
   char buffer[16];
+  int n;
 
   assert(context);
 
-  snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++context->_variableIndex);
+  n = snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++context->_variableIndex);
 
   // register the string and return the copy of it
-  return TRI_RegisterStringAql(context, buffer, strlen(buffer), false);
+  return TRI_RegisterStringAql(context, buffer, (size_t) n, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

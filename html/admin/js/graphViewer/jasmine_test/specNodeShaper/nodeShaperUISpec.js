@@ -303,21 +303,65 @@
       var div = shaperUI.createColourMappingList(),
         list = div.firstChild,
         blue = list.children[0],
-        green = list.children[1];
+        green = list.children[1],
+        blue1 = blue.children[0],
+        blue2 = blue.children[1],
+        green1 = green.children[0],
+        green2 = green.children[1];
+
       expect(shaper.getColourMapping).wasCalled();
       expect(shaper.setColourMappingListener).wasCalledWith(jasmine.any(Function));
       expect(div).toBeTag("div");
       expect($(div).attr("id")).toEqual("node_colour_list");
       expect(list).toBeTag("ul");
-      expect(blue).toBeTag("li");
-      expect($(blue).text()).toEqual("bl, ue");
+      expect(blue).toBeTag("ul");
+      expect(blue.children.length).toEqual(2);
       expect(blue.style.backgroundColor).toEqual("blue");
-    
-      expect(green).toBeTag("li");
-      expect($(green).text()).toEqual("gr, een");
+      
+      expect(blue1).toBeTag("li");
+      expect($(blue1).text()).toEqual("bl");
+      expect(blue2).toBeTag("li");
+      expect($(blue2).text()).toEqual("ue");
+      
+      expect(green).toBeTag("ul");
+      expect(green.children.length).toEqual(2);
       expect(green.style.backgroundColor).toEqual("green");
+      
+      expect(green1).toBeTag("li");
+      expect($(green1).text()).toEqual("gr");
+      expect(green2).toBeTag("li");
+      expect($(green2).text()).toEqual("een");
     
     });
+    
+    
+    it('should be able to submit the controls with return', function() {
+      runs(function() {
+        shaperUI.addControlOpticExpandColour();
+      
+        expect($("#control_node_list #control_node_expandcolour").length).toEqual(1);
+        expect($("#control_node_list #control_node_expandcolour")[0]).toConformToListCSS();
+      
+        helper.simulateMouseEvent("click", "control_node_expandcolour");
+        $("#control_node_expandcolour_expanded").attr("value", "#123456");
+        $("#control_node_expandcolour_collapsed").attr("value", "#654321");
+        
+        helper.simulateReturnEvent();
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "expand",
+            expanded: "#123456",
+            collapsed: "#654321"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_node_expandcolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });    
     
     describe('checking to change colour and label at once', function() {
       
@@ -332,8 +376,6 @@
           helper.simulateMouseEvent("click", "control_node_labelandcolour");
           $("#control_node_labelandcolour_key").attr("value", "label");
           helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
-          
-          
           
           expect(shaper.changeTo).toHaveBeenCalledWith({
             label: "label",

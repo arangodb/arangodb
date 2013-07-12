@@ -374,6 +374,88 @@
         });
         
 
+        it('should not bucket existing nodes', function() {
+          var lastCallWith, n0, n1, n2, n3, n4, n5, n6, isFirstCall,
+          callbackCheck, checkCallbackFunction;
+          
+          runs(function() {
+            checkCallbackFunction = function() {
+              callbackCheck = true;
+            };
+            callbackCheck = false;
+            isFirstCall = true;
+            spyOn($, "ajax").andCallFake(function(req) {
+              if (isFirstCall) {
+                isFirstCall = false;
+                req.success({
+                  first: {_id: "0"},
+                  nodes: {
+                    "0": {_id: "0"},
+                    "1": {_id: "1"},
+                    "2": {_id: "2"},
+                    "3": {_id: "3"}
+                  },
+                  edges: {
+                    "0-1": {_id: "0-1", _from: "0", _to: "1"},
+                    "0-2": {_id: "0-2", _from: "0", _to: "2"},
+                    "0-3": {_id: "0-3", _from: "0", _to: "3"}
+                  }
+                });
+              } else {
+                req.success({
+                  first: {_id: "1"},
+                  nodes: {
+                    "0": {_id: "0"},
+                    "1": {_id: "1"},
+                    "2": {_id: "2"},
+                    "4": {_id: "4"},
+                    "5": {_id: "5"},
+                    "6": {_id: "6"}
+                  },
+                  edges: {
+                    "1-0": {_id: "1-0", _from: "1", _to: "0"},
+                    "1-2": {_id: "1-2", _from: "1", _to: "2"},
+                    "1-4": {_id: "1-4", _from: "1", _to: "4"},
+                    "1-5": {_id: "1-5", _from: "1", _to: "5"},
+                    "1-6": {_id: "1-6", _from: "1", _to: "6"}
+                  }
+                });
+              }
+            });
+            adapter.setChildLimit(2);
+
+            spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
+              lastCallWith = _.pluck(ns, "_id");
+              return [[ns[0]], [ns[1], ns[2]]];
+            });
+            
+            callbackCheck = false;
+            adapter.loadNode(n0, checkCallbackFunction);
+            
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          }, 1000);
+          
+          runs(function() {
+            expect(lastCallWith).toEqual(["1", "2", "3"]);
+            
+            callbackCheck = false;
+            adapter.loadNode(n1, checkCallbackFunction);
+          });
+          
+          waitsFor(function() {
+            return callbackCheck;
+          }, 1000);
+          
+          runs(function() {
+            expect(lastCallWith).toEqual(["4", "5", "6"]);
+            
+          });
+          
+        });
+
         describe('that has already loaded a graph', function() {
           
         });

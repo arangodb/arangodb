@@ -502,10 +502,9 @@ namespace triagens {
 
             // get the error message. This returns a pointer, not a copy
             TRI_json_t* errorMessage = TRI_LookupArrayJson(json, "errorMessage");
-            if (errorMessage) {
-              if (errorMessage->_type == TRI_JSON_STRING) {
-                _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length);
-              }
+
+            if (TRI_IsStringJson(errorMessage)) {
+              _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length);
             }
           }
         }

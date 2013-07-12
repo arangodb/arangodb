@@ -164,7 +164,8 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
-                                         const char* const query) {
+                                         const char* const query,
+                                         const size_t queryLength) {
   TRI_aql_context_t* context;
   int res;
 
@@ -241,7 +242,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   
   TRI_InitScopesAql(context);
  
-  context->_parser = TRI_CreateParserAql(context->_query);
+  context->_parser = TRI_CreateParserAql(context->_query, queryLength);
 
   if (context->_parser == NULL) {
     // could not create the parser
@@ -519,6 +520,7 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
     TRI_set_errno(code);
     context->_error._code = code;
     context->_error._message = (char*) TRI_last_error();
+
     if (data) {
       context->_error._data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, data);
     }

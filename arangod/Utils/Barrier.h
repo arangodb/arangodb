@@ -73,9 +73,9 @@ namespace triagens {
 /// @brief create the barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-        Barrier (TRI_primary_collection_t* const doc) :
+        Barrier (TRI_primary_collection_t* const primary) :
           _barrier(0) {
-          _barrier = TRI_CreateBarrierElement(&doc->_barrierList);
+          _barrier = TRI_CreateBarrierElement(&primary->_barrierList);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

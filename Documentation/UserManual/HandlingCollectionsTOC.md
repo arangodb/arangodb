@@ -10,6 +10,7 @@ TOC {#HandlingCollectionsTOC}
       - @ref HandlingCollectionsFigures "collection.figures"
       - @ref HandlingCollectionsProperties "collection.properties"
       - @ref HandlingCollectionsRevision "collection.revision"
+      - @ref HandlingCollectionsChecksum "collection.checksum"
       - @ref HandlingCollectionsLoad "collection.load"
       - @ref HandlingCollectionsUnload "collection.unload"
       - @ref HandlingCollectionsUnload "collection.rename"

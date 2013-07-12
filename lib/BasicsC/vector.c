@@ -242,7 +242,26 @@ int TRI_ResizeVector (TRI_vector_t* vector, size_t n) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds and element at the end
+/// @brief ensures there is spare capacity at the end of the vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_EnsureSpareCapacityVector (TRI_vector_t* vector, size_t spare) {
+  int res;
+
+  if (vector->_length + spare <= vector->_capacity) {
+    // vector is already big enough
+    res = TRI_ERROR_NO_ERROR;
+  }
+  else {
+    // vector is too small. resize
+    res = TRI_ResizeVector(vector, vector->_length + spare);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_PushBackVector (TRI_vector_t* vector, void const* element) {
@@ -777,9 +796,6 @@ void TRI_FreeVectorString (TRI_memory_zone_t* zone, TRI_vector_string_t* vector)
 TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
                                            TRI_vector_string_t* vector) {
   TRI_vector_string_t* copy;
-  char** ptr;
-  char** end;
-  char** qtr;
 
   copy = TRI_Allocate(zone, sizeof(TRI_vector_t), false);
 
@@ -795,6 +811,10 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
     copy->_capacity = 0;
   }
   else {
+    char** ptr;
+    char** end;
+    char** qtr;
+
     copy->_buffer = TRI_Allocate(zone, vector->_length * sizeof(char*), false);
 
     if (copy->_buffer == NULL) {
@@ -836,13 +856,12 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
 int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
                               TRI_vector_string_t* dst,
                               TRI_vector_string_t* src) {
-  char** ptr;
-  char** end;
-  char** qtr;
-
   TRI_ClearVectorString(dst);
 
   if (0 < src->_length) {
+    char** ptr;
+    char** end;
+    char** qtr;
     int res;
 
     res = TRI_ResizeVectorString (dst, src->_length);
@@ -874,13 +893,12 @@ int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
 int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t* zone,
                                                TRI_vector_string_t* dst,
                                                TRI_vector_pointer_t* src) {
-  void** ptr;
-  void** end;
-  char** qtr;
-
   TRI_ClearVectorString(dst);
 
   if (0 < src->_length) {
+    void** ptr;
+    void** end;
+    char** qtr;
     int res;
 
     res = TRI_ResizeVectorString (dst, src->_length);

@@ -117,7 +117,7 @@
         });
       });
       
-      it('should be informed if cunstruction failed', function() {
+      it('should be informed if construction failed', function() {
         var created, error;
         
         runs(function() {
@@ -211,7 +211,7 @@
           
           this.failure = function() {
             throw "Failed";
-          };
+          };          
         }
         var cb = function(d){
           if (d.data.cmd !== "construct") {
@@ -299,6 +299,7 @@
           expect(returned.error).toEqual("Failed");
         });
       });
+      
     });
   });
   

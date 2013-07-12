@@ -51,6 +51,11 @@ struct TRI_json_s;
 struct TRI_shadow_store_s;
 struct TRI_transaction_context_s;
 
+#ifdef TRI_ENABLE_REPLICATION
+struct TRI_replication_applier_s;
+struct TRI_replication_logger_s;
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
@@ -332,8 +337,7 @@ typedef struct TRI_vocbase_s {
   bool                      _forceSyncShapes;     // force syncing of shape data to disk
   bool                      _forceSyncProperties; // force syncing of shape data to disk
 #ifdef TRI_ENABLE_REPLICATION
-  bool                      _replicationEnable;
-  bool                      _replicationWaitForSync;
+  bool                      _replicationEnableLogger;
 #endif
   bool                       _isSystem;
   bool                       _requireAuthentication;  
@@ -360,7 +364,8 @@ typedef struct TRI_vocbase_s {
   struct TRI_transaction_context_s* _transactionContext;
 
 #ifdef TRI_ENABLE_REPLICATION
-  struct TRI_replication_logger_s* _replicationLogger;
+  struct TRI_replication_logger_s*  _replicationLogger;
+  struct TRI_replication_applier_s* _replicationApplier;
 #endif
 
   // state of the database
@@ -438,9 +443,6 @@ TRI_vocbase_col_t;
 
 typedef struct TRI_vocbase_defaults_s {
   TRI_voc_size_t defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION  
-  int64_t        replicationLogSize; 
-#endif  
   bool           removeOnDrop;
   bool           removeOnCompacted;
   bool           defaultWaitForSync;
@@ -449,8 +451,7 @@ typedef struct TRI_vocbase_defaults_s {
   bool           requireAuthentication;
   bool           authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
-  bool           replicationEnable;
-  bool           replicationWaitForSync;
+  bool           replicationEnableLogger;
 #endif  
 }
 TRI_vocbase_defaults_t;
@@ -553,10 +554,10 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
 /// and optionally indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_ParametersCollectionsVocBase (TRI_vocbase_t*,
-                                                     bool,
-                                                     bool (*)(TRI_vocbase_col_t*, void*),
-                                                     void*);
+struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
+                                                    TRI_voc_tick_t,
+                                                    bool (*)(TRI_vocbase_col_t*, void*),
+                                                    void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id
