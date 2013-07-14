@@ -164,8 +164,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   };
   
   self.loadGraph = function(nodeId, callback) {
-    nodes.length = 0;
-    edges.length = 0;
+//    loadNode
+//  loadInitialNode
     self.adapter.loadNode(nodeId, function (node) {
       if (node.errorCode) {
         callback(node);
@@ -180,9 +180,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   };
   
   self.loadGraphWithAttributeValue = function(attribute, value, callback) {
-    nodes.length = 0;
-    edges.length = 0;
-    self.adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
+//    loadNodeFromTreeByAttributeValue
+    self.adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
         callback(node);
         return;
