@@ -129,7 +129,8 @@ function ArangoAdapter(nodes, edges, config) {
       var inserted = {},
         n = absAdapter.insertNode(result[0].vertex),
         oldLength = nodes.length,
-        com, buckets; 
+        com, buckets;
+        
       _.each(result, function(visited) {
         var node = absAdapter.insertNode(visited.vertex),
           path = visited.path;
@@ -270,6 +271,14 @@ function ArangoAdapter(nodes, edges, config) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
   
+  self.loadInitialNode = function(nodeId, callback) {
+    absAdapter.cleanUp();
+    var cb = function(n) {
+      callback(absAdapter.insertInitialNode(n));
+    };
+    self.loadNode(nodeId, cb);
+  };
+  
   self.loadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.traversalById, {
       id: nodeId
@@ -285,6 +294,14 @@ function ArangoAdapter(nodes, edges, config) {
       parseResultOfTraversal(res, callback);
     });
   };  
+  
+  self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
+    absAdapter.cleanUp();
+    var cb = function(n) {
+      callback(absAdapter.insertInitialNode(n));
+    };
+    self.loadNodeFromTreeByAttributeValue(attribute, value, cb);
+  };
   
   self.requestCentralityChildren = function(nodeId, callback) {
     sendQuery(queries.childrenCentrality,{
@@ -417,6 +434,7 @@ function ArangoAdapter(nodes, edges, config) {
   };
   
   self.changeTo = function (nodesCol, edgesCol, dir) {
+    absAdapter.cleanUp();
     nodeCollection = nodesCol;
     edgeCollection = edgesCol;
     if (dir !== undefined) {

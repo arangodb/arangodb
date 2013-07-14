@@ -115,6 +115,21 @@ function AbstractAdapter(nodes, edges, descendant) {
       return node;
     },
     
+    insertInitialNode = function(data) {
+      var n = insertNode(data);
+      n.x = initialX.start * 2;
+      n.y = initialY.start * 2;
+      n.fixed = true;
+      return n;
+    },
+    
+    cleanUp = function() {
+      nodes.length = 0;
+      edges.length = 0;
+      joinedInCommunities = {};
+      cachedCommunities = {};
+    },
+    
     insertEdge = function(data) {
       var source,
         target,
@@ -460,9 +475,12 @@ function AbstractAdapter(nodes, edges, descendant) {
   initialX.getStart = function() {return 0;};
   initialY.getStart = function() {return 0;};
   
+  exports.cleanUp = cleanUp;
+  
   exports.setWidth = setWidth;
   exports.setHeight = setHeight;
   exports.insertNode = insertNode;
+  exports.insertInitialNode = insertInitialNode;
   exports.insertEdge = insertEdge;
 
   exports.removeNode = removeNode;

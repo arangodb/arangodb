@@ -59,6 +59,7 @@ var describeInterface = function (testee) {
       
       // Add functions to load here:
       expect(testee).toHaveFunction("loadNode", 2);
+      expect(testee).toHaveFunction("loadInitialNode", 2);
       expect(testee).toHaveFunction("explore", 2);
 //      expect(testee).toHaveFunction("loadNodeFromTreeById", 2);
       expect(testee).toHaveFunction("requestCentralityChildren", 2);

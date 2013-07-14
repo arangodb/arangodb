@@ -209,6 +209,14 @@ function FoxxAdapter(nodes, edges, route, config) {
     });
   };
 
+  self.loadInitialNode = function(nodeId, callback) {
+    absAdapter.cleanUp();
+    var cb = function(n) {
+      callback(absAdapter.insertInitialNode(n));
+    };
+    self.loadNode(nodeId, cb);
+  };
+
   self.requestCentralityChildren = function(nodeId, callback) {
     /*
     sendQuery(queries.childrenCentrality,{
