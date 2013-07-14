@@ -47,8 +47,22 @@
   box-shadow: 0 0 0  !important;
 }
 
-.icon-edit {
+.span3 .icon-edit, .span3 .icon-info-sign {
+  position: absolute;
   margin-top: 3px;
   margin-right: 5px;
+  opacity: 0.5;
   cursor: pointer;
+}
+
+.span3 .icon-edit {
+  right: 0px;
+}
+
+.span3 .icon-info-sign {
+  right: 20px;
+}
+
+.icon-edit:hover, .icon-info-sign:hover { 
+  opacity: 1.0;
 }

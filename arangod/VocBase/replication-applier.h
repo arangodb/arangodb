@@ -116,8 +116,7 @@ typedef struct TRI_replication_apply_state_s {
   TRI_voc_tick_t                         _lastAppliedInitialTick;
   TRI_server_id_t                        _serverId;
   TRI_replication_apply_error_t          _lastError;
-  TRI_replication_apply_configuration_t  _configuration;
-  char*                          _endpoint;
+  char*                                  _endpoint;
 }
 TRI_replication_apply_state_t;
 
@@ -134,6 +133,7 @@ typedef struct TRI_replication_applier_s {
   TRI_thread_t                   _thread;
   void*                          _fetcher;
   char*                          _databaseName;
+  TRI_replication_apply_configuration_t  _configuration;
 }
 TRI_replication_applier_t;
 
@@ -275,17 +275,23 @@ int TRI_LoadStateFileReplicationApplier (struct TRI_vocbase_s*,
 /// @brief initialise an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*,
-                                                   char*,
-                                                   double,
-                                                   uint64_t,
-                                                   int);
+void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the initial apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*,
+                                                  char*,
+                                                  double,
+                                                  uint64_t,
+                                                  int); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
