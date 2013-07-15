@@ -90,7 +90,7 @@
       
       it('should try to load a starting node if one is given', function() {
         var mockObj = {
-            loadNode: function() {},
+            loadInitialNode: function() {},
             explore: function() {}
           },
           startNode = "nodes/123",
@@ -99,9 +99,9 @@
         spyOn(window, "FoxxAdapter").andCallFake(function() {
           return mockObj;
         });
-        spyOn(mockObj, "loadNode");
+        spyOn(mockObj, "loadInitialNode");
         ui = new GraphViewerWidget({}, startNode);
-        expect(mockObj.loadNode).wasCalledWith(startNode, jasmine.any(Function));
+        expect(mockObj.loadInitialNode).wasCalledWith(startNode, jasmine.any(Function));
 
       });
       
