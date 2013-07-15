@@ -289,6 +289,12 @@ var modalDialogHelper = modalDialogHelper || {};
             input.appendChild(option);
           });
           break;
+        case "extendable":
+          input = document.createElement("input");
+          input.type = "text";
+          input.id = idprefix + o.id + "_1";
+          contentTh.appendChild(input);
+          break;
         default:
           //Sorry unknown
           table.removeChild(tr);

@@ -61,7 +61,7 @@ function ArangoAdapterControls(list, adapter) {
             var nodes = $("#" + idprefix + "nodecollection").attr("value"),
               edges = $("#" + idprefix + "edgecollection").attr("value"),
               undirected = !!$("#" + idprefix + "undirected").attr("checked");
-            adapter.changeTo(nodes, edges, undirected);
+            adapter.changeToCollections(nodes, edges, undirected);
           }
         );
       });
@@ -69,7 +69,56 @@ function ArangoAdapterControls(list, adapter) {
     
   };
   
+  this.addControlChangePriority = function() {
+    var prefix = "control_adapter_priority",
+      idprefix = prefix + "_";
+      uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
+        modalDialogHelper.createModalDialog("Group By Prioritisation",
+          idprefix, [{
+            type: "extendable",
+            id: "attribute",
+            objects: []
+          }], function () {
+            var list = $("input[id^=" + idprefix + "attribute_]"),
+              prios = [];
+            list.each(function(i, t) {
+              prios.push($(t).attr("value"));
+            });
+            adapter.changeTo({
+              prioList: prios
+            });
+          }
+        );
+      });
+    /*
+    adapter.getCollections(function(nodeCols, edgeCols) {
+      uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
+        modalDialogHelper.createModalDialog("Switch Collections",
+          idprefix, [{
+            type: "list",
+            id: "nodecollection",
+            objects: nodeCols
+          },{
+            type: "list",
+            id: "edgecollection",
+            objects: edgeCols
+          },{
+            type: "checkbox",
+            id: "undirected"
+          }], function () {
+            var  = $("#" + idprefix + "nodecollection").attr("value"),
+              edges = $("#" + idprefix + "edgecollection").attr("value"),
+              undirected = !!$("#" + idprefix + "undirected").attr("checked");
+            adapter.changeTo(nodes, edges, undirected);
+          }
+        );
+      });
+    });
+    */
+  };
+  
   this.addAll = function() {
     this.addControlChangeCollections();
+    this.addControlChangePriority();
   };
 }
