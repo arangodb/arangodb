@@ -79,6 +79,9 @@ function NodeReducer(nodes, edges, prioList) {
      return countMatch / propCount;
    },
    
+   changePrioList = function (list) {
+     prioList = list;
+   },
    
    bucketByPrioList = function (toSort, numBuckets) {
      var res = {},
@@ -164,5 +167,7 @@ function NodeReducer(nodes, edges, prioList) {
   ////////////////////////////////////
    
   this.bucketNodes = bucketNodes;
+  
+  this.changePrioList = changePrioList;
   
 }

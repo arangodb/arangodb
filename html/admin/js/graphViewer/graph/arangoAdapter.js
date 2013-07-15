@@ -440,7 +440,7 @@ function ArangoAdapter(nodes, edges, config) {
     });
   };
   
-  self.changeTo = function (nodesCol, edgesCol, dir) {
+  self.changeToCollections = function (nodesCol, edgesCol, dir) {
     absAdapter.cleanUp();
     nodeCollection = nodesCol;
     edgeCollection = edgesCol;
@@ -500,4 +500,6 @@ function ArangoAdapter(nodes, edges, config) {
       });
     }
   };
+  
+  self.changeTo = absAdapter.changeTo;
 }
