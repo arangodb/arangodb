@@ -41,8 +41,11 @@ function FoxxAdapter(nodes, edges, route, config) {
     throw "The route has to be given.";
   }
 
+  config = config || {};
+
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges, this),
+    absConfig = {},
+    absAdapter,
     routes = {},
     baseRoute = route,
     requestBase = {
@@ -195,8 +198,11 @@ function FoxxAdapter(nodes, edges, route, config) {
         callback(first);
       }
     };
-
-  config = config || {};
+  
+  if (config.prioList) {
+    absConfig.prioList = config.prioList;
+  }
+  absAdapter = new AbstractAdapter(nodes, edges, this, absConfig);
   
   parseConfig(config);
   fillRoutes();

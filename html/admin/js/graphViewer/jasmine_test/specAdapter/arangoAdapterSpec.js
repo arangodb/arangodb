@@ -94,7 +94,8 @@
       
       return new ArangoAdapter([], [], {
         nodeCollection: "",
-        edgeCollection: ""
+        edgeCollection: "",
+        prioList: ["foo", "bar", "baz"]
       });
     });
 

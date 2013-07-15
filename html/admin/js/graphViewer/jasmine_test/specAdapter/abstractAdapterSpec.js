@@ -146,6 +146,17 @@
         expect(window.NodeReducer).wasCalledWith(nodes, edges);
       });
       
+      it('should send the nodeReducer the configuration if given', function() {
+        spyOn(window, "NodeReducer");
+        var nodes = [],
+          edges = [],
+          config = {
+            prioList: ["foo", "bar", "baz"]
+          },
+          t = new AbstractAdapter(nodes, edges, descendant, config);
+        expect(window.NodeReducer).wasCalledWith(nodes, edges, ["foo", "bar", "baz"]);        
+      });
+      
       it('should create a ModularityJoiner worker', function() {
         spyOn(window, "WebWorkerWrapper");
         var nodes = [],

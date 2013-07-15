@@ -76,7 +76,7 @@
         }
       });
       
-      return new FoxxAdapter([], [], "foxx/route");
+      return new FoxxAdapter([], [], "foxx/route", {prioList: ["foo", "bar", "baz"]});
     });
     
     var adapter,
