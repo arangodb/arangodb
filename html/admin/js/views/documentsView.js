@@ -33,6 +33,14 @@ var documentsView = Backbone.View.extend({
     "keyup"                      : "returnPressedHandler"
   },
 
+  showSpinner: function() {
+    $('#uploadIndicator').show();
+  },
+
+  hideSpinner: function() {
+    $('#uploadIndicator').hide();
+  },
+
   returnPressedHandler: function(event) {
     if (event.keyCode === 13) {
       if ($("#confirmDeleteBtn").attr("disabled") === false) {
@@ -57,6 +65,7 @@ var documentsView = Backbone.View.extend({
     var filetype;
 
     $('#documentsUpload').bind("change", function(e) {
+      self.showSpinner();
       var files = e.target.files || e.dataTransfer.files;
 
       file = files[0];
@@ -75,11 +84,13 @@ var documentsView = Backbone.View.extend({
         dataType: 'json',
         complete: function(xhr) {
           if (xhr.readyState == 4) {
-             if (xhr.status == 201) {
-               arangoHelper.arangoNotification("Upload successful");
-               return;
-             }
+            if (xhr.status == 201) {
+              arangoHelper.arangoNotification("Upload successful");
+              self.hideSpinner();
+              return;
+            }
           }
+          self.hideSpinner();
           arangoHelper.arangoNotification("Upload error");
         }
       });
