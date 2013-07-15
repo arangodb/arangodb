@@ -54,8 +54,6 @@ var documentsView = Backbone.View.extend({
   uploadSetup: function () {
     var self = this;
     var file;
-    var type = "documents"
-    var create = false;
     var filetype;
 
     $('#documentsUpload').bind("change", function(e) {
@@ -69,17 +67,19 @@ var documentsView = Backbone.View.extend({
 
       $.ajax({
         type: "POST",
-        beforeSend: function(request) {
-        },
-        url: '/_api/import?type='+type+'&collection='+encodeURIComponent(self.colid)+'&createCollection='+create,
+        async: false,
+        url: '/_api/import?type=documents&collection='+encodeURIComponent(self.colid)+'&createCollection=false',
         data: file,
         processData: false,
-        contentType: file.type,
-        dataType: file.type,
-        success: function(data) {
-          arangoHelper.arangoNotification("Upload successful");
-        },
-        error: function(data) {
+        contentType: 'json',
+        dataType: 'json',
+        complete: function(xhr) {
+          if (xhr.readyState == 4) {
+             if (xhr.status == 201) {
+               arangoHelper.arangoNotification("Upload successful");
+               return;
+             }
+          }
           arangoHelper.arangoNotification("Upload error");
         }
       });
