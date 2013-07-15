@@ -29,7 +29,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function NodeReducer(nodes, edges) {
+function NodeReducer(nodes, edges, prioList) {
   "use strict";
   
   if (nodes === undefined) {
@@ -38,9 +38,11 @@ function NodeReducer(nodes, edges) {
   if (edges === undefined) {
     throw "Edges have to be given.";
   }
-
+  
+  prioList = prioList || [];
+  
   var 
-
+  
     ////////////////////////////////////
     // Private functions              //
     //////////////////////////////////// 
@@ -56,15 +58,16 @@ function NodeReducer(nodes, edges) {
    getSimilarityValue = function(bucket, node) {
      if (bucket.length === 0) {
        return 1;
-     }     
-     var comp = bucket[0],
-       props = _.union(_.keys(comp), _.keys(node)),
+     }
+     var data = node._data || {},
+       comp = bucket[0]._data || {},
+       props = _.union(_.keys(comp), _.keys(data)),
        countMatch = 0,
        propCount = 0;
      _.each(props, function(key) {
-       if (comp[key] !== undefined && node[key]!== undefined) {
+       if (comp[key] !== undefined && data[key]!== undefined) {
          countMatch++;
-         if (comp[key] === node[key]) {
+         if (comp[key] === data[key]) {
            countMatch += 4;
          }
        }
@@ -75,8 +78,40 @@ function NodeReducer(nodes, edges) {
      return countMatch / propCount;
    },
    
+   
+   bucketByPrioList = function (toSort, numBuckets) {
+     var res = {},
+       resArray = [];
+     _.each(toSort, function(n) {
+       var d = n._data,
+         sortTo = {},
+         key,
+         resKey,
+         i = 0;
+       for (i = 0; i < prioList.length; i++) {
+         key = prioList[i];
+         if (d[key] !== undefined) {
+           resKey = d[key];
+           res[key] = res[key] || {};
+           res[key][resKey] = res[key][resKey] || [];
+           res[key][resKey].push(n);
+           return;
+         }
+       }
+       resKey = "default";
+       res[resKey] = res[resKey] || [];
+       res[resKey].push(n);
+     });
+     _.each(res, function(first) {
+       _.each(first, function(list) {
+         resArray.push(list);
+       });
+     });
+     return resArray;
+   },
 
   bucketNodes = function(toSort, numBuckets) {
+    
     var res = [],
     threshold = 0.5;
     if (toSort.length <= numBuckets) {
@@ -85,6 +120,9 @@ function NodeReducer(nodes, edges) {
       });
       return res;
     }
+    if (!_.isEmpty(prioList)) {
+      return bucketByPrioList(toSort, numBuckets);
+    };
     _.each(toSort, function(n) {
       var i, shortest, sLength;
       shortest = 0;

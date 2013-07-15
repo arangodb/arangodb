@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function AbstractAdapter(nodes, edges, descendant) {
+function AbstractAdapter(nodes, edges, descendant, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -44,6 +44,7 @@ function AbstractAdapter(nodes, edges, descendant) {
   }
   
   var self = this,
+    config = config || {},
     isRunning = false,
     initialX = {},
     initialY = {},
@@ -469,7 +470,11 @@ function AbstractAdapter(nodes, edges, descendant) {
   
   childLimit = Number.POSITIVE_INFINITY;
   
-  reducer = new NodeReducer(nodes, edges);
+  if (config.prioList) {
+    reducer = new NodeReducer(nodes, edges, config.prioList);
+  } else {
+    reducer = new NodeReducer(nodes, edges);
+  }
   joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
   
   initialX.getStart = function() {return 0;};

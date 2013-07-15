@@ -116,11 +116,21 @@
         
         it('should not bucket anything if #nodes <= #buckets', function() {
           buckets = 5;
-          allNodes.push({a: 1});
-          allNodes.push({a: 1});
-          allNodes.push({a: 1});
-          allNodes.push({a: 1});
-          allNodes.push({a: 1});
+          allNodes.push({
+            _data: {a: 1}
+          });
+          allNodes.push({
+            _data: {a: 1}
+          });
+          allNodes.push({
+            _data: {a: 1}
+          });
+          allNodes.push({
+            _data: {a: 1}
+          });
+          allNodes.push({
+            _data: {a: 1}
+          });
           var res = reducer.bucketNodes(allNodes, buckets);
           expect(res.length).toEqual(5);
           expect(res[0].length).toEqual(1);
@@ -132,12 +142,24 @@
         
         it('should create at most the given amount of buckets', function() {
           buckets = 3;
-          allNodes.push({a: 1});
-          allNodes.push({b: 2});
-          allNodes.push({c: 3});
-          allNodes.push({d: 4});
-          allNodes.push({e: 5});
-          allNodes.push({f: 6});
+          allNodes.push({
+            _data: {a: 1}
+          });
+          allNodes.push({
+            _data: {b: 2}
+          });
+          allNodes.push({
+            _data: {c: 3}
+          });
+          allNodes.push({
+            _data: {d: 4}
+          });
+          allNodes.push({
+            _data: {e: 5}
+          });
+          allNodes.push({
+            _data: {f: 6}
+          });
           
           var res = reducer.bucketNodes(allNodes, buckets);
           expect(res.length).toEqual(3);
@@ -145,15 +167,33 @@
         
         it('should uniformly distribute dissimilar nodes', function() {
           buckets = 3;
-          allNodes.push({a: 1});
-          allNodes.push({b: 2});
-          allNodes.push({c: 3});
-          allNodes.push({d: 4});
-          allNodes.push({e: 5});
-          allNodes.push({f: 6});
-          allNodes.push({g: 7});
-          allNodes.push({h: 8});
-          allNodes.push({i: 9});
+          allNodes.push({
+            _data:{a: 1}
+          });
+          allNodes.push({
+            _data:{b: 2}
+          });
+          allNodes.push({
+            _data:{c: 3}
+          });
+          allNodes.push({
+            _data:{d: 4}
+          });
+          allNodes.push({
+            _data:{e: 5}
+          });
+          allNodes.push({
+            _data:{f: 6}
+          });
+          allNodes.push({
+            _data:{g: 7}
+          });
+          allNodes.push({
+            _data:{h: 8}
+          });
+          allNodes.push({
+            _data:{i: 9}
+          });
           
           var res = reducer.bucketNodes(allNodes, buckets);
           expect(res[0].length).toEqual(3);
@@ -171,17 +211,35 @@
             res2,
             res3;
             
-          a1 = {a: 1};
-          a2 = {a: 1};
-          a3 = {a: 1};
+          a1 = {
+            _data: {a: 1}
+          };
+          a2 = {
+            _data: {a: 1}
+          };
+          a3 = {
+            _data: {a: 1}
+          };
           
-          b1 = {b: 2};
-          b2 = {b: 2};
-          b3 = {b: 2};
+          b1 = {
+            _data: {b: 2}
+          };
+          b2 = {
+            _data: {b: 2}
+          };
+          b3 = {
+            _data: {b: 2}
+          };
           
-          c1 = {c: 3};
-          c2 = {c: 3};
-          c3 = {c: 3};
+          c1 = {
+            _data: {c: 3}
+          };
+          c2 = {
+            _data: {c: 3}
+          };
+          c3 = {
+            _data: {c: 3}
+          };
           
           allNodes.push(a1);
           allNodes.push(a2);
@@ -198,25 +256,25 @@
           res2 = resArray[1];
           res3 = resArray[2];
           
-          if (res1[0].a !== undefined) {
+          if (res1[0]._data.a !== undefined) {
             expect(res1).toContainAll([a1, a2, a3]);
-          } else if (res2[0].a !== undefined) {
+          } else if (res2[0]._data.a !== undefined) {
             expect(res2).toContainAll([a1, a2, a3]);
           } else {
             expect(res3).toContainAll([a1, a2, a3]);
           }
           
-          if (res1[0].b !== undefined) {
+          if (res1[0]._data.b !== undefined) {
             expect(res1).toContainAll([b1, b2, b3]);
-          } else if (res2[0].b !== undefined) {
+          } else if (res2[0]._data.b !== undefined) {
             expect(res2).toContainAll([b1, b2, b3]);
           } else {
             expect(res3).toContainAll([b1, b2, b3]);
           }
           
-          if (res1[0].c !== undefined) {
+          if (res1[0]._data.c !== undefined) {
             expect(res1).toContainAll([c1, c2, c3]);
-          } else if (res2[0].c !== undefined) {
+          } else if (res2[0]._data.c !== undefined) {
             expect(res2).toContainAll([c1, c2, c3]);
           } else {
             expect(res3).toContainAll([c1, c2, c3]);
@@ -227,7 +285,286 @@
       
     });
     
-    
+    describe('setup with a priority list', function() {
+      
+      var reducer,
+      nodes,
+      buckets,
+      prios;
+
+      beforeEach(function () {
+        nodes = [];
+        prios = ["age", "type"];
+        reducer = new NodeReducer([], [], prios);
+        this.addMatchers({
+          toContainAll: function(objs) {
+            var bucket = this.actual,
+              passed = true;
+            _.each(bucket, function(n) {
+              var i;
+              for (i = 0; i < objs.length; i++) {
+                if (objs[i] === n) {
+                  return;
+                }
+              }
+              passed = false;
+            });
+            this.message = function() {
+              return JSON.stringify(bucket)
+                + " should contain all of "
+                + JSON.stringify(objs);
+            };
+            return passed;
+          }
+        });
+      });
+      
+      it('should bucket nodes according to the list', function() {
+        buckets = 3;
+        var a1, a2 ,a3,
+          b1, b2, b3,
+          c1, c2, c3,
+          resArray,
+          res1,
+          res2,
+          res3;
+          
+        a1 = {
+          _data: {
+            age: 1,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        a2 = {
+          _data: {
+            age: 1,
+            name: "Bob",
+            foo: "bar"
+          }
+        };
+        a3 = {
+          _data: {
+            age: 1,
+            name: "Charly",
+            foo: "bar"
+          }
+        };
+        
+        b1 = {
+          _data: {
+            age: 2,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        b2 = {
+          _data: {
+            age: 2,
+            name: "Bob",
+            foo: "bar"
+          }
+        };
+        b3 = {
+          _data: {
+            age: 2,
+            name: "Charly",
+            foo: "bar"
+          }
+        };
+        
+        c1 = {
+          _data: {
+            age: 3,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        c2 = {
+          _data: {
+            age: 3,
+            name: "Bob",
+            foo: "bar"
+          }
+        };
+        c3 = {
+          _data: {
+            age: 3,
+            name: "Charly",
+            foo: "bar"
+          }
+        };
+        
+        nodes.push(a1);
+        nodes.push(b1);
+        nodes.push(c1);
+        
+        nodes.push(a2);
+        nodes.push(b2);
+        nodes.push(c2);
+        
+        nodes.push(a3);
+        nodes.push(b3);
+        nodes.push(c3);
+        
+        resArray = reducer.bucketNodes(nodes, buckets);
+        res1 = resArray[0];
+        res2 = resArray[1];
+        res3 = resArray[2];
+        
+        if (res1[0]._data.age === 1) {
+          expect(res1).toContainAll([a1, a2, a3]);
+        } else if (res2[0]._data.age === 1) {
+          expect(res2).toContainAll([a1, a2, a3]);
+        } else {
+          expect(res3).toContainAll([a1, a2, a3]);
+        }
+        
+        if (res1[0]._data.age === 2) {
+          expect(res1).toContainAll([b1, b2, b3]);
+        } else if (res2[0]._data.age === 2) {
+          expect(res2).toContainAll([b1, b2, b3]);
+        } else {
+          expect(res3).toContainAll([b1, b2, b3]);
+        }
+        
+        if (res1[0]._data.age === 3) {
+          expect(res1).toContainAll([c1, c2, c3]);
+        } else if (res2[0]._data.age === 3) {
+          expect(res2).toContainAll([c1, c2, c3]);
+        } else {
+          expect(res3).toContainAll([c1, c2, c3]);
+        }
+        
+      });
+      
+      
+      it('should bucket following the priorities of the list', function() {
+        buckets = 3;
+        var a1, a2 ,a3,
+          b1, b2, b3,
+          c1, c2, c3,
+          resArray,
+          res1,
+          res2,
+          res3;
+          
+        a1 = {
+          _data: {
+            age: 1,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        a2 = {
+          _data: {
+            age: 1,
+            name: "Bob",
+            foo: "bar"
+          }
+        };
+        a3 = {
+          _data: {
+            age: 1,
+            name: "Charly",
+            foo: "bar"
+          }
+        };
+        
+        b1 = {
+          _data: {
+            type: "person",
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        b2 = {
+          _data: {
+            type: "person",
+            name: "Bob",
+            foo: "bar"
+          }
+        };
+        b3 = {
+          _data: {
+            type: "person",
+            name: "Charly",
+            foo: "bar"
+          }
+        };
+        
+        c1 = {
+          _data: {
+            age: 1,
+            type: "person",
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        c2 = {
+          _data: {
+            age: 3,
+            type: "person",
+            name: "Bob",
+            foo: "bar"
+          }
+        };
+        c3 = {
+          _data: {
+            age: 3,
+            name: "Charly",
+            foo: "bar"
+          }
+        };
+        
+        nodes.push(a1);
+        nodes.push(b1);
+        nodes.push(c1);
+        
+        nodes.push(a2);
+        nodes.push(b2);
+        nodes.push(c2);
+        
+        nodes.push(a3);
+        nodes.push(b3);
+        nodes.push(c3);
+        
+        resArray = reducer.bucketNodes(nodes, buckets);
+        res1 = resArray[0];
+        res2 = resArray[1];
+        res3 = resArray[2];
+        
+        if (res1[0]._data.age === 1) {
+          expect(res1).toContainAll([a1, a2, a3, c1]);
+        } else if (res2[0]._data.age === 1) {
+          expect(res2).toContainAll([a1, a2, a3, c1]);
+        } else {
+          expect(res3).toContainAll([a1, a2, a3, c1]);
+        }
+        
+        if (res1[0]._data.age === undefined
+          && res1[0]._data.type
+          && res1[0]._data.type === "person") {
+          expect(res1).toContainAll([b1, b2, b3]);
+        } else if (res2[0]._data.age === undefined
+          && res2[0]._data.type
+          && res2[0]._data.type === "person") {
+          expect(res2).toContainAll([b1, b2, b3]);
+        } else {
+          expect(res3).toContainAll([b1, b2, b3]);
+        }
+        
+        if (res1[0]._data.age === 3) {
+          expect(res1).toContainAll([c2, c3]);
+        } else if (res2[0]._data.age === 3) {
+          expect(res2).toContainAll([c2, c3]);
+        } else {
+          expect(res3).toContainAll([c2, c3]);
+        }
+        
+      });
+      
+    });
     
   });
   
