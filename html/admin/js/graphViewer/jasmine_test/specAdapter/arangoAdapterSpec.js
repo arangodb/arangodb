@@ -767,7 +767,7 @@
             c1 = insertNode(altNodesCollection, 1);
             e1_2 = insertEdge(altEdgesCollection, c0, c1);
       
-            adapter.changeTo(altNodesCollection, altEdgesCollection);
+            adapter.changeToCollections(altNodesCollection, altEdgesCollection);
       
             callbackCheck = false;
             adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
@@ -810,7 +810,7 @@
             
             spyOn($, "ajax");
             
-            adapter.changeTo(altNodesCollection, altEdgesCollection, false);
+            adapter.changeToCollections(altNodesCollection, altEdgesCollection, false);
             
             adapter.loadNode("42");
             
@@ -828,7 +828,7 @@
             
             spyOn($, "ajax");
             
-            adapter.changeTo(altNodesCollection, altEdgesCollection, true);
+            adapter.changeToCollections(altNodesCollection, altEdgesCollection, true);
             
             adapter.loadNode("42");
             
@@ -1457,7 +1457,7 @@
                   });
                   adapter.setNodeLimit(3);
                   
-                  adapter.changeTo(v, e);
+                  adapter.changeToCollections(v, e);
                   adapter.loadNode(v0, counterCallback);
                   adapter.loadNode(v1, counterCallback);
                   
@@ -1546,7 +1546,7 @@
                   });
                   adapter.setNodeLimit(3);
                   
-                  adapter.changeTo(v, e);
+                  adapter.changeToCollections(v, e);
                   adapter.loadNode(v0, counterCallback);
                   adapter.loadNode(v1, counterCallback);
                   
