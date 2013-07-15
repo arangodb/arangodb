@@ -1386,9 +1386,27 @@
         limit = 3;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [s1, s2],
-            [s3, s4, s5, s6, s7],
-            [s8]
+            {
+              reason: {
+                type: "similar",
+                example: s1
+              },
+              nodes: [s1, s2]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: s3
+              },
+              nodes: [s3, s4, s5, s6, s7]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: s8
+              },
+              nodes: [s8]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1462,7 +1480,13 @@
         limit = 1;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [s1, s2]
+            {
+              reason: {
+                type: "similar",
+                example: s1
+              },
+              nodes: [s1, s2]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1590,8 +1614,20 @@
         limit = 2;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [n1, n2],
-            [n3, n4, n5]
+            {
+              reason: {
+                type: "similar",
+                example: n1
+              },
+              nodes: [n1, n2]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: n3
+              },
+              nodes: [n3, n4, n5]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1618,9 +1654,27 @@
         limit = 3;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [n1],
-            [n3, n4, n5],
-            [n2]
+            {
+              reason: {
+                type: "similar",
+                example: n1
+              },
+              nodes: [n1]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: n3
+              },
+              nodes: [n3, n4, n5]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: n2
+              },
+              nodes: [n2]
+            }
           ];
         });
         adapter.setChildLimit(limit);

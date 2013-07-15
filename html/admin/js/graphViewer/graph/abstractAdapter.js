@@ -417,8 +417,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       if (_.size(inserted) > childLimit) {
         var buckets = reducer.bucketNodes(_.values(inserted), childLimit);
         _.each(buckets, function(b) {
-          if (b.length > 1) {
-            var ids = _.map(b, function(n) {
+          if (b.nodes.length > 1) {
+            var ids = _.map(b.nodes, function(n) {
               return n._id;
             });
             collapseCommunity(ids);
