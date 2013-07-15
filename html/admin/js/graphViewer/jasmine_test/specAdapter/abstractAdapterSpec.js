@@ -244,6 +244,10 @@
       it('should offer a function to check the overall amount of nodes', function() {
         expect(testee).toHaveFunction("checkNodeLimit", 1);
       });
+      
+      it('should offer a function to change to a different configuration', function() {
+        expect(testee).toHaveFunction("changeTo", 1);
+      });
     });
     
     describe('checking nodes', function() {
@@ -1589,15 +1593,29 @@
       
       beforeEach(function() {
         mockReducer = {};
+        mockReducer.changePrioList = function() {};
         mockReducer.bucketNodes = function() {};
         spyOn(window, "NodeReducer").andCallFake(function(v, e) {
           return {
             bucketNodes: function(toSort, numBuckets) {
               return mockReducer.bucketNodes(toSort, numBuckets);
+            },
+            changePrioList: function(list) {
+              return mockReducer.changePrioList(list);
             }
           };
         });
         adapter = new AbstractAdapter(nodes, edges, descendant);
+      });
+      
+      it('should be able to change the reducer to a new prioList', function() {
+        spyOn(mockReducer,"changePrioList");
+        var list = ["a", "b", "c"],
+          config = {
+            prioList: list
+          };
+        adapter.changeTo(config);
+        expect(mockReducer.changePrioList).wasCalledWith(list);
       });
       
       it('should not take any action if the limit is high enough', function() {

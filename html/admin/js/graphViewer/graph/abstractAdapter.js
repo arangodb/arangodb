@@ -56,6 +56,12 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     childLimit,
     exports = {},
 
+    changeTo = function (config) {
+      if (config.prioList !== undefined) {
+        reducer.changePrioList(config.prioList || []);
+      }
+    },
+
     setWidth = function(w) {
       initialX.range = w / 2;
       initialX.start = w / 4;
@@ -504,6 +510,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   exports.checkNodeLimit = checkNodeLimit;
   
   exports.explore = explore;
+  
+  exports.changeTo = changeTo;
   
   return exports;
 }
