@@ -248,6 +248,10 @@
       it('should offer a function to change to a different configuration', function() {
         expect(testee).toHaveFunction("changeTo", 1);
       });
+      
+      it('should offer a function to get the current priority list', function() {
+        expect(testee).toHaveFunction("getPrioList", 0);
+      });
     });
     
     describe('checking nodes', function() {
@@ -1593,6 +1597,7 @@
       
       beforeEach(function() {
         mockReducer = {};
+        mockReducer.getPrioList = function() {};
         mockReducer.changePrioList = function() {};
         mockReducer.bucketNodes = function() {};
         spyOn(window, "NodeReducer").andCallFake(function(v, e) {
@@ -1602,6 +1607,9 @@
             },
             changePrioList: function(list) {
               return mockReducer.changePrioList(list);
+            },
+            getPrioList: function() {
+              return mockReducer.getPrioList();
             }
           };
         });
@@ -1616,6 +1624,12 @@
           };
         adapter.changeTo(config);
         expect(mockReducer.changePrioList).wasCalledWith(list);
+      });
+      
+      it('should be able to return the current prioList', function() {
+        spyOn(mockReducer,"getPrioList");
+        adapter.getPrioList();
+        expect(mockReducer.getPrioList).wasCalled();
       });
       
       it('should not take any action if the limit is high enough', function() {
