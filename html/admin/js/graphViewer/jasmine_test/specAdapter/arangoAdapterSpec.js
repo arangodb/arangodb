@@ -875,7 +875,13 @@
               callNodes = ns;
               for (i = 0; i < 5; i++) {
                 pos = i*4;
-                res.push(ns.slice(pos, pos + 4));
+                res.push({
+                  reason: {
+                    type: "similar",
+                    example: ns[pos]
+                  },
+                  nodes: ns.slice(pos, pos + 4)
+                });
               }
               return res;
             });
@@ -942,7 +948,22 @@
             });
             spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
               lastCallWith = _.pluck(ns, "_id");
-              return [[ns[0]], [ns[1], ns[2]]];
+              return [
+                {
+                  reason: {
+                    type: "similar",
+                    example: ns[0]
+                  },
+                  nodes: [ns[0]]
+                },
+                {
+                  reason: {
+                    type: "similar",
+                    example: ns[1]
+                  },
+                  nodes: [ns[1], ns[2]]
+                }
+              ];
             });
             
             callbackCheck = false;
@@ -1009,9 +1030,21 @@
                 res = [],
                 pos;
               for (i = 0; i < 4; i++) {
-                res.push([ns[i]]);
+                res.push({
+                  reason: {
+                    type: "similar",
+                    example: ns[i]
+                  },
+                  nodes: [ns[i]]
+                });
               }
-              res.push([ns[4], ns[5]]);
+              res.push({
+                reason: {
+                  type: "similar",
+                  example: ns[4]
+                },
+                nodes: [ns[4], ns[5]]
+              });
               return res;
             });
             
