@@ -8,7 +8,9 @@ $(document).ready(function() {
     routes: {
       ""                                    : "collections",
       "collection/:colid"                   : "collection",
+      "collectionInfo/:colid"               : "collectionInfo",
       "new"                                 : "newCollection",
+      "login"                               : "login",
       "collection/:colid/documents/:pageid" : "documents",
       "collection/:colid/:docid"            : "document",
       "collection/:colid/:docid/source"     : "source",
@@ -25,19 +27,26 @@ $(document).ready(function() {
       "applications"                        : "applications",
       "application/documentation/:key"     : "appDocumentation",
       "graph"                               : "graph"
-      
+
     },
     initialize: function () {
+
+      window.activeSession = new window.ArangoSession();
+
       window.arangoCollectionsStore = new window.arangoCollections();
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
-      
+
       window.collectionsView = new window.collectionsView({
         collection: window.arangoCollectionsStore
       });
       window.arangoCollectionsStore.fetch();
-      
+
       window.collectionView = new window.collectionView({
+        model: arangoCollection
+      });
+
+      window.collectionInfoView = new window.collectionInfoView({
         model: arangoCollection
       });
 
@@ -67,8 +76,32 @@ $(document).ready(function() {
         collection: window.arangoCollectionsStore
       });
     },
+    checkSession: function () {
+      if (window.activeSession.models.length === 0) {
+        window.App.navigate("login", {trigger: true});
+        return false;
+      }
+      else {
+        return true;
+      }
+    },
+    login: function () {
+      if (!this.aboutView) {
+        this.loginView = new window.loginView({
+          collection: window.activeSession
+        });
+      }
+      this.loginView.render();
+      this.naviView.selectMenuItem('');
+    },
     collections: function() {
       var naviView = this.naviView;
+
+      var currentSession = this.checkSession();
+      if (currentSession === false) {
+        return;
+      }
+
       window.arangoCollectionsStore.fetch({
         success: function () {
           window.collectionsView.render();
@@ -79,6 +112,10 @@ $(document).ready(function() {
     collection: function(colid) {
       window.collectionView.options.colId = colid;
       window.collectionView.render();
+    },
+    collectionInfo: function(colid) {
+      window.collectionInfoView.options.colId = colid;
+      window.collectionInfoView.render();
     },
     newCollection: function() {
       if (!this.newCollectionView) {

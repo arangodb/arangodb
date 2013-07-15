@@ -104,18 +104,64 @@ static int ReadTick (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the filename of the replication application file
+/// @brief get the filename of the replication apply configuration file
+////////////////////////////////////////////////////////////////////////////////
+
+static char* GetApplyConfigurationFilename (TRI_vocbase_t* vocbase) {
+  return TRI_Concatenate2File(vocbase->_path, "REPLICATION-CONFIG");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the replication apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonApplyConfiguration (TRI_replication_apply_configuration_t const* config) {
+  TRI_json_t* json;
+
+  assert(config->_endpoint != NULL);
+
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 4);
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       json, 
+                       "endpoint", 
+                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_endpoint));
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       json, 
+                       "timeout", 
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, config->_timeout));
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       json, 
+                       "ignoreErrors", 
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_ignoreErrors));
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       json, 
+                       "maxConnectRetries", 
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_maxConnectRetries));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the filename of the replication apply state file
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* GetApplyStateFilename (TRI_vocbase_t* vocbase) {
-  return TRI_Concatenate2File(vocbase->_path, "REPLICATION");
+  return TRI_Concatenate2File(vocbase->_path, "REPLICATION-STATE");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* ApplyStateToJson (TRI_replication_apply_state_t const* state) {
+static TRI_json_t* JsonApplyState (TRI_replication_apply_state_t const* state) {
   TRI_json_t* json;
   char* serverId;
   char* lastProcessedContinuousTick;
@@ -224,6 +270,8 @@ void ApplyLoop (void* data) {
     if (isActive) {
       int res;
 
+      assert(applier->_fetcher != NULL);
+
       res = TRI_RunFetcherReplication(applier->_fetcher, false, 0);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -250,7 +298,7 @@ static int StartApplier (TRI_replication_applier_t* applier) {
   }
 
   if (state->_endpoint == NULL) {
-    return SetError(applier, TRI_ERROR_REPLICATION_INVALID_APPLY_STATE, NULL);
+    return SetError(applier, TRI_ERROR_REPLICATION_INVALID_APPLY_STATE, "no endpoint configured");
   }
 
   applier->_fetcher = (void*) TRI_CreateFetcherReplication(applier->_vocbase, state->_endpoint, 600.0);
@@ -676,7 +724,7 @@ int TRI_SaveStateFileReplicationApplier (TRI_vocbase_t* vocbase,
     return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
   }
 
-  json = ApplyStateToJson(state);
+  json = JsonApplyState(state);
 
   if (json == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -685,7 +733,7 @@ int TRI_SaveStateFileReplicationApplier (TRI_vocbase_t* vocbase,
   filename = GetApplyStateFilename(vocbase);
 
   if (! TRI_SaveJson(filename, json, sync)) {
-    res = TRI_ERROR_INTERNAL;
+    res = TRI_errno();
   }
   else {
     res = TRI_ERROR_NO_ERROR;
@@ -772,17 +820,8 @@ int TRI_LoadStateFileReplicationApplier (TRI_vocbase_t* vocbase,
 /// @brief initialise an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t* config,
-                                                   char* endpoint,
-                                                   double timeout,
-                                                   uint64_t ignoreErrors,
-                                                   int maxConnectRetries) {
-  assert(endpoint != NULL);
-
-  config->_endpoint          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
-  config->_timeout           = timeout;
-  config->_ignoreErrors      = ignoreErrors;
-  config->_maxConnectRetries = maxConnectRetries;
+void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t* config) {
+  memset(config, 0, sizeof(TRI_replication_apply_configuration_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -794,6 +833,150 @@ void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_conf
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
     config->_endpoint = NULL;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the initial apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t* config,
+                                                  char* endpoint,
+                                                  double timeout,
+                                                  uint64_t ignoreErrors,
+                                                  int maxConnectRetries) {
+  assert(endpoint != NULL);
+
+  config->_endpoint          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  config->_timeout           = timeout;
+  config->_ignoreErrors      = ignoreErrors;
+  config->_maxConnectRetries = maxConnectRetries;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the replication application configuration file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase) {
+  char* filename;
+  int res;
+
+  filename = GetApplyConfigurationFilename(vocbase);
+
+  if (filename == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (TRI_ExistsFile(filename)) {
+    res = TRI_UnlinkFile(filename);
+  }
+  else {
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save the replication application configuration to a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_SaveConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,
+                                                 TRI_replication_apply_configuration_t const* config,
+                                                 bool sync) {
+  TRI_json_t* json;
+  char* filename;
+  int res;
+
+  json = JsonApplyConfiguration(config);
+
+  if (json == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  filename = GetApplyConfigurationFilename(vocbase);
+
+  if (! TRI_SaveJson(filename, json, sync)) {
+    res = TRI_errno();
+  }
+  else {
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load the replication application configuration from a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LoadConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,
+                                                 TRI_replication_apply_configuration_t* config) {
+  TRI_json_t* json;
+  TRI_json_t* value;
+  char* filename;
+  char* error;
+  int res;
+   
+  TRI_InitApplyConfigurationReplicationApplier(config);
+  filename = GetApplyConfigurationFilename(vocbase);
+
+  if (! TRI_ExistsFile(filename)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  error = NULL;
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+
+  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
+    if (error != NULL) {
+      TRI_Free(TRI_CORE_MEM_ZONE, error);
+    }
+
+    return TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  // read the server id
+  value = TRI_LookupArrayJson(json, "endpoint");
+
+  if (! TRI_IsStringJson(value)) {
+    res = TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+  }
+  else {
+    config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+                                              value->_value._string.data, 
+                                              value->_value._string.length - 1);
+  }
+
+  value = TRI_LookupArrayJson(json, "timeout");
+
+  if (! TRI_IsNumberJson(value)) {
+    res = TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+  }
+  else {
+    config->_timeout = value->_value._number;
+  }
+  
+  value = TRI_LookupArrayJson(json, "maxConnectRetries");
+
+  if (! TRI_IsNumberJson(value)) {
+    res = TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+  }
+  else {
+    config->_maxConnectRetries = (int) value->_value._number;
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, json);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

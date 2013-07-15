@@ -29,7 +29,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function NodeReducer(nodes, edges) {
+function NodeReducer(nodes, edges, prioList) {
   "use strict";
   
   if (nodes === undefined) {
@@ -38,9 +38,11 @@ function NodeReducer(nodes, edges) {
   if (edges === undefined) {
     throw "Edges have to be given.";
   }
-
+  
+  prioList = prioList || [];
+  
   var 
-
+  
     ////////////////////////////////////
     // Private functions              //
     //////////////////////////////////// 
@@ -53,18 +55,20 @@ function NodeReducer(nodes, edges) {
      bucket.push(node);
    },
    
-   getSimilarityValue = function(bucket, node) {
-     if (bucket.length === 0) {
+   getSimilarityValue = function(bucketContainer, node) {
+     if (!bucketContainer.reason.example) {
+       bucketContainer.reason.example = node;
        return 1;
-     }     
-     var comp = bucket[0],
-       props = _.union(_.keys(comp), _.keys(node)),
+     }
+     var data = node._data || {},
+       comp = bucketContainer.reason.example._data || {},
+       props = _.union(_.keys(comp), _.keys(data)),
        countMatch = 0,
        propCount = 0;
      _.each(props, function(key) {
-       if (comp[key] !== undefined && node[key]!== undefined) {
+       if (comp[key] !== undefined && data[key] !== undefined) {
          countMatch++;
-         if (comp[key] === node[key]) {
+         if (comp[key] === data[key]) {
            countMatch += 4;
          }
        }
@@ -75,32 +79,85 @@ function NodeReducer(nodes, edges) {
      return countMatch / propCount;
    },
    
+   changePrioList = function (list) {
+     prioList = list;
+   },
+   
+   bucketByPrioList = function (toSort, numBuckets) {
+     var res = {},
+       resArray = [];
+     _.each(toSort, function(n) {
+       var d = n._data,
+         sortTo = {},
+         key,
+         resKey,
+         i = 0;
+       for (i = 0; i < prioList.length; i++) {
+         key = prioList[i];
+         if (d[key] !== undefined) {
+           resKey = d[key];
+           res[key] = res[key] || {};
+           res[key][resKey] = res[key][resKey] || [];
+           res[key][resKey].push(n);
+           return;
+         }
+       }
+       resKey = "default";
+       res[resKey] = res[resKey] || [];
+       res[resKey].push(n);
+     });
+     _.each(res, function(list, key) {
+       _.each(list, function(list, value) {
+         var reason = {
+           key: key,
+           value: value
+         };
+         resArray.push({
+           reason: reason,
+           nodes: list
+         });
+       });
+     });
+     return resArray;
+   },
 
   bucketNodes = function(toSort, numBuckets) {
+    
     var res = [],
     threshold = 0.5;
     if (toSort.length <= numBuckets) {
       res = _.map(toSort, function(n) {
-        return [n];
+        return {
+          reason: {type: "single"},
+          nodes: [n]
+        };
       });
       return res;
+    }
+    if (!_.isEmpty(prioList)) {
+      return bucketByPrioList(toSort, numBuckets);
     }
     _.each(toSort, function(n) {
       var i, shortest, sLength;
       shortest = 0;
       sLength = Number.POSITIVE_INFINITY;
       for (i = 0; i < numBuckets; i++) {
-        res[i] = res[i] || [];
+        res[i] = res[i] || {
+          reason: {
+            type: "similar"
+          },
+          nodes: []
+        };
         if (getSimilarityValue(res[i], n) > threshold) {
-          addNode(res[i], n);
+          addNode(res[i].nodes, n);
           return;
         }
-        if (sLength > res[i].length) {
+        if (sLength > res[i].nodes.length) {
           shortest = i;
-          sLength = res[i].length;
+          sLength = res[i].nodes.length;
         }
       }
-      addNode(res[shortest], n);
+      addNode(res[shortest].nodes, n);
     });
     return res;
   };
@@ -110,5 +167,7 @@ function NodeReducer(nodes, edges) {
   ////////////////////////////////////
    
   this.bucketNodes = bucketNodes;
+  
+  this.changePrioList = changePrioList;
   
 }
