@@ -10,6 +10,7 @@ $(document).ready(function() {
       "collection/:colid"                   : "collection",
       "collectionInfo/:colid"               : "collectionInfo",
       "new"                                 : "newCollection",
+      "login"                               : "login",
       "collection/:colid/documents/:pageid" : "documents",
       "collection/:colid/:docid"            : "document",
       "collection/:colid/:docid/source"     : "source",
@@ -29,6 +30,9 @@ $(document).ready(function() {
 
     },
     initialize: function () {
+
+      window.activeSession = new window.ArangoSession();
+
       window.arangoCollectionsStore = new window.arangoCollections();
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
@@ -72,8 +76,32 @@ $(document).ready(function() {
         collection: window.arangoCollectionsStore
       });
     },
+    checkSession: function () {
+      if (window.activeSession.models.length === 0) {
+        window.App.navigate("login", {trigger: true});
+        return false;
+      }
+      else {
+        return true;
+      }
+    },
+    login: function () {
+      if (!this.aboutView) {
+        this.loginView = new window.loginView({
+          collection: window.activeSession
+        });
+      }
+      this.loginView.render();
+      this.naviView.selectMenuItem('');
+    },
     collections: function() {
       var naviView = this.naviView;
+
+      var currentSession = this.checkSession();
+      if (currentSession === false) {
+        return;
+      }
+
       window.arangoCollectionsStore.fetch({
         success: function () {
           window.collectionsView.render();
