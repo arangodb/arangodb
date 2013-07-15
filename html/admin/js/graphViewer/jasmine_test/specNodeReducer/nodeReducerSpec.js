@@ -89,6 +89,12 @@
           expect(reducer.changePrioList.length).toEqual(1);
         });
         
+        it('should offer a function to get the current prioList', function() {
+          expect(reducer.getPrioList).toBeDefined();
+          expect(reducer.getPrioList).toEqual(jasmine.any(Function));
+          expect(reducer.getPrioList.length).toEqual(0);
+        });
+        
       });
       
       describe('checking bucket sort of nodes', function() {
@@ -318,6 +324,10 @@
             return passed;
           }
         });
+      });
+      
+      it('should be able to get the list', function() {
+        expect(reducer.getPrioList()).toEqual(prios);
       });
       
       it('should bucket nodes according to the list', function() {
