@@ -253,9 +253,43 @@ var modalDialogHelper = modalDialogHelper || {};
     
     _.each(objects, function(o) {
       var tr = document.createElement("tr"),
-      labelTh = document.createElement("th"),
-      contentTh = document.createElement("th"),
-      input;
+        labelTh = document.createElement("th"),
+        contentTh = document.createElement("th"),
+        input,
+        addLineButton,
+        rows,
+        lastId,
+        addNewLine = function() {
+          lastId++;
+          var innerTr = document.createElement("tr"),
+            innerLabelTh = document.createElement("th"),
+            innerContentTh = document.createElement("th"),
+            innerInput = document.createElement("input"),
+            removeRow = document.createElement("button"),
+            lastItem;
+          innerInput.type = "text";
+          innerInput.id = idprefix + o.id + "_" + lastId;
+          if (rows.length === 0) {
+            lastItem = $(tr);
+          } else {
+            lastItem = $(rows[rows.length - 1]);
+          }
+          lastItem.after(innerTr);
+          innerTr.appendChild(innerLabelTh);
+          innerLabelTh.className = "collectionTh capitalize";
+          innerLabelTh.appendChild(document.createTextNode(o.id + " " + lastId + ":"));
+          innerTr.appendChild(innerContentTh);
+          innerContentTh.className = "collectionTh";
+          innerContentTh.appendChild(innerInput);
+          removeRow.id = idprefix + o.id + "_" + lastId + "_remove";
+          removeRow.onclick = function() {
+            table.removeChild(innerTr);
+            rows.splice(rows.indexOf(innerTr), 1 );
+          };
+          
+          innerContentTh.appendChild(removeRow);
+          rows.push(innerTr);
+        };
       
       table.appendChild(tr);
       tr.appendChild(labelTh);
@@ -290,10 +324,16 @@ var modalDialogHelper = modalDialogHelper || {};
           });
           break;
         case "extendable":
+          rows = [];
+          lastId = 1;
+          addLineButton = document.createElement("button");
           input = document.createElement("input");
           input.type = "text";
           input.id = idprefix + o.id + "_1";
           contentTh.appendChild(input);
+          contentTh.appendChild(addLineButton);
+          addLineButton.onclick = addNewLine;
+          addLineButton.id = idprefix + o.id + "_addLine";
           break;
         default:
           //Sorry unknown

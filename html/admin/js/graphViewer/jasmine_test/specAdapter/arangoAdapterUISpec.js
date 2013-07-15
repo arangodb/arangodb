@@ -208,6 +208,75 @@
           });
         });
       });
+      
+      it('should not add empty attributes to priority', function() {
+        runs(function() {
+          $("#control_adapter_priority_attribute_1").attr("value", "");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: []
+          });
+        });
+      });
+      
+      it('should add a new line to priority on demand', function() {
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          expect($("#control_adapter_priority_attribute_1").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_2").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
+          $("#control_adapter_priority_attribute_1").attr("value", "foo");
+          $("#control_adapter_priority_attribute_2").attr("value", "bar");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: ["foo", "bar"]
+          });
+        });
+      });
+      
+      it('should add many new lines to priority on demand', function() {
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          expect($("#control_adapter_priority_attribute_1").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_2").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_3").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_4").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_5").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
+          $("#control_adapter_priority_attribute_1").attr("value", "foo");
+          $("#control_adapter_priority_attribute_2").attr("value", "bar");
+          $("#control_adapter_priority_attribute_3").attr("value", "");
+          $("#control_adapter_priority_attribute_4").attr("value", "baz");
+          $("#control_adapter_priority_attribute_5").attr("value", "foxx");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: ["foo", "bar", "baz", "foxx"]
+          });
+        });
+      });
+      
+      it('should remove all but the first line', function() {
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          expect($("#control_adapter_priority_attribute_1_remove").length).toEqual(0);
+          expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(1);
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_2_remove");
+          
+          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(0);
+          expect($("#control_adapter_priority_attribute_2").length).toEqual(0);
+          
+          $("#control_adapter_priority_attribute_1").attr("value", "foo");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: ["foo"]
+          });
+        });
+      });
+      
     });
     
     it('should be able to add all controls to the list', function() {
