@@ -166,7 +166,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   self.loadGraph = function(nodeId, callback) {
 //    loadNode
 //  loadInitialNode
-    self.adapter.loadNode(nodeId, function (node) {
+    self.adapter.loadInitialNode(nodeId, function (node) {
       if (node.errorCode) {
         callback(node);
         return;

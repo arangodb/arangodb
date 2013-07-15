@@ -85,6 +85,37 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
   
+  self.loadInitialNode = function(nodeId, callback) {
+    var json = jsonPath + nodeId + ".json";
+    absAdapter.cleanUp();
+    d3.json(json, function(error, node) {
+      if (error !== undefined && error !== null) {
+        console.log(error);
+      }
+      var n = absAdapter.insertInitialNode(node);
+      self.requestCentralityChildren(nodeId, function(c) {
+        n._centrality = c;
+      });
+      _.each(node.children, function(c) {
+        var t = absAdapter.insertNode(c),
+          e = {
+            _from: n._id,
+            _to: t._id,
+            _id: n._id + "-" + t._id
+          };
+        absAdapter.insertEdge(e);
+        self.requestCentralityChildren(t._id, function(c) {
+          t._centrality = c;
+        });
+        delete t._data.children;
+      });
+      delete n._data.children;
+      if (callback) {
+        callback(n);
+      }
+    });
+  };
+  
   self.loadNodeFromTreeById = function(nodeId, callback) {
     var json = jsonPath + nodeId + ".json";
     d3.json(json, function(error, node) {
@@ -133,6 +164,10 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   };
   
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+    throw "Sorry this adapter is read-only";
+  };
+  
+  self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
     throw "Sorry this adapter is read-only";
   };
   

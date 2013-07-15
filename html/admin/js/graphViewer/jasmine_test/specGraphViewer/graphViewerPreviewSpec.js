@@ -82,7 +82,7 @@
       
       it('should automatically load the first node', function() {
         var mockObj = {
-            loadNode: function() {},
+            loadInitialNode: function() {},
             explore: function() {}
           },
           startNode = "1",
@@ -91,9 +91,9 @@
         spyOn(window, "PreviewAdapter").andCallFake(function() {
           return mockObj;
         });
-        spyOn(mockObj, "loadNode");
+        spyOn(mockObj, "loadInitialNode");
         ui = new GraphViewerPreview(cont, {});
-        expect(mockObj.loadNode).wasCalledWith(startNode, jasmine.any(Function));
+        expect(mockObj.loadInitialNode).wasCalledWith(startNode, jasmine.any(Function));
 
       });
       
