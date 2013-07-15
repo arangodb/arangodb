@@ -276,7 +276,7 @@ function NodeShaper(parent, flags, idfunc) {
           } else {
             translateY = function() {
               return -(height / 2);
-            }
+            };
           }
           addShape = function(node, shift) {
             shift = shift || 0;
