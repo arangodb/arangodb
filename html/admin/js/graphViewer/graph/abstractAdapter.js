@@ -309,7 +309,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       }
     },
     
-    collapseCommunity = function (community) {
+    collapseCommunity = function (community, reason) {
       if (!community || community.length === 0) {
         return;
       }
@@ -324,6 +324,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       commNode.x = nodesToRemove[0].x;
       commNode.y = nodesToRemove[0].y;
       commNode._size = community.length;
+      if (reason) {
+        commNode._reason = reason;
+      }
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
@@ -417,11 +420,11 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       if (_.size(inserted) > childLimit) {
         var buckets = reducer.bucketNodes(_.values(inserted), childLimit);
         _.each(buckets, function(b) {
-          if (b.length > 1) {
-            var ids = _.map(b, function(n) {
+          if (b.nodes.length > 1) {
+            var ids = _.map(b.nodes, function(n) {
               return n._id;
             });
-            collapseCommunity(ids);
+            collapseCommunity(ids, b.reason);
           }
         });
       }

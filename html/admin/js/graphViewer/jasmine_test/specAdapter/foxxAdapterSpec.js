@@ -76,7 +76,7 @@
         }
       });
       
-      return new FoxxAdapter([], [], "foxx/route");
+      return new FoxxAdapter([], [], "foxx/route", {prioList: ["foo", "bar", "baz"]});
     });
     
     var adapter,
@@ -426,7 +426,22 @@
 
             spyOn(this, "fakeReducerBucketRequest").andCallFake(function(ns) {
               lastCallWith = _.pluck(ns, "_id");
-              return [[ns[0]], [ns[1], ns[2]]];
+              return [
+                {
+                  reason: {
+                    type: "similar",
+                    example: ns[0]
+                  },
+                  nodes: [ns[0]]
+                },
+                {
+                  reason: {
+                    type: "similar",
+                    example: ns[1]
+                  },
+                  nodes: [ns[1], ns[2]]
+                }
+              ];
             });
             
             callbackCheck = false;

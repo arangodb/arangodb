@@ -133,11 +133,10 @@
           });
           var res = reducer.bucketNodes(allNodes, buckets);
           expect(res.length).toEqual(5);
-          expect(res[0].length).toEqual(1);
-          expect(res[1].length).toEqual(1);
-          expect(res[2].length).toEqual(1);
-          expect(res[3].length).toEqual(1);
-          expect(res[4].length).toEqual(1);
+          _.each(res, function(obj) {
+            expect(obj.reason).toEqual({type: "single"});
+            expect(obj.nodes.length).toEqual(1);
+          });
         });
         
         it('should create at most the given amount of buckets', function() {
@@ -196,9 +195,13 @@
           });
           
           var res = reducer.bucketNodes(allNodes, buckets);
-          expect(res[0].length).toEqual(3);
-          expect(res[1].length).toEqual(3);
-          expect(res[2].length).toEqual(3);
+          _.each(res, function(obj) {
+            expect(obj.reason).toEqual({
+              type: "similar",
+              example: jasmine.any(Object)
+            });
+            expect(obj.nodes.length).toEqual(3);
+          });
         });
         
         it('should bucket clearly similar nodes together', function() {
@@ -252,33 +255,25 @@
           allNodes.push(c3);
           
           resArray = reducer.bucketNodes(allNodes, buckets);
-          res1 = resArray[0];
-          res2 = resArray[1];
-          res3 = resArray[2];
-          
-          if (res1[0]._data.a !== undefined) {
-            expect(res1).toContainAll([a1, a2, a3]);
-          } else if (res2[0]._data.a !== undefined) {
-            expect(res2).toContainAll([a1, a2, a3]);
-          } else {
-            expect(res3).toContainAll([a1, a2, a3]);
-          }
-          
-          if (res1[0]._data.b !== undefined) {
-            expect(res1).toContainAll([b1, b2, b3]);
-          } else if (res2[0]._data.b !== undefined) {
-            expect(res2).toContainAll([b1, b2, b3]);
-          } else {
-            expect(res3).toContainAll([b1, b2, b3]);
-          }
-          
-          if (res1[0]._data.c !== undefined) {
-            expect(res1).toContainAll([c1, c2, c3]);
-          } else if (res2[0]._data.c !== undefined) {
-            expect(res2).toContainAll([c1, c2, c3]);
-          } else {
-            expect(res3).toContainAll([c1, c2, c3]);
-          }
+          _.each(resArray, function(entry) {
+            expect(entry.reason).toEqual({
+              type: "similar",
+              example: jasmine.any(Object)
+            });
+            if (_.isEqual(entry.reason.example, a1)) {
+              res1 = entry;
+            } else if (_.isEqual(entry.reason.example, b1)) {
+              res2 = entry;
+            } else if (_.isEqual(entry.reason.example, c1)) {
+              res3 = entry;
+            } else {
+              // Should never be reached
+              expect(true).toBeFalsy();
+            }
+          });
+          expect(res1.nodes).toContainAll([a1, a2, a3]);
+          expect(res2.nodes).toContainAll([b1, b2, b3]);
+          expect(res3.nodes).toContainAll([c1, c2, c3]);
         });
         
       });
@@ -324,6 +319,7 @@
         var a1, a2 ,a3,
           b1, b2, b3,
           c1, c2, c3,
+          r1, r2, r3,
           resArray,
           res1,
           res2,
@@ -394,6 +390,19 @@
             foo: "bar"
           }
         };
+        r1 = {
+          key: "age",
+          value: "1"
+        };
+        r2 = {
+          key: "age",
+          value: "2"
+        };
+        r3 = {
+          key: "age",
+          value: "3"
+        };
+        
         
         nodes.push(a1);
         nodes.push(b1);
@@ -408,34 +417,20 @@
         nodes.push(c3);
         
         resArray = reducer.bucketNodes(nodes, buckets);
-        res1 = resArray[0];
-        res2 = resArray[1];
-        res3 = resArray[2];
-        
-        if (res1[0]._data.age === 1) {
-          expect(res1).toContainAll([a1, a2, a3]);
-        } else if (res2[0]._data.age === 1) {
-          expect(res2).toContainAll([a1, a2, a3]);
-        } else {
-          expect(res3).toContainAll([a1, a2, a3]);
-        }
-        
-        if (res1[0]._data.age === 2) {
-          expect(res1).toContainAll([b1, b2, b3]);
-        } else if (res2[0]._data.age === 2) {
-          expect(res2).toContainAll([b1, b2, b3]);
-        } else {
-          expect(res3).toContainAll([b1, b2, b3]);
-        }
-        
-        if (res1[0]._data.age === 3) {
-          expect(res1).toContainAll([c1, c2, c3]);
-        } else if (res2[0]._data.age === 3) {
-          expect(res2).toContainAll([c1, c2, c3]);
-        } else {
-          expect(res3).toContainAll([c1, c2, c3]);
-        }
-        
+        _.each(resArray, function(entry) {
+          if (_.isEqual(entry.reason, r1)) {
+            res1 = entry;
+          } else if (_.isEqual(entry.reason, r2)) {
+            res2 = entry;
+          } else if (_.isEqual(entry.reason, r3)) {
+            res3 = entry;
+          } else {
+            expect(true).toBeFalsy();
+          }
+        });
+        expect(res1.nodes).toContainAll([a1, a2, a3]);
+        expect(res2.nodes).toContainAll([b1, b2, b3]);
+        expect(res3.nodes).toContainAll([c1, c2, c3]);
       });
       
       
@@ -444,6 +439,7 @@
         var a1, a2 ,a3,
           b1, b2, b3,
           c1, c2, c3,
+          r1, r2, r3,
           resArray,
           res1,
           res2,
@@ -516,6 +512,19 @@
             foo: "bar"
           }
         };
+        r1 = {
+          key: "age",
+          value: "1"
+        };
+        r2 = {
+          key: "type",
+          value: "person"
+        };
+        r3 = {
+          key: "age",
+          value: "3"
+        };
+        
         
         nodes.push(a1);
         nodes.push(b1);
@@ -530,37 +539,20 @@
         nodes.push(c3);
         
         resArray = reducer.bucketNodes(nodes, buckets);
-        res1 = resArray[0];
-        res2 = resArray[1];
-        res3 = resArray[2];
-        
-        if (res1[0]._data.age === 1) {
-          expect(res1).toContainAll([a1, a2, a3, c1]);
-        } else if (res2[0]._data.age === 1) {
-          expect(res2).toContainAll([a1, a2, a3, c1]);
-        } else {
-          expect(res3).toContainAll([a1, a2, a3, c1]);
-        }
-        
-        if (res1[0]._data.age === undefined
-          && res1[0]._data.type
-          && res1[0]._data.type === "person") {
-          expect(res1).toContainAll([b1, b2, b3]);
-        } else if (res2[0]._data.age === undefined
-          && res2[0]._data.type
-          && res2[0]._data.type === "person") {
-          expect(res2).toContainAll([b1, b2, b3]);
-        } else {
-          expect(res3).toContainAll([b1, b2, b3]);
-        }
-        
-        if (res1[0]._data.age === 3) {
-          expect(res1).toContainAll([c2, c3]);
-        } else if (res2[0]._data.age === 3) {
-          expect(res2).toContainAll([c2, c3]);
-        } else {
-          expect(res3).toContainAll([c2, c3]);
-        }
+        _.each(resArray, function(entry) {
+          if (_.isEqual(entry.reason, r1)) {
+            res1 = entry;
+          } else if (_.isEqual(entry.reason, r2)) {
+            res2 = entry;
+          } else if (_.isEqual(entry.reason, r3)) {
+            res3 = entry;
+          } else {
+            expect(true).toBeFalsy();
+          }
+        });
+        expect(res1.nodes).toContainAll([a1, a2, a3, c1]);
+        expect(res2.nodes).toContainAll([b1, b2, b3]);
+        expect(res3.nodes).toContainAll([c2, c3]);
         
       });
       

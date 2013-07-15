@@ -140,12 +140,36 @@ function NodeShaper(parent, flags, idfunc) {
       */
     },
     addCommunityLabel = function(g) {
+      
+      var textN = g.append("text") // Append a label for the node
+        .attr("text-anchor", "middle") // Define text-anchor
+        .attr("fill", colourMapper.getForegroundCommunityColour())
+        .attr("stroke", "none"); // Make it readable
+      textN.each(function(d) {
+        var s = d3.select(this);
+        if (d._reason && d._reason.key) {
+          s.append("tspan")
+            .attr("x", "0")
+            .attr("dy", "-4")
+            .text(d._reason.key + ":");
+          s.append("tspan")
+            .attr("x", "0")
+            .attr("dy", "16")
+            .text(d._reason.value);
+        } else {
+          s.text(d._size);
+        }
+      });
+      
+      
+      /*
       g.append("text") // Append a label for the node
         .attr("fill", colourMapper.getForegroundCommunityColour())
         .attr("text-anchor", "middle") // Define text-anchor
         .text(function(d) {
           return d._size;
         });
+        */
     },
     unbindEvents = function() {
       // Hard unbind the dragging
