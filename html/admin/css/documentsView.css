@@ -342,3 +342,7 @@ table.dataTable thead th {
   opacity: 0;
   width: 1;
 }
+
+body.wait *, body.wait {
+  cursor: progress !important;
+}
