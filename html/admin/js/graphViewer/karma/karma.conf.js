@@ -2,7 +2,7 @@
 // Generated on Thu Jul 04 2013 11:39:34 GMT+0200 (CEST)
 
 module.exports = function(karma) {
-  karma.configure({
+  karma.set({
 
     // base path, that will be used to resolve files and exclude
     basePath: '../jasmine_test/',
