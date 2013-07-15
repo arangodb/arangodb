@@ -59,6 +59,7 @@ var describeInterface = function (testee) {
       
       // Add functions to load here:
       expect(testee).toHaveFunction("loadNode", 2);
+      expect(testee).toHaveFunction("loadInitialNode", 2);
       expect(testee).toHaveFunction("explore", 2);
 //      expect(testee).toHaveFunction("loadNodeFromTreeById", 2);
       expect(testee).toHaveFunction("requestCentralityChildren", 2);
@@ -80,6 +81,7 @@ var describeInterface = function (testee) {
 
 /**
 * Expectations on constructor:
+* Created with config: {prioList: ["foo", "bar", "baz"]}
 * loadNode -> Adds {_id: 1} -{_id:"1-2"}-> {_id: 2}  
 * createEdge({source: {_id: 1}, target: {_id: 1}}) -> {_id: "1-2", _from:1, _to:2}
 * createNode({}) -> {_id: 1}
@@ -121,15 +123,26 @@ var describeIntegeration = function(constructor) {
         setChildLimit: function(){},
         checkSizeOfInserted: function(){},
         checkNodeLimit: function(){},
-        explore: function(){}
+        explore: function(){},
+        changeTo: function(){}
       };
       
       
-      spyOn(window, "AbstractAdapter").andCallFake(function(nodes, edges, descendant) {
+      spyOn(window, "AbstractAdapter").andCallFake(function(nodes, edges, descendant, config) {
         mockedAbstract.nodes = nodes;
         mockedAbstract.edges = edges;
         return mockedAbstract;
       });
+    });
+    
+    it('should create the AbstractAdapter with correct values', function() {
+      testee = constructor();
+      expect(window.AbstractAdapter).wasCalledWith(
+        [],
+        [],
+        testee,
+        {prioList: ["foo", "bar", "baz"]}
+      );
     });
     
     it('should call setNodeLimit on the abstract', function() {
@@ -137,6 +150,14 @@ var describeIntegeration = function(constructor) {
       testee = constructor();
       testee.setNodeLimit(5, function(){});
       expect(mockedAbstract.setNodeLimit).wasCalledWith(5, jasmine.any(Function));
+    });
+    
+    it('should propagate changeTo to the abstract', function() {
+      spyOn(mockedAbstract, "changeTo");
+      testee = constructor();
+      testee.changeTo({prioList: ["foo", "bar", "baz"]});
+      expect(mockedAbstract.changeTo).wasCalledWith({prioList: ["foo", "bar", "baz"]});
+      
     });
     
     it('should call explore on the abstract', function() {

@@ -51,7 +51,7 @@
       var Tmp = JSONAdapter;
       JSONAdapter = function (jsonPath, nodes, edges, width, height) {
         var r = new Tmp(jsonPath, nodes, edges, width, height);
-        r.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+        r.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
           adapterMockCall = {
             attribute: attribute,
             value: value

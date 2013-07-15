@@ -197,6 +197,9 @@ extern "C" {
 ///   Will be raised when an unexpected transaction id is found.
 /// - 1409: @LIT{replication stopped}
 ///   Will be raised when the replication application is stopped.
+/// - 1410: @LIT{invalid replication apply configuration}
+///   Will be raised when the configuration for the replication application is
+///   invalid.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1308,6 +1311,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_STOPPED                                     (1409)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1410: ERROR_REPLICATION_INVALID_CONFIGURATION
+///
+/// invalid replication apply configuration
+///
+/// Will be raised when the configuration for the replication application is
+/// invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_INVALID_CONFIGURATION                       (1410)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

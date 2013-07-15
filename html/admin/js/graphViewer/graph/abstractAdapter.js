@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function AbstractAdapter(nodes, edges, descendant) {
+function AbstractAdapter(nodes, edges, descendant, config) {
   "use strict";
   
   if (nodes === undefined) {
@@ -42,6 +42,7 @@ function AbstractAdapter(nodes, edges, descendant) {
   if (descendant === undefined) {
     throw "An inheriting class has to be given.";
   }
+  config = config || {};
   
   var self = this,
     isRunning = false,
@@ -54,6 +55,12 @@ function AbstractAdapter(nodes, edges, descendant) {
     joiner,
     childLimit,
     exports = {},
+
+    changeTo = function (config) {
+      if (config.prioList !== undefined) {
+        reducer.changePrioList(config.prioList || []);
+      }
+    },
 
     setWidth = function(w) {
       initialX.range = w / 2;
@@ -113,6 +120,21 @@ function AbstractAdapter(nodes, edges, descendant) {
       node._outboundCounter = 0;
       node._inboundCounter = 0;
       return node;
+    },
+    
+    insertInitialNode = function(data) {
+      var n = insertNode(data);
+      n.x = initialX.start * 2;
+      n.y = initialY.start * 2;
+      n.fixed = true;
+      return n;
+    },
+    
+    cleanUp = function() {
+      nodes.length = 0;
+      edges.length = 0;
+      joinedInCommunities = {};
+      cachedCommunities = {};
     },
     
     insertEdge = function(data) {
@@ -293,7 +315,7 @@ function AbstractAdapter(nodes, edges, descendant) {
       }
     },
     
-    collapseCommunity = function (community) {
+    collapseCommunity = function (community, reason) {
       if (!community || community.length === 0) {
         return;
       }
@@ -308,6 +330,9 @@ function AbstractAdapter(nodes, edges, descendant) {
       commNode.x = nodesToRemove[0].x;
       commNode.y = nodesToRemove[0].y;
       commNode._size = community.length;
+      if (reason) {
+        commNode._reason = reason;
+      }
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
@@ -401,11 +426,11 @@ function AbstractAdapter(nodes, edges, descendant) {
       if (_.size(inserted) > childLimit) {
         var buckets = reducer.bucketNodes(_.values(inserted), childLimit);
         _.each(buckets, function(b) {
-          if (b.length > 1) {
-            var ids = _.map(b, function(n) {
+          if (b.nodes.length > 1) {
+            var ids = _.map(b.nodes, function(n) {
               return n._id;
             });
-            collapseCommunity(ids);
+            collapseCommunity(ids, b.reason);
           }
         });
       }
@@ -454,15 +479,22 @@ function AbstractAdapter(nodes, edges, descendant) {
   
   childLimit = Number.POSITIVE_INFINITY;
   
-  reducer = new NodeReducer(nodes, edges);
+  if (config.prioList) {
+    reducer = new NodeReducer(nodes, edges, config.prioList);
+  } else {
+    reducer = new NodeReducer(nodes, edges);
+  }
   joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
   
   initialX.getStart = function() {return 0;};
   initialY.getStart = function() {return 0;};
   
+  exports.cleanUp = cleanUp;
+  
   exports.setWidth = setWidth;
   exports.setHeight = setHeight;
   exports.insertNode = insertNode;
+  exports.insertInitialNode = insertInitialNode;
   exports.insertEdge = insertEdge;
 
   exports.removeNode = removeNode;
@@ -478,6 +510,8 @@ function AbstractAdapter(nodes, edges, descendant) {
   exports.checkNodeLimit = checkNodeLimit;
   
   exports.explore = explore;
+  
+  exports.changeTo = changeTo;
   
   return exports;
 }

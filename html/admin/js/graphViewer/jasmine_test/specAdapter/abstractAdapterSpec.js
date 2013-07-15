@@ -146,6 +146,17 @@
         expect(window.NodeReducer).wasCalledWith(nodes, edges);
       });
       
+      it('should send the nodeReducer the configuration if given', function() {
+        spyOn(window, "NodeReducer");
+        var nodes = [],
+          edges = [],
+          config = {
+            prioList: ["foo", "bar", "baz"]
+          },
+          t = new AbstractAdapter(nodes, edges, descendant, config);
+        expect(window.NodeReducer).wasCalledWith(nodes, edges, ["foo", "bar", "baz"]);        
+      });
+      
       it('should create a ModularityJoiner worker', function() {
         spyOn(window, "WebWorkerWrapper");
         var nodes = [],
@@ -232,6 +243,10 @@
       
       it('should offer a function to check the overall amount of nodes', function() {
         expect(testee).toHaveFunction("checkNodeLimit", 1);
+      });
+      
+      it('should offer a function to change to a different configuration', function() {
+        expect(testee).toHaveFunction("changeTo", 1);
       });
     });
     
@@ -1386,9 +1401,27 @@
         limit = 3;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [s1, s2],
-            [s3, s4, s5, s6, s7],
-            [s8]
+            {
+              reason: {
+                type: "similar",
+                example: s1
+              },
+              nodes: [s1, s2]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: s3
+              },
+              nodes: [s3, s4, s5, s6, s7]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: s8
+              },
+              nodes: [s8]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1462,7 +1495,13 @@
         limit = 1;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [s1, s2]
+            {
+              reason: {
+                type: "similar",
+                example: s1
+              },
+              nodes: [s1, s2]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1554,15 +1593,29 @@
       
       beforeEach(function() {
         mockReducer = {};
+        mockReducer.changePrioList = function() {};
         mockReducer.bucketNodes = function() {};
         spyOn(window, "NodeReducer").andCallFake(function(v, e) {
           return {
             bucketNodes: function(toSort, numBuckets) {
               return mockReducer.bucketNodes(toSort, numBuckets);
+            },
+            changePrioList: function(list) {
+              return mockReducer.changePrioList(list);
             }
           };
         });
         adapter = new AbstractAdapter(nodes, edges, descendant);
+      });
+      
+      it('should be able to change the reducer to a new prioList', function() {
+        spyOn(mockReducer,"changePrioList");
+        var list = ["a", "b", "c"],
+          config = {
+            prioList: list
+          };
+        adapter.changeTo(config);
+        expect(mockReducer.changePrioList).wasCalledWith(list);
       });
       
       it('should not take any action if the limit is high enough', function() {
@@ -1590,8 +1643,20 @@
         limit = 2;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [n1, n2],
-            [n3, n4, n5]
+            {
+              reason: {
+                type: "similar",
+                example: n1
+              },
+              nodes: [n1, n2]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: n3
+              },
+              nodes: [n3, n4, n5]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1618,9 +1683,27 @@
         limit = 3;
         spyOn(mockReducer, "bucketNodes").andCallFake(function() {
           return [
-            [n1],
-            [n3, n4, n5],
-            [n2]
+            {
+              reason: {
+                type: "similar",
+                example: n1
+              },
+              nodes: [n1]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: n3
+              },
+              nodes: [n3, n4, n5]
+            },
+            {
+              reason: {
+                type: "similar",
+                example: n2
+              },
+              nodes: [n2]
+            }
           ];
         });
         adapter.setChildLimit(limit);
@@ -1642,6 +1725,68 @@
         existNodes(["1", "2"]);
       });
       
+      it('should display the reason why a community has been joined', function() {
+        var n1, n2, n3, n4, n5,
+        com1, com2,
+        inserted = [],
+        limit = 3;
+        spyOn(mockReducer, "bucketNodes").andCallFake(function() {
+          return [
+            {
+              reason: {
+                type: "similar",
+                example: n1
+              },
+              nodes: [n1, n2]
+            },
+            {
+              reason: {
+                key: "type",
+                value: "example"
+              },
+              nodes: [n3, n4, n5]
+            }
+          ];
+        });
+        adapter.setChildLimit(limit);
+        n1 = adapter.insertNode({_id: "1" });
+        n2 = adapter.insertNode({_id: "2" });
+        n3 = adapter.insertNode({_id: "3" });
+        n4 = adapter.insertNode({_id: "4" });
+        n5 = adapter.insertNode({_id: "5" });
+        _.each(nodes, function(n) {
+          inserted.push(n);
+        });
+        adapter.checkSizeOfInserted(inserted);
+        
+        expect(mockReducer.bucketNodes).wasCalledWith(inserted, limit);
+        
+        expect(nodes.length).toEqual(2);
+        expect(getCommunityNodes().length).toEqual(2);
+        notExistNodes(["1", "2", "3", "4", "5"]);
+        
+        _.each(getCommunityNodes(), function(c) {
+          if (c._size === 2) {
+            com1 = c;
+            return;
+          }
+          if (c._size === 3) {
+            com2 = c;
+            return;
+          }
+          // Should never be reached
+          expect(true).toBeFalsy();
+        });
+        
+        expect(com1._reason).toEqual({
+          type: "similar",
+          example: n1
+        });
+        expect(com2._reason).toEqual({
+          key: "type",
+          value: "example"
+        });
+      });
     });
     
   });

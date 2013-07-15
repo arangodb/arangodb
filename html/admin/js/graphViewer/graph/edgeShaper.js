@@ -84,23 +84,12 @@ function EdgeShaper(parent, flags, idfunc) {
     },
     
     getDistance = function(s, t) {
-      if (!s || !s.x || !s.y) {
-        console.log("Source not defined!");
-        console.log(s);
-      }
-      if (!t || !t.x || !t.y) {
-        console.log("Target not defined!");
-        console.log(t);
-      }
       var res = Math.sqrt(
         (t.y - s.y)
         * (t.y - s.y)
         + (t.x - s.x)
         * (t.x - s.x)
       );
-      if (res === Number.NaN) {
-        console.log(t.x, t.y, s.x, s.y);
-      }
       return res; 
     },
     
@@ -130,6 +119,14 @@ function EdgeShaper(parent, flags, idfunc) {
           + ")";
       });
       line.attr("x2", function(d) {
+        /*
+        if (!d.source.position.x || !d.source.position.y) {
+          console.log(d.source);
+        }
+        if (!d.target.position.x || !d.target.position.y) {
+          console.log(d.target);
+        }
+        */
         return getDistance(d.source.position, d.target.position);
       });
     },

@@ -1,3 +1,7 @@
+#tableView {
+  cursor: pointer;
+}
+
 #sourceFooter {
   margin-top: 0;
   background: none;
