@@ -51,6 +51,41 @@ var documentsView = Backbone.View.extend({
     }
   },
 
+  uploadSetup: function () {
+    var self = this;
+    var file;
+    var type = "documents"
+    var create = false;
+    var filetype;
+
+    $('#documentsUpload').bind("change", function(e) {
+      var files = e.target.files || e.dataTransfer.files;
+
+      file = files[0];
+      if (file.type !== 'application/json') {
+        arangoHelper.arangoNotification("Not supported filetype: "+file.type);
+        return;
+      }
+
+      $.ajax({
+        type: "POST",
+        beforeSend: function(request) {
+        },
+        url: '/_api/import?type='+type+'&collection='+encodeURIComponent(self.colid)+'&createCollection='+create,
+        data: file,
+        processData: false,
+        contentType: file.type,
+        dataType: file.type,
+        success: function(data) {
+          arangoHelper.arangoNotification("Upload successful");
+        },
+        error: function(data) {
+          arangoHelper.arangoNotification("Upload error");
+        }
+      });
+    });
+  },
+
   buildCollectionLink : function (collection) {
     return "collection/" + encodeURIComponent(collection.get('name')) + '/documents/1';
   },
@@ -244,9 +279,9 @@ var documentsView = Backbone.View.extend({
     var self = this;
 
     $(self.table).dataTable().fnAddData([
-      '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-      '',
-      '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
+                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+                                        '',
+                                        '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
     ]);
 
     $.each(window.arangoDocumentsStore.models, function(key, value) {
@@ -260,18 +295,18 @@ var documentsView = Backbone.View.extend({
 
       $(self.table).dataTable().fnAddData([
 
-        '<pre class="prettify" title="'
-        + self.escaped(JSON.stringify(tempObj))
-        + '">'
-        + self.cutByResolution(JSON.stringify(tempObj))
-        + '</pre>',
+                                          '<pre class="prettify" title="'
+                                          + self.escaped(JSON.stringify(tempObj))
+                                          + '">'
+                                          + self.cutByResolution(JSON.stringify(tempObj))
+                                          + '</pre>',
 
-        '<div class="key">'
-        + value.attributes.key
-        + '</div>',
+                                          '<div class="key">'
+                                          + value.attributes.key
+                                          + '</div>',
 
-        '<button class="enabled" id="deleteDoc">'
-        + '<img src="img/icon_delete.png" width="16" height="16"></button>'
+                                          '<button class="enabled" id="deleteDoc">'
+                                          + '<img src="img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {
@@ -308,6 +343,7 @@ var documentsView = Backbone.View.extend({
     }
     $.gritter.removeAll();
 
+    this.uploadSetup();
     return this;
   },
   renderPagination: function (totalPages) {
@@ -328,17 +364,17 @@ var documentsView = Backbone.View.extend({
     $('#documentsToolbarF').prepend(
       '<ul class="prePagi"><li><a id="documents_first">'+
       '<i class="icon icon-step-backward"></i></a></li></ul>');
-    $('#documentsToolbarF').append(
-      '<ul class="lasPagi"><li><a id="documents_last">'+
-      '<i class="icon icon-step-forward"></i></a></li></ul>');
-    var total = $('#totalDocuments');
-    if (total.length > 0) {
-      total.html("Total: " + this.documentsCount + " documents");
-    } else {
-      $('#documentsToolbarFL').append(
-        '<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>'
-      );
-    }
+      $('#documentsToolbarF').append(
+        '<ul class="lasPagi"><li><a id="documents_last">'+
+        '<i class="icon icon-step-forward"></i></a></li></ul>');
+        var total = $('#totalDocuments');
+        if (total.length > 0) {
+          total.html("Total: " + this.documentsCount + " documents");
+        } else {
+          $('#documentsToolbarFL').append(
+            '<a id="totalDocuments">Total: ' + this.documentsCount + ' document(s) </a>'
+          );
+        }
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
