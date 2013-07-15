@@ -83,6 +83,12 @@
           expect(reducer.bucketNodes.length).toEqual(2);
         });
         
+        it('should offer a function to change the prioList', function() {
+          expect(reducer.changePrioList).toBeDefined();
+          expect(reducer.changePrioList).toEqual(jasmine.any(Function));
+          expect(reducer.changePrioList.length).toEqual(1);
+        });
+        
       });
       
       describe('checking bucket sort of nodes', function() {
@@ -432,8 +438,7 @@
         expect(res2.nodes).toContainAll([b1, b2, b3]);
         expect(res3.nodes).toContainAll([c1, c2, c3]);
       });
-      
-      
+       
       it('should bucket following the priorities of the list', function() {
         buckets = 3;
         var a1, a2 ,a3,
@@ -525,7 +530,6 @@
           value: "3"
         };
         
-        
         nodes.push(a1);
         nodes.push(b1);
         nodes.push(c1);
@@ -554,6 +558,246 @@
         expect(res2.nodes).toContainAll([b1, b2, b3]);
         expect(res3.nodes).toContainAll([c2, c3]);
         
+      });
+      
+      it('should be possible to delete the list', function() {
+        buckets = 3;
+        var a1, a2 ,a3,
+          b1, b2, b3,
+          c1, c2, c3,
+          r1, r2, r3,
+          resArray,
+          res1,
+          res2,
+          res3;
+          
+        a1 = {
+          _data: {
+            age: 1,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        a2 = {
+          _data: {
+            age: 1,
+            name: "Bob",
+            foo: "baz"
+          }
+        };
+        a3 = {
+          _data: {
+            age: 1,
+            name: "Charly",
+            foo: "tango"
+          }
+        };
+        
+        b1 = {
+          _data: {
+            age: 2,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        b2 = {
+          _data: {
+            age: 2,
+            name: "Bob",
+            foo: "baz"
+          }
+        };
+        b3 = {
+          _data: {
+            age: 2,
+            name: "Charly",
+            foo: "tango"
+          }
+        };
+        
+        c1 = {
+          _data: {
+            age: 3,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        c2 = {
+          _data: {
+            age: 3,
+            name: "Bob",
+            foo: "baz"
+          }
+        };
+        c3 = {
+          _data: {
+            age: 3,
+            name: "Charly",
+            foo: "tango"
+          }
+        };
+        r1 = {
+          type: "similar",
+          example: a1
+        };
+        r2 = {
+          type: "similar",
+          example: a2
+        };
+        r3 = {
+          type: "similar",
+          example: a3
+        };
+        
+        nodes.push(a1);
+        nodes.push(b1);
+        nodes.push(c1);
+        
+        nodes.push(a2);
+        nodes.push(b2);
+        nodes.push(c2);
+        
+        nodes.push(a3);
+        nodes.push(b3);
+        nodes.push(c3);
+        
+        reducer.changePrioList([]);
+        
+        resArray = reducer.bucketNodes(nodes, buckets);
+        _.each(resArray, function(entry) {
+          if (_.isEqual(entry.reason, r1)) {
+            res1 = entry;
+          } else if (_.isEqual(entry.reason, r2)) {
+            res2 = entry;
+          } else if (_.isEqual(entry.reason, r3)) {
+            res3 = entry;
+          } else {
+            expect(true).toBeFalsy();
+          }
+        });
+        expect(res1.nodes).toContainAll([a1, b1, c1]);
+        expect(res2.nodes).toContainAll([a2, b2, c2]);
+        expect(res3.nodes).toContainAll([a3, b3, c3]);
+      });
+      
+      it('should be possible to change the list', function() {
+        buckets = 3;
+        var a1, a2 ,a3,
+          b1, b2, b3,
+          c1, c2, c3,
+          r1, r2, r3,
+          resArray,
+          res1,
+          res2,
+          res3;
+          
+        a1 = {
+          _data: {
+            age: 1,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        a2 = {
+          _data: {
+            age: 1,
+            name: "Bob",
+            foo: "baz"
+          }
+        };
+        a3 = {
+          _data: {
+            age: 1,
+            name: "Charly",
+            foo: "tango"
+          }
+        };
+        
+        b1 = {
+          _data: {
+            age: 2,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        b2 = {
+          _data: {
+            age: 2,
+            name: "Bob",
+            foo: "baz"
+          }
+        };
+        b3 = {
+          _data: {
+            age: 2,
+            name: "Charly",
+            foo: "tango"
+          }
+        };
+        
+        c1 = {
+          _data: {
+            age: 3,
+            name: "Alice",
+            foo: "bar"
+          }
+        };
+        c2 = {
+          _data: {
+            age: 3,
+            name: "Bob",
+            foo: "baz"
+          }
+        };
+        c3 = {
+          _data: {
+            age: 3,
+            name: "Charly",
+            foo: "tango"
+          }
+        };
+        r1 = {
+          key: "foo",
+          value: "bar"
+        };
+        r2 = {
+          key: "foo",
+          value: "baz"
+        };
+        r3 = {
+          key: "foo",
+          value: "tango"
+        };
+        
+        nodes.push(a1);
+        nodes.push(b1);
+        nodes.push(c1);
+        
+        nodes.push(a2);
+        nodes.push(b2);
+        nodes.push(c2);
+        
+        nodes.push(a3);
+        nodes.push(b3);
+        nodes.push(c3);
+        
+        reducer.changePrioList(["foo"]);
+        
+        resArray = reducer.bucketNodes(nodes, buckets);
+        _.each(resArray, function(entry) {
+          if (_.isEqual(entry.reason, r1)) {
+            res1 = entry;
+          } else if (_.isEqual(entry.reason, r2)) {
+            res2 = entry;
+          } else if (_.isEqual(entry.reason, r3)) {
+            res3 = entry;
+          } else {
+            expect(true).toBeFalsy();
+          }
+        });
+        expect(res1.nodes).toContainAll([a1, b1, c1]);
+        expect(res2.nodes).toContainAll([a2, b2, c2]);
+        expect(res3.nodes).toContainAll([a3, b3, c3]);
       });
       
     });
