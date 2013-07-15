@@ -42,9 +42,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   if (descendant === undefined) {
     throw "An inheriting class has to be given.";
   }
+  config = config || {};
   
   var self = this,
-    config = config || {},
     isRunning = false,
     initialX = {},
     initialY = {},

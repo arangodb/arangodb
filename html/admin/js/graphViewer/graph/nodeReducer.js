@@ -122,7 +122,7 @@ function NodeReducer(nodes, edges, prioList) {
     }
     if (!_.isEmpty(prioList)) {
       return bucketByPrioList(toSort, numBuckets);
-    };
+    }
     _.each(toSort, function(n) {
       var i, shortest, sLength;
       shortest = 0;
