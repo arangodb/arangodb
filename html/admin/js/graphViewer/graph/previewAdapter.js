@@ -71,6 +71,14 @@ function PreviewAdapter(nodes, edges, config) {
   
   parseConfig(config);
 
+  self.loadInitialNode = function(nodeId, callback) {
+    absAdapter.cleanUp();
+    var cb = function(n) {
+      callback(absAdapter.insertInitialNode(n));
+    };
+    self.loadNode(nodeId, cb);
+  };
+
   self.loadNode = function(nodeId, callback) {
     var ns = [],
       es = [],
@@ -132,7 +140,7 @@ function PreviewAdapter(nodes, edges, config) {
     ns.push(n3);
     ns.push(n4);
     ns.push(n5);
-    
+        
     es.push(e12);
     es.push(e13);
     es.push(e14);
