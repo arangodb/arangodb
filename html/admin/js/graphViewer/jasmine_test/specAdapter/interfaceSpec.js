@@ -123,7 +123,8 @@ var describeIntegeration = function(constructor) {
         setChildLimit: function(){},
         checkSizeOfInserted: function(){},
         checkNodeLimit: function(){},
-        explore: function(){}
+        explore: function(){},
+        changeTo: function(){}
       };
       
       
@@ -149,6 +150,14 @@ var describeIntegeration = function(constructor) {
       testee = constructor();
       testee.setNodeLimit(5, function(){});
       expect(mockedAbstract.setNodeLimit).wasCalledWith(5, jasmine.any(Function));
+    });
+    
+    it('should propagate changeTo to the abstract', function() {
+      spyOn(mockedAbstract, "changeTo");
+      testee = constructor();
+      testee.changeTo({prioList: ["foo", "bar", "baz"]});
+      expect(mockedAbstract.changeTo).wasCalledWith({prioList: ["foo", "bar", "baz"]});
+      
     });
     
     it('should call explore on the abstract', function() {
