@@ -82,7 +82,10 @@ function ArangoAdapterControls(list, adapter) {
             var list = $("input[id^=" + idprefix + "attribute_]"),
               prios = [];
             list.each(function(i, t) {
-              prios.push($(t).attr("value"));
+              var val = $(t).attr("value");
+              if (val !== "") {
+                prios.push(val);
+              }
             });
             adapter.changeTo({
               prioList: prios
