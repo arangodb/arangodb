@@ -1437,6 +1437,32 @@
         expect($("svg #\\*community_42 text").attr("fill")).toEqual("white");
       });
       
+      it('should print the reason why it is joined', function() {
+        var nodes = [],
+          commNode = {
+            _id: "*community_42",
+            _size: 4,
+            _inboundCounter: 0,
+            _outboundCounter: 0,
+            _reason: {
+              key: "type",
+              value: "example"
+            },
+            position: {
+              x: 1,
+              y: 1,
+              z: 1
+            }
+          },
+          spans;
+        nodes.push(commNode);
+        shaper.drawNodes(nodes);
+        spans = $("svg #\\*community_42 text tspan");
+        expect($(spans.get(0)).text()).toEqual("type:");
+        expect($(spans.get(1)).text()).toEqual("example");
+        expect($("svg #\\*community_42 text").attr("fill")).toEqual("white");
+      });
+      
     });
 
   });

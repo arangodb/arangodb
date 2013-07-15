@@ -48,7 +48,8 @@ function ArangoAdapter(nodes, edges, config) {
   }
   
   var self = this,
-    absAdapter = new AbstractAdapter(nodes, edges, this),
+    absAdapter,
+    absConfig = {},
     api = {},
     queries = {},
     nodeCollection,
@@ -199,7 +200,13 @@ function ArangoAdapter(nodes, edges, config) {
          _.each(res, self.deleteEdge);
        });
     };
-    
+   
+   
+  if (config.prioList) {
+    absConfig.prioList = config.prioList;
+  }
+  absAdapter = new AbstractAdapter(nodes, edges, this, absConfig);
+     
   parseConfig(config);
   
   api.base = arangodb.lastIndexOf("http://", 0) === 0

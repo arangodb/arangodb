@@ -55,17 +55,18 @@ function NodeReducer(nodes, edges, prioList) {
      bucket.push(node);
    },
    
-   getSimilarityValue = function(bucket, node) {
-     if (bucket.length === 0) {
+   getSimilarityValue = function(bucketContainer, node) {
+     if (!bucketContainer.reason.example) {
+       bucketContainer.reason.example = node;
        return 1;
      }
      var data = node._data || {},
-       comp = bucket[0]._data || {},
+       comp = bucketContainer.reason.example._data || {},
        props = _.union(_.keys(comp), _.keys(data)),
        countMatch = 0,
        propCount = 0;
      _.each(props, function(key) {
-       if (comp[key] !== undefined && data[key]!== undefined) {
+       if (comp[key] !== undefined && data[key] !== undefined) {
          countMatch++;
          if (comp[key] === data[key]) {
            countMatch += 4;
@@ -102,9 +103,16 @@ function NodeReducer(nodes, edges, prioList) {
        res[resKey] = res[resKey] || [];
        res[resKey].push(n);
      });
-     _.each(res, function(first) {
-       _.each(first, function(list) {
-         resArray.push(list);
+     _.each(res, function(list, key) {
+       _.each(list, function(list, value) {
+         var reason = {
+           key: key,
+           value: value
+         };
+         resArray.push({
+           reason: reason,
+           nodes: list
+         });
        });
      });
      return resArray;
@@ -116,7 +124,10 @@ function NodeReducer(nodes, edges, prioList) {
     threshold = 0.5;
     if (toSort.length <= numBuckets) {
       res = _.map(toSort, function(n) {
-        return [n];
+        return {
+          reason: {type: "single"},
+          nodes: [n]
+        };
       });
       return res;
     }
@@ -128,17 +139,22 @@ function NodeReducer(nodes, edges, prioList) {
       shortest = 0;
       sLength = Number.POSITIVE_INFINITY;
       for (i = 0; i < numBuckets; i++) {
-        res[i] = res[i] || [];
+        res[i] = res[i] || {
+          reason: {
+            type: "similar"
+          },
+          nodes: []
+        };
         if (getSimilarityValue(res[i], n) > threshold) {
-          addNode(res[i], n);
+          addNode(res[i].nodes, n);
           return;
         }
-        if (sLength > res[i].length) {
+        if (sLength > res[i].nodes.length) {
           shortest = i;
-          sLength = res[i].length;
+          sLength = res[i].nodes.length;
         }
       }
-      addNode(res[shortest], n);
+      addNode(res[shortest].nodes, n);
     });
     return res;
   };
