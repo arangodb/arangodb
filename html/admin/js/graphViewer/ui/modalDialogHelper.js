@@ -259,7 +259,8 @@ var modalDialogHelper = modalDialogHelper || {};
         addLineButton,
         rows,
         lastId,
-        addNewLine = function() {
+        i,
+        addNewLine = function(content) {
           lastId++;
           var innerTr = document.createElement("tr"),
             innerLabelTh = document.createElement("th"),
@@ -269,6 +270,7 @@ var modalDialogHelper = modalDialogHelper || {};
             lastItem;
           innerInput.type = "text";
           innerInput.id = idprefix + o.id + "_" + lastId;
+          innerInput.value = content || "";
           if (rows.length === 0) {
             lastItem = $(tr);
           } else {
@@ -334,6 +336,12 @@ var modalDialogHelper = modalDialogHelper || {};
           contentTh.appendChild(addLineButton);
           addLineButton.onclick = addNewLine;
           addLineButton.id = idprefix + o.id + "_addLine";
+          if (o.objects.length > 0) {
+            input.value = o.objects[0];
+          }
+          for (i = 1; i < o.objects.length; i++) {
+            addNewLine(o.objects[i]);
+          }
           break;
         default:
           //Sorry unknown
