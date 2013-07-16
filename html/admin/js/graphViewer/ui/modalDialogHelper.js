@@ -256,6 +256,7 @@ var modalDialogHelper = modalDialogHelper || {};
         labelTh = document.createElement("th"),
         contentTh = document.createElement("th"),
         input,
+        icon,
         addLineButton,
         rows,
         lastId,
@@ -267,6 +268,7 @@ var modalDialogHelper = modalDialogHelper || {};
             innerContentTh = document.createElement("th"),
             innerInput = document.createElement("input"),
             removeRow = document.createElement("button"),
+            innerIcon = document.createElement("img"),
             lastItem;
           innerInput.type = "text";
           innerInput.id = idprefix + o.id + "_" + lastId;
@@ -284,6 +286,9 @@ var modalDialogHelper = modalDialogHelper || {};
           innerContentTh.className = "collectionTh";
           innerContentTh.appendChild(innerInput);
           removeRow.id = idprefix + o.id + "_" + lastId + "_remove";
+          removeRow.className = "graphViewer-icon-button";
+          removeRow.appendChild(innerIcon);
+          innerIcon.className = "gv-icon-small delete";
           removeRow.onclick = function() {
             table.removeChild(innerTr);
             rows.splice(rows.indexOf(innerTr), 1 );
@@ -330,12 +335,18 @@ var modalDialogHelper = modalDialogHelper || {};
           lastId = 1;
           addLineButton = document.createElement("button");
           input = document.createElement("input");
+          icon = document.createElement("img");
           input.type = "text";
           input.id = idprefix + o.id + "_1";
           contentTh.appendChild(input);
           contentTh.appendChild(addLineButton);
-          addLineButton.onclick = addNewLine;
+          addLineButton.onclick = function() {
+            addNewLine();
+          };
           addLineButton.id = idprefix + o.id + "_addLine";
+          addLineButton.className = "graphViewer-icon-button";
+          addLineButton.appendChild(icon);
+          icon.className = "gv-icon-small add";
           if (o.objects.length > 0) {
             input.value = o.objects[0];
           }
