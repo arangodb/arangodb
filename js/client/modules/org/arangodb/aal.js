@@ -511,7 +511,7 @@ function updateFishbowl () {
     filename = undefined;
   }
   catch (err) {
-    if (filename !== undefined) {
+    if (filename !== undefined && fs.exists(filename)) {
       fs.remove(filename);
     }
 
