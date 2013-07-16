@@ -104,7 +104,7 @@
     it('should be able to insert a new node', function() {
       var c = new CommunityNode(nodes.slice(3, 13)),
         n = {
-        _id: "fuxx",
+        _id: "foxx",
         _inboundCounter: 0,
         _outboundCounter: 0,
         position: {
@@ -119,7 +119,7 @@
     
     it('should be able to check if a node is included', function() {
       var n = {
-        _id: "fuxx",
+        _id: "foxx",
         _inboundCounter: 0,
         _outboundCounter: 0,
         position: {
@@ -130,10 +130,74 @@
       },
       c = new CommunityNode([n]);
       
-      expect(c.hasNode("fuxx")).toBeTruthy();
+      expect(c.hasNode("foxx")).toBeTruthy();
       expect(c.hasNode("1")).toBeFalsy();
     });
     
+    it('should only acknowledge included nodes', function() {
+      var c = new CommunityNode(nodes.slice(3, 13)),
+        i;
+      for (i = 0; i < nodes.length; i++) {
+        if (2 < i && i < 13) {
+          expect(c.hasNode(nodes[i]._id)).toBeTruthy();
+        } else {
+          expect(c.hasNode(nodes[i]._id)).toBeFalsy();
+        }
+      }
+    });
+    
+    it('should return nodes by id', function() {
+      var n = {
+        _id: "foxx",
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      },
+      c = new CommunityNode([n]);
+      expect(c.getNode("foxx")).toEqual(n);
+    });
+    
+    it('should return undefined if node is not contained', function() {
+      var n = {
+        _id: "foxx",
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      },
+      c = new CommunityNode([n]);
+      expect(c.getNode("nofoxx")).toBeUndefined();
+    });
+    
+    it('should initially contain the required attributes for shaping', function() {
+      var x = 42,
+        y = 23,
+        n = {
+          _id: "foxx",
+          _inboundCounter: 0,
+          _outboundCounter: 0,
+          position: {
+            x: x,
+            y: y,
+            z: 1
+          }
+        },
+        initNodes = [n].concat(nodes.slice(3, 13)),
+        c = new CommunityNode(initNodes);
+      expect(c.x).toBeDefined();
+      expect(c.x).toEqual(x);
+      expect(c.y).toBeDefined();
+      expect(c.y).toEqual(y);
+      
+      expect(c._size).toEqual(11);
+    });
   });
 
 }());
