@@ -335,9 +335,10 @@ function get_api_collections (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_get_api_collection_name
 /// @brief returns a collection
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name},reads a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name},returns information about a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -373,8 +374,9 @@ function get_api_collections (req, res) {
 /////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_get_api_collection_properties
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/properties,reads a collection with properties}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/properties,reads the properties of a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -441,8 +443,9 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_get_api_collection_count
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/count,reads a collection with count}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/count,returns the number of documents in a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -487,8 +490,9 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_get_api_collection_figures
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/figures,reads a collection with stats}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/figures,returns the stats for a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -559,8 +563,9 @@ function get_api_collections (req, res) {
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_get_api_collection_revision
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/revision, reads a collection with revision id}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/revision,return a collection revision id}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -604,8 +609,9 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_get_api_collection_checksum
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, returns a checksum for the collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum,returns a checksum for the collection}
 ///
 /// @RESTURLPARAMETERS
 ///
