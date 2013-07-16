@@ -195,8 +195,28 @@
       expect(c.x).toEqual(x);
       expect(c.y).toBeDefined();
       expect(c.y).toEqual(y);
-      
       expect(c._size).toEqual(11);
+      expect(c._id).toMatch(/^\*community_\d{1,7}$/);
+    });
+    
+    it('should be able to resolve the community', function() {
+      var c = new CommunityNode(nodes.slice(3, 13)),
+        e1 = {
+          _id: "3-4",
+          _from: "3",
+          _to: "4"
+        },
+        e2 = {
+          _id: "5-7",
+          _from: "5",
+          _to: "7"
+        };
+        c.insertEdge(e1);
+        c.insertEdge(e2);
+      expect(c.dissolve()).toEqual({
+        nodes: nodes.slice(3, 13),
+        edges: [e1, e2]
+      });
     });
   });
 
