@@ -11,3 +11,7 @@
   width: 250px;
   height: 250px;
 }
+
+#tab-content-collection-info {
+  min-height: 200px !important;
+}
