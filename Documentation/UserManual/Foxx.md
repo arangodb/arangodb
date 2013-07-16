@@ -496,6 +496,23 @@ production, because the reloading makes the app relatively slow.
 We will offer the option to process all assets at once and write the files to disk for production with the option to
 run `Uglify2.js` and similar tools in order to compress them.
 
+## Controlling Access to Foxx Applications
+
+At the moment, access to Foxx applications is controlled by the regular authentication mechanisms present in ArangoDB.
+The server can be run with or without HTTP authentication.
+
+If authentication is turned off, all Foxx applications and routes will be callable by everyone with access to the server.
+If authentication is turned on, then every access to the server is authenticated via HTTP authentication. This includes
+Foxx applications and routes. The global authentication can be toggled via the configuration option 
+@ref CommandLineArangoDisableAuthentication "server.disable-authentication".
+
+Since ArangoDB 1.4, there is an extra option to restrict the authentication to just system API calls, such as `/_api/...` 
+and `/_admin/...`. This option can be turned on using the @ref CommandLineArangoAuthenticateSystemOnly 
+"server.authenticate-system-only" configuration option. If it is turned on, then only system API requests need authentication 
+whereas all requests to Foxx applications and routes will not require authentication.
+
+More fine-grained authentication control might be added in the future.
+
 ## Optional Functionality: FormatMiddleware
 
 Unlike the `BaseMiddleware` this Middleware is only loaded if you want it. This Middleware gives you Rails-like format

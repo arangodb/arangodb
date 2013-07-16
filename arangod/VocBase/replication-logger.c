@@ -868,7 +868,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
    
-  res = LogEvent(logger, trx->_id, false, TRANSACTION_START, buffer);
+  res = LogEvent(logger, trx->_id, false, TRI_TRANSACTION_START, buffer);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -939,7 +939,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
-  res = LogEvent(logger, trx->_id, false, TRANSACTION_COMMIT, buffer);
+  res = LogEvent(logger, trx->_id, false, TRI_TRANSACTION_COMMIT, buffer);
 
   return res;
 }

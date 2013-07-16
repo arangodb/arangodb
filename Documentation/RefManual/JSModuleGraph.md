@@ -67,6 +67,18 @@ examples assume
 @copydetails JSF_Graph_prototype_drop
 
 @CLEARPAGE
+@anchor JSModuleGraphGraphGeodesics
+@copydetails JSF_Graph_prototype_geodesics
+
+@CLEARPAGE
+@anchor JSModuleGraphGraphMeasurement
+@copydetails JSF_Graph_prototype_measurement
+
+@CLEARPAGE
+@anchor JSModuleGraphGraphNormalizedMeasurement
+@copydetails JSF_Graph_prototype_normalizedMeasurement
+
+@CLEARPAGE
 Vertex Methods{#JSModuleGraphVertex}
 ====================================
 
@@ -112,6 +124,39 @@ Vertex Methods{#JSModuleGraphVertex}
 @CLEARPAGE
 @anchor JSModuleGraphVertexSetProperty
 @copydetails JSF_Vertex_prototype_setProperty
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexCommonNeighborsWith
+@copydetails JSF_Vertex_prototype_commonNeighborsWith
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexCommonPropertiesWith
+@copydetails JSF_Vertex_prototype_commonPropertiesWith
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexPathTo
+@copydetails JSF_Vertex_prototype_pathTo
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexDistanceTo
+@copydetails JSF_Vertex_prototype_distanceTo
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexDeterminePredecessors
+@copydetails JSF_Vertex_prototype_determinePredecessors
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexPathesForTree
+@copydetails JSF_Vertex_prototype_pathesForTree
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexGetNeighbors
+@copydetails JSF_Vertex_prototype_getNeighbors
+
+@CLEARPAGE
+@anchor JSModuleGraphVertexMeasurement
+@copydetails JSF_Vertex_prototype_measurement
+
 
 @CLEARPAGE
 Edge Methods{#JSModuleGraphEdge}

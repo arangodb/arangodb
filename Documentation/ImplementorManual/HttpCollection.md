@@ -60,7 +60,27 @@ Getting Information about a Collection {#HttpCollectionReading}
 ---------------------------------------------------------------
 
 @anchor HttpCollectionRead
-@copydetails JSF_get_api_collection
+@copydetails JSA_get_api_collection_name
+
+@CLEARPAGE
+@anchor HttpCollectionReadProperties
+@copydetails JSA_get_api_collection_properties
+
+@CLEARPAGE
+@anchor HttpCollectionReadCount
+@copydetails JSA_get_api_collection_count
+
+@CLEARPAGE
+@anchor HttpCollectionReadFigures
+@copydetails JSA_get_api_collection_figures
+
+@CLEARPAGE
+@anchor HttpCollectionReadRevision
+@copydetails JSA_get_api_collection_revision
+
+@CLEARPAGE
+@anchor HttpCollectionReadChecksum
+@copydetails JSA_get_api_collection_checksum
 
 @CLEARPAGE
 @anchor HttpCollectionReadAll

@@ -313,5 +313,5 @@ function FoxxAdapter(nodes, edges, route, config) {
   };
   
   self.changeTo = absAdapter.changeTo;
-  
+  self.getPrioList = absAdapter.getPrioList;
 }
