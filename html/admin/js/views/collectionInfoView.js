@@ -24,7 +24,6 @@ var collectionInfoView = Backbone.View.extend({
     $('#infoTab a').click(function (e) {
       e.preventDefault();
       $(this).tab('show');
-      console.log(this);
     })
 
 
@@ -51,7 +50,7 @@ var collectionInfoView = Backbone.View.extend({
       return;
     }
 
-    $('#show-collection-name').text(this.myCollection.name);
+    $('#show-collection-name').text("Collection: "+this.myCollection.name);
     $('#show-collection-id').text(this.myCollection.id);
     $('#show-collection-type').text(this.myCollection.type);
     $('#show-collection-status').text(this.myCollection.status);
@@ -107,7 +106,6 @@ var collectionInfoView = Backbone.View.extend({
     cssClass = 'modal-text';
 
     if (this.data) {
-      console.log(this.data);
       $('#figures').append(
         '<table id="figures1">'+
           '<tr class="figuresHeader">'+
@@ -169,20 +167,37 @@ var collectionInfoView = Backbone.View.extend({
   appendIndex: function () {
     cssClass = 'collectionInfoTh modal-text';
     if (this.index) {
+        var fieldString = '';
+        var indexId = '';
       $.each(this.index.indexes, function(k,v) {
+        fieldString = '';
+        var counter = 1;
+
+        //prettify json-array to string
+        $.each(v.fields, function(k,v) {
+          fieldString = fieldString + v;
+          if (counter > 1) {
+            fieldString = ', ' + fieldString;
+          }
+          counter++;
+        });
+
+        //cut index id
+        var position = v.id.indexOf('/');
+        var indexId = v.id.substr(position+1, v.id.length);
+
         $('#collectionIndexTable').append(
           '<tr>'+
-            '<th class='+JSON.stringify(cssClass)+'>'+v.id+'</th>'+
+            '<th class='+JSON.stringify(cssClass)+'>'+indexId+'</th>'+
             '<th class='+JSON.stringify(cssClass)+'>'+v.type+'</th>'+
             '<th class='+JSON.stringify(cssClass)+'>'+v.unique+'</th>'+
-            '<th class='+JSON.stringify(cssClass)+'>'+JSON.stringify(v.fields)+'</th>'+
+            '<th class='+JSON.stringify(cssClass)+'>'+fieldString+'</th>'+
           '</tr>'
         );
       });
     }
   },
   fillLoadedModal: function (data) {
-    console.log(this.index);
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();
     $('#collectionRevBox').show();
