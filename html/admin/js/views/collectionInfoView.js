@@ -3,14 +3,8 @@
 
 var collectionInfoView = Backbone.View.extend({
   el: '#modalPlaceholder',
-  figures: {
-    "alive"      : 0,
-    "dead"       : 0,
-    "datafiles"  : 0,
-    "journals"   : 0,
-    "shapes"     : 0,
-    "attributes" : 0
-  },
+  chart: null,
+
   initialize: function () {
   },
 
@@ -73,30 +67,35 @@ var collectionInfoView = Backbone.View.extend({
   },
   renderFigures: function () {
     var self = this;
-    var chart;
-    nv.addGraph(function() {
-      chart = nv.models.pieChart()
+
+    // prevent some d3-internal races with a timeout
+    window.setTimeout(function () {
+      var chart = nv.models.pieChart()
       .x(function(d) { return d.label; })
       .y(function(d) { return d.value; })
       .showLabels(true);
-
-      d3.select("#pieChart svg")
-      .datum(self.convertFigures())
-      .transition().duration(1200)
-      .call(chart);
+      nv.addGraph(function() {
+        d3.select(".modal-body-right svg")
+        .datum(self.convertFigures())
+        .transition().duration(1200)
+        .call(chart);
+        return chart;
+      });
 
       return chart;
-    });
+    }, 500);
   },
   convertFigures: function () {
     var self = this;
     var collValues = [];
-    $.each(self.data.figures, function(k,v) {
-      collValues.push({
-        "label" : k,
-        "value" : v.count
+    if (self.data && self.data.figures) {
+      $.each(self.data.figures, function(k,v) {
+        collValues.push({
+          "label" : k,
+          "value" : v.count
+        });
       });
-    });
+    }
 
     return [{
       key: "Collections Status",

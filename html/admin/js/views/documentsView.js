@@ -61,18 +61,20 @@ var documentsView = Backbone.View.extend({
 
   uploadSetup: function () {
     var self = this;
-    var file;
-    var filetype;
 
-    $('#documentsUpload').bind("change", function(e) {
-      self.showSpinner();
+    $('#documentsUploadFile').change(function(e) {
+      var file;
+      var filetype;
+
       var files = e.target.files || e.dataTransfer.files;
-
       file = files[0];
+
       if (file.type !== 'application/json') {
-        arangoHelper.arangoNotification("Not supported filetype: "+file.type);
+        arangoHelper.arangoNotification("Unsupported filetype: " + file.type);
         return;
       }
+      
+      self.showSpinner();
 
       $.ajax({
         type: "POST",
