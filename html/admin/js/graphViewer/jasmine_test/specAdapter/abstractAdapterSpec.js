@@ -503,9 +503,35 @@
     
     describe('checking node exploration', function() {
       
-      var adapter;
+      var adapter,
+        mockReducer,
+        mockWrapper,
+        workerCB;
       
       beforeEach(function() {
+        mockWrapper = {};
+        mockWrapper.call = function() {};
+        mockReducer = {};
+        mockReducer.getCommunity = function() {};
+        mockReducer.bucketNodes = function() {};
+        spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+          return {
+            bucketNodes: function(toSort, numBuckets) {
+              return mockReducer.bucketNodes(toSort, numBuckets);
+            }
+          };
+        });
+        spyOn(window, "WebWorkerWrapper").andCallFake(function(c, cb) {
+          workerCB = cb;
+          return {
+            call: function() {
+              mockWrapper.call.apply(
+                mockWrapper,
+                Array.prototype.slice.call(arguments)
+              );
+            }
+          };
+        });
         adapter = new AbstractAdapter(nodes, edges, descendant);
       });
       
@@ -660,11 +686,14 @@
             var c0 = {
                 _id: "0"
               },
+              internal = {
+               _id: "internal"
+              },
+              internal2 = {
+               _id: "internal2"
+              },
               c1 = {
                 _id: "1"
-              },
-              comm = {
-                _id: "*community_1"
               },
               c2 = {
                 _id: "2"
@@ -677,24 +706,38 @@
               e1 = {
                 _id: "1-c",
                 _from: "1",
-                _to: "*community_1"
+                _to: "internal"
               },
               e2 = {
                 _id: "c-2",
-                _from: "*community_1",
+                _from: "internal",
                 _to: "2"
               };
             
             c0 = adapter.insertNode(c0);
             c1 = adapter.insertNode(c1);
             c1._expanded = true;
-            adapter.insertNode(comm);
+            adapter.insertNode(internal);
             adapter.insertNode(c2);
             e0 = adapter.insertEdge(e0);
             adapter.insertEdge(e1);
             adapter.insertEdge(e2);
             
+            spyOn(mockWrapper, "call").andCallFake(function(name) {
+              workerCB({
+                data: {
+                  cmd: name,
+                  result: ["internal", "internal2"]
+                }
+              });
+            });
+            
+            adapter.setNodeLimit(3);
+            
             adapter.explore(c1);
+            
+            expect(nodes.length).toEqual(2);
+            expect(edges.length).toEqual(1);
             
             expect(nodes).toEqual([c0, c1]);
             expect(edges).toEqual([e0]);
@@ -711,8 +754,11 @@
               c1 = {
                 _id: "1"
               },
-              comm = {
-                _id: "*community_1"
+              internal = {
+               _id: "internal"
+              },
+              internal2 = {
+               _id: "internal2"
               },
               e0 = {
                 _id: "0-1",
@@ -722,23 +768,38 @@
               e1 = {
                 _id: "0-c",
                 _from: "0",
-                _to: "*community_1"
+                _to: "internal"
               },
               e2 = {
                 _id: "1-c",
                 _from: "1",
-                _to: "*community_1"
-              };
+                _to: "internal"
+              },
+              comm;
             c0 = adapter.insertNode(c0);
             c1 = adapter.insertNode(c1);
             c1._expanded = true;
-            comm = adapter.insertNode(comm);
+            adapter.insertNode(internal);
+            adapter.insertNode(internal2);
             e0 = adapter.insertEdge(e0);
             e1 = adapter.insertEdge(e1);
             adapter.insertEdge(e2);
             
-            adapter.explore(c1);
+            spyOn(mockWrapper, "call").andCallFake(function(name) {
+              workerCB({
+                data: {
+                  cmd: name,
+                  result: ["internal", "internal2"]
+                }
+              });
+            });
             
+            adapter.setNodeLimit(3);
+            
+            comm = getCommunityNodes()[0];
+            
+            adapter.explore(c1);
+
             expect(nodes).toEqual([c0, c1, comm]);
             expect(edges).toEqual([e0, e1]);
           });
@@ -1042,7 +1103,7 @@
           existEdge(1, 2);
           existEdge(2, 3);
           existEdge(3, 1);
-          existNodes([1,2,3,4]);
+          existNodes([1, 2, 3, 4]);
         });
         
         it('should collapse another community if limit is to small', function() {
@@ -1067,6 +1128,29 @@
           expect(mockWrapper.call).wasCalled();
           expect(nodes.length).toEqual(2);
           notExistNodes([1, 2, 3, 4]);
+        });
+        
+        it('should be possible to insert an edge targeting a node in the community', function() {
+          var e = adapter.insertEdge({
+            _id: "4-2",
+            _from: 4,
+            _to: 2
+          });
+          expect(e.source).toEqual(n4);
+          expect(e.target).toEqual(comm);
+          expect(e._target).toEqual(n2);
+        });
+        
+        it('should be possible to insert an edge starting'
+        + ' from a node in the community', function() {
+          var e = adapter.insertEdge({
+            _id: "2-4",
+            _from: 2,
+            _to: 4
+          });
+          expect(e.source).toEqual(comm);
+          expect(e._source).toEqual(n2);
+          expect(e.target).toEqual(n4);
         });
         
       });
