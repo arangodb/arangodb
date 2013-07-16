@@ -146,7 +146,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
           _id: data._id
         },
         e = findEdge(edge._id),
-        edgeToPush;
+        edgeToPush,
+        com;
       if (e) {
         return e;
       }
@@ -160,16 +161,20 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       }
       edge.source = source;
       if (/^\*community/.test(edge.source._id)) {
-        edge._source = cachedCommunities[edge.source._id].getNode(data._from);
-        edge._source._outboundCounter++;
+        com = cachedCommunities[edge.source._id];
+        edge.source = com.getNode(data._from);
+        edge.source._outboundCounter++;
+        com.insertOutboundEdge(edge);
         informJoiner = false;
       } else {
         source._outboundCounter++;
       }
       edge.target = target;
       if (/^\*community/.test(edge.target._id)) {
-        edge._target = cachedCommunities[edge.target._id].getNode(data._to);
-        edge._target._inboundCounter++;
+        com = cachedCommunities[edge.target._id];
+        edge.target = com.getNode(data._to);
+        edge.target._inboundCounter++;
+        com.insertInboundEdge(edge);
         informJoiner = false;
       } else {
         target._inboundCounter++;
