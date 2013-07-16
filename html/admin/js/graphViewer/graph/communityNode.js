@@ -1,4 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*global _ */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -31,4 +32,66 @@
 function CommunityNode(initial) {
   "use strict";
   
+  var
+
+  ////////////////////////////////////
+  // Private variables              //
+  ////////////////////////////////////   
+  
+    nodes = {},
+  
+  ////////////////////////////////////
+  // Private functions              //
+  //////////////////////////////////// 
+  
+    toArray = function(obj) {
+      var res = [];
+      _.each(obj, function(v) {
+        res.push(v);
+      });
+      return res;
+    },
+  
+    hasNode = function(id) {
+      return !!nodes[id];
+    },
+  
+    getNodes = function() {
+      return toArray(nodes);
+    },
+    
+    getNode = function(id) {
+      return nodes[id];
+    },
+  
+    insertNode = function(n) {
+      nodes[n._id] = n;
+    },
+    
+    insertEdge = function(e) {
+    
+    },
+  
+    dissolve = function() {
+    
+    };
+  
+  ////////////////////////////////////
+  // Setup                          //
+  ////////////////////////////////////
+  
+  _.each(initial, function(n) {
+    insertNode(n);
+  });
+  
+  ////////////////////////////////////
+  // Public functions               //
+  ////////////////////////////////////
+  
+  this.hasNode = hasNode;
+  this.getNodes = getNodes;
+  this.getNode = getNode;
+  this.insertNode = insertNode;
+  this.insertEdge = insertEdge;
+  this.dissolve = dissolve;
 }

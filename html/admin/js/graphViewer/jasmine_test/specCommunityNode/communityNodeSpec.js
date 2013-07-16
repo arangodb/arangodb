@@ -75,16 +75,65 @@
         expect(testee).toHaveFunction("getNodes", 0);
       });
       
-      it('should offer a function to check if node is included', function() {
+      it('should offer a function to check if a node is included', function() {
+        expect(testee).toHaveFunction("hasNode", 1);
+      });
+      
+      it('should offer a function to get a node if it is included', function() {
         expect(testee).toHaveFunction("getNode", 1);
       });
       
+      it('should offer a function to insert an additional node', function() {
+        expect(testee).toHaveFunction("insertNode", 1);
+      });
+      
+      it('should offer a function to insert an additional edge', function() {
+        expect(testee).toHaveFunction("insertEdge", 1);
+      });
+      
+      it('should offer a function to dissolve the community', function() {
+        expect(testee).toHaveFunction("dissolve", 0);
+      });
     });
     
     it('should create a communityNode containing the given nodes', function() {
       var c = new CommunityNode(nodes.slice(3, 13));
+      expect(c.getNodes()).toEqual(nodes.slice(3, 13));
     });
-        
+    
+    it('should be able to insert a new node', function() {
+      var c = new CommunityNode(nodes.slice(3, 13)),
+        n = {
+        _id: "fuxx",
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      };
+      c.insertNode(n);
+      expect(c.getNodes()).toEqual(nodes.slice(3, 13).concat([n]));
+    });
+    
+    it('should be able to check if a node is included', function() {
+      var n = {
+        _id: "fuxx",
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      },
+      c = new CommunityNode([n]);
+      
+      expect(c.hasNode("fuxx")).toBeTruthy();
+      expect(c.hasNode("1")).toBeFalsy();
+    });
+    
   });
 
 }());
