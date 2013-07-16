@@ -1034,13 +1034,13 @@ int ReplicationFetcher::applyLogMarker (TRI_json_t const* json,
     return processDocument(type, json, updateTick, errorMsg);
   }
 
-  else if (type == TRANSACTION_START) {
+  else if (type == TRI_TRANSACTION_START) {
     updateTick = false;
 
     return startTransaction(json);
   }
   
-  else if (type == TRANSACTION_COMMIT) {
+  else if (type == TRI_TRANSACTION_COMMIT) {
     updateTick = true;
 
     return commitTransaction(json);
