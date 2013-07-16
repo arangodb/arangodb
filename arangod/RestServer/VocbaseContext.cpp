@@ -57,7 +57,7 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-VocbaseContext::VocbaseContext (rest::HttpRequest* request, VocbaseManager* manager) : 
+VocbaseContext::VocbaseContext (triagens::rest::HttpRequest* request, VocbaseManager* manager) : 
   RequestContext(request),
   _vocbase(0),
   _manager(manager) {
