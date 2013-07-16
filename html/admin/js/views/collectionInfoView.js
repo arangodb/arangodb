@@ -80,7 +80,7 @@ var collectionInfoView = Backbone.View.extend({
       .y(function(d) { return d.value; })
       .showLabels(true);
 
-      d3.select(".modal-body-right svg")
+      d3.select("#pieChart svg")
       .datum(self.convertFigures())
       .transition().duration(1200)
       .call(chart);
