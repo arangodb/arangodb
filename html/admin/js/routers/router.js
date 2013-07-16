@@ -86,7 +86,7 @@ $(document).ready(function() {
       }
     },
     login: function () {
-      if (!this.aboutView) {
+      if (!this.loginView) {
         this.loginView = new window.loginView({
           collection: window.activeSession
         });
@@ -97,10 +97,11 @@ $(document).ready(function() {
     collections: function() {
       var naviView = this.naviView;
 
-      var currentSession = this.checkSession();
-      if (currentSession === false) {
-        return;
-      }
+      //DEV
+      //var currentSession = this.checkSession();
+      //if (currentSession === false) {
+      //  return;
+      //}
 
       window.arangoCollectionsStore.fetch({
         success: function () {

@@ -319,3 +319,30 @@ table.dataTable thead th {
 .span3 .deleted div {
   border-bottom: 16px solid red;
 }
+
+#documentsUploadDiv {
+  position: absolute;
+  right: 90px;
+  height: 24px;
+  width: 70px;
+  margin: 0px !important;
+}
+
+#documentsUpload {
+  width: 70px;
+}
+
+#documentsUploadDiv input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30px !important;
+  opacity: 0;
+  width: 1;
+}
+
+body.wait *, body.wait {
+  cursor: progress !important;
+}
