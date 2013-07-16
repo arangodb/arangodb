@@ -1,10 +1,11 @@
-.searchSubmit {
+img.searchSubmit {
   height: 14px;
   margin-left: -18px;
   margin-top: 11px;
   opacity: 0.2;
   position: absolute;
   width: 14px;
+  content:url("../img/enter_icon.png");
 }
 
 .searchSubmit:hover {
@@ -91,7 +92,21 @@ button.graphViewer-icon-button > img {
   width: 290px;
 }
 
-img.gv-icon-btn{
+img.gv-icon-small {
+  width:16px;
+  height:16px;
+}
+
+img.gv-icon-small.delete {
+  content:url("../img/icon_delete.png");
+}
+
+img.gv-icon-small.add {
+  content:url("../img/plus_icon.png");
+}
+
+
+img.gv-icon-btn {
   width:36px;
   height:36px;
 }

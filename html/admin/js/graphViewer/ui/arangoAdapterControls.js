@@ -71,18 +71,22 @@ function ArangoAdapterControls(list, adapter) {
   
   this.addControlChangePriority = function() {
     var prefix = "control_adapter_priority",
-      idprefix = prefix + "_";
+      idprefix = prefix + "_",
+      prioList = adapter.getPrioList();
       uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
         modalDialogHelper.createModalDialog("Group By Prioritisation",
           idprefix, [{
             type: "extendable",
             id: "attribute",
-            objects: []
+            objects: prioList
           }], function () {
             var list = $("input[id^=" + idprefix + "attribute_]"),
               prios = [];
             list.each(function(i, t) {
-              prios.push($(t).attr("value"));
+              var val = $(t).attr("value");
+              if (val !== "") {
+                prios.push(val);
+              }
             });
             adapter.changeTo({
               prioList: prios

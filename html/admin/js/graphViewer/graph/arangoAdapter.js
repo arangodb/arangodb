@@ -502,4 +502,5 @@ function ArangoAdapter(nodes, edges, config) {
   };
   
   self.changeTo = absAdapter.changeTo;
+  self.getPrioList = absAdapter.getPrioList;
 }

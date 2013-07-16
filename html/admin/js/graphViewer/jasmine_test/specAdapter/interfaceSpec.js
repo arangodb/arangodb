@@ -124,7 +124,8 @@ var describeIntegeration = function(constructor) {
         checkSizeOfInserted: function(){},
         checkNodeLimit: function(){},
         explore: function(){},
-        changeTo: function(){}
+        changeTo: function(){},
+        getPrioList: function(){}
       };
       
       
@@ -145,6 +146,13 @@ var describeIntegeration = function(constructor) {
       );
     });
     
+    it('should call getPrioList on the abstract', function() {
+      spyOn(mockedAbstract, "getPrioList");
+      testee = constructor();
+      testee.getPrioList();
+      expect(mockedAbstract.getPrioList).wasCalled();
+    });
+    
     it('should call setNodeLimit on the abstract', function() {
       spyOn(mockedAbstract, "setNodeLimit");
       testee = constructor();
@@ -157,7 +165,6 @@ var describeIntegeration = function(constructor) {
       testee = constructor();
       testee.changeTo({prioList: ["foo", "bar", "baz"]});
       expect(mockedAbstract.changeTo).wasCalledWith({prioList: ["foo", "bar", "baz"]});
-      
     });
     
     it('should call explore on the abstract', function() {

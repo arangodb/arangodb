@@ -64,6 +64,7 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/arango-database.c \
 	Doxygen/js/server/modules/org/arangodb/foxx.c \
 	Doxygen/js/server/modules/org/arangodb/graph.c \
+	Doxygen/js/server/modules/org/arangodb/graph/algorithms.c \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/server.c
 
@@ -168,8 +169,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
-	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
-	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
+	@test -d Doxygen/js/server/modules/org/arangodb/graph || mkdir -p Doxygen/js/server/modules/org/arangodb/graph
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
 	@test -d Doxygen/wiki || mkdir -p Doxygen/wiki
