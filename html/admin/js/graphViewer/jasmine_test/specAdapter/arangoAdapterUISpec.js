@@ -39,10 +39,12 @@
   "use strict";
 
   describe('Arango Adapter UI', function () {
-    var adapter, adapterUI, list;
+    var adapter, adapterUI, list, prioList;
 
     beforeEach(function () {
+      prioList = [];
       adapter = {
+        getPrioList: function(){},
         changeTo: function(){},
         changeToCollections: function(){},
         getCollections: function(cb) {
@@ -56,6 +58,9 @@
       spyOn(adapter, 'changeTo');
       spyOn(adapter, 'changeToCollections');
       spyOn(adapter, "getCollections").andCallThrough();
+      spyOn(adapter, "getPrioList").andCallFake(function() {
+        return prioList;
+      });
       this.addMatchers({
         toBeTag: function(name) {
           var el = this.actual;
@@ -208,6 +213,118 @@
           });
         });
       });
+      
+      it('should not add empty attributes to priority', function() {
+        runs(function() {
+          $("#control_adapter_priority_attribute_1").attr("value", "");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: []
+          });
+        });
+      });
+      
+      it('should add a new line to priority on demand', function() {
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          expect($("#control_adapter_priority_attribute_1").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_2").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
+          $("#control_adapter_priority_attribute_1").attr("value", "foo");
+          $("#control_adapter_priority_attribute_2").attr("value", "bar");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: ["foo", "bar"]
+          });
+        });
+      });
+      
+      it('should add many new lines to priority on demand', function() {
+        runs(function() {
+          var idPrefix = "control_adapter_priority_attribute_";
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          expect($("#" + idPrefix + "1").length).toEqual(1);
+          expect($("#" + idPrefix + "2").length).toEqual(1);
+          expect($("#" + idPrefix + "3").length).toEqual(1);
+          expect($("#" + idPrefix + "4").length).toEqual(1);
+          expect($("#" + idPrefix + "5").length).toEqual(1);
+          
+          expect($("#" + idPrefix + "1").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "2").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "3").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "4").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "5").attr("value")).toEqual("");
+          
+          expect($("#" + idPrefix + "addLine").length).toEqual(1);
+          $("#" + idPrefix + "1").attr("value", "foo");
+          $("#" + idPrefix + "2").attr("value", "bar");
+          $("#" + idPrefix + "3").attr("value", "");
+          $("#" + idPrefix + "4").attr("value", "baz");
+          $("#" + idPrefix + "5").attr("value", "foxx");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: ["foo", "bar", "baz", "foxx"]
+          });
+        });
+      });
+      
+      it('should remove all but the first line', function() {
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
+          expect($("#control_adapter_priority_attribute_1_remove").length).toEqual(0);
+          expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(1);
+          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_2_remove");
+          
+          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
+          expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(0);
+          expect($("#control_adapter_priority_attribute_2").length).toEqual(0);
+          
+          $("#control_adapter_priority_attribute_1").attr("value", "foo");
+          helper.simulateMouseEvent("click", "control_adapter_priority_submit");
+          expect(adapter.changeTo).toHaveBeenCalledWith({
+            prioList: ["foo"]
+          });
+        });
+      });
+      
+      it('should load the current prioList from the adapter', function() {
+        
+        runs(function() {
+          helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
+        });
+        
+        waitsFor(function() {
+          return $("#control_adapter_priority_modal").length === 0;
+        }, 2000, "The modal dialog should disappear.");
+        
+        runs(function() {
+          expect($("#control_adapter_priority_cancel").length).toEqual(0);
+          prioList.push("foo");
+          prioList.push("bar");
+          prioList.push("baz");
+          helper.simulateMouseEvent("click", "control_adapter_priority");
+          expect(adapter.getPrioList).wasCalled();
+          var idPrefix = "#control_adapter_priority_attribute_";
+          expect($(idPrefix + "1").length).toEqual(1);
+          expect($(idPrefix + "2").length).toEqual(1);
+          expect($(idPrefix + "3").length).toEqual(1);
+          expect($(idPrefix + "4").length).toEqual(0);
+          expect($(idPrefix + "addLine").length).toEqual(1);
+          expect($(idPrefix + "1_remove").length).toEqual(0);
+          expect($(idPrefix + "2_remove").length).toEqual(1);
+          expect($(idPrefix + "3_remove").length).toEqual(1);
+          expect($(idPrefix + "1").attr("value")).toEqual("foo");
+          expect($(idPrefix + "2").attr("value")).toEqual("bar");
+          expect($(idPrefix + "3").attr("value")).toEqual("baz");
+          expect($("#control_adapter_priority_modal").length).toEqual(1);
+          expect($("#control_adapter_priority_cancel").length).toEqual(1);
+          helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
+        });
+      });
+      
     });
     
     it('should be able to add all controls to the list', function() {

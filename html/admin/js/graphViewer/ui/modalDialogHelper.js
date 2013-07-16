@@ -90,10 +90,7 @@ var modalDialogHelper = modalDialogHelper || {};
     addRow.className = "graphViewer-icon-button";
     
     addRow.appendChild(addImg);
-    addImg.className = "plusIcon";
-    addImg.src = "img/plus_icon.png";
-    addImg.width = "16";
-    addImg.height = "16";
+    addImg.className = "gv-icon-small add";
     
     insertRow = function(value, key) {
       var internalRegex = /^_(id|rev|key|from|to)/,
@@ -142,10 +139,7 @@ var modalDialogHelper = modalDialogHelper || {};
       actTh.appendChild(deleteInput);
       
       delImg = document.createElement("img");
-      delImg.src = "img/icon_delete.png";
-      delImg.width = "16";
-      delImg.height = "16";
-      
+      delImg.className = "gv-icon-small delete";
       deleteInput.appendChild(delImg);
       
       deleteInput.onclick = function() {
@@ -253,9 +247,50 @@ var modalDialogHelper = modalDialogHelper || {};
     
     _.each(objects, function(o) {
       var tr = document.createElement("tr"),
-      labelTh = document.createElement("th"),
-      contentTh = document.createElement("th"),
-      input;
+        labelTh = document.createElement("th"),
+        contentTh = document.createElement("th"),
+        input,
+        icon,
+        addLineButton,
+        rows,
+        lastId,
+        i,
+        addNewLine = function(content) {
+          lastId++;
+          var innerTr = document.createElement("tr"),
+            innerLabelTh = document.createElement("th"),
+            innerContentTh = document.createElement("th"),
+            innerInput = document.createElement("input"),
+            removeRow = document.createElement("button"),
+            innerIcon = document.createElement("img"),
+            lastItem;
+          innerInput.type = "text";
+          innerInput.id = idprefix + o.id + "_" + lastId;
+          innerInput.value = content || "";
+          if (rows.length === 0) {
+            lastItem = $(tr);
+          } else {
+            lastItem = $(rows[rows.length - 1]);
+          }
+          lastItem.after(innerTr);
+          innerTr.appendChild(innerLabelTh);
+          innerLabelTh.className = "collectionTh capitalize";
+          innerLabelTh.appendChild(document.createTextNode(o.id + " " + lastId + ":"));
+          innerTr.appendChild(innerContentTh);
+          innerContentTh.className = "collectionTh";
+          innerContentTh.appendChild(innerInput);
+          removeRow.id = idprefix + o.id + "_" + lastId + "_remove";
+          removeRow.className = "graphViewer-icon-button";
+          removeRow.appendChild(innerIcon);
+          innerIcon.className = "gv-icon-small delete";
+          removeRow.onclick = function() {
+            table.removeChild(innerTr);
+            rows.splice(rows.indexOf(innerTr), 1 );
+          };
+          
+          innerContentTh.appendChild(removeRow);
+          rows.push(innerTr);
+        };
       
       table.appendChild(tr);
       tr.appendChild(labelTh);
@@ -290,10 +325,28 @@ var modalDialogHelper = modalDialogHelper || {};
           });
           break;
         case "extendable":
+          rows = [];
+          lastId = 1;
+          addLineButton = document.createElement("button");
           input = document.createElement("input");
+          icon = document.createElement("img");
           input.type = "text";
           input.id = idprefix + o.id + "_1";
           contentTh.appendChild(input);
+          contentTh.appendChild(addLineButton);
+          addLineButton.onclick = function() {
+            addNewLine();
+          };
+          addLineButton.id = idprefix + o.id + "_addLine";
+          addLineButton.className = "graphViewer-icon-button";
+          addLineButton.appendChild(icon);
+          icon.className = "gv-icon-small add";
+          if (o.objects.length > 0) {
+            input.value = o.objects[0];
+          }
+          for (i = 1; i < o.objects.length; i++) {
+            addNewLine(o.objects[i]);
+          }
           break;
         default:
           //Sorry unknown
