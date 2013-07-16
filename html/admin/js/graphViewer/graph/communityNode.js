@@ -32,6 +32,8 @@
 function CommunityNode(initial) {
   "use strict";
   
+  initial = initial || [];
+  
   var
 
   ////////////////////////////////////
@@ -39,8 +41,9 @@ function CommunityNode(initial) {
   ////////////////////////////////////   
     self = this,
     nodes = {},
-    edges = {},
-  
+    internal = {},
+    inbound = {},
+    outbound = {},
   ////////////////////////////////////
   // Private functions              //
   //////////////////////////////////// 
@@ -70,14 +73,36 @@ function CommunityNode(initial) {
       self._size++;
     },
     
-    insertEdge = function(e) {
-      edges[e._id] = e;
+    insertInboundEdge = function(e) {
+      e.target = self;
+      if (outbound[e._id]) {
+        delete outbound[e._id];
+        internal[e._id] = e;
+        return true;
+      }
+      inbound[e._id] = e;
+      return false;
+    },
+    
+    insertOutboundEdge = function(e) {
+      e.source = self;
+      if (inbound[e._id]) {
+        delete inbound[e._id];
+        internal[e._id] = e;
+        return true;
+      }
+      outbound[e._id] = e;
+      return false;
     },
   
     dissolve = function() {
       return {
         nodes: toArray(nodes),
-        edges: toArray(edges)
+        edges: {
+          both: toArray(internal),
+          inbound: toArray(inbound),
+          outbound: toArray(outbound)
+        }
       };
     };
   
@@ -90,8 +115,8 @@ function CommunityNode(initial) {
   ////////////////////////////////////
   this._id = "*community_" + Math.floor(Math.random()* 1000000);
   if (initial.length > 0) {
-    this.x = initial[0].position.x;
-    this.y = initial[0].position.y;
+    this.x = initial[0].x;
+    this.y = initial[0].y;
   } else {
     this.x = 0;
     this.y = 0;
@@ -110,10 +135,7 @@ function CommunityNode(initial) {
   this.getNodes = getNodes;
   this.getNode = getNode;
   this.insertNode = insertNode;
-  this.insertEdge = insertEdge;
+  this.insertInboundEdge = insertInboundEdge;
+  this.insertOutboundEdge = insertOutboundEdge;
   this.dissolve = dissolve;
-  
-
-  
-  
 }
