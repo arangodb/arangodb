@@ -343,6 +343,6 @@ table.dataTable thead th {
   width: 1;
 }
 
-body.wait *, body.wait {
-  cursor: progress !important;
+#documentsUploadDiv:hover, #uploadIndicator:hover, #documentsUpload:hover {
+  cursor: pointer !important;
 }

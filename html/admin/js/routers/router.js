@@ -81,9 +81,7 @@ $(document).ready(function() {
         window.App.navigate("login", {trigger: true});
         return false;
       }
-      else {
-        return true;
-      }
+      return true;
     },
     login: function () {
       if (!this.loginView) {
@@ -198,14 +196,14 @@ $(document).ready(function() {
     dashboard: function() {
       this.naviView.selectMenuItem('dashboard-menu');
       /*
-      var self = this;
-      window.arangoCollectionsStore.fetch({
-        success: function () {
-          window.dashboardView.render();
-          self.naviView.selectMenuItem('dashboard-menu');
-        }
-      });
-      */
+         var self = this;
+         window.arangoCollectionsStore.fetch({
+success: function () {
+window.dashboardView.render();
+self.naviView.selectMenuItem('dashboard-menu');
+}
+});
+*/
       if (this.statisticsDescription === undefined) {
         this.statisticsDescription = new window.StatisticsDescription();
         this.statisticsDescription.fetch({
@@ -221,8 +219,8 @@ $(document).ready(function() {
           collection: this.statisticsCollection,
           description: this.statisticsDescription
         });
-      }
-      this.dashboardView.render();
+         }
+        this.dashboardView.render();
     },
 
     graph: function() {
@@ -260,7 +258,7 @@ $(document).ready(function() {
       this.applicationsInstalledView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
-    
+
     applicationsInstalled: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
@@ -273,7 +271,7 @@ $(document).ready(function() {
       this.applicationsActiveView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
-    
+
     applicationEdit: function(appkey) {
       if (this.foxxList === undefined) {
         var self = this;
@@ -291,7 +289,7 @@ $(document).ready(function() {
         editAppView.render();
       }
     },
-    
+
     applicationInstall: function(appkey) {
       if (this.foxxList === undefined) {
         var self = this;
@@ -310,9 +308,9 @@ $(document).ready(function() {
         });
         installAppView.render();
       }
-      
+
     },
-    
+
     appDocumentation: function(key) {
       var docuView = new window.AppDocumentationView({key: key});
       docuView.render();
@@ -325,3 +323,4 @@ $(document).ready(function() {
   Backbone.history.start();
 
 });
+

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global window, Backbone */
+/*global window, Backbone, $, window */
 
 window.ArangoSession = Backbone.Collection.extend({
   model: window.Session,
@@ -51,7 +51,6 @@ window.ArangoSession = Backbone.Collection.extend({
   saveUserSettings: function () {
 
     var self = this;
-    console.log(self.activeUserSettings);
     $.ajax({
       cache: false,
       type: "PUT",
@@ -61,10 +60,8 @@ window.ArangoSession = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        console.log(data);
       },
       error: function(data) {
-        console.log(data);
       }
     });
   }
