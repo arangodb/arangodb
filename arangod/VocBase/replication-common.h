@@ -85,25 +85,25 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  REPLICATION_INVALID  = 0,
+  REPLICATION_INVALID    = 0,
 
-  REPLICATION_STOP     = 1000,
-  REPLICATION_START    = 1001,
+  REPLICATION_STOP       = 1000,
+  REPLICATION_START      = 1001,
 
-  COLLECTION_CREATE    = 2000,
-  COLLECTION_DROP      = 2001,
-  COLLECTION_RENAME    = 2002,
-  COLLECTION_CHANGE    = 2003,
+  COLLECTION_CREATE      = 2000,
+  COLLECTION_DROP        = 2001,
+  COLLECTION_RENAME      = 2002,
+  COLLECTION_CHANGE      = 2003,
 
-  INDEX_CREATE         = 2100,
-  INDEX_DROP           = 2101,
+  INDEX_CREATE           = 2100,
+  INDEX_DROP             = 2101,
 
-  TRANSACTION_START    = 2200,
-  TRANSACTION_COMMIT   = 2201,
+  TRI_TRANSACTION_START  = 2200,
+  TRI_TRANSACTION_COMMIT = 2201,
 
-  MARKER_DOCUMENT      = 2300,
-  MARKER_EDGE          = 2301,
-  MARKER_REMOVE        = 2302,
+  MARKER_DOCUMENT        = 2300,
+  MARKER_EDGE            = 2301,
+  MARKER_REMOVE          = 2302,
 
   REPLICATION_MAX
 }
