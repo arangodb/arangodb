@@ -225,10 +225,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchValueField.placeholder = "value";
       searchStart.id = "loadnode";
       searchStart.className = "searchSubmit";
-      searchStart.width = 16;
-      searchStart.height = 16;
-      searchStart.src = "img/enter_icon.png";
-      
       equalsField.className = "searchEqualsLabel";
       equalsField.appendChild(document.createTextNode("=="));
       

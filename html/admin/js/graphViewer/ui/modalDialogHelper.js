@@ -90,10 +90,7 @@ var modalDialogHelper = modalDialogHelper || {};
     addRow.className = "graphViewer-icon-button";
     
     addRow.appendChild(addImg);
-    addImg.className = "plusIcon";
-    addImg.src = "img/plus_icon.png";
-    addImg.width = "16";
-    addImg.height = "16";
+    addImg.className = "gv-icon-small add";
     
     insertRow = function(value, key) {
       var internalRegex = /^_(id|rev|key|from|to)/,
@@ -142,10 +139,7 @@ var modalDialogHelper = modalDialogHelper || {};
       actTh.appendChild(deleteInput);
       
       delImg = document.createElement("img");
-      delImg.src = "img/icon_delete.png";
-      delImg.width = "16";
-      delImg.height = "16";
-      
+      delImg.className = "gv-icon-small delete";
       deleteInput.appendChild(delImg);
       
       deleteInput.onclick = function() {
