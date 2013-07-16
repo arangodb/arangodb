@@ -79,14 +79,17 @@ var documentsView = Backbone.View.extend({
       $.ajax({
         type: "POST",
         async: false,
-        url: '/_api/import?type=documents&collection='+encodeURIComponent(self.colid)+'&createCollection=false',
+        url:
+          '/_api/import?type=documents&collection='+
+          encodeURIComponent(self.colid)+
+          '&createCollection=false',
         data: file,
         processData: false,
         contentType: 'json',
         dataType: 'json',
         complete: function(xhr) {
-          if (xhr.readyState == 4) {
-            if (xhr.status == 201) {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 201) {
               arangoHelper.arangoNotification("Upload successful");
               self.hideSpinner();
               return;
@@ -291,11 +294,13 @@ var documentsView = Backbone.View.extend({
   drawTable: function() {
     var self = this;
 
-    $(self.table).dataTable().fnAddData([
-                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-                                        '',
-                                        '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
-    ]);
+    $(self.table).dataTable().fnAddData(
+      [
+        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+        '',
+        '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
+      ]
+    );
 
     $.each(window.arangoDocumentsStore.models, function(key, value) {
 
@@ -306,21 +311,22 @@ var documentsView = Backbone.View.extend({
         }
       });
 
-      $(self.table).dataTable().fnAddData([
+      $(self.table).dataTable().fnAddData(
+        [
+          '<pre class="prettify" title="'
+          + self.escaped(JSON.stringify(tempObj))
+          + '">'
+          + self.cutByResolution(JSON.stringify(tempObj))
+          + '</pre>',
 
-                                          '<pre class="prettify" title="'
-                                          + self.escaped(JSON.stringify(tempObj))
-                                          + '">'
-                                          + self.cutByResolution(JSON.stringify(tempObj))
-                                          + '</pre>',
+          '<div class="key">'
+          + value.attributes.key
+          + '</div>',
 
-                                          '<div class="key">'
-                                          + value.attributes.key
-                                          + '</div>',
-
-                                          '<button class="enabled" id="deleteDoc">'
-                                          + '<img src="img/icon_delete.png" width="16" height="16"></button>'
-      ]);
+          '<button class="enabled" id="deleteDoc">'
+          + '<img src="img/icon_delete.png" width="16" height="16"></button>'
+        ]
+      );
     });
     $(".prettify").snippet("javascript", {
       style: "nedit",
