@@ -39,6 +39,7 @@ function CommunityNode(initial) {
   ////////////////////////////////////   
     self = this,
     nodes = {},
+    edges = {},
   
   ////////////////////////////////////
   // Private functions              //
@@ -70,11 +71,14 @@ function CommunityNode(initial) {
     },
     
     insertEdge = function(e) {
-    
+      edges[e._id] = e;
     },
   
     dissolve = function() {
-    
+      return {
+        nodes: toArray(nodes),
+        edges: toArray(edges)
+      };
     };
   
   ////////////////////////////////////
@@ -84,6 +88,7 @@ function CommunityNode(initial) {
   ////////////////////////////////////
   // Values required for shaping    //
   ////////////////////////////////////
+  this._id = "*community_" + Math.floor(Math.random()* 1000000);
   if (initial.length > 0) {
     this.x = initial[0].position.x;
     this.y = initial[0].position.y;
