@@ -513,5 +513,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   
   exports.changeTo = changeTo;
   
+  exports.getPrioList = reducer.getPrioList;
+  
   return exports;
 }

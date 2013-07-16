@@ -79,6 +79,10 @@ function NodeReducer(nodes, edges, prioList) {
      return countMatch / propCount;
    },
    
+   getPrioList = function() {
+     return prioList;
+   },
+   
    changePrioList = function (list) {
      prioList = list;
    },
@@ -169,5 +173,7 @@ function NodeReducer(nodes, edges, prioList) {
   this.bucketNodes = bucketNodes;
   
   this.changePrioList = changePrioList;
+  
+  this.getPrioList = getPrioList;
   
 }
