@@ -194,8 +194,6 @@
         expect(valfield.className).toEqual("searchInput");
         expect(valfield.placeholder).toEqual("value");
         expect(btn).toBeTag("img");
-        expect(btn.width).toEqual(16);
-        expect(btn.height).toEqual(16);
         expect(btn.className).toEqual("searchSubmit");
       });
       
