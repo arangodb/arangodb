@@ -1,5 +1,5 @@
 /*jslint indent: 2, stupid: true, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, window, exports, Backbone, EJS, $, arangoHelper */
+/*global require, window, exports, Backbone, EJS, $, arangoHelper, nv, d3*/
 
 var collectionInfoView = Backbone.View.extend({
   el: '#modalPlaceholder',
@@ -32,7 +32,7 @@ var collectionInfoView = Backbone.View.extend({
     return this;
   },
   events: {
-    "hidden #show-collection"           :    "hidden",
+    "hidden #show-collection" : "hidden"
   },
   listenKey: function(e) {
     if (e.keyCode === 13) {
@@ -73,8 +73,9 @@ var collectionInfoView = Backbone.View.extend({
   },
   renderFigures: function () {
     var self = this;
+    var chart;
     nv.addGraph(function() {
-      var chart = nv.models.pieChart()
+      chart = nv.models.pieChart()
       .x(function(d) { return d.label; })
       .y(function(d) { return d.value; })
       .showLabels(true);
