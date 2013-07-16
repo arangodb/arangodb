@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _ */
 /*global console */
-/*global NodeReducer, ModularityJoiner, WebWorkerWrapper*/
+/*global NodeReducer, ModularityJoiner, WebWorkerWrapper, CommunityNode*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -159,10 +159,28 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         throw "Unable to insert Edge, target node not existing " + data._to;
       }
       edge.source = source;
+      if (/^\*community/.test(edge.source._id)) {
+        edge._source = cachedCommunities[edge.source._id].getNode(data._from);
+        edge._source._outboundCounter++;
+        informJoiner = false;
+      } else {
+        source._outboundCounter++;
+      }
       edge.target = target;
+      if (/^\*community/.test(edge.target._id)) {
+        edge._target = cachedCommunities[edge.target._id].getNode(data._to);
+        edge._target._inboundCounter++;
+        informJoiner = false;
+      } else {
+        target._inboundCounter++;
+      }
       edges.push(edge);
+      if (informJoiner) {
+        joiner.call("insertEdge", source._id, target._id);
+      }
       
       
+      /* Archive
       if (cachedCommunities[source._id] !== undefined) {
         edgeToPush = {};
         edgeToPush.type = "s";
@@ -192,6 +210,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       if (informJoiner) {
         joiner.call("insertEdge", source._id, target._id);
       }
+      */
       return edge;
     },
     
@@ -239,7 +258,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         }
       }
     },
-    
+    /* Archive
     combineCommunityEdges = function (nodes, commNode) {
       var i, j, s, t,
         cachedCommEdges = cachedCommunities[commNode._id].edges,
@@ -293,7 +312,37 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         }
       }
     },
-  
+    */
+    combineCommunityEdges = function (nodes, commNode) {
+      var i, j, s, t, shouldRemove;
+      for (i = 0; i < edges.length; i++) {
+        // s and t keep old values yay!
+        s = edges[i].source;
+        t = edges[i].target;
+        for (j = 0; j < nodes.length; j++) {
+          shouldRemove = false;
+          if (s === nodes[j]) {
+            shouldRemove = commNode.insertOutboundEdge(edges[i]);
+            if (!/^\*community/.test(t._id)) {
+              joiner.call("deleteEdge", s._id, t._id);
+            } 
+            s = edges[i].source;           
+          }
+          if (t === nodes[j]) {
+            shouldRemove = commNode.insertInboundEdge(edges[i]);
+            if (!/^\*community/.test(s._id)) {
+              joiner.call("deleteEdge", s._id, t._id);
+            }
+            t = edges[i].target;          
+          }
+          if (shouldRemove) {
+            edges.splice(i, 1);
+            i--;
+          }
+        }
+      }
+    },
+    
     // Helper function to easily remove all outbound edges for one node
     removeOutboundEdgesFromNode = function ( node ) {
       if (node._outboundCounter > 0) {
@@ -314,7 +363,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         return removed;
       }
     },
-    
+    /* Archive
     collapseCommunity = function (community, reason) {
       if (!community || community.length === 0) {
         return;
@@ -336,6 +385,31 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
+      
+      combineCommunityEdges(nodesToRemove, commNode);
+      _.each(nodesToRemove, function(n) {
+        joinedInCommunities[n._id] = commId;
+        removeNode(n);
+      });
+      nodes.push(commNode);
+      isRunning = false;
+    },
+    */
+    
+    collapseCommunity = function (community, reason) {
+      if (!community || community.length === 0) {
+        return;
+      }
+      var 
+        nodesToRemove = _.map(community, function(id) {
+          return findNode(id);
+        }),
+        commNode = new CommunityNode(nodesToRemove),
+        commId = commNode._id;
+      if (reason) {
+        commNode._reason = reason;
+      }
+      cachedCommunities[commId] = commNode;
       
       combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
@@ -381,7 +455,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         requestCollapse(focus);
       }
     },
-  
+    /* Archive
     expandCommunity = function (commNode) {
       var commId = commNode._id,
         nodesToAdd = cachedCommunities[commId].nodes,
@@ -420,6 +494,46 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         
       });
       delete cachedCommunities[commId];      
+    },
+    */
+    
+    expandCommunity = function (commNode) {
+      var dissolveInfo = commNode.dissolve(),
+        nodesToAdd = dissolveInfo.nodes,
+        internalEdges = dissolveInfo.edges.both,
+        inboundEdges = dissolveInfo.edges.inbound,
+        outboundEdges = dissolveInfo.edges.outbound;
+      removeNode(commNode);
+      if (limit < nodes.length + nodesToAdd.length) {
+        requestCollapse();
+      }
+      _.each(nodesToAdd, function(n) {
+        delete joinedInCommunities[n._id];
+        nodes.push(n);
+      });
+      _.each(inboundEdges, function(edge) {
+        edge.target = edge._target;
+        delete edge._target;
+        if (!/^\*community/.test(edge.source._id)) {
+          joiner.call("insertEdge", edge.source._id, edge.target._id);
+        }
+      });
+      _.each(outboundEdges, function(edge) {
+        edge.source = edge._source;
+        delete edge._source;
+        if (!/^\*community/.test(edge.target._id)) {
+          joiner.call("insertEdge", edge.source._id, edge.target._id);
+        }
+      });
+      _.each(internalEdges, function(edge) {
+        edge.source = edge._source;
+        delete edge._source;
+        edge.target = edge._target;
+        delete edge._target;
+        edges.push(edge);
+        joiner.call("insertEdge", edge.source._id, edge.target._id);
+      });
+      delete cachedCommunities[commNode._id];      
     },
     
     checkSizeOfInserted = function (inserted) {

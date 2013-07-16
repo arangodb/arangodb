@@ -298,9 +298,13 @@
         }
       });
       expect(e1.source).toEqual(c);
+      expect(e1._source).toEqual(nodes[3]);
       expect(e1.target).toEqual(c);
+      expect(e1._target).toEqual(nodes[4]);
       expect(e2.target).toEqual(c);
+      expect(e2._target).toEqual(nodes[7]);
       expect(e3.source).toEqual(c);
+      expect(e3._source).toEqual(nodes[8]);
     });
   });
 

@@ -41,6 +41,9 @@ var helper = helper || {};
         _id: String(i),
         _inboundCounter: 0,
         _outboundCounter: 0,
+        x: 1,
+        y: 1,
+        z: 1,
         position: {
           x: 1,
           y: 1,
@@ -57,6 +60,9 @@ var helper = helper || {};
         _id: i,
         _inboundCounter: 0,
         _outboundCounter: 0,
+        x: 1,
+        y: 1,
+        z: 1,
         position: {
           x: 1,
           y: 1,
@@ -72,6 +78,9 @@ var helper = helper || {};
       _id: String(id),
       _inboundCounter: 0,
       _outboundCounter: 0,
+      x: 1,
+      y: 1,
+      z: 1,
       position: {
         x: 1,
         y: 1,

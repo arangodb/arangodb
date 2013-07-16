@@ -60,6 +60,9 @@
         r.getCollections = function(callback) {
           callback(["nodes"], ["edges"]);
         };
+        r.getPrioList = function() {
+          return [];
+        };
         return r;
       };
       //Mock for ZoomManager

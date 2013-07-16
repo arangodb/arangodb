@@ -74,23 +74,29 @@ function CommunityNode(initial) {
     },
     
     insertInboundEdge = function(e) {
+      e._target = e.target;
       e.target = self;
       if (outbound[e._id]) {
         delete outbound[e._id];
+        self._outboundCounter--;
         internal[e._id] = e;
         return true;
       }
       inbound[e._id] = e;
+      self._inboundCounter++;
       return false;
     },
     
     insertOutboundEdge = function(e) {
+      e._source = e.source;
       e.source = self;
       if (inbound[e._id]) {
         delete inbound[e._id];
+        self._inboundCounter--;
         internal[e._id] = e;
         return true;
       }
+      self._outboundCounter++;
       outbound[e._id] = e;
       return false;
     },
@@ -122,6 +128,9 @@ function CommunityNode(initial) {
     this.y = 0;
   }
   this._size = 0;
+  this._inboundCounter = 0;
+  this._outboundCounter = 0;
+  
   
   _.each(initial, function(n) {
     insertNode(n);
