@@ -91,7 +91,21 @@ button.graphViewer-icon-button > img {
   width: 290px;
 }
 
-img.gv-icon-btn{
+img.gv-icon-small {
+  width:16px;
+  height:16px;
+}
+
+img.gv-icon-small.delete {
+  content:url("../img/icon_delete.png");
+}
+
+img.gv-icon-small.add {
+  content:url("../img/plus_icon.png");
+}
+
+
+img.gv-icon-btn {
   width:36px;
   height:36px;
 }

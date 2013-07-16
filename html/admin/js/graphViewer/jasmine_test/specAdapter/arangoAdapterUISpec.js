@@ -241,21 +241,29 @@
       
       it('should add many new lines to priority on demand', function() {
         runs(function() {
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
-          helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
-          expect($("#control_adapter_priority_attribute_1").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_2").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_3").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_4").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_5").length).toEqual(1);
-          expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
-          $("#control_adapter_priority_attribute_1").attr("value", "foo");
-          $("#control_adapter_priority_attribute_2").attr("value", "bar");
-          $("#control_adapter_priority_attribute_3").attr("value", "");
-          $("#control_adapter_priority_attribute_4").attr("value", "baz");
-          $("#control_adapter_priority_attribute_5").attr("value", "foxx");
+          var idPrefix = "control_adapter_priority_attribute_";
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          helper.simulateMouseEvent("click", idPrefix + "addLine");
+          expect($("#" + idPrefix + "1").length).toEqual(1);
+          expect($("#" + idPrefix + "2").length).toEqual(1);
+          expect($("#" + idPrefix + "3").length).toEqual(1);
+          expect($("#" + idPrefix + "4").length).toEqual(1);
+          expect($("#" + idPrefix + "5").length).toEqual(1);
+          
+          expect($("#" + idPrefix + "1").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "2").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "3").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "4").attr("value")).toEqual("");
+          expect($("#" + idPrefix + "5").attr("value")).toEqual("");
+          
+          expect($("#" + idPrefix + "addLine").length).toEqual(1);
+          $("#" + idPrefix + "1").attr("value", "foo");
+          $("#" + idPrefix + "2").attr("value", "bar");
+          $("#" + idPrefix + "3").attr("value", "");
+          $("#" + idPrefix + "4").attr("value", "baz");
+          $("#" + idPrefix + "5").attr("value", "foxx");
           helper.simulateMouseEvent("click", "control_adapter_priority_submit");
           expect(adapter.changeTo).toHaveBeenCalledWith({
             prioList: ["foo", "bar", "baz", "foxx"]
