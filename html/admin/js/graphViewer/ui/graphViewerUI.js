@@ -228,7 +228,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       equalsField.className = "searchEqualsLabel";
       equalsField.appendChild(document.createTextNode("=="));
       
-      
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
