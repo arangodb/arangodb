@@ -1,6 +1,8 @@
 v1.3.3 (XXXX-XX-XX)
 -------------------
 
+* issue #570: updateFishbowl() fails once
+
 * updated and fixed generated examples
 
 * issue #559: added Foxx documentation to user manual
