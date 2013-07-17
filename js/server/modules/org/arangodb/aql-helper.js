@@ -48,7 +48,7 @@ var arangodb = require("org/arangodb");
 /// @brief normalise a single row result 
 ////////////////////////////////////////////////////////////////////////////////
 
-function normalizeRow (row) {
+function normalizeRow (row, recursive) {
   if (row !== null && 
       typeof row === 'object' && 
       ! Array.isArray(row)) {
@@ -68,31 +68,25 @@ function normalizeRow (row) {
     return out;
   }
 
+  if (recursive && Array.isArray(row)) {
+    row = row.map(normalizeRow);
+  }
+
   return row;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the results of a query in a normalised way
+/// @brief return the results of a query explanation
 ////////////////////////////////////////////////////////////////////////////////
 
-function getQueryResults (query, bindVars) {
-  var queryResult = internal.AQL_QUERY(query, bindVars, true, 3000);
+function getQueryExplanation (query, bindVars) {
+  var result = internal.AQL_EXPLAIN(query, bindVars);
 
-  if (queryResult instanceof arangodb.ArangoCursor) {
-    queryResult = queryResult.toArray();
-  }
-
-  if (Array.isArray(queryResult)) {
-    queryResult = queryResult.map(function (row) {
-      return normalizeRow(row);
-    });
-  }
-
-  return queryResult;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the results of a query in a normalised way
+/// @brief return the results of a query
 ////////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResults (query, bindVars) {
@@ -103,6 +97,22 @@ function getRawQueryResults (query, bindVars) {
   }
 
   return queryResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a query in a normalised way
+////////////////////////////////////////////////////////////////////////////////
+
+function getQueryResults (query, bindVars, recursive) {
+  var result = getRawQueryResults(query, bindVars);
+
+  if (Array.isArray(result)) {
+    result = result.map(function (row) {
+      return normalizeRow(row, recursive);
+    });
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,9 +143,10 @@ function assertQueryError (errorCode, query, bindVars) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.assertQueryError   = assertQueryError;
-exports.getQueryResults    = getQueryResults;
-exports.getRawQueryResults = getRawQueryResults;
+exports.assertQueryError    = assertQueryError;
+exports.getQueryExplanation = getQueryExplanation;
+exports.getRawQueryResults  = getRawQueryResults;
+exports.getQueryResults     = getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
