@@ -1625,10 +1625,10 @@ int main (int argc, char* argv[]) {
     if (useServer) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
         cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-             << "' version " << ClientConnection->getVersion() << endl;
+             << "' version " << ClientConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
       }
       else {
-        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "'" << endl;
+        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
         if (ClientConnection->getErrorMessage() != "") {
           cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
         }
