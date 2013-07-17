@@ -231,13 +231,26 @@ Comments {#AqlComments}
 -----------------------
 
 Comments can be embedded at any position in a query. The text contained in the
-comment is ignored by the language parser. Comments cannot be nested, meaning
+comment is ignored by the AQL parser. Comments cannot be nested, meaning
 the comment text may not contain another comment.
+
+AQL supports two types of comments:
+- single line comments: these start with a double forward slash and end at
+  the end of the line, or the end of the query string (whichever is first).
+- multi line comments: these start with a forward slash and asterisk, and
+  end with an asterik and a following forward slash. They can span as many
+  lines as necessary.
 
 @code
 /* this is a comment */ RETURN 1
     
 /* these */ RETURN /* are */ 1 /* multiple */ + /* comments */ 1
+
+/* this is
+   a multi line
+   comment */
+
+// a single line comment
 @endcode
 
 Keywords {#AqlKeywords}

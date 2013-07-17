@@ -86,6 +86,7 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
                                         TRI_replication_apply_configuration_t const* configuration,
                                         bool forceFullSynchronisation) :
   _vocbase(vocbase),
+  _applier(vocbase->_replicationApplier),
   _configuration(),
   _masterInfo(),
   _applyState(),
@@ -93,7 +94,7 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _endpoint(0),
   _connection(0),
   _client(0) {
-    
+   
   if (_forceFullSynchronisation) {
     TRI_RemoveStateFileReplicationApplier(_vocbase);
   }
@@ -102,7 +103,8 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   TRI_CopyApplyConfigurationReplicationApplier(configuration, &_configuration);
  
   TRI_InitMasterInfoReplication(&_masterInfo, configuration->_endpoint);
-  TRI_InitApplyStateReplicationApplier(&_applyState);
+  _applyState._trx         = 0;
+  _applyState._externalTid = 0;
 
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
@@ -114,6 +116,21 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
 
     if (_connection != 0) {
       _client = new SimpleHttpClient(_connection, _configuration._requestTimeout, false);
+
+      if (_client != 0) {
+        string username;
+        string password;
+
+        if (_configuration._username != 0) {
+          username = string(_configuration._username);
+        }
+        
+        if (_configuration._password != 0) {
+          password = string(_configuration._password);
+        }
+
+        _client->setUserNamePassword("/", username, password);
+      }
     }
   }
 }
@@ -138,7 +155,6 @@ ReplicationFetcher::~ReplicationFetcher () {
     delete _endpoint;
   }
 
-  TRI_DestroyApplyStateReplicationApplier(&_applyState);
   TRI_DestroyMasterInfoReplication(&_masterInfo);
   TRI_DestroyApplyConfigurationReplicationApplier(&_configuration);
 }
@@ -170,17 +186,20 @@ int ReplicationFetcher::run () {
   int res = getMasterState(errorMsg);
 
   if (res == TRI_ERROR_NO_ERROR) {
+    TRI_WriteLockReadWriteLock(&_applier->_statusLock);
     res = getLocalState(errorMsg);
+    TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return TRI_SetErrorReplicationApplier(_vocbase->_replicationApplier, res, errorMsg.c_str());
+    return TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
   }
 
-  if (_applyState._lastAppliedInitialTick == 0) {
-    // we had never sychronised anything
+  TRI_ReadLockReadWriteLock(&_applier->_statusLock);
+  if (_applier->_state._lastAppliedInitialTick == 0) {
     _forceFullSynchronisation = true;
   }
+  TRI_ReadUnlockReadWriteLock(&_applier->_statusLock);
     
   // TODO:
   // if we have synchronised something before, but that point was
@@ -192,15 +211,15 @@ int ReplicationFetcher::run () {
     res = performInitialSync(errorMsg);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_NO_ERROR) {
     res = performContinuousSync(errorMsg);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_SetErrorReplicationApplier(_vocbase->_replicationApplier, res, errorMsg.c_str());
+    TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
 
     // stop ourselves
-    TRI_StopReplicationApplier(_vocbase->_replicationApplier);
+    TRI_StopReplicationApplier(_applier);
 
     return res;
   }
@@ -250,9 +269,9 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
 
 int ReplicationFetcher::saveApplyState () {
   LOGGER_TRACE("saving replication apply state. "
-               "last applied continuous tick: " << _applyState._lastAppliedContinuousTick);
+               "last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick);
 
-  int res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applyState, false);
+  int res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, false);
         
   if (res != TRI_ERROR_NO_ERROR) {
     LOGGER_WARNING("unable to save replication apply state: " << TRI_errno_string(res));
@@ -276,7 +295,7 @@ uint64_t ReplicationFetcher::getChunkSize () const {
 ////////////////////////////////////////////////////////////////////////////////
   
 void ReplicationFetcher::setProgress (char const* msg) {
-  TRI_SetProgressReplicationApplier(_vocbase->_replicationApplier, msg);
+  TRI_SetProgressReplicationApplier(_applier, msg, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,7 +303,7 @@ void ReplicationFetcher::setProgress (char const* msg) {
 ////////////////////////////////////////////////////////////////////////////////
   
 void ReplicationFetcher::setPhase (TRI_replication_apply_phase_e phase) {
-  TRI_SetPhaseReplicationApplier(_vocbase->_replicationApplier, phase);
+  TRI_SetPhaseReplicationApplier(_applier, phase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1032,14 +1051,16 @@ int ReplicationFetcher::applyLogMarker (TRI_json_t const* json,
   if (! tick.empty()) {
     TRI_voc_tick_t newTick = (TRI_voc_tick_t) StringUtils::uint64(tick.c_str(), tick.size());
 
-    if (newTick > _applyState._lastProcessedContinuousTick) {
-      _applyState._lastProcessedContinuousTick = newTick;
+    TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+    if (newTick > _applier->_state._lastProcessedContinuousTick) {
+      _applier->_state._lastProcessedContinuousTick = newTick;
     }
     else {
       LOGGER_WARNING("replication marker tick value " << newTick << 
                      " is lower than last processed tick value " <<
-                     _applyState._lastProcessedContinuousTick);
+                     _applier->_state._lastProcessedContinuousTick);
     }
+    TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
   }
 
   // handle marker type   
@@ -1171,9 +1192,11 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
 
     if (updateTick) {
       // update tick value
-      if (_applyState._lastProcessedContinuousTick > _applyState._lastAppliedContinuousTick) {
-        _applyState._lastAppliedContinuousTick = _applyState._lastProcessedContinuousTick;
+      TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      if (_applier->_state._lastProcessedContinuousTick > _applier->_state._lastAppliedContinuousTick) {
+        _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
       }
+      TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
     }
   }
 }
@@ -1185,25 +1208,26 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
 int ReplicationFetcher::getLocalState (string& errorMsg) { 
   int res;
 
-  res = TRI_LoadStateFileReplicationApplier(_vocbase, &_applyState);
+  res = TRI_LoadStateFileReplicationApplier(_vocbase, &_applier->_state);
+  _applier->_state._active = true;
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // no state file found, so this is the initialisation
-    _applyState._serverId = _masterInfo._serverId;
+    _applier->_state._serverId = _masterInfo._serverId;
 
-    res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applyState, true);
+    res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not save replication state information";
     }
   }
   else if (res == TRI_ERROR_NO_ERROR) {
-    if (_masterInfo._serverId != _applyState._serverId &&
-        _applyState._serverId != 0) {
+    if (_masterInfo._serverId != _applier->_state._serverId &&
+        _applier->_state._serverId != 0) {
       res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
       errorMsg = "encountered wrong master id in replication state file. " 
                  "found: " + StringUtils::itoa(_masterInfo._serverId) + ", " 
-                 "expected: " + StringUtils::itoa(_applyState._serverId);
+                 "expected: " + StringUtils::itoa(_applier->_state._serverId);
     }
   }
   else {
@@ -1410,7 +1434,7 @@ int ReplicationFetcher::performContinuousSync (string& errorMsg) {
  
     // this will make the applier thread sleep if there is nothing to do, 
     // but will also check for cancellation
-    if (! TRI_WaitReplicationApplier(_vocbase->_replicationApplier, sleepTime)) {
+    if (! TRI_WaitReplicationApplier(_applier, sleepTime)) {
       return TRI_ERROR_REPLICATION_STOPPED;
     }
   }
@@ -1528,7 +1552,7 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
     batch++;
     
     // check for cancellation
-    if (! TRI_WaitReplicationApplier(_vocbase->_replicationApplier, 0)) {
+    if (! TRI_WaitReplicationApplier(_applier, 0)) {
       return TRI_ERROR_REPLICATION_STOPPED;
     }
   }
@@ -1579,7 +1603,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
  
 
   // phase handling
-  if (phase == PHASE_INIT) {
+  if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is invalid)
     return TRI_ERROR_NO_ERROR;
   }
@@ -1856,7 +1880,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   // ----------------------------------------------------------------------------------
 
   // iterate over all collections from the master...
-  res = iterateCollections(collections, errorMsg, PHASE_INIT);
+  res = iterateCollections(collections, errorMsg, PHASE_VALIDATE);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1898,8 +1922,11 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
     return res;
   }
   
-  _applyState._lastAppliedInitialTick = _masterInfo._state._lastLogTick;   
-  res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applyState, true);
+  TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+
+  _applier->_state._lastAppliedInitialTick = _masterInfo._state._lastLogTick;
+  res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, true);
+  TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "could not save replication state information";
@@ -1949,7 +1976,7 @@ int ReplicationFetcher::iterateCollections (TRI_json_t const* collections,
     }
 
     // check for cancellation
-    if (! TRI_WaitReplicationApplier(_vocbase->_replicationApplier, 0)) {
+    if (! TRI_WaitReplicationApplier(_applier, 0)) {
       return TRI_ERROR_REPLICATION_STOPPED;
     }
   }
@@ -1974,12 +2001,15 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
   // ---------------------------------------
 
   // use tick from initial dump
-  TRI_voc_tick_t fromTick = _applyState._lastAppliedInitialTick;
+  TRI_ReadLockReadWriteLock(&_applier->_statusLock);
+
+  TRI_voc_tick_t fromTick = _applier->_state._lastAppliedInitialTick;
 
   // if we already transferred some data, we'll use the last applied tick
-  if (_applyState._lastAppliedContinuousTick > fromTick) {
-    fromTick = _applyState._lastAppliedContinuousTick;
+  if (_applier->_state._lastAppliedContinuousTick > fromTick) {
+    fromTick = _applier->_state._lastAppliedContinuousTick;
   }
+  TRI_ReadUnlockReadWriteLock(&_applier->_statusLock);
 
   LOGGER_TRACE("starting continuous replication with tick " << fromTick);
 
@@ -2053,7 +2083,10 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
       header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
       if (found) {
         tick = StringUtils::uint64(header);
-        _applyState._lastAvailableContinuousTick = tick;
+
+        TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+        _applier->_state._lastAvailableContinuousTick = tick;
+        TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
       }
     }
   }
@@ -2066,13 +2099,17 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
 
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_voc_tick_t lastAppliedTick = _applyState._lastAppliedContinuousTick;
+    TRI_ReadLockReadWriteLock(&_applier->_statusLock);
+    TRI_voc_tick_t lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
+    TRI_ReadUnlockReadWriteLock(&_applier->_statusLock);
 
     res = applyLog(response, errorMsg, ignoreCount);
 
-    if (_applyState._lastAppliedContinuousTick != lastAppliedTick) {
+    TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+    if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
       saveApplyState();
     }
+    TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
   }
 
   delete response;
