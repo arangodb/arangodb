@@ -6,12 +6,19 @@
 
 <div id="queryDiv" class="form-actions">
   <div id="outputLabel">Result</div>
+  <div id="outputToolbar">
+    <i class="icon-trash queryTooltips" title="Clear" id="clearOutput"></i>
+    <i class="icon-plus queryTooltips" title="Unfold" id="bigOutput"></i>
+    <i class="icon-minus queryTooltips" title="Fold" id="smallOutput"></i>
+  </div>
   <div id="queryOutput" class="thumbnail">
   </div>
-  <i class="icon-trash clearicon"></i>
 
   <div id="editorLabel">Query</div>
   <div id="editorToolbar">
+    <select id="querySelect"/>
+    <i class="icon-list-alt queryTooltips" title="Edit custom queries" id="editAQL"/>
+    <i class="icon-star queryTooltips" title="Save current query" id="addAQL"/>
     <i class="icon-comment queryTooltips" title="Comment" id="commentText"/>
     <i class="icon-arrow-right queryTooltips" title="Redo" id="redoText"/>
     <i class="icon-arrow-left queryTooltips" title="Undo" id="undoText"/>
@@ -20,4 +27,49 @@
   <button id="submitQueryButton" class="btn btn-success">Submit</button>
 </div>
 
+<div id="new-aql-query" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="show-collection-name">Save new query</h3>
+  </div>
+  <div id="new-aql-body" class="modal-body">
+    <table>
+      <tr>
+        <th class="queryTH">Name:</th>
+        <th class="queryTH2"><input type="text" id="new-query-name" name="name" value=""/></th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="save-new-query" class="btn btn-success pull-right">Save</button>
+  </div>
+</div>
 
+<div id="edit-aql-queries" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="show-collection-name">Edit custom queries</h3>
+  </div>
+  <div id="edit-aql-body" class="modal-body">
+    Name
+    <table>
+      <tr>
+        <th style="width:100% !important;">
+          <select id="queryModalSelect"/>
+        </th>
+      </tr>
+    </table>
+    Content<br/>
+    <textarea id="edit-aql-textarea"/>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="save-edit-query" class="btn btn-success pull-right">Save</button>
+    <button id="delete-edit-query" class="btn btn-danger pull-left">Delete</button>
+  </div>
+  <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">
+    <strong>Really delete query?</strong>
+    <button id="confirmDeleteQuery" class="btn btn-danger pull-right" style="margin-top: -4px; margin-right: -18px !important;">Yes</button>
+    <button id="abortDeleteQuery" class="btn pull-right" style="margin-top: -4px; margin-right:10px;">No</button>
+  </div>
+
+</div>
