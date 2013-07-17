@@ -12,6 +12,28 @@
 #editorLabel {
   margin-top: 20px;
   padding-left: 45px;
+  float: left;
+}
+
+#editorToolbar {
+  float: left;
+  width: 772px;
+  margin-top: 20px !important;
+  border-top: 1px solid #A0A0A0;
+  border-right: 1px solid #A0A0A0;
+  border-radius: 0 3px 0 0;
+  height: 20px;
+  background-color: #F0F0F0;
+}
+
+#editorToolbar i:hover {
+  cursor: pointer;
+}
+
+#editorToolbar i {
+  float: right;
+  margin-right: 5px;
+  margin-top: 3px;
 }
 
 #outputLabel {
@@ -28,7 +50,7 @@
   border-right: 1px solid #A0A0A0;
   border-top: 1px solid #A0A0A0;
   width: 80px;
-  border-radius: 3px 3px 0 0;
+  border-radius: 3px 0 0 0;
 }
 
 #aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
