@@ -1,11 +1,14 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication functions
+/// @brief Replication management
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,129 +25,90 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_REPLICATION_COMMON_H
-#define TRIAGENS_VOC_BASE_REPLICATION_COMMON_H 1
-
-#include "BasicsC/common.h"
-
-#include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+var internal = require("internal"); 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       REPLICATION 
+// --SECTION--                                 module "org/arangodb/replication"
 // -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief HTTP response header for "check for more data?"
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_REPLICATION_HEADER_CHECKMORE "x-arango-replication-checkmore"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief HTTP response header for "last included tick"
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_REPLICATION_HEADER_LASTINCLUDED "x-arango-replication-lastincluded"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief HTTP response header for "last logged tick"
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_REPLICATION_HEADER_LASTTICK "x-arango-replication-lasttick"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief HTTP response header for "replication active"
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_REPLICATION_HEADER_ACTIVE    "x-arango-replication-active"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replication operations
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  REPLICATION_INVALID    = 0,
-
-  REPLICATION_STOP       = 1000,
-  REPLICATION_START      = 1001,
-
-  COLLECTION_CREATE      = 2000,
-  COLLECTION_DROP        = 2001,
-  COLLECTION_RENAME      = 2002,
-  COLLECTION_CHANGE      = 2003,
-
-  INDEX_CREATE           = 2100,
-  INDEX_DROP             = 2101,
-
-  TRI_TRANSACTION_START  = 2200,
-  TRI_TRANSACTION_COMMIT = 2201,
-
-  MARKER_DOCUMENT        = 2300,
-  MARKER_EDGE            = 2301,
-  MARKER_REMOVE          = 2302,
-
-  REPLICATION_MAX
-}
-TRI_replication_operation_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine whether a collection should be included in replication
+/// @brief starts the replication logger
 ////////////////////////////////////////////////////////////////////////////////
+  
+exports.startLogger = function () {
+  return internal.startReplicationLogger();
+};
 
-bool TRI_ExcludeCollectionReplication (const char*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the replication logger
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.stopLogger = function () {
+  return internal.stopReplicationLogger();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the replication logger state
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.getLoggerState = function () {
+  return internal.getStateReplicationLogger();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures the replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.configureApplier = function (config) {
+  return internal.configureReplicationApplier(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.startApplier = function (forceFullSynchronisation) {
+  return internal.startReplicationApplier(forceFullSynchronisation);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.stopApplier = function () {
+  return internal.stopReplicationApplier();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the replication applier state
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.getApplierState = function () {
+  return internal.getStateReplicationApplier();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
+
