@@ -26,18 +26,39 @@
   background-color: #F0F0F0;
 }
 
-#editorToolbar i:hover {
+#outputToolbar {
+  float: left;
+  width: 782px;
+  border-top: 1px solid #A0A0A0;
+  border-right: 1px solid #A0A0A0;
+  border-radius: 0 3px 0 0;
+  height: 20px;
+  background-color: #F0F0F0;
+}
+
+#editorToolbar i:hover, #outputToolbar i:hover {
   cursor: pointer;
 }
 
-#editorToolbar i {
+#editorToolbar i , #outputToolbar i {
   float: right;
   margin-right: 5px;
   margin-top: 3px;
 }
 
+#editorToolbar select {
+  float: left !important;
+}
+
+#addAQL, #editAQL {
+  float: left !important;
+  margin-left: 5px;
+  margin-right: 0 !important;
+}
+
 #outputLabel {
   padding-left: 35px;
+  float: left;
 }
 
 #editor {
@@ -99,4 +120,39 @@
   border: 0;
   border-radius: 0;
   background-color: white !important;
+}
+
+#querySelect {
+  height: 20px !important;
+  line-height: 20px !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+#querySelect option {
+  z-index: 9999 !important;
+}
+
+.queryTH {
+  width: 20% !important;
+}
+
+.queryTH2 {
+  width: 75% !important;
+}
+
+#edit-aql-body table {
+  margin-left: 0;
+  width: 100%;
+}
+
+#edit-aql-body select {
+  width: 100%;
+}
+
+#edit-aql-body textarea {
+  width: 515px;
+  resize: vertical !important;
 }
