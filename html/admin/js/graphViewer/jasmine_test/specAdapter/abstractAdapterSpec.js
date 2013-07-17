@@ -932,6 +932,8 @@
           
           expect(intS._expanded).toBeFalsy();
           
+          adapter.setChildLimit(3);
+          
           adapter.explore(intS);
           
           expect(intS._expanded).toBeTruthy();
@@ -939,10 +941,9 @@
           expect(nodes.length).toEqual(3);
           expect(edges.length).toEqual(6);
           expect(mockReducer.bucketNodes).wasCalledWith(
-            [int1, int2, int3, int4, int5, int6], 2
+            [int1, int2, int3, int4, int5, int6], 3
           );
         });
-        
         
         it('should be possible to propagate collapsing through a community', function() {
           var id1 = "1",
@@ -1051,8 +1052,6 @@
           expect(nodes.length).toEqual(4);
           expect(edges.length).toEqual(3);
         });
-        
-        
       });
       
     });
@@ -1921,6 +1920,323 @@
         expect(mockWrapper.call).wasCalledWith("getCommunity", 2);
         expect(mockWrapper.call.calls.length).toEqual(8);
       });
+            
+      it('should be informed properly if a community is removed during collapsing', function() {
+        
+        runs(function() {
+          var c0 = {
+              _id: "0"
+            },
+            internal = {
+             _id: "internal"
+            },
+            internal2 = {
+             _id: "internal2"
+            },
+            c1 = {
+              _id: "1"
+            },
+            c2 = {
+              _id: "2"
+            },
+            e0 = {
+              _id: "0-1",
+              _from: "0",
+              _to: "1"
+            },
+            e1 = {
+              _id: "1-c",
+              _from: "1",
+              _to: "internal"
+            },
+            e2 = {
+              _id: "c-2",
+              _from: "internal",
+              _to: "2"
+            },
+            commNode;
+          
+          spyOn(mockWrapper, "call").andCallFake(function(name) {
+            workerCB({
+              data: {
+                cmd: name,
+                result: ["internal", "internal2"]
+              }
+            });
+          });
+          
+          adapter.insertNode(c0);
+          c1 = adapter.insertNode(c1);
+          c1._expanded = true;
+          adapter.insertNode(internal);
+          adapter.insertNode(internal2);
+          adapter.insertNode(c2);
+          adapter.insertEdge(e0);
+          adapter.insertEdge(e1);
+          adapter.insertEdge(e2);
+          
+          expect(mockWrapper.call).wasCalledWith("insertEdge", e0._from, e0._to);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", e1._from, e1._to);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", e2._from, e2._to);
+          expect(mockWrapper.call.calls.length).toEqual(3);
+          
+          adapter.setNodeLimit(3);
+
+          expect(mockWrapper.call).wasCalledWith("getCommunity", 3);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", e1._from, e1._to);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", e2._from, e2._to);
+          expect(mockWrapper.call.calls.length).toEqual(6);
+          
+          adapter.explore(c1);
+          
+          expect(mockWrapper.call.calls.length).toEqual(6);
+        });
+      
+      });
+      
+      it('should be informed if a node is explored, collapsed and explored again', function() {
+        var id1 = "1",
+          id2 = "2",
+          id3 = "3",
+          id4 = "4",
+          id5 = "5",
+          id6 = "6",
+          ids = "start",
+          n1 = {_id: id1},
+          n2 = {_id: id2},
+          n3 = {_id: id3},
+          n4 = {_id: id4},
+          n5 = {_id: id5},
+          n6 = {_id: id6},
+          ns = {_id: ids},
+          intS,
+          int1,
+          int2,
+          int3,
+          int4,
+          int5,
+          int6,
+          es1 = {
+            _id: ids + "-" + id1,
+            _from: ids,
+            _to: id1
+          },
+          es2 = {
+            _id: ids + "-" + id2,
+            _from: ids,
+            _to: id2
+          },
+          es3 = {
+            _id: ids + "-" + id3,
+            _from: ids,
+            _to: id3
+          },
+          es4 = {
+            _id: ids + "-" + id4,
+            _from: ids,
+            _to: id4
+          },
+          es5 = {
+            _id: ids + "-" + id5,
+            _from: ids,
+            _to: id5
+          },
+          es6 = {
+            _id: ids + "-" + id6,
+            _from: ids,
+            _to: id6
+          };
+          
+        spyOn(mockWrapper, "call");
+          
+        spyOn(mockReducer, "bucketNodes").andCallFake(function(list) {
+          return [
+            {
+              reason: {
+                type: "similar"
+              },
+              nodes: [int1, int2, int3]
+            },
+            {
+              reason: {
+                type: "similar"
+              },
+              nodes: [int4, int5, int6]
+            }
+          ];
+        });
+        spyOn(descendant, "loadNode").andCallFake(function() {
+          var inserted = {};
+          int1 = adapter.insertNode(n1);
+          int2 = adapter.insertNode(n2);
+          int3 = adapter.insertNode(n3);
+          int4 = adapter.insertNode(n4);
+          int5 = adapter.insertNode(n5);
+          int6 = adapter.insertNode(n6);
+          inserted.id1 = int1;
+          inserted.id2 = int2;
+          inserted.id3 = int3;
+          inserted.id4 = int4;
+          inserted.id5 = int5;
+          inserted.id6 = int6;
+          adapter.insertEdge(es1);
+          adapter.insertEdge(es2);
+          adapter.insertEdge(es3);
+          adapter.insertEdge(es4);
+          adapter.insertEdge(es5);
+          adapter.insertEdge(es6);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id1);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id2);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id3);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id4);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id5);
+          expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id6);
+          expect(mockWrapper.call.calls.length).toEqual(6);
+          mockWrapper.call.calls.length = 0;
+          adapter.checkSizeOfInserted(inserted);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id1);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id2);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id3);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id4);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id5);
+          expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id6);
+          expect(mockWrapper.call.calls.length).toEqual(6);
+          mockWrapper.call.calls.length = 0;
+        });
+        adapter.setChildLimit(2);
+
+        intS = adapter.insertNode(ns);
+        
+        expect(mockWrapper.call.calls.length).toEqual(0);
+        
+        adapter.explore(intS);
+                
+        expect(edges.length).toEqual(6);        
+        adapter.explore(intS);        
+        expect(edges.length).toEqual(0);
+        expect(mockWrapper.call.calls.length).toEqual(0);
+        mockWrapper.call.calls.length = 0;
+        adapter.explore(intS);
+        expect(edges.length).toEqual(6);
+      });
+      
+      
+      it('should be informed properly about propagating'
+      + ' a collapse through a community', function() {
+        var id1 = "1",
+          id2 = "2",
+          id3 = "3",
+          id4 = "4",
+          id5 = "5",
+          ids = "start",
+          n1 = {_id: id1},
+          n2 = {_id: id2},
+          n3 = {_id: id3},
+          n4 = {_id: id4},
+          n5 = {_id: id5},
+          ns = {_id: ids},
+          intS,
+          int1,
+          int2,
+          int3,
+          int4,
+          int5,
+          es1 = {
+            _id: ids + "-" + id1,
+            _from: ids,
+            _to: id1
+          },
+          es2 = {
+            _id: ids + "-" + id2,
+            _from: ids,
+            _to: id2
+          },
+          e13 = {
+            _id: id1 + "-" + id3,
+            _from: id1,
+            _to: id3
+          },
+          e24 = {
+            _id: id2 + "-" + id4,
+            _from: id2,
+            _to: id4
+          },
+          e35 = {
+            _id: id3 + "-" + id5,
+            _from: id3,
+            _to: id5
+          };
+        spyOn(mockWrapper, "call").andCallFake(function(name) {
+          if (name === "getCommunity") {
+            workerCB({
+              data: {
+                cmd: name,
+                result: [id2, id3]
+              }
+            });
+          }
+        });
+        spyOn(descendant, "loadNode").andCallFake(function(n) {
+          if (n === ids) {
+            int1 = adapter.insertNode(n1);
+            int2 = adapter.insertNode(n2);
+            adapter.insertEdge(es1);
+            adapter.insertEdge(es2);
+            expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id1);
+            expect(mockWrapper.call).wasCalledWith("insertEdge", ids, id2);
+            expect(mockWrapper.call.calls.length).toEqual(2);
+            mockWrapper.call.calls.length = 0;
+            return;
+          }
+          if (n === id1) {
+            int3 = adapter.insertNode(n3);
+            adapter.insertEdge(e13);
+            expect(mockWrapper.call).wasCalledWith("insertEdge", id1, id3);
+            expect(mockWrapper.call.calls.length).toEqual(1);
+            mockWrapper.call.calls.length = 0;
+            return;
+          }
+          if (n === id2) {
+            int4 = adapter.insertNode(n4);
+            adapter.insertEdge(e24);
+            expect(mockWrapper.call).wasCalledWith("insertEdge", id2, id4);
+            expect(mockWrapper.call.calls.length).toEqual(1);
+            mockWrapper.call.calls.length = 0;
+            return;
+          }
+          if (n === id3) {
+            int5 = adapter.insertNode(n5);
+            adapter.insertEdge(e35);
+            expect(mockWrapper.call).wasCalledWith("insertEdge", id3, id5);
+            expect(mockWrapper.call.calls.length).toEqual(1);
+            mockWrapper.call.calls.length = 0;
+            return;
+          }
+        });
+        adapter.setChildLimit(2);
+        intS = adapter.insertNode(ns);
+        adapter.explore(intS);
+        adapter.explore(int1);
+        adapter.explore(int2);
+        adapter.explore(int3);
+        
+        adapter.setNodeLimit(5);
+        expect(mockWrapper.call).wasCalledWith("getCommunity", 5);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", ids, id2);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", id1, id3);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", id2, id4);
+        expect(mockWrapper.call).wasCalledWith("deleteEdge", id3, id5);
+        expect(mockWrapper.call.calls.length).toEqual(5);
+        mockWrapper.call.calls.length = 0;
+                
+        expect(int1._expanded).toBeTruthy();
+        
+        adapter.explore(int1);
+        
+        expect(int1._expanded).toBeFalsy();
+        expect(mockWrapper.call.calls.length).toEqual(0);        
+      });
+      
       
     });
     
