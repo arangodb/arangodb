@@ -76,7 +76,7 @@ function normalizeRow (row) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getQueryResults (query, bindVars) {
-  var queryResult = internal.AQL_QUERY(query, bindVars);
+  var queryResult = internal.AQL_QUERY(query, bindVars, true, 3000);
 
   if (queryResult instanceof arangodb.ArangoCursor) {
     queryResult = queryResult.toArray();
@@ -86,6 +86,20 @@ function getQueryResults (query, bindVars) {
     queryResult = queryResult.map(function (row) {
       return normalizeRow(row);
     });
+  }
+
+  return queryResult;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a query in a normalised way
+////////////////////////////////////////////////////////////////////////////////
+
+function getRawQueryResults (query, bindVars) {
+  var queryResult = internal.AQL_QUERY(query, bindVars, true, 3000);
+
+  if (queryResult instanceof arangodb.ArangoCursor) {
+    queryResult = queryResult.toArray();
   }
 
   return queryResult;
@@ -119,8 +133,9 @@ function assertQueryError (errorCode, query, bindVars) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.assertQueryError = assertQueryError;
-exports.getQueryResults  = getQueryResults;
+exports.assertQueryError   = assertQueryError;
+exports.getQueryResults    = getQueryResults;
+exports.getRawQueryResults = getRawQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
