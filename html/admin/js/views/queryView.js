@@ -74,7 +74,7 @@ var queryView = Backbone.View.extend({
     }
 
     var windowHeight = $(window).height() - 250;
-    $('#queryOutput').height(windowHeight/2);
+    $('#queryOutput').height(windowHeight/3);
     $('#aqlEditor').height(windowHeight/2);
 
     editor.resize();
