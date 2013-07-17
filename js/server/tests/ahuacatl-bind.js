@@ -27,7 +27,9 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -36,68 +38,6 @@ var QUERY = internal.AQL_QUERY;
 function ahuacatlBindTestSuite () {
   var errors = internal.errors;
   var numbers = null;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query, bindVars) {
-    var cursor = QUERY(query, bindVars);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query, bindVars, isFlat) {
-    var result = executeQuery(query, bindVars).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      var row = result[i];
-      if (isFlat) {
-        results.push(row);
-      } 
-      else {
-        var keys = [ ];
-        for (var k in row) {
-          if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
-            keys.push(k);
-          }
-        }
-       
-        keys.sort();
-        var resultRow = { };
-        for (var k in keys) {
-          if (keys.hasOwnProperty(k)) {
-            resultRow[keys[k]] = row[keys[k]];
-          }
-        }
-        results.push(resultRow);
-      }
-    }
-
-    return results;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
 
   return {
 
@@ -128,7 +68,7 @@ function ahuacatlBindTestSuite () {
 
     testBindSingle : function () {
       var expected = [ 2 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == 2 RETURN u", { "list" : [ 1, 2, 3, 4, 5, 22 ] }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == 2 RETURN u", { "list" : [ 1, 2, 3, 4, 5, 22 ] });
 
       assertEqual(expected, actual);
     },
@@ -139,7 +79,7 @@ function ahuacatlBindTestSuite () {
 
     testBindNull : function () {
       var expected = [ null ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : null }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : null });
 
       assertEqual(expected, actual);
     },
@@ -150,7 +90,7 @@ function ahuacatlBindTestSuite () {
 
     testBindBool1 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : true }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : true });
 
       assertEqual(expected, actual);
     },
@@ -161,7 +101,7 @@ function ahuacatlBindTestSuite () {
 
     testBindBool2 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : false }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : false });
 
       assertEqual(expected, actual);
     },
@@ -172,7 +112,7 @@ function ahuacatlBindTestSuite () {
 
     testBindNumeric1 : function () {
       var expected = [ -5 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : -5 }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : -5 });
 
       assertEqual(expected, actual);
     },
@@ -183,7 +123,7 @@ function ahuacatlBindTestSuite () {
 
     testBindNumeric2 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 0 }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 0 });
 
       assertEqual(expected, actual);
     },
@@ -194,7 +134,7 @@ function ahuacatlBindTestSuite () {
 
     testBindNumeric3 : function () {
       var expected = [ 1 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 1 }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 1 });
 
       assertEqual(expected, actual);
     },
@@ -205,7 +145,7 @@ function ahuacatlBindTestSuite () {
 
     testBindString1 : function () {
       var expected = [ "the quick fox" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "the quick fox" }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "the quick fox" });
 
       assertEqual(expected, actual);
     },
@@ -216,7 +156,7 @@ function ahuacatlBindTestSuite () {
 
     testBindString2 : function () {
       var expected = [ "" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "" }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "" });
 
       assertEqual(expected, actual);
     },
@@ -227,7 +167,7 @@ function ahuacatlBindTestSuite () {
 
     testBindString3 : function () {
       var expected = [ "\"the\"", "'fox'" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u IN @values RETURN u", { "list" : [ "\"the\"", "'fox'"  ], "values" : [ "\"the\"", "'fox'" ] }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u IN @values RETURN u", { "list" : [ "\"the\"", "'fox'"  ], "values" : [ "\"the\"", "'fox'" ] });
 
       assertEqual(expected, actual);
     },
@@ -238,7 +178,7 @@ function ahuacatlBindTestSuite () {
 
     testBindList1 : function () {
       var expected = [ "" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ ] }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ ] });
 
       assertEqual(expected, actual);
     },
@@ -249,7 +189,7 @@ function ahuacatlBindTestSuite () {
 
     testBindList2 : function () {
       var expected = [ true, false, 1, null, [ ] ];
-      var actual = getQueryResults("FOR u IN @list FILTER u IN @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ true, false, 1, null, [ ] ] }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u IN @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ true, false, 1, null, [ ] ] });
 
       assertEqual(expected, actual);
     },
@@ -260,7 +200,7 @@ function ahuacatlBindTestSuite () {
 
     testBindArray1 : function () {
       var expected = [ { } ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : { } }, true);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : { } });
 
       assertEqual(expected, actual);
     },
@@ -279,7 +219,7 @@ function ahuacatlBindTestSuite () {
                    { "fox" : false, "brown" : true,  "quick" : true },
                    { "fox" : false, "brown" : false, "quick" : true } ];
 
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : list, "value" : { "fox" : true, "brown" : true, "quick" : true } }, false);
+      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : list, "value" : { "fox" : true, "brown" : true, "quick" : true } });
 
       assertEqual(expected, actual);
     },
@@ -291,7 +231,7 @@ function ahuacatlBindTestSuite () {
 
     testBindMultiple1 : function () {
       var expected = [ 1.2, 1.2, 1.2 ];
-      var actual = getQueryResults("FOR u IN [ @value, @value, @value ] FILTER u == @value RETURN u", { "value" : 1.2 }, true);
+      var actual = getQueryResults("FOR u IN [ @value, @value, @value ] FILTER u == @value RETURN u", { "value" : 1.2 });
 
       assertEqual(expected, actual);
     },
@@ -302,7 +242,7 @@ function ahuacatlBindTestSuite () {
 
     testBindMultiple2 : function () {
       var expected = [ 5, 15 ];
-      var actual = getQueryResults("FOR u IN [ @value1, @value2, @value3 ] FILTER u IN [ @value1, @value2, @value3 ] && u >= @value1 && u <= @value2 RETURN u", { "value1" : 5, "value2" : 15, "value3" : 77 }, true);
+      var actual = getQueryResults("FOR u IN [ @value1, @value2, @value3 ] FILTER u IN [ @value1, @value2, @value3 ] && u >= @value1 && u <= @value2 RETURN u", { "value1" : 5, "value2" : 15, "value3" : 77 });
 
       assertEqual(expected, actual);
     },
@@ -313,7 +253,7 @@ function ahuacatlBindTestSuite () {
 
     testBindNames : function () {
       var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
-      var actual = getQueryResults("FOR u IN [ @1, @2, @0, @11, @10, @fox, @FOX, @fox_, @fox__, @fox_1 ] RETURN u", { "1" : 1, "2" : 2, "0" : 3, "11" : 4, "10" : 5, "fox" : 6, "FOX" : 7, "fox_" : 8, "fox__" : 9, "fox_1" : 10 }, true);
+      var actual = getQueryResults("FOR u IN [ @1, @2, @0, @11, @10, @fox, @FOX, @fox_, @fox__, @fox_1 ] RETURN u", { "1" : 1, "2" : 2, "0" : 3, "11" : 4, "10" : 5, "fox" : 6, "FOX" : 7, "fox_" : 8, "fox__" : 9, "fox_1" : 10 });
       assertEqual(expected, actual);
     },
 
@@ -331,7 +271,7 @@ function ahuacatlBindTestSuite () {
                    { "id" : 6, "active" : true, "likes" : "running", "name" : "Amy" }, 
                    { "id" : 7, "active" : false, "likes" : "chess", "name" : "Stuart" } ];
 
-      var actual = getQueryResults("FOR u IN @list FILTER u.name != @name && u.id != @id && u.likes IN @likes && u.active == @active RETURN u", { "list" : list, "name" : "Amy", "id" : 2, "likes" : [ "fishing", "hiking", "swimming" ], "active" : true }, false);
+      var actual = getQueryResults("FOR u IN @list FILTER u.name != @name && u.id != @id && u.likes IN @likes && u.active == @active RETURN u", { "list" : list, "name" : "Amy", "id" : 2, "likes" : [ "fishing", "hiking", "swimming" ], "active" : true });
 
       assertEqual(expected, actual);
     },
@@ -341,13 +281,13 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindMissing : function () {
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @", { }); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @@", { }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value", { }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value", { "values" : [ ] }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value1", { "value" : 1, "value11": 2 }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value1 + @value2", { "value1" : 1 }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2 }); } ));
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @", { });
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @@", { });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ 1, 2 ] RETURN @value", { }); 
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ 1, 2 ] RETURN @value", { "values" : [ ] }); 
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ 1, 2 ] RETURN @value1", { "value" : 1, "value11": 2 }); 
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ 1, 2 ] RETURN @value1 + @value2", { "value1" : 1 }); 
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2 }); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,10 +295,10 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindSuperfluous : function () {
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN 1", { "value" : 1 }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN 1", { "value" : null }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value", { "value" : 3, "value2" : 3 }); } ));
-      assertEqual(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, getErrorCode(function() { QUERY("FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2, "value3" : 3, "value4" : 4 }); } ));
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, "FOR u IN [ 1, 2 ] RETURN 1", { "value" : 1 });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, "FOR u IN [ 1, 2 ] RETURN 1", { "value" : null }); 
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, "FOR u IN [ 1, 2 ] RETURN @value", { "value" : 3, "value2" : 3 });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, "FOR u IN [ 1, 2 ] RETURN @value1 + @value2 + @value3", { "value1" : 1, "value2" : 2, "value3" : 3, "value4" : 4 }); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,7 +307,7 @@ function ahuacatlBindTestSuite () {
 
     testBindCollection1 : function () {
       var expected = [ 5, 63 ];
-      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 }, true);
+      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 });
 
       assertEqual(expected, actual);
     },
@@ -381,7 +321,7 @@ function ahuacatlBindTestSuite () {
       var collection = numbers.name();
       var params = { };
       params["@" + collection] = collection;
-      var actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER " + collection + ".value == 99 RETURN " + collection + ".value", params, true);
+      var actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER " + collection + ".value == 99 RETURN " + collection + ".value", params);
 
       assertEqual(expected, actual);
     },
@@ -391,15 +331,15 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindCollectionInvalid : function () {
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : null }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : false }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : true }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : 0 }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : 2 }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : "" }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ ] }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ { } ] }, true); });
-      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : { "name" : "collection" } }, true); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : null }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : false }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : true }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : 0 }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : 2 }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : "" }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ ] }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ { } ] }); });
+      assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : { "name" : "collection" } }); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,7 +352,7 @@ function ahuacatlBindTestSuite () {
 
       for (offset = 0; offset < 6; ++offset) {
         for (limit = 0; limit < 6; ++limit) {
-          var actual = getQueryResults("FOR u IN [ 1, 2, 3, 4 ] LIMIT @offset, @count RETURN u", { "offset" : offset, "count": limit }, true);
+          var actual = getQueryResults("FOR u IN [ 1, 2, 3, 4 ] LIMIT @offset, @count RETURN u", { "offset" : offset, "count": limit });
        
           assertEqual(data.slice(offset, limit == 0 ? limit : offset + limit), actual);
         }
@@ -424,10 +364,10 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindLimitInvalid : function () {
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : 1 }, true); });
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : 1, "count" : "foo" }, true); });
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : "foo" }, true); });
-      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : -1, "count" : -1 }, true); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : 1 }); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : 1, "count" : "foo" }); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : "foo" }); });
+      assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : -1, "count" : -1 }); });
     }
 
   };
