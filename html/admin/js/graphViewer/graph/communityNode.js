@@ -174,6 +174,39 @@ function CommunityNode(initial) {
           outbound: toArray(outbound)
         }
       };
+    },
+    
+    addShape = function(g, shapeFunc, colourMapper) {
+      var move = 9;
+      g.attr("stroke", colourMapper.getForegroundCommunityColour());
+      shapeFunc(g, 9);
+      shapeFunc(g, 6);
+      shapeFunc(g, 3);
+      shapeFunc(g);
+    },
+    
+    addLabel = function(g, colourMapper) {
+      var textN = g.append("text") // Append a label for the node
+        .attr("text-anchor", "middle") // Define text-anchor
+        .attr("fill", colourMapper.getForegroundCommunityColour())
+        .attr("stroke", "none"); // Make it readable
+      if (self._reason && self._reason.key) {
+        textN.append("tspan")
+          .attr("x", "0")
+          .attr("dy", "-4")
+          .text(self._reason.key + ":");
+        textN.append("tspan")
+          .attr("x", "0")
+          .attr("dy", "16")
+          .text(self._reason.value);
+      } else {
+        textN.text(self._size);
+      }
+    },
+    
+    shapeAll = function(g, shapeFunc, colourMapper) {
+      addShape(g, shapeFunc, colourMapper);
+      addLabel(g, colourMapper);
     };
   
   ////////////////////////////////////
@@ -222,4 +255,6 @@ function CommunityNode(initial) {
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
   
   this.dissolve = dissolve;
+  
+  this.shape = shapeAll;
 }
