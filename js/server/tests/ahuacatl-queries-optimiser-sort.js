@@ -44,7 +44,7 @@ function ahuacatlQueryOptimiserSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = QUERY(query, undefined);
+    var cursor = QUERY(query);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
