@@ -80,7 +80,6 @@ function NodeShaper(parent, flags, idfunc) {
   "use strict";
 
   var self = this,
-    communityRegEx = /^\*community/,
     nodes = [],
     visibleLabels = true,
     
@@ -202,10 +201,10 @@ function NodeShaper(parent, flags, idfunc) {
     
     addQue = function (g) {
       var community = g.filter(function(n) {
-          return communityRegEx.test(n._id);
+          return n._isCommunity;
         }),
         normal = g.filter(function(n) {
-          return !communityRegEx.test(n._id);
+          return !n._isCommunity;
         });
       addCommunityShape(community);
       addShape(normal);
@@ -249,7 +248,7 @@ function NodeShaper(parent, flags, idfunc) {
       g.enter()
         .append("g")
         .attr("class", function(d) {
-          if (communityRegEx.test(d._id)) {
+          if (d._isCommunity) {
             return "node communitynode";
           }
           return "node";
