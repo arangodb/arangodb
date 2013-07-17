@@ -57,3 +57,68 @@
   padding-top: 3px;
   padding-bottom: 3px;
 }
+
+.collectionInfoTh {
+  width: 320px;
+}
+
+.collectionInfoTh2 {
+  text-align:left;
+  width: 150px;
+}
+
+#figures table {
+  padding: 3px;
+  text-align: left;
+  min-width: 200px;
+  margin-top: 0px;
+  margin-left: 0;
+  margin-right: 0;
+  float:left;
+/*
+  border-collapse: separate !important; 
+  border-spacing: 0 6px !important;
+*/
+}
+
+#figures1, #figures2 {
+  margin-bottom: 20px;
+  width: 255px;
+}
+
+#figures2 {
+  margin-left: 20px !important;
+}
+
+#figures3 {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.figuresHeader {
+  background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;
+  border-bottom: 1px solid #C1BDBA;
+}
+
+#collectionIndexTable {
+  margin-left: 0;
+  width: 100%;
+}
+/*
+.figuresFirst {
+  background-color: #F4F4F4 !important;
+}
+
+#figures table .modal-text {
+  margin-bottom: 5px;
+  background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
+  background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: linear-gradient(top, #ffffff, #f5f5f5);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+  padding: 0 !important;
+}
+
+

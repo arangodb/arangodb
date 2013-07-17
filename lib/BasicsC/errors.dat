@@ -127,8 +127,9 @@ ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replica con
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication stream."
 ERROR_REPLICATION_INVALID_APPLY_STATE,1407,"invalid apply state","Will be raised when an invalid apply state file is found."
 ERROR_REPLICATION_UNEXPECTED_TRANSACTION,1408,"invalid transaction","Will be raised when an unexpected transaction id is found."
-ERROR_REPLICATION_STOPPED,1409,"replication stopped","Will be raised when the replication application is stopped."
-ERROR_REPLICATION_INVALID_CONFIGURATION,1410,"invalid replication apply configuration","Will be raised when the configuration for the replication application is invalid."
+ERROR_REPLICATION_INVALID_CONFIGURATION,1409,"invalid replication apply configuration","Will be raised when the configuration for the replication application is invalid."
+ERROR_REPLICATION_RUNNING,1410,"cannot change apply configuration while running","Will be raised when there is an attempt to change the configuration for the replication application while it is running."
+ERROR_REPLICATION_STOPPED,1411,"replication stopped","Special error code used to indicate the replication was stopped."
 
 ################################################################################
 ## ArangoDB query errors

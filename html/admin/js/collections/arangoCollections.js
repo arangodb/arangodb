@@ -150,7 +150,24 @@ window.arangoCollections = Backbone.Collection.extend({
 
         return result;
       },
-
+      getIndex: function (id) {
+        var data2;
+        $.ajax({
+          type: "GET",
+          cache: false,
+          url: "/_api/index/?collection=" + id,
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            data2 = data;
+          },
+          error: function(data) {
+            data2 = data;
+          }
+        });
+        return data2;
+      },
       getProperties: function (id) {
         var data2;
         $.ajax({
@@ -175,6 +192,24 @@ window.arangoCollections = Backbone.Collection.extend({
           type: "GET",
           cache: false,
           url: "/_api/collection/" + id + "/figures",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            data2 = data;
+          },
+          error: function(data) {
+            data2 = data;
+          }
+        });
+        return data2;
+      },
+      getRevision: function (id) {
+        var data2;
+        $.ajax({
+          type: "GET",
+          cache: false,
+          url: "/_api/collection/" + id + "/revision",
           contentType: "application/json",
           processData: false,
           async: false,

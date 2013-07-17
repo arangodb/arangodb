@@ -71,7 +71,9 @@ input {
 }
 
 .btn-success:hover {
+  cursor: pointer;
 	background: #788f3d;
+
 }
 
 .btn-danger {

@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* fixed documentation issues #567, #568, #571.
+
 * added collection.checksum(<withData>) method to calculate CRC checksums for
   collections
 
@@ -157,6 +159,12 @@ v1.4
 
 v1.3.3 (XXXX-XX-XX)
 -------------------
+
+* issue #570: updateFishbowl() fails once
+
+* updated and fixed generated examples
+
+* issue #559: added Foxx documentation to user manual
 
 * added missing error reporting for errors that happened during import of edges
 
