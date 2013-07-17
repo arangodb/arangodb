@@ -25,29 +25,15 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
 var jsunity = require("jsunity");
-var QUERY = internal.AQL_QUERY;
-var EXPLAIN = internal.AQL_EXPLAIN;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlOptimiserTestSuite () {
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query) {
-    var result = QUERY(query).getRows();
-    var explain = EXPLAIN(query);
-
-    return { result : result, explain : explain };
-  }
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +58,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ ] RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +69,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ 1 ] FOR j IN [ ] RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +80,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ [ ] ];
 
       var actual = getQueryResults("FOR i IN [ 1 ] LET f = (FOR j IN [ ] RETURN 1) RETURN f");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +91,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ [ ] ];
 
       var actual = getQueryResults("FOR i IN [ 1 ] LET f = (FOR j IN [1] FOR k IN [ ] RETURN 1) RETURN f");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +102,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN (FOR j IN [ ] RETURN j) RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +113,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ [ ] ];
 
       var actual = getQueryResults("LET i = (FOR j IN [ ] RETURN j) RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +124,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ ] FILTER 1 == 1 RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +135,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ ] FILTER 1 > 2 RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +146,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] FILTER i == 1 && i < 1 RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +157,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] FOR j IN [ 1, 2 ] FILTER j == 1 && j < 1 RETURN j");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +168,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("LET a = (FOR i IN [ 1, 2 ] FILTER i > 5 RETURN i) FOR i IN a RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +179,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("LET a = (FILTER 1 > 2 RETURN 1) RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +190,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ [ ] ];
 
       var actual = getQueryResults("LET a = (FILTER 1 > 2 RETURN 1) RETURN a");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,7 +201,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("FILTER 1 > 2 RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,7 +212,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("LET a = 1 FILTER 1 > 2 RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +223,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ ];
 
       var actual = getQueryResults("LET a = 1 FILTER 1 == 1 FILTER 1 > 2 RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +234,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("FILTER 1 == 1 RETURN 1");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +245,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ 1, 2 ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] FILTER 1 == 1 RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +256,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ 1, 2 ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] FOR j IN [ 1 ] FILTER 1 == 1 RETURN i");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +267,7 @@ function ahuacatlOptimiserTestSuite () {
       var expected = [ [ 1 ], [ 1 ] ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] LET a = (FOR j IN [ 1 ] FILTER 1 == 1 RETURN 1) RETURN a");
-      assertEqual(expected, actual.result);
+      assertEqual(expected, actual);
     }
 
   };

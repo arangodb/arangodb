@@ -26,62 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = require("internal").AQL_QUERY;
 var errors = require("internal").errors;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQuerySimpleTestSuite () {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query) {
-    var result = executeQuery(query).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      results.push(result[i]);
-    }
-
-    return results;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +101,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReturnOnlyQuery5 : function () {
-      var expected = [ { "name" : "Peter", "id" : 15, "age" : 35, "active" : false, "likes" : [ ] } ];
+      var expected = [ { "active" : false, "age" : 35, "id" : 15, "likes" : [ ], "name" : "Peter" } ];
 
       var actual = getQueryResults("return { \"name\" : \"Peter\", \"id\" : 15, \"age\" : 35, \"active\" : false, \"likes\" : [ ] }");
       assertEqual(expected, actual);
@@ -831,7 +785,7 @@ function ahuacatlQuerySimpleTestSuite () {
       actual = getQueryResults("LET `a b c` = { `d e f`: 1 } RETURN `a b c`['d e f']");
       assertEqual([ 1 ], actual);
       
-      assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, getErrorCode(function() { QUERY("LET a = 1 RETURN `a b c`"); } ));
+      assertQueryError(errors.ERROR_ARANGO_ILLEGAL_NAME.code, "LET a = 1 RETURN `a b c`"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -839,7 +793,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowCompileInt: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -847,7 +801,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowCompileDouble: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = 4.0e999 RETURN l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = 4.0e999 RETURN l * l * l * l * l"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -855,7 +809,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowCompileInt: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -863,7 +817,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowCompileDouble: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = -4.0e999 RETURN l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = -4.0e999 RETURN l * l * l * l * l"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -871,7 +825,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionInt: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -879,7 +833,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionDouble: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -887,7 +841,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionInt: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -895,7 +849,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionDouble: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,7 +857,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBigIntOverflow: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("RETURN 9223372036854775808"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN 9223372036854775808"); 
     },
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -911,7 +865,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBigIntUnderflow: function () {
-      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("RETURN -9223372036854775809"); }));
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN -9223372036854775809"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1011,20 +965,20 @@ function ahuacatlQuerySimpleTestSuite () {
       var actual, expected;
 
       expected = [ 
-        { "order" : 1, "cities" : [ "paris", "new york", "london" ] }, 
-        { "order" : 2, "cities" : [ "paris", "new york", "london" ] }, 
-        { "order" : 3, "cities" : [ "paris", "new york", "london" ] }, 
-        { "order" : 4, "cities" : [ "paris", "new york", "london" ] } 
+        { "cities" : [ "paris", "new york", "london" ], "order" : 1 }, 
+        { "cities" : [ "paris", "new york", "london" ], "order" : 2 }, 
+        { "cities" : [ "paris", "new york", "london" ], "order" : 3 }, 
+        { "cities" : [ "paris", "new york", "london" ], "order" : 4 } 
       ];
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city DESC COLLECT order = value.order INTO cities RETURN { order: order, cities: cities[*].value.city }");
       assertEqual(expected, actual);
       
       expected = [ 
-        { "order" : 4, "cities" : [ "london", "new york", "paris" ] }, 
-        { "order" : 3, "cities" : [ "london", "new york", "paris" ] }, 
-        { "order" : 2, "cities" : [ "london", "new york", "paris" ] }, 
-        { "order" : 1, "cities" : [ "london", "new york", "paris" ] } 
+        { "cities" : [ "london", "new york", "paris" ], "order" : 4 }, 
+        { "cities" : [ "london", "new york", "paris" ], "order" : 3 }, 
+        { "cities" : [ "london", "new york", "paris" ], "order" : 2 }, 
+        { "cities" : [ "london", "new york", "paris" ], "order" : 1 } 
       ];
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city ASC COLLECT order = value.order INTO cities SORT order DESC RETURN { order: order, cities: cities[*].value.city }");

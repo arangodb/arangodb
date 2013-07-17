@@ -27,8 +27,8 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -37,59 +37,6 @@ var QUERY = internal.AQL_QUERY;
 function ahuacatlQueryOptimiserRefTestSuite () {
   var users = null;
   var cn = "UnitTestsAhuacatlOptimiserRef";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query, isFlat) {
-    var result = executeQuery(query).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      var row = result[i];
-      if (isFlat) {
-        results.push(row);
-      } 
-      else {
-        var keys = [ ];
-        for (var k in row) {
-          if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
-            keys.push(k);
-          }
-        }
-       
-        keys.sort();
-        var resultRow = { };
-        for (var k in keys) {
-          if (keys.hasOwnProperty(k)) {
-            resultRow[keys[k]] = row[keys[k]];
-          }
-        }
-        results.push(resultRow);
-      }
-    }
-
-    return results;
-  }
-
 
   return {
 
@@ -126,7 +73,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 
     testRefAccess1 : function () {
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -137,7 +84,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 
     testRefAccess2 : function () {
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -148,7 +95,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 
     testRefAccessId1 : function () {
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -159,7 +106,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 
     testRefAccessId2 : function () {
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2._id == u1._id SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2._id == u1._id SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -172,7 +119,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       users.ensureHashIndex("name");
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -185,7 +132,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       users.ensureHashIndex("name");
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -198,7 +145,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       users.ensureHashIndex("name");
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     },
@@ -211,7 +158,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       users.ensureHashIndex("name");
 
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
-      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name && u2.name == u1.name && u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }", true);
+      var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name && u2.name == u1.name && u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
     }

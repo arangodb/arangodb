@@ -25,33 +25,22 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
 var jsunity = require("jsunity");
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRefAccessVariableTestSuite () {
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query);
-    return cursor;
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query and return the results as an array
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getQueryResults (query) {
-    var result = executeQuery("FOR i IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] FOR j IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] FILTER " + query + " RETURN i").getRows();
-    return result;
+  function runQuery (query) {
+    return getQueryResults("FOR i IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] FOR j IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] FILTER " + query + " RETURN i");
   }
 
   return {
@@ -77,8 +66,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefEq : function () {
       var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 
-      assertEqual(expected, getQueryResults("(i == j)"));
-      assertEqual(expected, getQueryResults("(j == i)"));
+      assertEqual(expected, runQuery("(i == j)"));
+      assertEqual(expected, runQuery("(j == i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,8 +77,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefGt : function () {
       var expected = [ 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
-      assertEqual(expected, getQueryResults("(i > j)"));
-      assertEqual(expected, getQueryResults("(j < i)")); 
+      assertEqual(expected, runQuery("(i > j)"));
+      assertEqual(expected, runQuery("(j < i)")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,8 +88,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefGe : function () {
       var expected = [ 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
-      assertEqual(expected, getQueryResults("(i >= j)"));
-      assertEqual(expected, getQueryResults("(j <= i)"));
+      assertEqual(expected, runQuery("(i >= j)"));
+      assertEqual(expected, runQuery("(j <= i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,8 +99,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefLt : function () {
       var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 9 ];
 
-      assertEqual(expected, getQueryResults("(i < j)"));
-      assertEqual(expected, getQueryResults("(j > i)"));
+      assertEqual(expected, runQuery("(i < j)"));
+      assertEqual(expected, runQuery("(j > i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,8 +110,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefLe : function () {
       var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10 ];
 
-      assertEqual(expected, getQueryResults("(i <= j)"));
-      assertEqual(expected, getQueryResults("(j >= i)"));
+      assertEqual(expected, runQuery("(i <= j)"));
+      assertEqual(expected, runQuery("(j >= i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,23 +121,23 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefMergeAnd1 : function () {
       var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 
-      assertEqual(expected, getQueryResults("(i == j && i >= j)"));
-      assertEqual(expected, getQueryResults("(j == i && j <= i)"));
-      assertEqual(expected, getQueryResults("(i >= j && i == j)"));
-      assertEqual(expected, getQueryResults("(j <= i && j == i)"));
+      assertEqual(expected, runQuery("(i == j && i >= j)"));
+      assertEqual(expected, runQuery("(j == i && j <= i)"));
+      assertEqual(expected, runQuery("(i >= j && i == j)"));
+      assertEqual(expected, runQuery("(j <= i && j == i)"));
 
-      assertEqual(expected, getQueryResults("(i == j && i <= j)"));
-      assertEqual(expected, getQueryResults("(j == i && j >= i)"));
-      assertEqual(expected, getQueryResults("(i <= j && i == j)"));
-      assertEqual(expected, getQueryResults("(j >= i && j == i)"));
+      assertEqual(expected, runQuery("(i == j && i <= j)"));
+      assertEqual(expected, runQuery("(j == i && j >= i)"));
+      assertEqual(expected, runQuery("(i <= j && i == j)"));
+      assertEqual(expected, runQuery("(j >= i && j == i)"));
 
-      assertEqual(expected, getQueryResults("(i == j && i == j)"));
-      assertEqual(expected, getQueryResults("(j == i && j == i)"));
+      assertEqual(expected, runQuery("(i == j && i == j)"));
+      assertEqual(expected, runQuery("(j == i && j == i)"));
       
-      assertEqual(expected, getQueryResults("(i <= j && i >= j)"));
-      assertEqual(expected, getQueryResults("(j >= i && j <= i)"));
-      assertEqual(expected, getQueryResults("(i >= j && i <= j)"));
-      assertEqual(expected, getQueryResults("(j <= i && j >= i)"));
+      assertEqual(expected, runQuery("(i <= j && i >= j)"));
+      assertEqual(expected, runQuery("(j >= i && j <= i)"));
+      assertEqual(expected, runQuery("(i >= j && i <= j)"));
+      assertEqual(expected, runQuery("(j <= i && j >= i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,10 +147,10 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefMergeAnd2 : function () {
       var expected = [ 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
-      assertEqual(expected, getQueryResults("(i > j && i >= j)"));
-      assertEqual(expected, getQueryResults("(j < i && j <= i)"));
-      assertEqual(expected, getQueryResults("(i >= j && i > j)"));
-      assertEqual(expected, getQueryResults("(j <= i && j < i)"));
+      assertEqual(expected, runQuery("(i > j && i >= j)"));
+      assertEqual(expected, runQuery("(j < i && j <= i)"));
+      assertEqual(expected, runQuery("(i >= j && i > j)"));
+      assertEqual(expected, runQuery("(j <= i && j < i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,8 +160,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefMergeAnd3 : function () {
       var expected = [ 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
-      assertEqual(expected, getQueryResults("(i >= j && i >= j)"));
-      assertEqual(expected, getQueryResults("(j <= i && j <= i)"));
+      assertEqual(expected, runQuery("(i >= j && i >= j)"));
+      assertEqual(expected, runQuery("(j <= i && j <= i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,10 +171,10 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefMergeAnd4 : function () {
       var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 9 ];
 
-      assertEqual(expected, getQueryResults("(i < j && i <= j)"));
-      assertEqual(expected, getQueryResults("(j > i && j >= i)"));
-      assertEqual(expected, getQueryResults("(i <= j && i < j)"));
-      assertEqual(expected, getQueryResults("(j >= i && j > i)"));
+      assertEqual(expected, runQuery("(i < j && i <= j)"));
+      assertEqual(expected, runQuery("(j > i && j >= i)"));
+      assertEqual(expected, runQuery("(i <= j && i < j)"));
+      assertEqual(expected, runQuery("(j >= i && j > i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,8 +184,8 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefMergeAnd5 : function () {
       var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10 ];
 
-      assertEqual(expected, getQueryResults("(i <= j && i <= j)"));
-      assertEqual(expected, getQueryResults("(j >= i && j >= i)"));
+      assertEqual(expected, runQuery("(i <= j && i <= j)"));
+      assertEqual(expected, runQuery("(j >= i && j >= i)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,20 +195,20 @@ function ahuacatlRefAccessVariableTestSuite () {
     testRefMergeAnd6 : function () {
       var expected = [ ];
 
-      assertEqual(expected, getQueryResults("(i > j && i < j)"));
-      assertEqual(expected, getQueryResults("(j < i && j > i)"));
-      assertEqual(expected, getQueryResults("(i < j && i > j)"));
-      assertEqual(expected, getQueryResults("(j > i && j < i)"));
+      assertEqual(expected, runQuery("(i > j && i < j)"));
+      assertEqual(expected, runQuery("(j < i && j > i)"));
+      assertEqual(expected, runQuery("(i < j && i > j)"));
+      assertEqual(expected, runQuery("(j > i && j < i)"));
       
-      assertEqual(expected, getQueryResults("(i >= j && i < j)"));
-      assertEqual(expected, getQueryResults("(j <= i && j > i)"));
-      assertEqual(expected, getQueryResults("(i < j && i >= j)"));
-      assertEqual(expected, getQueryResults("(j > i && j <= i)"));
+      assertEqual(expected, runQuery("(i >= j && i < j)"));
+      assertEqual(expected, runQuery("(j <= i && j > i)"));
+      assertEqual(expected, runQuery("(i < j && i >= j)"));
+      assertEqual(expected, runQuery("(j > i && j <= i)"));
       
-      assertEqual(expected, getQueryResults("(i > j && i <= j)"));
-      assertEqual(expected, getQueryResults("(j < i && j >= i)"));
-      assertEqual(expected, getQueryResults("(i <= j && i > j)"));
-      assertEqual(expected, getQueryResults("(j >= i && j < i)"));
+      assertEqual(expected, runQuery("(i > j && i <= j)"));
+      assertEqual(expected, runQuery("(j < i && j >= i)"));
+      assertEqual(expected, runQuery("(i <= j && i > j)"));
+      assertEqual(expected, runQuery("(j >= i && j < i)"));
     }
 
   };
