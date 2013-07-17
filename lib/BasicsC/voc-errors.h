@@ -195,11 +195,14 @@ extern "C" {
 ///   Will be raised when an invalid apply state file is found.
 /// - 1408: @LIT{invalid transaction}
 ///   Will be raised when an unexpected transaction id is found.
-/// - 1409: @LIT{replication stopped}
-///   Will be raised when the replication application is stopped.
-/// - 1410: @LIT{invalid replication apply configuration}
+/// - 1409: @LIT{invalid replication apply configuration}
 ///   Will be raised when the configuration for the replication application is
 ///   invalid.
+/// - 1410: @LIT{cannot change apply configuration while running}
+///   Will be raised when there is an attempt to change the configuration for
+///   the replication application while it is running.
+/// - 1411: @LIT{replication stopped}
+///   Special error code used to indicate the replication was stopped.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1303,17 +1306,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION                      (1408)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1409: ERROR_REPLICATION_STOPPED
-///
-/// replication stopped
-///
-/// Will be raised when the replication application is stopped.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_REPLICATION_STOPPED                                     (1409)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1410: ERROR_REPLICATION_INVALID_CONFIGURATION
+/// @brief 1409: ERROR_REPLICATION_INVALID_CONFIGURATION
 ///
 /// invalid replication apply configuration
 ///
@@ -1321,7 +1314,28 @@ void TRI_InitialiseErrorMessages (void);
 /// invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_INVALID_CONFIGURATION                       (1410)
+#define TRI_ERROR_REPLICATION_INVALID_CONFIGURATION                       (1409)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1410: ERROR_REPLICATION_RUNNING
+///
+/// cannot change apply configuration while running
+///
+/// Will be raised when there is an attempt to change the configuration for the
+/// replication application while it is running.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_RUNNING                                     (1410)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1411: ERROR_REPLICATION_STOPPED
+///
+/// replication stopped
+///
+/// Special error code used to indicate the replication was stopped.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_STOPPED                                     (1411)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
