@@ -76,6 +76,29 @@ function normalizeRow (row, recursive) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the parse results for a query
+////////////////////////////////////////////////////////////////////////////////
+    
+function getParseResults (query) {
+  return internal.AQL_PARSE(query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert a specific error code when parsing a query
+////////////////////////////////////////////////////////////////////////////////
+
+function assertParseError (errorCode, query) {
+  try {
+    getParseResults(query);
+    fail();
+  }
+  catch (e) {
+    assertTrue(e.errorNum !== undefined, "unexpected error format");
+    assertEqual(errorCode, e.errorNum, "unexpected error code");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the results of a query explanation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -143,10 +166,14 @@ function assertQueryError (errorCode, query, bindVars) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.assertQueryError    = assertQueryError;
+exports.getParseResults     = getParseResults;
+exports.assertParseError    = assertParseError;
+
 exports.getQueryExplanation = getQueryExplanation;
+
 exports.getRawQueryResults  = getRawQueryResults;
 exports.getQueryResults     = getQueryResults;
+exports.assertQueryError    = assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
