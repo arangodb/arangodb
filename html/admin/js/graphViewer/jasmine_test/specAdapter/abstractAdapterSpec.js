@@ -100,7 +100,7 @@
       nodes = [];
       edges = [];
       descendant = {
-        loadNode: {}
+        loadNode: function(){}
       };
     });
     
@@ -805,6 +805,139 @@
           });
         
         });
+        
+        it('should be possible to explore a node, collapse it and explore it again', function() {
+          var id1 = "1",
+            id2 = "2",
+            id3 = "3",
+            id4 = "4",
+            id5 = "5",
+            id6 = "6",
+            ids = "start",
+            n1 = {_id: id1},
+            n2 = {_id: id2},
+            n3 = {_id: id3},
+            n4 = {_id: id4},
+            n5 = {_id: id5},
+            n6 = {_id: id6},
+            ns = {_id: ids},
+            intS,
+            int1,
+            int2,
+            int3,
+            int4,
+            int5,
+            int6,
+            es1 = {
+              _id: ids + "-" + id1,
+              _from: ids,
+              _to: id1
+            },
+            es2 = {
+              _id: ids + "-" + id2,
+              _from: ids,
+              _to: id2
+            },
+            es3 = {
+              _id: ids + "-" + id3,
+              _from: ids,
+              _to: id3
+            },
+            es4 = {
+              _id: ids + "-" + id4,
+              _from: ids,
+              _to: id4
+            },
+            es5 = {
+              _id: ids + "-" + id5,
+              _from: ids,
+              _to: id5
+            },
+            es6 = {
+              _id: ids + "-" + id6,
+              _from: ids,
+              _to: id6
+            };
+          spyOn(mockReducer, "bucketNodes").andCallFake(function(list) {
+            return [
+              {
+                reason: {
+                  type: "similar"
+                },
+                nodes: [int1, int2, int3]
+              },
+              {
+                reason: {
+                  type: "similar"
+                },
+                nodes: [int4, int5, int6]
+              }
+            ];
+          });
+          spyOn(descendant, "loadNode").andCallFake(function() {
+            var inserted = {};
+            
+            int1 = adapter.insertNode(n1);
+            int2 = adapter.insertNode(n2);
+            int3 = adapter.insertNode(n3);
+            int4 = adapter.insertNode(n4);
+            int5 = adapter.insertNode(n5);
+            int6 = adapter.insertNode(n6);
+            
+            inserted.id1 = int1;
+            inserted.id2 = int2;
+            inserted.id3 = int3;
+            inserted.id4 = int4;
+            inserted.id5 = int5;
+            inserted.id6 = int6;
+            
+            adapter.insertEdge(es1);
+            adapter.insertEdge(es2);
+            adapter.insertEdge(es3);
+            adapter.insertEdge(es4);
+            adapter.insertEdge(es5);
+            adapter.insertEdge(es6);
+
+            adapter.checkSizeOfInserted(inserted);
+          });
+          
+          adapter.setChildLimit(2);
+          expect(nodes).toEqual([]);
+          
+          intS = adapter.insertNode(ns);
+          
+          expect(nodes).toEqual([intS]);
+          
+          adapter.explore(intS);
+          
+          expect(nodes.length).toEqual(3);
+          expect(edges.length).toEqual(6);
+          expect(mockReducer.bucketNodes).wasCalledWith(
+            [int1, int2, int3, int4, int5, int6], 2
+          );
+          
+          expect(intS._expanded).toBeTruthy();
+          
+          adapter.explore(intS);
+          
+          
+          expect(nodes.length).toEqual(1);
+          expect(edges.length).toEqual(0);
+          
+          expect(intS._expanded).toBeFalsy();
+          
+          adapter.explore(intS);
+          
+          expect(intS._expanded).toBeTruthy();
+          
+          expect(nodes.length).toEqual(3);
+          expect(edges.length).toEqual(6);
+          expect(mockReducer.bucketNodes).wasCalledWith(
+            [int1, int2, int3, int4, int5, int6], 2
+          );
+          
+        });
+        
         
       });
       
