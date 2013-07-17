@@ -27,8 +27,9 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -36,52 +37,6 @@ var QUERY = internal.AQL_QUERY;
 
 function ahuacatlArithmeticTestSuite () {
   var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query) {
-    var result = executeQuery(query).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      results.push(result[i]);
-    }
-
-    return results;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
 
   return {
 
@@ -154,12 +109,12 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryPlusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN +null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN +true"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN +false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN +\"value\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN +[ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN +{ }"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +true"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +false"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +\"value\""); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +[ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +{ }"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,12 +172,12 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryMinusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN -null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN -true"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN -false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN -\"value\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN -[ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN -{ }"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -true"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -false"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -\"value\"");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -[ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -{ }"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,18 +256,18 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryPlusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 + null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 + false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 + \"0\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 + [ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 + [ 0 ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 + { }"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN null + 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN false + 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN \"0\" + 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] + 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ 0 ] + 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN { } + 1"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + false");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + \"0\"");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + [ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + [ 0 ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + { }"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null + 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false + 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" + 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] + 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] + 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } + 1"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,18 +305,18 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryMinusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 - null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 - false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 - \"0\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 - [ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 - [ 0 ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 - { }"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN null - 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN false - 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN \"0\" - 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] - 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ 0 ] - 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN { } - 1"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - false"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - \"0\""); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - [ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - [ 0 ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - { }"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null - 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false - 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" - 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] - 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] - 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } - 1"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -439,18 +394,18 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryMultiplicationInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 * null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 * false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 * \"0\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 * [ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 * [ 0 ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 * { }"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN null * 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN false * 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN \"0\" * 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] * 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ 0 ] * 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN { } * 1"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * false"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * \"0\""); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * [ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * [ 0 ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * { }"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null * 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false * 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" * 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] * 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] * 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } * 1"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -538,21 +493,21 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryDivisionInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 / null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 / false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 / \"0\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 / [ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 / [ 0 ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 / { }"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN null / 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN false / 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN \"0\" / 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] / 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ 0 ] / 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN { } / 1"); } ));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { QUERY("RETURN 1 / 0"); } ));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { QUERY("RETURN 1 / 0.0"); } ));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { QUERY("RETURN 1 / (1 - 1)"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / false"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / \"0\"");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / [ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / [ 0 ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / { }"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null / 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false / 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" / 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] / 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] / 1");
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } / 1"); 
+      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 / 0"); 
+      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 / 0.0");
+      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 / (1 - 1)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,21 +515,21 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryModulusInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 % null"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 % false"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 % \"0\""); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 % [ ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 % [ 0 ]"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 % { }"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN null % 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN false % 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN \"0\" % 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] % 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN [ 0 ] % 1"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("RETURN { } % 1"); } ));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { QUERY("RETURN 1 % 0"); } ));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { QUERY("RETURN 1 % 0.0"); } ));
-      assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, getErrorCode(function() { QUERY("RETURN 1 % (1 - 1)"); } ));
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % null"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % false"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % \"0\""); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % [ ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % [ 0 ]"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % { }"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null % 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false % 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" % 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] % 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] % 1"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } % 1"); 
+      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 % 0"); 
+      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 % 0.0"); 
+      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 % (1 - 1)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
