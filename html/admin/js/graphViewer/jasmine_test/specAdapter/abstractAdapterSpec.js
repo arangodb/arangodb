@@ -973,11 +973,6 @@
               _from: ids,
               _to: id2
             },
-            es3 = {
-              _id: ids + "-" + id3,
-              _from: ids,
-              _to: id3
-            },
             e13 = {
               _id: id1 + "-" + id3,
               _from: id1,
@@ -995,29 +990,33 @@
             };
           spyOn(mockWrapper, "call").andCallFake(function(name) {
             if (name === "getCommunity") {
-              return [id2, id3];
+              workerCB({
+                data: {
+                  cmd: name,
+                  result: [id2, id3]
+                }
+              });
             }
           });
           spyOn(descendant, "loadNode").andCallFake(function(n) {
-            if (n === intS) {
+            if (n === ids) {
               int1 = adapter.insertNode(n1);
               int2 = adapter.insertNode(n2);
-              int3 = adapter.insertNode(n3);
               adapter.insertEdge(es1);
               adapter.insertEdge(es2);
-              adapter.insertEdge(es3);
               return;
             }
-            if (n === int1) {
+            if (n === id1) {
+              int3 = adapter.insertNode(n3);
               adapter.insertEdge(e13);
               return;
             }
-            if (n === int2) {
+            if (n === id2) {
               int4 = adapter.insertNode(n4);
               adapter.insertEdge(e24);
               return;
             }
-            if (n === int3) {
+            if (n === id3) {
               int5 = adapter.insertNode(n5);
               adapter.insertEdge(e35);
               return;
@@ -1031,17 +1030,17 @@
           expect(nodes).toEqual([intS]);
           
           adapter.explore(intS);
-          expect(nodes).toEqual([intS, int1, int2, int3]);
+          expect(nodes).toEqual([intS, int1, int2]);
           adapter.explore(int1);
+          expect(nodes).toEqual([intS, int1, int2, int3]);
           adapter.explore(int2);
           adapter.explore(int3);
           
           adapter.setNodeLimit(5);
           
-          expect(mockWrapper.call).wasCalledWith("getCommunity");
-          
+          expect(mockWrapper.call).wasCalledWith("getCommunity", 5);
           expect(nodes.length).toEqual(5);
-          expect(edges.length).toEqual(6);
+          expect(edges.length).toEqual(5);
           
           expect(int1._expanded).toBeTruthy();
           
@@ -1050,7 +1049,7 @@
           expect(int1._expanded).toBeFalsy();
           
           expect(nodes.length).toEqual(4);
-          expect(edges.length).toEqual(4);
+          expect(edges.length).toEqual(3);
         });
         
         
