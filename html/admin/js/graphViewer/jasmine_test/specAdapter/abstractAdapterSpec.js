@@ -500,7 +500,7 @@
       });
       
     });
-    
+   
     describe('checking node exploration', function() {
       
       var adapter,
@@ -534,7 +534,7 @@
         });
         adapter = new AbstractAdapter(nodes, edges, descendant);
       });
-      
+     
       it('should expand a collapsed node', function() {
         var node = {
           _id: "0"
@@ -714,16 +714,18 @@
                 _id: "c-2",
                 _from: "internal",
                 _to: "2"
-              };
+              },
+              commNode;
             
             c0 = adapter.insertNode(c0);
             c1 = adapter.insertNode(c1);
             c1._expanded = true;
             adapter.insertNode(internal);
-            adapter.insertNode(c2);
+            adapter.insertNode(internal2);
+            c2 = adapter.insertNode(c2);
             e0 = adapter.insertEdge(e0);
-            adapter.insertEdge(e1);
-            adapter.insertEdge(e2);
+            e1 = adapter.insertEdge(e1);
+            e2 = adapter.insertEdge(e2);
             
             spyOn(mockWrapper, "call").andCallFake(function(name) {
               workerCB({
@@ -736,11 +738,14 @@
             
             adapter.setNodeLimit(3);
             
+            commNode = getCommunityNodes()[0];
+            expect(nodes).toEqual([c0, c1, c2, commNode]);
+            expect(edges).toEqual([e0, e1, e2]);
+            
             adapter.explore(c1);
             
             expect(nodes.length).toEqual(2);
             expect(edges.length).toEqual(1);
-            
             expect(nodes).toEqual([c0, c1]);
             expect(edges).toEqual([e0]);
           });
@@ -902,7 +907,6 @@
 
             adapter.checkSizeOfInserted(inserted);
           });
-          
           adapter.setChildLimit(2);
           expect(nodes).toEqual([]);
           
@@ -937,7 +941,116 @@
           expect(mockReducer.bucketNodes).wasCalledWith(
             [int1, int2, int3, int4, int5, int6], 2
           );
+        });
+        
+        
+        it('should be possible to propagate collapsing through a community', function() {
+          var id1 = "1",
+            id2 = "2",
+            id3 = "3",
+            id4 = "4",
+            id5 = "5",
+            ids = "start",
+            n1 = {_id: id1},
+            n2 = {_id: id2},
+            n3 = {_id: id3},
+            n4 = {_id: id4},
+            n5 = {_id: id5},
+            ns = {_id: ids},
+            intS,
+            int1,
+            int2,
+            int3,
+            int4,
+            int5,
+            es1 = {
+              _id: ids + "-" + id1,
+              _from: ids,
+              _to: id1
+            },
+            es2 = {
+              _id: ids + "-" + id2,
+              _from: ids,
+              _to: id2
+            },
+            es3 = {
+              _id: ids + "-" + id3,
+              _from: ids,
+              _to: id3
+            },
+            e13 = {
+              _id: id1 + "-" + id3,
+              _from: id1,
+              _to: id3
+            },
+            e24 = {
+              _id: id2 + "-" + id4,
+              _from: id2,
+              _to: id4
+            },
+            e35 = {
+              _id: id3 + "-" + id5,
+              _from: id3,
+              _to: id5
+            };
+          spyOn(mockWrapper, "call").andCallFake(function(name) {
+            if (name === "getCommunity") {
+              return [id2, id3];
+            }
+          });
+          spyOn(descendant, "loadNode").andCallFake(function(n) {
+            if (n === intS) {
+              int1 = adapter.insertNode(n1);
+              int2 = adapter.insertNode(n2);
+              int3 = adapter.insertNode(n3);
+              adapter.insertEdge(es1);
+              adapter.insertEdge(es2);
+              adapter.insertEdge(es3);
+              return;
+            }
+            if (n === int1) {
+              adapter.insertEdge(e13);
+              return;
+            }
+            if (n === int2) {
+              int4 = adapter.insertNode(n4);
+              adapter.insertEdge(e24);
+              return;
+            }
+            if (n === int3) {
+              int5 = adapter.insertNode(n5);
+              adapter.insertEdge(e35);
+              return;
+            }
+          });
+          adapter.setChildLimit(2);
+          expect(nodes).toEqual([]);
           
+          intS = adapter.insertNode(ns);
+          
+          expect(nodes).toEqual([intS]);
+          
+          adapter.explore(intS);
+          expect(nodes).toEqual([intS, int1, int2, int3]);
+          adapter.explore(int1);
+          adapter.explore(int2);
+          adapter.explore(int3);
+          
+          adapter.setNodeLimit(5);
+          
+          expect(mockWrapper.call).wasCalledWith("getCommunity");
+          
+          expect(nodes.length).toEqual(5);
+          expect(edges.length).toEqual(6);
+          
+          expect(int1._expanded).toBeTruthy();
+          
+          adapter.explore(int1);
+          
+          expect(int1._expanded).toBeFalsy();
+          
+          expect(nodes.length).toEqual(4);
+          expect(edges.length).toEqual(4);
         });
         
         

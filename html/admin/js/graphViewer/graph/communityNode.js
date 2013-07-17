@@ -97,7 +97,7 @@ function CommunityNode(initial) {
         return;
       }
       delete inbound[id];
-      self._inboundCounter++;
+      self._inboundCounter--;
       return;
     },
     
@@ -119,7 +119,7 @@ function CommunityNode(initial) {
         return;
       }
       delete outbound[id];
-      self._outboundCounter++;
+      self._outboundCounter--;
       return;
     },
     

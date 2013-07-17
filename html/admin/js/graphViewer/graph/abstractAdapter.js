@@ -355,9 +355,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         i;
         for ( i = 0; i < edges.length; i++ ) {
           if ( edges[i].source === node ) {
-            removed.push(edges[i].target);
+            removed.push(edges[i]);
             node._outboundCounter--;
-            edges[i].target._inboundCounter--;
             removeEdgeWithIndex(i);
             if (node._outboundCounter === 0) {
               break;
@@ -566,18 +565,37 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     setChildLimit = function (pLimit) {
       childLimit = pLimit;
     },
+        
+    handleRemovedEdge,
+    
+    collapseNodeInCommunity = function(node, commNode) {
+      node._expanded = false;
+      var removedEdges = commNode.removeOutboundEdgesFromNode(node);
+      _.each(removedEdges, function(e) {
+        handleRemovedEdge(e);
+        removeEdge(e);
+      });
+    },
     
     collapseNode = function(node) {
       node._expanded = false;
-      var subNodes = removeOutboundEdgesFromNode(node);
-      _.each(subNodes, function (n) {
-        if (n._inboundCounter === 0) {
-          collapseNode(n);
-          removeNode(n);
-        }
-      });
+      var removedEdges = removeOutboundEdgesFromNode(node);
+      _.each(removedEdges, handleRemovedEdge);
     },
-  
+    
+    collapseExploreCommunity = function(commNode) {
+      var disInfo = commNode.dissolve();
+      removeNode(commNode);
+      _.each(disInfo.nodes, function (n) {
+        delete joinedInCommunities[n._id];
+      });
+      _.each(disInfo.edges.outbound, function(e) {
+        handleRemovedEdge(e);
+        removeEdge(e);
+      });
+      delete cachedCommunities[commNode._id];
+    },
+    
     expandNode = function(n, startCallback) {
       if (n._isCommunity) {
         exports.expandCommunity(n, startCallback);
@@ -595,6 +613,29 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       }
       
     };
+  
+  handleRemovedEdge = function (e) {
+    var n = e.target, t;
+    if (n._isCommunity) {
+      t = e._target;
+      n.removeInboundEdge(e);
+      t._inboundCounter--;
+      if (t._inboundCounter === 0) {
+        collapseNodeInCommunity(t, n);
+        n.removeNode(t);
+        delete joinedInCommunities[t._id];
+      }
+      if (n._inboundCounter === 0) {
+        collapseExploreCommunity(n);
+      }
+      return;
+    }
+    n._inboundCounter--;
+    if (n._inboundCounter === 0) {
+      collapseNode(n);
+      removeNode(n);
+    }
+  };
   
   childLimit = Number.POSITIVE_INFINITY;
   
