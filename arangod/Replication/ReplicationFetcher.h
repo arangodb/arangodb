@@ -41,6 +41,7 @@
 // -----------------------------------------------------------------------------
   
 struct TRI_json_s;
+struct TRI_replication_applier_s;
 struct TRI_replication_apply_configuration_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_s;
@@ -358,6 +359,12 @@ namespace triagens {
         struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer to the apply state
+////////////////////////////////////////////////////////////////////////////////
+        
+        struct TRI_replication_applier_s* _applier;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply configuration;
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -373,7 +380,11 @@ namespace triagens {
 /// @brief information about the local apply state
 ////////////////////////////////////////////////////////////////////////////////
   
-        TRI_replication_apply_state_t _applyState;
+        struct {
+          struct TRI_transaction_s*              _trx;
+          TRI_voc_tid_t                          _externalTid;
+        } 
+        _applyState;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a full sync was requested
