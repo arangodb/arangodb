@@ -26,8 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = require("internal").AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -37,39 +37,6 @@ function ahuacatlQueryVariablesTestSuite () {
   var users1 = null;
   var users2 = null;
   var airports = null;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query) {
-    var result = executeQuery(query).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      results.push(result[i]);
-    }
-
-    return results;
-  }
-
 
   return {
 
@@ -121,8 +88,12 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testListExpansion1 : function () {
       var query = "FOR u IN " + JSON.stringify(users1) + " RETURN { \"name\" : u.name, \"likes\": u.hobbies[*].type }";
-      var expected = [{ "name" : "Max", "likes" : ["swimming", "skating"] }, { "name" : "Vanessa", "likes" : ["running", "cycling"] }, { "name" : "Peter", "likes" : [ ] }]; 
-
+      var expected = [
+        { "likes" : ["swimming", "skating"], "name" : "Max" }, 
+        { "likes" : ["running", "cycling"], "name" : "Vanessa" }, 
+        { "likes" : [ ], "name" : "Peter" }
+      ]; 
+      
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
     },
@@ -134,7 +105,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testListExpansion2 : function () {
       var query = "FOR u IN " + JSON.stringify(users1) + " RETURN { \"name\" : u.name, \"likes\": u.hobbies[*].type, \"friends\": u.friends[*].name }";
-      var expected = [{ "name" : "Max", "likes" : ["swimming", "skating"], "friends" : ["Peter"] }, { "name" : "Vanessa", "likes" : ["running", "cycling"], "friends" : ["Peter", "Max"] }, { "name" : "Peter", "likes" : [ ], "friends" : ["Peter"] }];
+      var expected = [
+        { "friends" : ["Peter"], "likes" : ["swimming", "skating"], "name" : "Max" }, 
+        { "friends" : [ "Peter", "Max" ], "likes" : ["running", "cycling"], "name" : "Vanessa" },
+        { "friends" : ["Peter"], "likes" : [ ], "name" : "Peter" }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -146,7 +121,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testListExpansion3 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"uid\" : u.id, \"phones\" : u.address.home.phone[*].number }";
-      var expected = [{ "uid" : 1, "phones" : ["555-1234567", "555-2345678"] }, { "uid" : 2, "phones" : ["555-4352367"] }, { "uid" : 3, "phones" : ["555-9624218", "555-4425742", "555-3485385"] }];
+      var expected = [
+        { "phones" : ["555-1234567", "555-2345678"], "uid" : 1 }, 
+        { "phones" : ["555-4352367"], "uid" : 2 }, 
+        { "phones" : ["555-9624218", "555-4425742", "555-3485385"], "uid" : 3 }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -206,7 +185,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testNamedAccess1 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"name\" : u.name, \"addr\" : u.address }";
-      var expected = [{ "name" : "Max", "addr" : { "home" : { "street" : "arango road", "zip" : "abcde", "phone" : [{ "type" : "mobile", "number" : "555-1234567" }, { "type" : "fax", "number" : "555-2345678" }] }, "work" : { "street" : "cantaloupe way", "zip" : "xyzab", "phone" : [{ "type" : "landline", "number" : "555-5555555" }] } } }, { "name" : "Vanessa", "addr" : { "home" : { "street" : "one-way loop", "zip" : "4e2af", "phone" : [{ "type" : "landline", "number" : "555-4352367" }] }, "work" : { "street" : "workers ave", "zip" : "4e2af", "phone" : [{ "type" : "landline", "number" : "555-2214212" }] } } }, { "name" : "Peter", "addr" : { "home" : { "street" : "theather drive", "zip" : "99998", "phone" : [{ "type" : "mobile", "number" : "555-9624218" }, { "type" : "fax", "number" : "555-4425742" }, { "type" : "landline", "number" : "555-3485385" }] } } }];
+      var expected = [
+        { "addr" : { "home" : { "street" : "arango road", "zip" : "abcde", "phone" : [{ "type" : "mobile", "number" : "555-1234567" }, { "type" : "fax", "number" : "555-2345678" }] }, "work" : { "street" : "cantaloupe way", "zip" : "xyzab", "phone" : [{ "type" : "landline", "number" : "555-5555555" }] } }, "name" : "Max" }, 
+        { "addr" : { "home" : { "street" : "one-way loop", "zip" : "4e2af", "phone" : [{ "type" : "landline", "number" : "555-4352367" }] }, "work" : { "street" : "workers ave", "zip" : "4e2af", "phone" : [{ "type" : "landline", "number" : "555-2214212" }] } }, "name" : "Vanessa" }, 
+        { "addr" : { "home" : { "street" : "theather drive", "zip" : "99998", "phone" : [{ "type" : "mobile", "number" : "555-9624218" }, { "type" : "fax", "number" : "555-4425742" }, { "type" : "landline", "number" : "555-3485385" }] } }, "name" : "Peter" }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -218,7 +201,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testNamedAccess2 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"name\" : u.name, \"home\" : u.address.home }";
-      var expected = [{ "name" : "Max", "home" : { "street" : "arango road", "zip" : "abcde", "phone" : [{ "type" : "mobile", "number" : "555-1234567" }, { "type" : "fax", "number" : "555-2345678" }] } }, { "name" : "Vanessa", "home" : { "street" : "one-way loop", "zip" : "4e2af", "phone" : [{ "type" : "landline", "number" : "555-4352367" }] } }, { "name" : "Peter", "home" : { "street" : "theather drive", "zip" : "99998", "phone" : [{ "type" : "mobile", "number" : "555-9624218" }, { "type" : "fax", "number" : "555-4425742" }, { "type" : "landline", "number" : "555-3485385" }] } }] ;
+      var expected = [
+        { "home" : { "street" : "arango road", "zip" : "abcde", "phone" : [{ "type" : "mobile", "number" : "555-1234567" }, { "type" : "fax", "number" : "555-2345678" }] }, "name" : "Max" }, 
+        { "home" : { "street" : "one-way loop", "zip" : "4e2af", "phone" : [{ "type" : "landline", "number" : "555-4352367" }] }, "name" : "Vanessa" }, 
+        { "home" : { "street" : "theather drive", "zip" : "99998", "phone" : [{ "type" : "mobile", "number" : "555-9624218" }, { "type" : "fax", "number" : "555-4425742" }, { "type" : "landline", "number" : "555-3485385" }] }, "name" : "Peter" }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -278,7 +265,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testIndexedAccess3 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"uid\" : u.id, \"phone\" : u.address.home.phone[0] }";
-      var expected = [{ "uid" : 1, "phone" : { "type" : "mobile", "number" : "555-1234567" } }, { "uid" : 2, "phone" : { "type" : "landline", "number" : "555-4352367" } }, { "uid" : 3, "phone" : { "type" : "mobile", "number" : "555-9624218" } }];
+      var expected = [
+        { "phone" : { "type" : "mobile", "number" : "555-1234567" }, "uid" : 1 }, 
+        { "phone" : { "type" : "landline", "number" : "555-4352367" }, "uid" : 2 }, 
+        { "phone" : { "type" : "mobile", "number" : "555-9624218" }, "uid" : 3 }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -291,7 +282,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testIndexedAccess4 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"uid\" : u.id, \"phone\" : u.address.home.phone[1] }";
-      var expected = [{ "uid" : 1, "phone" : { "type" : "fax", "number" : "555-2345678" } }, { "uid" : 2, "phone" : null }, { "uid" : 3, "phone" : { "type" : "fax", "number" : "555-4425742" } }];
+      var expected = [
+        { "phone" : { "type" : "fax", "number" : "555-2345678" }, "uid" : 1 }, 
+        { "phone" : null, "uid" : 2 }, 
+        { "phone" : { "type" : "fax", "number" : "555-4425742" }, "uid" : 3 }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -303,7 +298,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testIndexedAccess5 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"uid\" : u.id, \"phoneType\" : u.address.home.phone[0].type, \"phoneNum\" : u.address.home.phone[0].number }";
-      var expected = [{ "uid" : 1, "phoneType" : "mobile", "phoneNum" : "555-1234567" }, { "uid" : 2, "phoneType" : "landline", "phoneNum" : "555-4352367" }, { "uid" : 3, "phoneType" : "mobile", "phoneNum" : "555-9624218" }];
+      var expected = [
+        { "phoneNum" : "555-1234567", "phoneType" : "mobile", "uid" : 1 }, 
+        { "phoneNum" : "555-4352367", "phoneType" : "landline", "uid" : 2 },
+        { "phoneNum" : "555-9624218", "phoneType" : "mobile", "uid" : 3 }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -315,7 +314,11 @@ function ahuacatlQueryVariablesTestSuite () {
 
     testIndexedAccess6 : function () {
       var query = "FOR u IN " + JSON.stringify(users2) + " RETURN { \"uid\" : u.id, \"phoneType\" : u.address.home.phone[1].type, \"phoneNum\" : u.address.home.phone[1].number }";
-      var expected = [{ "uid" : 1, "phoneType" : "fax", "phoneNum" : "555-2345678" }, { "uid" : 2, "phoneType" : null, "phoneNum" : null }, { "uid" : 3, "phoneType" : "fax", "phoneNum" : "555-4425742" }];
+      var expected = [
+        { "phoneNum" : "555-2345678", "phoneType" : "fax", "uid" : 1 }, 
+        { "phoneNum" : null, "phoneType" : null, "uid" : 2 }, 
+        { "phoneNum" : "555-4425742", "phoneType" : "fax", "uid" : 3 }
+      ];
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
