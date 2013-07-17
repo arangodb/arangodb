@@ -115,7 +115,7 @@
       
       getCommunityNodes = function() {
         return _.filter(nodes, function(n) {
-          return n._id.match(/^\*community/);
+          return n._isCommunity;
         });
       },
       
