@@ -160,7 +160,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         throw "Unable to insert Edge, target node not existing " + data._to;
       }
       edge.source = source;
-      if (/^\*community/.test(edge.source._id)) {
+      if (edge.source._isCommunity) {
         com = cachedCommunities[edge.source._id];
         edge.source = com.getNode(data._from);
         edge.source._outboundCounter++;
@@ -170,7 +170,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         source._outboundCounter++;
       }
       edge.target = target;
-      if (/^\*community/.test(edge.target._id)) {
+      if (edge.target._isCommunity) {
         com = cachedCommunities[edge.target._id];
         edge.target = com.getNode(data._to);
         edge.target._inboundCounter++;
@@ -328,14 +328,14 @@ function AbstractAdapter(nodes, edges, descendant, config) {
           shouldRemove = false;
           if (s === nodes[j]) {
             shouldRemove = commNode.insertOutboundEdge(edges[i]);
-            if (!/^\*community/.test(t._id)) {
+            if (!t._isCommunity) {
               joiner.call("deleteEdge", s._id, t._id);
             } 
             s = edges[i].source;           
           }
           if (t === nodes[j]) {
             shouldRemove = commNode.insertInboundEdge(edges[i]);
-            if (!/^\*community/.test(s._id)) {
+            if (!s._isCommunity) {
               joiner.call("deleteEdge", s._id, t._id);
             }
             t = edges[i].target;          
@@ -519,14 +519,14 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       _.each(inboundEdges, function(edge) {
         edge.target = edge._target;
         delete edge._target;
-        if (!/^\*community/.test(edge.source._id)) {
+        if (!edge.source._isCommunity) {
           joiner.call("insertEdge", edge.source._id, edge.target._id);
         }
       });
       _.each(outboundEdges, function(edge) {
         edge.source = edge._source;
         delete edge._source;
-        if (!/^\*community/.test(edge.target._id)) {
+        if (!edge.target._isCommunity) {
           joiner.call("insertEdge", edge.source._id, edge.target._id);
         }
       });
@@ -579,7 +579,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     },
   
     expandNode = function(n, startCallback) {
-      if (/^\*community/.test(n._id)) {
+      if (n._isCommunity) {
         exports.expandCommunity(n, startCallback);
       } else {
         n._expanded = true;

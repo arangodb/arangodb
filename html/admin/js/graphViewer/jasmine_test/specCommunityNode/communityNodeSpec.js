@@ -203,7 +203,14 @@
       expect(c.y).toBeDefined();
       expect(c.y).toEqual(y);
       expect(c._size).toEqual(11);
-      expect(c._id).toMatch(/^\*community_\d{1,7}$/);
+      expect(c._isCommunity).toBeTruthy();
+    });
+    
+    it('should offer an attribute indicating that it is a community', function() {
+      var c = new CommunityNode(nodes.slice(0, 1));
+      expect(c._isCommunity).toBeDefined();
+      expect(c._isCommunity).toBeTruthy();
+      
     });
     
     it('should return true if an inserted edge is internal', function() {

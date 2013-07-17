@@ -131,6 +131,9 @@ function CommunityNode(initial) {
   this._inboundCounter = 0;
   this._outboundCounter = 0;
   
+  // Easy check for the other classes,
+  // no need for a regex on the _id any more.
+  this._isCommunity = true;
   
   _.each(initial, function(n) {
     insertNode(n);

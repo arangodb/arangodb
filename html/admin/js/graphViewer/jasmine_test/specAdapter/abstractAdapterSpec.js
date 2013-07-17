@@ -45,7 +45,7 @@
     
     getCommunityNodes = function() {
       return _.filter(nodes, function(n) {
-        return String(n._id).match(/^\*community/);
+        return n._isCommunity;
       });
     },
     
@@ -669,11 +669,13 @@
       describe('with community nodes', function() {
         
         it('should expand a community node properly', function() {
+          // Hack for a CommunityNode
           var comm = {
             _id: "*community_1"
           };
           comm = adapter.insertNode(comm);
-        
+          comm._isCommunity = true;
+          
           spyOn(adapter, "expandCommunity");
           adapter.explore(comm, function() {});
         
