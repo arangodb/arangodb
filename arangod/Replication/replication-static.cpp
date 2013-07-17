@@ -42,7 +42,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -51,9 +51,9 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_CreateFetcherReplication (TRI_vocbase_t* vocbase,
-                                    const char* masterEndpoint,
-                                    double timeout) {
-  ReplicationFetcher* f = new ReplicationFetcher(vocbase, string(masterEndpoint), timeout);
+                                    TRI_replication_apply_configuration_t const* configuration,
+                                    bool forceFullSynchronisation) {
+  ReplicationFetcher* f = new ReplicationFetcher(vocbase, configuration, forceFullSynchronisation);
 
   return (void*) f;
 }
@@ -72,15 +72,10 @@ void TRI_DeleteFetcherReplication (void* ptr) {
 /// @brief static run method
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RunFetcherReplication (void* ptr,
-                               bool forceFullSynchronisation,
-                               uint64_t ignoreCount) {
+int TRI_RunFetcherReplication (void* ptr) {
   ReplicationFetcher* f = static_cast<ReplicationFetcher*>(ptr);
 
-  string errorMsg;
-  int res = f->run(forceFullSynchronisation, ignoreCount, errorMsg);
-
-  return res;
+  return f->run();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

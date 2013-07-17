@@ -1,6 +1,8 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
-/*global require, module, Module, ArangoError, 
+/*global require, module, Module, ArangoError,
+  REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE, 
+  REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, 
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
@@ -236,6 +238,69 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_LOGGER_START !== "undefined") {
+    exports.startReplicationLogger = REPLICATION_LOGGER_START;
+    delete REPLICATION_LOGGER_START;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_LOGGER_STOP !== "undefined") {
+    exports.stopReplicationLogger = REPLICATION_LOGGER_STOP;
+    delete REPLICATION_LOGGER_STOP;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getStateReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_LOGGER_STATE !== "undefined") {
+    exports.getStateReplicationLogger = REPLICATION_LOGGER_STATE;
+    delete REPLICATION_LOGGER_STATE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configureReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_CONFIGURE !== "undefined") {
+    exports.configureReplicationApplier = REPLICATION_APPLIER_CONFIGURE;
+    delete REPLICATION_APPLIER_CONFIGURE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_START !== "undefined") {
+    exports.startReplicationApplier = REPLICATION_APPLIER_START;
+    delete REPLICATION_APPLIER_START;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_STOP !== "undefined") {
+    exports.stopReplicationApplier = REPLICATION_APPLIER_STOP;
+    delete REPLICATION_APPLIER_STOP;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getStateReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_STATE !== "undefined") {
+    exports.getStateReplicationApplier = REPLICATION_APPLIER_STATE;
+    delete REPLICATION_APPLIER_STATE;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugSetFailAt

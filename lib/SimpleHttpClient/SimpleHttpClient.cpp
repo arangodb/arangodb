@@ -46,10 +46,12 @@ namespace triagens {
   namespace httpclient {
 
 // -----------------------------------------------------------------------------
-    // constructors and destructors
+// constructors and destructors
 // -----------------------------------------------------------------------------
 
-    SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
+    SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, 
+                                        double requestTimeout, 
+                                        bool warn) :
       SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
     }
 
