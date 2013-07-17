@@ -155,6 +155,18 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandDump(); 
     }
+    else if (command == "apply-start") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandApplyStart();
+    }
+    else if (command == "apply-stop") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandApplyStop();
+    }
     else if (command == "apply-state") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -372,14 +384,6 @@ void RestReplicationHandler::handleCommandLogFollow () {
     return;
   }
   
-  TRI_replication_log_state_t state;
-
-  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
-    return;
-  }
-  
   const uint64_t chunkSize = determineChunkSize(); 
   
   // initialise the dump container
@@ -392,9 +396,15 @@ void RestReplicationHandler::handleCommandLogFollow () {
     return;
   }
 
-  res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
+  int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
   
+  TRI_replication_log_state_t state;
+
   if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
+  }
+ 
+  if (res == TRI_ERROR_NO_ERROR) { 
     const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
 
     // generate the result
@@ -407,9 +417,13 @@ void RestReplicationHandler::handleCommandLogFollow () {
                          strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
                          checkMore ? "true" : "false");
 
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTFOUND, 
-                         strlen(TRI_REPLICATION_HEADER_LASTFOUND), 
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED, 
+                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED), 
                          StringUtils::itoa(dump._lastFoundTick));
+    
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTTICK, 
+                         strlen(TRI_REPLICATION_HEADER_LASTTICK), 
+                         StringUtils::itoa(state._lastLogTick));
     
     _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE, 
                          strlen(TRI_REPLICATION_HEADER_ACTIVE), 
@@ -550,10 +564,11 @@ void RestReplicationHandler::handleCommandDump () {
     _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE, 
                          strlen(TRI_REPLICATION_HEADER_CHECKMORE), 
                          ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTFOUND, 
-                         strlen(TRI_REPLICATION_HEADER_LASTFOUND), 
-                         StringUtils::itoa(dump._lastFoundTick));
 
+    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED, 
+                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED), 
+                         StringUtils::itoa(dump._lastFoundTick));
+    
     // transfer ownership of the buffer contents
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
@@ -564,6 +579,51 @@ void RestReplicationHandler::handleCommandDump () {
   }
 
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplyStart () {
+  assert(_vocbase->_replicationApplier != 0);
+  
+  bool found;
+  const char* value = _request->value("fullSync", found);
+
+  bool fullSync;
+  if (found) {
+    fullSync = StringUtils::boolean(value);
+  }
+  else {
+    fullSync = false;
+  }
+
+  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, fullSync);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+  else {
+    handleCommandApplyState();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplyStop () {
+  assert(_vocbase->_replicationApplier != 0);
+
+  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+  else {
+    handleCommandApplyState();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,7 +663,6 @@ void RestReplicationHandler::handleCommandApplyState () {
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -3093,6 +3093,91 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication applier manually
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
+  }
+
+  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+  
+  TRI_replication_apply_configuration_t configuration;
+
+  TRI_InitApplyConfigurationReplicationApplier(&configuration);
+  
+  // treat the argument as an object from now on
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+  
+  string endpoint = "";
+   
+  if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
+    if (object->Get(TRI_V8_SYMBOL("endpoint"))->IsString()) {
+      endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+    }
+  }
+
+  configuration._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  
+  if (object->Has(TRI_V8_SYMBOL("requestTimeout"))) {
+    if (object->Get(TRI_V8_SYMBOL("requestTimeout"))->IsNumber()) {
+      configuration._requestTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("requestTimeout")));
+    }
+  }
+  
+  if (object->Has(TRI_V8_SYMBOL("connectTimeout"))) {
+    if (object->Get(TRI_V8_SYMBOL("connectTimeout"))->IsNumber()) {
+      configuration._connectTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("connectTimeout")));
+    }
+  }
+  
+  if (object->Has(TRI_V8_SYMBOL("ignoreErrors"))) {
+    if (object->Get(TRI_V8_SYMBOL("ignoreErrors"))->IsNumber()) {
+      configuration._ignoreErrors = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("ignoreErrors")), false);
+    }
+  }
+  
+  if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
+    if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
+      configuration._maxConnectRetries = (int) TRI_ObjectToInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")));
+    }
+  }
+  
+  if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
+    if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
+      configuration._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
+    }
+  }
+  
+  if (object->Has(TRI_V8_SYMBOL("adaptivePolling"))) {
+    if (object->Get(TRI_V8_SYMBOL("adaptivePolling"))->IsBoolean()) {
+      configuration._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("adaptivePolling")));
+    }
+  }
+
+  int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &configuration);
+  
+  TRI_DestroyApplyConfigurationReplicationApplier(&configuration);
+   
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  
+  return scope.Close(v8::True());
+}
+
+#endif
+  
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3101,33 +3186,22 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
 static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<master>, <forceFullSync>)");
-  }
-
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0 || vocbase->_replicationApplier == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
   
-  const string masterEndpoint = TRI_ObjectToString(argv[0]);
-  bool forceFullSync = false;
-  uint64_t ignoreCount = 0;
-
   if (argv.Length() > 1) {
-    forceFullSync = TRI_ObjectToBoolean(argv[1]);
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<fullSync>)");
   }
 
-  if (argv.Length() > 2) {
-    ignoreCount = TRI_ObjectToUInt64(argv[2], false);
+  bool fullSync = false;
+  if (argv.Length() > 0) {
+    fullSync = TRI_ObjectToBoolean(argv[0]);
   }
 
-  int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, 
-                                            masterEndpoint.c_str(),
-                                            600.0,
-                                            forceFullSync, 
-                                            ignoreCount);
+  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, fullSync);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication applier");
@@ -8145,6 +8219,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);

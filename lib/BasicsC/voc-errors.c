@@ -93,8 +93,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
   REG_ERROR(ERROR_REPLICATION_INVALID_APPLY_STATE, "invalid apply state");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_TRANSACTION, "invalid transaction");
-  REG_ERROR(ERROR_REPLICATION_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_INVALID_CONFIGURATION, "invalid replication apply configuration");
+  REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change apply configuration while running");
+  REG_ERROR(ERROR_REPLICATION_STOPPED, "replication stopped");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
