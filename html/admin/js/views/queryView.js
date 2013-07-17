@@ -187,8 +187,10 @@ var queryView = Backbone.View.extend({
     var quit = false;
     $.each(this.customQueries, function(k,v) {
       if (e.target.id !== 'save-edit-query') {
-        quit = true;
-        return;
+        if (v.name === queryName) {
+          quit = true;
+          return;
+        }
       }
       if (v.name !== queryName) {
         tempArray.push({
