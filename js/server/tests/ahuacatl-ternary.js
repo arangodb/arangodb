@@ -25,63 +25,17 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var errors = require("internal").errors;
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlTernaryTestSuite () {
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query) {
-    var result = executeQuery(query).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      results.push(result[i]);
-    }
-
-    return results;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
 
   return {
 
@@ -105,6 +59,7 @@ function ahuacatlTernaryTestSuite () {
     
     testTernarySimple : function () {
       var expected = [ 2 ];
+
       var actual = getQueryResults("RETURN 1 > 0 ? 2 : -1");
       assertEqual(expected, actual);
     },
@@ -180,13 +135,13 @@ function ahuacatlTernaryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testTernaryInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN null ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN (4) ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN (4 - 3) ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN \"true\" ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN { } ? 2 : 3"); }));
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN 1 ? 2 : 3"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN null ? 2 : 3");
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN (4) ? 2 : 3"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN (4 - 3) ? 2 : 3"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"true\" ? 2 : 3");
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN [ ] ? 2 : 3"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN { } ? 2 : 3"); 
     }
 
   };

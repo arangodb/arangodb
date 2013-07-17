@@ -25,30 +25,17 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var errors = require("internal").errors;
 var jsunity = require("jsunity");
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlVariablesTestSuite () {
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
 
   return {
 
@@ -71,7 +58,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testValid1 : function () {
-      var result = QUERY("LET a = 1 RETURN a").getRows();
+      var result = getQueryResults("LET a = 1 RETURN a");
 
       assertEqual([ 1 ], result);
     },
@@ -81,7 +68,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testValid2 : function () {
-      var result = QUERY("LET a = 1 LET b = 2 RETURN [ a, b ]").getRows();
+      var result = getQueryResults("LET a = 1 LET b = 2 RETURN [ a, b ]");
 
       assertEqual([ [ 1, 2 ] ], result);
     },
@@ -91,7 +78,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testValid3 : function () {
-      var result = QUERY("LET `a b c` = 1 RETURN `a b c`").getRows();
+      var result = getQueryResults("LET `a b c` = 1 RETURN `a b c`");
 
       assertEqual([ 1 ], result);
     },
@@ -101,7 +88,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare1 : function () {
-      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { QUERY("LET a = 1 LET a = 1 RETURN 0"); }));
+      assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 LET a = 1 RETURN 0"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +96,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare2 : function () {
-      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { QUERY("LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); }));
+      assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +104,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare3 : function () {
-      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { QUERY("LET a = 1 FOR a IN [ 1 ] RETURN 0"); }));
+      assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 FOR a IN [ 1 ] RETURN 0"); 
     }
 
   };

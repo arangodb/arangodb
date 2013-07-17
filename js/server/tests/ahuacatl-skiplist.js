@@ -27,8 +27,9 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var EXPLAIN = internal.AQL_EXPLAIN; 
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -37,43 +38,6 @@ var QUERY = internal.AQL_QUERY;
 function ahuacatlSkiplistTestSuite () {
   var errors = internal.errors;
   var skiplist;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query, bindVars) {
-    var cursor = QUERY(query, bindVars);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explain a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function explainQuery (query, bindVars) {
-    return EXPLAIN(query, bindVars);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query, bindVars) {
-    var result = executeQuery(query, bindVars).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      results.push(result[i]);
-    }
-
-    return results;
-  }
-
 
   return {
 
@@ -101,6 +65,7 @@ function ahuacatlSkiplistTestSuite () {
     tearDown : function () {
       internal.db._drop("UnitTestsAhuacatlSkiplist");
       skiplist = null;
+      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +79,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     },
@@ -130,7 +95,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     },
@@ -146,7 +111,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     },
@@ -162,7 +127,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     },
@@ -222,7 +187,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("index", explain[0].expression.extra.accessType);
     },
@@ -381,7 +346,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("index", explain[0].expression.extra.accessType);
     },
@@ -397,7 +362,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("index", explain[0].expression.extra.accessType);
     },
@@ -437,7 +402,7 @@ function ahuacatlSkiplistTestSuite () {
 
           assertEqual(expected, actual);
       
-          var explain = explainQuery(query, { "a": i, "b": j });
+          var explain = getQueryExplanation(query, { "a": i, "b": j });
           assertEqual("for", explain[0].type);
           assertEqual("index", explain[0].expression.extra.accessType);
         }
@@ -1085,7 +1050,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     },
@@ -1101,7 +1066,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     },
@@ -1123,7 +1088,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      var explain = explainQuery(query);
+      var explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
       
@@ -1133,7 +1098,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = explainQuery(query);
+      explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
       
@@ -1143,7 +1108,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = explainQuery(query);
+      explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
       
@@ -1153,7 +1118,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
       
-      explain = explainQuery(query);
+      explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
       
@@ -1163,7 +1128,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = explainQuery(query);
+      explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
       
@@ -1173,7 +1138,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = explainQuery(query);
+      explain = getQueryExplanation(query);
       assertEqual("for", explain[0].type);
       assertEqual("all", explain[0].expression.extra.accessType);
     }
