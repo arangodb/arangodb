@@ -244,7 +244,7 @@ function post_api_cursor(req, res) {
   if (json.query !== undefined) {
     cursor = QUERY(json.query, 
                    json.bindVars, 
-                   (json.count !== undefined ? json.count : false),
+                   json.count,
                    json.batchSize, 
                    (json.batchSize === undefined));  
   }

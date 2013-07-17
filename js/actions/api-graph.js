@@ -1136,7 +1136,7 @@ function post_graph_all_vertices (req, res, g) {
 
     var cursor = QUERY(query,
                           data.bindVars,
-                          (json.count !== undefined ? json.count : false),
+                          json.count,
                           json.batchSize,
                           (json.batchSize === undefined));
 
@@ -1297,10 +1297,10 @@ function post_graph_vertex_vertices (req, res, g) {
             data.filter + limit + " RETURN n.vertex ";
     
     var cursor = QUERY(query,
-                          data.bindVars,
-                          (json.count !== undefined ? json.count : false),
-                          json.batchSize,
-                          (json.batchSize === undefined));
+                       data.bindVars,
+                       json.count,
+                       json.batchSize,
+                       (json.batchSize === undefined));
 
     // error occurred
     if (cursor instanceof Error) {
@@ -1940,10 +1940,10 @@ function post_graph_all_edges (req, res, g) {
     var query = "FOR e IN @@edgeColl" + data.filter + limit + " RETURN e";
 
     var cursor = QUERY(query,
-                          data.bindVars,
-                          (json.count !== undefined ? json.count : false),
-                          json.batchSize,
-                          (json.batchSize === undefined));
+                       data.bindVars,
+                       (json.count !== undefined ? json.count : false),
+                       json.batchSize,
+                       (json.batchSize === undefined));
 
     // error occurred
     if (cursor instanceof Error) {
