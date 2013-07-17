@@ -15,13 +15,17 @@ var collectionInfoView = Backbone.View.extend({
     $('#show-collection').modal('show');
     $('#show-collection').on('hidden', function () {
     });
-    $('#show-collection').on('shown', function () {
-      $('#show-collection-name').focus();
-    });
     this.fillModal();
+
     $('.modalInfoTooltips').tooltip({
-      placement: "right"
+      placement: "left"
     });
+
+    $('#infoTab a').click(function (e) {
+      e.preventDefault();
+      $(this).tab('show');
+    })
+
 
     return this;
   },
@@ -46,23 +50,19 @@ var collectionInfoView = Backbone.View.extend({
       return;
     }
 
-    $('#show-collection-name').text(this.myCollection.name);
+    $('#show-collection-name').text("Collection: "+this.myCollection.name);
     $('#show-collection-id').text(this.myCollection.id);
     $('#show-collection-type').text(this.myCollection.type);
     $('#show-collection-status').text(this.myCollection.status);
 
-    if (this.myCollection.status === 'unloaded') {
-      $('#colFooter').append(
-        '<div>For more information, collection has to be loaded</div>'
-      );
-      $('#collectionSizeBox').hide();
-      $('#collectionSyncBox').hide();
-    }
-    else if (this.myCollection.status === 'loaded') {
+    if (this.myCollection.status === 'loaded') {
       this.data = window.arangoCollectionsStore.getFigures(this.options.colId, true);
+      this.revision = window.arangoCollectionsStore.getRevision(this.options.colId, true);
+      this.properties = window.arangoCollectionsStore.getProperties(this.options.colId, true);
+      this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
       this.fillLoadedModal(this.data);
-      this.convertFigures(this.data);
-      this.renderFigures();
+      //this.convertFigures(this.data);
+      //this.renderFigures();
     }
   },
   renderFigures: function () {
@@ -71,16 +71,14 @@ var collectionInfoView = Backbone.View.extend({
     // prevent some d3-internal races with a timeout
     window.setTimeout(function () {
       var chart = nv.models.pieChart()
-                  .x(function(d) { return d.label; })
-                  .y(function(d) { return d.value; })
-                  .showLabels(true);
-    
+      .x(function(d) { return d.label; })
+      .y(function(d) { return d.value; })
+      .showLabels(true);
       nv.addGraph(function() {
         d3.select(".modal-body-right svg")
         .datum(self.convertFigures())
         .transition().duration(1200)
         .call(chart);
-      
         return chart;
       });
 
@@ -92,11 +90,11 @@ var collectionInfoView = Backbone.View.extend({
     var collValues = [];
     if (self.data && self.data.figures) {
       $.each(self.data.figures, function(k,v) {
-          collValues.push({
-            "label" : k,
-            "value" : v.count
-            });
-          });
+        collValues.push({
+          "label" : k,
+          "value" : v.count
+        });
+      });
     }
 
     return [{
@@ -104,9 +102,105 @@ var collectionInfoView = Backbone.View.extend({
       values: collValues
     }];
   },
+  appendFigures: function () {
+    cssClass = 'modal-text';
+
+    if (this.data) {
+      $('#figures').append(
+        '<table id="figures1">'+
+          '<tr class="figuresHeader">'+
+            '<th class="">Type</th>'+
+            '<th>Count</th>'+
+            '<th>Filesize (MB)</th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Datafiles</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.datafiles.count+'</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.datafiles.fileSize / 1024 / 1024 +'</th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Journals</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.journals.count+'</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.journals.fileSize / 1024 / 1024 +'</th>'+
+          '</tr>'+
+        '</table>'+
+
+        '<table id="figures2">'+
+          '<tr class="figuresHeader">'+
+            '<th>Type</th>'+
+            '<th>Count</th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Shapes</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.shapes.count+'</th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Attributes</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.attributes.count+'</th>'+
+          '</tr>'+
+        '</table>'+
+
+        '<table id="figures3">'+
+          '<tr class="figuresHeader">'+
+            '<th>Type</th>'+
+            '<th>Count</th>'+
+            '<th>Size</th>'+
+            '<th>Deletion</th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Alive</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.alive.count+'</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.alive.size+'</th>'+
+            '<th class="'+cssClass+'"> - </th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Dead</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.dead.count+'</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.dead.size+'</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.dead.deletion+'</th>'+
+          '</tr>'+
+        '</table>'
+
+      );
+    }
+  },
+  appendIndex: function () {
+    cssClass = 'collectionInfoTh modal-text';
+    if (this.index) {
+        var fieldString = '';
+        var indexId = '';
+      $.each(this.index.indexes, function(k,v) {
+        fieldString = '';
+        var counter = 1;
+
+        //prettify json-array to string
+        $.each(v.fields, function(k,v) {
+          fieldString = fieldString + v;
+          if (counter > 1) {
+            fieldString = ', ' + fieldString;
+          }
+          counter++;
+        });
+
+        //cut index id
+        var position = v.id.indexOf('/');
+        var indexId = v.id.substr(position+1, v.id.length);
+
+        $('#collectionIndexTable').append(
+          '<tr>'+
+            '<th class='+JSON.stringify(cssClass)+'>'+indexId+'</th>'+
+            '<th class='+JSON.stringify(cssClass)+'>'+v.type+'</th>'+
+            '<th class='+JSON.stringify(cssClass)+'>'+v.unique+'</th>'+
+            '<th class='+JSON.stringify(cssClass)+'>'+fieldString+'</th>'+
+          '</tr>'
+        );
+      });
+    }
+  },
   fillLoadedModal: function (data) {
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();
+    $('#collectionRevBox').show();
     if (data.waitForSync === false) {
       $('#show-collection-sync').text('false');
     }
@@ -115,6 +209,11 @@ var collectionInfoView = Backbone.View.extend({
     }
     var calculatedSize = data.journalSize / 1024 / 1024;
     $('#show-collection-size').text(calculatedSize);
+    $('#show-collection-rev').text(this.revision.revision);
+
+    this.appendIndex();
+    this.appendFigures();
+
     $('#show-collection').modal('show');
   },
   getCollectionId: function () {

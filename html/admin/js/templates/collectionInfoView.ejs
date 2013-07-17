@@ -1,56 +1,82 @@
 <div id="show-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3>Collection Info</h3>
+    <h3 id="show-collection-name">Collection Info</h3>
   </div>
+	
   <div class="modal-body">
-    <div class="modal-body-left">
-      <div style="height: 30px"/>
-      <table id="collectionInfoTable">
-        <tr>
-          <th class="collectionInfoTh">Name:</th>
-          <th class="collectionInfoTh"><div id="show-collection-name" class="modal-text"/></th>
-        </tr>
-        <tr id="collectionSizeBox" style="display:none">
-          <th class="collectionInfoTh">Journal size:</th>
-          <th class="collectionInfoTh"><div id="show-collection-size" class="modal-text"/></th>
-          <th class="tooltipInfoTh"><a class="modalInfoTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><i class="icon-info-sign"></i></a></th>
-        </tr>
-        <tr id="collectionSyncBox" style="display:none">
-          <th class="collectionInfoTh">Sync:</th>
-          <th class="collectionInfoTh">
-            <div id="show-collection-sync" class="modal-text"/>
-          </th> 
-          <th class="tooltipInfoTh"><a class="modalInfoTooltips" title="Synchronise to disk before returning from a create or update of a document."><i class="icon-info-sign"></i></a></th>
-        </tr> 
 
-        <tr>
-          <th class="collectionInfoTh">ID:</th>
-          <th class="collectionInfoTh">
-            <div id="show-collection-id" class="modal-text"/>
-          <th>
-        </tr>
+    <ul id="infoTab" class="nav nav-tabs">
+      <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
+      <li><a href="#figures" data-toggle="tab">Figures</a></li>
+      <li><a href="#index" data-toggle="tab">Index</a></li>
+    </ul>
 
-        <tr>
-          <th class="collectionInfoTh">Type:</th> 
-          <th class="collectionInfoTh">
-            <div id="show-collection-type" class="modal-text"/>
-          </th>
-        </tr>
+    <div class="tab-content" id="tab-content-collection-info">
+      
+			<div class="tab-pane active" id="info">
+        
+        <table id="collectionInfoTable">
+          <tr id="collectionSizeBox" style="display:none">
+            <th class="collectionInfoTh2">Journal size (MB):</th>
+            <th class="collectionInfoTh"><div id="show-collection-size" class="modal-text"/></th>
+            <th class="tooltipInfoTh"><a class="modalInfoTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><i class="icon-info-sign"></i></a></th>
+          </tr>
+          <tr id="collectionSyncBox" style="display:none">
+            <th class="collectionInfoTh2">Wait for sync:</th>
+            <th class="collectionInfoTh">
+                <div id="show-collection-sync" class="modal-text"/>
+            </th> 
+            <th class="tooltipInfoTh"><a class="modalInfoTooltips" title="Synchronise to disk before returning from a create or update of a document."><i class="icon-info-sign"></i></a></th>
+          </tr> 
 
-        <tr>
-          <th class="collectionInfoTh">Status:</th>
-          <th class="collectionInfoTh">
-            <div id="show-collection-status" class="modal-text"/>
-          </th>
-        </tr>
-      </table>
-    </div>
-    <div class="modal-body-right">
-      <svg class="svgFigures"/>
-    </div>
+          <tr>
+            <th class="collectionInfoTh2">ID:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-id" class="modal-text"/>
+            <th>
+          </tr>
+         
+          <tr id="collectionRevBox" style="display:none">
+            <th class="collectionInfoTh2">Revision:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-rev" class="modal-text"/>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">Type:</th> 
+            <th class="collectionInfoTh">
+              <div id="show-collection-type" class="modal-text"/>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">Status:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-status" class="modal-text"/>
+            </th>
+          </tr>
+        </table>
+        
+      </div>
+
+			<div class="tab-pane" id="figures">
+			</div>
+					
+			<div class="tab-pane" id="index">
+        <table id="collectionIndexTable">
+          <tr class="figuresHeader">
+            <th class="collectionInfoTh">ID</th>
+            <th class="collectionInfoTh">Type</th>
+            <th class="collectionInfoTh">Unique</th>
+            <th class="collectionInfoTh">Field</th>
+          </tr>
+        </table>
+			</div>
+
+	  </div>
   </div>
   <div id="colFooter" class="modal-footer">
   </div>
 </div>
-
