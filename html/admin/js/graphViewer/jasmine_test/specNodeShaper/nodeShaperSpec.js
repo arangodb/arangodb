@@ -5,7 +5,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
-/*global NodeShaper*/
+/*global NodeShaper, CommunityNode*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -1368,35 +1368,17 @@
       
       it('should render community nodes', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
-          commNode = {
-            _id: "*community_42",
-            _inboundCounter: 0,
-            _outboundCounter: 0,
-            position: {
-              x: 1,
-              y: 1,
-              z: 1
-            }
-          };
+          commNode = new CommunityNode();
         nodes.push(commNode);
         shaper.drawNodes(nodes);
         expect($("svg .node").length).toEqual(4);
-        expect($("svg #\\*community_42")[0]).toBeDefined();
+        expect($("svg #\\" + commNode._id)[0]).toBeDefined();
       });
       
       it('should render communtiy nodes as stacks', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
-          commNode = {
-            _id: "*community_42",
-            _size: 4,
-            _inboundCounter: 0,
-            _outboundCounter: 0,
-            position: {
-              x: 1,
-              y: 1,
-              z: 1
-            }
-          },
+          intNodes = helper.createSimpleNodes([5, 6, 7, 8]),
+          commNode = new CommunityNode(intNodes),
           stack,
           sortFunc = function(a, b) {
             return a.getAttribute("x") - b.getAttribute("x");
@@ -1404,8 +1386,8 @@
         nodes.push(commNode);
         shaper.drawNodes(nodes);
         expect($("svg .communitynode").length).toEqual(1);
-        expect($("svg #\\*community_42")[0]).toBeDefined();
-        stack = $("svg #\\*community_42 rect").sort(sortFunc);
+        expect($("svg #\\" + commNode._id)[0]).toBeDefined();
+        stack = $("svg #\\" + commNode._id + " rect").sort(sortFunc);
         
         expect(stack.length).toEqual(4);
         expect(stack[0].getAttribute("x")).toEqual(String(stack[1].getAttribute("x") - 3));
@@ -1418,49 +1400,31 @@
       
       it('should print the size of the capsulated community', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
-          commNode = {
-            _id: "*community_42",
-            _size: 4,
-            _inboundCounter: 0,
-            _outboundCounter: 0,
-            position: {
-              x: 1,
-              y: 1,
-              z: 1
-            }
-          },
+          intNodes = helper.createSimpleNodes([5, 6, 7, 8]),
+          commNode = new CommunityNode(intNodes),
           text;
         nodes.push(commNode);
         shaper.drawNodes(nodes);
-        text = $("svg #\\*community_42 text").text();
+        text = $("svg #\\" + commNode._id + " text").text();
         expect(text).toEqual("4");
-        expect($("svg #\\*community_42 text").attr("fill")).toEqual("white");
+        expect($("svg #\\" + commNode._id + " text").attr("fill")).toEqual("white");
       });
       
       it('should print the reason why it is joined', function() {
         var nodes = [],
-          commNode = {
-            _id: "*community_42",
-            _size: 4,
-            _inboundCounter: 0,
-            _outboundCounter: 0,
-            _reason: {
-              key: "type",
-              value: "example"
-            },
-            position: {
-              x: 1,
-              y: 1,
-              z: 1
-            }
-          },
+          intNodes = helper.createSimpleNodes([5, 6, 7, 8]),
+          commNode = new CommunityNode(intNodes),
           spans;
+        commNode._reason = {
+          key: "type",
+          value: "example"
+        };
         nodes.push(commNode);
         shaper.drawNodes(nodes);
-        spans = $("svg #\\*community_42 text tspan");
+        spans = $("svg #\\" + commNode._id + " text tspan");
         expect($(spans.get(0)).text()).toEqual("type:");
         expect($(spans.get(1)).text()).toEqual("example");
-        expect($("svg #\\*community_42 text").attr("fill")).toEqual("white");
+        expect($("svg #\\" + commNode._id + " text").attr("fill")).toEqual("white");
       });
       
     });
