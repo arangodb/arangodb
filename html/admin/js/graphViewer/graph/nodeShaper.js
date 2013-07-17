@@ -126,50 +126,7 @@ function NodeShaper(parent, flags, idfunc) {
     addShape = noop,
     addLabel = noop,
     addLabelColor = function() {return "black";},
-    addCommunityShape = function(g, id) {
-      var move = 9;
-      g.attr("stroke", colourMapper.getForegroundCommunityColour());
-      addShape(g, 9);
-      addShape(g, 6);
-      addShape(g, 3);
-      addShape(g);
-      /* Archive
-      g.append("polygon")
-      .attr("points", "0,-25 -16,20 23,-10 -23,-10 16,20");
-      */
-    },
-    addCommunityLabel = function(g) {
-      
-      var textN = g.append("text") // Append a label for the node
-        .attr("text-anchor", "middle") // Define text-anchor
-        .attr("fill", colourMapper.getForegroundCommunityColour())
-        .attr("stroke", "none"); // Make it readable
-      textN.each(function(d) {
-        var s = d3.select(this);
-        if (d._reason && d._reason.key) {
-          s.append("tspan")
-            .attr("x", "0")
-            .attr("dy", "-4")
-            .text(d._reason.key + ":");
-          s.append("tspan")
-            .attr("x", "0")
-            .attr("dy", "16")
-            .text(d._reason.value);
-        } else {
-          s.text(d._size);
-        }
-      });
-      
-      
-      /*
-      g.append("text") // Append a label for the node
-        .attr("fill", colourMapper.getForegroundCommunityColour())
-        .attr("text-anchor", "middle") // Define text-anchor
-        .text(function(d) {
-          return d._size;
-        });
-        */
-    },
+
     unbindEvents = function() {
       // Hard unbind the dragging
       self.parent
@@ -206,11 +163,11 @@ function NodeShaper(parent, flags, idfunc) {
         normal = g.filter(function(n) {
           return !n._isCommunity;
         });
-      addCommunityShape(community);
       addShape(normal);
-      
+      community.each(function(c) {
+        c.shape(d3.select(this), addShape, colourMapper);
+      });
       if (visibleLabels) {
-        addCommunityLabel(community);
         addLabel(normal);
       }
       addColor(g);
