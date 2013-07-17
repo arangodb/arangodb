@@ -6,7 +6,8 @@
 %option bison-bridge
 %option yylineno
 %option noyywrap nounput batch
-%x COMMENT
+%x COMMENT_SINGLE
+%x COMMENT_MULTI
 
 %{
 #include "BasicsC/common.h"
@@ -275,27 +276,45 @@
   /* whitespace is ignored */ 
 }
 
-<INITIAL>"/*" {
-  BEGIN(COMMENT);
+<INITIAL>"//" {
+  BEGIN(COMMENT_SINGLE);
 }
 
-<COMMENT>"*/" {
+<COMMENT_SINGLE>\r?\n {
+  yylineno++;
   BEGIN(INITIAL);
 }
 
-<COMMENT>[^*\r\n]+ { 
+<COMMENT_SINGLE>\r {
+  yylineno++;
+  BEGIN(INITIAL);
+}
+
+<COMMENT_SINGLE>[^*\r\n]+ { 
   // eat comment in chunks
 }
 
-<COMMENT>"*" {
+<INITIAL>"/*" {
+  BEGIN(COMMENT_MULTI);
+}
+
+<COMMENT_MULTI>"*/" {
+  BEGIN(INITIAL);
+}
+
+<COMMENT_MULTI>[^*\r\n]+ { 
+  // eat comment in chunks
+}
+
+<COMMENT_MULTI>"*" {
   // eat the lone star
 }
 
-<COMMENT>\r?\n {
+<COMMENT_MULTI>\r?\n {
   yylineno++;
 }
 
-<COMMENT>\r {
+<COMMENT_MULTI>\r {
   yylineno++;
 }
 

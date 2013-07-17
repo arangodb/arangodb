@@ -68,6 +68,7 @@ struct TRI_vocbase_s;
 typedef enum {
   PHASE_NONE,
   PHASE_INIT,
+  PHASE_VALIDATE,
   PHASE_DROP,
   PHASE_CREATE,
   PHASE_DUMP,
@@ -81,6 +82,8 @@ TRI_replication_apply_phase_e;
 
 typedef struct TRI_replication_apply_configuration_s {
   char*         _endpoint;
+  char*         _username;
+  char*         _password;
   double        _requestTimeout;
   double        _connectTimeout;
   uint64_t      _ignoreErrors;
@@ -97,6 +100,7 @@ TRI_replication_apply_configuration_t;
 typedef struct TRI_replication_apply_error_s {
   int           _code;
   char*         _msg;
+  char          _time[24];
 }
 TRI_replication_apply_error_t;
 
@@ -105,14 +109,13 @@ TRI_replication_apply_error_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_apply_state_s {
-  struct TRI_transaction_s*              _trx;
-  TRI_voc_tid_t                          _externalTid;
   TRI_voc_tick_t                         _lastProcessedContinuousTick;
   TRI_voc_tick_t                         _lastAppliedContinuousTick;
   TRI_voc_tick_t                         _lastAvailableContinuousTick;
   bool                                   _active;
   TRI_replication_apply_phase_e          _phase;
-  char*                                  _progress;
+  char*                                  _progressMsg;
+  char                                   _progressTime[24];
   TRI_voc_tick_t                         _lastAppliedInitialTick;
   TRI_server_id_t                        _serverId;
   TRI_replication_apply_error_t          _lastError;
@@ -133,7 +136,6 @@ typedef struct TRI_replication_applier_s {
   TRI_replication_apply_configuration_t  _configuration;
   char*                                  _databaseName;
   TRI_thread_t                           _thread;
-  void*                                  _fetcher;
 }
 TRI_replication_applier_t;
 
@@ -237,11 +239,12 @@ void TRI_SetPhaseReplicationApplier (TRI_replication_applier_t*,
                                      TRI_replication_apply_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the progress
+/// @brief set the progress with or without a lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetProgressReplicationApplier (TRI_replication_applier_t*,
-                                        char const*);
+                                        char const*,
+                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise an apply state struct
