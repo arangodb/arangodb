@@ -44,6 +44,7 @@ function CommunityNode(initial) {
     internal = {},
     inbound = {},
     outbound = {},
+    outReferences = {},
   ////////////////////////////////////
   // Private functions              //
   //////////////////////////////////// 
@@ -73,6 +74,66 @@ function CommunityNode(initial) {
       self._size++;
     },
     
+    removeNode = function(n) {
+      var id = n._id || n;
+      delete nodes[id];
+      self._size--;
+    },
+    
+    removeInboundEdge = function(e) {
+      var id;
+      if (!_.has(e, "_id")) {
+        id = e;
+        e = internal[id] || inbound[id];
+      } else {
+        id = e._id;
+      }
+      e.target = e._target;
+      delete e._target;
+      if (internal[id]) {
+        delete internal[id];
+        self._outboundCounter++;
+        outbound[id] = e;
+        return;
+      }
+      delete inbound[id];
+      self._inboundCounter++;
+      return;
+    },
+    
+    removeOutboundEdge = function(e) {
+      var id;
+      if (!_.has(e, "_id")) {
+        id = e;
+        e = internal[id] || outbound[id];
+      } else {
+        id = e._id;
+      }
+      e.source = e._source;
+      delete e._source;
+      delete outReferences[e.source._id][id];
+      if (internal[id]) {
+        delete internal[id];
+        self._inboundCounter++;
+        inbound[id] = e;
+        return;
+      }
+      delete outbound[id];
+      self._outboundCounter++;
+      return;
+    },
+    
+    removeOutboundEdgesFromNode = function(n) {
+      var id = n._id || n,
+        res = [];
+      _.each(outReferences[id], function(e) {
+        removeOutboundEdge(e);
+        res.push(e);
+      });
+      delete outReferences[id];
+      return res;
+    },
+    
     insertInboundEdge = function(e) {
       e._target = e.target;
       e.target = self;
@@ -88,8 +149,11 @@ function CommunityNode(initial) {
     },
     
     insertOutboundEdge = function(e) {
+      var sId = e.source._id;
       e._source = e.source;
       e.source = self;
+      outReferences[sId] = outReferences[sId] || {};
+      outReferences[sId][e._id] = e;
       if (inbound[e._id]) {
         delete inbound[e._id];
         self._inboundCounter--;
@@ -146,8 +210,16 @@ function CommunityNode(initial) {
   this.hasNode = hasNode;
   this.getNodes = getNodes;
   this.getNode = getNode;
+  
   this.insertNode = insertNode;
   this.insertInboundEdge = insertInboundEdge;
   this.insertOutboundEdge = insertOutboundEdge;
+  
+  this.removeNode = removeNode;
+  this.removeInboundEdge = removeInboundEdge;
+  this.removeOutboundEdge = removeOutboundEdge;
+  
+  this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
+  
   this.dissolve = dissolve;
 }

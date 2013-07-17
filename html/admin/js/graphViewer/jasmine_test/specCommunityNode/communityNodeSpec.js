@@ -95,6 +95,22 @@
         expect(testee).toHaveFunction("insertOutboundEdge", 1);
       });
       
+      it('should offer a function to remove in incomming edge', function() {
+        expect(testee).toHaveFunction("removeInboundEdge", 1);
+      });
+      
+      it('should offer a function to remove in outgoing edge', function() {
+        expect(testee).toHaveFunction("removeOutboundEdge", 1);
+      });
+      
+      it('should offer a function to remove a node', function() {
+        expect(testee).toHaveFunction("removeNode", 1);
+      });
+      
+      it('should offer a function to remove and return all outgoing edges of a node', function() {
+        expect(testee).toHaveFunction("removeOutboundEdgesFromNode", 1);
+      });
+      
       it('should offer a function to dissolve the community', function() {
         expect(testee).toHaveFunction("dissolve", 0);
       });
@@ -180,6 +196,46 @@
       expect(c.getNode("nofoxx")).toBeUndefined();
     });
     
+    it('should be able to remove a node', function() {
+      var c = new CommunityNode(nodes.slice(3, 5)),
+        n = {
+        _id: "foxx",
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      };
+      expect(c._size).toEqual(2);
+      c.insertNode(n);
+      expect(c._size).toEqual(3);
+      c.removeNode(n);
+      expect(c._size).toEqual(2);
+      expect(c.getNodes()).toEqual(nodes.slice(3, 5));
+    });
+    
+    it('should be able to remove a node by id', function() {
+      var c = new CommunityNode(nodes.slice(3, 5)),
+        n = {
+        _id: "foxx",
+        _inboundCounter: 0,
+        _outboundCounter: 0,
+        position: {
+          x: 1,
+          y: 1,
+          z: 1
+        }
+      };
+      expect(c._size).toEqual(2);
+      c.insertNode(n);
+      expect(c._size).toEqual(3);
+      c.removeNode("foxx");
+      expect(c._size).toEqual(2);
+      expect(c.getNodes()).toEqual(nodes.slice(3, 5));
+    });
+    
     it('should initially contain the required attributes for shaping', function() {
       var x = 42,
         y = 23,
@@ -263,7 +319,241 @@
       expect(c.insertOutboundEdge(e2)).toBeFalsy();
     });
     
-    it('should be able to resolve the community', function() {
+    it('should be possible to remove an inbound edge', function() {
+      var c = new CommunityNode(), 
+        e = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+      c.insertInboundEdge(e);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [e],
+        outbound: [],
+        both: []
+      });
+      
+      expect(e.target).toEqual(c);
+      expect(e._target).toEqual(nodes[2]);
+      
+      c.removeInboundEdge(e);
+      
+      expect(e.target).toEqual(nodes[2]);
+      
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [],
+        both: []
+      });
+    });
+    
+    it('should be possible to remove an inbound edge by its id', function() {
+      var c = new CommunityNode(), 
+        e = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+      c.insertInboundEdge(e);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [e],
+        outbound: [],
+        both: []
+      });
+      
+      expect(e.target).toEqual(c);
+      
+      c.removeInboundEdge("1-2");
+      
+      expect(e.target).toEqual(nodes[2]);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [],
+        both: []
+      });
+    });
+    
+    it('should be possible to remove the inbound value of an internal edge', function() {
+      var c = new CommunityNode(), 
+        e = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+      c.insertInboundEdge(e);
+      c.insertOutboundEdge(e);
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [],
+        both: [e]
+      });
+      
+      c.removeInboundEdge(e);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [e],
+        both: []
+      });
+    });
+    
+    
+    it('should be possible to remove an outbound edge', function() {
+      var c = new CommunityNode(), 
+        e = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+      c.insertOutboundEdge(e);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [e],
+        both: []
+      });
+      
+      expect(e.source).toEqual(c);
+      
+      c.removeOutboundEdge(e);
+      
+      expect(e.source).toEqual(nodes[1]);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [],
+        both: []
+      });
+    });
+    
+    it('should be possible to remove an outbound edge by its id', function() {
+      var c = new CommunityNode(), 
+        e = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+      c.insertOutboundEdge(e);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [e],
+        both: []
+      });
+      
+      expect(e.source).toEqual(c);
+      
+      c.removeOutboundEdge("1-2");
+      
+      expect(e.source).toEqual(nodes[1]);
+      
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [],
+        both: []
+      });
+    });
+    
+    it('should be possible to remove the outbound value of an internal edge', function() {
+      var c = new CommunityNode(), 
+        e = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+      c.insertInboundEdge(e);
+      c.insertOutboundEdge(e);
+      expect(c.dissolve().edges).toEqual({
+        inbound: [],
+        outbound: [],
+        both: [e]
+      });
+      
+      c.removeOutboundEdge(e);
+      
+      expect(c.dissolve().edges).toEqual({
+        inbound: [e],
+        outbound: [],
+        both: []
+      });
+    });
+    
+    it('should be possible to return and remove all outbound edges for a node', function() {
+      var c = new CommunityNode([nodes[0], nodes[1]]),
+        e01 = {
+          _id: "0-1",
+          _data: {
+            _from: "0",
+            _to: "1"
+          },
+          source: nodes[0],
+          target: nodes[1]
+        },
+        e02 = {
+          _id: "0-2",
+          _data: {
+            _from: "0",
+            _to: "2"
+          },
+          source: nodes[0],
+          target: nodes[2]
+        },
+        e12 = {
+          _id: "1-2",
+          _data: {
+            _from: "1",
+            _to: "2"
+          },
+          source: nodes[1],
+          target: nodes[2]
+        };
+        
+      c.insertOutboundEdge(e01);
+      c.insertOutboundEdge(e02);
+      c.insertOutboundEdge(e12);
+      c.insertInboundEdge(e01);
+      
+      expect(c.removeOutboundEdgesFromNode(nodes[0])).toEqual(
+        [e01, e02]
+      );
+      expect(c.dissolve().edges).toEqual({
+        inbound: [e01],
+        outbound: [e12],
+        both: []
+      });
+      
+    });
+    
+    it('should be able to dissolve the community', function() {
       var c = new CommunityNode(nodes.slice(3, 13)),
         e1 = {
           _id: "3-4",
