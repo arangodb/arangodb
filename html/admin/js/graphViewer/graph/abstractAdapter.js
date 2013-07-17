@@ -229,19 +229,21 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       }
     },
     
-    removeEdgeWithIndex = function (index) {
+    removeEdgeWithIndex = function (index, notInformJoiner) {
       var e = edges[index],
         s = e.source._id,
         t = e.target._id;
       edges.splice(index, 1);
-      joiner.call("deleteEdge",s , t);
+      if (!notInformJoiner) {
+        joiner.call("deleteEdge",s , t);
+      }
     },
   
-    removeEdge = function (edge) {
+    removeEdge = function (edge, notInformJoiner) {
       var i;
       for ( i = 0; i < edges.length; i++ ) {
         if ( edges[i] === edge ) {
-          removeEdgeWithIndex(i);
+          removeEdgeWithIndex(i, notInformJoiner);
           return;
         }
       }
@@ -357,7 +359,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
           if ( edges[i].source === node ) {
             removed.push(edges[i]);
             node._outboundCounter--;
-            removeEdgeWithIndex(i);
+            removeEdgeWithIndex(i, edges[i].target._isCommunity);
             if (node._outboundCounter === 0) {
               break;
             }
@@ -573,7 +575,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       var removedEdges = commNode.removeOutboundEdgesFromNode(node);
       _.each(removedEdges, function(e) {
         handleRemovedEdge(e);
-        removeEdge(e);
+        removeEdge(e, true);
       });
     },
     
@@ -591,7 +593,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
       });
       _.each(disInfo.edges.outbound, function(e) {
         handleRemovedEdge(e);
-        removeEdge(e);
+        removeEdge(e, true);
       });
       delete cachedCommunities[commNode._id];
     },
