@@ -11,7 +11,10 @@ var queryView = Backbone.View.extend({
   events: {
     'click #submitQueryIcon'   : 'submitQuery',
     'click #submitQueryButton' : 'submitQuery',
-    'click .clearicon': 'clearOutput'
+    'click #commentText'       : 'commentText',
+    'click #undoText'          : 'undoText',
+    'click #redoText'          : 'redoText',
+    'click .clearicon'         : 'clearOutput'
   },
   clearOutput: function() {
     $('#queryOutput').empty();
@@ -43,6 +46,7 @@ var queryView = Backbone.View.extend({
         },200);
       }
     });
+
     $('#aqlEditor').resizable({
       handles: "s",
       ghost: true,
@@ -53,6 +57,10 @@ var queryView = Backbone.View.extend({
           editor.resize();
         },200);
       }
+    });
+
+    $('.queryTooltips').tooltip({
+      placement: "top"
     });
 
     $('#aqlEditor .ace_text-input').focus();
@@ -73,6 +81,76 @@ var queryView = Backbone.View.extend({
     editor2.resize();
 
     return this;
+  },
+  undoText: function () {
+    var editor = ace.edit("aqlEditor");
+    editor.undo();
+  },
+  redoText: function () {
+    var editor = ace.edit("aqlEditor");
+    editor.redo();
+  },
+  commentText: function() {
+    var editor = ace.edit("aqlEditor");
+    var value;
+    var newValue;
+    var flag = false;
+    var cursorPosition = editor.getCursorPosition();
+    var cursorRange = editor.getSelection().getRange();
+
+    var regExp = new RegExp(/\*\//);
+    var regExp2 = new RegExp(/\/\*/);
+
+    if (cursorRange.end.row === cursorRange.start.row) {
+      //single line comment /* */
+      value = editor.getSession().getLine(cursorRange.start.row);
+      if (value.search(regExp) === -1 && value.search(regExp2) === -1) {
+        newValue = '/*' + value + '*/';
+        flag = true;
+      }
+      else if (value.search(regExp) !== -1 && value.search(regExp2) !== -1) {
+        newValue = value.replace(regExp, '').replace(regExp2, '');
+        flag = true;
+      }
+      if (flag === true) {
+        editor.find(value, {
+          range: cursorRange
+        });
+        editor.replace(newValue);
+      }
+    }
+    else {
+      //multi line comment
+      value = editor.getSession().getLines(cursorRange.start.row, cursorRange.end.row);
+      var arrayLength = value.length;
+      var firstString = value[0];
+      var lastString = value[value.length-1];
+      var newFirstString;
+      var newLastString;
+
+      if (firstString.search(regExp2) === -1 && lastString.search(regExp) === -1) {
+        newFirstString = '/*' + firstString;
+        newLastString = lastString + '*/';
+        flag = true;
+      }
+      else if (firstString.search(regExp2) !== -1 && lastString.search(regExp) !== -1) {
+        newFirstString = firstString.replace(regExp2, '');
+        newLastString = lastString.replace(regExp, '');
+        flag = true;
+      }
+      if (flag === true) {
+        editor.find(firstString, {
+          range: cursorRange
+        });
+        editor.replace(newFirstString);
+        editor.find(lastString, {
+          range: cursorRange
+        });
+        editor.replace(newLastString);
+      }
+    }
+    cursorRange.end.column = cursorRange.end.column + 2;
+    editor.getSelection().setSelectionRange(cursorRange, false);
   },
   submitQuery: function() {
     var self = this;

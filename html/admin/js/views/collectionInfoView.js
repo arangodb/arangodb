@@ -24,8 +24,7 @@ var collectionInfoView = Backbone.View.extend({
     $('#infoTab a').click(function (e) {
       e.preventDefault();
       $(this).tab('show');
-    })
-
+    });
 
     return this;
   },
@@ -103,7 +102,7 @@ var collectionInfoView = Backbone.View.extend({
     }];
   },
   appendFigures: function () {
-    cssClass = 'modal-text';
+    var cssClass = 'modal-text';
 
     if (this.data) {
       $('#figures').append(
@@ -165,7 +164,7 @@ var collectionInfoView = Backbone.View.extend({
     }
   },
   appendIndex: function () {
-    cssClass = 'collectionInfoTh modal-text';
+    var cssClass = 'collectionInfoTh modal-text';
     if (this.index) {
         var fieldString = '';
         var indexId = '';
