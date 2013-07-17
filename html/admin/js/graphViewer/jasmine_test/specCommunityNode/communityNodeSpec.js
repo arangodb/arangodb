@@ -341,7 +341,11 @@
       expect(e.target).toEqual(c);
       expect(e._target).toEqual(nodes[2]);
       
+      expect(c._inboundCounter).toEqual(1);
+      
       c.removeInboundEdge(e);
+      
+      expect(c._inboundCounter).toEqual(0);
       
       expect(e.target).toEqual(nodes[2]);
       
@@ -404,7 +408,11 @@
         both: [e]
       });
       
+      expect(c._outboundCounter).toEqual(0);
+      expect(c._inboundCounter).toEqual(0);
       c.removeInboundEdge(e);
+      expect(c._outboundCounter).toEqual(1);
+      expect(c._inboundCounter).toEqual(0);
       
       expect(c.dissolve().edges).toEqual({
         inbound: [],
@@ -412,7 +420,6 @@
         both: []
       });
     });
-    
     
     it('should be possible to remove an outbound edge', function() {
       var c = new CommunityNode(), 
@@ -435,7 +442,9 @@
       
       expect(e.source).toEqual(c);
       
+      expect(c._outboundCounter).toEqual(1);
       c.removeOutboundEdge(e);
+      expect(c._outboundCounter).toEqual(0);
       
       expect(e.source).toEqual(nodes[1]);
       
@@ -498,7 +507,11 @@
         both: [e]
       });
       
+      expect(c._outboundCounter).toEqual(0);
+      expect(c._inboundCounter).toEqual(0);
       c.removeOutboundEdge(e);
+      expect(c._outboundCounter).toEqual(0);
+      expect(c._inboundCounter).toEqual(1);
       
       expect(c.dissolve().edges).toEqual({
         inbound: [e],
