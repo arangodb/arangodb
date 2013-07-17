@@ -1,6 +1,11 @@
 v1.4
 ----
 
+* added single line comments for AQL
+
+  Single line comments can be started with a double forward slash: `//`.
+  They end at the end of the line, or the end of the query string, whichever is first.
+
 * fixed documentation issues #567, #568, #571.
 
 * added collection.checksum(<withData>) method to calculate CRC checksums for

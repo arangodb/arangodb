@@ -360,6 +360,36 @@ function ahuacatlEscapingTestSuite () {
       var expected = [ 1 ];
       var actual = getQueryResults("RETURN /*'the ' \\qui\\ck\\ ''''' '' 'f\\ox'*/ 1", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments4 : function () {
+      var expected = [ 1 ];
+      var actual = getQueryResults("RETURN // the quick fox\n 1", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments5 : function () {
+      var expected = [ 1 ];
+      var actual = getQueryResults("RETURN 1 // the quick fox\n", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments6 : function () {
+      var expected = [ 1 ];
+      var actual = getQueryResults("RETURN // the quick fox\n1", true);
+      assertEqual(expected, actual);
     }
   };
 }
