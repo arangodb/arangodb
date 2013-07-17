@@ -115,7 +115,7 @@
       
       getCommunityNodes = function() {
         return _.filter(nodes, function(n) {
-          return n._id.match(/^\*community/);
+          return n._isCommunity;
         });
       },
       
@@ -1456,7 +1456,6 @@
                     });
                   });
                   adapter.setNodeLimit(3);
-                  
                   adapter.changeToCollections(v, e);
                   adapter.loadNode(v0, counterCallback);
                   adapter.loadNode(v1, counterCallback);
@@ -1498,7 +1497,6 @@
                 runs(function() {
                   existNodes([v0, v1, v2, v3, v4]);
                   expect(nodes.length).toEqual(5);
-                  
                   existEdge(v0, v1);
                   existEdge(v0, v2);
                   existEdge(v1, v3);
