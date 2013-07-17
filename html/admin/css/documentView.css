@@ -191,3 +191,22 @@
 	background: #FFF;
     border: 1px solid #FFF;
 }
+
+.rightCell{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 600px !important;
+}
+
+.rightCell form {
+  max-width: 600px; 
+  min-width: 300px; 
+  width: 100% !important;
+}
+
+.rightCell textarea {
+  max-width: 570px; 
+  min-width: 600px; 
+}
