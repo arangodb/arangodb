@@ -2501,6 +2501,58 @@ function UNION () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create the intersection of all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function INTERSECTION () {
+  "use strict";
+
+  var result = [ ], i, first = true, keys = { };
+        
+  var func = function (value) {
+    var normalized = NORMALIZE(value);
+    keys[JSON.stringify(normalized)] = normalized;
+  };
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "INTERSECTION");
+      }
+ 
+      if (first) {
+        element.forEach(func);
+        first = false;
+      }
+      else {
+        var j, newKeys = { };
+        for (j = 0; j < element.length; ++j) {
+          var normalized = NORMALIZE(element[j]);
+          var key = JSON.stringify(normalized);
+
+          if (keys.hasOwnProperty(key)) {
+            newKeys[key] = normalized;
+          }
+        }
+        keys = newKeys;
+        newKeys = null;
+      }
+
+    }
+  }
+
+  for (i in keys) {
+    if (keys.hasOwnProperty(i)) {
+      result.push(keys[i]);
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3796,6 +3848,7 @@ exports.LAST = LAST;
 exports.REVERSE = REVERSE;
 exports.UNIQUE = UNIQUE;
 exports.UNION = UNION;
+exports.INTERSECTION = INTERSECTION;
 exports.MAX = MAX;
 exports.MIN = MIN;
 exports.SUM = SUM;

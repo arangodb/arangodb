@@ -1091,7 +1091,9 @@ AQL supports the following functions to operate on list values:
   Calling this function might return the unique elements in any order.
 
 - @FN{UNION(@FA{list1, list2, ...})}: returns the union of all lists specified.
-  The function expects at least two list values as its arguments.
+  The function expects at least two list values as its arguments. The result is a list
+  of values in an undefined order.
+
   Note: no duplicates will be removed. In order to remove duplicates, please use the
   @LIT{UNIQUE} function.
 
@@ -1115,6 +1117,12 @@ AQL supports the following functions to operate on list values:
   
   will produce:
     [ [ 1, 2, 3 ] ]
+
+- @FN{INTERSECTION(@FA{list1, list2, ...})}: returns the intersection of all lists specified.
+  The function expects at least two list values as its arguments.
+  The result is a list of values that occur in all arguments. The order of the result list
+  is undefined and should not be relied on.
+  Note: duplicates will be removed.
 
 
 Apart from these functions, AQL also offers several language constructs (e.g.

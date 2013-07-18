@@ -1371,6 +1371,106 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection1 : function () {
+      var expected = [ [ 1, -3 ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1, -3 ], [ -3, 1 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection2 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ ], [ 1 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection3 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1 ], [  ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection4 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1 ], [ 2, 3, 1 ], [ 4, 5, 6 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection5 : function () {
+      var expected = [ [ 2, 4 ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1, 3, 2, 4 ], [ 2, 3, 1, 4 ], [ 4, 5, 6, 2 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection6 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ [ 1, 2 ] ], [ 2, 1 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection7 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ [ 1, 2 ] ], [ 1, 2 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection8 : function () {
+      var expected = [ [ [ 1, 2 ] ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ [ 1, 2 ] ], [ [ 1, 2 ] ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection9 : function () {
+      var expected = [ [ { foo: 'test' } ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ { foo: 'bar' }, { foo: 'test' } ], [ { foo: 'test' } ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection10 : function () {
+      var expected = [ [ 2, 4, 5 ] ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
     
