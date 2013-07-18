@@ -91,6 +91,7 @@ namespace triagens {
           T(),
           _setupState(TRI_ERROR_NO_ERROR),
           _nestingLevel(0),
+          _errorData(),
           _hints(0),
           _timeout(0.0),
           _waitForSync(false),
@@ -140,6 +141,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the registered error data
+////////////////////////////////////////////////////////////////////////////////
+
+        const string getErrorData () const {
+          return _errorData;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection name resolver
@@ -293,10 +302,26 @@ namespace triagens {
          }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection by id, with the name supplied
+////////////////////////////////////////////////////////////////////////////////
+        
+        int addCollection (const TRI_voc_cid_t cid,
+                           const char* name,
+                           TRI_transaction_type_e type) {
+          int res = this->addCollection(cid, type);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            _errorData = string(name);
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection by id
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollection (TRI_voc_cid_t cid,
+        int addCollection (const TRI_voc_cid_t cid,
                            TRI_transaction_type_e type) {
           if (_trx == 0) {
             return registerError(TRI_ERROR_INTERNAL);
@@ -337,7 +362,7 @@ namespace triagens {
             return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
           }
 
-          return addCollection(_resolver.getCollectionId(name), type);
+          return addCollection(_resolver.getCollectionId(name), name.c_str(), type);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -933,7 +958,8 @@ namespace triagens {
 /// @brief add a collection to an embedded transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollectionEmbedded (TRI_voc_cid_t cid, TRI_transaction_type_e type) {
+        int addCollectionEmbedded (TRI_voc_cid_t cid, 
+                                   TRI_transaction_type_e type) {
           TRI_ASSERT_MAINTAINER(_trx != 0);
 
           int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
@@ -949,7 +975,8 @@ namespace triagens {
 /// @brief add a collection to a top-level transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollectionToplevel (TRI_voc_cid_t cid, TRI_transaction_type_e type) {
+        int addCollectionToplevel (TRI_voc_cid_t cid, 
+                                   TRI_transaction_type_e type) {
           TRI_ASSERT_MAINTAINER(_trx != 0);
           
           int res;
@@ -1046,7 +1073,6 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1073,6 +1099,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _nestingLevel;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief additional error data
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _errorData;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction hints

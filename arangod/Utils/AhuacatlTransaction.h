@@ -82,7 +82,8 @@ namespace triagens {
               cid = col->_cid;
             }
 
-            int res = this->addCollection(cid, TRI_TRANSACTION_READ);
+            int res = this->addCollection(cid, collection->_name, TRI_TRANSACTION_READ);
+
             if (res == TRI_ERROR_NO_ERROR) {
               collection->_collection = (TRI_vocbase_col_t*) col;
             }
