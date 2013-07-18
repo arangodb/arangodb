@@ -1385,7 +1385,7 @@
           expect(e.source).toEqual(n4);
           expect(e.target).toEqual(comm);
           expect(e._target).toEqual(n2);
-          expect(comm.dissolve().edges.inbound).toEqual([e3, e]);
+          expect(comm.getDissolveInfo().edges.inbound).toEqual([e3, e]);
         });
         
         it('should be possible to insert an edge starting'
@@ -1398,7 +1398,7 @@
           expect(e.source).toEqual(comm);
           expect(e._source).toEqual(n2);
           expect(e.target).toEqual(n4);
-          expect(comm.dissolve().edges.outbound).toEqual([e2, e]);
+          expect(comm.getDissolveInfo().edges.outbound).toEqual([e2, e]);
         });
         
       });
