@@ -503,7 +503,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     */
     
     dissolveCommunity = function (commNode) {
-      var dissolveInfo = commNode.dissolve(),
+      var dissolveInfo = commNode.getDissolveInfo(),
         nodesToAdd = dissolveInfo.nodes,
         internalEdges = dissolveInfo.edges.both,
         inboundEdges = dissolveInfo.edges.inbound,
@@ -589,7 +589,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     },
     
     collapseExploreCommunity = function(commNode) {
-      var disInfo = commNode.dissolve();
+      var disInfo = commNode.getDissolveInfo();
       removeNode(commNode);
       _.each(disInfo.nodes, function (n) {
         delete joinedInCommunities[n._id];
