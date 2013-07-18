@@ -27,7 +27,9 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var PARSE = internal.AQL_PARSE;
+var helper = require("org/arangodb/aql-helper");
+var getParseResults = helper.getParseResults;
+var assertParseError = helper.assertParseError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -96,7 +98,7 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEmptyQuery : function () {
-      assertEqual(errors.ERROR_QUERY_EMPTY.code, getErrorCode(function() { PARSE(""); } ));
+      assertParseError(errors.ERROR_QUERY_EMPTY.code, "");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,29 +106,29 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBrokenQueries : function () {
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE(" "); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("  "); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for "); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u "); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in "); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in ["); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in [1"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in [1]"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in [1] return"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for u in [1] return u;"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE(";"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("1"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for @u in users return 1"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("return"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("return "); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("return 1;"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("return 1 +"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("return 1 + 1 +"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("return (1"); } ));
-      assertEqual(errors.ERROR_QUERY_PARSE.code, getErrorCode(function() { PARSE("for f1 in x1"); } ));
+      assertParseError(errors.ERROR_QUERY_PARSE.code, " "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "  "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in ["); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in [1"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in [1]"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in [1] return"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for u in [1] return u;"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, ";"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "1"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for @u in users return 1"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1;"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1 +"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return 1 + 1 +"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "return (1"); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "for f1 in x1"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,17 +136,17 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParameterNames : function () {
-      assertEqual([ ], getParameters(PARSE("return 1")));
-      assertEqual([ ], getParameters(PARSE("for u in [ 1, 2, 3] return 1")));
-      assertEqual([ "u" ], getParameters(PARSE("for u in users return @u")));
-      assertEqual([ "b" ], getParameters(PARSE("for a in b return @b")));
-      assertEqual([ "b", "c" ], getParameters(PARSE("for a in @b return @c")));
-      assertEqual([ "friends", "relations", "u", "users" ], getParameters(PARSE("for u in @users for f in @friends for r in @relations return @u")));
-      assertEqual([ "friends", "relations", "u", "users" ], getParameters(PARSE("for r in @relations for f in @friends for u in @users return @u")));
-      assertEqual([ "1", "hans", "r" ], getParameters(PARSE("for r in (for x in @hans return @1) return @r")));
-      assertEqual([ "1", "2", "hans" ], getParameters(PARSE("for r in [ @1, @2 ] return @hans")));
-      assertEqual([ "@users", "users" ], getParameters(PARSE("for r in @@users return @users")));
-      assertEqual([ "@users" ], getParameters(PARSE("for r in @@users return @@users")));
+      assertEqual([ ], getParameters(getParseResults("return 1")));
+      assertEqual([ ], getParameters(getParseResults("for u in [ 1, 2, 3] return 1")));
+      assertEqual([ "u" ], getParameters(getParseResults("for u in users return @u")));
+      assertEqual([ "b" ], getParameters(getParseResults("for a in b return @b")));
+      assertEqual([ "b", "c" ], getParameters(getParseResults("for a in @b return @c")));
+      assertEqual([ "friends", "relations", "u", "users" ], getParameters(getParseResults("for u in @users for f in @friends for r in @relations return @u")));
+      assertEqual([ "friends", "relations", "u", "users" ], getParameters(getParseResults("for r in @relations for f in @friends for u in @users return @u")));
+      assertEqual([ "1", "hans", "r" ], getParameters(getParseResults("for r in (for x in @hans return @1) return @r")));
+      assertEqual([ "1", "2", "hans" ], getParameters(getParseResults("for r in [ @1, @2 ] return @hans")));
+      assertEqual([ "@users", "users" ], getParameters(getParseResults("for r in @@users return @users")));
+      assertEqual([ "@users" ], getParameters(getParseResults("for r in @@users return @@users")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,14 +154,14 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCollectionNames : function () {
-      assertEqual([ ], getCollections(PARSE("return 1")));
-      assertEqual([ ], getCollections(PARSE("for u in [ 1, 2, 3] return 1")));
-      assertEqual([ "users" ], getCollections(PARSE("for u in users return u")));
-      assertEqual([ "b" ], getCollections(PARSE("for a in b return b")));
-      assertEqual([ "friends", "relations", "users" ], getCollections(PARSE("for u in users for f in friends for r in relations return u")));
-      assertEqual([ "friends", "relations", "users" ], getCollections(PARSE("for r in relations for f in friends for u in users return u")));
-      assertEqual([ "hans" ], getCollections(PARSE("for r in (for x in hans return 1) return r")));
-      assertEqual([ "hans" ], getCollections(PARSE("for r in [ 1, 2 ] return hans")));
+      assertEqual([ ], getCollections(getParseResults("return 1")));
+      assertEqual([ ], getCollections(getParseResults("for u in [ 1, 2, 3] return 1")));
+      assertEqual([ "users" ], getCollections(getParseResults("for u in users return u")));
+      assertEqual([ "b" ], getCollections(getParseResults("for a in b return b")));
+      assertEqual([ "friends", "relations", "users" ], getCollections(getParseResults("for u in users for f in friends for r in relations return u")));
+      assertEqual([ "friends", "relations", "users" ], getCollections(getParseResults("for r in relations for f in friends for u in users return u")));
+      assertEqual([ "hans" ], getCollections(getParseResults("for r in (for x in hans return 1) return r")));
+      assertEqual([ "hans" ], getCollections(getParseResults("for r in [ 1, 2 ] return hans")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,9 +169,9 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testComments : function () {
-      assertEqual([ ], getParameters(PARSE("return /* @nada */ 1")));
-      assertEqual([ ], getParameters(PARSE("return /* @@nada */ 1")));
-      assertEqual([ ], getParameters(PARSE("/*   @nada   */ return /* @@nada */ /*@@nada*/ 1 /*@nada*/")));
+      assertEqual([ ], getParameters(getParseResults("return /* @nada */ 1")));
+      assertEqual([ ], getParameters(getParseResults("return /* @@nada */ 1")));
+      assertEqual([ ], getParameters(getParseResults("/*   @nada   */ return /* @@nada */ /*@@nada*/ 1 /*@nada*/")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +179,7 @@ function ahuacatlParseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTooManyCollections : function () {
-      assertEqual(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, getErrorCode(function() { PARSE("for x1 in y1 for x2 in y2 for x3 in y3 for x4 in y4 for x5 in y5 for x6 in y6 for x7 in y7 for x8 in y8 for x9 in y9 for x10 in y10 for x11 in y11 for x12 in y12 for x13 in y13 for x14 in y14 for x15 in y15 for x16 in y16 for x17 in y17 for x18 in y18 for x19 in y19 for x20 in y20 for x21 in y21 for x22 in y22 for x23 in y23 for x24 in y24 for x25 in y25 for x26 in y26 for x27 in y27 for x28 in y28 for x29 in y29 for x30 in y30 for x31 in y31 for x32 in y32 for x33 in y33 return x1"); } ));
+      assertParseError(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, "for x1 in y1 for x2 in y2 for x3 in y3 for x4 in y4 for x5 in y5 for x6 in y6 for x7 in y7 for x8 in y8 for x9 in y9 for x10 in y10 for x11 in y11 for x12 in y12 for x13 in y13 for x14 in y14 for x15 in y15 for x16 in y16 for x17 in y17 for x18 in y18 for x19 in y19 for x20 in y20 for x21 in y21 for x22 in y22 for x23 in y23 for x24 in y24 for x25 in y25 for x26 in y26 for x27 in y27 for x28 in y28 for x29 in y29 for x30 in y30 for x31 in y31 for x32 in y32 for x33 in y33 return x1");
     }
 
   };

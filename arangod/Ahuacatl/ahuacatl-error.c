@@ -78,25 +78,28 @@ int TRI_GetErrorCodeAql (const TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetErrorMessageAql (const TRI_aql_error_t* const error) {
-  char* message = NULL;
-  char buffer[1024];
+  char* message;
+  char buffer[256];
   int code;
 
   assert(error);
+
   code = TRI_GetErrorCodeAql(error);
-  if (!code) {
+
+  if (code == TRI_ERROR_NO_ERROR) {
     return NULL;
   }
 
   message = error->_message;
-  if (!message) {
+
+  if (message == NULL) {
     return NULL;
   }
 
   if (error->_data && (NULL != strstr(message, "%s"))) {
-    snprintf(buffer, sizeof(buffer), message, error->_data);
+    int written = snprintf(buffer, sizeof(buffer), message, error->_data);
 
-    return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, (const char*) &buffer);
+    return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, (const char*) &buffer, (size_t) written);
   }
 
   return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, message);
@@ -109,7 +112,7 @@ char* TRI_GetErrorMessageAql (const TRI_aql_error_t* const error) {
 void TRI_InitErrorAql (TRI_aql_error_t* const error) {
   assert(error);
 
-  error->_code = 0;
+  error->_code = TRI_ERROR_NO_ERROR;
   error->_data = NULL;
 }
 
@@ -145,7 +148,7 @@ char* TRI_GetContextErrorAql (const char* const query,
                               const size_t line, 
                               const size_t column) {
   const char* p;
-  char* temp;
+  char* q;
   char* result;
   char c;
   // note: line numbers reported by bison/flex start at 1, columns start at 0
@@ -190,15 +193,22 @@ char* TRI_GetContextErrorAql (const char* const query,
     return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, queryLength - offset);
   }
 
-  temp = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, SNIPPET_LENGTH);
+  q = result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SNIPPET_LENGTH + strlen(SNIPPET_SUFFIX) + 1, false);
 
-  if (temp == NULL) {
+  if (result == NULL) {
     // out of memory
     return NULL;
   }
+  
+  // copy query part
+  memcpy(q, query + offset, SNIPPET_LENGTH);
+  q += SNIPPET_LENGTH;
 
-  result = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, temp, SNIPPET_SUFFIX);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, temp);
+  // copy ...
+  memcpy(q, SNIPPET_SUFFIX, strlen(SNIPPET_SUFFIX));
+  q += strlen(SNIPPET_SUFFIX);
+  
+  *q = '\0';
 
   return result;
 }

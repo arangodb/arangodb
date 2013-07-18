@@ -879,12 +879,12 @@ By default, any function used in an AQL query will be sought in the built-in
 function namespace `_aql`. This is the default namespace that contains all AQL
 functions that are shipped with ArangoDB. 
 To refer to a user-defined AQL function, the function name must be fully qualified
-to also include the user-defined namespace. The `:` symbol is used as the namespace
+to also include the user-defined namespace. The `::` symbol is used as the namespace
 separator:
 
-    MYGROUP:MYFUNC()
+    MYGROUP::MYFUNC()
 
-    MYFUNCTIONS.MATH.RANDOM()
+    MYFUNCTIONS::MATH::RANDOM()
     
 As all AQL function names, user function names are also case-insensitive.
 
@@ -1483,10 +1483,10 @@ function categories:
 - @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document that id uniquely identified by
   the @FA{id}. ArangoDB will try to find the document using the `_id` value of the document
   in the specified collection. If there is a mismatch between the @FA{collection} passed and
-  the collection specified in @FA{id}, then no document will be returned. Additionally, if the
+  the collection specified in @FA{id}, then `null` will be returned. Additionally, if the
   @FA{collection} matches the collection value specified in @FA{id} but the document cannot be
-  found, no document will be returned. This function also allows @FA{id} to be a list of ids.
-  In this case, the function will return a list of all documents that could be found.
+  found, `null` will be returned. This function also allows @FA{id} to be a list of ids.
+  In this case, the function will return a list of all documents that could be found. 
 
 High-level operations {#AqlOperations}
 ======================================

@@ -28,7 +28,7 @@ var documentsView = Backbone.View.extend({
     "click #documents_prev"      : "prevDocuments",
     "click #documents_next"      : "nextDocuments",
     "click #confirmDeleteBtn"    : "confirmDelete",
-    "keyup .modal-body"          : "listenKey",
+    "keyup #createEdge"          : "listenKey",
     "click .key"                 : "nop",
     "keyup"                      : "returnPressedHandler"
   },

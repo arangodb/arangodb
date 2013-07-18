@@ -4,21 +4,60 @@
 
 var queryView = Backbone.View.extend({
   el: '#content',
+
   initialize: function () {
+    this.getAQL();
     localStorage.setItem("queryContent", "");
     localStorage.setItem("queryOutput", "");
   },
+
   events: {
-    'click #submitQueryIcon'   : 'submitQuery',
-    'click #submitQueryButton' : 'submitQuery',
-    'click #commentText'       : 'commentText',
-    'click #undoText'          : 'undoText',
-    'click #redoText'          : 'redoText',
-    'click .clearicon'         : 'clearOutput'
+    'click #submitQueryIcon'         : 'submitQuery',
+    'click #submitQueryButton'       : 'submitQuery',
+    'click #commentText'             : 'commentText',
+    'click #undoText'                : 'undoText',
+    'click #redoText'                : 'redoText',
+    'click #smallOutput'             : 'smallOutput',
+    'click #bigOutput'               : 'bigOutput',
+    'click #clearOutput'             : 'clearOutput',
+    'click #addAQL'                  : 'addAQL',
+    'click #editAQL'                 : 'editAQL',
+    'click #save-new-query'          : 'saveAQL',
+    'click #save-edit-query'         : 'saveAQL',
+    'click #delete-edit-query'       : 'showDeleteField',
+    'click #confirmDeleteQuery'      : 'deleteAQL',
+    'click #abortDeleteQuery'        : 'hideDeleteField',
+    'keydown #new-query-name'        : 'listenKey',
+    'change #queryModalSelect'       : 'updateEditSelect',
+    'change #querySelect'            : 'importSelected'
   },
+  listenKey: function (e) {
+    if (e.keyCode === 13) {
+      this.saveAQL(e);
+    }
+  },
+
   clearOutput: function() {
-    $('#queryOutput').empty();
+    var editor2 = ace.edit("queryOutput");
+    editor2.setValue('');
   },
+
+  smallOutput: function() {
+    var editor2 = ace.edit("queryOutput");
+    editor2.getSession().foldAll();
+  },
+
+  bigOutput: function() {
+    var editor2 = ace.edit("queryOutput");
+    editor2.getSession().unfold();
+  },
+
+  queries: [
+    {name: "TestA", value: "return [1,2,3,4,5]"},
+    {name: "TestB", value: "return [6,7,8,9,10]"}
+  ],
+
+  customQueries: [],
 
   template: new EJS({url: 'js/templates/queryView.ejs'}),
 
@@ -80,7 +119,157 @@ var queryView = Backbone.View.extend({
     editor.resize();
     editor2.resize();
 
+    this.renderSelectboxes();
+
     return this;
+  },
+  addAQL: function () {
+    //render options
+    $('#new-query-name').val('');
+    $('#new-aql-query').modal('show');
+    setTimeout(function (){
+      $('#new-query-name').focus();
+    },500);
+  },
+  editAQL: function () {
+    if (this.customQueries.length === 0) {
+      arangoHelper.arangoNotification("No custom queries available");
+      return;
+    }
+
+    this.hideDeleteField();
+    $('#edit-aql-queries').modal('show');
+    this.renderSelectboxes(true);
+    this.updateEditSelect();
+  },
+  getAQL: function () {
+    if (localStorage.getItem("customQueries")) {
+      this.customQueries = JSON.parse(localStorage.getItem("customQueries"));
+    }
+  },
+  showDeleteField: function () {
+    $('#reallyDeleteQueryDiv').show();
+  },
+  hideDeleteField: function () {
+    $('#reallyDeleteQueryDiv').hide();
+  },
+  deleteAQL: function () {
+    var queryName = $('#queryModalSelect').val();
+    var tempArray = [];
+
+    $.each(this.customQueries, function(k,v) {
+      if (queryName !== v.name) {
+        tempArray.push({
+          name: v.name,
+          value: v.value
+        });
+      }
+    });
+
+    this.customQueries = tempArray;
+    localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
+    $('#edit-aql-queries').modal('hide');
+    arangoHelper.arangoNotification("Query deleted");
+    this.renderSelectboxes();
+  },
+  saveAQL: function (e) {
+
+    var self = this;
+    var editor = ace.edit("aqlEditor");
+    var queryName = $('#new-query-name').val();
+    var content = editor.getValue();
+
+    if (e) {
+      if (e.target.id === 'save-edit-query') {
+        content = $('#edit-aql-textarea').val();
+        queryName = $('#queryModalSelect').val();
+      }
+    }
+
+    //check for already existing entry
+    var tempArray = [];
+    var quit = false;
+    $.each(this.customQueries, function(k,v) {
+      if (e.target.id !== 'save-edit-query') {
+        if (v.name === queryName) {
+          quit = true;
+          return;
+        }
+      }
+      if (v.name !== queryName) {
+        tempArray.push({
+          name: v.name,
+          value: v.value
+        });
+      }
+    });
+
+    if (quit === true) {
+      arangoHelper.arangoNotification("Name already taken!");
+      return;
+    }
+
+    this.customQueries = tempArray;
+
+    this.customQueries.push({
+      name: queryName,
+      value: content
+    });
+
+    $('#new-aql-query').modal('hide');
+    $('#edit-aql-queries').modal('hide');
+
+    localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
+    arangoHelper.arangoNotification("Query saved");
+    this.renderSelectboxes();
+  },
+  updateEditSelect: function () {
+    var value = this.getCustomQueryValueByName($('#queryModalSelect').val());
+    $('#edit-aql-textarea').val(value);
+    $('#edit-aql-textarea').focus();
+  },
+  getCustomQueryValueByName: function (qName) {
+    var returnVal;
+    $.each(this.customQueries, function(k,v) {
+      if (qName === v.name) {
+        returnVal = v.value;
+      }
+    });
+    return returnVal;
+  },
+  importSelected: function(e) {
+    var editor = ace.edit("aqlEditor");
+    $.each(this.queries, function(k,v) {
+      if ($('#'+e.currentTarget.id).val() === v.name) {
+        editor.setValue(v.value);
+      }
+    });
+    $.each(this.customQueries, function(k,v) {
+      if ($('#'+e.currentTarget.id).val() === v.name) {
+        editor.setValue(v.value);
+      }
+    });
+  },
+  renderSelectboxes: function (modal) {
+    this.sortQueries();
+    var selector = '';
+    if (modal === true) {
+      selector = '#queryModalSelect';
+      $(selector).empty();
+      $.each(this.customQueries, function(k,v) {
+        $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
+      });
+    }
+    else {
+      selector = '#querySelect';
+      $(selector).empty();
+      $.each(this.queries, function(k,v) {
+        $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
+      });
+      $.each(this.customQueries, function(k,v) {
+        $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
+      });
+    }
   },
   undoText: function () {
     var editor = ace.edit("aqlEditor");
@@ -151,6 +340,10 @@ var queryView = Backbone.View.extend({
     }
     cursorRange.end.column = cursorRange.end.column + 2;
     editor.getSelection().setSelectionRange(cursorRange, false);
+  },
+  sortQueries: function() {
+    this.queries = _.sortBy(this.queries, 'name' );
+    this.customQueries = _.sortBy(this.customQueries, 'name' );
   },
   submitQuery: function() {
     var self = this;

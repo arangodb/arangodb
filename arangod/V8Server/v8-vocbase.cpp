@@ -1834,7 +1834,18 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute query");
+    // check if there is some error data registered in the transaction
+    const string errorData = trx.getErrorData();
+
+    if (errorData.empty()) {
+      // no error data. return a regular error message
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute query");
+    }
+    else {
+      // there is specific error data. return a more tailored error message
+      const string errorMsg = "cannot execute query: " + string(TRI_errno_string(res)) + ": '" + errorData + "'";
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, errorMsg)));
+    }
   }
 
   // optimise
@@ -1884,8 +1895,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
                                                          TRI_aql_context_t* const context,
                                                          const TRI_json_t* const parameters,
                                                          const bool doCount,
-                                                         const uint32_t batchSize,
-                                                         const bool allowDirectReturn) {
+                                                         const uint32_t batchSize) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
@@ -1895,8 +1905,16 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (allowDirectReturn || ! result->IsArray()) {
-    // return the value we got as it is. this is a performance optimisation
+  if (! result->IsArray()) {
+    // some error happened
+    return scope.Close(result);
+  }
+
+  // result is an array...
+  v8::Handle<v8::Array> r = v8::Handle<v8::Array>::Cast(result);
+
+  if (r->Length() <= batchSize) {
+    // return the array value as it is. this is a performance optimisation
     return scope.Close(result);
   }
 
@@ -1916,6 +1934,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+
   if (cursor == 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1926,6 +1945,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
 
   v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+
   if (cursorObject.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -3301,8 +3321,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
   const uint32_t argc = argv.Length();
 
-  if (argc < 1 || argc > 5) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <batchSize>, <allowDirectReturn>)");
+  if (argc < 1 || argc > 4) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <batchSize>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3321,26 +3341,19 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   const string queryString = TRI_ObjectToString(queryArg);
 
   // return number of total records in cursor?
-  bool doCount             = false;
+  bool doCount       = false;
 
   // maximum number of results to return at once
-  uint32_t batchSize       = 1000;
-
-  // directly return the results as a javascript array instead of a cursor object (performance optimisation)
-  bool allowDirectReturn   = false;
+  uint32_t batchSize = UINT32_MAX;
 
   if (argc > 2) {
     doCount = TRI_ObjectToBoolean(argv[2]);
 
     if (argc > 3) {
-      double maxValue = TRI_ObjectToDouble(argv[3]);
-      
-      if (maxValue >= 1.0) {
+      int64_t maxValue = TRI_ObjectToInt64(argv[3]);
+     
+      if (maxValue > 0 && maxValue < (int64_t) UINT32_MAX) {
         batchSize = (uint32_t) maxValue;
-      }
-
-      if (argc > 4) {
-        allowDirectReturn = TRI_ObjectToBoolean(argv[4]);
       }
     }
   }
@@ -3361,7 +3374,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Value> result;
-  result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize, allowDirectReturn);
+  result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize);
   context.free();
 
   if (tryCatch.HasCaught()) {
@@ -8191,7 +8204,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "count", JS_CountGeneralCursor);
   TRI_AddMethodVocbase(rt, "dispose", JS_DisposeGeneralCursor);
   TRI_AddMethodVocbase(rt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
-  TRI_AddMethodVocbase(rt, "getRows", JS_GetRowsGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getRows", JS_GetRowsGeneralCursor, true); // DEPRECATED, use toArray
   TRI_AddMethodVocbase(rt, "hasCount", JS_HasCountGeneralCursor);
   TRI_AddMethodVocbase(rt, "hasNext", JS_HasNextGeneralCursor);
   TRI_AddMethodVocbase(rt, "id", JS_IdGeneralCursor);

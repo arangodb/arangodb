@@ -49,7 +49,7 @@ function main(args) {
     start_time,
     end_time,
     query,
-    QUERY = require("internal").AQL_QUERY,
+    internal = require("internal"),
     i,
     times = parseInt(args[2], 10);
 
@@ -91,11 +91,11 @@ function main(args) {
 
   query = function(filter) {
     for (i = 0; i < times; i += 1) {
-      rows = QUERY(
+      internal.AQL_QUERY(
         "for x in " + vertex +
         " filter " + filter +
         "return x.name"
-      ).getRows();
+      );
     }
   };
 

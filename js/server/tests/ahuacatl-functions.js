@@ -26,96 +26,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var errors = internal.errors;
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFunctionsTestSuite () {
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query, bindVars) {
-    var cursor = QUERY(query, bindVars);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query, isFlat, bindVars) {
-    var sanitize = function (row) {
-      var keys = [ ];
-      for (var k in row) {
-        if (row.hasOwnProperty(k) && k != '_rev' && k != '_key' && k != '_id') {
-          keys.push(k);
-        }
-      }
-
-      keys.sort();
-      var resultRow = { };
-      for (var k in keys) {
-        if (keys.hasOwnProperty(k)) {
-          resultRow[keys[k]] = row[keys[k]];
-        }
-      }
-      return resultRow;
-    };
-
-    var result = executeQuery(query, bindVars).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (! result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      var row = result[i];
-      if (isFlat) {
-        results.push(row);
-      } 
-      else {
-        if (Array.isArray(row)) {
-          var x = [ ];
-          for (var j = 0; j < row.length; ++j) {
-            x.push(sanitize(row[j]));
-          }
-          results.push(x);
-        }
-        else {
-          results.push(sanitize(row));
-        }
-      }
-    }
-
-    return results;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,12 +58,12 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testLikeInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LIKE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LIKE(\"test\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LIKE(\"test\", \"meow\", \"foo\", \"bar\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", 1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(1, \"test\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test\", 1)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LIKE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LIKE(\"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LIKE(\"test\", \"meow\", \"foo\", \"bar\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(\"test\", 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(1, \"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(\"test\", \"test\", 1)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,47 +71,47 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testLike : function () {
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%is%test%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%g\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%n\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"This%n\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"his%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%g\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%G\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%is%\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%is%test%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%g\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%n\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"This%n\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"his%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%g\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%G\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%is%\")"));
     
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"%\", \"\\%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"a%c\", \"a%c\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"ac\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"a\\\\%\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"\\\\%a%\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"\\\\%\\\\%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"%%\", \"\\\\%\\\\%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"_\", \"\\\\_\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"_\", \"\\\\_%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcd\", \"_bcd\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcde\", \"_bcd%\")", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcde\", \"\\\\_bcd%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\\\abc\", \"\\\\\\\\%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\abc\", \"\\\\a%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[ ] ( ) \\% * . + -\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"%. +%\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"abc^def$g\")", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"%^%$g\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"%\", \"\\%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"a%c\", \"a%c\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"ac\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"a\\\\%\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"\\\\%a%\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"\\\\%\\\\%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"%%\", \"\\\\%\\\\%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"_\", \"\\\\_\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"_\", \"\\\\_%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcd\", \"_bcd\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcde\", \"_bcd%\")"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcde\", \"\\\\_bcd%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\\\abc\", \"\\\\\\\\%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\abc\", \"\\\\a%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[ ] ( ) \\% * . + -\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"%. +%\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"abc^def$g\")"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"%^%$g\")"));
       
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", false)", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", true)", true));
-      assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcd\", \"ABCD\", false)", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcd\", \"ABCD\", true)", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MöterTräNenMütterSöhne\", true)", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"mötertränenmüttersöhne\", true)", true));
-      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MÖTERTRÄNENMÜTTERSÖHNE\", true)", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", false)"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", true)"));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcd\", \"ABCD\", false)"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcd\", \"ABCD\", true)"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MöterTräNenMütterSöhne\", true)"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"mötertränenmüttersöhne\", true)"));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MÖTERTRÄNENMÜTTERSÖHNE\", true)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,16 +119,16 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testContainsFirst : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test\", \"test\", \"test\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test2\", \"test3\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(null, null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(4, 4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS({ }, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS([ ], [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(null, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(3, null)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONTAINS(\"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONTAINS(\"test\", \"test\", \"test\", \"test\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONTAINS()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(\"test\", \"test2\", \"test3\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(null, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(4, 4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS({ }, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(null, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONTAINS(3, null)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +137,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testContainsTrue1 : function () {
       var expected = [true];  
-      var actual = getQueryResults("RETURN CONTAINS(\"test2\", \"test\")", true);
+      var actual = getQueryResults("RETURN CONTAINS(\"test2\", \"test\")");
       assertEqual(expected, actual);
     },
 
@@ -226,7 +147,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testContainsTrue2 : function () {
       var expected = [true];  
-      var actual = getQueryResults("RETURN CONTAINS(\"xxasdxx\", \"asd\")", true);
+      var actual = getQueryResults("RETURN CONTAINS(\"xxasdxx\", \"asd\")");
       assertEqual(expected, actual);
     },
 
@@ -236,7 +157,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testContainsFalse1 : function () {
       var expected = [false];  
-      var actual = getQueryResults("RETURN CONTAINS(\"test\", \"test2\")", true);
+      var actual = getQueryResults("RETURN CONTAINS(\"test\", \"test2\")");
       assertEqual(expected, actual);
     },
 
@@ -246,7 +167,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testContainsFalse2 : function () {
       var expected = [false];  
-      var actual = getQueryResults("RETURN CONTAINS(\"test123\", \"\")", true);
+      var actual = getQueryResults("RETURN CONTAINS(\"test123\", \"\")");
       assertEqual(expected, actual);
     },
 
@@ -256,7 +177,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testContainsFalse3 : function () {
       var expected = [false];  
-      var actual = getQueryResults("RETURN CONTAINS(\"\", \"test123\")", true);
+      var actual = getQueryResults("RETURN CONTAINS(\"\", \"test123\")");
       assertEqual(expected, actual);
     },
 
@@ -265,16 +186,16 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testContainsIndexed : function () {
-      assertEqual([ 0 ], getQueryResults("RETURN CONTAINS(\"test2\", \"test\", true)", true));
-      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"test2\", \"test\", false)", true));
-      assertEqual([ 1 ], getQueryResults("RETURN CONTAINS(\"test2\", \"est\", true)", true));
-      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"test2\", \"est\", false)", true));
-      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a long test\", \"this is a test\", true)", true));
-      assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a long test\", \"this is a test\", false)", true));
-      assertEqual([ 18 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", true)", true));
-      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", false)", true));
-      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", true)", true));
-      assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", false)", true));
+      assertEqual([ 0 ], getQueryResults("RETURN CONTAINS(\"test2\", \"test\", true)"));
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"test2\", \"test\", false)"));
+      assertEqual([ 1 ], getQueryResults("RETURN CONTAINS(\"test2\", \"est\", true)"));
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"test2\", \"est\", false)"));
+      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a long test\", \"this is a test\", true)"));
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a long test\", \"this is a test\", false)"));
+      assertEqual([ 18 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", true)"));
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", false)"));
+      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", true)"));
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", false)"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,7 +204,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testFirst1 : function () {
       var expected = [ { "the fox" : "jumped" } ];
-      var actual = getQueryResults("RETURN FIRST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ])", true);
+      var actual = getQueryResults("RETURN FIRST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ])");
       assertEqual(expected, actual);
     },
 
@@ -293,7 +214,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testFirst2 : function () {
       var expected = [ "over" ];
-      var actual = getQueryResults("RETURN FIRST([ \"over\", [ \"the dog\" ] ])", true);
+      var actual = getQueryResults("RETURN FIRST([ \"over\", [ \"the dog\" ] ])");
       assertEqual(expected, actual);
     },
 
@@ -303,7 +224,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testFirst3 : function () {
       var expected = [ [ "the dog" ] ];
-      var actual = getQueryResults("RETURN FIRST([ [ \"the dog\" ] ])", true);
+      var actual = getQueryResults("RETURN FIRST([ [ \"the dog\" ] ])");
       assertEqual(expected, actual);
     },
 
@@ -313,7 +234,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testFirst4 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST([ ])", true);
+      var actual = getQueryResults("RETURN FIRST([ ])");
       assertEqual(expected, actual);
     },
 
@@ -322,13 +243,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFirstInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST([ ], [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST(4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FIRST({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIRST()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIRST([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIRST(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIRST(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIRST(4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIRST(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIRST({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,7 +258,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testlast1 : function () {
       var expected = [ [ "the dog" ] ];
-      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ])", true);
+      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" }, \"over\", [ \"the dog\" ] ])");
       assertEqual(expected, actual);
     },
 
@@ -347,7 +268,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testlast2 : function () {
       var expected = [ "over" ];
-      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" }, \"over\" ])", true);
+      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" }, \"over\" ])");
       assertEqual(expected, actual);
     },
 
@@ -357,7 +278,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testlast3 : function () {
       var expected = [ { "the fox" : "jumped" } ];
-      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" } ])", true);
+      var actual = getQueryResults("RETURN LAST([ { \"the fox\" : \"jumped\" } ])");
       assertEqual(expected, actual);
     },
 
@@ -367,7 +288,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testlast4 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN LAST([ ])", true);
+      var actual = getQueryResults("RETURN LAST([ ])");
       assertEqual(expected, actual);
     },
 
@@ -376,13 +297,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testlastInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST([ ], [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST(4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LAST({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LAST()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LAST([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LAST(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LAST(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LAST(4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LAST(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LAST({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,7 +312,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testReverse1 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN REVERSE([ ])", true);
+      var actual = getQueryResults("RETURN REVERSE([ ])");
       assertEqual(expected, actual);
     },
 
@@ -401,7 +322,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testReverse2 : function () {
       var expected = [ [ "fox" ] ];
-      var actual = getQueryResults("RETURN REVERSE([ \"fox\" ])", true);
+      var actual = getQueryResults("RETURN REVERSE([ \"fox\" ])");
       assertEqual(expected, actual);
     },
 
@@ -411,7 +332,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testReverse3 : function () {
       var expected = [ [ false, [ "fox", "jumped" ], { "quick" : "brown" }, "the" ] ];
-      var actual = getQueryResults("RETURN REVERSE([ \"the\", { \"quick\" : \"brown\" }, [ \"fox\", \"jumped\" ], false ])", true);
+      var actual = getQueryResults("RETURN REVERSE([ \"the\", { \"quick\" : \"brown\" }, [ \"fox\", \"jumped\" ], false ])");
       assertEqual(expected, actual);
     },
 
@@ -420,12 +341,12 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReverseInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN REVERSE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN REVERSE([ ], [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN REVERSE(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN REVERSE(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN REVERSE(4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN REVERSE({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REVERSE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REVERSE([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN REVERSE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN REVERSE(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN REVERSE(4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN REVERSE({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +355,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testUnique1 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN UNIQUE([ ])", true);
+      var actual = getQueryResults("RETURN UNIQUE([ ])");
       assertEqual(expected, actual);
     },
 
@@ -444,7 +365,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testUnique2 : function () {
       var expected = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, "fox", "FOX", "Fox", "FoX", [0], [1], { "the fox" : "jumped" } ] ];
-      var actual = getQueryResults("RETURN UNIQUE([ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, \"fox\", \"FOX\", \"Fox\", \"FoX\", [ 0 ], [ 1 ], { \"the fox\" : \"jumped\" } ])", true);
+      var actual = getQueryResults("RETURN UNIQUE([ 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, false, true, null, \"fox\", \"FOX\", \"Fox\", \"FoX\", [ 0 ], [ 1 ], { \"the fox\" : \"jumped\" } ])");
       assertEqual(expected, actual);
     },
 
@@ -454,7 +375,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testUnique3 : function () {
       var expected = [ [ 1, 2, 3, 4, 5, 7, 9, 42, -1, -33 ] ];
-      var actual = getQueryResults("RETURN UNIQUE([ 1, -1, 1, 2, 3, -1, 2, 3, 4, 5, 1, 3, 9, 2, -1, 9, -33, 42, 7 ])", true);
+      var actual = getQueryResults("RETURN UNIQUE([ 1, -1, 1, 2, 3, -1, 2, 3, 4, 5, 1, 3, 9, 2, -1, 9, -33, 42, 7 ])");
       assertEqual(expected, actual);
     },
 
@@ -464,7 +385,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testUnique4 : function () {
       var expected = [ [ [1, 2, 3], [3, 2, 1], [2, 1, 3], [2, 3, 1], [1, 3, 2], [3, 1, 2] ] ];
-      var actual = getQueryResults("RETURN UNIQUE([ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 2, 1, 3 ], [ 2, 3, 1 ], [ 1, 2, 3 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 3, 1, 2 ], [ 2 , 1, 3 ] ])", true);
+      var actual = getQueryResults("RETURN UNIQUE([ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 2, 1, 3 ], [ 2, 3, 1 ], [ 1, 2, 3 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 3, 1, 2 ], [ 2 , 1, 3 ] ])");
       assertEqual(expected, actual);
     },
 
@@ -475,7 +396,7 @@ function ahuacatlFunctionsTestSuite () {
     testUnique5 : function () {
       var expected = [ [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" }]]
 
-      var actual = getQueryResults("RETURN UNIQUE([ { \"the fox\" : \"jumped\" }, { \"the fox\" : \"jumped over\" }, { \"the fox\" : \"jumped\", \"over\" : \"the dog\" }, { \"over\" : \"the dog\", \"the fox\" : \"jumped\" } ])", true);
+      var actual = getQueryResults("RETURN UNIQUE([ { \"the fox\" : \"jumped\" }, { \"the fox\" : \"jumped over\" }, { \"the fox\" : \"jumped\", \"over\" : \"the dog\" }, { \"over\" : \"the dog\", \"the fox\" : \"jumped\" } ])");
       assertEqual(expected, actual);
     },
 
@@ -484,13 +405,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE([ ], [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE(4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNIQUE({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNIQUE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNIQUE([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNIQUE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNIQUE(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNIQUE(4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNIQUE(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNIQUE({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -499,7 +420,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testLeft : function () {
       var expected = [ 'fo', 'f', '', 'foo', 'foo', '', '', '', 'mö', 'mötö' ];
-      var actual = getQueryResults("FOR t IN [ [ 'foo', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ] ] RETURN LEFT(t[0], t[1])", true);
+      var actual = getQueryResults("FOR t IN [ [ 'foo', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ] ] RETURN LEFT(t[0], t[1])");
       assertEqual(expected, actual);
     },
 
@@ -508,21 +429,21 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLeftInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo')"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', 2, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT(null, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT(true, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT(4, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT({ }, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', 'bar')"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', -1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LEFT('foo', -1.5)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT('foo', 2, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT(null, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT(true, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT(4, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT({ }, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', 'bar')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', -1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LEFT('foo', -1.5)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,7 +452,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testRight : function () {
       var expected = [ 'oo', 'o', '', 'foo', 'foo', '', '', '', 'ör', 'ötör' ];
-      var actual = getQueryResults("FOR t IN [ [ 'foo', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ] ] RETURN RIGHT(t[0], t[1])", true);
+      var actual = getQueryResults("FOR t IN [ [ 'foo', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ] ] RETURN RIGHT(t[0], t[1])");
       assertEqual(expected, actual);
     },
 
@@ -540,21 +461,21 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRightInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo')"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', 2, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT(null, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT(true, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT(4, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT({ }, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', 'bar')"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', -1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RIGHT('foo', -1.5)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT('foo', 2, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT(null, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT(true, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT(4, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT({ }, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', 'bar')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', -1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RIGHT('foo', -1.5)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +484,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testTrim : function () {
       var expected = [ 'foo', 'foo  ', '  foo', '', '', '', 'abc', 'abc\n\r\t', '\t\r\nabc', 'a\rb\nc', 'a\rb\nc ', '\ta\rb\nc' ];
-      var actual = getQueryResults("FOR t IN [ [ '  foo  ', 0 ], [ '  foo  ', 1 ], [ '  foo  ', 2 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ '\t\r\nabc\n\r\t', 0 ], [ '\t\r\nabc\n\r\t', 1 ], [ '\t\r\nabc\t\r\n', 2 ], [ '\ta\rb\nc ', 0 ], [ '\ta\rb\nc ', 1 ], [ '\ta\rb\nc ', 2 ] ] RETURN TRIM(t[0], t[1])", true);
+      var actual = getQueryResults("FOR t IN [ [ '  foo  ', 0 ], [ '  foo  ', 1 ], [ '  foo  ', 2 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ '\t\r\nabc\n\r\t', 0 ], [ '\t\r\nabc\n\r\t', 1 ], [ '\t\r\nabc\t\r\n', 2 ], [ '\ta\rb\nc ', 0 ], [ '\ta\rb\nc ', 1 ], [ '\ta\rb\nc ', 2 ] ] RETURN TRIM(t[0], t[1])");
       assertEqual(expected, actual);
     },
 
@@ -572,21 +493,21 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTrimInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', 2, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM(4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM({ })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', 'bar')"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', -1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', -1.5)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN TRIM('foo', 3)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRIM()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRIM('foo', 2, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM(4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM({ })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', 'bar')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', -1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', -1.5)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRIM('foo', 3)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -595,7 +516,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testLength1 : function () {
       var expected = [ 0, 0, 0 ];
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ ] RETURN q)) RETURN LENGTH(quarters)", true);
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ ] RETURN q)) RETURN LENGTH(quarters)");
       assertEqual(expected, actual);
     },
 
@@ -605,7 +526,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testLength2 : function () {
       var expected = [ 4, 4, 4 ];
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)", true);
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
       assertEqual(expected, actual);
     },
 
@@ -615,7 +536,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testLength3 : function () {
       var expected = [ 3, 2, 2, 1, 0 ];
-      var actual = getQueryResults("FOR test IN [ { 'a' : 1, 'b' : 2, 'c' : null }, { 'baz' : [ 1, 2, 3, 4, 5 ], 'bar' : false }, { 'boom' : { 'bang' : false }, 'kawoom' : 0.0 }, { 'meow' : { } }, { } ] RETURN LENGTH(test)", true);
+      var actual = getQueryResults("FOR test IN [ { 'a' : 1, 'b' : 2, 'c' : null }, { 'baz' : [ 1, 2, 3, 4, 5 ], 'bar' : false }, { 'boom' : { 'bang' : false }, 'kawoom' : 0.0 }, { 'meow' : { } }, { } ] RETURN LENGTH(test)");
       assertEqual(expected, actual);
     },
 
@@ -625,7 +546,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testLength4 : function () {
       var expected = [ 0, 1, 3, 3, 4, 5 ];
-      var actual = getQueryResults("FOR test IN [ '', ' ', 'foo', 'bar', 'meow', 'mötör' ] RETURN LENGTH(test)", true);
+      var actual = getQueryResults("FOR test IN [ '', ' ', 'foo', 'bar', 'meow', 'mötör' ] RETURN LENGTH(test)");
       assertEqual(expected, actual);
     },
 
@@ -634,11 +555,11 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLengthInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LENGTH()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LENGTH([ ], [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LENGTH(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LENGTH(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LENGTH(4)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LENGTH()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LENGTH([ ], [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LENGTH(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LENGTH(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LENGTH(4)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,7 +568,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testConcat1 : function () {
       var expected = [ "theQuickBrownFoxJumps" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'Fox', 'Jumps')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'Fox', 'Jumps')");
       assertEqual(expected, actual);
     },
 
@@ -657,7 +578,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testConcat2 : function () {
       var expected = [ "theQuickBrownアボカドJumps名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT('the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について')");
       assertEqual(expected, actual);
     },
 
@@ -666,16 +587,16 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConcatInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(\"yes\", true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(\"yes\", 4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(\"yes\", [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(\"yes\", { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(true, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT(4, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT([ ], \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT({ }, \"yes\")"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT(\"yes\", true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT(\"yes\", 4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT(\"yes\", [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT(\"yes\", { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT(true, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT(4, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT([ ], \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT({ }, \"yes\")"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,7 +605,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testConcatSeparator1 : function () {
       var expected = [ "the,Quick,Brown,Fox,Jumps" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR(',', 'the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR(',', 'the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps')");
       assertEqual(expected, actual);
     },
 
@@ -694,7 +615,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testConcatSeparator2 : function () {
       var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps')");
       assertEqual(expected, actual);
     },
 
@@ -703,22 +624,22 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConcatSeparatorInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(null, \"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(true, \"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(4, \"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR([ ], \"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR({ }, \"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", true, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", 4, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", [ ], \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", { }, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", 4)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", { })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(null, \"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(true, \"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(4, \"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR([ ], \"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR({ }, \"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", true, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", 4, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", [ ], \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", { }, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", 4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", { })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -727,7 +648,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testCharLength1 : function () {
       var expected = [ 13 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('the quick fox')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('the quick fox')");
       assertEqual(expected, actual);
     },
 
@@ -737,7 +658,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testCharLength2 : function () {
       var expected = [ 7 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('äöüÄÖÜß')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('äöüÄÖÜß')");
       assertEqual(expected, actual);
     },
 
@@ -747,7 +668,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testCharLength3 : function () {
       var expected = [ 10 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('アボカド名称について')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('アボカド名称について')");
       assertEqual(expected, actual);
     },
 
@@ -756,13 +677,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCharLengthInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH(\"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CHAR_LENGTH({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH(\"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CHAR_LENGTH(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CHAR_LENGTH(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CHAR_LENGTH(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CHAR_LENGTH([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CHAR_LENGTH({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -771,7 +692,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testLower1 : function () {
       var expected = [ "the quick brown fox jumped" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('THE quick Brown foX JuMpED')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('THE quick Brown foX JuMpED')");
       assertEqual(expected, actual);
     },
 
@@ -781,7 +702,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testLower2 : function () {
       var expected = [ "äöüäöüß アボカド名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('äöüÄÖÜß アボカド名称について')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('äöüÄÖÜß アボカド名称について')");
       assertEqual(expected, actual);
     },
 
@@ -791,7 +712,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testLower3 : function () {
       var expected = [ "0123456789<>|,;.:-_#'+*@!\"$&/(){[]}?\\" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('0123456789<>|,;.:-_#\\'+*@!\\\"$&/(){[]}?\\\\')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('0123456789<>|,;.:-_#\\'+*@!\\\"$&/(){[]}?\\\\')");
       assertEqual(expected, actual);
     },
 
@@ -800,13 +721,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLowerInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER(\"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LOWER({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER(\"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LOWER(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LOWER(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LOWER(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LOWER([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN LOWER({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -815,7 +736,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUpper1 : function () {
       var expected = [ "THE QUICK BROWN FOX JUMPED" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('THE quick Brown foX JuMpED')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('THE quick Brown foX JuMpED')");
       assertEqual(expected, actual);
     },
 
@@ -825,7 +746,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUpper2 : function () {
       var expected = [ "ÄÖÜÄÖÜSS アボカド名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('äöüÄÖÜß アボカド名称について')", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('äöüÄÖÜß アボカド名称について')");
       assertEqual(expected, actual);
     },
 
@@ -834,13 +755,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpperInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER(\"yes\", \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UPPER({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UPPER()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UPPER(\"yes\", \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UPPER(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UPPER(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UPPER(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UPPER([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UPPER({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,7 +770,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testSubstring1 : function () {
       var expected = [ "the" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 0, 3)", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 0, 3)");
       assertEqual(expected, actual);
     },
 
@@ -859,7 +780,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testSubstring2 : function () {
       var expected = [ "quick" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 4, 5)", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 4, 5)");
       assertEqual(expected, actual);
     },
 
@@ -869,7 +790,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testSubstring3 : function () {
       var expected = [ "fox" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', -3)", true);
+      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', -3)");
       assertEqual(expected, actual);
     },
 
@@ -878,23 +799,23 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubstringInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", 0, 2, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(null, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(true, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(3, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING([ ], 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING({ }, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", null, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", true, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", \"yes\", 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", [ ], 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", { }, 0)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", \"yes\", null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", \"yes\", true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", \"yes\", [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUBSTRING(\"yes\", \"yes\", { })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING(\"yes\", 0, 2, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(null, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(true, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(3, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING([ ], 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING({ }, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", null, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", true, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", \"yes\", 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", [ ], 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", { }, 0)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", \"yes\", null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", \"yes\", true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", \"yes\", [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUBSTRING(\"yes\", \"yes\", { })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,7 +824,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFloor : function () {
       var expected = [ -100, -3, -3, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 99 ];
-      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return FLOOR(r)", true);
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return FLOOR(r)");
       assertEqual(expected, actual);
     },
 
@@ -912,13 +833,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFloorInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR(1, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN FLOOR({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLOOR()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLOOR(1, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLOOR(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLOOR(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLOOR(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLOOR([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLOOR({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -927,7 +848,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testCeil : function () {
       var expected = [ -99, -3, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 100 ];
-      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return CEIL(r)", true);
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return CEIL(r)");
       assertEqual(expected, actual);
     },
 
@@ -936,13 +857,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCeilInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL(1,2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CEIL({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CEIL()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CEIL(1,2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CEIL(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CEIL(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CEIL(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CEIL([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CEIL({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -951,7 +872,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testAbs : function () {
       var expected = [ 99.999, 3, 2.1, 2.01, 2, 1.99, 1.1, 1.01, 1, 0.9, 0.6, 0.5, 0.4, 0.1, 0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ];
-      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ABS(r)", true);
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ABS(r)");
       assertEqual(expected, actual);
     },
 
@@ -960,13 +881,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAbsInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS(1,2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ABS({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ABS()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ABS(1,2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ABS(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ABS(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ABS(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ABS([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ABS({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -975,7 +896,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testRound : function () {
       var expected = [ -100, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 100 ];
-      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ROUND(r)", true);
+      var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ROUND(r)");
       assertEqual(expected, actual);
     },
 
@@ -984,13 +905,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRoundInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND(1,2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN ROUND({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ROUND()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ROUND(1,2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ROUND(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ROUND(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ROUND(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ROUND([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ROUND({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -998,7 +919,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRand : function () {
-      var actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()", true);
+      var actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()");
       for (var i in actual) {
         if (! actual.hasOwnProperty(i)) {
           continue;
@@ -1013,8 +934,8 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRandInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RAND(1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN RAND(2)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(2)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,7 +993,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN SQRT(" + JSON.stringify(value[0]) + ")", true);
+        var actual = getQueryResults("RETURN SQRT(" + JSON.stringify(value[0]) + ")");
         if (value[1] === null) {
           assertNull(actual[0]);
         }
@@ -1087,13 +1008,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSqrtInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT(2, 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT(2, 2, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT(true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT('foo')"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SQRT({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SQRT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SQRT(2, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SQRT(2, 2, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SQRT(true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SQRT('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SQRT([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SQRT({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1101,13 +1022,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testKeepInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN KEEP({ }, 1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN KEEP({ }, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN KEEP({ }, 'foo', { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN KEEP('foo', 'foo')"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP({ }, 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP({ }, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP({ }, 'foo', { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN KEEP('foo', 'foo')"); 
 
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN KEEP()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN KEEP({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN KEEP()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN KEEP({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1117,13 +1038,13 @@ function ahuacatlFunctionsTestSuite () {
     testKeep : function () {
       var actual, expected;
 
-      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ])", false);
+      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ])");
       assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
       
-      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, [ 'foo', 'bar', 'baz', 'meow' ])", false);
+      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, [ 'foo', 'bar', 'baz', 'meow' ])");
       assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
       
-      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, 'foo', 'bar', 'baz', 'meow')", false);
+      actual = getQueryResults("FOR i IN [ { }, { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN KEEP(i, 'foo', 'bar', 'baz', 'meow')");
       assertEqual([ { }, { bar: 2, foo: 1, meow: 6 }, { foo: 0, meow: 2 }, { foo: null }, { foo: true }, { } ], actual);
     },
 
@@ -1132,13 +1053,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnsetInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNSET({ }, 1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNSET({ }, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNSET({ }, 'foo', { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNSET('foo', 'foo')"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET({ }, 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET({ }, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET({ }, 'foo', { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET('foo', 'foo')"); 
 
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNSET()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNSET({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1149,13 +1070,13 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ { bang: 5, goof: 4, moo: 3 }, { goof: 1 }, { }, { }, { goof: null } ];
       var actual;
 
-      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN UNSET(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ])", false);
+      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN UNSET(i, 'foo', 'bar', 'baz', [ 'meow' ], [ ])");
       assertEqual(expected, actual);
       
-      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN UNSET(i, [ 'foo', 'bar', 'baz', 'meow' ])", false);
+      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN UNSET(i, [ 'foo', 'bar', 'baz', 'meow' ])");
       assertEqual(expected, actual);
       
-      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN UNSET(i, 'foo', 'bar', 'baz', 'meow')", false);
+      actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN UNSET(i, 'foo', 'bar', 'baz', 'meow')");
       assertEqual(expected, actual);
     },
 
@@ -1165,7 +1086,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMerge1 : function () {
       var expected = [ { "quarter" : 1, "year" : 2010 }, { "quarter" : 2, "year" : 2010 }, { "quarter" : 3, "year" : 2010 }, { "quarter" : 4, "year" : 2010 }, { "quarter" : 1, "year" : 2011 }, { "quarter" : 2, "year" : 2011 }, { "quarter" : 3, "year" : 2011 }, { "quarter" : 4, "year" : 2011 }, { "quarter" : 1, "year" : 2012 }, { "quarter" : 2, "year" : 2012 }, { "quarter" : 3, "year" : 2012 }, { "quarter" : 4, "year" : 2012 } ]; 
-      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FOR quarter IN [ 1, 2, 3, 4 ] return MERGE({ \"year\" : year }, { \"quarter\" : quarter })", false);
+      var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FOR quarter IN [ 1, 2, 3, 4 ] return MERGE({ \"year\" : year }, { \"quarter\" : quarter })");
       assertEqual(expected, actual);
     },
 
@@ -1175,7 +1096,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMerge2 : function () {
       var expected = [ { "age" : 15, "isAbove18" : false, "name" : "John" }, { "age" : 19, "isAbove18" : true, "name" : "Corey" } ];
-      var actual = getQueryResults("FOR u IN [ { \"name\" : \"John\", \"age\" : 15 }, { \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"isAbove18\" : u.age >= 18 })", false);
+      var actual = getQueryResults("FOR u IN [ { \"name\" : \"John\", \"age\" : 15 }, { \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"isAbove18\" : u.age >= 18 })");
       assertEqual(expected, actual);
     },
 
@@ -1185,7 +1106,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMerge3 : function () {
       var expected = [ { "age" : 15, "id" : 9, "name" : "John" }, { "age" : 19, "id" : 9, "name" : "Corey" } ];
-      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 })", false);
+      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 })");
       assertEqual(expected, actual);
     },
 
@@ -1195,7 +1116,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMerge4 : function () {
       var expected = [ { "age" : 15, "id" : 33, "name" : "foo" }, { "age" : 19, "id" : 33, "name" : "foo" } ];
-      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 }, { \"name\" : \"foo\", \"id\" : 33 })", false);
+      var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return MERGE(u, { \"id\" : 9 }, { \"name\" : \"foo\", \"id\" : 33 })");
       assertEqual(expected, actual);
     },
 
@@ -1204,23 +1125,23 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMergeInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE(null, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE(true, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE(3, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE(\"yes\", { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE([ ], { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, { }, null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, { }, true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, { }, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, { }, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE({ }, { }, [ ])"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MERGE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MERGE({ })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE(null, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE(true, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE(3, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE(\"yes\", { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE([ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, [ ])"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1233,7 +1154,7 @@ function ahuacatlFunctionsTestSuite () {
 
       var expected = [ { "black" : { "enabled" : false, "visible" : false }, "list" : [ 6, 7, 8, 9, 0 ], "white" : { "enabled" : true } } ];
 
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ")", false);
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ")");
       assertEqual(expected, actual);
     },
 
@@ -1247,7 +1168,7 @@ function ahuacatlFunctionsTestSuite () {
 
       var expected = [ { "black" : { "enabled" : true, "visible" : false }, "list" : [ 1, 2, 3, 4, 5 ], "white" : { "enabled" : true } } ];
 
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc1 + ")", false);
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc1 + ")");
       assertEqual(expected, actual);
     },
 
@@ -1258,13 +1179,13 @@ function ahuacatlFunctionsTestSuite () {
     testMergeRecursive3 : function () {
       var doc1 = "{ \"a\" : 1, \"b\" : 2, \"c\" : 3 }";
 
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ")", false);
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ")");
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ")");
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + ")");
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
     },
 
@@ -1277,16 +1198,16 @@ function ahuacatlFunctionsTestSuite () {
       var doc2 = "{ \"a\" : 2, \"b\" : 3, \"c\" : 4 }";
       var doc3 = "{ \"a\" : 3, \"b\" : 4, \"c\" : 5 }";
 
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ")", false);
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ")");
       assertEqual([ { "a" : 3, "b" : 4, "c" : 5 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + ")");
       assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + ")");
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")");
       assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
     },
 
@@ -1299,16 +1220,16 @@ function ahuacatlFunctionsTestSuite () {
       var doc2 = "{ \"1\" : 7, \"b\" : 8, \"y\" : 9 }";
       var doc3 = "{ \"x\" : 4, \"y\" : 5, \"z\" : 6 }";
 
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ")", false);
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ")");
       assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + ")");
       assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + ")");
       assertEqual([ { "1" : 7, "a" : 1, "b" : 2, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
       
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")", false);
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")");
       assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
     },
 
@@ -1330,7 +1251,7 @@ function ahuacatlFunctionsTestSuite () {
       var doc11 ="{ \"continent\" : { \"Australia\" : { \"country\" : { \"AU\" : { \"city\" : \"Melbourne\" } } } } }";
       var doc12 ="{ \"continent\" : { \"Africa\" : { \"country\" : { \"EG\" : { \"city\" : \"Cairo\" } } } } }";
 
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")", false);
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")");
 
       assertEqual([ { "continent" : { 
         "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
@@ -1346,23 +1267,23 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMergeRecursiveInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE(null, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE(true, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE(3, { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE(\"yes\", { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE([ ], { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, { }, null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, { }, true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, { }, 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, { }, \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MERGE_RECURSIVE({ }, { }, [ ])"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MERGE_RECURSIVE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MERGE_RECURSIVE({ })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE(null, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE(true, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE(3, { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE(\"yes\", { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE([ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, [ ])"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1371,7 +1292,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnion1 : function () {
       var expected = [ [ 1, 2, 3, 1, 2, 3 ], [ 1, 2, 3, 1, 2, 3 ] ];
-      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 1, 2, 3 ])", true);
+      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 1, 2, 3 ])");
       assertEqual(expected, actual);
     },
 
@@ -1381,7 +1302,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnion2 : function () {
       var expected = [ [ 1, 2, 3, 3, 2, 1 ], [ 1, 2, 3, 3, 2, 1 ] ];
-      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 3, 2, 1 ])", true);
+      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 3, 2, 1 ])");
       assertEqual(expected, actual);
     },
 
@@ -1391,7 +1312,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnion3 : function () {
       var expected = [ "Fred", "John", "John", "Amy" ];
-      var actual = getQueryResults("FOR u IN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) return u", true);
+      var actual = getQueryResults("FOR u IN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) return u");
       assertEqual(expected, actual);
     },
 
@@ -1400,23 +1321,23 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnionInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], [ ], null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], [ ], true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], [ ], 3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], [ ], \"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION([ ], [ ], { })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION(null, [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION(true, [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION(3, [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION(\"yes\", [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN UNION({ }, [ ])"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNION()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNION([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], [ ], null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], [ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], [ ], 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], [ ], \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION([ ], [ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION(null, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION(true, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION(3, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION(\"yes\", [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION({ }, [ ])"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1425,7 +1346,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnionIndexedAccess1 : function () {
       var expected = [ "Fred" ];
-      var actual = getQueryResults("RETURN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])[0]", true);
+      var actual = getQueryResults("RETURN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])[0]");
       assertEqual(expected, actual);
     },
 
@@ -1435,7 +1356,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnionIndexedAccess2 : function () {
       var expected = [ "John" ];
-      var actual = getQueryResults("RETURN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])[1]", true);
+      var actual = getQueryResults("RETURN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])[1]");
       assertEqual(expected, actual);
     },
 
@@ -1445,7 +1366,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnionIndexedAccess3 : function () {
       var expected = [ "bar" ];
-      var actual = getQueryResults("RETURN UNION([ { title : \"foo\" } ], [ { title : \"bar\" } ])[1].title", true);
+      var actual = getQueryResults("RETURN UNION([ { title : \"foo\" } ], [ { title : \"bar\" } ])[1].title");
       assertEqual(expected, actual);
     },
 
@@ -1464,11 +1385,11 @@ function ahuacatlFunctionsTestSuite () {
       var expected, actual;
 
       expected = [ { title: "123", value : 456 } ];
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")", false);
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")");
       assertEqual(expected, actual);
       
       expected = [ { title: "nada", value : 123 } ];
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")", false);
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")");
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
@@ -1489,11 +1410,11 @@ function ahuacatlFunctionsTestSuite () {
       var expected, actual;
 
       expected = [ { title: "123", value : 456, zxy: 1 } ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : d1._id });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._id });
       assertEqual(expected, actual);
       
       expected = [ { title: "nada", value : 123, zzzz : false } ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : d2._id });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._id });
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
@@ -1520,17 +1441,17 @@ function ahuacatlFunctionsTestSuite () {
         { title: "boom", value : 3321, zzzz : null }
       ] ];
 
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : [ d1._id, d2._id, d3._id ] });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d1._id, d2._id, d3._id ] }, true);
       assertEqual(expected, actual);
      
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : [ d2._id ] });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id ] }, true);
       assertEqual(expected, actual);
 
       cx.remove(d3);
       
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : [ d2._id, d3._id, "abc/def" ] });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id, d3._id, "abc/def" ] }, true);
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
@@ -1549,11 +1470,11 @@ function ahuacatlFunctionsTestSuite () {
       var expected, actual;
 
       // test with non-existing document
-      expected = [ ];
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + cn + "/99999999999\")", false);
+      expected = [ null ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + cn + "/99999999999\")");
       assertEqual(expected, actual);
       
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"thefoxdoesnotexist/99999999999\")", false);
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"thefoxdoesnotexist/99999999999\")");
       assertEqual(expected, actual);
 
       internal.db._drop(cn);
@@ -1573,7 +1494,7 @@ function ahuacatlFunctionsTestSuite () {
       var expected, actual;
 
       expected = [ "123" ];
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", [ \"" + d1._id + "\" ])[0].title", true);
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", [ \"" + d1._id + "\" ])[0].title");
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
@@ -1585,7 +1506,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMin1 : function () {
       var expected = [ null, null ]; 
-      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] return MIN(u)", true);
+      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] return MIN(u)");
       assertEqual(expected, actual);
     },
 
@@ -1595,7 +1516,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMin2 : function () {
       var expected = [ 1, 1, 1, 1, 1, 1 ];
-      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] return MIN(u)", true);
+      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] return MIN(u)");
       assertEqual(expected, actual);
     },
 
@@ -1605,7 +1526,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMin3 : function () {
       var expected = [ 2, false, false, false, false, true, -1, '', 1 ];
-      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MIN(u)", true);
+      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MIN(u)");
       assertEqual(expected, actual);
     },
 
@@ -1614,13 +1535,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMinInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MIN({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MIN()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MIN([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1629,7 +1550,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMax1 : function () {
       var expected = [ null, null ]; 
-      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] return MAX(u)", true);
+      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] return MAX(u)");
       assertEqual(expected, actual);
     },
 
@@ -1639,7 +1560,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMax2 : function () {
       var expected = [ 3, 3, 3, 3, 3, 3 ];
-      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] return MAX(u)", true);
+      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] return MAX(u)");
       assertEqual(expected, actual);
     },
 
@@ -1649,7 +1570,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testMax3 : function () {
       var expected = [ '1', [ ], [ ], true, 0, 0, '0', '-1', [ ] ];
-      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MAX(u)", true);
+      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] return MAX(u)");
       assertEqual(expected, actual);
     },
 
@@ -1658,13 +1579,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMaxInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MAX({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MAX()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MAX([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1689,7 +1610,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN SUM(" + JSON.stringify(value[1]) + ")", true);
+        var actual = getQueryResults("RETURN SUM(" + JSON.stringify(value[1]) + ")");
         assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
       });
     },
@@ -1699,13 +1620,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSumInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN SUM({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUM()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUM([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1731,7 +1652,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN AVERAGE(" + JSON.stringify(value[1]) + ")", true);
+        var actual = getQueryResults("RETURN AVERAGE(" + JSON.stringify(value[1]) + ")");
         if (actual[0] === null) {
           assertNull(value[0]);
         }
@@ -1746,13 +1667,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAverageInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN AVERAGE({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN AVERAGE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN AVERAGE([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1789,7 +1710,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN MEDIAN(" + JSON.stringify(value[1]) + ")", true);
+        var actual = getQueryResults("RETURN MEDIAN(" + JSON.stringify(value[1]) + ")");
         if (actual[0] === null) {
           assertNull(value[0]);
         }
@@ -1804,13 +1725,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMedianInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN MEDIAN({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MEDIAN()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MEDIAN([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1819,7 +1740,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testHas1 : function () {
       var expected = [ true, true, true, false, true ]; 
-      var actual = getQueryResults("FOR u IN [ { \"the fox\" : true }, { \"the fox\" : false }, { \"the fox\" : null }, { \"the FOX\" : true }, { \"the FOX\" : true, \"the fox\" : false } ] return HAS(u, \"the fox\")", true);
+      var actual = getQueryResults("FOR u IN [ { \"the fox\" : true }, { \"the fox\" : false }, { \"the fox\" : null }, { \"the FOX\" : true }, { \"the FOX\" : true, \"the fox\" : false } ] return HAS(u, \"the fox\")");
       assertEqual(expected, actual);
     },
 
@@ -1829,7 +1750,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testHas2 : function () {
       var expected = [ false, false, false ];
-      var actual = getQueryResults("FOR u IN [ { \"the foxx\" : { \"the fox\" : false } }, { \" the fox\" : false }, null ] return HAS(u, \"the fox\")", true);
+      var actual = getQueryResults("FOR u IN [ { \"the foxx\" : { \"the fox\" : false } }, { \" the fox\" : false }, null ] return HAS(u, \"the fox\")");
       assertEqual(expected, actual);
     },
 
@@ -1838,19 +1759,19 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHasInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ })"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, \"fox\", true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS(false, \"fox\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS(3, \"fox\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS(\"yes\", \"fox\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS([ ], \"fox\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, true)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, 1)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, [ ])"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN HAS({ }, { })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS({ })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS({ }, \"fox\", true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(false, \"fox\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(3, \"fox\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(\"yes\", \"fox\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS([ ], \"fox\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, { })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1859,7 +1780,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testAttributes1 : function () {
       var expected = [ [ "foo", "bar", "meow", "_id" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u)", true);
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u)");
       assertEqual(expected, actual);
     },
 
@@ -1869,7 +1790,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testAttributes2 : function () {
       var expected = [ [ "foo", "bar", "meow" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true)", true);
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true)");
       assertEqual(expected, actual);
     },
 
@@ -1879,7 +1800,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testAttributes3 : function () {
       var expected = [ [ "_id", "bar", "foo", "meow" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, false, true)", true);
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, false, true)");
       assertEqual(expected, actual);
     },
 
@@ -1889,7 +1810,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testAttributes4 : function () {
       var expected = [ [ "bar", "foo", "meow" ], [ "foo" ] ];
-      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true, true)", true);
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true, true)");
       assertEqual(expected, actual);
     },
 
@@ -1899,7 +1820,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull1 : function () {
       var expected = [ 6 ];
-      var actual = getQueryResults("RETURN NOT_NULL(null, 2 + 4)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(null, 2 + 4)");
       assertEqual(expected, actual);
     },
 
@@ -1909,7 +1830,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull2 : function () {
       var expected = [ 6 ];
-      var actual = getQueryResults("RETURN NOT_NULL(2 + 4, 2 + 5)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(2 + 4, 2 + 5)");
       assertEqual(expected, actual);
     },
 
@@ -1919,7 +1840,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull3 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN NOT_NULL(null, null)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(null, null)");
       assertEqual(expected, actual);
     },
 
@@ -1929,7 +1850,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull4 : function () {
       var expected = [ 2 ];
-      var actual = getQueryResults("RETURN NOT_NULL(2, null)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(2, null)");
       assertEqual(expected, actual);
     },
 
@@ -1939,7 +1860,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull5 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN NOT_NULL(false, true)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(false, true)");
       assertEqual(expected, actual);
     },
 
@@ -1949,7 +1870,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull6 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null)");
       assertEqual(expected, actual);
     },
 
@@ -1959,7 +1880,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull7 : function () {
       var expected = [ -6 ];
-      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, -6, -7)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, -6, -7)");
       assertEqual(expected, actual);
     },
 
@@ -1969,7 +1890,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull8 : function () {
       var expected = [ 12 ];
-      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, 12, null)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, 12, null)");
       assertEqual(expected, actual);
     },
 
@@ -1979,7 +1900,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull9 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN NOT_NULL(null)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(null)");
       assertEqual(expected, actual);
     },
 
@@ -1989,7 +1910,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testNotNull10 : function () {
       var expected = [ 23 ];
-      var actual = getQueryResults("RETURN NOT_NULL(23)", true);
+      var actual = getQueryResults("RETURN NOT_NULL(23)");
       assertEqual(expected, actual);
     },
 
@@ -1999,7 +1920,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList1 : function () {
       var expected = [ [ 1, 2 ] ];
-      var actual = getQueryResults("RETURN FIRST_LIST(null, [ 1, 2 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(null, [ 1, 2 ])");
       assertEqual(expected, actual);
     },
 
@@ -2009,7 +1930,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList2 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_LIST(null, \"not a list!\")", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(null, \"not a list!\")");
       assertEqual(expected, actual);
     },
 
@@ -2019,7 +1940,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList3 : function () {
       var expected = [ [ 1, 4 ] ];
-      var actual = getQueryResults("RETURN FIRST_LIST([ 1, 4 ], [ 1, 5 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ 1, 4 ], [ 1, 5 ])");
       assertEqual(expected, actual);
     },
 
@@ -2029,7 +1950,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList4 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN FIRST_LIST([ ], [ 1, 5 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ ], [ 1, 5 ])");
       assertEqual(expected, actual);
     },
 
@@ -2039,7 +1960,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList5 : function () {
       var expected = [ [ false ] ];
-      var actual = getQueryResults("RETURN FIRST_LIST([ false ], [ 1, 5 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ false ], [ 1, 5 ])");
       assertEqual(expected, actual);
     },
 
@@ -2049,7 +1970,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList6 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_LIST(false, 7)", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(false, 7)");
       assertEqual(expected, actual);
     },
 
@@ -2059,7 +1980,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList7 : function () {
       var expected = [ [ 0 ] ];
-      var actual = getQueryResults("RETURN FIRST_LIST(1, 2, 3, 4, [ 0 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(1, 2, 3, 4, [ 0 ])");
       assertEqual(expected, actual);
     },
 
@@ -2069,7 +1990,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList8 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_LIST(1, 2, 3, 4, { })", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(1, 2, 3, 4, { })");
       assertEqual(expected, actual);
     },
 
@@ -2079,7 +2000,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList9 : function () {
       var expected = [ [ 7 ] ];
-      var actual = getQueryResults("RETURN FIRST_LIST([ 7 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ 7 ])");
       assertEqual(expected, actual);
     },
 
@@ -2089,7 +2010,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstList10 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_LIST(99)", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(99)");
       assertEqual(expected, actual);
     },
 
@@ -2099,7 +2020,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument1 : function () {
       var expected = [ { a : 1 } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT(null, { a : 1 })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(null, { a : 1 })");
       assertEqual(expected, actual);
     },
 
@@ -2109,7 +2030,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument2 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT(null, \"not a doc!\")", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(null, \"not a doc!\")");
       assertEqual(expected, actual);
     },
 
@@ -2119,7 +2040,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument3 : function () {
       var expected = [ { a : 1 } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ a : 1 }, { b : 2 })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ a : 1 }, { b : 2 })");
       assertEqual(expected, actual);
     },
 
@@ -2129,7 +2050,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument4 : function () {
       var expected = [ { } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ }, { b : 2 })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ }, { b : 2 })");
       assertEqual(expected, actual);
     },
 
@@ -2139,7 +2060,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument5 : function () {
       var expected = [ { a : null, b : false } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ a : null, b : false }, { a : 1000, b : 1000 })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ a : null, b : false }, { a : 1000, b : 1000 })");
       assertEqual(expected, actual);
     },
 
@@ -2149,7 +2070,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument6 : function () {
       var expected = [ { czz : 7 } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT(false, { czz : 7 })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(false, { czz : 7 })");
       assertEqual(expected, actual);
     },
 
@@ -2159,7 +2080,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument7 : function () {
       var expected = [ { } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT(1, 2, 3, 4, { })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(1, 2, 3, 4, { })");
       assertEqual(expected, actual);
     },
 
@@ -2169,7 +2090,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument8 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT(1, 2, 3, 4, [ ])", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(1, 2, 3, 4, [ ])");
       assertEqual(expected, actual);
     },
 
@@ -2179,7 +2100,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument9 : function () {
       var expected = [ { c : 4 } ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ c : 4 })", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ c : 4 })");
       assertEqual(expected, actual);
     },
 
@@ -2189,7 +2110,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFirstDocument10 : function () {
       var expected = [ null ];
-      var actual = getQueryResults("RETURN FIRST_DOCUMENT(false)", true);
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(false)");
       assertEqual(expected, actual);
     },
 
@@ -2293,7 +2214,7 @@ function ahuacatlFunctionsTestSuite () {
         else {
           query += ")";
         }
-        var actual = getQueryResults(query, true);
+        var actual = getQueryResults(query);
         assertEqual(data.expected, actual);
       });
     },
@@ -2304,7 +2225,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool1 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN TO_BOOL(null)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(null)");
       assertEqual(expected, actual);
     },
 
@@ -2314,7 +2235,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool2 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN TO_BOOL(false)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(false)");
       assertEqual(expected, actual);
     },
 
@@ -2324,7 +2245,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool3 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(true)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(true)");
       assertEqual(expected, actual);
     },
 
@@ -2334,7 +2255,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool4 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN TO_BOOL(0)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(0)");
       assertEqual(expected, actual);
     },
 
@@ -2344,7 +2265,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool5 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(0.1)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(0.1)");
       assertEqual(expected, actual);
     },
 
@@ -2354,7 +2275,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool6 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(-1)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(-1)");
       assertEqual(expected, actual);
     },
 
@@ -2364,7 +2285,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool7 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(100)", true);
+      var actual = getQueryResults("RETURN TO_BOOL(100)");
       assertEqual(expected, actual);
     },
 
@@ -2374,7 +2295,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool8 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN TO_BOOL(\"\")", true);
+      var actual = getQueryResults("RETURN TO_BOOL(\"\")");
       assertEqual(expected, actual);
     },
 
@@ -2384,7 +2305,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool9 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(\" \")", true);
+      var actual = getQueryResults("RETURN TO_BOOL(\" \")");
       assertEqual(expected, actual);
     },
 
@@ -2394,7 +2315,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool10 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(\"0\")", true);
+      var actual = getQueryResults("RETURN TO_BOOL(\"0\")");
       assertEqual(expected, actual);
     },
 
@@ -2404,7 +2325,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool11 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(\"false\")", true);
+      var actual = getQueryResults("RETURN TO_BOOL(\"false\")");
       assertEqual(expected, actual);
     },
 
@@ -2414,7 +2335,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool12 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN TO_BOOL([ ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ ])");
       assertEqual(expected, actual);
     },
 
@@ -2424,7 +2345,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool13 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ 1 ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ 1 ])");
       assertEqual(expected, actual);
     },
 
@@ -2434,7 +2355,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool14 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ false ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ false ])");
       assertEqual(expected, actual);
     },
 
@@ -2444,7 +2365,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool15 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ 0 ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ 0 ])");
       assertEqual(expected, actual);
     },
 
@@ -2454,7 +2375,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool16 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ \"\" ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ \"\" ])");
       assertEqual(expected, actual);
     },
 
@@ -2464,7 +2385,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool17 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ \" \" ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ \" \" ])");
       assertEqual(expected, actual);
     },
 
@@ -2474,7 +2395,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool18 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ \"0\" ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ \"0\" ])");
       assertEqual(expected, actual);
     },
 
@@ -2484,7 +2405,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool19 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ \"false\" ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ \"false\" ])");
       assertEqual(expected, actual);
     },
 
@@ -2494,7 +2415,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool20 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL([ { } ])", true);
+      var actual = getQueryResults("RETURN TO_BOOL([ { } ])");
       assertEqual(expected, actual);
     },
 
@@ -2504,7 +2425,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool21 : function () {
       var expected = [ false ];
-      var actual = getQueryResults("RETURN TO_BOOL({ })", true);
+      var actual = getQueryResults("RETURN TO_BOOL({ })");
       assertEqual(expected, actual);
     },
 
@@ -2514,7 +2435,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool22 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL({ \"0\" : \"\" })", true);
+      var actual = getQueryResults("RETURN TO_BOOL({ \"0\" : \"\" })");
       assertEqual(expected, actual);
     },
 
@@ -2524,7 +2445,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToBool23 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL({ \"false\" : null })", true);
+      var actual = getQueryResults("RETURN TO_BOOL({ \"false\" : null })");
       assertEqual(expected, actual);
     },
 
@@ -2534,7 +2455,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber1 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(null)", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(null)");
       assertEqual(expected, actual);
     },
 
@@ -2544,7 +2465,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber2 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER([ ])", true);
+      var actual = getQueryResults("RETURN TO_NUMBER([ ])");
       assertEqual(expected, actual);
     },
 
@@ -2554,7 +2475,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber3 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER([ 1 ])", true);
+      var actual = getQueryResults("RETURN TO_NUMBER([ 1 ])");
       assertEqual(expected, actual);
     },
 
@@ -2564,7 +2485,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber4 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER([ -1, 1 ])", true);
+      var actual = getQueryResults("RETURN TO_NUMBER([ -1, 1 ])");
       assertEqual(expected, actual);
     },
 
@@ -2574,7 +2495,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber5 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER({ })", true);
+      var actual = getQueryResults("RETURN TO_NUMBER({ })");
       assertEqual(expected, actual);
     },
 
@@ -2584,7 +2505,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber6 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER({ \"2\" : \"3\" })", true);
+      var actual = getQueryResults("RETURN TO_NUMBER({ \"2\" : \"3\" })");
       assertEqual(expected, actual);
     },
 
@@ -2594,7 +2515,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber7 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(false)", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(false)");
       assertEqual(expected, actual);
     },
 
@@ -2604,7 +2525,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber8 : function () {
       var expected = [ 1 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(true)", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(true)");
       assertEqual(expected, actual);
     },
 
@@ -2614,7 +2535,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber9 : function () {
       var expected = [ 1 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"1\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"1\")");
       assertEqual(expected, actual);
     },
 
@@ -2624,7 +2545,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber10 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"0\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"0\")");
       assertEqual(expected, actual);
     },
 
@@ -2634,7 +2555,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber11 : function () {
       var expected = [ -435.3 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"-435.3\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"-435.3\")");
       assertEqual(expected, actual);
     },
 
@@ -2644,7 +2565,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber12 : function () {
       var expected = [ 3553.4 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"3553.4er6\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"3553.4er6\")");
       assertEqual(expected, actual);
     },
 
@@ -2654,7 +2575,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber13 : function () {
       var expected = [ 0 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"-wert324\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"-wert324\")");
       assertEqual(expected, actual);
     },
 
@@ -2664,7 +2585,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber14 : function () {
       var expected = [ 143 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"  143\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"  143\")");
       assertEqual(expected, actual);
     },
 
@@ -2674,7 +2595,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToNumber15 : function () {
       var expected = [ 0.4 ];
-      var actual = getQueryResults("RETURN TO_NUMBER(\"  .4\")", true);
+      var actual = getQueryResults("RETURN TO_NUMBER(\"  .4\")");
       assertEqual(expected, actual);
     },
 
@@ -2684,7 +2605,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList1 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN TO_LIST(null)", true);
+      var actual = getQueryResults("RETURN TO_LIST(null)");
       assertEqual(expected, actual);
     },
 
@@ -2694,7 +2615,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList2 : function () {
       var expected = [ [ false ] ];
-      var actual = getQueryResults("RETURN TO_LIST(false)", true);
+      var actual = getQueryResults("RETURN TO_LIST(false)");
       assertEqual(expected, actual);
     },
 
@@ -2704,7 +2625,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList3 : function () {
       var expected = [ [ true ] ];
-      var actual = getQueryResults("RETURN TO_LIST(true)", true);
+      var actual = getQueryResults("RETURN TO_LIST(true)");
       assertEqual(expected, actual);
     },
 
@@ -2714,7 +2635,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList4 : function () {
       var expected = [ [ 35 ] ];
-      var actual = getQueryResults("RETURN TO_LIST(35)", true);
+      var actual = getQueryResults("RETURN TO_LIST(35)");
       assertEqual(expected, actual);
     },
 
@@ -2724,7 +2645,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList5 : function () {
       var expected = [ [ -0.635 ] ];
-      var actual = getQueryResults("RETURN TO_LIST(-0.635)", true);
+      var actual = getQueryResults("RETURN TO_LIST(-0.635)");
       assertEqual(expected, actual);
     },
 
@@ -2734,7 +2655,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList6 : function () {
       var expected = [ [ "" ] ];
-      var actual = getQueryResults("RETURN TO_LIST(\"\")", true);
+      var actual = getQueryResults("RETURN TO_LIST(\"\")");
       assertEqual(expected, actual);
     },
 
@@ -2744,7 +2665,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList7 : function () {
       var expected = [ [ "value" ] ];
-      var actual = getQueryResults("RETURN TO_LIST(\"value\")", true);
+      var actual = getQueryResults("RETURN TO_LIST(\"value\")");
       assertEqual(expected, actual);
     },
 
@@ -2754,7 +2675,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList8 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN TO_LIST({ })", true);
+      var actual = getQueryResults("RETURN TO_LIST({ })");
       assertEqual(expected, actual);
     },
 
@@ -2764,7 +2685,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList9 : function () {
       var expected = [ [ 0 ] ];
-      var actual = getQueryResults("RETURN TO_LIST({ \"a\" : 0 })", true);
+      var actual = getQueryResults("RETURN TO_LIST({ \"a\" : 0 })");
       assertEqual(expected, actual);
     },
 
@@ -2774,7 +2695,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList10 : function () {
       var expected = [ [ null, -63, [ 1, 2 ], { "a" : "b" } ] ];
-      var actual = getQueryResults("RETURN TO_LIST({ \"a\" : null, \"b\" : -63, \"c\" : [ 1, 2 ], \"d\": { \"a\" : \"b\" } })", true);
+      var actual = getQueryResults("RETURN TO_LIST({ \"a\" : null, \"b\" : -63, \"c\" : [ 1, 2 ], \"d\": { \"a\" : \"b\" } })");
       assertEqual(expected, actual);
     },
 
@@ -2784,7 +2705,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList11 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN TO_LIST([ ])", true);
+      var actual = getQueryResults("RETURN TO_LIST([ ])");
       assertEqual(expected, actual);
     },
 
@@ -2794,7 +2715,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testToList12 : function () {
       var expected = [ [ 0, null, -1 ] ];
-      var actual = getQueryResults("RETURN TO_LIST([ 0, null, -1 ])", true);
+      var actual = getQueryResults("RETURN TO_LIST([ 0, null, -1 ])");
       assertEqual(expected, actual);
     },
 
@@ -2836,7 +2757,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN VARIANCE_POPULATION(" + JSON.stringify(value[1]) + ")", true);
+        var actual = getQueryResults("RETURN VARIANCE_POPULATION(" + JSON.stringify(value[1]) + ")");
         if (value[0] === null) {
           assertNull(actual[0]);
         }
@@ -2851,13 +2772,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testVariancePopulationInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_POPULATION()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_POPULATION([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2893,7 +2814,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN VARIANCE_SAMPLE(" + JSON.stringify(value[1]) + ")", true);
+        var actual = getQueryResults("RETURN VARIANCE_SAMPLE(" + JSON.stringify(value[1]) + ")");
         if (value[0] === null) {
           assertNull(actual[0]);
         }
@@ -2908,13 +2829,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testVarianceSampleInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_SAMPLE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_SAMPLE([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2955,7 +2876,7 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults("RETURN STDDEV_POPULATION(" + JSON.stringify(value[1]) + ")", true);
+        var actual = getQueryResults("RETURN STDDEV_POPULATION(" + JSON.stringify(value[1]) + ")");
         if (value[0] === null) {
           assertNull(actual[0]);
         }
@@ -2970,13 +2891,13 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStddevPopulationInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION([ ], 2)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(null)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(false)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(3)"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(\"yes\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION({ })"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_POPULATION()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_POPULATION([ ], 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(false)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2984,9 +2905,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonExisting : function () {
-      assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, getErrorCode(function() { QUERY("RETURN FOO()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, getErrorCode(function() { QUERY("RETURN BAR()"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, getErrorCode(function() { QUERY("RETURN PENG(true)"); } ));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN FOO()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN BAR()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN PENG(true)"); 
     }
 
   };

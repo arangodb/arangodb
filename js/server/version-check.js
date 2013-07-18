@@ -443,6 +443,39 @@
       return createSystemCollection("_replication", { waitForSync : false });
     });
 
+    // migration aql function names
+    addTask("migrateAqlFunctions", "migrate _aqlfunctions name", function () {
+      var funcs = getCollection('_aqlfunctions');
+
+      if (! funcs) {
+        return false;
+      }
+
+      var result = true;
+      funcs.toArray().forEach(function(f) {
+        var oldKey = f._key;
+        var newKey = oldKey.replace(/:{1,}/g, '::');
+
+        if (oldKey !== newKey) {
+          try {
+            var doc = { 
+              _key: newKey.toUpperCase(), 
+              name: newKey, 
+              code: f.code, 
+              isDeterministic: f.isDeterministic 
+            };
+             
+            funcs.save(doc);
+            funcs.remove(oldKey);
+          }
+          catch (err) {
+            result = false;
+          }
+        }
+      });
+
+      return result;
+    });
 
 
     // loop through all tasks and execute them
