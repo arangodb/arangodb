@@ -1,6 +1,46 @@
 v1.4
 ----
 
+* INCOMPATIBLE CHANGE: changed AQL user function namespace resolution operator from `:` to `::`
+
+  AQL user-defined functions were introduced in ArangoDB 1.3, and the namespace resolution
+  operator for them was the single colon (`:`). A function call looked like this:
+
+      RETURN mygroup:myfunc()
+
+  The single colon caused an ambiguity in the AQL grammar, making it indistinguishable from
+  named attributes or the ternary operator in some cases, e.g.
+
+      { mygroup:myfunc ? mygroup:myfunc }
+
+  The change of the namespace resolution operator from `:` to `::` fixes this ambiguity.
+
+  Existing user functions in the database will be automatically fixed when starting ArangoDB
+  1.4 with the `--upgrade` option. However, queries using user-defined functions need to be
+  adjusted on the client side to use the new operator.
+
+* allow multiple AQL LET declarations separated by comma, e.g.
+  LET a = 1, b = 2, c = 3
+
+* more useful AQL error messages
+
+  The error position (line/column) is more clearly indicated for parse errors.
+  Additionally, if a query references a collection that cannot be found, the error
+  message will give a hint on the collection name
+
+* changed return value for AQL `DOCUMENT` function in case document is not found
+  
+  Previously, when the AQL `DOCUMENT` function was called with the id of a document and
+  the document could not be found, it returned `undefined`. This value is not part of the
+  JSON type system and this has caused some problems.
+  Starting with ArangoDB 1.4, the `DOCUMENT` function will return `null` if the document
+  looked for cannot be found.
+
+  In case the function is called with a list of documents, it will continue to return all
+  found documents, and will not return `null` for non-found documents. This has not changed.
+
+  
+
 * added single line comments for AQL
 
   Single line comments can be started with a double forward slash: `//`.

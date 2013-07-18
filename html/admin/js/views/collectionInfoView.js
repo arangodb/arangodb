@@ -101,6 +101,12 @@ var collectionInfoView = Backbone.View.extend({
       values: collValues
     }];
   },
+  roundNumber: function(number, n) {
+    var faktor;
+    faktor = Math.pow(10,n);
+    var returnVal = (Math.round(number * faktor) / faktor);
+    return returnVal;
+  },
   appendFigures: function () {
     var cssClass = 'modal-text';
 
@@ -115,12 +121,16 @@ var collectionInfoView = Backbone.View.extend({
           '<tr>'+
             '<th class="'+cssClass+'">Datafiles</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.datafiles.count+'</th>'+
-            '<th class="'+cssClass+'">'+this.data.figures.datafiles.fileSize / 1024 / 1024 +'</th>'+
+            '<th class="'+cssClass+'">'+
+              this.roundNumber(this.data.figures.datafiles.fileSize / 1024 / 1024 , 2)+
+            '</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Journals</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.journals.count+'</th>'+
-            '<th class="'+cssClass+'">'+this.data.figures.journals.fileSize / 1024 / 1024 +'</th>'+
+            '<th class="'+cssClass+'">'+
+              this.roundNumber(this.data.figures.journals.fileSize / 1024 / 1024 , 2)+
+            '</th>'+
           '</tr>'+
         '</table>'+
 
@@ -143,19 +153,23 @@ var collectionInfoView = Backbone.View.extend({
           '<tr class="figuresHeader">'+
             '<th>Type</th>'+
             '<th>Count</th>'+
-            '<th>Size</th>'+
+            '<th>Size (MB)</th>'+
             '<th>Deletion</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Alive</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.alive.count+'</th>'+
-            '<th class="'+cssClass+'">'+this.data.figures.alive.size+'</th>'+
+            '<th class="'+cssClass+'">'+
+              this.roundNumber(this.data.figures.alive.size/1024/1024, 2)+
+            '</th>'+
             '<th class="'+cssClass+'"> - </th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Dead</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.dead.count+'</th>'+
-            '<th class="'+cssClass+'">'+this.data.figures.dead.size+'</th>'+
+            '<th class="'+cssClass+'">'+
+              this.roundNumber(this.data.figures.dead.size/1024/1024, 2)+
+            '</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.dead.deletion+'</th>'+
           '</tr>'+
         '</table>'
@@ -207,7 +221,7 @@ var collectionInfoView = Backbone.View.extend({
       $('#show-collection-sync').text('true');
     }
     var calculatedSize = data.journalSize / 1024 / 1024;
-    $('#show-collection-size').text(calculatedSize);
+    $('#show-collection-size').text(this.roundNumber(calculatedSize,2));
     $('#show-collection-rev').text(this.revision.revision);
 
     this.appendIndex();

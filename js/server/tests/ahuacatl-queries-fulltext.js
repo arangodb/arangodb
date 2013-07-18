@@ -27,9 +27,10 @@
 
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
-var ERRORS = require("org/arangodb").errors;
-var QUERY = require("internal").AQL_QUERY;
+var errors = require("org/arangodb").errors;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -38,41 +39,6 @@ var QUERY = require("internal").AQL_QUERY;
 function ahuacatlFulltextTestSuite () {
   var cn = "UnitTestsAhuacatlFulltext";
   var fulltext;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query, undefined);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query) {
-    return executeQuery(query).getRows();
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
-
 
   return {
 
@@ -170,9 +136,9 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonIndexed : function () {
-      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); } ));
-      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); } ));
-      assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
+      assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); 
+      assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); 
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
     }
 
   }

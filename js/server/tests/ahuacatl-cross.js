@@ -27,9 +27,8 @@
 
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
-var ArangoError = require("org/arangodb").ArangoError; 
-var QUERY = require("internal").AQL_QUERY;
-
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for cross-collection queries
@@ -38,63 +37,11 @@ var QUERY = require("internal").AQL_QUERY;
 function ahuacatlCrossCollection () {
   var vn1 = "UnitTestsAhuacatlVertex1";
   var vn2 = "UnitTestsAhuacatlVertex2";
-  var en = "UnitTestsAhuacatlEdge";
+  var en  = "UnitTestsAhuacatlEdge";
 
   var vertex1 = null;
   var vertex2 = null;
-  var edge = null;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query) {
-    var cursor = QUERY(query, undefined);
-    if (cursor instanceof ArangoError) {
-      print(query, cursor.errorMessage);
-    }
-    assertFalse(cursor instanceof ArangoError);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query, isFlat) {
-    var result = executeQuery(query).getRows();
-    var results = [ ];
-
-    for (var i in result) {
-      if (! result.hasOwnProperty(i)) {
-        continue;
-      }
-
-      var row = result[i];
-      if (isFlat) {
-        results.push(row);
-      } 
-      else {
-        var keys = [ ];
-        for (var k in row) {
-          if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
-            keys.push(k);
-          }
-        }
-       
-        keys.sort();
-        var resultRow = { };
-        for (var k in keys) {
-          if (keys.hasOwnProperty(k)) {
-            resultRow[keys[k]] = row[keys[k]];
-          }
-        }
-        results.push(resultRow);
-      }
-    }
-
-    return results;
-  }
+  var edge    = null;
 
 
   return {
@@ -133,7 +80,7 @@ function ahuacatlCrossCollection () {
       var actual = getQueryResults("FOR d IN [ DOCUMENT(" + vn1 + ", " + JSON.stringify(d1._id) + ") ] RETURN d");
       assertEqual(1, actual.length);
       
-      var actual = getQueryResults("FOR d IN DOCUMENT(" + vn1 + ", [ " + JSON.stringify(d1._id) + " ]) RETURN d");
+      actual = getQueryResults("FOR d IN DOCUMENT(" + vn1 + ", [ " + JSON.stringify(d1._id) + " ]) RETURN d");
       assertEqual(1, actual.length);
     },
 
@@ -145,9 +92,10 @@ function ahuacatlCrossCollection () {
       var d2 = vertex2.save({ _key: "test2" });
 
       var actual = getQueryResults("FOR d IN [ DOCUMENT(" + vn1 + ", " + JSON.stringify(d2._id) + ") ] RETURN d");
-      assertEqual(0, actual.length);
+      assertEqual(1, actual.length);
+      assertEqual(null, actual[0]);
       
-      var actual = getQueryResults("FOR d IN DOCUMENT(" + vn1 + ", [ " + JSON.stringify(d2._id) + " ]) RETURN d");
+      actual = getQueryResults("FOR d IN DOCUMENT(" + vn1 + ", [ " + JSON.stringify(d2._id) + " ]) RETURN d");
       assertEqual(0, actual.length);
     },
 

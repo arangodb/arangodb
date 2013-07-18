@@ -57,7 +57,7 @@ bool TRI_InitParserAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseAql (TRI_aql_context_t* const context) {
-  if (!TRI_StartScopeAql(context, TRI_AQL_SCOPE_MAIN)) {
+  if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_MAIN)) {
     return false;
   }
 
@@ -66,7 +66,7 @@ bool TRI_ParseAql (TRI_aql_context_t* const context) {
     return false;
   }
 
-  if (!TRI_EndScopeAql(context)) {
+  if (! TRI_EndScopeAql(context)) {
     return false;
   }
 
@@ -81,7 +81,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
                            const char* const message,
                            const int line,
                            const int column) {
-  char buffer[1024];
+  char buffer[256];
   char* region;
 
   assert(context);
@@ -103,13 +103,14 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   snprintf(buffer,
            sizeof(buffer),
-           "%d:%d %s near '%s'",
-           line,
-           column + 1,
+           "%s near '%s' at position %d:%d",
            message,
-           region);
+           region,
+           line,
+           column + 1);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, region);
+
   TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer);
 }
 
@@ -122,7 +123,7 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
   assert(context);
 
   if (value == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); \
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
 
     return NULL;
   }

@@ -25,10 +25,11 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var jsunity = require("jsunity");
 var internal = require("internal");
 var arangodb = require("org/arangodb");
+var helper = require("org/arangodb/aql-helper");
 var db = arangodb.db;
-var jsunity = require("jsunity");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -445,12 +446,13 @@ function transactionCollectionsSuite () {
 
     testNoCollectionsAql : function () {
       var result;
+      var getQueryResults = helper.getQueryResults;
       
       var obj = {
         collections : { 
         },
         action : function () {
-          result = internal.AQL_QUERY("FOR i IN [ 1, 2, 3 ] RETURN i").getRows();
+          result = getQueryResults("FOR i IN [ 1, 2, 3 ] RETURN i");
           return true;
         }
       };

@@ -154,7 +154,7 @@ function get_api_aqlfunction (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionCreate}
 ///     var url = "/_api/aqlfunction";
 ///     var body = '{ ' + 
-///       '"name" : "myfunctions:temperature:celsiustofahrenheit", ' +
+///       '"name" : "myfunctions::temperature::celsiustofahrenheit", ' +
 ///       '"code" : "function (celsius) { return celsius * 1.8 + 32; }" ' +
 ///     '}';
 ///
@@ -235,9 +235,9 @@ function post_api_aqlfunction (req, res) {
 /// deletes a function:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionDelete}
-///     var url = "/_api/aqlfunction/square:x:y";
+///     var url = "/_api/aqlfunction/square::x::y";
 ///
-///     var body = '{ "name" : "square:x:y", "code" : "function (x) { return x*x; }" }';
+///     var body = '{ "name" : "square::x::y", "code" : "function (x) { return x*x; }" }';
 ///
 ///     db._connection.POST("/_api/aqlfunction", body);
 ///     var response = logCurlRequest('DELETE', url);
@@ -250,7 +250,7 @@ function post_api_aqlfunction (req, res) {
 /// function not found:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionDeleteFails}
-///     var url = "/_api/aqlfunction/myfunction:x:y";
+///     var url = "/_api/aqlfunction/myfunction::x::y";
 ///     var response = logCurlRequest('DELETE', url);
 ///
 ///     assert(response.code === 404);

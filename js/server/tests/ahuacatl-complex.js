@@ -27,7 +27,9 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var QUERY = internal.AQL_QUERY;
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults;
+var getRawQueryResults = helper.getRawQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -36,33 +38,6 @@ var QUERY = internal.AQL_QUERY;
 function ahuacatlComplexTestSuite () {
   var errors = internal.errors;
   var numbers = null;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
-  function executeQuery (query, bindVars) {
-    var cursor = QUERY(query, bindVars, false, 3000);
-    return cursor;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query and return the results as an array
-////////////////////////////////////////////////////////////////////////////////
-
-  function getQueryResults (query, bindVars) {
-    var result = executeQuery(query, bindVars).getRows();
-    return result;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (result) {
-    return result.errorNum;
-  }
-
 
   return {
 
@@ -98,7 +73,7 @@ function ahuacatlComplexTestSuite () {
       for (var i = -1000; i <= 1000; ++i) {
         list.push(i);
       } 
-      var actual = getQueryResults("FOR u IN [ 1, 2, 3, 129, -4 ] FILTER u IN " + JSON.stringify(list) + " RETURN u", { });
+      var actual = getQueryResults("FOR u IN [ 1, 2, 3, 129, -4 ] FILTER u IN " + JSON.stringify(list) + " RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -113,7 +88,7 @@ function ahuacatlComplexTestSuite () {
       for (var i = 1000; i >= -1000; --i) {
         list.push(i);
       } 
-      var actual = getQueryResults("FOR u IN [ 1, 2, 3, 129, -4 ] FILTER u IN " + JSON.stringify(list) + " RETURN u", { });
+      var actual = getQueryResults("FOR u IN [ 1, 2, 3, 129, -4 ] FILTER u IN " + JSON.stringify(list) + " RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -128,7 +103,7 @@ function ahuacatlComplexTestSuite () {
       for (var i = -1000; i <= 1000; ++i) {
         list.push(i);
       } 
-      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " FILTER u IN [ 1, 2, 3, 129, -4 ] RETURN u", { });
+      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " FILTER u IN [ 1, 2, 3, 129, -4 ] RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -143,7 +118,7 @@ function ahuacatlComplexTestSuite () {
       for (var i = 1000; i >= -1000; --i) {
         list.push(i);
       } 
-      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " FILTER u IN [ 1, 2, 3, 129, -4 ] RETURN u", { });
+      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " FILTER u IN [ 1, 2, 3, 129, -4 ] RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -157,7 +132,7 @@ function ahuacatlComplexTestSuite () {
         list.push(i);
       }
       var expected = list;
-      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " RETURN u", { });
+      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -171,7 +146,7 @@ function ahuacatlComplexTestSuite () {
         list.push(i);
       }
       var expected = list;
-      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " FILTER u IN " + JSON.stringify(list) + " RETURN u", { });
+      var actual = getQueryResults("FOR u IN " + JSON.stringify(list) + " FILTER u IN " + JSON.stringify(list) + " RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -188,7 +163,7 @@ function ahuacatlComplexTestSuite () {
       }
 
       var expected = [ list ];
-      var actual = getQueryResults("RETURN " + JSON.stringify(list), { });
+      var actual = getQueryResults("RETURN " + JSON.stringify(list));
       assertEqual(expected, actual);
     },
 
@@ -203,7 +178,7 @@ function ahuacatlComplexTestSuite () {
       }
 
       var expected = [ vars ];
-      var actual = getQueryResults("RETURN " + JSON.stringify(vars), { });
+      var actual = getRawQueryResults("RETURN " + JSON.stringify(vars));
       assertEqual(expected, actual);
     },
 
@@ -220,7 +195,7 @@ function ahuacatlComplexTestSuite () {
       }
 
       var expected = [ array ];
-      var actual = getQueryResults("RETURN " + JSON.stringify(array), { });
+      var actual = getQueryResults("RETURN " + JSON.stringify(array));
       assertEqual(expected, actual);
     },
 

@@ -177,6 +177,10 @@
   return T_QUESTION;
 }
 
+"::" {
+  return T_SCOPE;
+}
+
 ":" {
   return T_COLON;
 }
