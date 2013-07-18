@@ -44,12 +44,37 @@
       helper.insertNSimpleNodes(nodes, 30);
     });
     
+    describe('checking setup', function() {
+      
+      it('should throw an error if no parent is given', function() {
+        expect(
+          function() {
+            var t = new CommunityNode();
+          }
+        ).toThrow("A parent element has to be given.");
+      });
+      
+      it('should not throw an error if a parent is given', function() {
+        expect(
+          function() {
+            var t = new CommunityNode({
+              dissolveCommunity: function() {}
+            });
+          }
+        ).not.toThrow();
+      });
+      
+    });
+    
     describe('checking the interface', function() {
       
       var testee;
       
       beforeEach(function() {
-        testee = new CommunityNode(nodes.slice(3, 13));
+        var parent = {
+          dissolveCommunity: function() {}
+        };
+        testee = new CommunityNode(parent, nodes.slice(3, 13));
         this.addMatchers({
           toHaveFunction: function(func, argCounter) {
             var obj = this.actual;
@@ -119,17 +144,29 @@
       it('should offer a function to shape the community', function() {
         expect(testee).toHaveFunction("shape", 3);
       });
+      
+      it('should offer a function to expand the community', function() {
+        expect(testee).toHaveFunction("expand", 0);
+      });
     });
     
     describe('node functionality', function() {
       
+      var parent;
+      
+      beforeEach(function() {
+        parent = {
+          dissolveCommunity: function() {}
+        };
+      });
+      
       it('should create a communityNode containing the given nodes', function() {
-        var c = new CommunityNode(nodes.slice(3, 13));
+        var c = new CommunityNode(parent, nodes.slice(3, 13));
         expect(c.getNodes()).toEqual(nodes.slice(3, 13));
       });
       
       it('should be able to insert a new node', function() {
-        var c = new CommunityNode(nodes.slice(3, 13)),
+        var c = new CommunityNode(parent, nodes.slice(3, 13)),
           n = {
           _id: "foxx",
           _inboundCounter: 0,
@@ -155,14 +192,14 @@
             z: 1
           }
         },
-        c = new CommunityNode([n]);
+        c = new CommunityNode(parent, [n]);
       
         expect(c.hasNode("foxx")).toBeTruthy();
         expect(c.hasNode("1")).toBeFalsy();
       });
     
       it('should only acknowledge included nodes', function() {
-        var c = new CommunityNode(nodes.slice(3, 13)),
+        var c = new CommunityNode(parent, nodes.slice(3, 13)),
           i;
         for (i = 0; i < nodes.length; i++) {
           if (2 < i && i < 13) {
@@ -184,7 +221,7 @@
             z: 1
           }
         },
-        c = new CommunityNode([n]);
+        c = new CommunityNode(parent, [n]);
         expect(c.getNode("foxx")).toEqual(n);
       });
     
@@ -199,12 +236,12 @@
             z: 1
           }
         },
-        c = new CommunityNode([n]);
+        c = new CommunityNode(parent, [n]);
         expect(c.getNode("nofoxx")).toBeUndefined();
       });
     
       it('should be able to remove a node', function() {
-        var c = new CommunityNode(nodes.slice(3, 5)),
+        var c = new CommunityNode(parent, nodes.slice(3, 5)),
           n = {
           _id: "foxx",
           _inboundCounter: 0,
@@ -224,7 +261,7 @@
       });
     
       it('should be able to remove a node by id', function() {
-        var c = new CommunityNode(nodes.slice(3, 5)),
+        var c = new CommunityNode(parent, nodes.slice(3, 5)),
           n = {
           _id: "foxx",
           _inboundCounter: 0,
@@ -247,9 +284,12 @@
     
     describe('shaping functionality', function() {
       
-      var tSpan1, tSpan2, text, g, shaper, colourMapper, box, boxRect;
-      
+      var tSpan1, tSpan2, text, g, shaper, colourMapper, box, boxRect,
+        parent;
       beforeEach(function() {
+        parent = {
+          dissolveCommunity: function() {}
+        };
         var first = true;
         box = {
           x: -10,
@@ -342,7 +382,7 @@
             }
           },
           initNodes = [n].concat(nodes.slice(3, 13)),
-          c = new CommunityNode(initNodes);
+          c = new CommunityNode(parent, initNodes);
         expect(c.x).toBeDefined();
         expect(c.x).toEqual(x);
         expect(c.y).toBeDefined();
@@ -352,7 +392,7 @@
       });
        
       it('should shape the collapsed community with given functions', function() {
-        var c = new CommunityNode(nodes.slice(0, 2));
+        var c = new CommunityNode(parent, nodes.slice(0, 2));
         spyOn(g, "attr").andCallThrough();
         spyOn(g, "append").andCallThrough();
         spyOn(shaper, "shapeFunc").andCallThrough();
@@ -368,7 +408,7 @@
       });
       
       it('should add a label containing the size of a community', function() {
-        var c = new CommunityNode(nodes.slice(0, 2));
+        var c = new CommunityNode(parent, nodes.slice(0, 2));
         spyOn(g, "append").andCallThrough();
         spyOn(text, "attr").andCallThrough();
         spyOn(text, "text").andCallThrough();
@@ -385,7 +425,7 @@
       });
       
       it('should add a label if a reason is given', function() {
-        var c = new CommunityNode(nodes.slice(0, 2));
+        var c = new CommunityNode(parent, nodes.slice(0, 2));
         c._reason = {
           key: "key",
           value: "label"
@@ -417,7 +457,7 @@
         expect(tSpan2.attr).wasCalledWith("dy", "16");
         expect(tSpan2.text).wasCalledWith("label");        
       });
-      
+      /*
       it('should print the bounding box correctly', function() {
         var c = new CommunityNode(nodes.slice(0, 2));
         spyOn(g, "append").andCallThrough();
@@ -435,13 +475,21 @@
         expect(boxRect.attr).wasCalledWith("fill", "none");
         expect(boxRect.attr).wasCalledWith("stroke", "black");
       });
-      
+      */
     });
     
     describe('edge functionality', function() {
       
+      var parent;
+      
+      beforeEach(function() {
+        parent = {
+          dissolveCommunity: function() {}
+        };
+      });
+      
       it('should return true if an inserted edge is internal', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e1 = {
             _id: "1-2",
             _data: {
@@ -467,7 +515,7 @@
       });
     
       it('should return false if an inserted edge is not internal', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e1 = {
             _id: "1-2",
             _data: {
@@ -491,7 +539,7 @@
       });
     
       it('should be possible to remove an inbound edge', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e = {
             _id: "1-2",
             _data: {
@@ -529,7 +577,7 @@
       });
     
       it('should be possible to remove an inbound edge by its id', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e = {
             _id: "1-2",
             _data: {
@@ -561,7 +609,7 @@
       });
     
       it('should be possible to remove the inbound value of an internal edge', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e = {
             _id: "1-2",
             _data: {
@@ -593,7 +641,7 @@
       });
     
       it('should be possible to remove an outbound edge', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e = {
             _id: "1-2",
             _data: {
@@ -627,7 +675,7 @@
       });
     
       it('should be possible to remove an outbound edge by its id', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e = {
             _id: "1-2",
             _data: {
@@ -660,7 +708,7 @@
       });
     
       it('should be possible to remove the outbound value of an internal edge', function() {
-        var c = new CommunityNode(), 
+        var c = new CommunityNode(parent), 
           e = {
             _id: "1-2",
             _data: {
@@ -692,7 +740,7 @@
       });
     
       it('should be possible to return and remove all outbound edges for a node', function() {
-        var c = new CommunityNode([nodes[0], nodes[1]]),
+        var c = new CommunityNode(parent, [nodes[0], nodes[1]]),
           e01 = {
             _id: "0-1",
             _data: {
@@ -739,16 +787,41 @@
       
     });
     
+    describe('expansion functionality', function() {
+      
+      var parent;
+      
+      beforeEach(function() {
+        parent = {
+          dissolveCommunity: function() {}
+        };
+      });
+      
+      it('should be possible to expand the community', function() {
+        var c = new CommunityNode(parent);
+        c.expand();
+      });
+      
+    });
+    
     describe('convenience methods', function() {
       
+      var parent;
+      
+      beforeEach(function() {
+        parent = {
+          dissolveCommunity: function() {}
+        };
+      });
+      
       it('should offer an attribute indicating that it is a community', function() {
-        var c = new CommunityNode(nodes.slice(0, 1));
+        var c = new CommunityNode(parent, nodes.slice(0, 1));
         expect(c._isCommunity).toBeDefined();
         expect(c._isCommunity).toBeTruthy();
       });
       
       it('should be able to dissolve the community', function() {
-        var c = new CommunityNode(nodes.slice(3, 13)),
+        var c = new CommunityNode(parent, nodes.slice(3, 13)),
           e1 = {
             _id: "3-4",
             _data: {
