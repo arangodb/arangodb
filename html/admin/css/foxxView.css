@@ -2,6 +2,10 @@
   padding-top: 30px;
 }
 
+.foxxList i:hover {
+  cursor: pointer;
+}
+
 .foxxElement {
   cursor: pointer;
 }
@@ -16,7 +20,7 @@
 .foxxIcon {
   width:64px;
   height:64px;
-  float:left;  
+  float:left;
   padding:10px;
 }
 
