@@ -458,7 +458,7 @@
 
         if (oldKey !== newKey) {
           try {
-            doc = { 
+            var doc = { 
               _key: newKey.toUpperCase(), 
               name: newKey, 
               code: f.code, 
