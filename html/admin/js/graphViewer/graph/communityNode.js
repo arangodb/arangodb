@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _ */
+/*global _, document*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -35,6 +35,8 @@ function CommunityNode(initial) {
   initial = initial || [];
   
   var
+
+    myRect,
 
   ////////////////////////////////////
   // Private variables              //
@@ -204,8 +206,26 @@ function CommunityNode(initial) {
     },
     
     shapeAll = function(g, shapeFunc, colourMapper) {
+      
+      /*
+      myRect = g.append(testee)
+        .attr("rx", "8")
+       .attr("ry", "8")
+       .attr("fill", "none")
+       .attr("stroke", "black");
+       */
+      myRect = g.append("rect");
       addShape(g, shapeFunc, colourMapper);
       addLabel(g, colourMapper);
+      var bbox = document.getElementById(self._id).getBBox();
+      myRect.attr("width", bbox.width + 10) // Set width
+       .attr("height", bbox.height + 10) // Set height
+       .attr("x", bbox.x - 5)
+       .attr("y", bbox.y - 5)
+       .attr("rx", "8")
+       .attr("ry", "8")
+       .attr("fill", "none")
+       .attr("stroke", "black");
     };
   
   ////////////////////////////////////
