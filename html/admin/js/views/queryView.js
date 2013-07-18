@@ -20,6 +20,7 @@ var queryView = Backbone.View.extend({
     'click #smallOutput'             : 'smallOutput',
     'click #bigOutput'               : 'bigOutput',
     'click #clearOutput'             : 'clearOutput',
+    'click #clearInput'              : 'clearInput',
     'click #addAQL'                  : 'addAQL',
     'click #editAQL'                 : 'editAQL',
     'click #save-new-query'          : 'saveAQL',
@@ -40,6 +41,11 @@ var queryView = Backbone.View.extend({
   clearOutput: function() {
     var editor2 = ace.edit("queryOutput");
     editor2.setValue('');
+  },
+  
+  clearInput: function() {
+    var editor = ace.edit("aqlEditor");
+    editor.setValue('');
   },
 
   smallOutput: function() {
@@ -184,6 +190,11 @@ var queryView = Backbone.View.extend({
         content = $('#edit-aql-textarea').val();
         queryName = $('#queryModalSelect').val();
       }
+    }
+
+    if (queryName.trim() === '') {
+      arangoHelper.arangoNotification("Illegal query name");
+      return;
     }
 
     //check for already existing entry
