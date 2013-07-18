@@ -33,9 +33,6 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
 
-var ArangoError = arangodb.ArangoError; 
-var QUERY = internal.AQL_QUERY;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
@@ -242,11 +239,10 @@ function post_api_cursor(req, res) {
   var cursor;
 
   if (json.query !== undefined) {
-    cursor = QUERY(json.query, 
-                   json.bindVars, 
-                   json.count,
-                   json.batchSize, 
-                   (json.batchSize === undefined));  
+    cursor = internal.AQL_QUERY(json.query, 
+                                json.bindVars, 
+                                json.count,
+                                json.batchSize || 1000); 
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);

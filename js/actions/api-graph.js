@@ -34,9 +34,6 @@ var graph = require("org/arangodb/graph");
 var internal = require("internal");
 var arangodb = require("org/arangodb");
 
-var ArangoError = require("org/arangodb").ArangoError;
-var QUERY = require("internal").AQL_QUERY;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
@@ -1134,11 +1131,10 @@ function post_graph_all_vertices (req, res, g) {
     // build aql query
     var query = "FOR v IN @@vertexColl" + data.filter + limit + " RETURN v";
 
-    var cursor = QUERY(query,
-                          data.bindVars,
-                          json.count,
-                          json.batchSize,
-                          (json.batchSize === undefined));
+    var cursor = internal.AQL_QUERY(query,
+                                    data.bindVars,
+                                    json.count,
+                                    json.batchSize || 1000);
 
     // error occurred
     if (cursor instanceof Error) {
@@ -1296,11 +1292,10 @@ function post_graph_vertex_vertices (req, res, g) {
     var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '") ' + 
             data.filter + limit + " RETURN n.vertex ";
     
-    var cursor = QUERY(query,
-                       data.bindVars,
-                       json.count,
-                       json.batchSize,
-                       (json.batchSize === undefined));
+    var cursor = internal.AQL_QUERY(query,
+                                    data.bindVars,
+                                    json.count,
+                                    json.batchSize || 1000);
 
     // error occurred
     if (cursor instanceof Error) {
@@ -1939,11 +1934,10 @@ function post_graph_all_edges (req, res, g) {
 
     var query = "FOR e IN @@edgeColl" + data.filter + limit + " RETURN e";
 
-    var cursor = QUERY(query,
-                       data.bindVars,
-                       (json.count !== undefined ? json.count : false),
-                       json.batchSize,
-                       (json.batchSize === undefined));
+    var cursor = internal.AQL_QUERY(query,
+                                    data.bindVars,
+                                    json.count,
+                                    json.batchSize || 1000);
 
     // error occurred
     if (cursor instanceof Error) {
@@ -2079,11 +2073,10 @@ function post_graph_vertex_edges (req, res, g) {
     var query = 'FOR e in EDGES( @@edgeColl , @id , "' + direction + '") ' 
             + data.filter + limit + " RETURN e";
 
-    var cursor = QUERY(query,
-                       data.bindVars,
-                       (json.count !== undefined ? json.count : false),
-                       json.batchSize,
-                       (json.batchSize === undefined));
+    var cursor = internal.AQL_QUERY(query,
+                                    data.bindVars,
+                                    json.count,
+                                    json.batchSize || 1000);
 
     // error occurred
     if (cursor instanceof Error) {

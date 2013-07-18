@@ -115,11 +115,17 @@ function getQueryExplanation (query, bindVars) {
 function getRawQueryResults (query, bindVars) {
   var queryResult = internal.AQL_QUERY(query, bindVars, true, 3000);
 
-  if (queryResult instanceof arangodb.ArangoCursor) {
-    queryResult = queryResult.toArray();
+  if (! (queryResult instanceof arangodb.ArangoCursor)) {
+    return queryResult;
   }
 
-  return queryResult;
+  var rows = [ ];
+  while (queryResult.hasNext()) {
+    queryResult.toArray().forEach(function(row) {
+      rows.push(row);
+    });
+  }
+  return rows;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -665,7 +665,7 @@ function DOCUMENT (collection, id) {
     return COLLECTION(collection).document(id);
   }
   catch (e2) {
-    return undefined;
+    return null;
   }
 }
 
@@ -709,7 +709,7 @@ function GET_DOCUMENTS_INCREMENTAL_INIT (collection, offset, limit) {
   state.limit      = limit;
   state.length     = state.total - offset;
 
-  if (state.limit !== null) {
+  if (state.limit !== null && state.limit < state.length) {
     state.length = state.limit; 
   }
   

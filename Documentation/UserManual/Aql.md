@@ -1483,10 +1483,10 @@ function categories:
 - @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document that id uniquely identified by
   the @FA{id}. ArangoDB will try to find the document using the `_id` value of the document
   in the specified collection. If there is a mismatch between the @FA{collection} passed and
-  the collection specified in @FA{id}, then no document will be returned. Additionally, if the
+  the collection specified in @FA{id}, then `null` will be returned. Additionally, if the
   @FA{collection} matches the collection value specified in @FA{id} but the document cannot be
-  found, no document will be returned. This function also allows @FA{id} to be a list of ids.
-  In this case, the function will return a list of all documents that could be found.
+  found, `null` will be returned. This function also allows @FA{id} to be a list of ids.
+  In this case, the function will return a list of all documents that could be found. 
 
 High-level operations {#AqlOperations}
 ======================================

@@ -1722,9 +1722,9 @@ function resultCursor (req, res, cursor, code, options) {
     // cursor is assumed to be an ArangoCursor
     hasCount = cursor.hasCount();
     count = cursor.count();
-    rows = cursor.getRows();
+    rows = cursor.toArray();
 
-    // must come after getRows()
+    // must come after toArray()
     hasNext = cursor.hasNext();
     cursorId = null;
    
