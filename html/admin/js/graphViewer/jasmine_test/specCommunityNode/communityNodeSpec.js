@@ -2,6 +2,7 @@
 /*global beforeEach, afterEach */
 /*global describe, it, expect, spyOn */
 /*global helper*/
+/*global document*/
 /*global CommunityNode*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,11 +247,16 @@
     
     describe('shaping functionality', function() {
       
-      var tSpan1, tSpan2, text, g, shaper, colourMapper;
+      var tSpan1, tSpan2, text, g, shaper, colourMapper, box, boxRect;
       
       beforeEach(function() {
         var first = true;
-        
+        box = {
+          x: -10,
+          y: -10,
+          width: 20,
+          height: 20
+        };
         tSpan1 = {
           attr: function() {
             return this;
@@ -264,6 +270,11 @@
             return this;
           },
           text: function() {
+            return this;
+          }
+        };
+        boxRect = {
+          attr: function() {
             return this;
           }
         };
@@ -287,8 +298,13 @@
           attr: function() {
             return this;
           },
-          append: function() {
-            return text;
+          append: function(type) {
+            if (type === "text") {
+              return text;
+            }
+            if (type === "rect") {
+              return boxRect;
+            }
           }
         };
         shaper = {
@@ -299,6 +315,14 @@
             return "black";
           }
         };
+        
+        spyOn(document, "getElementById").andCallFake(function() {
+          return {
+            getBBox: function() {
+              return box;
+            }
+          };
+        });
       });
       
       it('should initially contain the required attributes for shaping', function() {
@@ -392,6 +416,24 @@
         expect(tSpan2.attr).wasCalledWith("x", "0");
         expect(tSpan2.attr).wasCalledWith("dy", "16");
         expect(tSpan2.text).wasCalledWith("label");        
+      });
+      
+      it('should print the bounding box correctly', function() {
+        var c = new CommunityNode(nodes.slice(0, 2));
+        spyOn(g, "append").andCallThrough();
+        spyOn(boxRect, "attr").andCallThrough();
+        
+        c.shape(g, shaper.shapeFunc, colourMapper);
+        
+        expect(g.append).wasCalledWith("rect");
+        expect(boxRect.attr).wasCalledWith("width", box.width + 10);
+        expect(boxRect.attr).wasCalledWith("height", box.height + 10);
+        expect(boxRect.attr).wasCalledWith("x", box.x - 5);
+        expect(boxRect.attr).wasCalledWith("y", box.y - 5);
+        expect(boxRect.attr).wasCalledWith("rx", "8");
+        expect(boxRect.attr).wasCalledWith("ry", "8");
+        expect(boxRect.attr).wasCalledWith("fill", "none");
+        expect(boxRect.attr).wasCalledWith("stroke", "black");
       });
       
     });
