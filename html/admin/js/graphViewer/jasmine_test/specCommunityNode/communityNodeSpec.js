@@ -141,6 +141,10 @@
         expect(testee).toHaveFunction("dissolve", 0);
       });
       
+      it('should offer a function to get the dissolve info', function() {
+        expect(testee).toHaveFunction("getDissolveInfo", 0);
+      });
+      
       it('should offer a function to shape the community', function() {
         expect(testee).toHaveFunction("shape", 3);
       });
@@ -148,6 +152,12 @@
       it('should offer a function to expand the community', function() {
         expect(testee).toHaveFunction("expand", 0);
       });
+      
+      it('should offer a function to collapse the community', function() {
+        expect(testee).toHaveFunction("collapse", 0);
+      });
+      
+      
     });
     
     describe('node functionality', function() {
@@ -551,7 +561,7 @@
           };
         c.insertInboundEdge(e);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [e],
           outbound: [],
           both: []
@@ -569,7 +579,7 @@
         expect(e.target).toEqual(nodes[2]);
       
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
           both: []
@@ -589,7 +599,7 @@
           };
         c.insertInboundEdge(e);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [e],
           outbound: [],
           both: []
@@ -601,7 +611,7 @@
       
         expect(e.target).toEqual(nodes[2]);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
           both: []
@@ -621,7 +631,7 @@
           };
         c.insertInboundEdge(e);
         c.insertOutboundEdge(e);
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
           both: [e]
@@ -633,7 +643,7 @@
         expect(c._outboundCounter).toEqual(1);
         expect(c._inboundCounter).toEqual(0);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [e],
           both: []
@@ -653,7 +663,7 @@
           };
         c.insertOutboundEdge(e);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [e],
           both: []
@@ -667,7 +677,7 @@
       
         expect(e.source).toEqual(nodes[1]);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
           both: []
@@ -687,7 +697,7 @@
           };
         c.insertOutboundEdge(e);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [e],
           both: []
@@ -700,7 +710,7 @@
         expect(e.source).toEqual(nodes[1]);
       
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
           both: []
@@ -720,7 +730,7 @@
           };
         c.insertInboundEdge(e);
         c.insertOutboundEdge(e);
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [],
           outbound: [],
           both: [e]
@@ -732,7 +742,7 @@
         expect(c._outboundCounter).toEqual(0);
         expect(c._inboundCounter).toEqual(1);
       
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [e],
           outbound: [],
           both: []
@@ -777,7 +787,7 @@
         expect(c.removeOutboundEdgesFromNode(nodes[0])).toEqual(
           [e01, e02]
         );
-        expect(c.dissolve().edges).toEqual({
+        expect(c.getDissolveInfo().edges).toEqual({
           inbound: [e01],
           outbound: [e12],
           both: []
@@ -853,7 +863,7 @@
         c.insertOutboundEdge(e1);
         c.insertInboundEdge(e2);
         c.insertOutboundEdge(e3);
-        expect(c.dissolve()).toEqual({
+        expect(c.getDissolveInfo()).toEqual({
           nodes: nodes.slice(3, 13),
           edges: {
             both: [e1],

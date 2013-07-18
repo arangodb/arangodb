@@ -193,7 +193,7 @@ function CommunityNode(parent, initial) {
       return false;
     },
   
-    dissolve = function() {
+    getDissolveInfo = function() {
       return {
         nodes: nodeArray,
         edges: {
@@ -205,6 +205,11 @@ function CommunityNode(parent, initial) {
     },
     
     expand = function() {
+      // TODO: Just piped through for old Adapter Interface
+      dissolve();
+    },
+    
+    dissolve = function() {
       parent.dissolveCommunity(self);
     },
     
@@ -344,6 +349,8 @@ function CommunityNode(parent, initial) {
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
   
   this.dissolve = dissolve;
+  
+  this.getDissolveInfo = getDissolveInfo;
   
   this.expand = expand;
   
