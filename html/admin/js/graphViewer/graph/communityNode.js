@@ -177,7 +177,6 @@ function CommunityNode(initial) {
     },
     
     addShape = function(g, shapeFunc, colourMapper) {
-      var move = 9;
       g.attr("stroke", colourMapper.getForegroundCommunityColour());
       shapeFunc(g, 9);
       shapeFunc(g, 6);

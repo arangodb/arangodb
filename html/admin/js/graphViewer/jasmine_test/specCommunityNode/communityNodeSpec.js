@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, spyOn */
 /*global helper*/
 /*global CommunityNode*/
 
@@ -113,6 +113,10 @@
       
       it('should offer a function to dissolve the community', function() {
         expect(testee).toHaveFunction("dissolve", 0);
+      });
+      
+      it('should offer a function to shape the community', function() {
+        expect(testee).toHaveFunction("shape", 3);
       });
     });
     
@@ -242,6 +246,61 @@
     
     describe('shaping functionality', function() {
       
+      var tSpan1, tSpan2, text, g, shaper, colourMapper;
+      
+      beforeEach(function() {
+        var first = true;
+        
+        tSpan1 = {
+          attr: function() {
+            return this;
+          },
+          text: function() {
+            return this;
+          }
+        };
+        tSpan2 = {
+          attr: function() {
+            return this;
+          },
+          text: function() {
+            return this;
+          }
+        };
+        text = {
+          attr: function() {
+            return this;
+          },
+          text: function() {
+            return this;
+          },
+          append: function() {
+            if (first) {
+              first = false;
+              return tSpan1;
+            }
+            return tSpan2;
+            
+          }
+        };
+        g = {
+          attr: function() {
+            return this;
+          },
+          append: function() {
+            return text;
+          }
+        };
+        shaper = {
+          shapeFunc: function() {}
+        };
+        colourMapper = {
+          getForegroundCommunityColour: function() {
+            return "black";
+          }
+        };
+      });
+      
       it('should initially contain the required attributes for shaping', function() {
         var x = 42,
           y = 23,
@@ -268,6 +327,73 @@
         expect(c._isCommunity).toBeTruthy();
       });
        
+      it('should shape the collapsed community with given functions', function() {
+        var c = new CommunityNode(nodes.slice(0, 2));
+        spyOn(g, "attr").andCallThrough();
+        spyOn(g, "append").andCallThrough();
+        spyOn(shaper, "shapeFunc").andCallThrough();
+        spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        
+        c.shape(g, shaper.shapeFunc, colourMapper);
+        expect(colourMapper.getForegroundCommunityColour).wasCalled();
+        expect(g.attr).wasCalledWith("stroke", "black");
+        expect(shaper.shapeFunc).wasCalledWith(g, 9);
+        expect(shaper.shapeFunc).wasCalledWith(g, 6);
+        expect(shaper.shapeFunc).wasCalledWith(g, 3);
+        expect(shaper.shapeFunc).wasCalledWith(g);
+      });
+      
+      it('should add a label containing the size of a community', function() {
+        var c = new CommunityNode(nodes.slice(0, 2));
+        spyOn(g, "append").andCallThrough();
+        spyOn(text, "attr").andCallThrough();
+        spyOn(text, "text").andCallThrough();
+        spyOn(text, "append");
+        spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        c.shape(g, shaper.shapeFunc, colourMapper);
+        
+        expect(g.append).wasCalledWith("text");
+        expect(text.attr).wasCalledWith("text-anchor", "middle");
+        expect(text.attr).wasCalledWith("fill", "black");
+        expect(text.attr).wasCalledWith("stroke", "none");
+        expect(text.text).wasCalledWith(2);
+        expect(text.append).wasNotCalled();        
+      });
+      
+      it('should add a label if a reason is given', function() {
+        var c = new CommunityNode(nodes.slice(0, 2));
+        c._reason = {
+          key: "key",
+          value: "label"
+        };
+        
+        spyOn(g, "append").andCallThrough();
+        spyOn(text, "attr").andCallThrough();
+        spyOn(text, "append").andCallThrough();
+        spyOn(text, "text");
+        spyOn(tSpan1, "attr").andCallThrough();
+        spyOn(tSpan1, "text").andCallThrough();
+        spyOn(tSpan2, "attr").andCallThrough();
+        spyOn(tSpan2, "text").andCallThrough();
+        spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        c.shape(g, shaper.shapeFunc, colourMapper);
+        
+        expect(g.append).wasCalledWith("text");
+        expect(text.attr).wasCalledWith("text-anchor", "middle");
+        expect(text.attr).wasCalledWith("fill", "black");
+        expect(text.attr).wasCalledWith("stroke", "none");
+        expect(text.text).wasNotCalled();
+        expect(text.append).wasCalledWith("tspan");
+        expect(text.append.calls.length).toEqual(2);
+        expect(tSpan1.attr).wasCalledWith("x", "0");
+        expect(tSpan1.attr).wasCalledWith("dy", "-4");
+        expect(tSpan1.text).wasCalledWith("key:");
+        
+        expect(tSpan2.attr).wasCalledWith("x", "0");
+        expect(tSpan2.attr).wasCalledWith("dy", "16");
+        expect(tSpan2.text).wasCalledWith("label");        
+      });
+      
     });
     
     describe('edge functionality', function() {
@@ -631,10 +757,6 @@
       });
       
     });
-    
-    
-
-    
     
   });
 
