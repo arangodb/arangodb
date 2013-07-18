@@ -12,24 +12,24 @@ var queryView = Backbone.View.extend({
   },
 
   events: {
-    'click #submitQueryIcon'   : 'submitQuery',
-    'click #submitQueryButton' : 'submitQuery',
-    'click #commentText'       : 'commentText',
-    'click #undoText'          : 'undoText',
-    'click #redoText'          : 'redoText',
-    'click #smallOutput'       : 'smallOutput',
-    'click #bigOutput'         : 'bigOutput',
-    'click #clearOutput'       : 'clearOutput',
-    'click #addAQL'            : 'addAQL',
-    'click #editAQL'           : 'editAQL',
-    'click #save-new-query'    : 'saveAQL',
-    'click #save-edit-query'    : 'saveAQL',
-    'click #delete-edit-query'  : 'showDeleteField',
-    'click #confirmDeleteQuery' : 'deleteAQL',
-    'click #abortDeleteQuery'   : 'hideDeleteField',
-    "keydown #new-query-name"   : "listenKey",
+    'click #submitQueryIcon'         : 'submitQuery',
+    'click #submitQueryButton'       : 'submitQuery',
+    'click #commentText'             : 'commentText',
+    'click #undoText'                : 'undoText',
+    'click #redoText'                : 'redoText',
+    'click #smallOutput'             : 'smallOutput',
+    'click #bigOutput'               : 'bigOutput',
+    'click #clearOutput'             : 'clearOutput',
+    'click #addAQL'                  : 'addAQL',
+    'click #editAQL'                 : 'editAQL',
+    'click #save-new-query'          : 'saveAQL',
+    'click #save-edit-query'         : 'saveAQL',
+    'click #delete-edit-query'       : 'showDeleteField',
+    'click #confirmDeleteQuery'      : 'deleteAQL',
+    'click #abortDeleteQuery'        : 'hideDeleteField',
+    "keydown #new-query-name"        : "listenKey",
     'click #queryModalSelect option' : "updateEditSelect",
-    'click #querySelect option': 'importSelected'
+    'click #querySelect option'      : 'importSelected'
   },
   listenKey: function (e) {
     if (e.keyCode === 13) {
@@ -224,6 +224,7 @@ var queryView = Backbone.View.extend({
   updateEditSelect: function () {
     var value = this.getCustomQueryValueByName($('#queryModalSelect').val());
     $('#edit-aql-textarea').val(value);
+    $('#edit-aql-textarea').focus();
   },
   getCustomQueryValueByName: function (qName) {
     var returnVal;
@@ -248,6 +249,7 @@ var queryView = Backbone.View.extend({
     });
   },
   renderSelectboxes: function (modal) {
+    this.sortQueries();
     var selector = '';
     if (modal === true) {
       selector = '#queryModalSelect';
@@ -336,6 +338,10 @@ var queryView = Backbone.View.extend({
     }
     cursorRange.end.column = cursorRange.end.column + 2;
     editor.getSelection().setSelectionRange(cursorRange, false);
+  },
+  sortQueries: function() {
+    this.queries = _.sortBy(this.queries, 'name' );
+    this.customQueries = _.sortBy(this.customQueries, 'name' );
   },
   submitQuery: function() {
     var self = this;
