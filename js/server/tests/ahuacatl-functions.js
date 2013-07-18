@@ -1470,7 +1470,7 @@ function ahuacatlFunctionsTestSuite () {
       var expected, actual;
 
       // test with non-existing document
-      expected = [ ];
+      expected = [ null ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + cn + "/99999999999\")");
       assertEqual(expected, actual);
       

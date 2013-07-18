@@ -92,7 +92,8 @@ function ahuacatlCrossCollection () {
       var d2 = vertex2.save({ _key: "test2" });
 
       var actual = getQueryResults("FOR d IN [ DOCUMENT(" + vn1 + ", " + JSON.stringify(d2._id) + ") ] RETURN d");
-      assertEqual(0, actual.length);
+      assertEqual(1, actual.length);
+      assertEqual(null, actual[0]);
       
       actual = getQueryResults("FOR d IN DOCUMENT(" + vn1 + ", [ " + JSON.stringify(d2._id) + " ]) RETURN d");
       assertEqual(0, actual.length);

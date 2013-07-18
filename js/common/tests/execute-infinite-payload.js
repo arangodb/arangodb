@@ -47,7 +47,7 @@ function main(args) {
     console = require("console"),
     Helper = require("test-helper").Helper,
     query,
-    QUERY = require("internal").AQL_QUERY,
+    internal = require("internal"),
     i;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +93,7 @@ function main(args) {
 
   start_time = new Date();
     while (true) {
-      QUERY(query).getRows();
+      internal.AQL_QUERY(query);
     }
   end_time = new Date();
   console.log((end_time - start_time) + " ms");

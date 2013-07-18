@@ -1,6 +1,19 @@
 v1.4
 ----
 
+* changed return value for AQL `DOCUMENT` function in case document is not found
+  
+  Previously, when the AQL `DOCUMENT` function was called with the id of a document and
+  the document could not be found, it returned `undefined`. This value is not part of the
+  JSON type system and this has caused some problems.
+  Starting with ArangoDB 1.4, the `DOCUMENT` function will return `null` if the document
+  looked for cannot be found.
+
+  In case the function is called with a list of documents, it will continue to return all
+  found documents, and will not return `null` for non-found documents. This has not changed.
+
+  
+
 * added single line comments for AQL
 
   Single line comments can be started with a double forward slash: `//`.
