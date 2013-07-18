@@ -86,6 +86,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
   assert(name);
 
   collection = (TRI_aql_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false);
+
   if (collection == NULL) {
     return NULL;
   }
@@ -101,24 +102,25 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 /// @brief set up the collection names vector and order it
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SetupCollections (TRI_aql_context_t* const context) {
-  size_t i;
-  size_t n;
+static bool SetupCollections (TRI_aql_context_t* const context) {
+  size_t i, n;
   bool result = true;
 
   // each collection used is contained once in the assoc. array
   // so we do not have to care about duplicate names here
   n = context->_collectionNames._nrAlloc;
+
   for (i = 0; i < n; ++i) {
     char* name = context->_collectionNames._table[i];
     TRI_aql_collection_t* collection;
 
-    if (! name) {
+    if (name == NULL) {
       continue;
     }
 
     collection = CreateCollectionContainer(name);
-    if (! collection) {
+
+    if (collection == NULL) {
       result = false;
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
@@ -137,35 +139,6 @@ bool SetupCollections (TRI_aql_context_t* const context) {
   // now collections contains the sorted list of collections
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief open all collections used
-////////////////////////////////////////////////////////////////////////////////
-
-bool OpenCollections (TRI_aql_context_t* const context) {
-  size_t i;
-  size_t n;
-
-  n = context->_collections._length;
-  for (i = 0; i < n; ++i) {
-    TRI_aql_collection_t* collection = context->_collections._buffer[i];
-
-    assert(collection);
-    assert(collection->_name);
-    assert(! collection->_collection);
-    assert(! collection->_barrier);
-
-    LOG_TRACE("locking collection '%s'", collection->_name);
-    collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, collection->_name);
-    if (collection->_collection == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collection->_name);
-
-      return false;
-    }
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
