@@ -127,7 +127,9 @@ var queryView = Backbone.View.extend({
     //render options
     $('#new-query-name').val('');
     $('#new-aql-query').modal('show');
-    $('#new-query-name').focus();
+    setTimeout(function (){
+      $('#new-query-name').focus();
+    },500);
   },
   editAQL: function () {
     if (this.customQueries.length === 0) {
@@ -230,7 +232,7 @@ var queryView = Backbone.View.extend({
         returnVal = v.value;
       }
     });
-    return returnVal
+    return returnVal;
   },
   importSelected: function(e) {
     var editor = ace.edit("aqlEditor");
@@ -246,6 +248,7 @@ var queryView = Backbone.View.extend({
     });
   },
   renderSelectboxes: function (modal) {
+    var selector = '';
     if (modal === true) {
       selector = '#queryModalSelect';
       $(selector).empty();
