@@ -133,12 +133,13 @@ static const char* NormalizeName (const TRI_aql_function_t* const function) {
   TRI_ASSERT_MAINTAINER(function != NULL);
   TRI_ASSERT_MAINTAINER(function->_externalName != NULL);
 
-  pos = strchr(function->_externalName, ':');
+  pos = strstr(function->_externalName, "::");
+
   if (pos == NULL) {
     return function->_externalName;
   }
 
-  return (pos + 1);
+  return (pos + 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

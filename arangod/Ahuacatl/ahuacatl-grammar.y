@@ -103,6 +103,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 
 %token T_QUESTION "?"
 %token T_COLON ":"
+%token T_SCOPE "::"
 
 %token T_COMMA ","
 %token T_OPEN "("
@@ -117,8 +118,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 
 /* define operator precedence */
 %left T_COMMA        
-%right T_ASSIGN
 %right T_QUESTION T_COLON
+%right T_ASSIGN
 %left T_OR 
 %left T_AND
 %left T_EQ T_NE 
@@ -131,6 +132,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
+%left T_SCOPE
 
 /* define token return types */
 %type <strval> T_STRING
@@ -236,8 +238,21 @@ filter_statement:
   ;
 
 let_statement:
-    T_LET variable_name T_ASSIGN expression {
-      TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, $2, $4);
+    T_LET let_list {
+    }
+  ;
+
+let_list: 
+    let_element {
+    }
+  | let_list T_COMMA let_element {
+    }
+  ;
+
+let_element:
+    variable_name T_ASSIGN expression {
+      TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, $1, $3);
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -468,12 +483,12 @@ function_name:
         ABORT_OOM
       }
     }
-  | function_name T_COLON T_STRING {
+  | function_name T_SCOPE T_STRING {
       if ($1 == NULL || $3 == NULL) {
         ABORT_OOM
       }
 
-      $$ = TRI_RegisterString3Aql(context, $1, ":", $3);
+      $$ = TRI_RegisterString3Aql(context, $1, "::", $3);
 
       if ($$ == NULL) {
         ABORT_OOM
@@ -651,6 +666,7 @@ operator_binary:
 operator_ternary:
     expression T_QUESTION expression T_COLON expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorTernaryAql(context, $1, $3, $5);
+
       if (node == NULL) {
         ABORT_OOM
       }
