@@ -33,7 +33,7 @@ var queryView = Backbone.View.extend({
   },
   listenKey: function (e) {
     if (e.keyCode === 13) {
-      this.saveAQL();
+      this.saveAQL(e);
     }
   },
 
@@ -179,9 +179,11 @@ var queryView = Backbone.View.extend({
     var queryName = $('#new-query-name').val();
     var content = editor.getValue();
 
-    if (e.target.id === 'save-edit-query') {
-      content = $('#edit-aql-textarea').val();
-      queryName = $('#queryModalSelect').val();
+    if (e) {
+      if (e.target.id === 'save-edit-query') {
+        content = $('#edit-aql-textarea').val();
+        queryName = $('#queryModalSelect').val();
+      }
     }
 
     //check for already existing entry
