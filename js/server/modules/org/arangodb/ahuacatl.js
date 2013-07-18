@@ -84,13 +84,13 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 function NORMALIZE_FNAME (functionName) {
   "use strict";
 
-  var p = functionName.indexOf(':');
+  var p = functionName.indexOf('::');
 
   if (p === -1) {
     return functionName;
   }
 
-  return functionName.substr(p + 1);
+  return functionName.substr(p + 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3673,15 +3673,14 @@ function reloadUserFunctions () {
   var foundError = false;
 
   c.toArray().forEach(function (f) {
-    var code;
-
-    code = "(function() { var callback = " + f.code + "; return callback; })();";
+    var code = "(function() { var callback = " + f.code + "; return callback; })();";
+    var key = f._key.replace(/:{1,}/g, '::');
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, "(user function " + f._key + ")"); 
+      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")"); 
 
-      UserFunctions[f._key.toUpperCase()] = {
-        name: f._key,
+      UserFunctions[key.toUpperCase()] = {
+        name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
       }; 

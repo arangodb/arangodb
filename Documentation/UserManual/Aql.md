@@ -879,12 +879,12 @@ By default, any function used in an AQL query will be sought in the built-in
 function namespace `_aql`. This is the default namespace that contains all AQL
 functions that are shipped with ArangoDB. 
 To refer to a user-defined AQL function, the function name must be fully qualified
-to also include the user-defined namespace. The `:` symbol is used as the namespace
+to also include the user-defined namespace. The `::` symbol is used as the namespace
 separator:
 
-    MYGROUP:MYFUNC()
+    MYGROUP::MYFUNC()
 
-    MYFUNCTIONS.MATH.RANDOM()
+    MYFUNCTIONS::MATH::RANDOM()
     
 As all AQL function names, user function names are also case-insensitive.
 

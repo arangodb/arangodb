@@ -76,8 +76,8 @@ var getFiltered = function (group) {
   if (group !== null && group !== undefined && group.length > 0) {
     var prefix = group.toUpperCase();
 
-    if (group.substr(group.length - 1, 1) !== ':') {
-      prefix += ':';
+    if (group.length > 1 && group.substr(group.length - 2, 2) !== '::') {
+      prefix += '::';
     }
    
     getStorage().toArray().forEach(function (f) {
@@ -99,7 +99,7 @@ var getFiltered = function (group) {
 
 var validateName = function (name) {
   if (typeof name !== 'string' || 
-      ! name.match(/^[a-zA-Z0-9_]+(:[a-zA-Z0-9_]+)+$/) ||
+      ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
       name.substr(0, 1) === "_") {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code;
@@ -173,7 +173,7 @@ var stringifyFunction = function (code, name) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("org/arangodb/aql/functions").unregister("myfunctions:temperature:celsiustofahrenheit");
+/// arangosh> require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -216,7 +216,7 @@ var unregisterFunction = function (name) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions:temperature");
+/// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
 ///
 /// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
 /// @endcode
@@ -264,7 +264,7 @@ var unregisterFunctionsGroup = function (group) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> require("org/arangodb/aql/functions").register("myfunctions:temperature:celsiustofahrenheit", 
+/// arangosh> require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
 ///                   function (celsius) {
 ///                     return celsius * 1.8 + 32; 
 ///                   });
@@ -338,10 +338,10 @@ var registerFunction = function (name, code, isDeterministic) {
 /// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions");
 /// @endcode
 ///
-/// To list all available user functions in the `myfunctions:temperature` namespace:
+/// To list all available user functions in the `myfunctions::temperature` namespace:
 ///
 /// @code
-/// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions:temperature");
+/// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
