@@ -27,9 +27,9 @@ var queryView = Backbone.View.extend({
     'click #delete-edit-query'       : 'showDeleteField',
     'click #confirmDeleteQuery'      : 'deleteAQL',
     'click #abortDeleteQuery'        : 'hideDeleteField',
-    "keydown #new-query-name"        : "listenKey",
-    'click #queryModalSelect option' : "updateEditSelect",
-    'click #querySelect option'      : 'importSelected'
+    'keydown #new-query-name'        : 'listenKey',
+    'change #queryModalSelect'       : 'updateEditSelect',
+    'change #querySelect'            : 'importSelected'
   },
   listenKey: function (e) {
     if (e.keyCode === 13) {
@@ -238,12 +238,12 @@ var queryView = Backbone.View.extend({
   importSelected: function(e) {
     var editor = ace.edit("aqlEditor");
     $.each(this.queries, function(k,v) {
-      if (e.target.id === v.name) {
+      if ($('#'+e.currentTarget.id).val() === v.name) {
         editor.setValue(v.value);
       }
     });
     $.each(this.customQueries, function(k,v) {
-      if (e.target.id === v.name) {
+      if ($('#'+e.currentTarget.id).val() === v.name) {
         editor.setValue(v.value);
       }
     });
