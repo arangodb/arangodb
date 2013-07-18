@@ -644,6 +644,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 
   // list functions
   REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+", NULL);
+  REGISTER_FUNCTION("INTERSECTION", "INTERSECTION", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "las", NULL);
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l", NULL);
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l", NULL);

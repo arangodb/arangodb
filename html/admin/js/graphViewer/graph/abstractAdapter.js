@@ -54,7 +54,6 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     reducer,
     joiner,
     childLimit,
-    exports = {},
 
     changeTo = function (config) {
       if (config.prioList !== undefined) {
@@ -410,7 +409,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         nodesToRemove = _.map(community, function(id) {
           return findNode(id);
         }),
-        commNode = new CommunityNode(nodesToRemove),
+        commNode = new CommunityNode(self, nodesToRemove),
         commId = commNode._id;
       if (reason) {
         commNode._reason = reason;
@@ -503,8 +502,8 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     },
     */
     
-    expandCommunity = function (commNode) {
-      var dissolveInfo = commNode.dissolve(),
+    dissolveCommunity = function (commNode) {
+      var dissolveInfo = commNode.getDissolveInfo(),
         nodesToAdd = dissolveInfo.nodes,
         internalEdges = dissolveInfo.edges.both,
         inboundEdges = dissolveInfo.edges.inbound,
@@ -540,6 +539,10 @@ function AbstractAdapter(nodes, edges, descendant, config) {
         joiner.call("insertEdge", edge.source._id, edge.target._id);
       });
       delete cachedCommunities[commNode._id];      
+    },
+    
+    expandCommunity = function(commNode) {
+      commNode.expand();
     },
     
     checkSizeOfInserted = function (inserted) {
@@ -586,7 +589,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     },
     
     collapseExploreCommunity = function(commNode) {
-      var disInfo = commNode.dissolve();
+      var disInfo = commNode.getDissolveInfo();
       removeNode(commNode);
       _.each(disInfo.nodes, function (n) {
         delete joinedInCommunities[n._id];
@@ -600,7 +603,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     
     expandNode = function(n, startCallback) {
       if (n._isCommunity) {
-        exports.expandCommunity(n, startCallback);
+        self.expandCommunity(n, startCallback);
       } else {
         n._expanded = true;
         descendant.loadNode(n._id, startCallback);
@@ -651,31 +654,31 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   initialX.getStart = function() {return 0;};
   initialY.getStart = function() {return 0;};
   
-  exports.cleanUp = cleanUp;
+  this.cleanUp = cleanUp;
   
-  exports.setWidth = setWidth;
-  exports.setHeight = setHeight;
-  exports.insertNode = insertNode;
-  exports.insertInitialNode = insertInitialNode;
-  exports.insertEdge = insertEdge;
+  this.setWidth = setWidth;
+  this.setHeight = setHeight;
+  this.insertNode = insertNode;
+  this.insertInitialNode = insertInitialNode;
+  this.insertEdge = insertEdge;
 
-  exports.removeNode = removeNode;
-  exports.removeEdge = removeEdge;
-  exports.removeEdgesForNode = removeEdgesForNode;  
+  this.removeNode = removeNode;
+  this.removeEdge = removeEdge;
+  this.removeEdgesForNode = removeEdgesForNode;  
   
-  exports.expandCommunity = expandCommunity;
+  this.expandCommunity = expandCommunity;
   
-  exports.setNodeLimit = setNodeLimit;
-  exports.setChildLimit = setChildLimit;
+  this.setNodeLimit = setNodeLimit;
+  this.setChildLimit = setChildLimit;
   
-  exports.checkSizeOfInserted = checkSizeOfInserted;
-  exports.checkNodeLimit = checkNodeLimit;
+  this.checkSizeOfInserted = checkSizeOfInserted;
+  this.checkNodeLimit = checkNodeLimit;
   
-  exports.explore = explore;
+  this.explore = explore;
   
-  exports.changeTo = changeTo;
+  this.changeTo = changeTo;
   
-  exports.getPrioList = reducer.getPrioList;
+  this.getPrioList = reducer.getPrioList;
   
-  return exports;
+  this.dissolveCommunity = dissolveCommunity;
 }
