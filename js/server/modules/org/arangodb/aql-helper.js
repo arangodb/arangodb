@@ -120,10 +120,12 @@ function getRawQueryResults (query, bindVars) {
   }
 
   var rows = [ ];
+  var func = function (row) {
+    rows.push(row);
+  };
+
   while (queryResult.hasNext()) {
-    queryResult.toArray().forEach(function(row) {
-      rows.push(row);
-    });
+    queryResult.toArray().forEach(func);
   }
   return rows;
 }
