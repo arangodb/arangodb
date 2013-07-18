@@ -3456,9 +3456,20 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, context);
 
   int res = trx.begin();
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot explain query");
+    // check if there is some error data registered in the transaction
+    const string errorData = trx.getErrorData();
+
+    if (errorData.empty()) {
+      // no error data. return a regular error message
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot explain query");
+    }
+    else {
+      // there is specific error data. return a more tailored error message
+      const string errorMsg = "cannot explain query: " + string(TRI_errno_string(res)) + ": '" + errorData + "'";
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, errorMsg)));
+    }
   }
 
   if ((performOptimisations && ! TRI_OptimiseQueryContextAql(context)) ||
