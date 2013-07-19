@@ -101,30 +101,15 @@ window.arangoDocuments = Backbone.Collection.extend({
         });
       },
 
-
-
-/*
-   POST /_api/cursor
-
-   {
-   "query": "FOR u in mycollection FILTER @name1, @name2 return u",
-   "count": false,
-   "bindVars": {
-   "name1": xy,
-   "name2": xy
-   }
-   }
-*/
       getFilteredDocuments: function (colid, currpage, filter) {
         var self = this;
         this.collectionID = colid;
         this.currentPage = currpage;
         var filterstring;
-        console.log(filter);
         if(filter.length === 0){
            filterstring ="";
         } else {
-          filterstring = ' FILTER' + filter.toString();
+          filterstring = ' FILTER' + filter.join('');
         }
         var query =
             '{"query":"FOR u in ' + this.collectionID + filterstring + ' RETURN u"}';
@@ -141,14 +126,14 @@ window.arangoDocuments = Backbone.Collection.extend({
             console.log(data.result.length);
             self.documentsCount = data.result.length;
             self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
-        if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
-          this.currentPage = 1;
-        }
-        if (this.totalPages === 0) {
-          this.totalPages = 1;
-        }
+            if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
+              this.currentPage = 1;
+            }
+            if (this.totalPages === 0) {
+              this.totalPages = 1;
+            }
 
-        this.offset = (this.currentPage - 1) * this.documentsPerPage;
+            this.offset = (this.currentPage - 1) * this.documentsPerPage;
             if (self.documentsCount !== 0) {
               $.each(data.result, function(k, v) {
                 window.arangoDocumentsStore.add({
@@ -165,10 +150,12 @@ window.arangoDocuments = Backbone.Collection.extend({
             else {
               window.documentsView.initTable();
               window.documentsView.drawTable();
+              window.documentsView.renderPagination(self.totalPages);
             }
           },
           error: function(data) {
             "use strict";
+            console.error(data);
           }
         });
       },

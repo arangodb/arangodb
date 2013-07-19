@@ -13,19 +13,14 @@
 </ul>
 
 <div id="filterHeader" style="display:none">
-    <div id="queryline">
-       <label for="attribute_name">attribute name:</label><input id="attribute_name" type="text">
-       <select name="operator" id="operator">
+    <div class="queryline">
+       <input id="attribute_name" type="text" placeholder="Attribute name"><select name="operator" id="operator">
            <option value=" == ">==</option>
            <option value=" != ">!=</option>
            <option value=" > ">&lt;</option>
            <option value=" < ">&gt;</option>
-       </select>
-        <label for="attribute_value">attribute value:</label><input id="attribute_value" type="text">
+       </select><input id="attribute_value" type="text" placeholder="Attribute value">
         <a id="addFilterItem"><i class="icon icon-white icon-plus"></i></a>
-        <a id="femoveFilterItem"><i class="icon icon-white icon-minus"></i></a>
-    </div>
-    <div id="sendFilter">
         <button id="filterSend">Filter</button>
     </div>
 </div>
