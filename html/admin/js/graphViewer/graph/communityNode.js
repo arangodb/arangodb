@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _, document, ForceLayouter*/
+/*global _, document, ForceLayouter, DomObserverFactory*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -58,9 +58,27 @@ function CommunityNode(parent, initial) {
   // Private functions              //
   //////////////////////////////////// 
   
+    getDistance = function() {
+      return 160;
+    },
+  
+    getCharge = function() {
+      return -5000;
+    },
+  
+
+    updateBoundingBox = function() {
+      var bbox = document.getElementById(self._id).getBBox();
+      boundingBox.attr("width", bbox.width + 10)
+       .attr("height", bbox.height + 10)
+       .attr("x", bbox.x - 5)
+       .attr("y", bbox.y - 5);
+    },
+  
     getObserver = function() {
       if (!observer) {
-        observer = new WebKitMutationObserver(function(e){
+        var factory = new DomObserverFactory();
+        observer = factory.createObserver(function(e){
           if (_.any(e, function(obj) {
             return obj.attributeName === "transform";
           })) {
@@ -225,8 +243,6 @@ function CommunityNode(parent, initial) {
     
     expand = function() {
       this._expanded = true;
-      // TODO: Just piped through for old Adapter Interface
-      //dissolve();
     },
     
     dissolve = function() {
@@ -235,7 +251,6 @@ function CommunityNode(parent, initial) {
     
     collapse = function() {
       this._expanded = false;
-      // TODO
     },
     
     addDistortion = function() {
@@ -315,14 +330,6 @@ function CommunityNode(parent, initial) {
         attributes:true
       });
     },
-
-    updateBoundingBox = function() {
-      var bbox = document.getElementById(self._id).getBBox();
-      boundingBox.attr("width", bbox.width + 10)
-       .attr("height", bbox.height + 10)
-       .attr("x", bbox.x - 5)
-       .attr("y", bbox.y - 5);
-    },
     
     shapeAll = function(g, shapeFunc, colourMapper) {
       if (self._expanded) {
@@ -342,7 +349,7 @@ function CommunityNode(parent, initial) {
   layouter = new ForceLayouter({
     distance: 100,
     gravity: 0.1,
-    charge: 500,
+    charge: -500,
     width: 1,
     height: 1,
     nodes: nodeArray,
@@ -379,6 +386,9 @@ function CommunityNode(parent, initial) {
   this.hasNode = hasNode;
   this.getNodes = getNodes;
   this.getNode = getNode;
+  this.getDistance = getDistance;
+  this.getCharge = getCharge;
+  
   
   this.insertNode = insertNode;
   this.insertInboundEdge = insertInboundEdge;

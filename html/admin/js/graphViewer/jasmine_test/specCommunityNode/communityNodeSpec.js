@@ -72,7 +72,7 @@
         expect(window.ForceLayouter).wasCalledWith({
           distance: 100,
           gravity: 0.1,
-          charge: 500,
+          charge: -500,
           width: 1,
           height: 1,
           nodes: [],
@@ -171,6 +171,14 @@
       
       it('should offer a function to dissolve the community', function() {
         expect(testee).toHaveFunction("dissolve", 0);
+      });
+      
+      it('should offer a function to return the charge value for layouting', function() {
+        expect(testee).toHaveFunction("getCharge", 0);
+      });
+      
+      it('should offer a function to return the link distance value for layouting', function() {
+        expect(testee).toHaveFunction("getDistance", 0);
       });
     });
     
@@ -609,9 +617,13 @@
             observe: function() {},
             disconnect: function() {}
           };
-          spyOn(window, "WebKitMutationObserver").andCallFake(function(cb) {
-            observerCB = cb;
-            return observer;
+          spyOn(window, "DomObserverFactory").andCallFake(function() {
+            return {
+              createObserver: function(cb) {
+                observerCB = cb;
+                return observer;
+              }
+            };
           });
           
           c.expand();
