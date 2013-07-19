@@ -58,12 +58,18 @@ function CommunityNode(parent, initial) {
   // Private functions              //
   //////////////////////////////////// 
   
-    getDistance = function() {
-      return 160;
+    getDistance = function(def) {
+      if (self._expanded) {
+        return 2 * def;
+      }
+      return def;
     },
   
-    getCharge = function() {
-      return -5000;
+    getCharge = function(def) {
+      if (self._expanded) {
+        return 8 * def;
+      }
+      return def;
     },
   
 
@@ -406,4 +412,37 @@ function CommunityNode(parent, initial) {
   this.expand = expand;
   
   this.shape = shapeAll;
+  
+  // TMP
+  this.getSourcePosition = function(e) {    
+    if (self._expanded) {
+      var p = self.position;
+      var diff = e._source;
+      var x = p.x + diff.x;
+      var y = p.y + diff.y;
+      var z = p.z + diff.z;
+      return {
+        x: x,
+        y: y,
+        z: z
+      }
+    }
+    return self.position;
+  };
+  
+  this.getTargetPosition = function(e) {
+    if (self._expanded) {
+      var p = self.position;
+      var diff = e._target;
+      var x = p.x + diff.x;
+      var y = p.y + diff.y;
+      var z = p.z + diff.z;
+      return {
+        x: x,
+        y: y,
+        z: z
+      }
+    }
+    return self.position;
+  };
 }
