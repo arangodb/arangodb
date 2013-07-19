@@ -1,8 +1,8 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global beforeEach, afterEach */
+/*global beforeEach, afterEach, jasmine*/
 /*global describe, it, expect, spyOn */
 /*global helper*/
-/*global document*/
+/*global document, window*/
 /*global CommunityNode*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,11 +136,7 @@
       it('should offer a function to remove and return all outgoing edges of a node', function() {
         expect(testee).toHaveFunction("removeOutboundEdgesFromNode", 1);
       });
-      
-      it('should offer a function to dissolve the community', function() {
-        expect(testee).toHaveFunction("dissolve", 0);
-      });
-      
+            
       it('should offer a function to get the dissolve info', function() {
         expect(testee).toHaveFunction("getDissolveInfo", 0);
       });
@@ -157,7 +153,9 @@
         expect(testee).toHaveFunction("collapse", 0);
       });
       
-      
+      it('should offer a function to dissolve the community', function() {
+        expect(testee).toHaveFunction("dissolve", 0);
+      });
     });
     
     describe('node functionality', function() {
@@ -295,7 +293,8 @@
     describe('shaping functionality', function() {
       
       var tSpan1, tSpan2, text, g, shaper, colourMapper, box, boxRect,
-        parent;
+        parent, c;
+        
       beforeEach(function() {
         parent = {
           dissolveCommunity: function() {}
@@ -373,6 +372,8 @@
             }
           };
         });
+        
+        c = new CommunityNode(parent, nodes.slice(0, 5));
       });
       
       it('should initially contain the required attributes for shaping', function() {
@@ -391,24 +392,23 @@
               z: 1
             }
           },
-          initNodes = [n].concat(nodes.slice(3, 13)),
-          c = new CommunityNode(parent, initNodes);
-        expect(c.x).toBeDefined();
-        expect(c.x).toEqual(x);
-        expect(c.y).toBeDefined();
-        expect(c.y).toEqual(y);
-        expect(c._size).toEqual(11);
-        expect(c._isCommunity).toBeTruthy();
+          otherC = new CommunityNode(parent, [n].concat(nodes.slice(5,21)));
+        expect(otherC.x).toBeDefined();
+        expect(otherC.x).toEqual(x);
+        expect(otherC.y).toBeDefined();
+        expect(otherC.y).toEqual(y);
+        expect(otherC._size).toEqual(17);
+        expect(otherC._isCommunity).toBeTruthy();
       });
        
       it('should shape the collapsed community with given functions', function() {
-        var c = new CommunityNode(parent, nodes.slice(0, 2));
         spyOn(g, "attr").andCallThrough();
         spyOn(g, "append").andCallThrough();
         spyOn(shaper, "shapeFunc").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         
         c.shape(g, shaper.shapeFunc, colourMapper);
+        
         expect(colourMapper.getForegroundCommunityColour).wasCalled();
         expect(g.attr).wasCalledWith("stroke", "black");
         expect(shaper.shapeFunc).wasCalledWith(g, 9);
@@ -418,7 +418,6 @@
       });
       
       it('should add a label containing the size of a community', function() {
-        var c = new CommunityNode(parent, nodes.slice(0, 2));
         spyOn(g, "append").andCallThrough();
         spyOn(text, "attr").andCallThrough();
         spyOn(text, "text").andCallThrough();
@@ -430,12 +429,11 @@
         expect(text.attr).wasCalledWith("text-anchor", "middle");
         expect(text.attr).wasCalledWith("fill", "black");
         expect(text.attr).wasCalledWith("stroke", "none");
-        expect(text.text).wasCalledWith(2);
+        expect(text.text).wasCalledWith(5);
         expect(text.append).wasNotCalled();        
       });
       
       it('should add a label if a reason is given', function() {
-        var c = new CommunityNode(parent, nodes.slice(0, 2));
         c._reason = {
           key: "key",
           value: "label"
@@ -467,25 +465,170 @@
         expect(tSpan2.attr).wasCalledWith("dy", "16");
         expect(tSpan2.text).wasCalledWith("label");        
       });
-      /*
-      it('should print the bounding box correctly', function() {
-        var c = new CommunityNode(nodes.slice(0, 2));
-        spyOn(g, "append").andCallThrough();
-        spyOn(boxRect, "attr").andCallThrough();
+      
+      describe('if the community is expanded', function() {
         
-        c.shape(g, shaper.shapeFunc, colourMapper);
+        var nodeSelector, interior, iEnter, iExit, iAll, iG,
+        observer, observerCB;
         
-        expect(g.append).wasCalledWith("rect");
-        expect(boxRect.attr).wasCalledWith("width", box.width + 10);
-        expect(boxRect.attr).wasCalledWith("height", box.height + 10);
-        expect(boxRect.attr).wasCalledWith("x", box.x - 5);
-        expect(boxRect.attr).wasCalledWith("y", box.y - 5);
-        expect(boxRect.attr).wasCalledWith("rx", "8");
-        expect(boxRect.attr).wasCalledWith("ry", "8");
-        expect(boxRect.attr).wasCalledWith("fill", "none");
-        expect(boxRect.attr).wasCalledWith("stroke", "black");
+        beforeEach(function() {
+          g.selectAll = function(selector) {
+            return nodeSelector;
+          };
+          nodeSelector = {
+            data: function() {
+              return interior;
+            }
+          };
+          interior = {
+            enter: function() {
+              return iEnter;
+            },
+            exit: function() {
+              return iExit;
+            },
+            selectAll: function() {
+              return iAll;
+            },
+            attr: function() {
+              return this;
+            }
+          };
+          iEnter = {
+            append: function() {
+              return iG;
+            }
+          };
+          iG = {
+            attr: function() {
+              return this;
+            }
+          };
+          iExit = {
+            remove: function() {}
+          };
+          iAll = {
+            remove: function() {}
+          };
+          observer = {
+            observe: function() {},
+            disconnect: function() {}
+          };
+          spyOn(window, "WebKitMutationObserver").andCallFake(function(cb) {
+            observerCB = cb;
+            return observer;
+          });
+          
+          c.expand();
+        });
+        
+        
+        it('should print the bounding box correctly', function() {
+          spyOn(g, "append").andCallThrough();
+          spyOn(boxRect, "attr").andCallThrough();
+        
+          c.shape(g, shaper.shapeFunc, colourMapper);
+        
+          expect(g.append).wasCalledWith("rect");
+          expect(boxRect.attr).wasCalledWith("rx", "8");
+          expect(boxRect.attr).wasCalledWith("ry", "8");
+          expect(boxRect.attr).wasCalledWith("fill", "none");
+          expect(boxRect.attr).wasCalledWith("stroke", "black");
+          
+        });
+        
+        it('should update the box as soon as the dom is ready', function() {
+          spyOn(boxRect, "attr").andCallThrough();
+          spyOn(observer, "observe").andCallThrough();
+          spyOn(observer, "disconnect").andCallThrough();
+          
+          c.shape(g, shaper.shapeFunc, colourMapper);
+          
+          expect(document.getElementById).wasCalledWith(c._id);
+          expect(observer.observe).wasCalledWith(
+            jasmine.any(Object),
+            {
+              subtree:true,
+              attributes:true
+            }
+          );
+          
+          
+          observerCB([{attributeName: "transform"}]);
+          
+          expect(boxRect.attr).wasCalledWith("width", box.width + 10);
+          expect(boxRect.attr).wasCalledWith("height", box.height + 10);
+          expect(boxRect.attr).wasCalledWith("x", box.x - 5);
+          expect(boxRect.attr).wasCalledWith("y", box.y - 5);
+          expect(observer.disconnect).wasCalled();
+        });
+        
+        it('should shape the expanded community with given functions', function() {
+
+          spyOn(g, "selectAll").andCallThrough();
+          spyOn(nodeSelector, "data").andCallFake(function(a, func) {
+            expect(func(nodes[0])).toEqual(nodes[0]._id);
+            expect(func(nodes[6])).toEqual(nodes[6]._id);
+            return interior;
+          });
+          spyOn(interior, "enter").andCallThrough();
+          spyOn(interior, "exit").andCallThrough();
+          spyOn(interior, "selectAll").andCallThrough();
+          spyOn(iEnter, "append").andCallThrough();
+          spyOn(iG, "attr").andCallThrough();
+          spyOn(iExit, "remove").andCallThrough();
+          spyOn(iAll, "remove").andCallThrough();
+          
+          
+          c.shape(g, shaper.shapeFunc, colourMapper);
+          
+          expect(g.selectAll).wasCalledWith(".node");
+          expect(nodeSelector.data).wasCalledWith(c.getNodes(), jasmine.any(Function));
+          expect(interior.enter).wasCalled();
+          expect(iEnter.append).wasCalledWith("g");
+          expect(iG.attr).wasCalledWith("class", "node");
+          expect(iG.attr).wasCalledWith("id", jasmine.any(Function));
+          expect(interior.exit).wasCalled();
+          expect(iExit.remove).wasCalled();
+          expect(interior.selectAll).wasCalledWith("* > *");
+          expect(iAll.remove).wasCalled();
+
+          /*
+          var observer = new WebKitMutationObserver(function(e){
+            if (_.any(e, function(obj) {
+              return obj.attributeName === "transform";
+            })) {
+              updateBoundingBox();
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.getElementById(self._id), {
+            subtree:true,
+            attributes:true
+          });
+          addShape(interior, shapeFunc, colourMapper);
+          */
+        });
+        
+        it('should apply distortion on the interior nodes', function() {
+          // Fake Layouting to test correctness
+          /*
+          nodes[0].x = -20;
+          nodes[0].y = 20;
+          nodes[1].x = -10;
+          nodes[1].y = 10;
+          nodes[2].x = 0;
+          nodes[2].y = 0;
+          nodes[3].x = 10;
+          nodes[3].y = -10;
+          nodes[4].x = 20;
+          nodes[4].y = -20;
+          */
+        });
+        
       });
-      */
+      
+      
     });
     
     describe('edge functionality', function() {
@@ -807,9 +950,27 @@
         };
       });
       
+      it('should be possible to dissolve the community', function() {
+        var c = new CommunityNode(parent);
+        spyOn(parent, "dissolveCommunity");
+        c.dissolve();
+        expect(parent.dissolveCommunity).wasCalledWith(c);
+      });
+      
       it('should be possible to expand the community', function() {
         var c = new CommunityNode(parent);
+        expect(c._expanded).toBeFalsy();
         c.expand();
+        expect(c._expanded).toBeTruthy();
+      });
+      
+      it('should be possible to collapse the community', function() {
+        var c = new CommunityNode(parent);
+        expect(c._expanded).toBeFalsy();
+        c.expand();
+        expect(c._expanded).toBeTruthy();
+        c.collapse();
+        expect(c._expanded).toBeFalsy();
       });
       
     });
