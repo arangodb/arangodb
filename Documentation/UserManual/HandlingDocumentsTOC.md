@@ -16,6 +16,8 @@ TOC {#HandlingDocumentsTOC}
        - @ref HandlingDocumentsRemoveByExample "collection.removeByExample"
        - @ref HandlingDocumentsReplaceByExample "collection.replaceByExample"
        - @ref HandlingDocumentsUpdateByExample "collection.updateByExample"
+       - @ref HandlingDocumentsFirst "collection.first"
+       - @ref HandlingDocumentsLast "collection.last"
      - @ref HandlingDocumentsDatabaseMethods
        - @ref HandlingDocumentsDbRead "db._document"
        - @ref HandlingDocumentsDbExists "db._exists"

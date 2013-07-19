@@ -54,7 +54,15 @@ function ForceLayouter(config) {
     */
     distance = config.distance || 160,
     gravity = config.gravity || 0.08,
-    charge = config.charge ||  -600,
+    //charge = config.charge ||  -600,
+    
+    charge = config.charge || function(d) {
+      if (d._isCommunity && d._expanded) {
+        return -5000;
+      }
+      return -600;    
+    },
+    
     onUpdate = config.onUpdate || function () {},
     width = config.width || 880,
     height = config.height || 680,

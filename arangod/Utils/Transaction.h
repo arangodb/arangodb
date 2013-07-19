@@ -546,6 +546,67 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read master pointers in order of insertion/update
+////////////////////////////////////////////////////////////////////////////////
+
+        int readOrdered (TRI_transaction_collection_t* trxCollection, 
+                         vector<TRI_doc_mptr_t const*>& documents,
+                         int64_t offset,
+                         int64_t count) {
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          TRI_doc_mptr_t const* doc;
+
+          if (offset >= 0) {
+            // read from front
+            doc = document->_headers->front(document->_headers);
+            int64_t i = 0;
+
+            while (doc != 0 && i < offset) {
+              doc = doc->_next;
+              ++i;
+            }
+
+            i = 0;
+            while (doc != 0 && i < count) {
+              documents.push_back(doc);
+              doc = doc->_next;
+              ++i;
+            }
+          }
+          else {
+            // read from back
+            doc = document->_headers->back(document->_headers);
+            int64_t i = -1;
+
+            while (doc != 0 && i > offset) {
+              doc = doc->_prev;
+              --i;
+            }
+
+            i = 0;
+            while (doc != 0 && i < count) {
+              documents.push_back(doc);
+              doc = doc->_prev;
+              ++i;
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read all master pointers, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
