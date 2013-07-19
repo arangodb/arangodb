@@ -989,7 +989,7 @@ ArangoCollection.prototype.first = function (count) {
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last document(s) from the collection
@@ -1011,7 +1011,7 @@ ArangoCollection.prototype.last = function (count) {
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a document in the collection
