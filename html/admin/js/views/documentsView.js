@@ -188,8 +188,10 @@ var documentsView = Backbone.View.extend({
        '    <option value="&gt;=">&gt;=</option>'+
        '    <option value="&gt;">&gt;</option>'+
        '</select>'+
-       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" class="filterValue">'+
-       ' <a class="removeFilterItem" id="removeFilter' + num + '"><i class="icon icon-white icon-minus"></i></a>'+
+       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" ' + 
+       'class="filterValue">'+
+       ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
+       '<i class="icon icon-white icon-minus"></i></a>'+
        ' </div>');
     this.filters[num] = true;
   },

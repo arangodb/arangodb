@@ -46,9 +46,11 @@ table.dataTable td {
     background-color:#686766;
     border-bottom: 1px solid #a0a0a0;
     color:#FFF;
-    padding:0 20px;
+    padding: 0 20px;
     position:relative;
+    top: 8px;
 }
+
 #filterHeader #sendFilter {
     margin-right: 0px;
     margin-left: 0px;
