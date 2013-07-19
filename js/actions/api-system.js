@@ -181,7 +181,7 @@ actions.defineHttp({
 ///
 /// @REST{POST /_admin/routing/reload}
 ///
-/// The reloads the routing information from the collection `routing`.
+/// Reloads the routing information from the collection `routing`.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
