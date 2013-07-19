@@ -1371,6 +1371,118 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange1 : function () {
+      var expected = [ [ 1 ] ];
+      var actual = getQueryResults("RETURN RANGE(1, 1)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange2 : function () {
+      var expected = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ];
+      var actual = getQueryResults("RETURN RANGE(1, 10)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange3 : function () {
+      var expected = [ [ -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ];
+      var actual = getQueryResults("RETURN RANGE(-1, 10)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange4 : function () {
+      var expected = [ [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 ] ];
+      var actual = getQueryResults("RETURN RANGE(10, -1)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange5 : function () {
+      var expected = [ [ 0 ] ];
+      var actual = getQueryResults("RETURN RANGE(0, 0)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange6 : function () {
+      var expected = [ [ 10 ] ];
+      var actual = getQueryResults("RETURN RANGE(10, 10, 5)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange7 : function () {
+      var expected = [ [ 10, 15, 20, 25, 30 ] ];
+      var actual = getQueryResults("RETURN RANGE(10, 30, 5)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange8 : function () {
+      var expected = [ [ 30, 25, 20, 15, 10 ] ];
+      var actual = getQueryResults("RETURN RANGE(30, 10, -5)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRange9 : function () {
+      var expected = [ [ 3.4, 4.6, 5.8, 7.0, 8.2 ] ];
+      var actual = getQueryResults("RETURN RANGE(3.4, 8.9, 1.2)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RANGE()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RANGE(1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RANGE(1, 2, 3, 4)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(null, 2)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(null, null)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(false, 2)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(true, 2)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(1, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(1, [ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(1, { })");
+      
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(1, 1, 0)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(-1, -1, 0)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(1, -1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(-1, 1, -1)");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test intersect function
 ////////////////////////////////////////////////////////////////////////////////
     

@@ -11,7 +11,7 @@ TOC {#AqlTOC}
     - @ref AqlKeywords
     - @ref AqlNames
     - @ref AqlTypes
-    - @ref AqlParameter
+    - @ref AqlParameters
     - @ref AqlTypeOrder
     - @ref AqlData
     - @ref AqlOperators
