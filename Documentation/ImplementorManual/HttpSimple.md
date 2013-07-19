@@ -73,3 +73,11 @@ dispose the server-side cursor afterwards.
 @CLEARPAGE
 @anchor HttpSimpleUpdateByExample
 @copydetails JSA_put_api_simple_update_by_example
+
+@CLEARPAGE
+@anchor HttpSimpleFirst
+@copydetails JSA_put_api_simple_first
+
+@CLEARPAGE
+@anchor HttpSimpleLast
+@copydetails JSA_put_api_simple_last
