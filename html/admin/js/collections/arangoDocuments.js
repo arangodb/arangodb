@@ -119,9 +119,15 @@ window.arangoDocuments = Backbone.Collection.extend({
         var self = this;
         this.collectionID = colid;
         this.currentPage = currpage;
-
+        var filterstring;
+        console.log(filter);
+        if(filter.length === 0){
+           filterstring ="";
+        } else {
+          filterstring = ' FILTER' + filter.toString();
+        }
         var query =
-            '{"query":"FOR u in ' + this.collectionID + ' FILTER'+ filter + ' RETURN u"}';
+            '{"query":"FOR u in ' + this.collectionID + filterstring + ' RETURN u"}';
         console.log(query);
         $.ajax({
           cache: false,
@@ -132,18 +138,29 @@ window.arangoDocuments = Backbone.Collection.extend({
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();
-            console.log(data.result);
+            console.log(data.result.length);
             self.documentsCount = data.result.length;
+            self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
+        if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
+          this.currentPage = 1;
+        }
+        if (this.totalPages === 0) {
+          this.totalPages = 1;
+        }
+
+        this.offset = (this.currentPage - 1) * this.documentsPerPage;
             if (self.documentsCount !== 0) {
               $.each(data.result, function(k, v) {
                 window.arangoDocumentsStore.add({
                   "id": v._id,
                   "rev": v._rev,
-                  "key": v._key
+                  "key": v._key,
+                  "zipcode": v.zipcode,
+                  "content": v
                 });
               });
               window.documentsView.drawTable();
-              window.documentsView.renderPagination(1);
+              window.documentsView.renderPagination(self.totalPages);
             }
             else {
               window.documentsView.initTable();

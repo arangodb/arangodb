@@ -84,11 +84,15 @@ var documentsView = Backbone.View.extend({
   },
 
   sendFilter : function () {
+    this.filter = [];
+    console.log("hallo" + this.filter);
+    if($('#attribute_name').val()!==''){
     this.filter.push(" u." + $('#attribute_name').val() + $('#operator').val()+ "'" +
       $('#attribute_value').val() + "' ");
+    }
     console.log(this.filter);
     window.documentsView.clearTable();
-    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter[0]);
+    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter);
   },
 
   addFilterItem : function () {
