@@ -259,10 +259,13 @@ function CommunityNode(parent, initial) {
     },
     
     addCollapsedLabel = function(g, colourMapper) {
-      var textN = g.append("text") // Append a label for the node
-        .attr("text-anchor", "middle") // Define text-anchor
-        .attr("fill", colourMapper.getForegroundCommunityColour())
-        .attr("stroke", "none"); // Make it readable
+      var width = g.select("rect").attr("width"),
+        textN = g.append("text") // Append a label for the node
+          .attr("text-anchor", "middle") // Define text-anchor
+          .attr("fill", colourMapper.getForegroundCommunityColour())
+          .attr("stroke", "none"); // Make it readable
+      width *= 2;
+      width /= 3;
       if (self._reason && self._reason.key) {
         textN.append("tspan")
           .attr("x", "0")
@@ -272,9 +275,12 @@ function CommunityNode(parent, initial) {
           .attr("x", "0")
           .attr("dy", "16")
           .text(self._reason.value);
-      } else {
-        textN.text(self._size);
       }
+      textN.append("tspan")
+        .attr("x", width)
+        .attr("y", "0")
+        .attr("fill", colourMapper.getCommunityColour())
+        .text(self._size);
     },
     
     addNodeShapes = function(g, shapeFunc, colourMapper) {
