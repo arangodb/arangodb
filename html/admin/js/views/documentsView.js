@@ -135,17 +135,15 @@ var documentsView = Backbone.View.extend({
        '    <option value=" > ">&gt;</option>'+
        '</select>'+
        '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value">'+
-       ' <a class="removeFilterItem" data="' + num + '"><i class="icon icon-white icon-minus"></i></a>'+
+       ' <a class="removeFilterItem"><i class="icon icon-white icon-minus"></i></a>'+
    ' </div>');
   },
 
-  removeFilterItem : function () {
+  removeFilterItem : function (event) {
     "use strict";
     // removes line delline from the filter widget
-    console.log("remove");
-    $('.removeFilterItem').click(function(event) {
-      console.log("hallo"+event.currentTarget);
-    });
+    console.log(event);
+    event.currentTarget.parentElement.remove();
   },
 
   addDocument: function () {
