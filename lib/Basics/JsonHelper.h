@@ -142,9 +142,9 @@ namespace triagens {
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
-        static double getBooleanValue (TRI_json_t const*, 
-                                       const char*, 
-                                       bool);
+        static bool getBooleanValue (TRI_json_t const*, 
+                                     const char*, 
+                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
