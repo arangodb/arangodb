@@ -115,7 +115,6 @@ window.arangoDocuments = Backbone.Collection.extend({
           query: "FOR u IN " + this.collectionID + filterString + " RETURN u",
           bindVars: bindValues
         };
-        console.log(body);
         $.ajax({
           cache: false,
           type: 'POST',
@@ -125,7 +124,6 @@ window.arangoDocuments = Backbone.Collection.extend({
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();
-            console.log(data.result.length);
             self.documentsCount = data.result.length;
             self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
             if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
@@ -157,7 +155,6 @@ window.arangoDocuments = Backbone.Collection.extend({
           },
           error: function(data) {
             "use strict";
-            console.error(data);
           }
         });
       },
