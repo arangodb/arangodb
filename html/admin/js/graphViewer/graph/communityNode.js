@@ -66,6 +66,7 @@ function CommunityNode(parent, initial) {
     self = this,
     boundingBox,
     nodes = {},
+    observer,
     nodeArray = [],
     internal = {},
     inbound = {},
@@ -74,6 +75,20 @@ function CommunityNode(parent, initial) {
   ////////////////////////////////////
   // Private functions              //
   //////////////////////////////////// 
+  
+    getObserver = function() {
+      if (!observer) {
+        observer = new WebKitMutationObserver(function(e){
+          if (_.any(e, function(obj) {
+            return obj.attributeName === "transform";
+          })) {
+            updateBoundingBox();
+            observer.disconnect();
+          }
+        });
+      }
+      return observer;
+    },
   
     toArray = function(obj) {
       var res = [];
@@ -205,12 +220,29 @@ function CommunityNode(parent, initial) {
     },
     
     expand = function() {
+      this._expanded = true;
       // TODO: Just piped through for old Adapter Interface
-      dissolve();
+      //dissolve();
     },
     
     dissolve = function() {
       parent.dissolveCommunity(self);
+    },
+    
+    collapse = function() {
+      this._expanded = false;
+      // TODO
+    },
+    
+    addDistortion = function() {
+      // Fake Layouting TODO
+      _.each(nodeArray, function(n) {
+        n.position = {
+          x: n.x,
+          y: n.y,
+          z: 1
+        };
+      });
     },
     
     addShape = function (g, shapeFunc, colourMapper) {
@@ -244,6 +276,35 @@ function CommunityNode(parent, initial) {
         textN.text(self._size);
       }
     },
+    
+    addNodeShapes = function(g, shapeFunc, colourMapper) {
+      var interior = g.selectAll(".node")
+      .data(nodeArray, function(d) {
+        return d._id;
+      });
+      interior.enter()
+        .append("g")
+        .attr("class", "node")
+        .attr("id", function(d) {
+          return d._id;
+        });
+      // Remove all old
+      interior.exit().remove();
+      interior.selectAll("* > *").remove();
+      addShape(interior, shapeFunc, colourMapper);
+    },
+    
+    addBoundingBox = function(g) {
+      boundingBox = g.append("rect")
+        .attr("rx", "8")
+        .attr("ry", "8")
+        .attr("fill", "none")
+        .attr("stroke", "black");
+      getObserver().observe(document.getElementById(self._id), {
+        subtree:true,
+        attributes:true
+      });
+    },
 
     updateBoundingBox = function() {
       var bbox = document.getElementById(self._id).getBBox();
@@ -254,53 +315,14 @@ function CommunityNode(parent, initial) {
     },
     
     shapeAll = function(g, shapeFunc, colourMapper) {
-      /*
-      boundingBox = g.append("rect")
-        .attr("rx", "8")
-        .attr("ry", "8")
-        .attr("fill", "none")
-        .attr("stroke", "black");
-      */
+      if (self._expanded) {
+        addBoundingBox(g);
+        addDistortion();
+        addNodeShapes(g, shapeFunc, colourMapper);
+        return;
+      }
       addCollapsedShape(g, shapeFunc, colourMapper);
       addCollapsedLabel(g, colourMapper);
-      /*
-      _.each(nodeArray, function(n) {
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
-      
-      var interior = g.selectAll(".node")
-      .data(nodeArray, function(d) {
-        return d._id;
-      });
-      interior.enter()
-        .append("g")
-        .attr("class", function(d) {
-          return "node";
-        }) // node is CSS class that might be edited
-        .attr("id", function(d) {
-          return d._id;
-        });
-      // Remove all old
-      interior.exit().remove();
-      interior.selectAll("* > *").remove();
-      var observer = new WebKitMutationObserver(function(e){
-        if (_.any(e, function(obj) {
-          return obj.attributeName === "transform";
-        })) {
-          updateBoundingBox();
-          observer.disconnect();
-        }
-      });
-      observer.observe(document.getElementById(self._id), {
-        subtree:true,
-        attributes:true
-      });
-      addShape(interior, shapeFunc, colourMapper);
-      */
     };
   
   ////////////////////////////////////
@@ -321,7 +343,7 @@ function CommunityNode(parent, initial) {
   this._size = 0;
   this._inboundCounter = 0;
   this._outboundCounter = 0;
-  
+  this._expanded = false;
   // Easy check for the other classes,
   // no need for a regex on the _id any more.
   this._isCommunity = true;
@@ -345,13 +367,12 @@ function CommunityNode(parent, initial) {
   this.removeNode = removeNode;
   this.removeInboundEdge = removeInboundEdge;
   this.removeOutboundEdge = removeOutboundEdge;
-  
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
   
   this.dissolve = dissolve;
-  
   this.getDissolveInfo = getDissolveInfo;
   
+  this.collapse = collapse;
   this.expand = expand;
   
   this.shape = shapeAll;
