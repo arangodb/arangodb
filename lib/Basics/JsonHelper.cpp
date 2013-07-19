@@ -111,14 +111,15 @@ double JsonHelper::getNumberValue (TRI_json_t const* json,
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
-double JsonHelper::getBooleanValue (TRI_json_t const* json, 
-                                    const char* name, 
-                                    bool defaultValue) {
+bool JsonHelper::getBooleanValue (TRI_json_t const* json, 
+                                  const char* name, 
+                                  bool defaultValue) {
   TRI_json_t const* sub = getArrayElement(json, name);
 
   if (isBoolean(sub)) {
     return sub->_value._boolean;
   }
+
   return defaultValue;
 }
 
