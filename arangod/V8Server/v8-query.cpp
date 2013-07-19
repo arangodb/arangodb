@@ -2393,6 +2393,134 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the n first documents in the collection
+///
+/// @FUN{@FA{collection}.first(@FA{count})}
+///
+/// The @FN{first} method returns the n first documents from the collection, in 
+/// order of document insertion/update time. 
+///
+/// If called with the @FA{count} argument, the result is a list of up to
+/// @FA{count} documents. If @FA{count} is bigger than the number of documents
+/// in the collection, then the result will contain as many documents as there
+/// are in the collection.
+/// The result list is ordered, with the "oldest" documents being positioned at 
+/// the beginning of the result list.
+///
+/// When called without an argument, the result is the first document from the
+/// collection. If the collection does not contain any documents, the result 
+/// returned is @LIT{null}.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.example.first(1)
+/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
+/// @endcode
+///
+/// @code
+/// arangod> db.example.first()
+/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  if (argv.Length() > 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "first(<count>)");
+  }
+
+  int64_t count = 1;
+  bool returnList = false;
+
+  // if argument is supplied, we'll return a list - otherwise we simply return the first doc
+  if (argv.Length() == 1) {
+    count = TRI_ObjectToInt64(argv[0]);
+    returnList = true;
+  }
+
+  if (count < 1) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <count>");
+  }
+
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_barrier_t* barrier = 0;
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+        
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  barrier = TRI_CreateBarrierElement(&trx.primaryCollection()->_barrierList);
+
+  if (barrier == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  vector<TRI_doc_mptr_t const*> documents;
+  res = trx.readPositional(documents, 0, count);
+
+  const size_t n = documents.size();
+
+  assert(barrier != 0);
+
+  if (n == 0) {
+    TRI_FreeBarrier(barrier);
+  }
+
+  if (returnList) {
+    v8::Handle<v8::Array> result = v8::Array::New(n);
+
+    uint32_t j = 0;
+
+    for (size_t i = 0; i < n; ++i) {
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i], barrier);
+        
+      if (doc.IsEmpty()) {
+        // error
+        trx.finish(res);
+
+        TRI_V8_EXCEPTION_MEMORY(scope);
+      }
+
+      result->Set(j++, doc);
+    }
+    
+    trx.finish(res);
+    
+    return scope.Close(result);
+  }
+  else {
+    if (n == 0) {
+      trx.finish(res);
+
+      return scope.Close(v8::Null());
+    }
+
+    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, documents[0], barrier);
+
+    trx.finish(res);
+
+    if (result.IsEmpty()) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+   
+    return scope.Close(result);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
@@ -2545,6 +2673,134 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the n last documents in the collection
+///
+/// @FUN{@FA{collection}.last(@FA{count})}
+///
+/// The @FN{first} method returns the n last documents from the collection, in 
+/// order of document insertion/update time. 
+///
+/// If called with the @FA{count} argument, the result is a list of up to
+/// @FA{count} documents. If @FA{count} is bigger than the number of documents
+/// in the collection, then the result will contain as many documents as there
+/// are in the collection.
+/// The result list is ordered, with the "latest" documents being positioned at 
+/// the beginning of the result list.
+///
+/// When called without an argument, the result is the last document from the
+/// collection. If the collection does not contain any documents, the result 
+/// returned is @LIT{null}.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.example.last(1)
+/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
+/// @endcode
+///
+/// @code
+/// arangod> db.example.last()
+/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  if (argv.Length() > 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "last(<count>)");
+  }
+
+  int64_t count = 1;
+  bool returnList = false;
+
+  // if argument is supplied, we'll return a list - otherwise we simply return the last doc
+  if (argv.Length() == 1) {
+    count = TRI_ObjectToInt64(argv[0]);
+    returnList = true;
+  }
+
+  if (count < 1) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <count>");
+  }
+
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_barrier_t* barrier = 0;
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+        
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  barrier = TRI_CreateBarrierElement(&trx.primaryCollection()->_barrierList);
+
+  if (barrier == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  vector<TRI_doc_mptr_t const*> documents;
+  res = trx.readPositional(documents, -1, count);
+
+  const size_t n = documents.size();
+
+  assert(barrier != 0);
+
+  if (n == 0) {
+    TRI_FreeBarrier(barrier);
+  }
+
+  if (returnList) {
+    v8::Handle<v8::Array> result = v8::Array::New(n);
+
+    uint32_t j = 0;
+
+    for (size_t i = 0; i < n; ++i) {
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i], barrier);
+        
+      if (doc.IsEmpty()) {
+        // error
+        trx.finish(res);
+
+        TRI_V8_EXCEPTION_MEMORY(scope);
+      }
+
+      result->Set(j++, doc);
+    }
+    
+    trx.finish(res);
+    
+    return scope.Close(result);
+  }
+  else {
+    if (n == 0) {
+      trx.finish(res);
+
+      return scope.Close(v8::Null());
+    }
+
+    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, documents[0], barrier);
+
+    trx.finish(res);
+
+    if (result.IsEmpty()) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+   
+    return scope.Close(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2883,8 +3139,10 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
   TRI_AddMethodVocbase(rt, "checksum", JS_ChecksumCollection);
   TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
+  TRI_AddMethodVocbase(rt, "first", JS_FirstQuery);
   TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
+  TRI_AddMethodVocbase(rt, "last", JS_LastQuery);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
 
   // internal method. not intended to be used by end-users

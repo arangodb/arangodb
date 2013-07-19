@@ -15,3 +15,5 @@ TOC {#HttpSimpleTOC}
     - @ref HttpSimpleRemoveByExample "PUT /_api/simple/remove-by-example"
     - @ref HttpSimpleReplaceByExample "PUT /_api/simple/replace-by-example"
     - @ref HttpSimpleUpdateByExample "PUT /_api/simple/update-by-example"
+    - @ref HttpSimpleFirst "PUT /_api/simple/first"
+    - @ref HttpSimpleLast "PUT /_api/simple/last"

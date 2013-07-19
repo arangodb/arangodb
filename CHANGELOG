@@ -1,6 +1,11 @@
 v1.4
 ----
 
+* added collection.first(count) and collection.last(count) document access functions
+  
+  These functions allow accessing the first or last n documents in a collection. The order
+  is determined by document insertion/update time.
+
 * added AQL INTERSECTION function
 
 * INCOMPATIBLE CHANGE: changed AQL user function namespace resolution operator from `:` to `::`
