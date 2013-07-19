@@ -64,6 +64,22 @@
         ).not.toThrow();
       });
       
+      it('should create a ForceLayouter on setup', function() {
+        spyOn(window, "ForceLayouter");
+        var t = new CommunityNode({
+          dissolveCommunity: function() {}
+        });
+        expect(window.ForceLayouter).wasCalledWith({
+          distance: 100,
+          gravity: 0.1,
+          charge: 500,
+          width: 1,
+          height: 1,
+          nodes: [],
+          links: []
+        });
+      });
+      
     });
     
     describe('checking the interface', function() {
@@ -160,12 +176,19 @@
     
     describe('node functionality', function() {
       
-      var parent;
+      var parent, layouter;
       
       beforeEach(function() {
         parent = {
           dissolveCommunity: function() {}
         };
+        layouter = {
+          start: function() {},
+          stop: function() {}
+        };
+        spyOn(window, "ForceLayouter").andCallFake(function() {
+          return layouter;
+        });
       });
       
       it('should create a communityNode containing the given nodes', function() {
@@ -286,6 +309,46 @@
         c.removeNode("foxx");
         expect(c._size).toEqual(2);
         expect(c.getNodes()).toEqual(nodes.slice(3, 5));
+      });
+      
+      it('should position the initial nodes', function() {
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        var c = new CommunityNode(parent, nodes.slice(3, 13));
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(10);
+        expect(layouter.stop.calls.length).toEqual(10);
+      });
+      
+      it('should update the positioning if a new node is inserted', function() {
+        var c = new CommunityNode(parent, nodes.slice(3, 5));
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.insertNode(nodes[12]);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
+      });
+      
+      it('should update the positioning if a node is removed', function() {
+        var c = new CommunityNode(parent, nodes.slice(3, 5));
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.removeNode(nodes[3]);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
       });
       
     });
@@ -624,27 +687,10 @@
           expect(iExit.remove).wasCalled();
           expect(interior.selectAll).wasCalledWith("* > *");
           expect(iAll.remove).wasCalled();
-
-          /*
-          var observer = new WebKitMutationObserver(function(e){
-            if (_.any(e, function(obj) {
-              return obj.attributeName === "transform";
-            })) {
-              updateBoundingBox();
-              observer.disconnect();
-            }
-          });
-          observer.observe(document.getElementById(self._id), {
-            subtree:true,
-            attributes:true
-          });
-          addShape(interior, shapeFunc, colourMapper);
-          */
         });
         
         it('should apply distortion on the interior nodes', function() {
           // Fake Layouting to test correctness
-          /*
           nodes[0].x = -20;
           nodes[0].y = 20;
           nodes[1].x = -10;
@@ -655,9 +701,35 @@
           nodes[3].y = -10;
           nodes[4].x = 20;
           nodes[4].y = -20;
-          */
+          
+          c.shape(g, shaper.shapeFunc, colourMapper);
+          
+          expect(nodes[0].position).toEqual({
+            x: -20,
+            y: 20,
+            z: 1
+          });
+          expect(nodes[1].position).toEqual({
+            x: -10,
+            y: 10,
+            z: 1
+          });
+          expect(nodes[2].position).toEqual({
+            x: 0,
+            y: 0,
+            z: 1
+          });
+          expect(nodes[3].position).toEqual({
+            x: 10,
+            y: -10,
+            z: 1
+          });
+          expect(nodes[4].position).toEqual({
+            x: 20,
+            y: -20,
+            z: 1
+          });
         });
-        
       });
       
       
@@ -665,12 +737,19 @@
     
     describe('edge functionality', function() {
       
-      var parent;
+      var parent, layouter;
       
       beforeEach(function() {
         parent = {
           dissolveCommunity: function() {}
         };
+        layouter = {
+          start: function() {},
+          stop: function() {}
+        };
+        spyOn(window, "ForceLayouter").andCallFake(function() {
+          return layouter;
+        });
       });
       
       it('should return true if an inserted edge is internal', function() {
@@ -968,6 +1047,114 @@
           both: []
         });
       
+      });
+      
+      it('should update the positioning if an inbound edge becomes internal', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.insertInboundEdge(e);
+        
+        expect(layouter.start).wasNotCalled();
+        expect(layouter.stop).wasNotCalled();
+        
+        c.insertOutboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
+      });
+      
+      it('should update the positioning if an oubound edge becomes internal', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.insertOutboundEdge(e);
+        
+        expect(layouter.start).wasNotCalled();
+        expect(layouter.stop).wasNotCalled();
+        
+        c.insertInboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);        
+      });
+      
+      it('should update the positioning if an interal edge becomes inbound', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+
+        c.insertInboundEdge(e);
+        c.insertOutboundEdge(e);
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.removeOutboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);        
+      });
+      
+      it('should update the positioning if an interal edge becomes outbound', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+
+        c.insertInboundEdge(e);
+        c.insertOutboundEdge(e);
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.removeInboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);       
       });
       
     });
