@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, window, Backbone, arangoDocument, $*/
+/*global require, exports, window, Backbone, arangoDocument, _, $*/
 
 window.arangoDocuments = Backbone.Collection.extend({
       currentPage: 1,
@@ -97,6 +97,61 @@ window.arangoDocuments = Backbone.Collection.extend({
             }
           },
           error: function(data) {
+          }
+        });
+      },
+
+
+
+/*
+   POST /_api/cursor
+
+   {
+   "query": "FOR u in mycollection FILTER @name1, @name2 return u",
+   "count": false,
+   "bindVars": {
+   "name1": xy,
+   "name2": xy
+   }
+   }
+*/
+      getFilteredDocuments: function (colid, currpage, filter) {
+        var self = this;
+        this.collectionID = colid;
+        this.currentPage = currpage;
+
+        var query =
+            '{"query":"FOR u in ' + this.collectionID + ' FILTER'+ filter + ' RETURN u"}';
+        console.log(query);
+        $.ajax({
+          cache: false,
+          type: 'POST',
+          async: false,
+          url: '/_api/cursor',
+          data: query,
+          contentType: "application/json",
+          success: function(data) {
+            self.clearDocuments();
+            console.log(data.result);
+            self.documentsCount = data.result.length;
+            if (self.documentsCount !== 0) {
+              $.each(data.result, function(k, v) {
+                window.arangoDocumentsStore.add({
+                  "id": v._id,
+                  "rev": v._rev,
+                  "key": v._key
+                });
+              });
+              window.documentsView.drawTable();
+              window.documentsView.renderPagination(1);
+            }
+            else {
+              window.documentsView.initTable();
+              window.documentsView.drawTable();
+            }
+          },
+          error: function(data) {
+            "use strict";
           }
         });
       },

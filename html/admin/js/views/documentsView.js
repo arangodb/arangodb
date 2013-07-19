@@ -6,6 +6,7 @@ var documentsView = Backbone.View.extend({
   currentPage: 1,
   documentsPerPage: 10,
   totalPages: 1,
+  filter :  [],
 
   collectionContext : {
     prev: null,
@@ -20,6 +21,9 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #collectionPrev"      : "prevCollection",
     "click #collectionNext"      : "nextCollection",
+    "click #filterCollection"    : "filterCollection",
+    "click #filterSend"          : "sendFilter",
+    "click #queryline #addFilterItem": "addFilterItem",
     "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
@@ -38,7 +42,7 @@ var documentsView = Backbone.View.extend({
       if ($("#confirmDeleteBtn").attr("disabled") === false) {
         this.confirmDelete();
       }
-    } 
+    }
   },
 
   nop: function(event) {
@@ -74,6 +78,29 @@ var documentsView = Backbone.View.extend({
       $('#collectionNext').parent().addClass('disabledPag');
     }
   },
+
+  filterCollection : function () {
+    $('#filterHeader').slideToggle("slow");
+  },
+
+  sendFilter : function () {
+    this.filter.push(" u." + $('#attribute_name').val() + $('#operator').val()+ "'" +
+      $('#attribute_value').val() + "' ");
+    console.log(this.filter);
+    window.documentsView.clearTable();
+    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter[0]);
+  },
+
+  addFilterItem : function () {
+    "use strict";
+    // adds a line to the filter widget
+  },
+
+  removeFilterItem : function (delline) {
+    "use strict";
+    // removes line delline from the filter widget
+  },
+
   addDocument: function () {
     var collid  = window.location.hash.split("/")[1];
     var doctype = arangoHelper.collectionApiType(collid);
