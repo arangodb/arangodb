@@ -25,10 +25,11 @@ $(document).ready(function() {
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
-      "application/documentation/:key"     : "appDocumentation",
+      "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph"
 
     },
+
     initialize: function () {
 
       window.activeSession = new window.ArangoSession();
@@ -108,6 +109,7 @@ $(document).ready(function() {
         }
       });
     },
+
     collection: function(colid) {
       window.collectionView.options.colId = colid;
       window.collectionView.render();
@@ -122,6 +124,7 @@ $(document).ready(function() {
       }
       this.newCollectionView.render();
     },
+
     documents: function(colid, pageid) {
       if (!window.documentsView) {
         window.documentsView.initTable(colid, pageid);
@@ -133,6 +136,7 @@ $(document).ready(function() {
       window.documentsView.render();
       window.arangoDocumentsStore.getDocuments(colid, pageid);
     },
+
     document: function(colid, docid) {
       if (!window.documentView) {
         window.documentView.initTable();
@@ -144,6 +148,7 @@ $(document).ready(function() {
       window.documentView.type = type;
       window.documentView.typeCheck(type);
     },
+
     source: function(colid, docid) {
       window.documentSourceView.render();
       window.documentSourceView.colid = colid;
@@ -152,6 +157,7 @@ $(document).ready(function() {
       window.documentSourceView.type = type;
       window.documentSourceView.typeCheck(type);
     },
+
     shell: function() {
       if (!this.shellView) {
         this.shellView = new window.shellView();
@@ -159,6 +165,7 @@ $(document).ready(function() {
       this.shellView.render();
       this.naviView.selectMenuItem('shell-menu');
     },
+
     query: function() {
       if (!this.queryView) {
         this.queryView = new window.queryView();
@@ -166,6 +173,7 @@ $(document).ready(function() {
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
     },
+
     api: function() {
       if (!this.apiView) {
         this.apiView = new window.apiView();
@@ -173,6 +181,7 @@ $(document).ready(function() {
       this.apiView.render();
       this.naviView.selectMenuItem('api-menu');
     },
+
     about: function() {
       if (!this.aboutView) {
         this.aboutView = new window.aboutView();
@@ -180,6 +189,7 @@ $(document).ready(function() {
       this.aboutView.render();
       this.naviView.selectMenuItem('about-menu');
     },
+
     logs: function() {
       var self = this;
       window.arangoLogsStore.fetch({
@@ -193,6 +203,7 @@ $(document).ready(function() {
       });
       this.naviView.selectMenuItem('logs-menu');
     },
+
     dashboard: function() {
       this.naviView.selectMenuItem('dashboard-menu');
       /*
@@ -316,7 +327,6 @@ self.naviView.selectMenuItem('dashboard-menu');
       docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
-
   });
 
   window.App = new window.Router();
