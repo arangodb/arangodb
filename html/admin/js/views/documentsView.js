@@ -23,7 +23,7 @@ var documentsView = Backbone.View.extend({
     "click #collectionNext"      : "nextCollection",
     "click #filterCollection"    : "filterCollection",
     "click #filterSend"          : "sendFilter",
-    "click #queryline #addFilterItem": "addFilterItem",
+    "click #addFilterItem"       : "addFilterItem",
     "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
@@ -81,11 +81,19 @@ var documentsView = Backbone.View.extend({
 
   filterCollection : function () {
     $('#filterHeader').slideToggle("slow");
+    this.filter = [];
   },
 
   sendFilter : function () {
     this.filter = [];
-    console.log("hallo" + this.filter);
+    var filterlength = $('.queryline').length;
+    var i;
+    for(i=1;i<filterlength;i++){
+      if($('#attribute_name'+i).val()!=''){
+        this.filter.push(" u."+ $('#attribute_name'+i).val() + $('#operator'+i).val()+ "'" +
+        $('#attribute_value'+i).val() + "'" + $('#logicaloperator'+i).val());
+      }
+    }
     if($('#attribute_name').val()!==''){
     this.filter.push(" u." + $('#attribute_name').val() + $('#operator').val()+ "'" +
       $('#attribute_value').val() + "' ");
@@ -98,6 +106,23 @@ var documentsView = Backbone.View.extend({
   addFilterItem : function () {
     "use strict";
     // adds a line to the filter widget
+    
+    var  num = this.filter.length + 1;
+    $('#filterHeader').prepend(' <div class="queryline">'+
+       '<input id="attribute_name'+ num +'" type="text" placeholder="Attribute name">'+
+       '<select name="operator" id="operator'+ num +'">'+
+       '    <option value=" == ">==</option>'+
+       '    <option value=" != ">!=</option>'+
+       '    <option value=" > ">&lt;</option>'+
+       '    <option value=" < ">&gt;</option>'+
+       '</select>'+
+       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value">'+
+       '<select name="logicaloperator" id="logicaloperator'+ num +'">'+
+       '    <option value=" && ">and</option>'+
+       '    <option value=" || ">or</option>'+
+       '</select>'+
+       ' <a id="femoveFilterItem" data="' + num + '"><i class="icon icon-white icon-minus"></i></a>'+
+   ' </div>');
   },
 
   removeFilterItem : function (delline) {
