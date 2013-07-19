@@ -229,7 +229,7 @@ unittests-boost:
 endif
 
 ################################################################################
-### @brief SHELL SERVER TESTS (BASICS)
+### @brief SHELL TESTS COMMON (BASICS)
 ################################################################################
 
 SHELL_COMMON = \
@@ -257,6 +257,10 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
+
+################################################################################
+### @brief SHELL SERVER TESTS (BASICS)
+################################################################################
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/compaction.js \
@@ -390,8 +394,10 @@ unittests-shell-server-ahuacatl:
 ### @brief SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON) \
+SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/client.js
+
+SHELL_SERVER = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
 
