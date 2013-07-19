@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _, document*/
+/*global _, document, ForceLayouter*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -39,26 +39,6 @@ function CommunityNode(parent, initial) {
   initial = initial || [];
   
   var
-    myInternalNodes = [
-      {
-        _id: "inter1",
-        x: Math.floor(Math.random()*400 - 200),
-        y: Math.floor(Math.random()*400 - 200),
-        z: 1
-      },
-      {
-        _id: "inter2",
-        x: Math.floor(Math.random()*400 - 200),
-        y: Math.floor(Math.random()*400 - 200),
-        z: 1
-      },
-      {
-        _id: "inter3",
-        x: Math.floor(Math.random()*400 - 200),
-        y: Math.floor(Math.random()*400 - 200),
-        z: 1
-      }
-    ],
 
   ////////////////////////////////////
   // Private variables              //
@@ -68,10 +48,12 @@ function CommunityNode(parent, initial) {
     nodes = {},
     observer,
     nodeArray = [],
+    intEdgeArray = [],
     internal = {},
     inbound = {},
     outbound = {},
     outReferences = {},
+    layouter,
   ////////////////////////////////////
   // Private functions              //
   //////////////////////////////////// 
@@ -90,6 +72,24 @@ function CommunityNode(parent, initial) {
       return observer;
     },
   
+    updateNodeArray = function() {
+      layouter.stop();
+      nodeArray.length = 0;
+      _.each(nodes, function(v) {
+        nodeArray.push(v);
+      });
+      layouter.start();
+    },
+  
+    updateEdgeArray = function() {
+      layouter.stop();
+      intEdgeArray.length = 0;
+      _.each(internal, function(e) {
+        intEdgeArray.push(e);
+      });
+      layouter.start();
+    },
+  
     toArray = function(obj) {
       var res = [];
       _.each(obj, function(v) {
@@ -103,7 +103,7 @@ function CommunityNode(parent, initial) {
     },
   
     getNodes = function() {
-      return toArray(nodes);
+      return nodeArray;
     },
     
     getNode = function(id) {
@@ -112,14 +112,14 @@ function CommunityNode(parent, initial) {
   
     insertNode = function(n) {
       nodes[n._id] = n;
-      nodeArray = toArray(nodes);
+      updateNodeArray();
       self._size++;
     },
     
     removeNode = function(n) {
       var id = n._id || n;
       delete nodes[id];
-      nodeArray = toArray(nodes);
+      updateNodeArray();
       self._size--;
     },
     
@@ -137,6 +137,7 @@ function CommunityNode(parent, initial) {
         delete internal[id];
         self._outboundCounter++;
         outbound[id] = e;
+        updateEdgeArray();
         return;
       }
       delete inbound[id];
@@ -159,6 +160,7 @@ function CommunityNode(parent, initial) {
         delete internal[id];
         self._inboundCounter++;
         inbound[id] = e;
+        updateEdgeArray();
         return;
       }
       delete outbound[id];
@@ -184,6 +186,7 @@ function CommunityNode(parent, initial) {
         delete outbound[e._id];
         self._outboundCounter--;
         internal[e._id] = e;
+        updateEdgeArray();
         return true;
       }
       inbound[e._id] = e;
@@ -201,6 +204,7 @@ function CommunityNode(parent, initial) {
         delete inbound[e._id];
         self._inboundCounter--;
         internal[e._id] = e;
+        updateEdgeArray();
         return true;
       }
       self._outboundCounter++;
@@ -212,7 +216,7 @@ function CommunityNode(parent, initial) {
       return {
         nodes: nodeArray,
         edges: {
-          both: toArray(internal),
+          both: intEdgeArray,
           inbound: toArray(inbound),
           outbound: toArray(outbound)
         }
@@ -334,6 +338,16 @@ function CommunityNode(parent, initial) {
   ////////////////////////////////////
   // Setup                          //
   ////////////////////////////////////
+  
+  layouter = new ForceLayouter({
+    distance: 100,
+    gravity: 0.1,
+    charge: 500,
+    width: 1,
+    height: 1,
+    nodes: nodeArray,
+    links: intEdgeArray
+  });
   
   ////////////////////////////////////
   // Values required for shaping    //
