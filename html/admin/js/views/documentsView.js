@@ -6,7 +6,8 @@ var documentsView = Backbone.View.extend({
   currentPage: 1,
   documentsPerPage: 10,
   totalPages: 1,
-  filter :  [],
+  filters : { "0" : true },
+  filterId : 0,
 
   collectionContext : {
     prev: null,
@@ -35,7 +36,8 @@ var documentsView = Backbone.View.extend({
     "click #confirmDeleteBtn"    : "confirmDelete",
     "keyup #createEdge"          : "listenKey",
     "click .key"                 : "nop",
-    "keyup"                      : "returnPressedHandler"
+    "keyup"                      : "returnPressedHandler",
+    "keydown .filterValue"       : "filterValueKeydown"
   },
 
   showSpinner: function() {
@@ -133,40 +135,50 @@ var documentsView = Backbone.View.extend({
 
   filterCollection : function () {
     $('#filterHeader').slideToggle("slow");
-    this.filter = [];
+
+    var i;
+    for (i in this.filters) {
+      if (this.filters.hasOwnProperty(i)) {
+        $('#attribute_name' + i).focus();
+        return;
+      }
+    }
   },
 
   sendFilter : function () {
-    this.filter = [];
-    var filterlength = $('.queryline').length, bindValues = {};
-    var ii, value, i;
+    var filters = [ ], bindValues = { };
+    var i;
 
-    for(i = 0; i < filterlength; i++){
-      value = $('#attribute_value' + i).val();
-      try {
-        value = JSON.parse(value);
-      }
-      catch (err1) {
-        value = String(value);
-      }
-      if($('#attribute_name' + i).val() !== ''){
-        this.filter.push(" u.`"+ $('#attribute_name'+i).val() + "`" + 
-                         $('#operator' + i).val() + 
-                         "@param" + i);
-        bindValues["param" + i] = value;
+    for (i in this.filters) {
+      if (this.filters.hasOwnProperty(i)) {
+        var value = $('#attribute_value' + i).val();
+
+        try {
+          value = JSON.parse(value);
+        }
+        catch (err) {
+          value = String(value);
+        }
+
+        if ($('#attribute_name' + i).val() !== ''){
+          filters.push(" u.`"+ $('#attribute_name'+i).val() + "`" + 
+                       $('#operator' + i).val() + 
+                       "@param" + i);
+          bindValues["param" + i] = value;
+        }
       }
     }
 
     window.documentsView.clearTable();
-    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter, bindValues);
+    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, filters, bindValues);
   },
 
   addFilterItem : function () {
     "use strict";
     // adds a line to the filter widget
     
-    var  num = this.filter.length + 1;
-    $('#filterHeader').prepend(' <div class="queryline">'+
+    var num = ++this.filterId;
+    $('#filterHeader').append(' <div class="queryline">'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
        '<select name="operator" id="operator' + num + '">'+
        '    <option value="==">==</option>'+
@@ -176,15 +188,30 @@ var documentsView = Backbone.View.extend({
        '    <option value="&gt;=">&gt;=</option>'+
        '    <option value="&gt;">&gt;</option>'+
        '</select>'+
-       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value">'+
-       ' <a class="removeFilterItem"><i class="icon icon-white icon-minus"></i></a>'+
-   ' </div>');
+       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" class="filterValue">'+
+       ' <a class="removeFilterItem" id="removeFilter' + num + '"><i class="icon icon-white icon-minus"></i></a>'+
+       ' </div>');
+    this.filters[num] = true;
   },
 
-  removeFilterItem : function (event) {
+  filterValueKeydown : function (e) {
+    if (e.keyCode === 13) {
+      this.sendFilter();
+    }
+  },
+
+  removeFilterItem : function (e) {
     "use strict";
-    // removes line delline from the filter widget
-    event.currentTarget.parentElement.remove();
+
+    // removes line from the filter widget
+    var button = e.currentTarget;
+
+    var filterId = button.id.replace(/^removeFilter/, '');
+    // remove the filter from the list
+    delete this.filters[filterId];
+    
+    // remove the line from the DOM
+    $(button.parentElement).remove();
   },
 
   addDocument: function () {
