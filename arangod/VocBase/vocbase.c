@@ -2186,7 +2186,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 #ifdef TRI_ENABLE_REPLICATION
   // replicate and finally unlock the collection
   json = TRI_CreateJsonCollectionInfo(&col->_info);
-  TRI_LogCreateCollectionReplication(vocbase, cid, json);
+  TRI_LogCreateCollectionReplication(vocbase, col->_info._cid, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 #endif
 
