@@ -101,25 +101,27 @@ window.arangoDocuments = Backbone.Collection.extend({
         });
       },
 
-      getFilteredDocuments: function (colid, currpage, filter) {
+      getFilteredDocuments: function (colid, currpage, filter, bindValues) {
         var self = this;
         this.collectionID = colid;
         this.currentPage = currpage;
-        var filterstring;
+        var filterString;
         if(filter.length === 0){
-           filterstring ="";
+           filterString ="";
         } else {
-          filterstring = ' FILTER' + filter.join('');
+          filterString = ' FILTER' + filter.join(' && ');
         }
-        var query =
-            '{"query":"FOR u in ' + this.collectionID + filterstring + ' RETURN u"}';
-        console.log(query);
+        var body = {
+          query: "FOR u IN " + this.collectionID + filterString + " RETURN u",
+          bindVars: bindValues
+        };
+        console.log(body);
         $.ajax({
           cache: false,
           type: 'POST',
           async: false,
           url: '/_api/cursor',
-          data: query,
+          data: JSON.stringify(body),
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();

@@ -2,6 +2,9 @@
   margin-left: 1px !important;
 }
 
+#addFilterItem, .removeFilterItem {
+  cursor: pointer;
+}
 #transparentHeader .btn-group {
   margin-top: 6px !important;
 }
