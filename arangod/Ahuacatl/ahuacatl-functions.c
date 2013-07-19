@@ -643,6 +643,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("SQRT", "NUMBER_SQRT", true, false, "n", NULL);
 
   // list functions
+  REGISTER_FUNCTION("RANGE", "RANGE", true, false, "n,n|n", NULL);
   REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("INTERSECTION", "INTERSECTION", true, false, "l,l|+", NULL);
   REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "las", NULL);

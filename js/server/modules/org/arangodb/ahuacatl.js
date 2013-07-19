@@ -2448,6 +2448,53 @@ function REVERSE (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a range of values
+////////////////////////////////////////////////////////////////////////////////
+
+function RANGE (from, to, step) {
+  "use strict";
+
+  if (step === undefined) {
+    if (from <= to) {
+      step = 1;
+    }
+    else {
+      step = -1;
+    }
+  }
+ 
+  // check from, to and step values 
+  ARG_CHECK(from, TYPEWEIGHT_NUMBER, "RANGE");
+  ARG_CHECK(to, TYPEWEIGHT_NUMBER, "RANGE");
+  ARG_CHECK(step, TYPEWEIGHT_NUMBER, "RANGE");
+
+  // check if we would run into an endless loop
+  if (step === 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANGE");
+  }
+  if (from < to && step < 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANGE");
+  }
+  if (from > to && step > 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANGE");
+  }
+
+  var result = [ ], i;
+  if (step < 0 && to <= from) {
+    for (i = from; i >= to; i += step) {
+      result.push(i);
+    }
+  }
+  else {
+    for (i = from; i <= to; i += step) {
+      result.push(i);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a list of unique elements from the list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3846,6 +3893,7 @@ exports.LENGTH = LENGTH;
 exports.FIRST = FIRST;
 exports.LAST = LAST;
 exports.REVERSE = REVERSE;
+exports.RANGE = RANGE;
 exports.UNIQUE = UNIQUE;
 exports.UNION = UNION;
 exports.INTERSECTION = INTERSECTION;

@@ -1,6 +1,22 @@
 v1.4
 ----
 
+* added AQL range operator `..`
+
+  The `..` operator can be used to easily iterate over a sequence of numeric
+  values. It will produce a list of values in the defined range, with both bounding 
+  values included.
+
+  Example:
+
+      2010..2013
+
+  will produce the following result:
+
+      [ 2010, 2011, 2012, 2013 ]
+
+* added AQL RANGE function
+
 * added collection.first(count) and collection.last(count) document access functions
   
   These functions allow accessing the first or last n documents in a collection. The order
@@ -45,8 +61,6 @@ v1.4
 
   In case the function is called with a list of documents, it will continue to return all
   found documents, and will not return `null` for non-found documents. This has not changed.
-
-  
 
 * added single line comments for AQL
 
