@@ -24,6 +24,7 @@ var documentsView = Backbone.View.extend({
     "click #filterCollection"    : "filterCollection",
     "click #filterSend"          : "sendFilter",
     "click #addFilterItem"       : "addFilterItem",
+    "click .removeFilterItem"    : "removeFilterItem",
     "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
@@ -85,22 +86,37 @@ var documentsView = Backbone.View.extend({
   },
 
   sendFilter : function () {
-    this.filter = [];
+    this.filter = [], bindValues = {};
     var filterlength = $('.queryline').length;
-    var i;
+    var ii, value;
     for(i=1;i<filterlength;i++){
-      if($('#attribute_name'+i).val()!=''){
-        this.filter.push(" u."+ $('#attribute_name'+i).val() + $('#operator'+i).val()+ "'" +
-        $('#attribute_value'+i).val() + "'" + $('#logicaloperator'+i).val());
+      value = $('#attribute_value'+i).val();
+      try {
+        value = JSON.parse(value);
+      }
+      catch (err) {
+        value = String(value);
+      }
+      if($('#attribute_name'+i).val()!==''){
+        this.filter.push(" u.`"+ $('#attribute_name'+i).val() + "`" + $('#operator'+i).val() + "@param" + i);
+        bindValues["param" + i] = value;
       }
     }
-    if($('#attribute_name').val()!==''){
-    this.filter.push(" u." + $('#attribute_name').val() + $('#operator').val()+ "'" +
-      $('#attribute_value').val() + "' ");
+    var value = $('#attribute_value').val();
+    try {
+      value = JSON.parse(value);
+    }
+    catch (err) {
+      value = String(value);
+    }
+
+    if ($('#attribute_name').val()!=='') {
+      this.filter.push(" u.`" + $('#attribute_name').val() + "`" + $('#operator').val() + "@param");
+      bindValues["param"] = value;
     }
     console.log(this.filter);
     window.documentsView.clearTable();
-    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter);
+    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter, bindValues);
   },
 
   addFilterItem : function () {
@@ -113,21 +129,23 @@ var documentsView = Backbone.View.extend({
        '<select name="operator" id="operator'+ num +'">'+
        '    <option value=" == ">==</option>'+
        '    <option value=" != ">!=</option>'+
-       '    <option value=" > ">&lt;</option>'+
-       '    <option value=" < ">&gt;</option>'+
+       '    <option value=" < ">&lt;</option>'+
+       '    <option value=" <= ">&lt;=</option>'+
+       '    <option value=" >= ">&gt;=</option>'+
+       '    <option value=" > ">&gt;</option>'+
        '</select>'+
        '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value">'+
-       '<select name="logicaloperator" id="logicaloperator'+ num +'">'+
-       '    <option value=" && ">and</option>'+
-       '    <option value=" || ">or</option>'+
-       '</select>'+
-       ' <a id="femoveFilterItem" data="' + num + '"><i class="icon icon-white icon-minus"></i></a>'+
+       ' <a class="removeFilterItem" data="' + num + '"><i class="icon icon-white icon-minus"></i></a>'+
    ' </div>');
   },
 
-  removeFilterItem : function (delline) {
+  removeFilterItem : function () {
     "use strict";
     // removes line delline from the filter widget
+    console.log("remove");
+    $('.removeFilterItem').click(function(event) {
+      console.log("hallo"+event.currentTarget);
+    });
   },
 
   addDocument: function () {
