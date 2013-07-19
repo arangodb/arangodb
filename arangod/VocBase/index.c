@@ -640,7 +640,7 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
 /// @brief return the index type name
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* TypeNameEdge (const TRI_index_t const* idx) {
+static const char* TypeNameEdge (TRI_index_t const* idx) {
   return "edge";
 }
 

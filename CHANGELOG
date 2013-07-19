@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* added AQL INTERSECTION function
+
 * INCOMPATIBLE CHANGE: changed AQL user function namespace resolution operator from `:` to `::`
 
   AQL user-defined functions were introduced in ArangoDB 1.3, and the namespace resolution
