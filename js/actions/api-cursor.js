@@ -270,7 +270,7 @@ function post_api_cursor(req, res) {
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{cursor-identifer,string,required}
+/// @RESTURLPARAM{cursor-identifier,string,required}
 /// The name of the cursor
 ///
 /// @RESTDESCRIPTION
@@ -388,7 +388,7 @@ function put_api_cursor (req, res) {
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{cursor-identifer,string,required}
+/// @RESTURLPARAM{cursor-identifier,string,required}
 /// The name of the cursor
 ///
 /// @RESTDESCRIPTION
