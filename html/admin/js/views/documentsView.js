@@ -6,6 +6,7 @@ var documentsView = Backbone.View.extend({
   currentPage: 1,
   documentsPerPage: 10,
   totalPages: 1,
+  filter :  [],
 
   collectionContext : {
     prev: null,
@@ -20,6 +21,10 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #collectionPrev"      : "prevCollection",
     "click #collectionNext"      : "nextCollection",
+    "click #filterCollection"    : "filterCollection",
+    "click #filterSend"          : "sendFilter",
+    "click #addFilterItem"       : "addFilterItem",
+    "click .removeFilterItem"    : "removeFilterItem",
     "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
@@ -46,7 +51,7 @@ var documentsView = Backbone.View.extend({
       if ($("#confirmDeleteBtn").attr("disabled") === false) {
         this.confirmDelete();
       }
-    } 
+    }
   },
 
   nop: function(event) {
@@ -125,6 +130,73 @@ var documentsView = Backbone.View.extend({
       $('#collectionNext').parent().addClass('disabledPag');
     }
   },
+
+  filterCollection : function () {
+    $('#filterHeader').slideToggle("slow");
+    this.filter = [];
+  },
+
+  sendFilter : function () {
+    this.filter = [], bindValues = {};
+    var filterlength = $('.queryline').length;
+    var ii, value;
+    for(i=1;i<filterlength;i++){
+      value = $('#attribute_value'+i).val();
+      try {
+        value = JSON.parse(value);
+      }
+      catch (err) {
+        value = String(value);
+      }
+      if($('#attribute_name'+i).val()!==''){
+        this.filter.push(" u.`"+ $('#attribute_name'+i).val() + "`" + $('#operator'+i).val() + "@param" + i);
+        bindValues["param" + i] = value;
+      }
+    }
+    var value = $('#attribute_value').val();
+    try {
+      value = JSON.parse(value);
+    }
+    catch (err) {
+      value = String(value);
+    }
+
+    if ($('#attribute_name').val()!=='') {
+      this.filter.push(" u.`" + $('#attribute_name').val() + "`" + $('#operator').val() + "@param");
+      bindValues["param"] = value;
+    }
+    console.log(this.filter);
+    window.documentsView.clearTable();
+    window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, this.filter, bindValues);
+  },
+
+  addFilterItem : function () {
+    "use strict";
+    // adds a line to the filter widget
+    
+    var  num = this.filter.length + 1;
+    $('#filterHeader').prepend(' <div class="queryline">'+
+       '<input id="attribute_name'+ num +'" type="text" placeholder="Attribute name">'+
+       '<select name="operator" id="operator'+ num +'">'+
+       '    <option value=" == ">==</option>'+
+       '    <option value=" != ">!=</option>'+
+       '    <option value=" < ">&lt;</option>'+
+       '    <option value=" <= ">&lt;=</option>'+
+       '    <option value=" >= ">&gt;=</option>'+
+       '    <option value=" > ">&gt;</option>'+
+       '</select>'+
+       '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value">'+
+       ' <a class="removeFilterItem"><i class="icon icon-white icon-minus"></i></a>'+
+   ' </div>');
+  },
+
+  removeFilterItem : function (event) {
+    "use strict";
+    // removes line delline from the filter widget
+    console.log(event);
+    event.currentTarget.parentElement.remove();
+  },
+
   addDocument: function () {
     var collid  = window.location.hash.split("/")[1];
     var doctype = arangoHelper.collectionApiType(collid);
