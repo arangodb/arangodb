@@ -40,7 +40,7 @@
 }
 
 .thumbnails a.add {
-	padding:40px 0;	
+	padding:40px 0;
 	display:block;
 	font-weight:bold;
 	text-align:left;
@@ -86,6 +86,7 @@
   opacity: 0.8;
   cursor: pointer;
 }
+
 
 #transparentHeader {
   height: 36px;

@@ -23,20 +23,21 @@ $(document).ready(function() {
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
       "applications"                        : "applications",
-      "application/documentation/:key"     : "appDocumentation",
+      "application/documentation/:key"      : "appDocumentation",
       "graph"                               : "graph"
-      
+
     },
+
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
-      
+
       window.collectionsView = new window.collectionsView({
         collection: window.arangoCollectionsStore
       });
       window.arangoCollectionsStore.fetch();
-      
+
       window.collectionView = new window.collectionView({
         model: arangoCollection
       });
@@ -67,6 +68,7 @@ $(document).ready(function() {
         collection: window.arangoCollectionsStore
       });
     },
+
     collections: function() {
       var naviView = this.naviView;
       window.arangoCollectionsStore.fetch({
@@ -76,16 +78,19 @@ $(document).ready(function() {
         }
       });
     },
+
     collection: function(colid) {
       window.collectionView.options.colId = colid;
       window.collectionView.render();
     },
+
     newCollection: function() {
       if (!this.newCollectionView) {
         this.newCollectionView = new window.newCollectionView({});
       }
       this.newCollectionView.render();
     },
+
     documents: function(colid, pageid) {
       if (!window.documentsView) {
         window.documentsView.initTable(colid, pageid);
@@ -97,6 +102,7 @@ $(document).ready(function() {
       window.documentsView.render();
       window.arangoDocumentsStore.getDocuments(colid, pageid);
     },
+
     document: function(colid, docid) {
       if (!window.documentView) {
         window.documentView.initTable();
@@ -108,6 +114,7 @@ $(document).ready(function() {
       window.documentView.type = type;
       window.documentView.typeCheck(type);
     },
+
     source: function(colid, docid) {
       window.documentSourceView.render();
       window.documentSourceView.colid = colid;
@@ -116,6 +123,7 @@ $(document).ready(function() {
       window.documentSourceView.type = type;
       window.documentSourceView.typeCheck(type);
     },
+
     shell: function() {
       if (!this.shellView) {
         this.shellView = new window.shellView();
@@ -123,6 +131,7 @@ $(document).ready(function() {
       this.shellView.render();
       this.naviView.selectMenuItem('shell-menu');
     },
+
     query: function() {
       if (!this.queryView) {
         this.queryView = new window.queryView();
@@ -130,6 +139,7 @@ $(document).ready(function() {
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
     },
+
     api: function() {
       if (!this.apiView) {
         this.apiView = new window.apiView();
@@ -137,6 +147,7 @@ $(document).ready(function() {
       this.apiView.render();
       this.naviView.selectMenuItem('api-menu');
     },
+
     about: function() {
       if (!this.aboutView) {
         this.aboutView = new window.aboutView();
@@ -144,6 +155,7 @@ $(document).ready(function() {
       this.aboutView.render();
       this.naviView.selectMenuItem('about-menu');
     },
+
     logs: function() {
       var self = this;
       window.arangoLogsStore.fetch({
@@ -157,6 +169,7 @@ $(document).ready(function() {
       });
       this.naviView.selectMenuItem('logs-menu');
     },
+
     dashboard: function() {
       this.naviView.selectMenuItem('dashboard-menu');
       /*
@@ -222,7 +235,7 @@ $(document).ready(function() {
       this.applicationsInstalledView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
-    
+
     applicationsInstalled: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
@@ -235,7 +248,7 @@ $(document).ready(function() {
       this.applicationsActiveView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
-    
+
     applicationEdit: function(appkey) {
       if (this.foxxList === undefined) {
         var self = this;
@@ -253,7 +266,7 @@ $(document).ready(function() {
         editAppView.render();
       }
     },
-    
+
     applicationInstall: function(appkey) {
       if (this.foxxList === undefined) {
         var self = this;
@@ -272,15 +285,14 @@ $(document).ready(function() {
         });
         installAppView.render();
       }
-      
+
     },
-    
+
     appDocumentation: function(key) {
       var docuView = new window.AppDocumentationView({key: key});
       docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
-
   });
 
   window.App = new window.Router();
