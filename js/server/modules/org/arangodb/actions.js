@@ -34,7 +34,6 @@ var fs = require("fs");
 var console = require("console");
 
 var arangodb = require("org/arangodb");
-var foxx = require("org/arangodb/foxx");
 var foxxManager = require("org/arangodb/foxx-manager");
 
 var moduleExists = function(name) { return module.exists; };
@@ -229,10 +228,10 @@ function lookupCallbackStatic (content) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a callback for a callback action
+/// @brief looks up a callback for a callback action given as string
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionCallback (route, action, context) {
+function lookupCallbackActionCallbackString (route, action, context) {
   'use strict';
 
   var func;
@@ -241,14 +240,7 @@ function lookupCallbackActionCallback (route, action, context) {
   try {
     var sandbox = {};
 
-    for (key in context.requires) {
-      if (context.requires.hasOwnProperty(key)) {
-        sandbox[key] = context.requires[key];
-      }
-    }
-
     sandbox.module = module.root;
-    sandbox.repositories = context.repositories;
 
     sandbox.require = function (path) {
       return context.appModule.require(path);
@@ -287,6 +279,35 @@ function lookupCallbackActionCallback (route, action, context) {
 
   return {
     controller: func,
+    options: action.options || {},
+    methods: action.methods || ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a callback action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionCallback (route, action, context) {
+  'use strict';
+
+  if (typeof action.callback === 'string') {
+    return lookupCallbackActionCallbackString(route, action, context);
+  }
+
+  if (typeof action.callback === 'function') {
+    return {
+      controller: action.callback,
+      options: action.options || {},
+      methods: action.methods || ALL_METHODS
+    };
+  }
+
+  return {
+    controller: errorFunction(
+      route,
+      "an error occurred while loading function '" 
+        + action.callback + "': unknown type '" + String(typeof action.callback) + "'"),
     options: action.options || {},
     methods: action.methods || ALL_METHODS
   };
@@ -579,99 +600,6 @@ function lookupCallback (route, context) {
   }
   else if (route.hasOwnProperty('action')) {
     result = lookupCallbackAction(route, route.action, context);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates all contexts
-////////////////////////////////////////////////////////////////////////////////
-
-function createContexts (appModule, appContext, desc) {
-  'use strict';
-
-  var key;
-  var c;
-
-  var result = {};
-
-  for (key in desc) {
-    if (desc.hasOwnProperty(key)) {
-      var d = desc[key];
-      var collectionPrefix = appContext.connectionPrefix;
-
-      result[key] = {
-        appModule: appModule,
-        repositories: {},
-        requires: {}
-      };
-
-      // .............................................................................
-      // requires
-      // .............................................................................
-
-      if (d.hasOwnProperty('requires')) {
-        for (c in d.requires) {
-          if (d.requires.hasOwnProperty(c)) {
-            var name = d.requires[c];
-            var m = appModule.require(name);
-
-            result[key].requires[c] = m;
-          }
-        }
-      }
-
-      // .............................................................................
-      // repositories
-      // .............................................................................
-
-      if (d.hasOwnProperty('repositories')) {
-        for (c in d.repositories) {
-          if (d.repositories.hasOwnProperty(c)) {
-            var rep = d.repositories[c];
-            var model;
-            var Repo;
-
-            if (rep.hasOwnProperty('model')) {
-              model = appModule.require(rep.model).Model;
-
-              if (model === undefined) {
-                throw new Error("module '" + rep.model + "' does not define a model");
-              }
-            }
-            else {
-              model = foxx.Model;
-            }
-
-            if (rep.hasOwnProperty('repository')) {
-              Repo = appModule.require(rep.repository).Repository;
-
-              if (Repo === undefined) {
-                throw new Error("module '" + rep.repository + "' does not define a repository");
-              }
-            }
-            else {
-              Repo = foxx.Repository;
-            }
-
-            var prefix = appContext.collectionPrefix;
-            var cname;
-
-            if (prefix === "") {
-              cname = c;
-            }
-            else {
-              cname = prefix + "_" + c;
-            }
-
-            var collection = arangodb.db._collection(cname);
-
-            result[key].repositories[c] = new Repo(prefix, collection, model);
-          }
-        }
-      }
-    }
   }
 
   return result;
@@ -1288,7 +1216,6 @@ function reloadRouting () {
     var urlPrefix = routes.urlPrefix || "";
     var modulePrefix = routes.modulePrefix || "";
     var keys = [ 'routes', 'middleware' ];
-    var repositories = {};
     var j;
 
     // create the application context
@@ -1310,9 +1237,6 @@ function reloadRouting () {
       appModule = app.createAppModule();
     }
 
-    // create the route contexts
-    var contexts = createContexts(appModule, appContext, routes.context || {});
-
     // install the routes
     for (j = 0;  j < keys.length;  ++j) {
       var key = keys[j];
@@ -1322,18 +1246,7 @@ function reloadRouting () {
 
         for (i = 0;  i < r.length;  ++i) {
           var route = r[i];
-          var context = {};
-
-          if (route.hasOwnProperty('context')) {
-            var cn = route.context;
-
-            if (contexts.hasOwnProperty(cn)) {
-              context = contexts[cn];
-            }
-            else {
-              throw new Error("unknown context '" + cn + "'");
-            }
-          }
+          var context = { appModule: appModule };
 
           installRoute(RoutingCache[arangodb.db._name()][key], 
                        urlPrefix, 
