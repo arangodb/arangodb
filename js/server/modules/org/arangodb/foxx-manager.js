@@ -40,11 +40,6 @@ var arangodb = require("org/arangodb");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Foxx
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the aal collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -192,18 +187,7 @@ function installAssets (app, routes) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAppScript (app, name, mount, prefix) {
-  var desc;
-  var appContext;
-
-  appContext = {
-    name: app._name,
-    version: app._version,
-    appId: app._id,
-    mount: mount,
-    collectionPrefix: prefix
-  };
-
-  desc = app._manifest;
+  var desc = app._manifest;
   
   if (! desc) {
     throw new Error("invalid application manifest, app " + internal.inspect(app));
@@ -222,6 +206,15 @@ function executeAppScript (app, name, mount, prefix) {
   }
 
   if (desc.hasOwnProperty(name)) {
+    var appContext = {
+      name: app._name,
+      version: app._version,
+      appId: app._id,
+      mount: mount,
+      collectionPrefix: prefix,
+      appModule: app.createAppModule()
+    };
+
     var cp = appContext.collectionPrefix;
     var cname = "";
 
@@ -241,7 +234,7 @@ function executeAppScript (app, name, mount, prefix) {
       }
     };
 
-    app.loadAppScript(app.createAppModule(), desc[name], appContext, context);
+    app.loadAppScript(appContext.appModule, desc[name], appContext, context);
   }
 }
 
@@ -417,68 +410,60 @@ function routingAalApp (app, mount, prefix) {
       if (apps.hasOwnProperty(i)) {
         var file = apps[i];
 
-
-        // set up a context for the routing table
-        routes.context[i] = {
-          repositories: {},
-          requires: {}
-        };
-
         // set up a context for the application start function
         context = {
+          name: app._name,                          // app name
+          version: app._version,                    // app version
+          appId: app._id,                           // app identifier
+          mount: mount,                             // global mount
           prefix: arangodb.normalizeURL("/" + i),   // app mount
-          requires: {},
-          routingInfo: {}
+          collectionPrefix: prefix,                 // collection prefix
+          appModule: app.createAppModule(),         // app module
+
+          routingInfo: {},
+          foxxes: []
         };
 
-        app.loadAppScript(app.createAppModule(), file, context);
+        app.loadAppScript(context.appModule, file, context);
 
         // .............................................................................
         // routingInfo
         // .............................................................................
 
-        var ri = context.routingInfo;
-        var rm = [ "routes", "middleware" ];
+        var foxxes = context.foxxes;
+        var u;
 
-        var route;
-        var j;
-        var k;
+        for (u = 0;  u < foxxes.length;  ++u) {
+          var foxx = foxxes[u];
+          var ri = foxx.routingInfo;
+          var rm = [ "routes", "middleware" ];
 
-        p = ri.urlPrefix;
+          var route;
+          var j;
+          var k;
 
-        for (k = 0;  k < rm.length;  ++k) {
-          var key = rm[k];
+          p = ri.urlPrefix;
 
-          if (ri.hasOwnProperty(key)) {
-            var rt = ri[key];
+          for (k = 0;  k < rm.length;  ++k) {
+            var key = rm[k];
 
-            for (j = 0;  j < rt.length;  ++j) {
-              route = rt[j];
+            if (ri.hasOwnProperty(key)) {
+              var rt = ri[key];
 
-              if (route.hasOwnProperty("url")) {
-                route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
+              for (j = 0;  j < rt.length;  ++j) {
+                route = rt[j];
+                
+                if (route.hasOwnProperty("url")) {
+                  route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
+                }
+
+                route.context = i;
+                
+                routes[key].push(route);
               }
-
-              route.context = i;
-
-              routes[key].push(route);
             }
           }
-
-          // .............................................................................
-          // repositories
-          // .............................................................................
-
-          if (ri.hasOwnProperty("repositories")) {
-            routes.context[i].repositories = ri.repositories;
-          }
         }
-
-        // .............................................................................
-        // requires
-        // .............................................................................
-
-        routes.context[i].requires = context.requires;
       }
     }
 
@@ -495,18 +480,9 @@ function routingAalApp (app, mount, prefix) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Foxx
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scans available FOXX applications
@@ -788,13 +764,9 @@ exports.developmentRoutes = function () {
   return routes;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-/// -----------------------------------------------------------------------------
-/// --SECTION--                                                       END-OF-FILE
-/// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 /// Local Variables:
 /// mode: outline-minor
