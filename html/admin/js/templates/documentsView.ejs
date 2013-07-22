@@ -6,14 +6,31 @@
       <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>
         <input id="documentsUploadFile" name="documentsUploadFile" type="file" accept="application/json" />Import
     </div>
+    <ul><li class="enabled"><a id="filterCollection"><i class="icon icon-white icon-filter"></i></a></li></ul>
 
-		<ul>
-			<li class="enabled"><a id="collectionPrev"><i class="icon icon-white icon-chevron-left"></i></a></li>
-			<li class="enabled"><a id="collectionNext"><i class="icon icon-white icon-chevron-right"></i></a></li>
-		</ul>
-	</div>
+    <ul>
+      <li class="enabled"><a id="collectionPrev"><i class="icon icon-white icon-chevron-left"></i></a></li>
+      <li class="enabled"><a id="collectionNext"><i class="icon icon-white icon-chevron-right"></i></a></li>
+    </ul>
+    </div>
+
   </div>
 </ul>
+
+<div id="filterHeader" style="display:none">
+    <div class="queryline">
+       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0">
+           <option value="==">==</option>
+           <option value="!=">!=</option>
+           <option value="&lt;">&lt;</option>
+           <option value="&lt;=">&lt;=</option>
+           <option value="&gt;">&gt;</option>
+           <option value="&gt;=">&gt;=</option>
+       </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
+        <a id="addFilterItem"><i class="icon icon-white icon-plus"></i></a>
+        <button id="filterSend">Filter</button>
+    </div>
+</div>
 
 <div id="documentsDiv">
 <div id="uploadMessages"></div>
@@ -27,10 +44,10 @@
   </thead>
 </table>
 
-<div id="documentsToolbarFL">
-  <div id="documentsToolbarF" class="pagination pagination-small pagination-centered">
-  </div>
-</div>
+    <div id="documentsToolbarFL">
+        <div id="documentsToolbarF" class="pagination pagination-small pagination-centered">
+        </div>
+    </div>
 
 <!-- Delete Modal -->
 <div id="docDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">

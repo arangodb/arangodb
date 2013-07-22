@@ -85,18 +85,19 @@ extern int Ahuacatldebug;
      T_QUESTION = 293,
      T_COLON = 294,
      T_SCOPE = 295,
-     T_COMMA = 296,
-     T_OPEN = 297,
-     T_CLOSE = 298,
-     T_DOC_OPEN = 299,
-     T_DOC_CLOSE = 300,
-     T_LIST_OPEN = 301,
-     T_LIST_CLOSE = 302,
-     UPLUS = 303,
-     UMINUS = 304,
-     FUNCCALL = 305,
-     REFERENCE = 306,
-     INDEXED = 307
+     T_RANGE = 296,
+     T_COMMA = 297,
+     T_OPEN = 298,
+     T_CLOSE = 299,
+     T_DOC_OPEN = 300,
+     T_DOC_CLOSE = 301,
+     T_LIST_OPEN = 302,
+     T_LIST_CLOSE = 303,
+     UPLUS = 304,
+     UMINUS = 305,
+     FUNCCALL = 306,
+     REFERENCE = 307,
+     INDEXED = 308
    };
 #endif
 
@@ -114,7 +115,7 @@ typedef union YYSTYPE
 
 
 /* Line 2042 of yacc.c  */
-#line 118 "arangod/Ahuacatl/ahuacatl-grammar.h"
+#line 119 "arangod/Ahuacatl/ahuacatl-grammar.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
