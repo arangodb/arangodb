@@ -104,6 +104,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %token T_QUESTION "?"
 %token T_COLON ":"
 %token T_SCOPE "::"
+%token T_RANGE ".."
 
 %token T_COMMA ","
 %token T_OPEN "("
@@ -117,7 +118,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 
 
 /* define operator precedence */
-%left T_COMMA        
+%left T_COMMA T_RANGE
 %right T_QUESTION T_COLON
 %right T_ASSIGN
 %left T_OR 
@@ -170,6 +171,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <node> value_literal;
 %type <node> bind_parameter;
 %type <strval> variable_name;
+%type <node> numeric_value;
 %type <node> integer_value;
 
 
@@ -423,7 +425,6 @@ expression:
       if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_SUBQUERY)) {
         ABORT_OOM
       }
-      
     } query T_CLOSE {
       TRI_aql_node_t* result;
       TRI_aql_node_t* subQuery;
@@ -472,6 +473,34 @@ expression:
     }
   | reference {
       $$ = $1;
+    }
+  | expression T_RANGE expression {
+      TRI_aql_node_t* node;
+      TRI_aql_node_t* list;
+
+      if ($1 == NULL || $3 == NULL) {
+        ABORT_OOM
+      }
+      
+      list = TRI_CreateNodeListAql(context);
+      if (list == NULL) {
+        ABORT_OOM
+      }
+       
+      if (TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&list->_members, (void*) $1)) {
+        ABORT_OOM
+      }
+      if (TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&list->_members, (void*) $3)) {
+        ABORT_OOM
+      }
+      
+      node = TRI_CreateNodeFcallAql(context, "RANGE", list);
+
+      if (node == NULL) {
+        ABORT_OOM
+      }
+
+      $$ = node;
     }
   ;
 
@@ -917,18 +946,10 @@ atomic_value:
       $$ = $1;
     }
   ;
-  
-value_literal: 
-    T_QUOTED_STRING {
-      TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, $1);
-      if (node == NULL) {
-        ABORT_OOM
-      }
 
-      $$ = node;
-    }
-  | integer_value {
-    $$ = $1;
+numeric_value:
+    integer_value {
+      $$ = $1;
     }
   | T_DOUBLE {
       TRI_aql_node_t* node;
@@ -950,6 +971,19 @@ value_literal:
       }
 
       $$ = node;
+    };
+  
+value_literal: 
+    T_QUOTED_STRING {
+      TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, $1);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+
+      $$ = node;
+    }
+  | numeric_value {
+      $$ = $1;
     }
   | T_NULL {
       TRI_aql_node_t* node = TRI_CreateNodeValueNullAql(context);

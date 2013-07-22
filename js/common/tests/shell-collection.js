@@ -1006,6 +1006,145 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test first
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirst : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertNull(c1.first());
+
+      c1.save({ "a": 1, "_key" : "one" });
+      assertEqual(1, c1.first().a);
+      
+      c1.save({ "a": 2, "_key" : "two" });
+      assertEqual(1, c1.first().a);
+
+      c1.remove("one");
+      assertEqual(2, c1.first().a);
+
+      c1.remove("two");
+      assertNull(c1.first());
+
+      c1.truncate();
+      for (var i = 0; i < 1000; ++i) {
+        c1.save({ "a" : i, "_key" : "test" + i });
+      }
+
+      var actual = c1.first(1);
+      assertEqual(1, actual.length);
+      assertEqual(0, actual[0].a);
+      assertEqual("test0", actual[0]._key);
+      
+      actual = c1.first(2);
+      assertEqual(2, actual.length);
+      assertEqual(0, actual[0].a);
+      assertEqual(1, actual[1].a);
+      assertEqual("test0", actual[0]._key);
+      assertEqual("test1", actual[1]._key);
+      
+      actual = c1.first(10);
+      assertEqual(10, actual.length);
+      assertEqual(0, actual[0].a);
+      assertEqual(1, actual[1].a);
+      assertEqual(9, actual[9].a);
+      assertEqual("test0", actual[0]._key);
+      assertEqual("test1", actual[1]._key);
+      assertEqual("test9", actual[9]._key);
+
+      c1.remove("test0");
+      c1.remove("test3");
+      
+      actual = c1.first(10);
+      assertEqual(10, actual.length);
+      assertEqual(1, actual[0].a);
+      assertEqual(2, actual[1].a);
+      assertEqual(4, actual[2].a);
+      assertEqual(11, actual[9].a);
+      assertEqual("test1", actual[0]._key);
+      assertEqual("test2", actual[1]._key);
+      assertEqual("test4", actual[2]._key);
+      assertEqual("test11", actual[9]._key);
+
+      c1.truncate();
+      
+      actual = c1.first(10);
+      assertEqual(0, actual.length);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test last
+////////////////////////////////////////////////////////////////////////////////
+
+    testLast : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertNull(c1.last());
+
+      c1.save({ "a": 1, "_key" : "one" });
+      assertEqual(1, c1.last().a);
+      
+      c1.save({ "a": 2, "_key" : "two" });
+      assertEqual(2, c1.last().a);
+
+      c1.remove("two");
+      assertEqual(1, c1.last().a);
+
+      c1.remove("one");
+      assertNull(c1.last());
+
+      c1.truncate();
+      for (var i = 0; i < 1000; ++i) {
+        c1.save({ "a" : i, "_key" : "test" + i });
+      }
+
+      var actual = c1.last(1);
+      assertEqual(1, actual.length);
+      assertEqual(999, actual[0].a);
+      assertEqual("test999", actual[0]._key);
+      
+      actual = c1.last(2);
+      assertEqual(2, actual.length);
+      assertEqual(999, actual[0].a);
+      assertEqual(998, actual[1].a);
+      assertEqual("test999", actual[0]._key);
+      assertEqual("test998", actual[1]._key);
+      
+      actual = c1.last(10);
+      assertEqual(10, actual.length);
+      assertEqual(999, actual[0].a);
+      assertEqual(998, actual[1].a);
+      assertEqual(990, actual[9].a);
+      assertEqual("test999", actual[0]._key);
+      assertEqual("test998", actual[1]._key);
+      assertEqual("test990", actual[9]._key);
+
+      c1.remove("test999");
+      c1.remove("test996");
+      
+      actual = c1.last(10);
+      assertEqual(10, actual.length);
+      assertEqual(998, actual[0].a);
+      assertEqual(997, actual[1].a);
+      assertEqual(995, actual[2].a);
+      assertEqual(988, actual[9].a);
+      assertEqual("test998", actual[0]._key);
+      assertEqual("test997", actual[1]._key);
+      assertEqual("test995", actual[2]._key);
+      assertEqual("test988", actual[9]._key);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test system collection dropping / renaming / unloading
 ////////////////////////////////////////////////////////////////////////////////
 

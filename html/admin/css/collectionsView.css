@@ -2,6 +2,9 @@
   margin-left: 1px !important;
 }
 
+#addFilterItem, .removeFilterItem {
+  cursor: pointer;
+}
 #transparentHeader .btn-group {
   margin-top: 6px !important;
 }
@@ -40,7 +43,7 @@
 }
 
 .thumbnails a.add {
-	padding:40px 0;	
+	padding:40px 0;
 	display:block;
 	font-weight:bold;
 	text-align:left;
@@ -86,6 +89,7 @@
   opacity: 0.8;
   cursor: pointer;
 }
+
 
 #transparentHeader {
   height: 36px;
