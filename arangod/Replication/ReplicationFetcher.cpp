@@ -642,7 +642,7 @@ int ReplicationFetcher::createCollection (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumberValue(json, "type", (double) TRI_COL_TYPE_DOCUMENT);
+  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getIntValue(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -888,8 +888,9 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
         // update
         TRI_doc_update_policy_t policy;
         TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+        const TRI_voc_rid_t rid = StringUtils::uint64(JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_REV, ""));
 
-        res = primary->update(trxCollection, key, &mptr, shaped, &policy, false, false);
+        res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
       
       TRI_FreeShapedJson(primary->_shaper, shaped);
@@ -1410,21 +1411,21 @@ int ReplicationFetcher::performContinuousSync (string& errorMsg) {
         }
         else {
           if (masterActive) {
-            sleepTime = 1 * 1000 * 1000;
+            sleepTime = 500 * 1000;
           }
           else {
-            sleepTime = 10 * 1000 * 1000;
+            sleepTime = 5 * 1000 * 1000;
           }
 
           if (_configuration._adaptivePolling) {
             inactiveCycles++;
-            if (inactiveCycles > 30) {
+            if (inactiveCycles > 60) {
               sleepTime *= 5;
             }
-            else if (inactiveCycles > 20) {
+            else if (inactiveCycles > 30) {
               sleepTime *= 3;
             }
-            if (inactiveCycles > 10) {
+            if (inactiveCycles > 15) {
               sleepTime *= 2;
             }
           }

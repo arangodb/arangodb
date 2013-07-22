@@ -159,7 +159,7 @@ static TRI_json_t* JsonApplyConfiguration (TRI_replication_apply_configuration_t
 
   assert(config->_endpoint != NULL);
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 4);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 8);
 
   if (json == NULL) {
     return NULL;
@@ -621,6 +621,10 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
   }
 
   res = TRI_SaveConfigurationFileReplicationApplier(applier->_vocbase, config, true);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_LoadConfigurationFileReplicationApplier(applier->_vocbase, &applier->_configuration);
+  }
   
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
 
@@ -1018,9 +1022,12 @@ void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_conf
 
 void TRI_CopyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t const* src,
                                                    TRI_replication_apply_configuration_t* dst) {
-  assert(src->_endpoint != NULL);
-
-  dst->_endpoint          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+  if (src->_endpoint != NULL) {
+    dst->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+  }
+  else {
+    dst->_endpoint = NULL;
+  }
 
   if (src->_username != NULL) {
     dst->_username          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
@@ -1104,6 +1111,7 @@ int TRI_SaveConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application configuration from a file
+/// this function must be called under the statusLock
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LoadConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,

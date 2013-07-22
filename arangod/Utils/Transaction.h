@@ -852,6 +852,7 @@ namespace triagens {
 
         int update (TRI_transaction_collection_t* trxCollection,
                     const string& key,
+                    TRI_voc_rid_t rid,
                     TRI_doc_mptr_t* mptr,
                     TRI_json_t* const json,
                     const TRI_doc_update_policy_e policy,
@@ -867,6 +868,7 @@ namespace triagens {
 
           int res = update(trxCollection, 
                            key, 
+                           rid,
                            mptr, 
                            shaped, 
                            policy, 
@@ -885,6 +887,7 @@ namespace triagens {
 
         inline int update (TRI_transaction_collection_t* const trxCollection,
                            const string& key,
+                           TRI_voc_rid_t rid,
                            TRI_doc_mptr_t* mptr,
                            TRI_shaped_json_t* const shaped,
                            const TRI_doc_update_policy_e policy,
@@ -898,7 +901,8 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
           
           int res = primary->update(trxCollection, 
-                                    (const TRI_voc_key_t) key.c_str(), 
+                                    (const TRI_voc_key_t) key.c_str(),
+                                    rid, 
                                     mptr, 
                                     shaped, 
                                     &updatePolicy, 
