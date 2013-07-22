@@ -83,7 +83,7 @@
       adapter = new JSONAdapter(jsonPath, nodes, edges);
     });
     
-    it('should be able to load a tree node form a json file', function() {
+    it('should be able to load a tree node from a json file', function() {
       var callbackCheck;
       
       runs(function() {

@@ -1360,15 +1360,18 @@
     });
     
     describe('testing community nodes', function() {
-      var shaper;
+      var shaper, adapter;
       
       beforeEach(function() {
         shaper = new NodeShaper(d3.select("svg"));
+        adapter = {
+          dissolveCommunity: function() {}
+        };
       });
       
       it('should render community nodes', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
-          commNode = new CommunityNode();
+          commNode = new CommunityNode(adapter);
         nodes.push(commNode);
         shaper.drawNodes(nodes);
         expect($("svg .node").length).toEqual(4);
@@ -1378,7 +1381,7 @@
       it('should render communtiy nodes as stacks', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
           intNodes = helper.createSimpleNodes([5, 6, 7, 8]),
-          commNode = new CommunityNode(intNodes),
+          commNode = new CommunityNode(adapter, intNodes),
           stack,
           sortFunc = function(a, b) {
             return a.getAttribute("x") - b.getAttribute("x");
@@ -1401,7 +1404,7 @@
       it('should print the size of the capsulated community', function() {
         var nodes = helper.createSimpleNodes([0, 1, 2]),
           intNodes = helper.createSimpleNodes([5, 6, 7, 8]),
-          commNode = new CommunityNode(intNodes),
+          commNode = new CommunityNode(adapter, intNodes),
           text;
         nodes.push(commNode);
         shaper.drawNodes(nodes);
@@ -1413,7 +1416,7 @@
       it('should print the reason why it is joined', function() {
         var nodes = [],
           intNodes = helper.createSimpleNodes([5, 6, 7, 8]),
-          commNode = new CommunityNode(intNodes),
+          commNode = new CommunityNode(adapter, intNodes),
           spans;
         commNode._reason = {
           key: "type",

@@ -456,8 +456,24 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     },
   
     checkNodeLimit = function (focus) {
-      if (limit < nodes.length) {
-        requestCollapse(focus);
+      var curRendered = nodes.length,
+        commToColapse,
+        bestComVal = -Infinity;
+      _.each(cachedCommunities, function(c) {
+        if (c._expanded === true) {
+          if (bestComVal < c._size && c !== focus) {
+            commToColapse = c;
+            bestComVal = c._size;
+          }
+          curRendered += c._size;
+        }
+      });
+      if (limit < curRendered) {
+        if (commToColapse) {
+          commToColapse.collapse();
+        } else {
+          requestCollapse(focus);
+        }
       }
     },
     /* Archive
@@ -543,6 +559,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     
     expandCommunity = function(commNode) {
       commNode.expand();
+      checkNodeLimit(commNode);
     },
     
     checkSizeOfInserted = function (inserted) {

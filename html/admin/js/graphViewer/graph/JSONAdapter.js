@@ -122,25 +122,24 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       if (error !== undefined && error !== null) {
         console.log(error);
       }
-      var n = findNode(node);
-      if (!n) {
-        n = insertNode(node);
-      } else {
-        n.children = node.children;
-      }
+      var n = absAdapter.insertNode(node);
       self.requestCentralityChildren(nodeId, function(c) {
         n._centrality = c;
       });
-      _.each(n.children, function(c) {
-        var check = findNode(c);
-        if (!check) {
-          check = insertNode(c);
-        }
-        insertEdge(n, check);
+      _.each(node.children, function(c) {
+        var check = absAdapter.insertNode(c),
+        e = {
+          _from: n._id,
+          _to: check._id,
+          _id: n._id + "-" + check._id
+        };
+        absAdapter.insertEdge(e);
         self.requestCentralityChildren(check._id, function(c) {
           n._centrality = c;
         });
+        delete check._data.children;
       });
+      delete n._data.children;
       if (callback) {
         callback(n);
       }
