@@ -44,7 +44,9 @@ function CommunityNode(parent, initial) {
   // Private variables              //
   ////////////////////////////////////   
     self = this,
-    boundingBox,
+    bBox,
+    bBoxBorder,
+    bBoxTitle,
     nodes = {},
     observer,
     nodeArray = [],
@@ -72,13 +74,45 @@ function CommunityNode(parent, initial) {
       return def;
     },
   
+    getSourcePosition = function(e) {    
+      if (self._expanded) {
+        var p = self.position,
+          diff = e._source,
+          x = p.x + diff.x,
+          y = p.y + diff.y,
+          z = p.z + diff.z;
+        return {
+          x: x,
+          y: y,
+          z: z
+        };
+      }
+      return self.position;
+    },
+  
+  
+    getTargetPosition = function(e) {
+      if (self._expanded) {
+        var p = self.position,
+          diff = e._target,
+          x = p.x + diff.x,
+          y = p.y + diff.y,
+          z = p.z + diff.z;
+        return {
+          x: x,
+          y: y,
+          z: z
+        };
+      }
+      return self.position;
+    },
 
     updateBoundingBox = function() {
-      var bbox = document.getElementById(self._id).getBBox();
-      boundingBox.attr("width", bbox.width + 10)
-       .attr("height", bbox.height + 10)
-       .attr("x", bbox.x - 5)
-       .attr("y", bbox.y - 5);
+      var boundingBox = document.getElementById(self._id).getBBox();
+      bBox.attr("transform", "translate(" + (boundingBox.x - 5) + "," + (boundingBox.y - 25) + ")");
+      bBoxBorder.attr("width", boundingBox.width + 10)
+        .attr("height", boundingBox.height + 30);
+      bBoxTitle.attr("width", boundingBox.width + 10);
     },
   
     getObserver = function() {
@@ -326,11 +360,43 @@ function CommunityNode(parent, initial) {
     },
     
     addBoundingBox = function(g) {
-      boundingBox = g.append("rect")
+      bBox = g.append("g");
+      bBoxBorder = bBox.append("rect")
         .attr("rx", "8")
         .attr("ry", "8")
         .attr("fill", "none")
         .attr("stroke", "black");
+      bBoxTitle = bBox.append("rect")
+        .attr("rx", "8")
+        .attr("ry", "8")
+        .attr("height", "20")
+        .attr("fill", "#686766")
+        .attr("stroke", "none");
+      var dissolveBtn = bBox.append("rect")
+        .attr("fill", "red") // TODO
+        .attr("width", "16")
+        .attr("height", "16")
+        .attr("x", "5")
+        .attr("y", "2")
+        .attr("style", "cursor:pointer")
+        .on("click", dissolve),
+      collapseBtn = bBox.append("rect")
+        .attr("fill", "red") // TODO
+        .attr("width", "16")
+        .attr("height", "16")
+        .attr("x", "25")
+        .attr("y", "2")
+        .attr("style", "cursor:pointer")
+        .on("click", collapse),
+      title = bBox.append("text")
+        .attr("x", "45")
+        .attr("y", "15")
+        .attr("fill", "white")
+        .attr("stroke", "none")
+        .attr("text-anchor", "left");
+      if (self._reason) {
+        title.text(self._reason.text);
+      }
       getObserver().observe(document.getElementById(self._id), {
         subtree:true,
         attributes:true
@@ -413,36 +479,8 @@ function CommunityNode(parent, initial) {
   
   this.shape = shapeAll;
   
-  // TMP
-  this.getSourcePosition = function(e) {    
-    if (self._expanded) {
-      var p = self.position;
-      var diff = e._source;
-      var x = p.x + diff.x;
-      var y = p.y + diff.y;
-      var z = p.z + diff.z;
-      return {
-        x: x,
-        y: y,
-        z: z
-      }
-    }
-    return self.position;
-  };
+  // TODO TMP
+  this.getSourcePosition = getSourcePosition;
   
-  this.getTargetPosition = function(e) {
-    if (self._expanded) {
-      var p = self.position;
-      var diff = e._target;
-      var x = p.x + diff.x;
-      var y = p.y + diff.y;
-      var z = p.z + diff.z;
-      return {
-        x: x,
-        y: y,
-        z: z
-      }
-    }
-    return self.position;
-  };
+  this.getTargetPosition = getTargetPosition;
 }

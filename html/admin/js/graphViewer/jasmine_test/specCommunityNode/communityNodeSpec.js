@@ -363,8 +363,8 @@
     
     describe('shaping functionality', function() {
       
-      var tSpan1, tSpan2, tSpan3, text, g, shaper, colourMapper, box, boxRect,
-        parent, c, width;
+      var tSpan1, tSpan2, tSpan3, text, g, shaper, colourMapper, box, boxGroup, boxRect,
+        parent, c, width, titleBG, disBtn, titleText, colBtn;
         
       beforeEach(function() {
         parent = {
@@ -407,6 +407,56 @@
             return this;
           }
         };
+        titleBG = {
+          attr: function() {
+            return this;
+          }
+        };
+        disBtn = {
+          attr: function() {
+            return this;
+          },
+          on: function() {
+            return this;
+          }
+        };
+        colBtn = {
+          attr: function() {
+            return this;
+          },
+          on: function() {
+            return this;
+          }
+        };
+        titleText = {
+          attr: function() {
+            return this;
+          }
+        };
+        boxGroup = {
+          appendCounter: 0,
+          append: function(name) {
+            if (name === "rect") {
+              this.appendCounter++;
+              switch (this.appendCounter) {
+                case 1:
+                  return boxRect;
+                case 2:
+                  return titleBG;
+                case 3:
+                  return disBtn;
+                case 4:
+                  return colBtn;
+              }
+            }
+            if (name === "text") {
+              return titleText;
+            }
+          },
+          attr: function() {
+            return this;
+          }
+        };
         text = {
           attr: function() {
             return this;
@@ -440,8 +490,8 @@
             if (type === "text") {
               return text;
             }
-            if (type === "rect") {
-              return boxRect;
+            if (type === "g") {
+              return boxGroup;
             }
           }
         };
@@ -632,20 +682,64 @@
         
         it('should print the bounding box correctly', function() {
           spyOn(g, "append").andCallThrough();
+          spyOn(boxGroup, "append").andCallThrough();
           spyOn(boxRect, "attr").andCallThrough();
+          spyOn(titleBG, "attr").andCallThrough();
+          spyOn(disBtn, "attr").andCallThrough();
+          spyOn(disBtn, "on").andCallThrough();
+          spyOn(colBtn, "attr").andCallThrough();
+          spyOn(colBtn, "on").andCallThrough();
+          spyOn(titleText, "attr").andCallThrough();
+          
         
           c.shape(g, shaper.shapeFunc, colourMapper);
         
-          expect(g.append).wasCalledWith("rect");
+          expect(g.append).wasCalledWith("g");
+          expect(boxGroup.append).wasCalledWith("rect");
+          expect(boxGroup.append).wasCalledWith("text");
+          expect(boxGroup.append.calls.length).toEqual(5);
+          
           expect(boxRect.attr).wasCalledWith("rx", "8");
           expect(boxRect.attr).wasCalledWith("ry", "8");
           expect(boxRect.attr).wasCalledWith("fill", "none");
           expect(boxRect.attr).wasCalledWith("stroke", "black");
           
+          expect(titleBG.attr).wasCalledWith("height", "20");
+          expect(titleBG.attr).wasCalledWith("rx", "8");
+          expect(titleBG.attr).wasCalledWith("ry", "8");
+          expect(titleBG.attr).wasCalledWith("fill", "#686766");
+          expect(titleBG.attr).wasCalledWith("stroke", "none");
+
+          // TODO RECT->Image
+          expect(disBtn.attr).wasCalledWith("fill", "red"); // TODO
+          expect(disBtn.attr).wasCalledWith("height", "16");
+          expect(disBtn.attr).wasCalledWith("width", "16");
+          expect(disBtn.attr).wasCalledWith("x", "5");
+          expect(disBtn.attr).wasCalledWith("y", "2");
+          expect(disBtn.attr).wasCalledWith("style", "cursor:pointer");
+          expect(disBtn.on).wasCalledWith("click", jasmine.any(Function));
+          
+          // TODO RECT->Image
+          expect(colBtn.attr).wasCalledWith("fill", "red"); // TODO
+          expect(colBtn.attr).wasCalledWith("height", "16");
+          expect(colBtn.attr).wasCalledWith("width", "16");
+          expect(colBtn.attr).wasCalledWith("x", "25");
+          expect(colBtn.attr).wasCalledWith("y", "2");
+          expect(colBtn.attr).wasCalledWith("style", "cursor:pointer");
+          expect(colBtn.on).wasCalledWith("click", jasmine.any(Function));
+
+          expect(titleText.attr).wasCalledWith("fill", "white");
+          expect(titleText.attr).wasCalledWith("stroke", "none");
+          expect(titleText.attr).wasCalledWith("x", "45");
+          expect(titleText.attr).wasCalledWith("y", "15");
+          expect(titleText.attr).wasCalledWith("text-anchor", "left");          
+          
         });
         
         it('should update the box as soon as the dom is ready', function() {
+          spyOn(boxGroup, "attr").andCallThrough();
           spyOn(boxRect, "attr").andCallThrough();
+          spyOn(titleBG, "attr").andCallThrough();
           spyOn(observer, "observe").andCallThrough();
           spyOn(observer, "disconnect").andCallThrough();
           
@@ -659,14 +753,14 @@
               attributes:true
             }
           );
-          
-          
+
           observerCB([{attributeName: "transform"}]);
-          
+          expect(boxGroup.attr).wasCalledWith(
+            "transform", "translate(" + (box.x - 5) + "," + (box.y - 25) + ")"
+          );
           expect(boxRect.attr).wasCalledWith("width", box.width + 10);
-          expect(boxRect.attr).wasCalledWith("height", box.height + 10);
-          expect(boxRect.attr).wasCalledWith("x", box.x - 5);
-          expect(boxRect.attr).wasCalledWith("y", box.y - 5);
+          expect(boxRect.attr).wasCalledWith("height", box.height + 30);
+          expect(titleBG.attr).wasCalledWith("width", box.width + 10);
           expect(observer.disconnect).wasCalled();
         });
         
