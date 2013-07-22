@@ -1249,7 +1249,9 @@ int ReplicationFetcher::getLocalState (string& errorMsg) {
 
 int ReplicationFetcher::getMasterState (string& errorMsg) {
   map<string, string> headers;
-  static const string url = BaseUrl + "/log-state";
+  static const string url = BaseUrl + 
+                            "/log-state" + 
+                            "?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master state from " + url;
@@ -1311,7 +1313,9 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
 
 int ReplicationFetcher::performInitialSync (string& errorMsg) {
   map<string, string> headers;
-  static const string url = BaseUrl + "/inventory";
+  static const string url = BaseUrl + 
+                            "/inventory" + 
+                            "?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master inventory from " + url;
@@ -1455,7 +1459,8 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                                               string& errorMsg) {
   const string cid = StringUtils::itoa(trxCollection->_cid);
 
-  const string baseUrl = BaseUrl + "/dump?collection=" + cid +
+  const string baseUrl = BaseUrl + 
+                         "/dump?collection=" + cid +
                          "&chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
