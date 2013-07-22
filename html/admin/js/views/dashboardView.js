@@ -22,10 +22,11 @@ var dashboardView = Backbone.View.extend({
   detailGraph: "userTime",
 
   initialize: function () {
+    this.arangoReplication = new window.ArangoReplication();
     var self = this;
 
     this.initUnits();
-    self.addCustomCharts();
+    this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
@@ -44,6 +45,9 @@ var dashboardView = Backbone.View.extend({
 
           if (self.updateCounter < self.updateFrequency) {
             return false;
+          }
+          if (window.location.hash === '#dashboard') {
+            self.getReplicationStatus();
           }
 
           self.updateCounter = 0;
@@ -87,10 +91,54 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  getReplicationStatus: function () {
+    this.replLogState = this.arangoReplication.getLogState();
+    this.replApplyState = this.arangoReplication.getApplyState();
+    this.putReplicationStatus();
+  },
+  putReplicationStatus: function () {
+
+    if (this.replApplyState.running === true) {
+      $('#detailReplication').height(290);
+      $('.checkApplyRunningStatus').show();
+    }
+    else {
+      $('.checkApplyRunningStatus').hide();
+    }
+
+    //logtale
+    $('#logRunningVal').text(this.replLogState.state.running);
+    $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
+
+    //apply table
+    var convertedProgressTime;
+    var convertedLastErrorTime;
+    var convertedLastTick;
+    if (this.replApplyState.state.progress.time === '') {
+      convertedProgressTime = 'n/A';
+    }
+    if (this.replApplyState.state.lastError.time === '') {
+      convertedLastErrorTime = 'n/A';
+    }
+    if (this.replApplyState.state.lastProcessedContinuousTick === null) {
+      convertedLastTick = 0;
+    }
+
+    $('#applyRunningVal').text(this.replApplyState.state.running);
+    $('#applyLastTickVal').text(convertedLastTick);
+    $('#applyCurrentPhaseId').text(this.replApplyState.state.currentPhase.id);
+    $('#applyCurrentPhaseLabel').text(this.replApplyState.state.currentPhase.label);
+    $('#applyProgressVal').text(convertedProgressTime);
+    $('#applyLastErrorTime').text(convertedLastErrorTime);
+    $('#applyLastErrorErrorNum').text(this.replApplyState.state.lastError.errorNum);
+
+  },
+
   render: function() {
     var self = this;
     self.updateNOW = true;
     $(this.el).html(this.template.text);
+    this.getReplicationStatus();
 
     //Client calculated charts
     /*self.genCustomCategories();
