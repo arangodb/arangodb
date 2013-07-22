@@ -125,6 +125,30 @@ static size_t BufferSize = 256;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to hold a client action
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct logger_client_s {
+  TRI_server_id_t _serverId;
+  char*           _url;
+  char            _stamp[20];
+}
+logger_client_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -948,6 +972,71 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a client id
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyClient (TRI_associative_pointer_t* array, 
+                               void const* key) {
+  TRI_server_id_t const* k = key;
+
+  return (uint64_t) *k;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a client struct
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementClient (TRI_associative_pointer_t* array, 
+                                   void const* element) {
+  logger_client_t const* e = element;
+  
+  return (uint64_t) e->_serverId;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a client key and a client struct
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyClient (TRI_associative_pointer_t* array, 
+                              void const* key, 
+                              void const* element) {
+  TRI_server_id_t const* k = key;
+  logger_client_t const* e = element;
+
+  return *k == e->_serverId;
+}
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a single registered client
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeClient (logger_client_t* client) {
+  if (client->_url != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, client->_url);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, client);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free registered clients
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeClients (TRI_replication_logger_t* logger) {
+  uint32_t i, n;
+  
+  n = logger->_clients._nrAlloc;
+
+  for (i = 0; i < n; ++i) {
+    logger_client_t* client = logger->_clients._table[i];
+
+    if (client != NULL) {
+      FreeClient(client);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -983,8 +1072,16 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
 
     return NULL;
   }
+  
+  res = TRI_InitAssociativePointer(&logger->_clients,
+                                   TRI_UNKNOWN_MEM_ZONE,
+                                   HashKeyClient,
+                                   HashElementClient,
+                                   IsEqualKeyClient,
+                                   NULL);
 
   TRI_InitReadWriteLock(&logger->_statusLock);
+  TRI_InitReadWriteLock(&logger->_clientsLock);
   TRI_InitSpin(&logger->_idLock);
   TRI_InitSpin(&logger->_bufferLock);
 
@@ -1009,9 +1106,13 @@ void TRI_DestroyReplicationLogger (TRI_replication_logger_t* logger) {
 
   FreeBuffers(logger);
  
+  FreeClients(logger);
+  TRI_DestroyAssociativePointer(&logger->_clients);
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, logger->_databaseName);
   TRI_DestroySpin(&logger->_bufferLock);
   TRI_DestroySpin(&logger->_idLock);
+  TRI_DestroyReadWriteLock(&logger->_clientsLock);
   TRI_DestroyReadWriteLock(&logger->_statusLock);
 }
 
@@ -1036,6 +1137,95 @@ void TRI_FreeReplicationLogger (TRI_replication_logger_t* logger) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of clients as a JSON array
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) {
+  TRI_json_t* json;
+  uint32_t i, n;
+
+  json = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+  TRI_ReadLockReadWriteLock(&logger->_clientsLock);
+
+  n = logger->_clients._nrAlloc;
+
+  for (i = 0; i < n; ++i) {
+    logger_client_t* client = logger->_clients._table[i];
+
+    if (client != NULL) {
+      TRI_json_t* element = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+      if (element != NULL) {
+        char* serverId = TRI_StringUInt64(client->_serverId);
+
+        if (serverId != NULL) {
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
+        }
+
+        if (client->_url != NULL) {
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "url", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, client->_url));
+        }
+          
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, client->_stamp));
+
+        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, element);
+      }
+    }
+  }
+
+  TRI_ReadUnlockReadWriteLock(&logger->_clientsLock);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert an applier action into an action list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
+                                        TRI_server_id_t serverId,
+                                        char const* url) {
+
+  logger_client_t* client;
+  time_t tt;
+  struct tm tb;
+  void* found;
+  
+  client = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(logger_client_t), false);
+
+  if (client == NULL) {
+    return;
+  }
+
+  tt = time(0);
+  TRI_gmtime(tt, &tb);
+
+  strftime(client->_stamp, sizeof(client->_stamp) - 1, "%Y-%m-%dT%H:%M:%SZ", &tb);
+
+  client->_serverId = serverId;
+  client->_url = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, url);
+
+  if (client->_url == NULL) {
+    // OOM
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, client);
+    return;
+  }
+
+  TRI_WriteLockReadWriteLock(&logger->_clientsLock);
+
+  found = TRI_RemoveKeyAssociativePointer(&logger->_clients, &client->_serverId);
+
+  if (found != NULL) {
+    FreeClient((logger_client_t*) found); 
+  }
+
+  client = TRI_InsertKeyAssociativePointer(&logger->_clients, &client->_serverId, (void*) client, false);
+
+  TRI_WriteUnlockReadWriteLock(&logger->_clientsLock);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger
