@@ -249,8 +249,8 @@
             n2 = nodes[1],
             n3 = nodes[2],
             edges = [
-              {source: n1, target: n2},
-              {source: n2, target: n3}
+              {_id: "1-2", source: n1, target: n2},
+              {_id: "2-3", source: n2, target: n3}
             ],
             callback = function() {
               called++;
@@ -543,7 +543,7 @@
       
       it('should be able to bind the events to create an edge', function() {
         nodes = helper.createSimpleNodes([1, 2, 3]);
-        edges = [{source: nodes[0], target: nodes[2]}];
+        edges = [{_id: "1-3", source: nodes[0], target: nodes[2]}];
         nodeShaper.drawNodes(nodes);
         edgeShaper.drawEdges(edges);
         
@@ -632,7 +632,7 @@
       it('should be able to bind the delete edge event', function() {
         runs(function() {
           nodes = helper.createSimpleNodes([1, 2]);
-          edges = [{source: nodes[0], target: nodes[1]}]; 
+          edges = [{_id: "1-2", source: nodes[0], target: nodes[1]}]; 
           edgeShaper.drawEdges(edges);
           dispatcher.bind("edges", "click", dispatcher.events.DELETEEDGE(
             function(edge) {
@@ -721,7 +721,7 @@
         var n1 = nodes[0],
           n2 = nodes[1],
           edges = [
-            {source: n1, target: n2}
+            {_id: "1-2", source: n1, target: n2}
           ],
           falseCalled = false,
           called = false,
@@ -941,8 +941,8 @@
             n2 = nodes[1],
             n3 = nodes[2],
             edges = [
-              {source: n1, target: n2},
-              {source: n2, target: n3}
+              {_id: "1-2", source: n1, target: n2},
+              {_id: "2-3", source: n2, target: n3}
             ],
             callback = function() {
               called++;

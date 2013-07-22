@@ -1495,15 +1495,14 @@
                 }, 1000);
                 
                 runs(function() {
-                  existNodes([v0, v1, v2, v3, v4]);
-                  expect(nodes.length).toEqual(5);
-                  existEdge(v0, v1);
+                  var commId = commNode._id;
+                  existNodes([commId, v0, v2]);
+                  expect(nodes.length).toEqual(3);
                   existEdge(v0, v2);
-                  existEdge(v1, v3);
-                  existEdge(v1, v4);
-                  existEdge(v2, v3);
-                  existEdge(v2, v4);
-                  expect(edges.length).toEqual(6);
+                  existEdge(v0, commId);
+                  existEdge(v2, commId);
+                  expect(edges.length).toEqual(4);
+                  expect(commNode._expanded).toBeTruthy();
                   
                 });
               });
@@ -1574,7 +1573,7 @@
                 
                 runs(function() {
                   var checkNodeWithInAndOut = function(id, inbound, outbound) {
-                    var n = nodeWithID(id);
+                    var n = nodeWithID(id) || commNode.getNode(id);
                     expect(n._outboundCounter).toEqual(outbound);
                     expect(n._inboundCounter).toEqual(inbound);
                   };
@@ -1582,7 +1581,9 @@
                   checkNodeWithInAndOut(v1, 1, 2);
                   checkNodeWithInAndOut(v2, 1, 2);
                   checkNodeWithInAndOut(v3, 2, 0);
-                  checkNodeWithInAndOut(v4, 2, 0);            
+                  checkNodeWithInAndOut(v4, 2, 0);
+                  expect(commNode._outboundCounter).toEqual(0);
+                  expect(commNode._inboundCounter).toEqual(3);
                 });
               });
               
@@ -1630,12 +1631,11 @@
                 });
                 
                 runs(function() {
-                  expect(getCommunityNodes().length).toEqual(0);
-                  existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
-                  existEdge(c0, c1);
-                  existEdge(c0, c2);
-                  existEdge(c0, c3);
-                  existEdge(c0, c4);
+                  expect(getCommunityNodes().length).toEqual(1);
+                  existNodes([firstCommId, c1, c3, c4, c5, c6, c7]);
+                  existEdge(firstCommId, c1);
+                  existEdge(firstCommId, c3);
+                  existEdge(firstCommId, c4);
                 });
                 
               });
@@ -1653,16 +1653,16 @@
                 }, 1000);
                 
                 runs(function() {
-                  var newCommId = getCommunityNodesIds()[0];
-                  expect(getCommunityNodes().length).toEqual(1);
-                  existNodes([c0, c2, c3, c4, c5, c6, newCommId]);
-                  notExistNodes([c1, c7]);
+                  var commId = getCommunityNodesIds()[0],
+                  newCommId = getCommunityNodesIds()[1];
+                  expect(getCommunityNodes().length).toEqual(2);
+                  existNodes([commId, c3, c4, c5, c6, newCommId]);
+                  notExistNodes([c0, c1, c2, c7]);
                   
-                  existEdge(c0, c2);
-                  existEdge(c0, c3);
-                  existEdge(c0, c4);
+                  existEdge(commId, c3);
+                  existEdge(commId, c4);
                   
-                  existEdge(c0, newCommId);
+                  existEdge(commId, newCommId);
                   existEdge(newCommId, c5);
                   existEdge(newCommId, c6);
                 });

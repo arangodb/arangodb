@@ -85,6 +85,7 @@
         }
       }];
       edges = [{
+        _id: "1-2",
         source: nodes[0],
         target: nodes[1],
         _data: {

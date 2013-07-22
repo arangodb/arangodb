@@ -20,7 +20,7 @@ window.arangoHelper = {
     $.gritter.add({
       title: "Notification:",
       text: message,
-      time: 800,
+      time: 3000,
       before_open: function(){
         returnVal = true;
       }
