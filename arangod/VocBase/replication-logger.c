@@ -354,7 +354,7 @@ static bool StringifyTickReplication (TRI_string_buffer_t* buffer,
     return false;
   }
 
-  APPEND_STRING(buffer, "{\"lastTick\":\"");
+  APPEND_STRING(buffer, "{\"tick\":\"");
   APPEND_UINT64(buffer, (uint64_t) tick);
   APPEND_STRING(buffer, "\"}");
 

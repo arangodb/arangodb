@@ -434,6 +434,13 @@ ArangoDatabase.prototype._flushCache = function () {
       }
     }
   }
+
+  try {
+    // repopulate cache
+    this._collections();
+  }
+  catch (err) {
+  }
   
   this._properties = null;
 };

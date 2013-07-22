@@ -108,6 +108,51 @@ double JsonHelper::getNumberValue (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a double sub-element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+double JsonHelper::getDoubleValue (TRI_json_t const* json, 
+                                   const char* name, 
+                                   double defaultValue) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (isNumber(sub)) {
+    return sub->_value._number;
+  }
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an int sub-element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+int JsonHelper::getIntValue (TRI_json_t const* json, 
+                             const char* name, 
+                             int defaultValue) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (isNumber(sub)) {
+    return (int) sub->_value._number;
+  }
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a uint64 sub-element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t JsonHelper::getUInt64Value (TRI_json_t const* json, 
+                                     const char* name, 
+                                     uint64_t defaultValue) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (isNumber(sub)) {
+    return (uint64_t) sub->_value._number;
+  }
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         
