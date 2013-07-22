@@ -140,7 +140,7 @@ static size_t BufferSize = 256;
 typedef struct logger_client_s {
   TRI_server_id_t _serverId;
   char*           _url;
-  char            _stamp[20];
+  char            _stamp[24];
 }
 logger_client_t;
 
@@ -1190,8 +1190,6 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
                                         char const* url) {
 
   logger_client_t* client;
-  time_t tt;
-  struct tm tb;
   void* found;
   
   client = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(logger_client_t), false);
@@ -1200,10 +1198,7 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
     return;
   }
 
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-
-  strftime(client->_stamp, sizeof(client->_stamp) - 1, "%Y-%m-%dT%H:%M:%SZ", &tb);
+  TRI_GetTimeStampReplication(client->_stamp, sizeof(client->_stamp) - 1);
 
   client->_serverId = serverId;
   client->_url = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, url);
@@ -1306,14 +1301,18 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
 TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_log_state_t const* state) {
   TRI_json_t* json; 
   char* lastString;
+  char timeString[24];
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
 
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
   
   lastString = TRI_StringUInt64(state->_lastLogTick);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
+
+  TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
   
   return json;
 }
