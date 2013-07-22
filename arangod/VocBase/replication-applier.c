@@ -52,22 +52,10 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
   
-static void GetTime (char* dst, 
-                     size_t maxSize) {
-  time_t tt;
-  struct tm tb;
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-
-  strftime(dst, maxSize - 1, "%Y-%m-%dT%H:%M:%SZ", &tb);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set flag to terminate the apply start
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,7 +276,8 @@ static int SetError (TRI_replication_applier_t* applier,
 
   state = &applier->_state;
   state->_lastError._code = errorCode;
-  GetTime(state->_lastError._time, sizeof(state->_lastError._time));
+  
+  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
 
   if (state->_lastError._msg != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
@@ -401,7 +390,7 @@ static int StopApplier (TRI_replication_applier_t* applier) {
   }
 
   state->_lastError._code = TRI_ERROR_NO_ERROR;
-  GetTime(state->_lastError._time, sizeof(state->_lastError._time));
+  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
   
   TRI_LockCondition(&applier->_runStateChangeCondition);
   TRI_SignalCondition(&applier->_runStateChangeCondition);
@@ -419,7 +408,7 @@ static int StopApplier (TRI_replication_applier_t* applier) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -511,7 +500,7 @@ void TRI_FreeReplicationApplier (TRI_replication_applier_t* applier) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
    
@@ -804,7 +793,7 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
     return;
   }
   
-  GetTime(timeString, sizeof(timeString));
+  TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
 
   if (lock) {
     TRI_WriteLockReadWriteLock(&applier->_statusLock);
