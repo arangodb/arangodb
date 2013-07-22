@@ -16,7 +16,7 @@ HTTP `GET`. You can store documents using HTTP `POST`.
 
 However, there is something more. You can write small sniplets - so called
 actions - to extend the database. The idea of actions is that sometimes it is
-better to store parts of the business logic within AnrangoDB.
+better to store parts of the business logic within ArangoDB.
 
 The simplest example is the age of a person. Assume you store information about
 people in your database. It is an anti-pattern to store the age, because it

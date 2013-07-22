@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, window, Backbone, arangoDocument, $*/
+/*global require, exports, window, Backbone, arangoDocument, _, $*/
 
 window.arangoDocuments = Backbone.Collection.extend({
       currentPage: 1,
@@ -97,6 +97,64 @@ window.arangoDocuments = Backbone.Collection.extend({
             }
           },
           error: function(data) {
+          }
+        });
+      },
+
+      getFilteredDocuments: function (colid, currpage, filter, bindValues) {
+        var self = this;
+        this.collectionID = colid;
+        this.currentPage = currpage;
+        var filterString;
+        if(filter.length === 0){
+           filterString ="";
+        } else {
+          filterString = ' FILTER' + filter.join(' && ');
+        }
+        var body = {
+          query: "FOR u IN " + this.collectionID + filterString + " RETURN u",
+          bindVars: bindValues
+        };
+        $.ajax({
+          cache: false,
+          type: 'POST',
+          async: false,
+          url: '/_api/cursor',
+          data: JSON.stringify(body),
+          contentType: "application/json",
+          success: function(data) {
+            self.clearDocuments();
+            self.documentsCount = data.result.length;
+            self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
+            if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
+              this.currentPage = 1;
+            }
+            if (this.totalPages === 0) {
+              this.totalPages = 1;
+            }
+
+            this.offset = (this.currentPage - 1) * this.documentsPerPage;
+            if (self.documentsCount !== 0) {
+              $.each(data.result, function(k, v) {
+                window.arangoDocumentsStore.add({
+                  "id": v._id,
+                  "rev": v._rev,
+                  "key": v._key,
+                  "zipcode": v.zipcode,
+                  "content": v
+                });
+              });
+              window.documentsView.drawTable();
+              window.documentsView.renderPagination(self.totalPages);
+            }
+            else {
+              window.documentsView.initTable();
+              window.documentsView.drawTable();
+              window.documentsView.renderPagination(self.totalPages);
+            }
+          },
+          error: function(data) {
+            "use strict";
           }
         });
       },

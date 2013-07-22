@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _, document*/
+/*global _, document, ForceLayouter, DomObserverFactory*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -39,26 +39,6 @@ function CommunityNode(parent, initial) {
   initial = initial || [];
   
   var
-    myInternalNodes = [
-      {
-        _id: "inter1",
-        x: Math.floor(Math.random()*400 - 200),
-        y: Math.floor(Math.random()*400 - 200),
-        z: 1
-      },
-      {
-        _id: "inter2",
-        x: Math.floor(Math.random()*400 - 200),
-        y: Math.floor(Math.random()*400 - 200),
-        z: 1
-      },
-      {
-        _id: "inter3",
-        x: Math.floor(Math.random()*400 - 200),
-        y: Math.floor(Math.random()*400 - 200),
-        z: 1
-      }
-    ],
 
   ////////////////////////////////////
   // Private variables              //
@@ -66,14 +46,67 @@ function CommunityNode(parent, initial) {
     self = this,
     boundingBox,
     nodes = {},
+    observer,
     nodeArray = [],
+    intEdgeArray = [],
     internal = {},
     inbound = {},
     outbound = {},
     outReferences = {},
+    layouter,
   ////////////////////////////////////
   // Private functions              //
   //////////////////////////////////// 
+  
+    getDistance = function() {
+      return 160;
+    },
+  
+    getCharge = function() {
+      return -5000;
+    },
+  
+
+    updateBoundingBox = function() {
+      var bbox = document.getElementById(self._id).getBBox();
+      boundingBox.attr("width", bbox.width + 10)
+       .attr("height", bbox.height + 10)
+       .attr("x", bbox.x - 5)
+       .attr("y", bbox.y - 5);
+    },
+  
+    getObserver = function() {
+      if (!observer) {
+        var factory = new DomObserverFactory();
+        observer = factory.createObserver(function(e){
+          if (_.any(e, function(obj) {
+            return obj.attributeName === "transform";
+          })) {
+            updateBoundingBox();
+            observer.disconnect();
+          }
+        });
+      }
+      return observer;
+    },
+  
+    updateNodeArray = function() {
+      layouter.stop();
+      nodeArray.length = 0;
+      _.each(nodes, function(v) {
+        nodeArray.push(v);
+      });
+      layouter.start();
+    },
+  
+    updateEdgeArray = function() {
+      layouter.stop();
+      intEdgeArray.length = 0;
+      _.each(internal, function(e) {
+        intEdgeArray.push(e);
+      });
+      layouter.start();
+    },
   
     toArray = function(obj) {
       var res = [];
@@ -88,7 +121,7 @@ function CommunityNode(parent, initial) {
     },
   
     getNodes = function() {
-      return toArray(nodes);
+      return nodeArray;
     },
     
     getNode = function(id) {
@@ -97,14 +130,14 @@ function CommunityNode(parent, initial) {
   
     insertNode = function(n) {
       nodes[n._id] = n;
-      nodeArray = toArray(nodes);
+      updateNodeArray();
       self._size++;
     },
     
     removeNode = function(n) {
       var id = n._id || n;
       delete nodes[id];
-      nodeArray = toArray(nodes);
+      updateNodeArray();
       self._size--;
     },
     
@@ -122,6 +155,7 @@ function CommunityNode(parent, initial) {
         delete internal[id];
         self._outboundCounter++;
         outbound[id] = e;
+        updateEdgeArray();
         return;
       }
       delete inbound[id];
@@ -144,6 +178,7 @@ function CommunityNode(parent, initial) {
         delete internal[id];
         self._inboundCounter++;
         inbound[id] = e;
+        updateEdgeArray();
         return;
       }
       delete outbound[id];
@@ -169,6 +204,7 @@ function CommunityNode(parent, initial) {
         delete outbound[e._id];
         self._outboundCounter--;
         internal[e._id] = e;
+        updateEdgeArray();
         return true;
       }
       inbound[e._id] = e;
@@ -186,6 +222,7 @@ function CommunityNode(parent, initial) {
         delete inbound[e._id];
         self._inboundCounter--;
         internal[e._id] = e;
+        updateEdgeArray();
         return true;
       }
       self._outboundCounter++;
@@ -197,7 +234,7 @@ function CommunityNode(parent, initial) {
       return {
         nodes: nodeArray,
         edges: {
-          both: toArray(internal),
+          both: intEdgeArray,
           inbound: toArray(inbound),
           outbound: toArray(outbound)
         }
@@ -205,12 +242,26 @@ function CommunityNode(parent, initial) {
     },
     
     expand = function() {
-      // TODO: Just piped through for old Adapter Interface
-      dissolve();
+      this._expanded = true;
     },
     
     dissolve = function() {
       parent.dissolveCommunity(self);
+    },
+    
+    collapse = function() {
+      this._expanded = false;
+    },
+    
+    addDistortion = function() {
+      // Fake Layouting TODO
+      _.each(nodeArray, function(n) {
+        n.position = {
+          x: n.x,
+          y: n.y,
+          z: 1
+        };
+      });
     },
     
     addShape = function (g, shapeFunc, colourMapper) {
@@ -227,10 +278,13 @@ function CommunityNode(parent, initial) {
     },
     
     addCollapsedLabel = function(g, colourMapper) {
-      var textN = g.append("text") // Append a label for the node
-        .attr("text-anchor", "middle") // Define text-anchor
-        .attr("fill", colourMapper.getForegroundCommunityColour())
-        .attr("stroke", "none"); // Make it readable
+      var width = g.select("rect").attr("width"),
+        textN = g.append("text") // Append a label for the node
+          .attr("text-anchor", "middle") // Define text-anchor
+          .attr("fill", colourMapper.getForegroundCommunityColour())
+          .attr("stroke", "none"); // Make it readable
+      width *= 2;
+      width /= 3;
       if (self._reason && self._reason.key) {
         textN.append("tspan")
           .attr("x", "0")
@@ -240,72 +294,67 @@ function CommunityNode(parent, initial) {
           .attr("x", "0")
           .attr("dy", "16")
           .text(self._reason.value);
-      } else {
-        textN.text(self._size);
       }
-    },
-
-    updateBoundingBox = function() {
-      var bbox = document.getElementById(self._id).getBBox();
-      boundingBox.attr("width", bbox.width + 10)
-       .attr("height", bbox.height + 10)
-       .attr("x", bbox.x - 5)
-       .attr("y", bbox.y - 5);
+      textN.append("tspan")
+        .attr("x", width)
+        .attr("y", "0")
+        .attr("fill", colourMapper.getCommunityColour())
+        .text(self._size);
     },
     
-    shapeAll = function(g, shapeFunc, colourMapper) {
-      /*
-      boundingBox = g.append("rect")
-        .attr("rx", "8")
-        .attr("ry", "8")
-        .attr("fill", "none")
-        .attr("stroke", "black");
-      */
-      addCollapsedShape(g, shapeFunc, colourMapper);
-      addCollapsedLabel(g, colourMapper);
-      /*
-      _.each(nodeArray, function(n) {
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
-      
+    addNodeShapes = function(g, shapeFunc, colourMapper) {
       var interior = g.selectAll(".node")
       .data(nodeArray, function(d) {
         return d._id;
       });
       interior.enter()
         .append("g")
-        .attr("class", function(d) {
-          return "node";
-        }) // node is CSS class that might be edited
+        .attr("class", "node")
         .attr("id", function(d) {
           return d._id;
         });
       // Remove all old
       interior.exit().remove();
       interior.selectAll("* > *").remove();
-      var observer = new WebKitMutationObserver(function(e){
-        if (_.any(e, function(obj) {
-          return obj.attributeName === "transform";
-        })) {
-          updateBoundingBox();
-          observer.disconnect();
-        }
-      });
-      observer.observe(document.getElementById(self._id), {
+      addShape(interior, shapeFunc, colourMapper);
+    },
+    
+    addBoundingBox = function(g) {
+      boundingBox = g.append("rect")
+        .attr("rx", "8")
+        .attr("ry", "8")
+        .attr("fill", "none")
+        .attr("stroke", "black");
+      getObserver().observe(document.getElementById(self._id), {
         subtree:true,
         attributes:true
       });
-      addShape(interior, shapeFunc, colourMapper);
-      */
+    },
+    
+    shapeAll = function(g, shapeFunc, colourMapper) {
+      if (self._expanded) {
+        addBoundingBox(g);
+        addDistortion();
+        addNodeShapes(g, shapeFunc, colourMapper);
+        return;
+      }
+      addCollapsedShape(g, shapeFunc, colourMapper);
+      addCollapsedLabel(g, colourMapper);
     };
   
   ////////////////////////////////////
   // Setup                          //
   ////////////////////////////////////
+  
+  layouter = new ForceLayouter({
+    distance: 100,
+    gravity: 0.1,
+    charge: -500,
+    width: 1,
+    height: 1,
+    nodes: nodeArray,
+    links: intEdgeArray
+  });
   
   ////////////////////////////////////
   // Values required for shaping    //
@@ -321,7 +370,7 @@ function CommunityNode(parent, initial) {
   this._size = 0;
   this._inboundCounter = 0;
   this._outboundCounter = 0;
-  
+  this._expanded = false;
   // Easy check for the other classes,
   // no need for a regex on the _id any more.
   this._isCommunity = true;
@@ -337,6 +386,9 @@ function CommunityNode(parent, initial) {
   this.hasNode = hasNode;
   this.getNodes = getNodes;
   this.getNode = getNode;
+  this.getDistance = getDistance;
+  this.getCharge = getCharge;
+  
   
   this.insertNode = insertNode;
   this.insertInboundEdge = insertInboundEdge;
@@ -345,13 +397,12 @@ function CommunityNode(parent, initial) {
   this.removeNode = removeNode;
   this.removeInboundEdge = removeInboundEdge;
   this.removeOutboundEdge = removeOutboundEdge;
-  
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
   
   this.dissolve = dissolve;
-  
   this.getDissolveInfo = getDissolveInfo;
   
+  this.collapse = collapse;
   this.expand = expand;
   
   this.shape = shapeAll;

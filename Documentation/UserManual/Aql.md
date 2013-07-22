@@ -511,8 +511,8 @@ Individual document attributes can later be accesses by their names using the
     u.address.city.name
     u.friends[0].name.first
 
-Bind parameters {#AqlParameter}
--------------------------------
+Bind parameters {#AqlParameters}
+--------------------------------
 
 AQL supports the usage of bind parameters, thus allowing to separate the query
 text from literal values used in the query. It is good practice to separate the
@@ -820,6 +820,23 @@ evaluates to true, and the third operand otherwise.
 Example:
 
     u.age > 15 || u.active == true ? u.userId : null
+
+@subsubsection AQLOperatorRange Range operator
+
+AQL supports expressing simple numeric ranges with the operator `..`.
+This operator can be used to easily iterate over a sequence of numeric
+values.    
+
+The `..` operator will produce a list of values in the defined range, with 
+both bounding values included.
+
+Example:
+
+    2010..2013
+
+will produce the following result:
+
+    [ 2010, 2011, 2012, 2013 ]
 
 @subsubsection AQLOperatorsPrecedence Operator precedence
 

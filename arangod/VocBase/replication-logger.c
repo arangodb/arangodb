@@ -366,8 +366,11 @@ static bool StringifyTickReplication (TRI_string_buffer_t* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool StringifyCreateCollection (TRI_string_buffer_t* buffer,
+                                       TRI_voc_cid_t cid,
                                        TRI_json_t const* json) {
-  APPEND_STRING(buffer, "{\"collection\":");
+  APPEND_STRING(buffer, "{\"cid\":\"");
+  APPEND_UINT64(buffer, (uint64_t) cid);
+  APPEND_STRING(buffer, "\",\"collection\":");
   APPEND_JSON(buffer, json);
   APPEND_CHAR(buffer, '}');
 
@@ -1196,7 +1199,7 @@ int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyCreateCollection(buffer, json)) {
+  if (! StringifyCreateCollection(buffer, cid, json)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -1300,7 +1303,7 @@ int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
   
   buffer = GetBuffer(logger);
 
-  if (! StringifyCreateCollection(buffer, json)) {
+  if (! StringifyCreateCollection(buffer, cid, json)) {
     ReturnBuffer(logger, buffer);
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 

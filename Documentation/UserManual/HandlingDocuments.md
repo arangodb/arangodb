@@ -102,6 +102,14 @@ Collection Methods {#HandlingDocumentsCollectionMethods}
 @copydetails JSF_ArangoCollection_prototype_updateByExample
 
 @CLEARPAGE
+@anchor HandlingDocumentsFirst
+@copydetails JS_FirstQuery
+
+@CLEARPAGE
+@anchor HandlingDocumentsLast
+@copydetails JS_LastQuery
+
+@CLEARPAGE
 Database Methods {#HandlingDocumentsDatabaseMethods}
 ----------------------------------------------------
 

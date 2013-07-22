@@ -970,6 +970,50 @@ ArangoCollection.prototype.firstExample = function (example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the first document(s) from the collection
+/// If an argument is supplied, the result will be a list of the first n
+/// documents. When no argument is supplied, the result is the first document
+/// from the collection, or null if the collection is empty.
+/// The document order is determined by the insertion/update order.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.first = function (count) {
+  var body = {
+    collection: this.name(),
+    count: count
+  };
+  
+  var requestResult = this._database._connection.PUT("/_api/simple/first", 
+    JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the last document(s) from the collection
+/// If an argument is supplied, the result will be a list of the last n
+/// documents. When no argument is supplied, the result is the last document
+/// from the collection, or null if the collection is empty.
+/// The document order is determined by the insertion/update order.
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.last = function (count) {
+  var body = {
+    collection: this.name(),
+    count: count
+  };
+  
+  var requestResult = this._database._connection.PUT("/_api/simple/last",
+    JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a document in the collection
 /// note: this method is used to save documents and edges, but save() has a
 /// different signature for both. For document collections, the signature is
