@@ -257,6 +257,25 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the applier action into an action list
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::insertApplier () {
+  bool found;
+  char const* value;
+
+  value = _request->value("serverId", found);
+
+  if (found) {
+    TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
+
+    if (serverId > 0) {
+      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, _request->fullUrl().c_str());
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the minimum chunk size
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -341,7 +360,7 @@ void RestReplicationHandler::handleCommandLogState () {
   }
   else {
     TRI_json_t result;
-    
+
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationLogger(&state)); 
@@ -355,6 +374,11 @@ void RestReplicationHandler::handleCommandLogState () {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
+    
+    TRI_json_t* clients = TRI_JsonClientsReplicationLogger(_vocbase->_replicationLogger);
+    if (clients != 0) {
+      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "clients", clients);
+    }
 
     generateResult(&result);
   
@@ -440,6 +464,8 @@ void RestReplicationHandler::handleCommandLogFollow () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
+    
+    insertApplier();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -482,6 +508,8 @@ void RestReplicationHandler::handleCommandInventory () {
     generateResult(&result);
   
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+    
+    insertApplier();
   }
 }
     
@@ -580,6 +608,8 @@ void RestReplicationHandler::handleCommandDump () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
+    
+    insertApplier();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
