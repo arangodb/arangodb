@@ -106,7 +106,7 @@ var dashboardView = Backbone.View.extend({
       $('.checkApplyRunningStatus').hide();
     }
 
-    //logtale
+    //log table
     $('#logRunningVal').text(this.replLogState.state.running);
     $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
 

@@ -331,3 +331,11 @@ input[type="radio"]:checked + label span {
 #detailReplication {
   height: 190px;
 }
+
+.trueClass {
+  color: green;
+}
+
+.falseClass {
+  color: red;
+}
