@@ -114,7 +114,8 @@ function NodeReducer(nodes, edges, prioList) {
        _.each(list, function(list, value) {
          var reason = {
            key: key,
-           value: value
+           value: value,
+           text: key + ": " + value
          };
          resArray.push({
            reason: reason,
@@ -132,7 +133,10 @@ function NodeReducer(nodes, edges, prioList) {
     if (toSort.length <= numBuckets) {
       res = _.map(toSort, function(n) {
         return {
-          reason: {type: "single"},
+          reason: {
+            type: "single",
+            text: "One Node"
+          },
           nodes: [n]
         };
       });
@@ -148,7 +152,8 @@ function NodeReducer(nodes, edges, prioList) {
       for (i = 0; i < numBuckets; i++) {
         res[i] = res[i] || {
           reason: {
-            type: "similar"
+            type: "similar",
+            text: "Similar Nodes"
           },
           nodes: []
         };

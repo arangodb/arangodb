@@ -1,3 +1,7 @@
+.modal-backdrop, .modal-backdrop.fade.in {
+  opacity: 0.4 ;
+}
+
 select {
   border-radius: 2px 2px 2px 2px !important;
 }
