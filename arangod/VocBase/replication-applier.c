@@ -672,8 +672,9 @@ TRI_json_t* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const
   TRI_json_t* progress;
   TRI_json_t* error;
   char* lastString;
+  char timeString[24];
   
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 8);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
 
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
@@ -736,14 +737,20 @@ TRI_json_t* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const
 
   // lastError
   error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
 
-  if (state->_lastError._msg != NULL) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+  if (state->_lastError._code > 0) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
+ 
+    if (state->_lastError._msg != NULL) {
+      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+    }
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
+  
+  TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
   
   return json;
 }
