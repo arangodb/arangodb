@@ -27,14 +27,14 @@
   margin-right: 7px !important;
 }
 
-.db-zoom, .db-minimize, .db-hide, .db-info, #db-collectionMinimize {
+.db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
   float: right;
   margin-top: -4px !important;
   margin-right: 4px !important;
 }
 
 .db-zoom:hover, .db-minimize:hover, .db-hide, .db-info:hover, .group-close:hover, .group-open:hover,
-#db-collectionMinimize:hover {
+#detailReplicationMinimize:hover {
   cursor:pointer;
 }
 
@@ -276,31 +276,31 @@ input[type="radio"]:checked + label span {
   text-align: center;
 }
 
-#replicationDiv {
+#detailReplicationDiv {
   padding-top: 26px;
 }
 
-#replicationDiv table {
+#detailReplicationDiv table {
   border-collapse: separate;
   border-spacing: 0 5px;
 }
 
-#replicationDiv table thead {
+#detailReplicationDiv table thead {
   background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;
   border-bottom: 1px solid #C1BDBA;
   padding-bottom: 2px !important;
   padding-top: 2px !important;
 }
 
-#replicationDiv table th {
+#detailReplicationDiv table th {
   width: 215px;
 }
 
-#replicationDiv table tr {
+#detailReplicationDiv table tr {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-#replicationDiv table tbody tr th {
+#detailReplicationDiv table tbody tr th {
   padding-bottom: 4px;
   padding-top: 4px;
 }
