@@ -146,7 +146,10 @@
           var res = reducer.bucketNodes(allNodes, buckets);
           expect(res.length).toEqual(5);
           _.each(res, function(obj) {
-            expect(obj.reason).toEqual({type: "single"});
+            expect(obj.reason).toEqual({
+              type: "single",
+              text: "One Node"
+            });
             expect(obj.nodes.length).toEqual(1);
           });
         });
@@ -210,6 +213,7 @@
           _.each(res, function(obj) {
             expect(obj.reason).toEqual({
               type: "similar",
+              text: "Similar Nodes",
               example: jasmine.any(Object)
             });
             expect(obj.nodes.length).toEqual(3);
@@ -270,6 +274,7 @@
           _.each(resArray, function(entry) {
             expect(entry.reason).toEqual({
               type: "similar",
+              text: "Similar Nodes",
               example: jasmine.any(Object)
             });
             if (_.isEqual(entry.reason.example, a1)) {
@@ -408,15 +413,18 @@
         };
         r1 = {
           key: "age",
-          value: "1"
+          value: "1",
+          text: "age: 1"
         };
         r2 = {
           key: "age",
-          value: "2"
+          value: "2",
+          text: "age: 2"
         };
         r3 = {
           key: "age",
-          value: "3"
+          value: "3",
+          text: "age: 3"
         };
         
         
@@ -529,15 +537,18 @@
         };
         r1 = {
           key: "age",
-          value: "1"
+          value: "1",
+          text: "age: 1"
         };
         r2 = {
           key: "type",
-          value: "person"
+          value: "person",
+          text: "type: person"
         };
         r3 = {
           key: "age",
-          value: "3"
+          value: "3",
+          text: "age: 3"
         };
         
         nodes.push(a1);
@@ -648,15 +659,18 @@
         };
         r1 = {
           type: "similar",
-          example: a1
+          example: a1,
+          text: "Similar Nodes"
         };
         r2 = {
           type: "similar",
-          example: a2
+          example: a2,
+          text: "Similar Nodes"
         };
         r3 = {
           type: "similar",
-          example: a3
+          example: a3,
+          text: "Similar Nodes"
         };
         
         nodes.push(a1);
@@ -768,15 +782,18 @@
         };
         r1 = {
           key: "foo",
-          value: "bar"
+          value: "bar",
+          text: "foo: bar"
         };
         r2 = {
           key: "foo",
-          value: "baz"
+          value: "baz",
+          text: "foo: baz"
         };
         r3 = {
           key: "foo",
-          value: "tango"
+          value: "tango",
+          text: "foo: tango"
         };
         
         nodes.push(a1);
