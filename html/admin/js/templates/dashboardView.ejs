@@ -35,14 +35,74 @@
 </ul>
 
 <ul class="thumbnails">
-  <li id="detailCollections" class="statSingleClient" style="margin-bottom: 13px !important; display:none;">
+  <li id="detailReplication" class="statSingleClient" style="margin-bottom: 13px !important">
     <div class="boxHeader">
-      <h6 id="detailCollectionsHeader" class="dashboardH6">Collections</h6>
+      <h6 class="dashboardH6">Replication</h6>
       <i id="db-collectionMinimize" class="icon-white icon-minus"></i>
     </div>
-    <div id="detailCollectionsChart" class="statChart">
-      <svg class="svgCollections"/>
+    <div id="replicationDiv" class="statChart">
+      <div id="leftReplicationDiv">
+        <h4>Log State</h4>
+        <table id="logReplicationTable">
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tr>
+            <th class="alignLeft" id="logRunning">Running</th>
+            <th id="logRunningVal"></th>
+          </tr>
+          <tr>
+            <th class="alignLeft" id="logLastTick">Last log tick</th>
+            <th id="logLastTickVal"></th>
+          </tr>
+        </table>
+      </div>
+
+      <div id="rightReplicationDiv">
+        <h4>Apply State</h4>
+        <table id="applyReplicationTable">
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Value</th>
+              <th>Info</th>
+            </tr>
+          </thead>
+          <tr>
+            <th class="alignLeft" id="applyRunning">Running</th>
+            <th id="applyRunningVal"></th>
+            <th>--</th>
+          </tr>
+          <tr>
+            <th class="alignLeft" id="applyLastTick">Last processed tick</th>
+            <th id="applyLastTickVal"></th>
+            <th>--</th>
+          </tr>
+          <tr class="checkApplyRunningStatus">
+            <th class="alignLeft" id="applyCurrentPhase">Current phase</th>
+            <th id="applyCurrentPhaseId"></th>
+            <th id="applyCurrentPhaseLabel"></th>
+          </tr>
+          <tr class="checkApplyRunningStatus">
+            <th class="alignLeft" id="applyProgress">Progress</th>
+            <th id="applyProgressVal"></th>
+            <th>--</th>
+          </tr>
+          <tr class="checkApplyRunningStatus">
+            <th class="alignLeft" id="applyLastError">Last error</th>
+            <th id="applyLastErrorTime"></th>
+            <th id="applyLastErrorErrorNum"></th>
+          </tr>
+        </table>
+      </div>
     </div>
+  </li>
+
+  <li class="nocssli">
+    <h4 class="">Detail Chart</h4>
   </li>
 
   <li id="detailGraph" class="statSingleClient">

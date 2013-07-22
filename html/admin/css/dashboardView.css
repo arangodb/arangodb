@@ -252,3 +252,82 @@ input[type="radio"] + label span {
 input[type="radio"]:checked + label span {
   background:url(../img/check_radio_sheet.png) -57px top no-repeat;
 }
+
+.detailChartHeader {
+  height: 25px;
+  border: 1px solid red;
+  background-color: #686766;
+}
+
+.nocssli {
+  margin-left: -10px !important;
+  border: 0 !important;
+  height: 25px;
+  padding: 0;
+  margin: 0;
+  height: 30px;
+  background-color: #686766 !important;
+  width: 940px;
+}
+
+.nocssli h4 {
+  margin-top: 5px;
+  color: white;
+  text-align: center;
+}
+
+#replicationDiv {
+  padding-top: 26px;
+}
+
+#replicationDiv table {
+  border-collapse: separate;
+  border-spacing: 0 5px;
+}
+
+#replicationDiv table thead {
+  background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;
+  border-bottom: 1px solid #C1BDBA;
+  padding-bottom: 2px !important;
+  padding-top: 2px !important;
+}
+
+#replicationDiv table th {
+  width: 215px;
+}
+
+#replicationDiv table tr {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+#replicationDiv table tbody tr th {
+  padding-bottom: 4px;
+  padding-top: 4px;
+}
+
+#rightReplicationDiv {
+  width: 557px;
+  min-height: 150px;
+  float: left;
+  margin-left: 10px;
+}
+
+#leftReplicationDiv {
+  width: 300px;
+  min-height: 150px;
+  float: left;
+  margin-left: 10px;
+}
+
+.alignLeft {
+  text-align:left !important;
+  padding-left: 7px;
+}
+
+.checkApplyRunningStatus {
+  display:none;
+}
+
+#detailReplication {
+  height: 190px;
+}
