@@ -124,7 +124,7 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       }
       var n = findNode(node);
       if (!n) {
-        n = insertNode(node);
+        n = absAdapter.insertNode(node);
       } else {
         n.children = node.children;
       }
@@ -132,11 +132,16 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
         n._centrality = c;
       });
       _.each(n.children, function(c) {
-        var check = findNode(c);
+        var check = findNode(c), e;
         if (!check) {
-          check = insertNode(c);
+          check = absAdapter.insertNode(c);
         }
-        insertEdge(n, check);
+        e = {
+          _from: n._id,
+          _to: check._id,
+          _id: n._id + "-" + check._id
+        };
+        absAdapter.insertEdge(e);
         self.requestCentralityChildren(check._id, function(c) {
           n._centrality = c;
         });
