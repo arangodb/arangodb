@@ -135,7 +135,7 @@ function NodeReducer(nodes, edges, prioList) {
         return {
           reason: {
             type: "single",
-            text: "One node"
+            text: "One Node"
           },
           nodes: [n]
         };
