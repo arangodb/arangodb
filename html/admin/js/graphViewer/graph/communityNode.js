@@ -372,16 +372,16 @@ function CommunityNode(parent, initial) {
         .attr("height", "20")
         .attr("fill", "#686766")
         .attr("stroke", "none");
-      var dissolveBtn = bBox.append("rect")
-        .attr("fill", "red") // TODO
+      var dissolveBtn = bBox.append("image")
+        .attr("xlink:href", "img/icon_delete.png")
         .attr("width", "16")
         .attr("height", "16")
         .attr("x", "5")
         .attr("y", "2")
         .attr("style", "cursor:pointer")
         .on("click", dissolve),
-      collapseBtn = bBox.append("rect")
-        .attr("fill", "red") // TODO
+      collapseBtn = bBox.append("image")
+        .attr("xlink:href", "img/gv_collapse.png")
         .attr("width", "16")
         .attr("height", "16")
         .attr("x", "25")
@@ -478,8 +478,7 @@ function CommunityNode(parent, initial) {
   this.expand = expand;
   
   this.shape = shapeAll;
-  
-  // TODO TMP
+
   this.getSourcePosition = getSourcePosition;
   
   this.getTargetPosition = getTargetPosition;

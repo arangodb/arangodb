@@ -270,8 +270,6 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case NodeShaper.shapes.IMAGE:
-          // Make the html aware of xmlns:xlink
-          $("html").attr("xmlns:xlink", "http://www.w3.org/1999/xlink");
           width = shape.width || 32;
           height = shape.height || 32;
           fallback = shape.fallback || "";

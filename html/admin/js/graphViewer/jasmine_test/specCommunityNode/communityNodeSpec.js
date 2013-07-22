@@ -443,6 +443,11 @@
                   return boxRect;
                 case 2:
                   return titleBG;
+              }
+            }
+            if (name === "image") {
+              this.appendCounter++;
+              switch (this.appendCounter) {
                 case 3:
                   return disBtn;
                 case 4:
@@ -696,6 +701,7 @@
         
           expect(g.append).wasCalledWith("g");
           expect(boxGroup.append).wasCalledWith("rect");
+          expect(boxGroup.append).wasCalledWith("image");
           expect(boxGroup.append).wasCalledWith("text");
           expect(boxGroup.append.calls.length).toEqual(5);
           
@@ -710,8 +716,7 @@
           expect(titleBG.attr).wasCalledWith("fill", "#686766");
           expect(titleBG.attr).wasCalledWith("stroke", "none");
 
-          // TODO RECT->Image
-          expect(disBtn.attr).wasCalledWith("fill", "red"); // TODO
+          expect(disBtn.attr).wasCalledWith("xlink:href", "img/icon_delete.png");
           expect(disBtn.attr).wasCalledWith("height", "16");
           expect(disBtn.attr).wasCalledWith("width", "16");
           expect(disBtn.attr).wasCalledWith("x", "5");
@@ -719,8 +724,7 @@
           expect(disBtn.attr).wasCalledWith("style", "cursor:pointer");
           expect(disBtn.on).wasCalledWith("click", jasmine.any(Function));
           
-          // TODO RECT->Image
-          expect(colBtn.attr).wasCalledWith("fill", "red"); // TODO
+          expect(colBtn.attr).wasCalledWith("xlink:href", "img/gv_collapse.png");
           expect(colBtn.attr).wasCalledWith("height", "16");
           expect(colBtn.attr).wasCalledWith("width", "16");
           expect(colBtn.attr).wasCalledWith("x", "25");
