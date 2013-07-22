@@ -1,8 +1,8 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global beforeEach, afterEach */
+/*global beforeEach, afterEach, jasmine*/
 /*global describe, it, expect, spyOn */
 /*global helper*/
-/*global document*/
+/*global document, window*/
 /*global CommunityNode*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +62,22 @@
             });
           }
         ).not.toThrow();
+      });
+      
+      it('should create a ForceLayouter on setup', function() {
+        spyOn(window, "ForceLayouter");
+        var t = new CommunityNode({
+          dissolveCommunity: function() {}
+        });
+        expect(window.ForceLayouter).wasCalledWith({
+          distance: 100,
+          gravity: 0.1,
+          charge: -500,
+          width: 1,
+          height: 1,
+          nodes: [],
+          links: []
+        });
       });
       
     });
@@ -136,11 +152,7 @@
       it('should offer a function to remove and return all outgoing edges of a node', function() {
         expect(testee).toHaveFunction("removeOutboundEdgesFromNode", 1);
       });
-      
-      it('should offer a function to dissolve the community', function() {
-        expect(testee).toHaveFunction("dissolve", 0);
-      });
-      
+            
       it('should offer a function to get the dissolve info', function() {
         expect(testee).toHaveFunction("getDissolveInfo", 0);
       });
@@ -157,17 +169,34 @@
         expect(testee).toHaveFunction("collapse", 0);
       });
       
+      it('should offer a function to dissolve the community', function() {
+        expect(testee).toHaveFunction("dissolve", 0);
+      });
       
+      it('should offer a function to return the charge value for layouting', function() {
+        expect(testee).toHaveFunction("getCharge", 0);
+      });
+      
+      it('should offer a function to return the link distance value for layouting', function() {
+        expect(testee).toHaveFunction("getDistance", 0);
+      });
     });
     
     describe('node functionality', function() {
       
-      var parent;
+      var parent, layouter;
       
       beforeEach(function() {
         parent = {
           dissolveCommunity: function() {}
         };
+        layouter = {
+          start: function() {},
+          stop: function() {}
+        };
+        spyOn(window, "ForceLayouter").andCallFake(function() {
+          return layouter;
+        });
       });
       
       it('should create a communityNode containing the given nodes', function() {
@@ -290,17 +319,59 @@
         expect(c.getNodes()).toEqual(nodes.slice(3, 5));
       });
       
+      it('should position the initial nodes', function() {
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        var c = new CommunityNode(parent, nodes.slice(3, 13));
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(10);
+        expect(layouter.stop.calls.length).toEqual(10);
+      });
+      
+      it('should update the positioning if a new node is inserted', function() {
+        var c = new CommunityNode(parent, nodes.slice(3, 5));
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.insertNode(nodes[12]);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
+      });
+      
+      it('should update the positioning if a node is removed', function() {
+        var c = new CommunityNode(parent, nodes.slice(3, 5));
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.removeNode(nodes[3]);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
+      });
+      
     });
     
     describe('shaping functionality', function() {
       
-      var tSpan1, tSpan2, text, g, shaper, colourMapper, box, boxRect,
-        parent;
+      var tSpan1, tSpan2, tSpan3, text, g, shaper, colourMapper, box, boxRect,
+        parent, c, width;
+        
       beforeEach(function() {
         parent = {
           dissolveCommunity: function() {}
         };
-        var first = true;
+        var tspans = 0;
+        width = 90;
         box = {
           x: -10,
           y: -10,
@@ -323,6 +394,14 @@
             return this;
           }
         };
+        tSpan3 = {
+          attr: function() {
+            return this;
+          },
+          text: function() {
+            return this;
+          }
+        };
         boxRect = {
           attr: function() {
             return this;
@@ -332,19 +411,28 @@
           attr: function() {
             return this;
           },
-          text: function() {
-            return this;
-          },
           append: function() {
-            if (first) {
-              first = false;
-              return tSpan1;
-            }
-            return tSpan2;
-            
+            switch(tspans) {
+              case 0:
+                tspans++;
+                return tSpan1;
+              case 1:
+                tspans++;
+                return tSpan2;
+              case 2:
+                tspans++;
+                return tSpan3;
+            }            
           }
         };
         g = {
+          select: function() {
+            return {
+              attr: function() {
+                return width;
+              }
+            };
+          },          
           attr: function() {
             return this;
           },
@@ -363,6 +451,9 @@
         colourMapper = {
           getForegroundCommunityColour: function() {
             return "black";
+          },
+          getCommunityColour: function() {
+            return "white";
           }
         };
         
@@ -373,6 +464,8 @@
             }
           };
         });
+        
+        c = new CommunityNode(parent, nodes.slice(0, 5));
       });
       
       it('should initially contain the required attributes for shaping', function() {
@@ -391,24 +484,23 @@
               z: 1
             }
           },
-          initNodes = [n].concat(nodes.slice(3, 13)),
-          c = new CommunityNode(parent, initNodes);
-        expect(c.x).toBeDefined();
-        expect(c.x).toEqual(x);
-        expect(c.y).toBeDefined();
-        expect(c.y).toEqual(y);
-        expect(c._size).toEqual(11);
-        expect(c._isCommunity).toBeTruthy();
+          otherC = new CommunityNode(parent, [n].concat(nodes.slice(5,21)));
+        expect(otherC.x).toBeDefined();
+        expect(otherC.x).toEqual(x);
+        expect(otherC.y).toBeDefined();
+        expect(otherC.y).toEqual(y);
+        expect(otherC._size).toEqual(17);
+        expect(otherC._isCommunity).toBeTruthy();
       });
        
       it('should shape the collapsed community with given functions', function() {
-        var c = new CommunityNode(parent, nodes.slice(0, 2));
         spyOn(g, "attr").andCallThrough();
         spyOn(g, "append").andCallThrough();
         spyOn(shaper, "shapeFunc").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         
         c.shape(g, shaper.shapeFunc, colourMapper);
+        
         expect(colourMapper.getForegroundCommunityColour).wasCalled();
         expect(g.attr).wasCalledWith("stroke", "black");
         expect(shaper.shapeFunc).wasCalledWith(g, 9);
@@ -418,24 +510,29 @@
       });
       
       it('should add a label containing the size of a community', function() {
-        var c = new CommunityNode(parent, nodes.slice(0, 2));
         spyOn(g, "append").andCallThrough();
         spyOn(text, "attr").andCallThrough();
-        spyOn(text, "text").andCallThrough();
-        spyOn(text, "append");
+        spyOn(text, "append").andCallThrough();
+        spyOn(tSpan1, "attr").andCallThrough();
+        spyOn(tSpan1, "text").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
+        
         c.shape(g, shaper.shapeFunc, colourMapper);
         
         expect(g.append).wasCalledWith("text");
         expect(text.attr).wasCalledWith("text-anchor", "middle");
         expect(text.attr).wasCalledWith("fill", "black");
         expect(text.attr).wasCalledWith("stroke", "none");
-        expect(text.text).wasCalledWith(2);
-        expect(text.append).wasNotCalled();        
+        
+        expect(text.append).wasCalledWith("tspan");   
+        expect(tSpan1.attr).wasCalledWith("x", width * 2 / 3);
+        expect(tSpan1.attr).wasCalledWith("y", "0");
+        expect(tSpan1.text).wasCalledWith(5);    
+        
+             
       });
       
       it('should add a label if a reason is given', function() {
-        var c = new CommunityNode(parent, nodes.slice(0, 2));
         c._reason = {
           key: "key",
           value: "label"
@@ -444,11 +541,12 @@
         spyOn(g, "append").andCallThrough();
         spyOn(text, "attr").andCallThrough();
         spyOn(text, "append").andCallThrough();
-        spyOn(text, "text");
         spyOn(tSpan1, "attr").andCallThrough();
         spyOn(tSpan1, "text").andCallThrough();
         spyOn(tSpan2, "attr").andCallThrough();
         spyOn(tSpan2, "text").andCallThrough();
+        spyOn(tSpan3, "attr").andCallThrough();
+        spyOn(tSpan3, "text").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         c.shape(g, shaper.shapeFunc, colourMapper);
         
@@ -456,46 +554,214 @@
         expect(text.attr).wasCalledWith("text-anchor", "middle");
         expect(text.attr).wasCalledWith("fill", "black");
         expect(text.attr).wasCalledWith("stroke", "none");
-        expect(text.text).wasNotCalled();
         expect(text.append).wasCalledWith("tspan");
-        expect(text.append.calls.length).toEqual(2);
+        expect(text.append.calls.length).toEqual(3);
         expect(tSpan1.attr).wasCalledWith("x", "0");
         expect(tSpan1.attr).wasCalledWith("dy", "-4");
         expect(tSpan1.text).wasCalledWith("key:");
         
         expect(tSpan2.attr).wasCalledWith("x", "0");
         expect(tSpan2.attr).wasCalledWith("dy", "16");
-        expect(tSpan2.text).wasCalledWith("label");        
-      });
-      /*
-      it('should print the bounding box correctly', function() {
-        var c = new CommunityNode(nodes.slice(0, 2));
-        spyOn(g, "append").andCallThrough();
-        spyOn(boxRect, "attr").andCallThrough();
+        expect(tSpan2.text).wasCalledWith("label");
         
-        c.shape(g, shaper.shapeFunc, colourMapper);
-        
-        expect(g.append).wasCalledWith("rect");
-        expect(boxRect.attr).wasCalledWith("width", box.width + 10);
-        expect(boxRect.attr).wasCalledWith("height", box.height + 10);
-        expect(boxRect.attr).wasCalledWith("x", box.x - 5);
-        expect(boxRect.attr).wasCalledWith("y", box.y - 5);
-        expect(boxRect.attr).wasCalledWith("rx", "8");
-        expect(boxRect.attr).wasCalledWith("ry", "8");
-        expect(boxRect.attr).wasCalledWith("fill", "none");
-        expect(boxRect.attr).wasCalledWith("stroke", "black");
+        expect(tSpan3.attr).wasCalledWith("x", width * 2 / 3);
+        expect(tSpan3.attr).wasCalledWith("y", "0");
+        expect(tSpan3.text).wasCalledWith(5);    
       });
-      */
+      
+      describe('if the community is expanded', function() {
+        
+        var nodeSelector, interior, iEnter, iExit, iAll, iG,
+        observer, observerCB;
+        
+        beforeEach(function() {
+          g.selectAll = function(selector) {
+            return nodeSelector;
+          };
+          nodeSelector = {
+            data: function() {
+              return interior;
+            }
+          };
+          interior = {
+            enter: function() {
+              return iEnter;
+            },
+            exit: function() {
+              return iExit;
+            },
+            selectAll: function() {
+              return iAll;
+            },
+            attr: function() {
+              return this;
+            }
+          };
+          iEnter = {
+            append: function() {
+              return iG;
+            }
+          };
+          iG = {
+            attr: function() {
+              return this;
+            }
+          };
+          iExit = {
+            remove: function() {}
+          };
+          iAll = {
+            remove: function() {}
+          };
+          observer = {
+            observe: function() {},
+            disconnect: function() {}
+          };
+          spyOn(window, "DomObserverFactory").andCallFake(function() {
+            return {
+              createObserver: function(cb) {
+                observerCB = cb;
+                return observer;
+              }
+            };
+          });
+          
+          c.expand();
+        });
+        
+        
+        it('should print the bounding box correctly', function() {
+          spyOn(g, "append").andCallThrough();
+          spyOn(boxRect, "attr").andCallThrough();
+        
+          c.shape(g, shaper.shapeFunc, colourMapper);
+        
+          expect(g.append).wasCalledWith("rect");
+          expect(boxRect.attr).wasCalledWith("rx", "8");
+          expect(boxRect.attr).wasCalledWith("ry", "8");
+          expect(boxRect.attr).wasCalledWith("fill", "none");
+          expect(boxRect.attr).wasCalledWith("stroke", "black");
+          
+        });
+        
+        it('should update the box as soon as the dom is ready', function() {
+          spyOn(boxRect, "attr").andCallThrough();
+          spyOn(observer, "observe").andCallThrough();
+          spyOn(observer, "disconnect").andCallThrough();
+          
+          c.shape(g, shaper.shapeFunc, colourMapper);
+          
+          expect(document.getElementById).wasCalledWith(c._id);
+          expect(observer.observe).wasCalledWith(
+            jasmine.any(Object),
+            {
+              subtree:true,
+              attributes:true
+            }
+          );
+          
+          
+          observerCB([{attributeName: "transform"}]);
+          
+          expect(boxRect.attr).wasCalledWith("width", box.width + 10);
+          expect(boxRect.attr).wasCalledWith("height", box.height + 10);
+          expect(boxRect.attr).wasCalledWith("x", box.x - 5);
+          expect(boxRect.attr).wasCalledWith("y", box.y - 5);
+          expect(observer.disconnect).wasCalled();
+        });
+        
+        it('should shape the expanded community with given functions', function() {
+
+          spyOn(g, "selectAll").andCallThrough();
+          spyOn(nodeSelector, "data").andCallFake(function(a, func) {
+            expect(func(nodes[0])).toEqual(nodes[0]._id);
+            expect(func(nodes[6])).toEqual(nodes[6]._id);
+            return interior;
+          });
+          spyOn(interior, "enter").andCallThrough();
+          spyOn(interior, "exit").andCallThrough();
+          spyOn(interior, "selectAll").andCallThrough();
+          spyOn(iEnter, "append").andCallThrough();
+          spyOn(iG, "attr").andCallThrough();
+          spyOn(iExit, "remove").andCallThrough();
+          spyOn(iAll, "remove").andCallThrough();
+          
+          
+          c.shape(g, shaper.shapeFunc, colourMapper);
+          
+          expect(g.selectAll).wasCalledWith(".node");
+          expect(nodeSelector.data).wasCalledWith(c.getNodes(), jasmine.any(Function));
+          expect(interior.enter).wasCalled();
+          expect(iEnter.append).wasCalledWith("g");
+          expect(iG.attr).wasCalledWith("class", "node");
+          expect(iG.attr).wasCalledWith("id", jasmine.any(Function));
+          expect(interior.exit).wasCalled();
+          expect(iExit.remove).wasCalled();
+          expect(interior.selectAll).wasCalledWith("* > *");
+          expect(iAll.remove).wasCalled();
+        });
+        
+        it('should apply distortion on the interior nodes', function() {
+          // Fake Layouting to test correctness
+          nodes[0].x = -20;
+          nodes[0].y = 20;
+          nodes[1].x = -10;
+          nodes[1].y = 10;
+          nodes[2].x = 0;
+          nodes[2].y = 0;
+          nodes[3].x = 10;
+          nodes[3].y = -10;
+          nodes[4].x = 20;
+          nodes[4].y = -20;
+          
+          c.shape(g, shaper.shapeFunc, colourMapper);
+          
+          expect(nodes[0].position).toEqual({
+            x: -20,
+            y: 20,
+            z: 1
+          });
+          expect(nodes[1].position).toEqual({
+            x: -10,
+            y: 10,
+            z: 1
+          });
+          expect(nodes[2].position).toEqual({
+            x: 0,
+            y: 0,
+            z: 1
+          });
+          expect(nodes[3].position).toEqual({
+            x: 10,
+            y: -10,
+            z: 1
+          });
+          expect(nodes[4].position).toEqual({
+            x: 20,
+            y: -20,
+            z: 1
+          });
+        });
+      });
+      
+      
     });
     
     describe('edge functionality', function() {
       
-      var parent;
+      var parent, layouter;
       
       beforeEach(function() {
         parent = {
           dissolveCommunity: function() {}
         };
+        layouter = {
+          start: function() {},
+          stop: function() {}
+        };
+        spyOn(window, "ForceLayouter").andCallFake(function() {
+          return layouter;
+        });
       });
       
       it('should return true if an inserted edge is internal', function() {
@@ -795,6 +1061,114 @@
       
       });
       
+      it('should update the positioning if an inbound edge becomes internal', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.insertInboundEdge(e);
+        
+        expect(layouter.start).wasNotCalled();
+        expect(layouter.stop).wasNotCalled();
+        
+        c.insertOutboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
+      });
+      
+      it('should update the positioning if an oubound edge becomes internal', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.insertOutboundEdge(e);
+        
+        expect(layouter.start).wasNotCalled();
+        expect(layouter.stop).wasNotCalled();
+        
+        c.insertInboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);        
+      });
+      
+      it('should update the positioning if an interal edge becomes inbound', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+
+        c.insertInboundEdge(e);
+        c.insertOutboundEdge(e);
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.removeOutboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);        
+      });
+      
+      it('should update the positioning if an interal edge becomes outbound', function() {
+        var c = new CommunityNode(parent, nodes.slice(0, 2)),
+          e = {
+            _id: "0-1",
+            _data: {
+              _from: "0",
+              _to: "1"
+            },
+            source: nodes[0],
+            target: nodes[1]
+          };
+
+        c.insertInboundEdge(e);
+        c.insertOutboundEdge(e);
+        
+        spyOn(layouter, "start");
+        spyOn(layouter, "stop");
+        
+        c.removeInboundEdge(e);
+        
+        expect(layouter.start).wasCalled();
+        expect(layouter.stop).wasCalled();
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);       
+      });
+      
     });
     
     describe('expansion functionality', function() {
@@ -807,9 +1181,27 @@
         };
       });
       
+      it('should be possible to dissolve the community', function() {
+        var c = new CommunityNode(parent);
+        spyOn(parent, "dissolveCommunity");
+        c.dissolve();
+        expect(parent.dissolveCommunity).wasCalledWith(c);
+      });
+      
       it('should be possible to expand the community', function() {
         var c = new CommunityNode(parent);
+        expect(c._expanded).toBeFalsy();
         c.expand();
+        expect(c._expanded).toBeTruthy();
+      });
+      
+      it('should be possible to collapse the community', function() {
+        var c = new CommunityNode(parent);
+        expect(c._expanded).toBeFalsy();
+        c.expand();
+        expect(c._expanded).toBeTruthy();
+        c.collapse();
+        expect(c._expanded).toBeFalsy();
       });
       
     });
