@@ -98,7 +98,7 @@ var dashboardView = Backbone.View.extend({
   },
   putReplicationStatus: function () {
 
-    if (this.replApplyState.running === true) {
+    if (this.replApplyState.state.running === true) {
       $('#detailReplication').height(290);
       $('.checkApplyRunningStatus').show();
     }
@@ -111,26 +111,40 @@ var dashboardView = Backbone.View.extend({
     $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
 
     //apply table
-    var convertedProgressTime;
-    var convertedLastErrorTime;
-    var convertedLastTick;
-    if (this.replApplyState.state.progress.time === '') {
-      convertedProgressTime = 'n/A';
+    var lastAppliedTick;
+    var phase = "-";
+    var progress = "-";
+    var lastError = "-";
+    
+    if (this.replApplyState.state.lastAppliedContinuousTick === null) {
+      lastAppliedTick = this.replApplyState.state.lastAppliedInitialTick;
     }
-    if (this.replApplyState.state.lastError.time === '') {
-      convertedLastErrorTime = 'n/A';
+    else {
+      lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
     }
-    if (this.replApplyState.state.lastProcessedContinuousTick === null) {
-      convertedLastTick = 0;
+    
+    if (lastAppliedTick === null) {
+      lastAppliedTick = "-";
+    } 
+    
+    if (this.replApplyState.state.currentPhase) {
+      phase = this.replApplyState.state.currentPhase.label;
     }
 
+    if (this.replApplyState.state.progress) {
+      progress = this.replApplyState.state.progress.message;
+    }
+
+    if (this.replApplyState.state.lastError) {
+      lastError = this.replApplyState.state.lastError.errorMessage;
+    }
+
+
     $('#applyRunningVal').text(this.replApplyState.state.running);
-    $('#applyLastTickVal').text(convertedLastTick);
-    $('#applyCurrentPhaseId').text(this.replApplyState.state.currentPhase.id);
-    $('#applyCurrentPhaseLabel').text(this.replApplyState.state.currentPhase.label);
-    $('#applyProgressVal').text(convertedProgressTime);
-    $('#applyLastErrorTime').text(convertedLastErrorTime);
-    $('#applyLastErrorErrorNum').text(this.replApplyState.state.lastError.errorNum);
+    $('#applyLastAppliedTickVal').text(lastAppliedTick);
+    $('#applyCurrentPhaseLabel').text(phase);
+    $('#applyProgressVal').text(progress);
+    $('#applyLastError').text(lastError);
 
   },
 
