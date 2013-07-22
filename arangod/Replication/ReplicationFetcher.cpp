@@ -94,7 +94,9 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _endpoint(0),
   _connection(0),
   _client(0) {
-   
+    
+  _localServerIdString = StringUtils::itoa(TRI_GetServerId());
+
   if (_forceFullSynchronisation) {
     TRI_RemoveStateFileReplicationApplier(_vocbase);
   }
@@ -1464,7 +1466,8 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
   while (1) {
     const string url = baseUrl + 
                        "&from=" + StringUtils::itoa(fromTick) + 
-                       "&to=" + StringUtils::itoa(maxTick);
+                       "&to=" + StringUtils::itoa(maxTick) +
+                       "&serverId=" + _localServerIdString;
 
     // send request
     const string progress = "fetching master collection dump for collection '" + collectionName + 
@@ -1809,7 +1812,8 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   }
 
   // validate all values we got
-  const TRI_server_id_t masterId = StringUtils::uint64(serverId->_value._string.data, serverId->_value._string.length - 1);
+  const string masterIdString = string(serverId->_value._string.data, serverId->_value._string.length - 1);
+  const TRI_server_id_t masterId = StringUtils::uint64(masterIdString);
 
   if (masterId == 0) {
     // invalid master id
@@ -1818,7 +1822,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  if (masterId == TRI_GetServerId()) {
+  if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
     errorMsg = "master's id is the same as the local server's id";
 
@@ -1994,7 +1998,8 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
                                          uint64_t& ignoreCount,
                                          bool& worked,
                                          bool& masterActive) {
-  const string baseUrl = BaseUrl + "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize());
+  const string baseUrl = BaseUrl + 
+                         "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize()); 
 
   map<string, string> headers;
 
@@ -2015,7 +2020,9 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
   LOGGER_TRACE("starting continuous replication with tick " << fromTick);
 
   const string tickString = StringUtils::itoa(fromTick); 
-  const string url = baseUrl + "&from=" + tickString;
+  const string url = baseUrl + 
+                     "&from=" + tickString +
+                     "&serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master log from offset " + tickString;
