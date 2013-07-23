@@ -129,9 +129,14 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
           edgeShaper.activateLabel(currentZoom >= labelToggle);
           calcDistortionValues();
           currentTranslation = $.extend({}, d3.event.translate);
-          g.attr("transform",
-              "translate(" + d3.event.translate + ")"
-              + " scale(" + currentZoom + ")");         
+          var trans = "translate(" + d3.event.translate + ")",
+          scale = " scale(" + currentZoom + ")";
+          if (g._isCommunity) {
+            g.attr("transform", trans);
+          } else {
+            g.attr("transform", trans + scale);
+          }
+          
        });
       
     },
@@ -153,11 +158,11 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
   parseConfig(config);
   
   svg.call(zoom);
-
+  
   nodeShaper.changeTo({
     distortion: fisheye
   });
-
+  
   svg.on("mousemove", mouseMoveHandle);
   
   self.translation = function() {

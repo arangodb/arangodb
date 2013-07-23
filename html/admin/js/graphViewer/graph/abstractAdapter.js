@@ -620,6 +620,7 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     
     expandNode = function(n, startCallback) {
       if (n._isCommunity) {
+        console.log("Adapter Explore!");
         self.expandCommunity(n, startCallback);
       } else {
         n._expanded = true;
