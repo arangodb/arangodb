@@ -1365,7 +1365,8 @@
       beforeEach(function() {
         shaper = new NodeShaper(d3.select("svg"));
         adapter = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
       });
       

@@ -167,6 +167,10 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     if (config.expand !== undefined) {
       if (eventlib.checkExpandConfig(config.expand)) {
         self.events.EXPAND = new eventlib.Expand(config.expand);
+        nodeShaper.setGVStartFunction(function() {
+         config.expand.reshapeNodes();
+         config.expand.startCallback();
+        });
       }
     }
     if (config.drag !== undefined) {
