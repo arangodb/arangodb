@@ -312,6 +312,7 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloneDocumentMarker (TRI_voc_tid_t tid,
+                                TRI_voc_tick_t tick,
                                 TRI_df_marker_t const* original,
                                 TRI_doc_document_key_marker_t** result,
                                 TRI_voc_size_t* totalSize,
@@ -319,7 +320,6 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
                                 TRI_shaped_json_t const* shaped) {
 
   TRI_doc_document_key_marker_t* marker;
-  TRI_voc_tick_t tick;
   size_t baseLength;
 
   *result = NULL;
@@ -359,12 +359,14 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  tick = TRI_NewTickVocBase();
+  if (tick == 0) {
+    tick = TRI_NewTickVocBase();
+  }
+
   // copy non-changed data (e.g. key(s)) from old marker into new marker
   TRI_CloneMarker(&marker->base, original, baseLength, *totalSize);
   assert(marker->_rid != 0);
   // the new revision must be greater than the old one
-  assert((TRI_voc_rid_t) tick > marker->_rid);
 
   // give the marker a new revision id
   marker->_rid   = (TRI_voc_rid_t) tick;
@@ -1621,6 +1623,7 @@ static int ReadShapedJson (TRI_transaction_collection_t* trxCollection,
 
 static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
+                             TRI_voc_rid_t rid,
                              TRI_doc_mptr_t* mptr,
                              TRI_shaped_json_t const* shaped,
                              TRI_doc_update_policy_t const* policy,
@@ -1670,7 +1673,7 @@ static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
     original = header->_data;
 
     tid = TRI_GetMarkerIdTransaction(trxCollection->_transaction);
-    res = CloneDocumentMarker(tid, original, &marker, &totalSize, original->_type, shaped);
+    res = CloneDocumentMarker(tid, (TRI_voc_tick_t) rid, original, &marker, &totalSize, original->_type, shaped);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = UpdateDocument(trxCollection, header, marker, totalSize, forceSync, mptr, &freeMarker);

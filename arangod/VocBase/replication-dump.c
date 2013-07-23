@@ -114,8 +114,8 @@
   
 typedef struct {
   TRI_datafile_t* _data;
-  TRI_voc_tick_t  _tickMin;
-  TRI_voc_tick_t  _tickMax;
+  TRI_voc_tick_t  _dataMin;
+  TRI_voc_tick_t  _dataMax;
   bool            _isJournal;
 }
 df_entry_t;
@@ -134,78 +134,87 @@ df_entry_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a vector of datafiles and pick those with a specific
+/// data range
+////////////////////////////////////////////////////////////////////////////////
+
+static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
+                             TRI_vector_t* result,
+                             TRI_voc_tick_t dataMin,
+                             TRI_voc_tick_t dataMax,
+                             bool isJournal) {
+  
+  size_t i, n;
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+
+  n = datafiles->_length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_datafile_t* df = TRI_AtVectorPointer(datafiles, i);
+
+    df_entry_t entry = { 
+      df,
+      df->_dataMin,
+      df->_dataMax,
+      isJournal
+    };
+    
+    LOG_TRACE("checking datafile %llu with data range %llu - %llu", 
+              (unsigned long long) df->_fid,
+              (unsigned long long) df->_dataMin, 
+              (unsigned long long) df->_dataMax);
+    
+    if (df->_dataMin == 0 || df->_dataMax == 0) {
+      // datafile doesn't have any data
+      continue;
+    }
+
+    assert(df->_tickMin <= df->_tickMax);
+    assert(df->_dataMin <= df->_dataMax);
+
+    if (dataMax < df->_dataMin) {
+      // datafile is newer than requested range
+      continue;
+    }
+
+    if (dataMin > df->_dataMax) {
+      // datafile is older than requested range
+      continue;
+    }
+     
+    res = TRI_PushBackVector(result, &entry);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the datafiles of a collection for a specific tick range
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
-                                       TRI_voc_tick_t tickMin,
-                                       TRI_voc_tick_t tickMax) {
+                                       TRI_voc_tick_t dataMin,
+                                       TRI_voc_tick_t dataMax) {
   TRI_vector_t datafiles;
-  size_t i;
 
-  LOG_TRACE("getting datafiles in tick range %llu - %llu", 
-            (unsigned long long) tickMin, 
-            (unsigned long long) tickMax);
+  LOG_TRACE("getting datafiles in data range %llu - %llu", 
+            (unsigned long long) dataMin, 
+            (unsigned long long) dataMax);
 
   // determine the datafiles of the collection
   TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
 
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-  for (i = 0; i < primary->base._datafiles._length; ++i) {
-    TRI_datafile_t* df = TRI_AtVectorPointer(&primary->base._datafiles, i);
-
-    df_entry_t entry = { 
-      df,
-      df->_tickMin,
-      df->_tickMax,
-      false 
-    };
+  IterateDatafiles(&primary->base._datafiles, &datafiles, dataMin, dataMax, false);
+  IterateDatafiles(&primary->base._journals, &datafiles, dataMin, dataMax, true);
   
-    LOG_TRACE("checking datafile with tick range %llu - %llu", 
-              (unsigned long long) df->_tickMin, 
-              (unsigned long long) df->_tickMax);
-    
-    if (tickMax < df->_tickMin) {
-      // datafile is newer than requested range
-      continue;
-    }
-
-    if (tickMin > df->_tickMax) {
-      // datafile is older than requested range
-      continue;
-    }
-     
-    TRI_PushBackVector(&datafiles, &entry);
-  }
-
-  for (i = 0; i < primary->base._journals._length; ++i) {
-    TRI_datafile_t* df = TRI_AtVectorPointer(&primary->base._journals, i);
-
-    df_entry_t entry = { 
-      df,
-      df->_tickMin,
-      df->_tickMax,
-      true 
-    };
-    
-    LOG_TRACE("checking journal with tick range %llu - %llu", 
-              (unsigned long long) df->_tickMin, 
-              (unsigned long long) df->_tickMax);
-    
-    if (tickMax < df->_tickMin) {
-      // datafile is newer than requested range
-      continue;
-    }
-
-    if (tickMin > df->_tickMax) {
-      // datafile is older than requested range
-      continue;
-    }
-     
-    TRI_PushBackVector(&datafiles, &entry);
-  }
-
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   return datafiles;
@@ -529,8 +538,8 @@ static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
 
 static int DumpCollection (TRI_replication_dump_t* dump, 
                            TRI_primary_collection_t* primary,
-                           TRI_voc_tick_t tickMin,
-                           TRI_voc_tick_t tickMax,
+                           TRI_voc_tick_t dataMin,
+                           TRI_voc_tick_t dataMax,
                            uint64_t chunkSize) {
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
@@ -545,12 +554,12 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
             (unsigned long long) primary->base._info._cid,
-            (unsigned long long) tickMin,
-            (unsigned long long) tickMax,
+            (unsigned long long) dataMin,
+            (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
 
   buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(primary, tickMin, tickMax);
+  datafiles      = GetRangeDatafiles(primary, dataMin, dataMax);
   document       = (TRI_document_collection_t*) primary;
  
   // setup some iteration state
@@ -629,12 +638,12 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
-      if (foundTick <= tickMin) {
+      if (foundTick <= dataMin) {
         // marker too old
         continue;
       }
 
-      if (foundTick > tickMax) {
+      if (foundTick > dataMax) {
         // marker too new
         hasMore = false;
         goto NEXT_DF;
@@ -730,8 +739,8 @@ NEXT_DF:
 
 static int DumpLog (TRI_replication_dump_t* dump, 
                     TRI_primary_collection_t* primary,
-                    TRI_voc_tick_t tickMin,
-                    TRI_voc_tick_t tickMax,
+                    TRI_voc_tick_t dataMin,
+                    TRI_voc_tick_t dataMax,
                     uint64_t chunkSize) {
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
@@ -744,12 +753,12 @@ static int DumpLog (TRI_replication_dump_t* dump,
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
             (unsigned long long) primary->base._info._cid,
-            (unsigned long long) tickMin,
-            (unsigned long long) tickMax,
+            (unsigned long long) dataMin,
+            (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
 
   buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(primary, tickMin, tickMax);
+  datafiles      = GetRangeDatafiles(primary, dataMin, dataMax);
   document       = (TRI_document_collection_t*) primary;
  
   // setup some iteration state
@@ -806,12 +815,12 @@ static int DumpLog (TRI_replication_dump_t* dump,
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
-      if (foundTick <= tickMin) {
+      if (foundTick <= dataMin) {
         // marker too old
         continue;
       }
 
-      if (foundTick > tickMax) {
+      if (foundTick > dataMax) {
         // marker too new
         hasMore = false;
         goto NEXT_DF;
@@ -884,8 +893,8 @@ NEXT_DF:
 
 int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
                                    TRI_vocbase_col_t* col,
-                                   TRI_voc_tick_t tickMin,
-                                   TRI_voc_tick_t tickMax,
+                                   TRI_voc_tick_t dataMin,
+                                   TRI_voc_tick_t dataMax,
                                    uint64_t chunkSize) {
   TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
@@ -906,7 +915,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&primary->_compactionLock);
 
-  res = DumpCollection(dump, primary, tickMin, tickMax, chunkSize);
+  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize);
   
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 
@@ -921,8 +930,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 
 int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
                             TRI_replication_dump_t* dump,
-                            TRI_voc_tick_t tickMin,
-                            TRI_voc_tick_t tickMax,
+                            TRI_voc_tick_t dataMin,
+                            TRI_voc_tick_t dataMax,
                             uint64_t chunkSize) {
   TRI_vocbase_col_t* col;
   TRI_primary_collection_t* primary;
@@ -949,7 +958,7 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   // block compaction
   TRI_ReadLockReadWriteLock(&primary->_compactionLock);
 
-  res = DumpLog(dump, primary, tickMin, tickMax, chunkSize);
+  res = DumpLog(dump, primary, dataMin, dataMax, chunkSize);
   
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 

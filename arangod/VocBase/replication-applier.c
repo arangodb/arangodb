@@ -52,22 +52,10 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
   
-static void GetTime (char* dst, 
-                     size_t maxSize) {
-  time_t tt;
-  struct tm tb;
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-
-  strftime(dst, maxSize - 1, "%Y-%m-%dT%H:%M:%SZ", &tb);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set flag to terminate the apply start
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +147,7 @@ static TRI_json_t* JsonApplyConfiguration (TRI_replication_apply_configuration_t
 
   assert(config->_endpoint != NULL);
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 4);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 8);
 
   if (json == NULL) {
     return NULL;
@@ -288,7 +276,8 @@ static int SetError (TRI_replication_applier_t* applier,
 
   state = &applier->_state;
   state->_lastError._code = errorCode;
-  GetTime(state->_lastError._time, sizeof(state->_lastError._time));
+  
+  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
 
   if (state->_lastError._msg != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
@@ -401,7 +390,7 @@ static int StopApplier (TRI_replication_applier_t* applier) {
   }
 
   state->_lastError._code = TRI_ERROR_NO_ERROR;
-  GetTime(state->_lastError._time, sizeof(state->_lastError._time));
+  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
   
   TRI_LockCondition(&applier->_runStateChangeCondition);
   TRI_SignalCondition(&applier->_runStateChangeCondition);
@@ -419,7 +408,7 @@ static int StopApplier (TRI_replication_applier_t* applier) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -511,7 +500,7 @@ void TRI_FreeReplicationApplier (TRI_replication_applier_t* applier) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
    
@@ -621,6 +610,10 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
   }
 
   res = TRI_SaveConfigurationFileReplicationApplier(applier->_vocbase, config, true);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_LoadConfigurationFileReplicationApplier(applier->_vocbase, &applier->_configuration);
+  }
   
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
 
@@ -679,8 +672,9 @@ TRI_json_t* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const
   TRI_json_t* progress;
   TRI_json_t* error;
   char* lastString;
+  char timeString[24];
   
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 8);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
 
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
@@ -743,14 +737,20 @@ TRI_json_t* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const
 
   // lastError
   error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
 
-  if (state->_lastError._msg != NULL) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+  if (state->_lastError._code > 0) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
+ 
+    if (state->_lastError._msg != NULL) {
+      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+    }
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
+  
+  TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
   
   return json;
 }
@@ -800,7 +800,7 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
     return;
   }
   
-  GetTime(timeString, sizeof(timeString));
+  TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
 
   if (lock) {
     TRI_WriteLockReadWriteLock(&applier->_statusLock);
@@ -1018,9 +1018,12 @@ void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_conf
 
 void TRI_CopyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t const* src,
                                                    TRI_replication_apply_configuration_t* dst) {
-  assert(src->_endpoint != NULL);
-
-  dst->_endpoint          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+  if (src->_endpoint != NULL) {
+    dst->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+  }
+  else {
+    dst->_endpoint = NULL;
+  }
 
   if (src->_username != NULL) {
     dst->_username          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
@@ -1104,6 +1107,7 @@ int TRI_SaveConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application configuration from a file
+/// this function must be called under the statusLock
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LoadConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,

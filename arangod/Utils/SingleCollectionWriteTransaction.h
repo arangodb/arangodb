@@ -210,7 +210,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->update(this->trxCollection(), key, mptr, json, policy, expectedRevision, actualRevision, forceSync);
+          return this->update(this->trxCollection(), key, 0, mptr, json, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->update(this->trxCollection(), key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync);
+          return this->update(this->trxCollection(), key, 0, mptr, shaped, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

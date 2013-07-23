@@ -22,10 +22,11 @@ var dashboardView = Backbone.View.extend({
   detailGraph: "userTime",
 
   initialize: function () {
+    this.arangoReplication = new window.ArangoReplication();
     var self = this;
 
     this.initUnits();
-    self.addCustomCharts();
+    this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
@@ -44,6 +45,9 @@ var dashboardView = Backbone.View.extend({
 
           if (self.updateCounter < self.updateFrequency) {
             return false;
+          }
+          if (window.location.hash === '#dashboard') {
+            self.getReplicationStatus();
           }
 
           self.updateCounter = 0;
@@ -87,10 +91,68 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  getReplicationStatus: function () {
+    this.replLogState = this.arangoReplication.getLogState();
+    this.replApplyState = this.arangoReplication.getApplyState();
+    this.putReplicationStatus();
+  },
+  putReplicationStatus: function () {
+
+    if (this.replApplyState.state.running === true) {
+      $('#detailReplication').height(290);
+      $('.checkApplyRunningStatus').show();
+    }
+    else {
+      $('.checkApplyRunningStatus').hide();
+    }
+
+    //log table
+    $('#logRunningVal').text(this.replLogState.state.running);
+    $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
+
+    //apply table
+    var lastAppliedTick;
+    var phase = "-";
+    var progress = "-";
+    var lastError = "-";
+    
+    if (this.replApplyState.state.lastAppliedContinuousTick === null) {
+      lastAppliedTick = this.replApplyState.state.lastAppliedInitialTick;
+    }
+    else {
+      lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
+    }
+    
+    if (lastAppliedTick === null) {
+      lastAppliedTick = "-";
+    } 
+    
+    if (this.replApplyState.state.currentPhase) {
+      phase = this.replApplyState.state.currentPhase.label;
+    }
+
+    if (this.replApplyState.state.progress) {
+      progress = this.replApplyState.state.progress.message;
+    }
+
+    if (this.replApplyState.state.lastError) {
+      lastError = this.replApplyState.state.lastError.errorMessage;
+    }
+
+
+    $('#applyRunningVal').text(this.replApplyState.state.running);
+    $('#applyLastAppliedTickVal').text(lastAppliedTick);
+    $('#applyCurrentPhaseLabel').text(phase);
+    $('#applyProgressVal').text(progress);
+    $('#applyLastError').text(lastError);
+
+  },
+
   render: function() {
     var self = this;
     self.updateNOW = true;
     $(this.el).html(this.template.text);
+    this.getReplicationStatus();
 
     //Client calculated charts
     /*self.genCustomCategories();
