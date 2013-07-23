@@ -52,6 +52,8 @@ var applier = { };
 ////////////////////////////////////////////////////////////////////////////////
   
 logger.start = function () {
+  'use strict';
+
   var db = internal.db;
 
   var requestResult = db._connection.PUT("_api/replication/log-start", "");
@@ -65,6 +67,8 @@ logger.start = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 logger.stop = function () {
+  'use strict';
+
   var db = internal.db;
 
   var requestResult = db._connection.PUT("_api/replication/log-stop", "");
@@ -78,12 +82,14 @@ logger.stop = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 logger.state = function () {
+  'use strict';
+
   var db = internal.db;
 
   var requestResult = db._connection.GET("_api/replication/log-state");
   arangosh.checkRequestResult(requestResult);
   
-  return requestResult.state;
+  return requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +97,8 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 applier.start = function (forceFullSynchronisation) {
+  'use strict';
+
   var db = internal.db;
   var append = (forceFullSynchronisation ? "?fullSync=true" : "");
 
@@ -105,6 +113,8 @@ applier.start = function (forceFullSynchronisation) {
 ////////////////////////////////////////////////////////////////////////////////
   
 applier.stop = function () {
+  'use strict';
+
   var db = internal.db;
 
   var requestResult = db._connection.PUT("_api/replication/apply-stop", "");
@@ -118,6 +128,8 @@ applier.stop = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 applier.state = function () {
+  'use strict';
+
   var db = internal.db;
 
   var requestResult = db._connection.GET("_api/replication/apply-state");
@@ -131,6 +143,8 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 applier.properties = function (config) {
+  'use strict';
+
   var db = internal.db;
 
   var requestResult;

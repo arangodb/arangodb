@@ -3107,10 +3107,29 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_json_t* json = TRI_JsonStateReplicationLogger(&state);
+  TRI_json_t json;
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+    
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state)); 
+    
+  // add server info
+  TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+
+  TRI_server_id_t serverId = TRI_GetServerId();  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "server", server);
+    
+  TRI_json_t* clients = TRI_JsonClientsReplicationLogger(vocbase->_replicationLogger);
+  if (clients != 0) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "clients", clients);
+  }
+
+  v8::Handle<v8::Value> result = TRI_ObjectJson(&json);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 
   return scope.Close(result);
 }
@@ -5554,7 +5573,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       // get the old values
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-      size_t maximalSize = base->_info._maximalSize;
+      TRI_voc_size_t maximalSize = base->_info._maximalSize;
       bool doCompact     = base->_info._doCompact;
       bool waitForSync   = base->_info._waitForSync;
 
@@ -5572,7 +5591,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
       // extract the journal size
       if (po->Has(v8g->JournalSizeKey)) {
-        maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
+        maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(v8g->JournalSizeKey), false);
 
         if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
           ReleaseCollection(collection);

@@ -207,10 +207,6 @@ function post_api_collection (req, res) {
   var parameter = { waitForSync : false };
   var type = arangodb.ArangoCollection.TYPE_DOCUMENT;
 
-  if (body.hasOwnProperty("waitForSync")) {
-    parameter.waitForSync = body.waitForSync;
-  }
-  
   if (body.hasOwnProperty("doCompact")) {
     parameter.doCompact = body.doCompact;
   }
@@ -226,15 +222,19 @@ function post_api_collection (req, res) {
   if (body.hasOwnProperty("journalSize")) {
     parameter.journalSize = body.journalSize;
   }
-
-  if (body.hasOwnProperty("type")) {
-    type = body.type;
-  }
   
   if (body.hasOwnProperty("keyOptions")) {
     parameter.keyOptions = body.keyOptions;
   }
 
+  if (body.hasOwnProperty("type")) {
+    type = body.type;
+  }
+  
+  if (body.hasOwnProperty("waitForSync")) {
+    parameter.waitForSync = body.waitForSync;
+  }
+  
   try {
     var collection;
     if (typeof(type) === "string") {

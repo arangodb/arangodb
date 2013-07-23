@@ -51,6 +51,8 @@ var applier = { };
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.start = function () {
+  'use strict';
+
   return internal.startReplicationLogger();
 };
 
@@ -59,6 +61,8 @@ logger.start = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.stop = function () {
+  'use strict';
+
   return internal.stopReplicationLogger();
 };
 
@@ -67,6 +71,8 @@ logger.stop = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.state = function () {  
+  'use strict';
+
   return internal.getStateReplicationLogger();
 };
 
@@ -75,6 +81,8 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.start = function (forceFullSynchronisation) {
+  'use strict';
+
   return internal.startReplicationApplier(forceFullSynchronisation || false);
 };
 
@@ -83,6 +91,8 @@ applier.start = function (forceFullSynchronisation) {
 ////////////////////////////////////////////////////////////////////////////////
   
 applier.stop = function () {
+  'use strict';
+
   return internal.stopReplicationApplier();
 };
 
@@ -91,6 +101,8 @@ applier.stop = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 applier.state = function () {
+  'use strict';
+
   return internal.getStateReplicationApplier();
 };
 
@@ -99,6 +111,8 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
  
 applier.properties = function (config) {
+  'use strict';
+
   if (config === undefined) {
     return internal.configureReplicationApplier();
   }
