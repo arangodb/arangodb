@@ -58,7 +58,8 @@
         expect(
           function() {
             var t = new CommunityNode({
-              dissolveCommunity: function() {}
+              dissolveCommunity: function() {},
+              checkNodeLimit: function() {}
             });
           }
         ).not.toThrow();
@@ -67,7 +68,8 @@
       it('should create a ForceLayouter on setup', function() {
         spyOn(window, "ForceLayouter");
         var t = new CommunityNode({
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         });
         expect(window.ForceLayouter).wasCalledWith({
           distance: 100,
@@ -88,7 +90,8 @@
       
       beforeEach(function() {
         var parent = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
         testee = new CommunityNode(parent, nodes.slice(3, 13));
         this.addMatchers({
@@ -188,7 +191,8 @@
       
       beforeEach(function() {
         parent = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
         layouter = {
           start: function() {},
@@ -368,7 +372,8 @@
         
       beforeEach(function() {
         parent = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
         var tspans = 0;
         width = 90;
@@ -463,8 +468,12 @@
           }
         };
         comShapeInner = {
-          attr: function() {},
-          on: function() {},
+          attr: function() {
+            return this;
+          },
+          on: function() {
+            return this;
+          },
           select: function() {
             return {
               attr: function() {
@@ -511,8 +520,7 @@
         };
         shaper = {
           shapeFunc: function() {},
-          colourFunc: function() {},
-          eventsFunc: function() {}
+          shapeQue: function() {}
         };
         gv = {
           start: function() {}
@@ -580,8 +588,7 @@
         c.shape(
           g,
           shaper.shapeFunc,
-          shaper.colourFunc,
-          shaper.eventsFunc,
+          shaper.shapeQue,
           gv.start,
           colourMapper
         );
@@ -617,8 +624,7 @@
         c.shape(
           g,
           shaper.shapeFunc,
-          shaper.colourFunc,
-          shaper.eventsFunc,
+          shaper.shapeQue,
           gv.start,
           colourMapper
         );
@@ -665,8 +671,7 @@
         c.shape(
           g,
           shaper.shapeFunc,
-          shaper.colourFunc,
-          shaper.eventsFunc,
+          shaper.shapeQue,
           gv.start,
           colourMapper
         );
@@ -767,8 +772,7 @@
           c.shape(
             g,
             shaper.shapeFunc,
-            shaper.colourFunc,
-            shaper.eventsFunc,
+            shaper.shapeQue,
             gv.start,
             colourMapper
           );
@@ -824,8 +828,7 @@
           c.shape(
             g,
             shaper.shapeFunc,
-            shaper.colourFunc,
-            shaper.eventsFunc,
+            shaper.shapeQue,
             gv.start,
             colourMapper
           );
@@ -865,17 +868,15 @@
           spyOn(iG, "attr").andCallThrough();
           spyOn(iExit, "remove").andCallThrough();
           spyOn(iAll, "remove").andCallThrough();
-          
+          spyOn(shaper, "shapeQue").andCallThrough();
           
           c.shape(
             g,
             shaper.shapeFunc,
-            shaper.colourFunc,
-            shaper.eventsFunc,
+            shaper.shapeQue,
             gv.start,
             colourMapper
           );
-          
           
           expect(g.selectAll).wasCalledWith(".node");
           expect(nodeSelector.data).wasCalledWith(c.getNodes(), jasmine.any(Function));
@@ -887,6 +888,8 @@
           expect(iExit.remove).wasCalled();
           expect(interior.selectAll).wasCalledWith("* > *");
           expect(iAll.remove).wasCalled();
+          
+          expect(shaper.shapeQue).wasCalledWith(interior);
         });
         
         it('should apply distortion on the interior nodes', function() {
@@ -902,14 +905,7 @@
           nodes[4].x = 20;
           nodes[4].y = -20;
           
-          c.shape(
-            g,
-            shaper.shapeFunc,
-            shaper.colourFunc,
-            shaper.eventsFunc,
-            gv.start,
-            colourMapper
-          );
+          c.addDistortion();
           
           
           expect(nodes[0].position).toEqual({
@@ -949,7 +945,8 @@
       
       beforeEach(function() {
         parent = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
         layouter = {
           start: function() {},
@@ -1373,7 +1370,8 @@
       
       beforeEach(function() {
         parent = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
       });
       
@@ -1414,7 +1412,8 @@
         
         beforeEach(function() {
           parent = {
-            dissolveCommunity: function() {}
+            dissolveCommunity: function() {},
+            checkNodeLimit: function() {}
           };
           c = new CommunityNode(parent, nodes.slice(0, 5));
         });
@@ -1433,7 +1432,8 @@
       
       beforeEach(function() {
         parent = {
-          dissolveCommunity: function() {}
+          dissolveCommunity: function() {},
+          checkNodeLimit: function() {}
         };
       });
       
