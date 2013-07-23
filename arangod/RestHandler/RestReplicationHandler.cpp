@@ -654,7 +654,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
   
