@@ -231,15 +231,16 @@ int ReplicationFetcher::run () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
-/// sort order is by collection type first (vertices before edges), then name 
+/// sort order is by collection type first (vertices before edges, this is
+/// because edges depend on vertices being there), then name 
 ////////////////////////////////////////////////////////////////////////////////
 
 int ReplicationFetcher::sortCollections (const void* l, const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
-  int leftType  = (int) JsonHelper::getNumberValue(left,  "type", 2.0);
-  int rightType = (int) JsonHelper::getNumberValue(right, "type", 2.0);
+  int leftType  = (int) JsonHelper::getIntValue(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int rightType = (int) JsonHelper::getIntValue(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
 
   if (leftType != rightType) {

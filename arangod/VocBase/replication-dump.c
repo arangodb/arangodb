@@ -134,6 +134,67 @@ df_entry_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a vector of datafiles and pick those with a specific
+/// data range
+////////////////////////////////////////////////////////////////////////////////
+
+static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
+                             TRI_vector_t* result,
+                             TRI_voc_tick_t dataMin,
+                             TRI_voc_tick_t dataMax,
+                             bool isJournal) {
+  
+  size_t i, n;
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+
+  n = datafiles->_length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_datafile_t* df = TRI_AtVectorPointer(datafiles, i);
+
+    df_entry_t entry = { 
+      df,
+      df->_dataMin,
+      df->_dataMax,
+      isJournal
+    };
+    
+    LOG_TRACE("checking datafile %llu with data range %llu - %llu", 
+              (unsigned long long) df->_fid,
+              (unsigned long long) df->_dataMin, 
+              (unsigned long long) df->_dataMax);
+    
+    if (df->_dataMin == 0 || df->_dataMax == 0) {
+      // datafile doesn't have any data
+      continue;
+    }
+
+    assert(df->_tickMin <= df->_tickMax);
+    assert(df->_dataMin <= df->_dataMax);
+
+    if (dataMax < df->_dataMin) {
+      // datafile is newer than requested range
+      continue;
+    }
+
+    if (dataMin > df->_dataMax) {
+      // datafile is older than requested range
+      continue;
+    }
+     
+    res = TRI_PushBackVector(result, &entry);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the datafiles of a collection for a specific tick range
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -141,9 +202,8 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
                                        TRI_voc_tick_t dataMin,
                                        TRI_voc_tick_t dataMax) {
   TRI_vector_t datafiles;
-  size_t i;
 
-  LOG_TRACE("getting datafiles in tick range %llu - %llu", 
+  LOG_TRACE("getting datafiles in data range %llu - %llu", 
             (unsigned long long) dataMin, 
             (unsigned long long) dataMax);
 
@@ -152,60 +212,9 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
 
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-  for (i = 0; i < primary->base._datafiles._length; ++i) {
-    TRI_datafile_t* df = TRI_AtVectorPointer(&primary->base._datafiles, i);
-
-    df_entry_t entry = { 
-      df,
-      df->_dataMin,
-      df->_dataMax,
-      false 
-    };
+  IterateDatafiles(&primary->base._datafiles, &datafiles, dataMin, dataMax, false);
+  IterateDatafiles(&primary->base._journals, &datafiles, dataMin, dataMax, true);
   
-    LOG_TRACE("checking datafile with tick range %llu - %llu", 
-              (unsigned long long) df->_dataMin, 
-              (unsigned long long) df->_dataMax);
-    
-    if (dataMax < df->_dataMin) {
-      // datafile is newer than requested range
-      continue;
-    }
-
-    if (dataMin > df->_dataMax) {
-      // datafile is older than requested range
-      continue;
-    }
-     
-    TRI_PushBackVector(&datafiles, &entry);
-  }
-
-  for (i = 0; i < primary->base._journals._length; ++i) {
-    TRI_datafile_t* df = TRI_AtVectorPointer(&primary->base._journals, i);
-
-    df_entry_t entry = { 
-      df,
-      df->_dataMin,
-      df->_dataMax,
-      true 
-    };
-    
-    LOG_TRACE("checking journal with tick range %llu - %llu", 
-              (unsigned long long) df->_dataMin, 
-              (unsigned long long) df->_dataMax);
-    
-    if (dataMax < df->_dataMin) {
-      // datafile is newer than requested range
-      continue;
-    }
-
-    if (dataMin > df->_dataMax) {
-      // datafile is older than requested range
-      continue;
-    }
-     
-    TRI_PushBackVector(&datafiles, &entry);
-  }
-
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   return datafiles;
