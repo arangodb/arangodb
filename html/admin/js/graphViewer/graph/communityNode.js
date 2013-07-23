@@ -79,7 +79,7 @@ function CommunityNode(parent, initial) {
     getSourcePosition = function(e) {    
       if (self._expanded) {
         var p = self.position,
-          diff = e._source,
+          diff = e._source.position,
           x = p.x + diff.x,
           y = p.y + diff.y,
           z = p.z + diff.z;
@@ -96,9 +96,9 @@ function CommunityNode(parent, initial) {
     getTargetPosition = function(e) {
       if (self._expanded) {
         var p = self.position,
-          diff = e._target,
-          x = p.x + diff.x,
-          y = p.y + diff.y,
+          diff = e._target.position,
+          x = p.x + p.z * diff.x,
+          y = p.y + p.z * diff.y,
           z = p.z + diff.z;
         return {
           x: x,
@@ -294,31 +294,7 @@ function CommunityNode(parent, initial) {
     collapse = function() {
       this._expanded = false;
     },
-    
-    addDistortion = function() {
-      // Fake Layouting TODO
-      _.each(nodeArray, function(n) {
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
-    },
-    
-    addShape = function (g, shapeFunc, colourMapper) {
-      g.attr("stroke", colourMapper.getForegroundCommunityColour());
-      shapeFunc(g);
-    },
-    
-    addColour = function (g, colourFunc) {
-      colourFunc(g);
-    },
-    
-    addEvents = function (g, eventsFunc) {
-      eventsFunc(g);
-    },
-    
+
     addCollapsedLabel = function(g, colourMapper) {
       var width = g.select("rect").attr("width"),
         textN = g.append("text") // Append a label for the node
@@ -344,14 +320,14 @@ function CommunityNode(parent, initial) {
         .text(self._size);
     },
     
-    addCollapsedShape = function(g, shapeFunc, colourFunc, start, colourMapper) {
-      var inner = g.append("g");
-      inner.attr("stroke", colourMapper.getForegroundCommunityColour());
+    addCollapsedShape = function(g, shapeFunc, start, colourMapper) {
+      var inner = g.append("g")
+        .attr("stroke", colourMapper.getForegroundCommunityColour())
+        .attr("fill", colourMapper.getCommunityColour());
       shapeFunc(inner, 9);
       shapeFunc(inner, 6);
       shapeFunc(inner, 3);
       shapeFunc(inner);
-      colourFunc(inner);
       inner.on("click", function() {
         self.expand();
         parent.checkNodeLimit(self);
@@ -359,10 +335,8 @@ function CommunityNode(parent, initial) {
       });
       addCollapsedLabel(inner, colourMapper);
     },
-    
-   
-    
-    addNodeShapes = function(g, shapeFunc, colourFunc, eventsFunc, start, colourMapper) {
+
+    addNodeShapes = function(g, shapeQue) {
       var interior = g.selectAll(".node")
       .data(nodeArray, function(d) {
         return d._id;
@@ -376,9 +350,7 @@ function CommunityNode(parent, initial) {
       // Remove all old
       interior.exit().remove();
       interior.selectAll("* > *").remove();
-      addShape(interior, shapeFunc, colourMapper);
-      addColour(interior, colourFunc);
-      addEvents(interior, eventsFunc);
+      shapeQue(interior);
     },
     
     addBoundingBox = function(g, start) {
@@ -433,16 +405,26 @@ function CommunityNode(parent, initial) {
       });
     },
     
-    shapeAll = function(g, shapeFunc, colourFunc, eventsFunc, start, colourMapper) {
+    addDistortion = function(distFunc) {
+      _.each(nodeArray, function(n) {
+        //n.position = distFunc(n);
+        n.position = {
+          x: n.x,
+          y: n.y,
+          z: 1
+        };
+      });
+    },
+    
+    shapeAll = function(g, shapeFunc, shapeQue, start, colourMapper) {
       // First unbind all click events that are proably still bound
       g.on("click", null);
       if (self._expanded) {
         addBoundingBox(g, start);
-        addDistortion();
-        addNodeShapes(g, shapeFunc, colourFunc, eventsFunc, start, colourMapper);
+        addNodeShapes(g, shapeQue, start, colourMapper);
         return;
       }
-      addCollapsedShape(g, shapeFunc, colourFunc, start, colourMapper);
+      addCollapsedShape(g, shapeFunc, start, colourMapper);
     };
   
   ////////////////////////////////////
@@ -509,6 +491,7 @@ function CommunityNode(parent, initial) {
   this.expand = expand;
   
   this.shape = shapeAll;
+  this.addDistortion = addDistortion;
 
   this.getSourcePosition = getSourcePosition;
   
