@@ -73,24 +73,24 @@ function ReplicationSuite () {
 
     master(state);  
 
-    var masterState = replication.getLoggerState();
+    var masterState = replication.logger.state();
     assertTrue(masterState.state.running);
     var lastTick = masterState.state.lastLogTick;
 
-    replication.stopLogger();
-    masterState = replication.getLoggerState();
+    replication.logger.stop();
+    masterState = replication.logger.state();
     assertFalse(masterState.running);
 
     connectToSlave();
-    replication.stopApplier();
+    replication.applier.stop();
 
-    replication.configureApplier({ endpoint: masterEndpoint, username: "root", password: "" });
-    replication.startApplier(true);
+    replication.applier.properties({ endpoint: masterEndpoint, username: "root", password: "" });
+    replication.applier.start(true);
 
     console.log("waiting for slave to catch up");
 
     while (1) {
-      var slaveState = replication.getApplierState();
+      var slaveState = replication.applier.state();
 
       if (! slaveState.state.running || slaveState.state.lastError.errorNum > 0) {
         break;
@@ -115,12 +115,12 @@ function ReplicationSuite () {
 
     setUp : function () {
       connectToMaster();
-      replication.stopLogger();
+      replication.logger.stop();
 
       db._drop(cn);
       db._drop(cn2);
     
-      replication.startLogger();
+      replication.logger.start();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,13 +129,13 @@ function ReplicationSuite () {
 
     tearDown : function () {
       connectToMaster();
-      replication.stopLogger();
+      replication.logger.stop();
       
       db._drop(cn);
       db._drop(cn2);
 
       connectToSlave();
-      replication.stopApplier();
+      replication.applier.stop();
       db._drop(cn);
       db._drop(cn2);
     },

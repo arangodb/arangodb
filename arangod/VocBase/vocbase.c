@@ -2115,6 +2115,10 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+#endif
+
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // .............................................................................
@@ -2125,6 +2129,10 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   if (found != NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
 
     LOG_DEBUG("collection named '%s' already exists", name);
 
@@ -2140,16 +2148,17 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   if (document == NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
+
     return NULL;
   }
 
   primary = &document->base;
 
   col = &primary->base;
-
-#ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
-#endif
 
   // add collection container -- however note that the compactor is added later which could fail!
   collection = AddCollection(vocbase,
@@ -2158,10 +2167,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                              col->_info._cid,
                              col->_directory);
 
-#ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
-#endif
-
   if (collection == NULL) {
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
       TRI_CloseDocumentCollection(document);
@@ -2169,6 +2174,11 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+#ifdef TRI_ENABLE_REPLICATION
+    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
+
     return NULL;
   }
 
@@ -2182,6 +2192,10 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   // release the lock on the list of collections
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+#ifdef TRI_ENABLE_REPLICATION
+  TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+#endif
 
 #ifdef TRI_ENABLE_REPLICATION
   // replicate and finally unlock the collection
@@ -2584,7 +2598,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   // .............................................................................
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
 #endif
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
@@ -2594,7 +2608,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
 #endif
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);

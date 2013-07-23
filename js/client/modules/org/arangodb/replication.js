@@ -59,7 +59,7 @@ logger.start = function () {
   var requestResult = db._connection.PUT("_api/replication/log-start", "");
   arangosh.checkRequestResult(requestResult);
 
-  return true;
+  return requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ logger.stop = function () {
   var requestResult = db._connection.PUT("_api/replication/log-stop", "");
   arangosh.checkRequestResult(requestResult);
   
-  return true;
+  return requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,6 +133,21 @@ applier.state = function () {
   var db = internal.db;
 
   var requestResult = db._connection.GET("_api/replication/apply-state");
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier state and "forget" all state
+////////////////////////////////////////////////////////////////////////////////
+  
+applier.forget = function () {
+  'use strict';
+
+  var db = internal.db;
+
+  var requestResult = db._connection.DELETE("_api/replication/apply-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
