@@ -157,10 +157,15 @@ Handler::status_e RestReplicationHandler::execute() {
       handleCommandDump(); 
     }
     else if (command == "apply-config") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
-        goto BAD_CALL;
+      if (type == HttpRequest::HTTP_REQUEST_GET) {
+        handleCommandApplyGetConfig();
       }
-      handleCommandApplyConfig();
+      else {
+        if (type != HttpRequest::HTTP_REQUEST_PUT) {
+          goto BAD_CALL;
+        }
+        handleCommandApplySetConfig();
+      }
     }
     else if (command == "apply-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -619,35 +624,63 @@ void RestReplicationHandler::handleCommandDump () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the configuration of the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplyGetConfig () {
+  assert(_vocbase->_replicationApplier != 0);
+    
+  TRI_replication_apply_configuration_t config;
+  TRI_InitApplyConfigurationReplicationApplier(&config);
+    
+  TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  TRI_CopyApplyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  
+  TRI_json_t* result = TRI_JsonApplyConfigurationReplicationApplier(&config);
+  TRI_DestroyApplyConfigurationReplicationApplier(&config);
+    
+  if (result == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+  }
+  else {
+    generateResult(result);
+
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplyConfig () {
+void RestReplicationHandler::handleCommandApplySetConfig () {
   assert(_vocbase->_replicationApplier != 0);
   
-  TRI_replication_apply_configuration_t configuration;
-  TRI_InitApplyConfigurationReplicationApplier(&configuration);
+  TRI_replication_apply_configuration_t config;
+  TRI_InitApplyConfigurationReplicationApplier(&config);
   
   TRI_json_t* json = parseJsonBody();
+
   if (json == 0) {
     return;
   }
 
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
 
-  configuration._endpoint          = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  configuration._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", configuration._requestTimeout);
-  configuration._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", configuration._connectTimeout);
-  configuration._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", configuration._ignoreErrors);
-  configuration._maxConnectRetries = JsonHelper::getIntValue(json, "maxConnectRetries", configuration._maxConnectRetries);
-  configuration._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", configuration._autoStart);
-  configuration._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", configuration._adaptivePolling);
+  config._endpoint          = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", config._requestTimeout);
+  config._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", config._connectTimeout);
+  config._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries = JsonHelper::getIntValue(json, "maxConnectRetries", config._maxConnectRetries);
+  config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
+  config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
 
-  int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &configuration);
+  int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
   
-  TRI_DestroyApplyConfigurationReplicationApplier(&configuration);
+  TRI_DestroyApplyConfigurationReplicationApplier(&config);
     
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -692,7 +725,7 @@ void RestReplicationHandler::handleCommandApplyStart () {
 void RestReplicationHandler::handleCommandApplyStop () {
   assert(_vocbase->_replicationApplier != 0);
 
-  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier);
+  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
   
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);

@@ -269,7 +269,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "to enable unit-testing, configure with --enable-maintainer-mode"
+	@echo "to enable boost unit-tests, install Boost test and configure with --enable-maintainer-mode"
 
 	@echo
 endif
@@ -279,7 +279,7 @@ endif
 ################################################################################
 
 SHELL_COMMON = \
-							 @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-require.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
@@ -303,6 +303,13 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
+
+
+if ENABLE_REPLICATION
+SHELL_COMMON += \
+               @top_srcdir@/js/common/tests/shell-replication.js
+
+endif
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)

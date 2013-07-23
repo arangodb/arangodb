@@ -221,7 +221,7 @@ int ReplicationFetcher::run () {
     TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
 
     // stop ourselves
-    TRI_StopReplicationApplier(_applier);
+    TRI_StopReplicationApplier(_applier, false);
 
     return res;
   }
@@ -1264,42 +1264,39 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
                                                 0,  
                                                 headers); 
 
-  if (response == 0) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
   int res = TRI_ERROR_NO_ERROR;
 
-  if (! response->isComplete()) {
-    res = TRI_ERROR_REPLICATION_NO_RESPONSE;
-   
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-               ": " + _client->getErrorMessage();
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+               ": " + response->getHttpReturnMessage();
   }
   else {
-    if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
-                 ": " + response->getHttpReturnMessage();
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+
+    if (JsonHelper::isArray(json)) {
+      res = handleStateResponse(json, errorMsg);
+
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     else {
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      if (JsonHelper::isArray(json)) {
-        res = handleStateResponse(json, errorMsg);
-
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
-      else {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                   ": invalid JSON";
-      }
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+        ": invalid JSON";
     }
   }
 
@@ -1328,42 +1325,39 @@ int ReplicationFetcher::performInitialSync (string& errorMsg) {
                                                 0,  
                                                 headers); 
 
-  if (response == 0) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
   int res = TRI_ERROR_NO_ERROR;
   
-  if (! response->isComplete()) {
-    res = TRI_ERROR_REPLICATION_NO_RESPONSE;
-   
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-               ": " + _client->getErrorMessage();
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+               ": " + response->getHttpReturnMessage();
   }
   else {
-    if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
-                 ": " + response->getHttpReturnMessage();
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+
+    if (JsonHelper::isArray(json)) {
+      res = handleInventoryResponse(json, errorMsg);
+
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     else {
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      if (JsonHelper::isArray(json)) {
-        res = handleInventoryResponse(json, errorMsg);
-
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
-      else {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                   ": invalid JSON";
-      }
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+        ": invalid JSON";
     }
   }
 
@@ -1487,17 +1481,13 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                                                   0,  
                                                   headers); 
 
-    if (response == 0) {
-      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
-
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
-    }
-
-    if (! response->isComplete()) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+    if (response == 0 || ! response->isComplete()) {
+      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
                  ": " + _client->getErrorMessage();
 
-      delete response;
+      if (response != 0) {
+        delete response;
+      }
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
     }
@@ -2040,17 +2030,13 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
                                                 0,  
                                                 headers); 
 
-  if (response == 0) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
-  }
-
-  if (! response->isComplete()) {
+  if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
                ": " + _client->getErrorMessage();
 
-    delete response;
+    if (response != 0) {
+      delete response;
+    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }

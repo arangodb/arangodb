@@ -142,12 +142,13 @@ static char* GetApplyConfigurationFilename (TRI_vocbase_t* vocbase) {
 /// @brief get a JSON representation of the replication apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonApplyConfiguration (TRI_replication_apply_configuration_t const* config) {
+static TRI_json_t* JsonApplyConfiguration (TRI_replication_apply_configuration_t const* config,
+                                           bool includePassword) {
   TRI_json_t* json;
 
   assert(config->_endpoint != NULL);
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 8);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
 
   if (json == NULL) {
     return NULL;
@@ -163,6 +164,13 @@ static TRI_json_t* JsonApplyConfiguration (TRI_replication_apply_configuration_t
                          json, 
                          "username", 
                          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_username));
+  }
+  
+  if (config->_password != NULL && includePassword) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                         json, 
+                         "password", 
+                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_password));
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
@@ -367,7 +375,8 @@ static int StartApplier (TRI_replication_applier_t* applier,
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StopApplier (TRI_replication_applier_t* applier) {
+static int StopApplier (TRI_replication_applier_t* applier, 
+                        bool resetError) {
   TRI_replication_apply_state_t* state;
 
   state = &applier->_state;
@@ -380,17 +389,21 @@ static int StopApplier (TRI_replication_applier_t* applier) {
 
   SetTerminateFlag(applier, true);
 
-  state->_phase  = PHASE_NONE;
+  state->_phase = PHASE_NONE;
 
   TRI_SetProgressReplicationApplier(applier, "applier stopped", false);
-  
-  if (state->_lastError._msg != NULL) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
-    state->_lastError._msg = NULL;
-  }
+ 
+  if (resetError) { 
+    if (state->_lastError._msg != NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
+      state->_lastError._msg = NULL;
+    }
 
-  state->_lastError._code = TRI_ERROR_NO_ERROR;
-  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
+
+    state->_lastError._code = TRI_ERROR_NO_ERROR;
+  
+    TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
+  }
   
   TRI_LockCondition(&applier->_runStateChangeCondition);
   TRI_SignalCondition(&applier->_runStateChangeCondition);
@@ -472,7 +485,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyReplicationApplier (TRI_replication_applier_t* applier) {
-  TRI_StopReplicationApplier(applier);
+  TRI_StopReplicationApplier(applier, true);
   
   TRI_DestroyApplyStateReplicationApplier(&applier->_state);
   TRI_DestroyApplyConfigurationReplicationApplier(&applier->_configuration);
@@ -503,6 +516,10 @@ void TRI_FreeReplicationApplier (TRI_replication_applier_t* applier) {
 /// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether the apply thread should terminate
+////////////////////////////////////////////////////////////////////////////////
    
 bool TRI_WaitReplicationApplier (TRI_replication_applier_t* applier,
                                  uint64_t sleepTime) {
@@ -523,6 +540,14 @@ bool TRI_WaitReplicationApplier (TRI_replication_applier_t* applier,
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the replication apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_JsonApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t const* config) {
+  return JsonApplyConfiguration(config, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,7 +580,8 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
 /// @brief stop the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StopReplicationApplier (TRI_replication_applier_t* applier) {
+int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
+                                bool resetError) {
   int res;
 
   res = TRI_ERROR_NO_ERROR;
@@ -570,7 +596,7 @@ int TRI_StopReplicationApplier (TRI_replication_applier_t* applier) {
     return res;
   }
 
-  res = StopApplier(applier);
+  res = StopApplier(applier, resetError);
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
  
   // join the thread without the status lock (otherwise it would propbably not join) 
@@ -792,7 +818,6 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
                                         char const* msg,
                                         bool lock) {
   char* copy;
-  char timeString[24];
 
   copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, msg);
 
@@ -800,8 +825,6 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
     return;
   }
   
-  TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
-
   if (lock) {
     TRI_WriteLockReadWriteLock(&applier->_statusLock);
   }
@@ -813,7 +836,7 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
   applier->_state._progressMsg = copy;
   
   // write time in buffer
-  memcpy(&applier->_state._progressTime, &timeString, sizeof(applier->_state._progressTime));
+  TRI_GetTimeStampReplication(applier->_state._progressTime, sizeof(applier->_state._progressTime) - 1);
 
   if (lock) {
     TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
@@ -1019,21 +1042,21 @@ void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_conf
 void TRI_CopyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t const* src,
                                                    TRI_replication_apply_configuration_t* dst) {
   if (src->_endpoint != NULL) {
-    dst->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
+    dst->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
   }
   else {
     dst->_endpoint = NULL;
   }
 
   if (src->_username != NULL) {
-    dst->_username          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
+    dst->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
   }
   else {
     dst->_username = NULL;
   }
 
   if (src->_password != NULL) {
-    dst->_password          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_password);
+    dst->_password = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_password);
   }
   else {
     dst->_password = NULL;
@@ -1084,7 +1107,7 @@ int TRI_SaveConfigurationFileReplicationApplier (TRI_vocbase_t* vocbase,
   char* filename;
   int res;
 
-  json = JsonApplyConfiguration(config);
+  json = JsonApplyConfiguration(config, true);
 
   if (json == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
