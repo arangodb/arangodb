@@ -235,15 +235,15 @@ TRI_col_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_header_marker_s {
-  TRI_df_marker_t base;                 // 24 bytes
+  TRI_df_marker_t base;                // 24 bytes
 
-  TRI_col_type_t _type;                 //  4 bytes
+  TRI_col_type_t _type;                //  4 bytes
 
 #ifdef TRI_PADDING_32
   char _padding_col_header_marker[4];
 #endif
 
-  TRI_voc_cid_t  _cid;                   //  8 bytes
+  TRI_voc_cid_t  _cid;                 //  8 bytes
 }
 TRI_col_header_marker_t;
 
@@ -275,12 +275,12 @@ TRI_col_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_collection_s {
-  TRI_col_info_t _info;
+  TRI_col_info_t       _info;
 
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t*       _vocbase;
 
-  TRI_col_state_e _state;            // state of the collection
-  int _lastError;                    // last (critical) error
+  TRI_col_state_e      _state;       // state of the collection
+  int                  _lastError;   // last (critical) error
 
   char* _directory;                  // directory of the collection
 
