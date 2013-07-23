@@ -358,6 +358,75 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
+    testLoggerSystemCollection : function () {
+      var state, tick, i;
+      
+      db._drop("_unitfoxx");
+      db._drop("_unittests");
+      replication.logger.start();
+      
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      var count = getLogEntries();
+
+      var c = db._create("_unittests", { isSystem : true });
+
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+      
+      c.properties({ waitForSync : true });
+
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+
+      c.rename("_unitfoxx");
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+      
+      c.rename("_unittests");
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+
+      for (i = 0; i < 100; ++i) {
+        c.save({ "_key" : "test" + i });
+      }
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+      
+      for (i = 0; i < 50; ++i) {
+        c.remove("test" + i);
+      }
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+
+      c.truncate();
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+      
+      db._drop("_unittests");
+      db._drop("_unitfoxx");
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
     testLoggerTruncateCollection1 : function () {
       var state, tick;
       
@@ -1965,6 +2034,174 @@ function ReplicationLoggerSuite () {
       assertEqual(1, entry.collections[0].operations);
       assertEqual(c2._id, entry.collections[1].cid);
       assertEqual(1, entry.collections[1].operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection exclusion
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerTransactionExcluded1 : function () {
+      var state, tick;
+      var c = db._create(cn);
+      db._drop("_unitfoxx");
+      db._create("_unitfoxx", { isSystem: true });
+
+      replication.logger.start();
+       
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      var count = getLogEntries();
+
+      db._executeTransaction({
+        collections: {
+          write: [ cn, "_unitfoxx" ]
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.cn);
+          var foxx = require("internal").db._collection("_unitfoxx");
+
+          c.save({ "test" : 2, "_key": "12345" });
+          foxx.save({ "_key": "unittests1", "foo": false });
+          foxx.remove("unittests1");
+        },
+        params: {
+          cn: cn
+        }
+      });
+      
+      state = replication.logger.state().state;
+      assertNotEqual(tick, state.lastLogTick);
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertEqual(count + 3, getLogEntries());
+      
+      var entries = getLastLogEntry(3), entry;
+      entry = entries.pop();
+      assertEqual(2200, entry.type);
+      assertTrue(entry.tid != "");
+      var tid = entry.tid;
+      entry = JSON.parse(entry.data);
+      assertEqual(1, entry.collections.length);
+      assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(1, entry.collections[0].operations);
+
+      var rev = c.document("12345")._rev;
+      entry = entries.pop();
+      assertEqual(2300, entry.type);
+      assertEqual(tid, entry.tid);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("12345", entry.key);
+      assertEqual("12345", entry.data._key);
+      assertEqual(rev, entry.data._rev);
+      assertEqual(2, entry.data.test);
+      
+      entry = entries.pop();
+      assertEqual(2201, entry.type);
+      assertEqual(tid, entry.tid);
+      entry = JSON.parse(entry.data);
+      assertEqual(1, entry.collections.length);
+      assertEqual(c._id, entry.collections[0].cid);
+      assertEqual(1, entry.collections[0].operations);
+      
+      db._drop("_unitfoxx");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection exclusion
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerTransactionExcluded2 : function () {
+      var state, tick;
+      
+      var c = db._create(cn);
+      replication.logger.start();
+      
+      c.save({ "test" : 1, "_key": "12345" });
+      
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      var count = getLogEntries();
+
+      db._executeTransaction({
+        collections: {
+          write: [ cn ]
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.cn);
+
+          c.save({ "test" : 1, "_key" : "abc" });
+        },
+        params: {
+          cn: cn
+        },
+        replicate: false
+      });
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+      
+      var entry = getLastLogEntry();
+      var rev = c.document("12345")._rev;
+      assertEqual(2300, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("12345", entry.key);
+      assertEqual("12345", entry.data._key);
+      assertEqual(rev, entry.data._rev);
+      assertEqual(1, entry.data.test);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection exclusion
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerTransactionExcluded3 : function () {
+      var state, tick;
+      
+      var c = db._create(cn);
+
+      replication.logger.start();
+      c.save({ "test" : 1, "_key": "12345" });
+      
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      var count = getLogEntries();
+
+      db._executeTransaction({
+        collections: {
+          write: [ cn ]
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.cn), i;
+
+          for (i = 0; i < 100; ++i) {
+            c.save({ "test" : 1, "_key" : "abc" + i });
+          }
+
+          for (i = 0; i < 100; ++i) {
+            c.remove("abc" + i);
+          }
+        },
+        params: {
+          cn: cn
+        },
+        replicate: false
+      });
+      
+      state = replication.logger.state().state;
+      assertEqual(tick, state.lastLogTick);
+      assertEqual(count, getLogEntries());
+      
+      var entry = getLastLogEntry();
+      var rev = c.document("12345")._rev;
+      assertEqual(2300, entry.type);
+      entry = JSON.parse(entry.data);
+      assertEqual(c._id, entry.cid);
+      assertEqual("12345", entry.key);
+      assertEqual("12345", entry.data._key);
+      assertEqual(rev, entry.data._rev);
+      assertEqual(1, entry.data.test);
     }
 
   };

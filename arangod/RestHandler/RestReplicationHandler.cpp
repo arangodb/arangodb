@@ -231,21 +231,14 @@ BAD_CALL:
 
 bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection, 
                                                void* data) {
-  const char* name = collection->_name;
-
-  if (name == NULL) {
-    // invalid collection
-    return false;
-  }
-
   if (collection->_type != (TRI_col_type_t) TRI_COL_TYPE_DOCUMENT && 
       collection->_type != (TRI_col_type_t) TRI_COL_TYPE_EDGE) {
     // invalid type
     return false;
   }
 
-  if (*name == '_' && TRI_ExcludeCollectionReplication(name)) {
-    // system collection
+  if (TRI_ExcludeCollectionReplication(collection->_name)) {
+    // collection is excluded
     return false;
   }
 
@@ -470,6 +463,11 @@ void RestReplicationHandler::handleCommandInventory () {
   
   // collections
   TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
+
+  if (collections == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
 
   TRI_replication_log_state_t state;
 

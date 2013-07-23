@@ -778,7 +778,7 @@ static int RemoveTrxCallback (TRI_transaction_collection_t* trxCollection,
   primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
   coordinator = data;
 
-  res = primary->remove(trxCollection, coordinator->_key, NULL, false, true);
+  res = primary->remove(trxCollection, coordinator->_key, 0, NULL, false, true);
 
   return res;
 }
@@ -1923,7 +1923,11 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
     
 #ifdef TRI_ENABLE_REPLICATION
     if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
-      TRI_LogDocumentReplication(trx->_context->_vocbase, (TRI_document_collection_t*) primary, type, marker, oldData);
+      TRI_LogDocumentReplication(trx->_context->_vocbase, 
+                                 (TRI_document_collection_t*) primary, 
+                                 type, 
+                                 marker, 
+                                 oldData);
     }
 #endif    
   }

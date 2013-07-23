@@ -471,7 +471,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_LogDropCollectionReplication(vocbase, collection->_cid);
+  TRI_LogDropCollectionReplication(vocbase, collection->_cid, collection->_name);
 #endif
 
   return true;
@@ -1637,6 +1637,39 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
 
   LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());  
 
+  // now remove SHUTDOWN file if it was present. this is done for the _system database only
+  if (isSystem && ! iterateMarkers) {
+    if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
+      LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
+    }
+  }
+
+
+  // .............................................................................
+  // vocbase is now active
+  // .............................................................................
+
+  vocbase->_state = 1;
+
+  // .............................................................................
+  // start helper threads
+  // .............................................................................
+
+  // start synchroniser thread
+  TRI_InitThread(&vocbase->_synchroniser);
+  TRI_StartThread(&vocbase->_synchroniser, "[synchroniser]", TRI_SynchroniserVocBase, vocbase);
+
+  // start compactor thread
+  TRI_InitThread(&vocbase->_compactor);
+  TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
+
+  // start cleanup thread
+  TRI_InitThread(&vocbase->_cleanup);
+  TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
+
+  TRI_InitThread(&(vocbase->_indexGC));
+  TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
+
 
 #ifdef TRI_ENABLE_REPLICATION
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
@@ -1672,40 +1705,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   }
 #endif
     
-
-  // now remove SHUTDOWN file if it was present. this is done for the _system database only
-  if (isSystem && ! iterateMarkers) {
-    if (RemoveShutdownInfo(vocbase->_shutdownFilename) != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("unable to remove shutdown information file '%s'", vocbase->_shutdownFilename);
-    }
-  }
-
-
-  // .............................................................................
-  // vocbase is now active
-  // .............................................................................
-
-  vocbase->_state = 1;
-
-  // .............................................................................
-  // start helper threads
-  // .............................................................................
-
-  // start synchroniser thread
-  TRI_InitThread(&vocbase->_synchroniser);
-  TRI_StartThread(&vocbase->_synchroniser, "[synchroniser]", TRI_SynchroniserVocBase, vocbase);
-
-  // start compactor thread
-  TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
-
-  // start cleanup thread
-  TRI_InitThread(&vocbase->_cleanup);
-  TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
-
-  TRI_InitThread(&(vocbase->_indexGC));
-  TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
-  
   // we are done
   return vocbase;
 }
@@ -2200,7 +2199,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 #ifdef TRI_ENABLE_REPLICATION
   // replicate and finally unlock the collection
   json = TRI_CreateJsonCollectionInfo(&col->_info);
-  TRI_LogCreateCollectionReplication(vocbase, col->_info._cid, json);
+  TRI_LogCreateCollectionReplication(vocbase, col->_info._cid, col->_info._name, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 #endif
 
