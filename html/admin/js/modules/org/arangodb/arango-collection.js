@@ -343,6 +343,12 @@ ArangoCollection.prototype.properties = function (properties) {
   else {
     var body = {};
 
+    if (properties.hasOwnProperty("doCompact")) {
+      body.doCompact = properties.doCompact;
+    }
+    if (properties.hasOwnProperty("journalSize")) {
+      body.journalSize = properties.journalSize;
+    }
     if (properties.hasOwnProperty("waitForSync")) {
       body.waitForSync = properties.waitForSync;
     }
