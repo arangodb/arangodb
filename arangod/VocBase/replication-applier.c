@@ -207,6 +207,124 @@ static TRI_json_t* JsonConfiguration (TRI_replication_apply_configuration_t cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief load the replication application configuration from a file
+/// this function must be called under the statusLock
+////////////////////////////////////////////////////////////////////////////////
+
+static int LoadConfiguration (TRI_vocbase_t* vocbase,
+                              TRI_replication_apply_configuration_t* config) {
+  TRI_json_t* json;
+  TRI_json_t* value;
+  char* filename;
+  char* error;
+  int res;
+   
+  TRI_DestroyConfigurationReplicationApplier(config);
+  TRI_InitConfigurationReplicationApplier(config);
+  filename = GetConfigurationFilename(vocbase);
+
+  if (! TRI_ExistsFile(filename)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+  
+  error = NULL;
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
+    if (error != NULL) {
+      TRI_Free(TRI_CORE_MEM_ZONE, error);
+    }
+    if (json != NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    }
+
+    return TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  if (config->_endpoint != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
+    config->_endpoint = NULL;
+  }
+  if (config->_username != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_username);
+    config->_username = NULL;
+  }
+  if (config->_password != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_password);
+    config->_password = NULL;
+  }
+
+  // read the endpoint
+  value = TRI_LookupArrayJson(json, "endpoint");
+
+  if (! TRI_IsStringJson(value)) {
+    res = TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+  }
+  else {
+    config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+                                              value->_value._string.data, 
+                                              value->_value._string.length - 1);
+  }
+
+  // read username / password
+  value = TRI_LookupArrayJson(json, "username");
+
+  if (TRI_IsStringJson(value)) {
+    config->_username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+                                              value->_value._string.data, 
+                                              value->_value._string.length - 1);
+  }
+  
+  value = TRI_LookupArrayJson(json, "password");
+
+  if (TRI_IsStringJson(value)) {
+    config->_password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+                                              value->_value._string.data, 
+                                              value->_value._string.length - 1);
+  }
+
+  value = TRI_LookupArrayJson(json, "requestTimeout");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_requestTimeout = value->_value._number;
+  }
+  
+  value = TRI_LookupArrayJson(json, "connectTimeout");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_connectTimeout = value->_value._number;
+  }
+  
+  value = TRI_LookupArrayJson(json, "maxConnectRetries");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_maxConnectRetries = (int) value->_value._number;
+  }
+
+  value = TRI_LookupArrayJson(json, "autoStart");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_autoStart = value->_value._boolean;
+  }
+  
+  value = TRI_LookupArrayJson(json, "adaptivePolling");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_adaptivePolling = value->_value._boolean;
+  }
+
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the filename of the replication apply state file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -536,7 +654,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase)
   TRI_InitConfigurationReplicationApplier(&applier->_configuration);
   TRI_InitStateReplicationApplier(&applier->_state);
 
-  res = TRI_LoadConfigurationReplicationApplier(vocbase, &applier->_configuration);
+  res = LoadConfiguration(vocbase, &applier->_configuration);
   
   if (res != TRI_ERROR_NO_ERROR && 
       res != TRI_ERROR_FILE_NOT_FOUND) {
@@ -734,7 +852,7 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
   res = TRI_SaveConfigurationReplicationApplier(applier->_vocbase, config, true);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_LoadConfigurationReplicationApplier(applier->_vocbase, &applier->_configuration);
+    res = LoadConfiguration(applier->_vocbase, &applier->_configuration);
   }
   
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
@@ -1018,10 +1136,14 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 
   error = NULL;
   json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (json == NULL || json->_type != TRI_JSON_ARRAY) {
     if (error != NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, error);
+    }
+    if (json != NULL) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
     return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
@@ -1049,7 +1171,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
     state->_lastProcessedContinuousTick = state->_lastAppliedContinuousTick;
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   
   LOG_TRACE("replication state file read successfully");
 
@@ -1183,105 +1305,6 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief load the replication application configuration from a file
-/// this function must be called under the statusLock
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LoadConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
-                                             TRI_replication_apply_configuration_t* config) {
-  TRI_json_t* json;
-  TRI_json_t* value;
-  char* filename;
-  char* error;
-  int res;
-   
-  TRI_InitConfigurationReplicationApplier(config);
-  filename = GetConfigurationFilename(vocbase);
-
-  if (! TRI_ExistsFile(filename)) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-    return TRI_ERROR_FILE_NOT_FOUND;
-  }
-
-  error = NULL;
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
-
-  if (json == NULL || json->_type != TRI_JSON_ARRAY) {
-    if (error != NULL) {
-      TRI_Free(TRI_CORE_MEM_ZONE, error);
-    }
-
-    return TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
-  }
-
-  res = TRI_ERROR_NO_ERROR;
-
-  // read the endpoint
-  value = TRI_LookupArrayJson(json, "endpoint");
-
-  if (! TRI_IsStringJson(value)) {
-    res = TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
-  }
-  else {
-    config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
-                                              value->_value._string.data, 
-                                              value->_value._string.length - 1);
-  }
-
-  // read username / password
-  value = TRI_LookupArrayJson(json, "username");
-
-  if (TRI_IsStringJson(value)) {
-    config->_username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
-                                              value->_value._string.data, 
-                                              value->_value._string.length - 1);
-  }
-  
-  value = TRI_LookupArrayJson(json, "password");
-
-  if (TRI_IsStringJson(value)) {
-    config->_password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
-                                              value->_value._string.data, 
-                                              value->_value._string.length - 1);
-  }
-
-  value = TRI_LookupArrayJson(json, "requestTimeout");
-
-  if (TRI_IsNumberJson(value)) {
-    config->_requestTimeout = value->_value._number;
-  }
-  
-  value = TRI_LookupArrayJson(json, "connectTimeout");
-
-  if (TRI_IsNumberJson(value)) {
-    config->_connectTimeout = value->_value._number;
-  }
-  
-  value = TRI_LookupArrayJson(json, "maxConnectRetries");
-
-  if (TRI_IsNumberJson(value)) {
-    config->_maxConnectRetries = (int) value->_value._number;
-  }
-
-  value = TRI_LookupArrayJson(json, "autoStart");
-
-  if (TRI_IsBooleanJson(value)) {
-    config->_autoStart = value->_value._boolean;
-  }
-  
-  value = TRI_LookupArrayJson(json, "adaptivePolling");
-
-  if (TRI_IsBooleanJson(value)) {
-    config->_adaptivePolling = value->_value._boolean;
-  }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, json);
 
   return res;
 }
