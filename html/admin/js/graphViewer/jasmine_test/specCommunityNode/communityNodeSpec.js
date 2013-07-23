@@ -363,8 +363,8 @@
     
     describe('shaping functionality', function() {
       
-      var tSpan1, tSpan2, tSpan3, text, g, shaper, colourMapper, box, boxGroup, boxRect,
-        parent, c, width, titleBG, disBtn, titleText, colBtn;
+      var tSpan1, tSpan2, tSpan3, text, g, shaper, gv, colourMapper, box, boxGroup, boxRect,
+        parent, c, width, titleBG, disBtn, titleText, colBtn, comShapeInner;
         
       beforeEach(function() {
         parent = {
@@ -462,6 +462,22 @@
             return this;
           }
         };
+        comShapeInner = {
+          attr: function() {},
+          on: function() {},
+          select: function() {
+            return {
+              attr: function() {
+                return width;
+              }
+            };
+          },
+          append: function(type) {
+            if (type === "text") {
+              return text;
+            }
+          }
+        };
         text = {
           attr: function() {
             return this;
@@ -480,28 +496,26 @@
             }            
           }
         };
-        g = {
-          select: function() {
-            return {
-              attr: function() {
-                return width;
-              }
-            };
-          },          
+        g = {        
           attr: function() {
             return this;
           },
           append: function(type) {
-            if (type === "text") {
-              return text;
-            }
             if (type === "g") {
               return boxGroup;
             }
+          },
+          on: function() {
+            return this;
           }
         };
         shaper = {
-          shapeFunc: function() {}
+          shapeFunc: function() {},
+          colourFunc: function() {},
+          eventsFunc: function() {}
+        };
+        gv = {
+          start: function() {}
         };
         colourMapper = {
           getForegroundCommunityColour: function() {
@@ -548,33 +562,70 @@
         expect(otherC._isCommunity).toBeTruthy();
       });
        
-      it('should shape the collapsed community with given functions', function() {
-        spyOn(g, "attr").andCallThrough();
+      it('should shape the collapsed community with given functions', function() { 
+        g = {
+          on: function() {
+            return this;
+          },
+          append: function() {
+            return comShapeInner;
+          }
+        };
         spyOn(g, "append").andCallThrough();
+        spyOn(g, "on").andCallThrough();
         spyOn(shaper, "shapeFunc").andCallThrough();
+        spyOn(comShapeInner, "attr").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         
-        c.shape(g, shaper.shapeFunc, colourMapper);
+        c.shape(
+          g,
+          shaper.shapeFunc,
+          shaper.colourFunc,
+          shaper.eventsFunc,
+          gv.start,
+          colourMapper
+        );
         
         expect(colourMapper.getForegroundCommunityColour).wasCalled();
-        expect(g.attr).wasCalledWith("stroke", "black");
-        expect(shaper.shapeFunc).wasCalledWith(g, 9);
-        expect(shaper.shapeFunc).wasCalledWith(g, 6);
-        expect(shaper.shapeFunc).wasCalledWith(g, 3);
-        expect(shaper.shapeFunc).wasCalledWith(g);
+        expect(g.append).wasCalledWith("g");
+        expect(g.on).wasCalledWith("click", null);
+        expect(comShapeInner.attr).wasCalledWith("stroke", "black");
+        expect(shaper.shapeFunc).wasCalledWith(comShapeInner, 9);
+        expect(shaper.shapeFunc).wasCalledWith(comShapeInner, 6);
+        expect(shaper.shapeFunc).wasCalledWith(comShapeInner, 3);
+        expect(shaper.shapeFunc).wasCalledWith(comShapeInner);
       });
       
       it('should add a label containing the size of a community', function() {
+        g = {
+          on: function() {
+            return this;
+          },
+          append: function() {
+            return comShapeInner;
+          }
+        };
+        
         spyOn(g, "append").andCallThrough();
+        spyOn(comShapeInner, "append").andCallThrough();
         spyOn(text, "attr").andCallThrough();
         spyOn(text, "append").andCallThrough();
         spyOn(tSpan1, "attr").andCallThrough();
         spyOn(tSpan1, "text").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         
-        c.shape(g, shaper.shapeFunc, colourMapper);
+        c.shape(
+          g,
+          shaper.shapeFunc,
+          shaper.colourFunc,
+          shaper.eventsFunc,
+          gv.start,
+          colourMapper
+        );
         
-        expect(g.append).wasCalledWith("text");
+        
+        expect(g.append).wasCalledWith("g");
+        expect(comShapeInner.append).wasCalledWith("text");
         expect(text.attr).wasCalledWith("text-anchor", "middle");
         expect(text.attr).wasCalledWith("fill", "black");
         expect(text.attr).wasCalledWith("stroke", "none");
@@ -588,12 +639,20 @@
       });
       
       it('should add a label if a reason is given', function() {
+        g = {
+          on: function() {
+            return this;
+          },
+          append: function() {
+            return comShapeInner;
+          }
+        };
         c._reason = {
           key: "key",
           value: "label"
         };
         
-        spyOn(g, "append").andCallThrough();
+        spyOn(comShapeInner, "append").andCallThrough();
         spyOn(text, "attr").andCallThrough();
         spyOn(text, "append").andCallThrough();
         spyOn(tSpan1, "attr").andCallThrough();
@@ -603,9 +662,17 @@
         spyOn(tSpan3, "attr").andCallThrough();
         spyOn(tSpan3, "text").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
-        c.shape(g, shaper.shapeFunc, colourMapper);
+        c.shape(
+          g,
+          shaper.shapeFunc,
+          shaper.colourFunc,
+          shaper.eventsFunc,
+          gv.start,
+          colourMapper
+        );
         
-        expect(g.append).wasCalledWith("text");
+        
+        expect(comShapeInner.append).wasCalledWith("text");
         expect(text.attr).wasCalledWith("text-anchor", "middle");
         expect(text.attr).wasCalledWith("fill", "black");
         expect(text.attr).wasCalledWith("stroke", "none");
@@ -697,7 +764,14 @@
           spyOn(titleText, "attr").andCallThrough();
           
         
-          c.shape(g, shaper.shapeFunc, colourMapper);
+          c.shape(
+            g,
+            shaper.shapeFunc,
+            shaper.colourFunc,
+            shaper.eventsFunc,
+            gv.start,
+            colourMapper
+          );
         
           expect(g.append).wasCalledWith("g");
           expect(boxGroup.append).wasCalledWith("rect");
@@ -747,7 +821,15 @@
           spyOn(observer, "observe").andCallThrough();
           spyOn(observer, "disconnect").andCallThrough();
           
-          c.shape(g, shaper.shapeFunc, colourMapper);
+          c.shape(
+            g,
+            shaper.shapeFunc,
+            shaper.colourFunc,
+            shaper.eventsFunc,
+            gv.start,
+            colourMapper
+          );
+          
           
           expect(document.getElementById).wasCalledWith(c._id);
           expect(observer.observe).wasCalledWith(
@@ -785,7 +867,15 @@
           spyOn(iAll, "remove").andCallThrough();
           
           
-          c.shape(g, shaper.shapeFunc, colourMapper);
+          c.shape(
+            g,
+            shaper.shapeFunc,
+            shaper.colourFunc,
+            shaper.eventsFunc,
+            gv.start,
+            colourMapper
+          );
+          
           
           expect(g.selectAll).wasCalledWith(".node");
           expect(nodeSelector.data).wasCalledWith(c.getNodes(), jasmine.any(Function));
@@ -812,7 +902,15 @@
           nodes[4].x = 20;
           nodes[4].y = -20;
           
-          c.shape(g, shaper.shapeFunc, colourMapper);
+          c.shape(
+            g,
+            shaper.shapeFunc,
+            shaper.colourFunc,
+            shaper.eventsFunc,
+            gv.start,
+            colourMapper
+          );
+          
           
           expect(nodes[0].position).toEqual({
             x: -20,
@@ -1300,6 +1398,31 @@
         expect(c._expanded).toBeTruthy();
         c.collapse();
         expect(c._expanded).toBeFalsy();
+      });
+      
+    });
+    
+    describe('user interaction', function() {
+      
+      describe('if community is collapsed', function() {
+        
+      });
+      
+      describe('if the community is expanded', function() {
+        
+        var c, parent;
+        
+        beforeEach(function() {
+          parent = {
+            dissolveCommunity: function() {}
+          };
+          c = new CommunityNode(parent, nodes.slice(0, 5));
+        });
+        
+        it('should be possible to collapse the community', function() {
+          
+        });
+        
       });
       
     });

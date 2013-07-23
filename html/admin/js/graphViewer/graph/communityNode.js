@@ -309,12 +309,12 @@ function CommunityNode(parent, initial) {
       shapeFunc(g);
     },
     
-    addCollapsedShape = function(g, shapeFunc, colourMapper) {
-      g.attr("stroke", colourMapper.getForegroundCommunityColour());
-      shapeFunc(g, 9);
-      shapeFunc(g, 6);
-      shapeFunc(g, 3);
-      shapeFunc(g);
+    addColour = function (g, colourFunc) {
+      colourFunc(g);
+    },
+    
+    addEvents = function (g, eventsFunc) {
+      eventsFunc(g);
     },
     
     addCollapsedLabel = function(g, colourMapper) {
@@ -342,7 +342,24 @@ function CommunityNode(parent, initial) {
         .text(self._size);
     },
     
-    addNodeShapes = function(g, shapeFunc, colourMapper) {
+    addCollapsedShape = function(g, shapeFunc, colourFunc, start, colourMapper) {
+      var inner = g.append("g");
+      inner.attr("stroke", colourMapper.getForegroundCommunityColour());
+      shapeFunc(inner, 9);
+      shapeFunc(inner, 6);
+      shapeFunc(inner, 3);
+      shapeFunc(inner);
+      colourFunc(inner);
+      inner.on("click", function() {
+        self.expand();
+        start();
+      });
+      addCollapsedLabel(inner, colourMapper);
+    },
+    
+   
+    
+    addNodeShapes = function(g, shapeFunc, colourFunc, eventsFunc, start, colourMapper) {
       var interior = g.selectAll(".node")
       .data(nodeArray, function(d) {
         return d._id;
@@ -357,9 +374,11 @@ function CommunityNode(parent, initial) {
       interior.exit().remove();
       interior.selectAll("* > *").remove();
       addShape(interior, shapeFunc, colourMapper);
+      addColour(interior, colourFunc);
+      addEvents(interior, eventsFunc);
     },
     
-    addBoundingBox = function(g) {
+    addBoundingBox = function(g, start) {
       bBox = g.append("g");
       bBoxBorder = bBox.append("rect")
         .attr("rx", "8")
@@ -373,21 +392,29 @@ function CommunityNode(parent, initial) {
         .attr("fill", "#686766")
         .attr("stroke", "none");
       var dissolveBtn = bBox.append("image")
+        .attr("id", self._id + "_dissolve")
         .attr("xlink:href", "img/icon_delete.png")
         .attr("width", "16")
         .attr("height", "16")
         .attr("x", "5")
         .attr("y", "2")
         .attr("style", "cursor:pointer")
-        .on("click", dissolve),
+        .on("click", function() {
+          self.dissolve();
+          start();
+        }),
       collapseBtn = bBox.append("image")
+        .attr("id", self._id + "_collapse")
         .attr("xlink:href", "img/gv_collapse.png")
         .attr("width", "16")
         .attr("height", "16")
         .attr("x", "25")
         .attr("y", "2")
         .attr("style", "cursor:pointer")
-        .on("click", collapse),
+        .on("click", function() {
+          self.collapse();
+          start();
+        }),
       title = bBox.append("text")
         .attr("x", "45")
         .attr("y", "15")
@@ -403,15 +430,16 @@ function CommunityNode(parent, initial) {
       });
     },
     
-    shapeAll = function(g, shapeFunc, colourMapper) {
+    shapeAll = function(g, shapeFunc, colourFunc, eventsFunc, start, colourMapper) {
+      // First unbind all click events that are proably still bound
+      g.on("click", null);
       if (self._expanded) {
-        addBoundingBox(g);
+        addBoundingBox(g, start);
         addDistortion();
-        addNodeShapes(g, shapeFunc, colourMapper);
+        addNodeShapes(g, shapeFunc, colourFunc, eventsFunc, start, colourMapper);
         return;
       }
-      addCollapsedShape(g, shapeFunc, colourMapper);
-      addCollapsedLabel(g, colourMapper);
+      addCollapsedShape(g, shapeFunc, colourFunc, start, colourMapper);
     };
   
   ////////////////////////////////////
