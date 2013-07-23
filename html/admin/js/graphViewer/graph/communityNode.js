@@ -32,7 +32,9 @@
 function CommunityNode(parent, initial) {
   "use strict";
   
-  if (_.isUndefined(parent) || !_.isFunction(parent.dissolveCommunity)) {
+  if (_.isUndefined(parent)
+    || !_.isFunction(parent.dissolveCommunity)
+    || !_.isFunction(parent.checkNodeLimit)) {
     throw "A parent element has to be given.";
   }
   
@@ -352,6 +354,7 @@ function CommunityNode(parent, initial) {
       colourFunc(inner);
       inner.on("click", function() {
         self.expand();
+        parent.checkNodeLimit(self);
         start();
       });
       addCollapsedLabel(inner, colourMapper);
