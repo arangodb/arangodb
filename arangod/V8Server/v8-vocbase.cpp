@@ -3099,37 +3099,15 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   if (vocbase == 0 || vocbase->_replicationLogger == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
-
-  TRI_replication_log_state_t state;
-  int res = TRI_StateReplicationLogger(vocbase->_replicationLogger, &state);
   
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+  TRI_json_t* json = TRI_JsonReplicationLogger(vocbase->_replicationLogger);
+
+  if (json == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_json_t json;
-
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
-    
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state)); 
-    
-  // add server info
-  TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
-
-  TRI_server_id_t serverId = TRI_GetServerId();  
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "server", server);
-    
-  TRI_json_t* clients = TRI_JsonClientsReplicationLogger(vocbase->_replicationLogger);
-  if (clients != 0) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "clients", clients);
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(&json);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   return scope.Close(result);
 }
@@ -3156,14 +3134,14 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
     // no argument: return the current configuration
     
     TRI_replication_apply_configuration_t config;
-    TRI_InitApplyConfigurationReplicationApplier(&config);
+    TRI_InitConfigurationReplicationApplier(&config);
     
     TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
-    TRI_CopyApplyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
     TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
   
-    TRI_json_t* json = TRI_JsonApplyConfigurationReplicationApplier(&config);
-    TRI_DestroyApplyConfigurationReplicationApplier(&config);
+    TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
+    TRI_DestroyConfigurationReplicationApplier(&config);
 
     v8::Handle<v8::Value> result = TRI_ObjectJson(json);
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -3180,7 +3158,7 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
     TRI_replication_apply_configuration_t config;
 
-    TRI_InitApplyConfigurationReplicationApplier(&config);
+    TRI_InitConfigurationReplicationApplier(&config);
 
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
@@ -3227,13 +3205,13 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
     if (object->Has(TRI_V8_SYMBOL("adaptivePolling"))) {
       if (object->Get(TRI_V8_SYMBOL("adaptivePolling"))->IsBoolean()) {
-        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("adaptivePolling")));
+        config._adaptivePolling = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("adaptivePolling")));
       }
     }
 
     int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
 
-    TRI_DestroyApplyConfigurationReplicationApplier(&config);
+    TRI_DestroyConfigurationReplicationApplier(&config);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
@@ -3329,20 +3307,46 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
-  TRI_replication_apply_state_t state;
-  int res = TRI_StateReplicationApplier(vocbase->_replicationApplier, &state);
+  TRI_json_t* json = TRI_JsonReplicationApplier(vocbase->_replicationApplier);
   
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+  if (json == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
   }
- 
-  TRI_json_t* json = TRI_JsonStateReplicationApplier(&state);
-  TRI_DestroyApplyStateReplicationApplier(&state);
 
   v8::Handle<v8::Value> result = TRI_ObjectJson(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   return scope.Close(result);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier and "forget" all state
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_FORGET()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+  
+  int res = TRI_ForgetReplicationApplier(vocbase->_replicationApplier);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::True());
 }
 
 #endif
@@ -8296,6 +8300,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication);
 #endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);

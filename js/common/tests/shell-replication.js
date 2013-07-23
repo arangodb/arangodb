@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
+var errors = arangodb.errors;
 var db = arangodb.db;
 
 var replication = require("org/arangodb/replication");
@@ -1970,14 +1971,225 @@ function ReplicationLoggerSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                          replication applier test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationApplierSuite () {
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      replication.applier.stop();
+      replication.applier.forget();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      replication.applier.stop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start applier w/o configuration 
+////////////////////////////////////////////////////////////////////////////////
+
+    testStartApplierNoConfig : function () {
+      var state;
+
+      state = replication.applier.state();
+
+      assertFalse(state.state.running);
+
+      try {
+        // start 
+        replication.applier.start();
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_CONFIGURATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start applier with configuration 
+////////////////////////////////////////////////////////////////////////////////
+
+    testStartApplierInvalidEndpoint : function () {
+      var state;
+
+      state = replication.applier.state();
+
+      assertFalse(state.state.running);
+
+      // configure && start 
+      replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket1234" });
+      replication.applier.start();
+
+      state = replication.applier.state();
+      assertTrue(state.state.running);
+
+      // call start again
+      replication.applier.start();
+      
+      state = replication.applier.state();
+      assertTrue(state.state.running);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop applier
+////////////////////////////////////////////////////////////////////////////////
+
+    testStopApplier : function () {
+      var state;
+
+      state = replication.applier.state();
+
+      assertFalse(state.state.running);
+
+      // configure && start 
+      replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket1234" });
+      replication.applier.start();
+
+      state = replication.applier.state();
+      assertTrue(state.state.running);
+
+      // stop
+      replication.applier.stop();
+      
+      state = replication.applier.state();
+      assertFalse(state.state.running);
+      assertEqual(0, state.state.currentPhase.id);
+      assertEqual("not running", state.state.currentPhase.label);
+      
+      // stop again
+      replication.applier.stop();
+            
+      state = replication.applier.state();
+      assertFalse(state.state.running);
+      assertEqual(0, state.state.currentPhase.id);
+      assertEqual("not running", state.state.currentPhase.label);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testApplierProperties : function () {
+      var properties;
+
+      properties = replication.applier.properties();
+
+      assertEqual(300, properties.requestTimeout);
+      assertEqual(10, properties.connectTimeout);
+      assertEqual(10, properties.maxConnectRetries);
+      assertFalse(properties.autoStart);
+      assertTrue(properties.adaptivePolling);
+      assertUndefined(properties.endpoint); 
+
+      try {
+        replication.applier.properties({ });
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_CONFIGURATION.code, err.errorNum);
+      }
+      
+      replication.applier.properties({
+        endpoint: "unix:///tmp/non-existing-socket1234"
+      });
+      
+      properties = replication.applier.properties();
+      assertEqual(properties.endpoint, "unix:///tmp/non-existing-socket1234");
+      assertEqual(300, properties.requestTimeout);
+      assertEqual(10, properties.connectTimeout);
+      assertEqual(10, properties.maxConnectRetries);
+      assertFalse(properties.autoStart);
+      assertTrue(properties.adaptivePolling);
+
+      replication.applier.properties({
+        endpoint: "unix:///tmp/non-existing-socket5678",
+        autoStart: true,
+        adaptivePolling: false,
+        requestTimeout: 5,
+        connectTimeout: 9,
+        maxConnectRetries: 4
+      });
+      
+      properties = replication.applier.properties();
+      assertEqual(properties.endpoint, "unix:///tmp/non-existing-socket5678");
+      assertEqual(5, properties.requestTimeout);
+      assertEqual(9, properties.connectTimeout);
+      assertEqual(4, properties.maxConnectRetries);
+      assertTrue(properties.autoStart);
+      assertFalse(properties.adaptivePolling);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start property change while running
+////////////////////////////////////////////////////////////////////////////////
+
+    testApplierPropertiesChange : function () {
+      var state;
+
+      replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket1234" });
+      replication.applier.start();
+
+      state = replication.applier.state();
+      assertTrue(state.state.running);
+      
+      try {
+        replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket5678" });
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_REPLICATION_RUNNING.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief applier state
+////////////////////////////////////////////////////////////////////////////////
+
+    testStateApplier : function () {
+      var state;
+
+      state = replication.applier.state();
+
+      assertFalse(state.state.running);
+      assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.state.time);
+
+      // phase
+      assertEqual(0, state.state.currentPhase.id);
+      assertEqual("not running", state.state.currentPhase.label);
+      
+      assertEqual(state.server.version, db._version()); 
+      assertNotEqual("", state.server.serverId); 
+      assertMatch(/^\d+$/, state.server.serverId);
+      
+      assertUndefined(state.endpoint);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationLoggerSuite);
+jsunity.run(ReplicationApplierSuite);
 
 return jsunity.done();
 

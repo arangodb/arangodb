@@ -98,11 +98,11 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _localServerIdString = StringUtils::itoa(TRI_GetServerId());
 
   if (_forceFullSynchronisation) {
-    TRI_RemoveStateFileReplicationApplier(_vocbase);
+    TRI_RemoveStateReplicationApplier(_vocbase);
   }
 
-  TRI_InitApplyConfigurationReplicationApplier(&_configuration);
-  TRI_CopyApplyConfigurationReplicationApplier(configuration, &_configuration);
+  TRI_InitConfigurationReplicationApplier(&_configuration);
+  TRI_CopyConfigurationReplicationApplier(configuration, &_configuration);
  
   TRI_InitMasterInfoReplication(&_masterInfo, configuration->_endpoint);
   _applyState._trx         = 0;
@@ -158,7 +158,7 @@ ReplicationFetcher::~ReplicationFetcher () {
   }
 
   TRI_DestroyMasterInfoReplication(&_masterInfo);
-  TRI_DestroyApplyConfigurationReplicationApplier(&_configuration);
+  TRI_DestroyConfigurationReplicationApplier(&_configuration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +274,7 @@ int ReplicationFetcher::saveApplyState () {
   LOGGER_TRACE("saving replication apply state. "
                "last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick);
 
-  int res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, false);
+  int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
         
   if (res != TRI_ERROR_NO_ERROR) {
     LOGGER_WARNING("unable to save replication apply state: " << TRI_errno_string(res));
@@ -1212,14 +1212,14 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
 int ReplicationFetcher::getLocalState (string& errorMsg) { 
   int res;
 
-  res = TRI_LoadStateFileReplicationApplier(_vocbase, &_applier->_state);
+  res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
   _applier->_state._active = true;
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // no state file found, so this is the initialisation
     _applier->_state._serverId = _masterInfo._serverId;
 
-    res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, true);
+    res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not save replication state information";
@@ -1926,7 +1926,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   TRI_WriteLockReadWriteLock(&_applier->_statusLock);
 
   _applier->_state._lastAppliedInitialTick = _masterInfo._state._lastLogTick;
-  res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, true);
+  res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
   TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
 
   if (res != TRI_ERROR_NO_ERROR) {

@@ -1268,15 +1268,11 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 
 int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
                                 TRI_replication_log_state_t* state) {
-  TRI_vocbase_t* vocbase;
   int res;
 
   res = TRI_ERROR_NO_ERROR;
-  vocbase = logger->_vocbase;
 
-  TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
-  
-  TRI_WriteLockReadWriteLock(&logger->_statusLock);
+  TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
   if (logger->_state._active) {
     // use state from logger
@@ -1287,9 +1283,7 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
     res = GetStateInactive(logger->_vocbase, state);
   }
 
-  TRI_WriteUnlockReadWriteLock(&logger->_statusLock);
-  
-  TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
   return res;
 } 
@@ -1314,6 +1308,54 @@ TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_log_state_t const* s
   TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
   
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_JsonReplicationLogger (TRI_replication_logger_t* logger) {
+  TRI_replication_log_state_t state;
+  TRI_json_t* json;
+  TRI_json_t* server;
+  TRI_json_t* clients;
+  int res;
+  
+  res = TRI_StateReplicationLogger(logger, &state);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
+
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (json == NULL) {
+    return NULL;
+  }
+    
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "state", TRI_JsonStateReplicationLogger(&state)); 
+    
+  // add server info
+  server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (server != NULL) {
+    TRI_server_id_t serverId;
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
+
+    serverId = TRI_GetServerId();  
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "server", server);
+  }
+    
+  clients = TRI_JsonClientsReplicationLogger(logger);
+
+  if (clients != NULL) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "clients", clients);
+  }
+
   return json;
 }
 
