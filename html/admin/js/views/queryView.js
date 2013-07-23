@@ -39,23 +39,23 @@ var queryView = Backbone.View.extend({
   },
 
   clearOutput: function() {
-    var editor2 = ace.edit("queryOutput");
-    editor2.setValue('');
+    var outputEditor = ace.edit("queryOutput");
+    outputEditor.setValue('');
   },
   
   clearInput: function() {
-    var editor = ace.edit("aqlEditor");
-    editor.setValue('');
+    var inputEditor = ace.edit("aqlEditor");
+    inputEditor.setValue('');
   },
 
   smallOutput: function() {
-    var editor2 = ace.edit("queryOutput");
-    editor2.getSession().foldAll();
+    var outputEditor = ace.edit("queryOutput");
+    outputEditor.getSession().foldAll();
   },
 
   bigOutput: function() {
-    var editor2 = ace.edit("queryOutput");
-    editor2.getSession().unfold();
+    var outputEditor = ace.edit("queryOutput");
+    outputEditor.getSession().unfold();
   },
 
   queries: [
@@ -70,24 +70,24 @@ var queryView = Backbone.View.extend({
   render: function() {
     var self = this;
     $(this.el).html(this.template.text);
-    var editor = ace.edit("aqlEditor");
-    var editor2 = ace.edit("queryOutput");
+    var inputEditor = ace.edit("aqlEditor");
+    var outputEditor = ace.edit("queryOutput");
 
-    editor2.setReadOnly(true);
-    editor2.setHighlightActiveLine(false);
+    outputEditor.setReadOnly(true);
+    outputEditor.setHighlightActiveLine(false);
 
-    editor.getSession().setMode("ace/mode/aql");
-    editor2.getSession().setMode("ace/mode/json");
-    editor.setTheme("ace/theme/merbivore_soft");
-    editor2.setValue('');
+    inputEditor.getSession().setMode("ace/mode/aql");
+    outputEditor.getSession().setMode("ace/mode/json");
+    inputEditor.setTheme("ace/theme/merbivore_soft");
+    outputEditor.setValue('');
 
     $('#queryOutput').resizable({
       handles: "s",
       ghost: true,
       stop: function () {
         setTimeout(function (){
-          var editor2 = ace.edit("queryOutput");
-          editor2.resize();
+          var outputEditor = ace.edit("queryOutput");
+          outputEditor.resize();
         },200);
       }
     });
@@ -98,8 +98,8 @@ var queryView = Backbone.View.extend({
       //helper: "resizable-helper",
       stop: function () {
         setTimeout(function (){
-          var editor = ace.edit("aqlEditor");
-          editor.resize();
+          var inputEditor = ace.edit("aqlEditor");
+          inputEditor.resize();
         },200);
       }
     });
@@ -114,16 +114,16 @@ var queryView = Backbone.View.extend({
     if(typeof Storage) {
       var queryContent = localStorage.getItem("queryContent");
       var queryOutput = localStorage.getItem("queryOutput");
-      editor.setValue(queryContent);
-      editor2.setValue(queryOutput);
+      inputEditor.setValue(queryContent);
+      outputEditor.setValue(queryOutput);
     }
 
     var windowHeight = $(window).height() - 250;
     $('#queryOutput').height(windowHeight/3);
     $('#aqlEditor').height(windowHeight/2);
 
-    editor.resize();
-    editor2.resize();
+    inputEditor.resize();
+    outputEditor.resize();
 
     this.renderSelectboxes();
 
@@ -181,9 +181,9 @@ var queryView = Backbone.View.extend({
   saveAQL: function (e) {
 
     var self = this;
-    var editor = ace.edit("aqlEditor");
+    var inputEditor = ace.edit("aqlEditor");
     var queryName = $('#new-query-name').val();
-    var content = editor.getValue();
+    var content = inputEditor.getValue();
 
     if (e) {
       if (e.target.id === 'save-edit-query') {
@@ -249,15 +249,15 @@ var queryView = Backbone.View.extend({
     return returnVal;
   },
   importSelected: function(e) {
-    var editor = ace.edit("aqlEditor");
+    var inputEditor = ace.edit("aqlEditor");
     $.each(this.queries, function(k,v) {
       if ($('#'+e.currentTarget.id).val() === v.name) {
-        editor.setValue(v.value);
+        inputEditor.setValue(v.value);
       }
     });
     $.each(this.customQueries, function(k,v) {
       if ($('#'+e.currentTarget.id).val() === v.name) {
-        editor.setValue(v.value);
+        inputEditor.setValue(v.value);
       }
     });
   },
@@ -283,27 +283,27 @@ var queryView = Backbone.View.extend({
     }
   },
   undoText: function () {
-    var editor = ace.edit("aqlEditor");
-    editor.undo();
+    var inputEditor = ace.edit("aqlEditor");
+    inputEditor.undo();
   },
   redoText: function () {
-    var editor = ace.edit("aqlEditor");
-    editor.redo();
+    var inputEditor = ace.edit("aqlEditor");
+    inputEditor.redo();
   },
   commentText: function() {
-    var editor = ace.edit("aqlEditor");
+    var inputEditor = ace.edit("aqlEditor");
     var value;
     var newValue;
     var flag = false;
-    var cursorPosition = editor.getCursorPosition();
-    var cursorRange = editor.getSelection().getRange();
+    var cursorPosition = inputEditor.getCursorPosition();
+    var cursorRange = inputEditor.getSelection().getRange();
 
     var regExp = new RegExp(/\*\//);
     var regExp2 = new RegExp(/\/\*/);
 
     if (cursorRange.end.row === cursorRange.start.row) {
       //single line comment /* */
-      value = editor.getSession().getLine(cursorRange.start.row);
+      value = inputEditor.getSession().getLine(cursorRange.start.row);
       if (value.search(regExp) === -1 && value.search(regExp2) === -1) {
         newValue = '/*' + value + '*/';
         flag = true;
@@ -313,15 +313,15 @@ var queryView = Backbone.View.extend({
         flag = true;
       }
       if (flag === true) {
-        editor.find(value, {
+        inputEditor.find(value, {
           range: cursorRange
         });
-        editor.replace(newValue);
+        inputEditor.replace(newValue);
       }
     }
     else {
       //multi line comment
-      value = editor.getSession().getLines(cursorRange.start.row, cursorRange.end.row);
+      value = inputEditor.getSession().getLines(cursorRange.start.row, cursorRange.end.row);
       var arrayLength = value.length;
       var firstString = value[0];
       var lastString = value[value.length-1];
@@ -339,18 +339,18 @@ var queryView = Backbone.View.extend({
         flag = true;
       }
       if (flag === true) {
-        editor.find(firstString, {
+        inputEditor.find(firstString, {
           range: cursorRange
         });
-        editor.replace(newFirstString);
-        editor.find(lastString, {
+        inputEditor.replace(newFirstString);
+        inputEditor.find(lastString, {
           range: cursorRange
         });
-        editor.replace(newLastString);
+        inputEditor.replace(newLastString);
       }
     }
     cursorRange.end.column = cursorRange.end.column + 2;
-    editor.getSelection().setSelectionRange(cursorRange, false);
+    inputEditor.getSelection().setSelectionRange(cursorRange, false);
   },
   sortQueries: function() {
     this.queries = _.sortBy(this.queries, 'name' );
@@ -358,10 +358,10 @@ var queryView = Backbone.View.extend({
   },
   submitQuery: function() {
     var self = this;
-    var editor = ace.edit("aqlEditor");
-    var data = {query: editor.getValue()};
+    var inputEditor = ace.edit("aqlEditor");
+    var data = {query: inputEditor.getValue()};
 
-    var editor2 = ace.edit("queryOutput");
+    var outputEditor = ace.edit("queryOutput");
 
     $.ajax({
       type: "POST",
@@ -370,28 +370,28 @@ var queryView = Backbone.View.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        editor2.setValue(arangoHelper.FormatJSON(data.result));
+        outputEditor.setValue(arangoHelper.FormatJSON(data.result));
         if(typeof Storage) {
-          localStorage.setItem("queryContent", editor.getValue());
-          localStorage.setItem("queryOutput", editor2.getValue());
+          localStorage.setItem("queryContent", inputEditor.getValue());
+          localStorage.setItem("queryOutput", outputEditor.getValue());
         }
       },
       error: function(data) {
         try {
           var temp = JSON.parse(data.responseText);
-          editor2.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+          outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
 
           if(typeof Storage) {
-            localStorage.setItem("queryContent", editor.getValue());
-            localStorage.setItem("queryOutput", editor2.getValue());
+            localStorage.setItem("queryContent", inputEditor.getValue());
+            localStorage.setItem("queryOutput", outputEditor.getValue());
           }
         }
         catch (e) {
-          editor2.setValue('ERROR');
+          outputEditor.setValue('ERROR');
         }
       }
     });
-    editor2.resize();
+    outputEditor.resize();
 
   }
 
