@@ -554,6 +554,8 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   APPEND_STRING(buffer, "\"key\":\""); 
   // key is user-defined, but does not need escaping
   APPEND_STRING(buffer, key); 
+  APPEND_STRING(buffer, "\",\"rev\":\""); 
+  APPEND_UINT64(buffer, (uint64_t) rid); 
 
   if (oldRev > 0) {
     APPEND_STRING(buffer, "\",\"oldRev\":\""); 
