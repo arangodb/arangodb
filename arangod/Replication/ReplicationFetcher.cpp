@@ -1061,7 +1061,7 @@ int ReplicationFetcher::applyLogMarker (TRI_json_t const* json,
   }
 
   // fetch marker "type"
-  int typeValue = (int) JsonHelper::getNumberValue(json, "type", 0.0);
+  int typeValue = (int) JsonHelper::getIntValue(json, "type", 0);
  
   // fetch "tick"
   const string tick = JsonHelper::getStringValue(json, "tick", "");
@@ -1789,7 +1789,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-  const TRI_voc_tick_t lastTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
+  const TRI_voc_tick_t lastLogTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
 
   // state."running"
   bool running = JsonHelper::getBooleanValue(state, "running", false);
@@ -1860,7 +1860,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   _masterInfo._majorVersion        = major;
   _masterInfo._minorVersion        = minor;
   _masterInfo._serverId            = masterId;
-  _masterInfo._state._lastLogTick  = lastTick;
+  _masterInfo._state._lastLogTick  = lastLogTick;
   _masterInfo._state._active       = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
