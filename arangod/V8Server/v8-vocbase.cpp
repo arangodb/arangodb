@@ -2086,6 +2086,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     }
 
     lockTimeout = (double) TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("lockTimeout")));
+
     if (lockTimeout < 0.0) {
       TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
     }
@@ -2100,6 +2101,17 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     }
     
     waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
+  }
+  
+  // "replicate"
+  bool replicate = true;
+
+  if (object->Has(TRI_V8_SYMBOL("replicate"))) {
+    if (! object->Get(TRI_V8_SYMBOL("replicate"))->IsBoolean()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<replicate> must be a boolean value");
+    }
+    
+    replicate = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("replicate")));
   }
 
   // "collections"
@@ -2228,7 +2240,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                                         readCollections, 
                                                                         writeCollections, 
                                                                         lockTimeout,
-                                                                        waitForSync); 
+                                                                        waitForSync,
+                                                                        replicate); 
 
   int res = trx.begin();
 
@@ -5633,7 +5646,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
 #ifdef TRI_ENABLE_REPLICATION
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
-      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, json); 
+      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, base->_info._name, json); 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 #endif
     }

@@ -144,7 +144,12 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0, forceSync);
+          return this->create(this->trxCollection(), 
+                              TRI_DOC_MARKER_KEY_DOCUMENT, 
+                              mptr, 
+                              json, 
+                              0, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +165,12 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync);
+          return this->create(this->trxCollection(), 
+                              TRI_DOC_MARKER_KEY_EDGE, 
+                              mptr, 
+                              json, 
+                              data, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +185,14 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), key, 0, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, shaped, 0, forceSync);
+          return this->create(this->trxCollection(), 
+                              key, 
+                              0, 
+                              TRI_DOC_MARKER_KEY_DOCUMENT, 
+                              mptr, 
+                              shaped, 
+                              0, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +208,14 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), key, 0, TRI_DOC_MARKER_KEY_EDGE, mptr, shaped, data, forceSync);
+          return this->create(this->trxCollection(), 
+                              key, 
+                              0, 
+                              TRI_DOC_MARKER_KEY_EDGE, 
+                              mptr, 
+                              shaped, 
+                              data, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,7 +234,15 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->update(this->trxCollection(), key, 0, mptr, json, policy, expectedRevision, actualRevision, forceSync);
+          return this->update(this->trxCollection(), 
+                              key, 
+                              0, 
+                              mptr, 
+                              json, 
+                              policy, 
+                              expectedRevision, 
+                              actualRevision, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +261,15 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->update(this->trxCollection(), key, 0, mptr, shaped, policy, expectedRevision, actualRevision, forceSync);
+          return this->update(this->trxCollection(), 
+                              key, 
+                              0, 
+                              mptr, 
+                              shaped, 
+                              policy, 
+                              expectedRevision, 
+                              actualRevision, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +285,13 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->remove(this->trxCollection(), key, policy, expectedRevision, actualRevision, forceSync);
+          return this->remove(this->trxCollection(), 
+                              key, 
+                              0, 
+                              policy, 
+                              expectedRevision, 
+                              actualRevision, 
+                              forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -68,27 +68,8 @@ void TRI_GetTimeStampReplication (char* dst,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExcludeCollectionReplication (const char* name) {
-  if (TRI_EqualString(name, TRI_COL_NAME_DATABASES)) {
-    return true;
-  }
-  
-  if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS)) {
-    return true;
-  }
-  
-  if (TRI_EqualString(name, TRI_COL_NAME_PREFIXES)) {
-    return true;
-  }
-
-  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION)) {
-    return true;
-  }
-
-  if (TRI_EqualString(name, TRI_COL_NAME_TRANSACTION)) {
-    return true;
-  }
-  
-  if (TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+  // exclude all invalid & system collections
+  if (name == NULL || *name == '_') {
     return true;
   }
 

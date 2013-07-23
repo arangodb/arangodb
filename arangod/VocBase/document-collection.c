@@ -276,6 +276,7 @@ static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CreateDeletionMarker (TRI_voc_tid_t tid,
+                                 TRI_voc_tick_t tick,
                                  TRI_doc_deletion_key_marker_t** result,
                                  TRI_voc_size_t* totalSize,
                                  char* keyBody,
@@ -284,15 +285,20 @@ static int CreateDeletionMarker (TRI_voc_tid_t tid,
 
   *result = NULL;
   *totalSize = sizeof(TRI_doc_deletion_key_marker_t) + keyBodySize + 1;
+  
+  if (tick == 0) {
+    tick = TRI_NewTickVocBase();
+  }
 
   marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *totalSize * sizeof(char), false);
+
   if (marker == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
    
   TRI_InitMarker(&marker->base, TRI_DOC_MARKER_KEY_DELETION, *totalSize);
   assert(marker->_rid == 0);
-  marker->_rid = TRI_NewTickVocBase();
+  marker->_rid = (TRI_voc_rid_t) tick;
   
   // note: the transaction id is 0 for standalone operations 
   marker->_tid = tid;
@@ -1705,6 +1711,7 @@ static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
 
 static int RemoveShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
+                             TRI_voc_rid_t rid,
                              TRI_doc_update_policy_t const* policy,
                              const bool lock,
                              const bool forceSync) {
@@ -1721,7 +1728,13 @@ static int RemoveShapedJson (TRI_transaction_collection_t* trxCollection,
 
   marker = NULL;
   tid = TRI_GetMarkerIdTransaction(trxCollection->_transaction);
-  res = CreateDeletionMarker(tid, &marker, &totalSize, key, strlen(key));
+
+  res = CreateDeletionMarker(tid,
+                             (TRI_voc_tick_t) rid,
+                             &marker, 
+                             &totalSize, 
+                             key, 
+                             strlen(key));
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -4082,7 +4095,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 
     idx = document->_allIndexes._buffer[i];
 
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
       // cannot remove these index types
       continue;
     }
@@ -4118,7 +4132,11 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
     TRI_FreeIndex(found);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_LogDropIndexReplication(primary->base._vocbase, primary->base._info._cid, iid);
+    // it is safe to use _name as we hold a read-lock on the collection status
+    TRI_LogDropIndexReplication(vocbase,
+                                primary->base._info._cid, 
+                                primary->base._info._name, 
+                                iid);
 #endif
 
     return removeResult;
@@ -6354,14 +6372,14 @@ TRI_vector_t TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a documet given by a master pointer
+/// @brief deletes a document given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxCollection,
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return RemoveShapedJson(trxCollection, doc->_key, policy, false, false);
+  return RemoveShapedJson(trxCollection, doc->_key, 0, policy, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

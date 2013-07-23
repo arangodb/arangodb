@@ -90,7 +90,7 @@ void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
-  if (result) {
+  if (result != NULL) {
     TRI_DestroyCursorResult(result);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
   }
