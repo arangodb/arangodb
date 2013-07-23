@@ -28,6 +28,7 @@
 #include "RestReplicationHandler.h"
 
 #include "build.h"
+#include "Basics/JsonHelper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "Logger/Logger.h"
@@ -155,6 +156,12 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandDump(); 
     }
+    else if (command == "apply-config") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandApplyConfig();
+    }
     else if (command == "apply-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
@@ -250,6 +257,25 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the applier action into an action list
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::insertApplier () {
+  bool found;
+  char const* value;
+
+  value = _request->value("serverId", found);
+
+  if (found) {
+    TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
+
+    if (serverId > 0) {
+      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, _request->fullUrl().c_str());
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the minimum chunk size
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -334,7 +360,7 @@ void RestReplicationHandler::handleCommandLogState () {
   }
   else {
     TRI_json_t result;
-    
+
     TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
     
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationLogger(&state)); 
@@ -348,6 +374,11 @@ void RestReplicationHandler::handleCommandLogState () {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
+    
+    TRI_json_t* clients = TRI_JsonClientsReplicationLogger(_vocbase->_replicationLogger);
+    if (clients != 0) {
+      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "clients", clients);
+    }
 
     generateResult(&result);
   
@@ -433,6 +464,8 @@ void RestReplicationHandler::handleCommandLogFollow () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
+    
+    insertApplier();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -475,6 +508,8 @@ void RestReplicationHandler::handleCommandInventory () {
     generateResult(&result);
   
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+    
+    insertApplier();
   }
 }
     
@@ -573,12 +608,53 @@ void RestReplicationHandler::handleCommandDump () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
+    
+    insertApplier();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
 
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplyConfig () {
+  assert(_vocbase->_replicationApplier != 0);
+  
+  TRI_replication_apply_configuration_t configuration;
+  TRI_InitApplyConfigurationReplicationApplier(&configuration);
+  
+  TRI_json_t* json = parseJsonBody();
+  if (json == 0) {
+    return;
+  }
+
+  const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
+
+  configuration._endpoint          = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  configuration._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", configuration._requestTimeout);
+  configuration._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", configuration._connectTimeout);
+  configuration._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", configuration._ignoreErrors);
+  configuration._maxConnectRetries = JsonHelper::getIntValue(json, "maxConnectRetries", configuration._maxConnectRetries);
+  configuration._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", configuration._autoStart);
+  configuration._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", configuration._adaptivePolling);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+
+  int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &configuration);
+  
+  TRI_DestroyApplyConfigurationReplicationApplier(&configuration);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+  else {
+    handleCommandApplyState();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -634,7 +710,7 @@ void RestReplicationHandler::handleCommandApplyState () {
   assert(_vocbase->_replicationApplier != 0);
 
   TRI_replication_apply_state_t state;
-
+  
   int res = TRI_StateReplicationApplier(_vocbase->_replicationApplier, &state);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -656,6 +732,18 @@ void RestReplicationHandler::handleCommandApplyState () {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
+   
+    TRI_replication_apply_configuration_t config;
+    TRI_InitApplyConfigurationReplicationApplier(&config);
+
+    TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+    TRI_CopyApplyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+    TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+
+    if (config._endpoint != NULL) {
+      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint));
+    }
+    TRI_DestroyApplyConfigurationReplicationApplier(&config);
 
     generateResult(&result);
 

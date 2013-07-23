@@ -908,7 +908,12 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameter->_maximalSize = PageSize;
   }
   parameter->_waitForSync   = vocbase->_defaultWaitForSync;
-  parameter->_keyOptions    = keyOptions;
+
+  parameter->_keyOptions    = NULL;
+
+  if (keyOptions != NULL) {
+    parameter->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, keyOptions);
+  }
 
   TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
 }
@@ -934,7 +939,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_waitForSync   = src->_waitForSync;
 
   if (src->_keyOptions) {
-    dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
+    dst->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, src->_keyOptions);
   }
   else {
     dst->_keyOptions  = NULL;
@@ -949,7 +954,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
 
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
   if (parameter->_keyOptions != NULL) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_keyOptions);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, parameter->_keyOptions);
     parameter->_keyOptions = NULL;
   }
 }
@@ -1407,7 +1412,7 @@ int TRI_LoadCollectionInfo (char const* path,
     }
     else if (value->_type == TRI_JSON_ARRAY) {
       if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
-        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+        parameter->_keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, value);
       }
     }
   }

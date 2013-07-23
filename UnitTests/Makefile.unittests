@@ -60,18 +60,38 @@ unittests-verbose:
 	@sleep 1
 
 ################################################################################
-### @brief start the arango server
+### @brief arango server configuration
 ################################################################################
 
 PID := $(shell echo $$PPID)
+
 PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
 STARTFILE := $(VOCDIR)/startup
+
+################################################################################
+### @brief slave stuff
+################################################################################
+
+SLAVEPIDFILE := /tmp/arango-slave.$(PID).pid
+SLAVEPORT := $(shell printf "4%04d" `expr $(PID) % 10000`)
+SLAVEHOST := 127.0.0.1
+SLAVEDIR := /tmp/vocdir-slave.$(PID)
+SLAVESTARTFILE := $(SLAVEDIR)/startup
+
+################################################################################
+### @brief client configuration
+################################################################################
+
 CURL := curl
 CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
 CERT_FILE := @top_srcdir@/UnitTests/server.pem
+
+################################################################################
+### @brief start the arango server
+################################################################################
 
 SERVER_START := 
 
@@ -126,6 +146,32 @@ start-server:
 	@(test "$(PROTO)" == "unix" && sleep 5) || true
 	@rm -f "$(STARTFILE)"
 	@echo "server has been started."
+	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
+	@echo
+
+
+.PHONY: start-slave
+
+start-slave:
+	@echo
+	@echo "================================================================================"
+	@echo "<< STARTING SLAVE                                                             >>"
+	@echo "================================================================================"
+	@echo
+	@echo "Slave Options: $(SERVER_OPT)"
+	@echo
+
+	rm -f "$(SLAVEPIDFILE)"
+	rm -rf "$(SLAVEDIR)"
+	mkdir -p "$(SLAVEDIR)"
+
+	@test -d "$(SLAVEDIR)"
+
+	($(VALGRIND) @builddir@/bin/arangod "$(SLAVEDIR)" $(SERVER_OPT) --pid-file $(SLAVEPIDFILE) --watch-process $(PID) && rm -rf "$(SLAVEDIR)") &
+
+	@rm -f "$(SLAVESTARTFILE)"; while [ ! -s "$(SLAVESTARTFILE)" ]; do $(CURL) $(CURL_OPT) -X GET -s "$(PROTO)://$(SLAVEHOST):$(SLAVEPORT)/_api/version" > "$(SLAVESTARTFILE)" || sleep 2; done
+	@rm -f "$(SLAVESTARTFILE)"
+	@echo "slave has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
 	@echo
 
@@ -429,7 +475,7 @@ unittests-shell-client:
 .PHONY: unittests-http-server
 
 unittests-http-server:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
 
 	@echo
 	@echo "================================================================================"
@@ -455,7 +501,7 @@ unittests-http-server:
 .PHONY: unittests-ssl-server
 
 unittests-ssl-server:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-auth true" PROTO=https
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint ssl://$(VOCHOST):$(VOCPORT) --server.keyfile $(CERT_FILE) --server.disable-authentication true" PROTO=https
 
 	@echo
 	@echo "================================================================================"
@@ -503,6 +549,38 @@ unittests-import:
 
 	@rm -rf "$(VOCDIR)"
 	@sleep 5
+	@echo
+
+
+################################################################################
+### @brief REPLICATION TESTS
+###
+### starts two servers (master & slave) and checks for data drift
+################################################################################
+
+.PHONY: unittests-replication
+
+unittests-replication:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION TESTS                                                          >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	kill `cat $(SLAVEPIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	while test -f $(SLAVEPIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(SLAVEDIR)"
 	@echo
 
 
@@ -626,7 +704,7 @@ unittests-authentication:
 ### @brief FULL AUTHENTICATION
 ################################################################################
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth false --server.authenticate-system-only false" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false --server.authenticate-system-only false" PROTO=http
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="401" || test "x$(FORCE)" == "x1"
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="401" || test "x$(FORCE)" == "x1"
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="401" || test "x$(FORCE)" == "x1"
@@ -644,7 +722,7 @@ unittests-authentication:
 ### @brief AUTHENTICATION FOR /_ ONLY
 ################################################################################
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth false --server.authenticate-system-only true" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false --server.authenticate-system-only true" PROTO=http
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="401" || test "x$(FORCE)" == "x1"
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="401" || test "x$(FORCE)" == "x1"
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="401" || test "x$(FORCE)" == "x1"
@@ -662,7 +740,7 @@ unittests-authentication:
 ### @brief NO AUTHENTICATION
 ################################################################################
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-auth true --server.authenticate-system-only true" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.authenticate-system-only true" PROTO=http
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/" EXPECTED="404" || test "x$(FORCE)" == "x1"
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api" EXPECTED="404" || test "x$(FORCE)" == "x1"
 	$(MAKE) curl-request-get CURL_PROTO="http" CURL_HOST="$(VOCHOST)" CURL_PORT="$(VOCPORT)" CURL_URL="/_api/version" EXPECTED="200" || test "x$(FORCE)" == "x1"

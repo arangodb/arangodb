@@ -30,10 +30,12 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
 
 #include "VocBase/replication-common.h"
+#include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -86,6 +88,9 @@ typedef struct TRI_replication_logger_s {
   TRI_spin_t                           _idLock;
   TRI_spin_t                           _bufferLock;
   TRI_vector_pointer_t                 _buffers;
+  TRI_read_write_lock_t                _clientsLock;
+  TRI_associative_pointer_t            _clients;
+
   struct TRI_vocbase_s*                _vocbase;
   struct TRI_transaction_s*            _trx;
   struct TRI_transaction_collection_s* _trxCollection;
@@ -139,6 +144,20 @@ void TRI_FreeReplicationLogger (TRI_replication_logger_t*);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of clients as a JSON array
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert an applier action into an action list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t*,
+                                        TRI_server_id_t,
+                                        char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger

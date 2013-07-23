@@ -1599,7 +1599,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       keyOptions = TRI_ObjectToJson(p->Get(v8g->KeyOptionsKey));
     }
 
+    // TRI_InitCollectionInfo will copy keyOptions
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, keyOptions);
+
+    if (keyOptions != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+    }
 
     if (p->Has(v8g->WaitForSyncKey)) {
       parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
@@ -5591,12 +5596,13 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   v8::Handle<v8::Object> result = v8::Object::New();
 
   if (TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
-    TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
-
     result->Set(v8g->DoCompactKey, base->_info._doCompact ? v8::True() : v8::False());
     result->Set(v8g->IsSystemKey, base->_info._isSystem ? v8::True() : v8::False());
     result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
+
+    TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
+
     if (keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
 

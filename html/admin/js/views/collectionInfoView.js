@@ -117,12 +117,17 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="">Type</th>'+
             '<th>Count</th>'+
             '<th>Filesize (MB)</th>'+
+            '<th>Info</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Datafiles</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.datafiles.count+'</th>'+
             '<th class="'+cssClass+'">'+
               this.roundNumber(this.data.figures.datafiles.fileSize / 1024 / 1024 , 2)+
+            '</th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="The number of active datafiles.">'+
+              '<i class="icon-info-sign"></i></a>'+
             '</th>'+
           '</tr>'+
           '<tr>'+
@@ -131,6 +136,10 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="'+cssClass+'">'+
               this.roundNumber(this.data.figures.journals.fileSize / 1024 / 1024 , 2)+
             '</th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="The number of journal files.">'+
+              '<i class="icon-info-sign"></i></a>'+
+            '</th>'+
           '</tr>'+
         '</table>'+
 
@@ -138,14 +147,23 @@ var collectionInfoView = Backbone.View.extend({
           '<tr class="figuresHeader">'+
             '<th>Type</th>'+
             '<th>Count</th>'+
+            '<th>Info</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Shapes</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.shapes.count+'</th>'+
+              '<th class="tooltipInfoTh '+cssClass+'">'+
+          '<a class="modalInfoTooltips" title="The total number of shapes used in the collection">'+
+              '<i class="icon-info-sign"></i></a>'+
+            '</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Attributes</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.attributes.count+'</th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="The total number of attributes used in the collection">'+
+              '<i class="icon-info-sign"></i></a>'+
+            '</th>'+
           '</tr>'+
         '</table>'+
 
@@ -155,6 +173,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th>Count</th>'+
             '<th>Size (MB)</th>'+
             '<th>Deletion</th>'+
+            '<th>Info</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Alive</th>'+
@@ -163,6 +182,10 @@ var collectionInfoView = Backbone.View.extend({
               this.roundNumber(this.data.figures.alive.size/1024/1024, 2)+
             '</th>'+
             '<th class="'+cssClass+'"> - </th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="The total size(count) in bytes(int) used by all living documents.">'+
+              '<i class="icon-info-sign"></i></a>'+
+            '</th>'+
           '</tr>'+
           '<tr>'+
             '<th class="'+cssClass+'">Dead</th>'+
@@ -171,6 +194,10 @@ var collectionInfoView = Backbone.View.extend({
               this.roundNumber(this.data.figures.dead.size/1024/1024, 2)+
             '</th>'+
             '<th class="'+cssClass+'">'+this.data.figures.dead.deletion+'</th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="The total size(count) in bytes(int) used by all dead documents.">'+
+              '<i class="icon-info-sign"></i></a>'+
+            '</th>'+
           '</tr>'+
         '</table>'
 

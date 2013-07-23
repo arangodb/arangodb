@@ -1054,6 +1054,29 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getEndpoint"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_getEndpoint (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  // check params
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getEndpoint()");
+  }
+
+  const string endpoint = BaseClient.endpointString();
+  return scope.Close(v8::String::New(endpoint.c_str(), endpoint.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1602,6 +1625,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
     connection_proto->Set("PUT_RAW", v8::FunctionTemplate::New(ClientConnection_httpPutRaw));
     connection_proto->Set("SEND_FILE", v8::FunctionTemplate::New(ClientConnection_httpSendFile));
+    connection_proto->Set("getEndpoint", v8::FunctionTemplate::New(ClientConnection_getEndpoint));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));

@@ -10,7 +10,7 @@
   left: 0;
   right: 0;
   bottom: 0px;
-  z-index: 9999;
+  z-index: 1000;
 }
 
 .footerExtra {

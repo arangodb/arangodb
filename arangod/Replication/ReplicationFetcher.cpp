@@ -94,7 +94,9 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _endpoint(0),
   _connection(0),
   _client(0) {
-   
+    
+  _localServerIdString = StringUtils::itoa(TRI_GetServerId());
+
   if (_forceFullSynchronisation) {
     TRI_RemoveStateFileReplicationApplier(_vocbase);
   }
@@ -229,15 +231,16 @@ int ReplicationFetcher::run () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
-/// sort order is by collection type first (vertices before edges), then name 
+/// sort order is by collection type first (vertices before edges, this is
+/// because edges depend on vertices being there), then name 
 ////////////////////////////////////////////////////////////////////////////////
 
 int ReplicationFetcher::sortCollections (const void* l, const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
-  int leftType  = (int) JsonHelper::getNumberValue(left,  "type", 2.0);
-  int rightType = (int) JsonHelper::getNumberValue(right, "type", 2.0);
+  int leftType  = (int) JsonHelper::getIntValue(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int rightType = (int) JsonHelper::getIntValue(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
 
   if (leftType != rightType) {
@@ -642,7 +645,7 @@ int ReplicationFetcher::createCollection (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumberValue(json, "type", (double) TRI_COL_TYPE_DOCUMENT);
+  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getIntValue(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -888,8 +891,9 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
         // update
         TRI_doc_update_policy_t policy;
         TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+        const TRI_voc_rid_t rid = StringUtils::uint64(JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_REV, ""));
 
-        res = primary->update(trxCollection, key, &mptr, shaped, &policy, false, false);
+        res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
       
       TRI_FreeShapedJson(primary->_shaper, shaped);
@@ -1246,7 +1250,9 @@ int ReplicationFetcher::getLocalState (string& errorMsg) {
 
 int ReplicationFetcher::getMasterState (string& errorMsg) {
   map<string, string> headers;
-  static const string url = BaseUrl + "/log-state";
+  static const string url = BaseUrl + 
+                            "/log-state" + 
+                            "?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master state from " + url;
@@ -1308,7 +1314,9 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
 
 int ReplicationFetcher::performInitialSync (string& errorMsg) {
   map<string, string> headers;
-  static const string url = BaseUrl + "/inventory";
+  static const string url = BaseUrl + 
+                            "/inventory" + 
+                            "?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master inventory from " + url;
@@ -1410,21 +1418,21 @@ int ReplicationFetcher::performContinuousSync (string& errorMsg) {
         }
         else {
           if (masterActive) {
-            sleepTime = 1 * 1000 * 1000;
+            sleepTime = 500 * 1000;
           }
           else {
-            sleepTime = 10 * 1000 * 1000;
+            sleepTime = 5 * 1000 * 1000;
           }
 
           if (_configuration._adaptivePolling) {
             inactiveCycles++;
-            if (inactiveCycles > 30) {
+            if (inactiveCycles > 60) {
               sleepTime *= 5;
             }
-            else if (inactiveCycles > 20) {
+            else if (inactiveCycles > 30) {
               sleepTime *= 3;
             }
-            if (inactiveCycles > 10) {
+            if (inactiveCycles > 15) {
               sleepTime *= 2;
             }
           }
@@ -1452,7 +1460,8 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                                               string& errorMsg) {
   const string cid = StringUtils::itoa(trxCollection->_cid);
 
-  const string baseUrl = BaseUrl + "/dump?collection=" + cid +
+  const string baseUrl = BaseUrl + 
+                         "/dump?collection=" + cid +
                          "&chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
@@ -1463,7 +1472,8 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
   while (1) {
     const string url = baseUrl + 
                        "&from=" + StringUtils::itoa(fromTick) + 
-                       "&to=" + StringUtils::itoa(maxTick);
+                       "&to=" + StringUtils::itoa(maxTick) +
+                       "&serverId=" + _localServerIdString;
 
     // send request
     const string progress = "fetching master collection dump for collection '" + collectionName + 
@@ -1808,7 +1818,8 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   }
 
   // validate all values we got
-  const TRI_server_id_t masterId = StringUtils::uint64(serverId->_value._string.data, serverId->_value._string.length - 1);
+  const string masterIdString = string(serverId->_value._string.data, serverId->_value._string.length - 1);
+  const TRI_server_id_t masterId = StringUtils::uint64(masterIdString);
 
   if (masterId == 0) {
     // invalid master id
@@ -1817,7 +1828,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  if (masterId == TRI_GetServerId()) {
+  if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
     errorMsg = "master's id is the same as the local server's id";
 
@@ -1993,7 +2004,8 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
                                          uint64_t& ignoreCount,
                                          bool& worked,
                                          bool& masterActive) {
-  const string baseUrl = BaseUrl + "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize());
+  const string baseUrl = BaseUrl + 
+                         "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize()); 
 
   map<string, string> headers;
 
@@ -2014,7 +2026,9 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
   LOGGER_TRACE("starting continuous replication with tick " << fromTick);
 
   const string tickString = StringUtils::itoa(fromTick); 
-  const string url = baseUrl + "&from=" + tickString;
+  const string url = baseUrl + 
+                     "&from=" + tickString +
+                     "&serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master log from offset " + tickString;
