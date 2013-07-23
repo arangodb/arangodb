@@ -2,7 +2,7 @@
 /*global $, _, d3*/
 /*global document, window*/
 /*global modalDialogHelper, uiComponentsHelper */
-/*global EventDispatcher, EventLibrary*/
+/*global EventDispatcher*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -76,7 +76,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       edit: "edit"
     },
     baseClass = "event",
-    eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
     setCursorIcon = function(icon) {
