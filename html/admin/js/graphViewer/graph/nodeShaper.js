@@ -114,6 +114,9 @@ function NodeShaper(parent, flags, idfunc) {
     addDistortion = function() {
       _.each(nodes, function(n) {
         n.position = distortion(n);
+        if (n._isCommunity) {
+          n.addDistortion(distortion);
+        }
       });
     },
     colourMapper = new ColourMapper(),
@@ -165,7 +168,7 @@ function NodeShaper(parent, flags, idfunc) {
         });
       addShape(normal);
       community.each(function(c) {
-        c.shape(d3.select(this), addShape, addColor, addEvents, start, colourMapper);
+        c.shape(d3.select(this), addShape, addQue, start, colourMapper);
       });
       if (visibleLabels) {
         addLabel(normal);
