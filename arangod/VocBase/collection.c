@@ -1412,7 +1412,7 @@ int TRI_LoadCollectionInfo (char const* path,
     }
     else if (value->_type == TRI_JSON_ARRAY) {
       if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
-        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+        parameter->_keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, value);
       }
     }
   }
