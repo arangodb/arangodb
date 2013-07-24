@@ -130,6 +130,17 @@ var queryView = Backbone.View.extend({
 
     return this;
   },
+
+  deselect : function (editor) {
+    var current = editor.getSelection();
+    var currentRow = current.lead.row;
+    var currentColumn = current.lead.column;
+
+    current.setSelectionRange({ start: { row: currentRow, column: currentColumn }, end: { row: currentRow, column: currentColumn } });
+
+    editor.focus();
+  },
+
   addAQL: function () {
     //render options
     $('#new-query-name').val('');
@@ -278,6 +289,8 @@ var queryView = Backbone.View.extend({
         inputEditor.setValue(v.value);
       }
     });
+    
+    this.deselect(ace.edit("aqlEditor"));
   },
   renderSelectboxes: function (modal) {
     this.sortQueries();
@@ -292,6 +305,7 @@ var queryView = Backbone.View.extend({
     else {
       selector = '#querySelect';
       $(selector).empty();
+      $(selector).append('<option id="_emptyquery">(please select)</option>');
       $.each(this.queries, function(k,v) {
         $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
       });

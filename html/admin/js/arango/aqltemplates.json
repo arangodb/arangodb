@@ -1,4 +1,22 @@
 [
-  {"name": "TestA", "value": "return [1,2,3,4,5]"},
-  {"name": "TestB", "value": "return [6,7,8,9,10]"}
+  { 
+    "name" : "FOR .. FILTER .. RETURN template", 
+    "value": "FOR i IN @collection\n  FILTER i.`attribute` == @value\n  RETURN i"
+  },
+  { 
+    "name" : "Limit", 
+    "value": "FOR i IN @collection\n  LIMIT @offset, @count\n  RETURN i" 
+  },
+  { 
+    "name" : "Random document", 
+    "value": "FOR i IN @collection\n  SORT RAND()\n  LIMIT 1\n  RETURN i" 
+  },
+  { 
+    "name" : "Subquery example",
+    "value": "FOR i IN @collection\n  LET values = (\n    FOR s IN i.`attribute`\n    FILTER s.`attribute` == @value\n    RETURN s\n  )\n  FILTER LENGTH(values) > @count\n  RETURN {\n    i : i,\n    values : values\n  }" 
+  },
+  { 
+    "name" : "Sequences", 
+    "value": "FOR year IN 2010..2013\n  RETURN year" 
+  }
 ]
