@@ -302,7 +302,40 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remotely start the replication logger
+/// @brief starts the replication logger
+///
+/// @RESTHEADER{PUT /_api/replication/logger-start,starts the replication logger}
+///
+/// @RESTDESCRIPTION
+/// Starts the server's replication logger. Will do nothing if the replication
+/// logger is already running.
+///
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `running`: will contain `true`
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger was started successfully, or was already running.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger could not be started.
+///
+/// @EXAMPLES
+///
+/// Starts the replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStart}
+///     var url = "/_api/replication/logger-start";
+///
+///     var response = logCurlRequest('PUT', url, "");
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStart () {
@@ -325,7 +358,41 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remotely stop the replication logger
+/// @brief stops the replication logger
+///
+/// @RESTHEADER{PUT /_api/replication/logger-stop,stops the replication logger}
+///
+/// @RESTDESCRIPTION
+/// Stops the server's replication logger. Will do nothing if the replication
+/// logger is not running.
+///
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `running`: will contain `false`
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger was stopped successfully, or was not running
+/// before.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger could not be stopped.
+///
+/// @EXAMPLES
+///
+/// Starts the replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStop}
+///     var url = "/_api/replication/logger-stop";
+///
+///     var response = logCurlRequest('PUT', url, "");
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStop () {
@@ -348,7 +415,45 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the state of the replication logger
+/// @brief returns the state of the replication logger
+///
+/// @RESTHEADER{GET /_api/replication/logger-state,returns the replication logger state}
+///
+/// @RESTDESCRIPTION
+/// Returns the current state of the server's replication logger. The state will
+/// include information about whether the logger is running and about the last
+/// logged tick value. This tick value is important for incremental fetching of
+/// data.
+///
+/// The state API can be called regardless of whether the logger is currently
+/// running or not.
+///
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `running`: will contain `false`
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger state could be determined successfully.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger state could not be determined.
+///
+/// @EXAMPLES
+///
+/// Starts the replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerState}
+///     var url = "/_api/replication/logger-state";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
