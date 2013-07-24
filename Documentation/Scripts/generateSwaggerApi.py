@@ -42,18 +42,18 @@
 import sys, os, json, string
 
 files = { 
-  "arangod/RestHandler/RestEdgeHandler.cpp" : "edge",
-  "arangod/RestHandler/RestDocumentHandler.cpp" : "document",
-  "arangod/RestHandler/RestReplicationHandler.cpp" : "replication",
+  "js/actions/api-aqlfunction.js" : "aqlfunction",
   "js/actions/api-collection.js" : "collection",
-  "js/actions/api-graph.js" : "graph",
+  "arangod/RestHandler/RestDocumentHandler.cpp" : "document",
+  "arangod/RestHandler/RestEdgeHandler.cpp" : "edge",
   "js/actions/api-edges.js" : "edges",
+  "js/actions/api-graph.js" : "graph",
   "js/actions/api-user.js" : "user",
   "js/actions/api-system.js" : "system",
   "js/actions/api-cursor.js" : "cursor",
   "js/actions/api-explain.js" : "explain",
   "js/actions/api-index.js" : "index",
-  "js/actions/api-aqlfunction.js" : "aqlfunction",
+  "arangod/RestHandler/RestReplicationHandler.cpp" : "replication",
   "js/actions/api-simple.js" : "simple",
   "js/actions/api-query.js" : "query",
   "js/actions/api-structure.js" : "structure",
@@ -81,8 +81,7 @@ apis = [ ];
 
 # print "Generating Swagger docs for code in " + scriptDir + ", outdir: " + outDir + "\n"
 
-for filename in files.keys():
-  name = files[filename]
+for filename, name in sorted(files.iteritems(), key=lambda (k, v): (v, k)):
   outfile = outDir + name + ".json"
 
   os.system("python " + scriptDir + "Documentation/Scripts/generateSwagger.py < " + scriptDir + filename + " > " + outfile)
