@@ -532,13 +532,11 @@ bool RestDocumentHandler::readDocument () {
 /// 
 ///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
-///     var headers = {"If-None-Match":  "\"" + document._rev + "\""};
+///     var headers = {"If-None-Match": "\"" + document._rev + "\""};
 /// 
 ///     var response = logCurlRequest('GET', url, "", headers);
 /// 
 ///     assert(response.code === 304);
-///
-///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -820,8 +818,6 @@ bool RestDocumentHandler::readAllDocuments () {
 ///     var response = logCurlRequest('HEAD', url);
 /// 
 ///     assert(response.code === 200);
-/// 
-///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
