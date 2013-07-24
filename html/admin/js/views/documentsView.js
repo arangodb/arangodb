@@ -233,7 +233,7 @@ var documentsView = Backbone.View.extend({
     var filterId = button.id.replace(/^removeFilter/, '');
     // remove the filter from the list
     delete this.filters[filterId];
-    
+
     // remove the line from the DOM
     $(button.parentElement).remove();
   },
@@ -419,7 +419,9 @@ var documentsView = Backbone.View.extend({
 
       var tempObj = {};
       $.each(value.attributes.content, function(k, v) {
-        if (k !== '_id' || k !== '_rev' || k !== '_key') {
+        if (k === '_id' || k === '_rev' || k === '_key') {
+        }
+        else {
           tempObj[k] = v;
         }
       });
