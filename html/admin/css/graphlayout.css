@@ -122,6 +122,13 @@ img.gv-icon-btn.edit.active{
   content:url("../img/gv_edit_reverse.png");
 }
 
+img.gv-icon-btn.view{
+  content:url("../img/gv_view.png");
+}
+img.gv-icon-btn.view.active{
+  content:url("../img/gv_view_reverse.png");
+}
+
 img.gv-icon-btn.add{
   content:url("../img/gv_add.png");
 }
@@ -230,6 +237,12 @@ img.gv-zoom-btn.pan-top{
 img.gv-zoom-btn.pan-bottom{
   content:url("../img/gv_arrow_bottom.png");
 }
+
+pre.gv_object_view {
+  text-align: left;
+  white-space: pre;
+}
+
 
 /*Overriding the slider UI*/
 .ui-slider {
