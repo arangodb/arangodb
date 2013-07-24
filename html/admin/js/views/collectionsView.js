@@ -30,8 +30,12 @@ var collectionsView = Backbone.View.extend({
 
     //append info icon for loaded collections
     $('.loaded').parent().prev().append(
-      '<i class="icon-info-sign" alt="Show collection properties"'+
+      '<i class="icon-info-sign show-info-view" alt="Show collection properties"'+
       'title="Show collection properties"></i>'
+    );
+    $('.unloaded').parent().prev().append(
+      '<i class="icon-info-sign disabled-info-view" alt="disabled"'+
+      'title="disabled"></i>'
     );
 
     $('#searchInput').val(searchOptions.searchPhrase);
