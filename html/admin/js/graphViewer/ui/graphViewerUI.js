@@ -51,6 +51,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     colourList,
     nodeShaperUI,
     adapterUI,
+    slider,
     //mousePointerBox = document.createElement("div"),
     svg,
     
@@ -77,9 +78,79 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .attr("id", "graphViewerSVG")
         .attr("width",width)
         .attr("height",height)
-        .attr("class", "pull-right graphViewer")
-        .attr("style", "width:" + width + "px;height:" + height + ";");
+        .attr("class", "graphViewer pull-right")
+        .attr("style", "width:" + width + "px;height:" + height + "px;");
     },
+    
+    createZoomUIWidget = function() {
+      var zoomUI = document.createElement("div"),
+        zoomButtons = document.createElement("div"),
+        btnTop = document.createElement("button"),
+        btnLeft = document.createElement("button"),
+        btnRight = document.createElement("button"),
+        btnBottom = document.createElement("button"),
+        icnTop = document.createElement("image"),
+        icnLeft = document.createElement("image"),
+        icnRight = document.createElement("image"),
+        icnBottom = document.createElement("image");
+      zoomUI.className = "gv_zoom_widget";
+      zoomButtons.className = "gv_zoom_buttons_bg";
+      
+      btnTop.className = "btn btn-icon btn-zoom btn-zoom-top";
+      btnLeft.className = "btn btn-icon btn-zoom btn-zoom-left";
+      btnRight.className = "btn btn-icon btn-zoom btn-zoom-right";
+      btnBottom.className = "btn btn-icon btn-zoom btn-zoom-bottom";
+      btnTop.onclick = function() {
+        graphViewer.zoomManager.triggerTranslation(0, -10);
+      };
+      btnLeft.onclick = function() {
+        graphViewer.zoomManager.triggerTranslation(-10, 0);
+      };
+      btnRight.onclick = function() {
+        graphViewer.zoomManager.triggerTranslation(10, 0);
+      };
+      btnBottom.onclick = function() {
+        graphViewer.zoomManager.triggerTranslation(0, 10);
+      };
+      
+      icnTop.className = "gv-zoom-btn pan-top";
+      icnLeft.className = "gv-zoom-btn pan-left";
+      icnRight.className = "gv-zoom-btn pan-right";
+      icnBottom.className = "gv-zoom-btn pan-bottom";
+      
+      zoomButtons.appendChild(btnTop);
+      zoomButtons.appendChild(btnLeft);
+      zoomButtons.appendChild(btnRight);
+      zoomButtons.appendChild(btnBottom);
+      
+      
+      btnTop.appendChild(icnTop);
+      btnLeft.appendChild(icnLeft);
+      btnRight.appendChild(icnRight);
+      btnBottom.appendChild(icnBottom);
+      
+      
+      slider = document.createElement("div");
+      slider.id = "gv_zoom_slider";
+      slider.className = "gv_zoom_slider";
+      
+      background.appendChild(zoomUI);
+      zoomUI.appendChild(zoomButtons);
+      
+      zoomUI.appendChild(slider);
+      $( "#gv_zoom_slider" ).slider({
+        orientation: "vertical",
+        min: graphViewer.zoomManager.getMinimalZoomFactor(),
+        max: 1,
+        value: 1,
+        step: 0.01,
+        slide: function( event, ui ) {
+          graphViewer.zoomManager.triggerScale(ui.value);
+        }
+      });
+      graphViewer.zoomManager.registerSlider($("#gv_zoom_slider"));
+    },
+    
     createToolbox = function() {
       var toolbox = document.createElement("div"),
         dispatcherUI = new EventDispatcherControls(
@@ -288,12 +359,17 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   container.appendChild(background);
   background.className = "thumbnails";
   background.id = "background";
-  svg = createSVG();
+  
   viewerConfig = viewerConfig || {};
   viewerConfig.zoom = true;
+
+  
+  svg = createSVG();
   graphViewer = new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
-    
+
   createToolbox();
+  createZoomUIWidget();
   createMenu();
   createColourList();
+
 }

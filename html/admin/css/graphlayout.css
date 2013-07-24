@@ -13,6 +13,10 @@ img.searchSubmit {
   cursor: pointer;
 }
 
+.toolbox {
+  margin-right: -40px;
+}
+
 .toolbox > .btn {
   width: 40px;
   height: 40px;
@@ -153,4 +157,99 @@ img.gv-icon-btn.trash{
 img.gv-icon-btn.trash.active{
   content:url("../img/gv_trash_reverse.png");
 }
+div.gv_zoom_widget {
+  position: relative;
+  left: 60px;
+  top: 20px;
+  width: 40px;
+  height: 300px;
+  margin-bottom: -300px;
+}
+div.gv_zoom_slider {
+  margin: 0px 17px;
+  width: 4px;
+  height: 200px;
+}
 
+div.gv_zoom_slider > .ui-slider-handle {
+  height:0.5em;
+  left:-0.55em;
+}
+
+div.gv_zoom_buttons_bg {
+  height: 40px;
+  margin-bottom:20px;
+  background-image: url("../img/gv_button_bg_reverse.png");
+  background-size: contain;
+}
+
+button.btn-zoom {
+  width: 16px;
+  height: 16px;
+  padding: 0px;
+  margin: 0px;
+  position: absolute;
+  background: none;
+}
+
+button.btn-zoom-top {
+  left: 12px;
+  top: 0px;
+}
+
+button.btn-zoom-left {
+  left: 0px;
+  top: 12px;
+}
+
+button.btn-zoom-bottom {
+  left: 12px;
+  top: 24px;
+}
+
+button.btn-zoom-right {
+  right: 0px;
+  top: 12px;
+}
+
+img.gv-zoom-btn {
+  width: 14px;
+  height: 14px;
+  vertical-align: baseline;
+}
+
+img.gv-zoom-btn.pan-right{
+  content:url("../img/gv_arrow_right.png");
+}
+img.gv-zoom-btn.pan-left{
+  content:url("../img/gv_arrow_left.png");
+}
+img.gv-zoom-btn.pan-top{
+  content:url("../img/gv_arrow_top.png");
+}
+img.gv-zoom-btn.pan-bottom{
+  content:url("../img/gv_arrow_bottom.png");
+}
+
+/*Overriding the slider UI*/
+.ui-slider {
+  background: #333333;
+}
+
+.ui-slider-handle {
+  outline: none;
+  border-color: #686766;
+  background: white;
+}
+
+.ui-slider-handle.ui-state-focus {
+  outline: none;
+  border-color: #686766;
+  background: white;
+}
+
+.ui-slider-handle.ui-state-hover {
+  outline-color: #333333;
+  border-color: #686766;
+  background: white;
+}
