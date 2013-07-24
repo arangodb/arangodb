@@ -156,7 +156,7 @@ describe ArangoDB do
 
         cmd = api + "/logger-follow?from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "", :format => :plain)
-        doc.code.should eq(200)
+        doc.code.should eq(204)
 
         doc.headers["x-arango-replication-checkmore"].should eq("false")
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
@@ -164,7 +164,7 @@ describe ArangoDB do
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
          
         body = doc.response.body
-        body.should eq("")
+        body.should eq(nil)
       end
       
       it "fetches a create collection action from the follow log" do

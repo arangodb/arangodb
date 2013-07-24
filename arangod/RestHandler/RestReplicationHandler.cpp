@@ -431,7 +431,26 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
-/// - `running`: will contain `false`
+/// - `state`: the current logger state as a JSON hash array with the following
+///   sub-attributes:
+///
+///   - `running`: whether or not the logger is running
+///
+///   - `lastLogTick`: the tick value of the latest tick the logger has logged. 
+///     This value can be used for incremental fetching of log data.
+///
+///   - `time`: the current date and time on the logger server
+///
+/// - `server`: a JSON hash with the following sub-attributes:
+///
+///   - `version`: the logger server's version
+///
+///   - `serverId`: the logger server's id
+///
+/// - `clients`: a list of all replication clients that ever connected to
+///   the logger since it was started. This list can be used to determine 
+///   approximately how much data the individual clients have already fetched 
+///   from the logger server.
 ///
 /// @RESTRETURNCODES
 ///
@@ -443,12 +462,31 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///
 /// @EXAMPLES
 ///
-/// Starts the replication logger.
+/// Returns the state of an inactive replication logger.
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerState}
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStateInactive}
+///     var re = require("org/arangodb/replication");
+///     re.logger.stop();
+///
 ///     var url = "/_api/replication/logger-state";
 ///
 ///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Returns the state of an active replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStateActive}
+///     var re = require("org/arangodb/replication");
+///     re.logger.start();
+///
+///     var url = "/_api/replication/logger-state";
+///
+///     var response = logCurlRequest('GET', url);
+///     re.logger.stop();
 ///
 ///     assert(response.code === 200);
 ///
@@ -471,7 +509,179 @@ void RestReplicationHandler::handleCommandLoggerState () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle a follow command for the replication log
+/// @brief returns ranged data from the replication log
+///
+/// @RESTHEADER{GET /_api/replication/logger-follow,returns recent log entries from the replication log}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{from,string,optional}
+/// Lower bound tick value for results.
+///
+/// @RESTQUERYPARAM{to,string,optional}
+/// Upper bound tick value for results.
+///
+/// @RESTQUERYPARAM{chunkSize,number,optional}
+/// Approximate maximum size of the returned result.
+///
+/// @RESTDESCRIPTION
+/// Returns data from the server's replication log. This method can be called
+/// by replication clients after an initial synchronisation of data. The method 
+/// will return all "recent" log entries from the logger server, and the clients
+/// can replay and apply these entries locally so they get to the same data
+/// state as the logger server.
+///
+/// Clients can call this method repeatedly to incrementally fetch all changes
+/// from the logger server. In this case, they should provide the `from` value so
+/// they will only get returned the log events since their last fetch.
+///
+/// When the `from` URL parameter is not used, the logger server will return log 
+/// entries starting at the beginning of its replication log. When the `from`
+/// parameter is used, the logger server will only return log entries which have 
+/// higher tick values than the specified `from` value (note: the log entry with a
+/// tick value equal to `from` will be excluded). Use the `from` value when
+/// incrementally fetching log data.
+///
+/// The `to` URL parameter can be used to optionally restrict the upper bound of
+/// the result to a certain tick. If used, the result will contain only log events
+/// with tick values up to (including) `to`. In incremental fetching, there is no
+/// need to use the `to` parameter. It only makes sense in special situations, 
+/// when only parts of the change log are required.
+///
+/// The `chunkSize` URL parameter can be used to control the size of the result. 
+/// It must be specified in bytes. The `chunkSize` value will only be honored 
+/// approximately. Otherwise a too low `chunkSize` value could cause the server 
+/// to not be able to put just one log entry into the result and return it. 
+/// Therefore, the `chunkSize` value will only be consulted after a log entry has
+/// been written into the result. If the result size is then bigger than 
+/// `chunkSize`, the server will respond with as many log entries as there are
+/// in the response already. If the result size is still smaller than `chunkSize`,
+/// the server will try to return more data if there's more data left to return.
+///
+/// If `chunkSize` is not specified, some server-side default value will be used.
+///
+/// The `Content-Type` of the result is `application/x-arango-dump`. This is an 
+/// easy-to-process format, with all log events going onto separate lines in the
+/// response body. Each log event itself is a JSON hash, with at least the 
+/// following attributes:
+///
+/// - `tick`: the log event tick value
+///
+/// - `type`: the log event type
+///
+/// Individual log events will also have additional attributes, depending on the
+/// event type. A few common attributes which are used for multiple events types
+/// are:
+///
+/// - `cid`: id of the collection the event was for
+///
+/// - `tid`: id of the transaction the event was contained in
+/// 
+/// - `key`: document key
+///
+/// - `rev`: document revision id
+///
+/// - `data`: the original document data
+///
+/// The response will also contain the following HTTP headers:
+///
+/// - `x-arango-replication-active`: whether or not the logger is active
+///
+/// - `x-arango-replication-lastincluded`: the tick value of the last included
+///   value in the result. In incremental log fetching, this value can be used 
+///   as the `from` value for the following request. Note that if the result is
+///   empty, the value will be `0`. This value should not be used as `from` value
+///   by clients in the next request (otherwise the server would return the log
+///   events from the start of the log again).
+///
+/// - `x-arango-replication-lasttick`: the last tick value the logger server has
+///   logged (not necessarily included in the result). By comparing the the last
+///   tick and last included tick values, clients have an approximate indication of
+///   how many events there are still left to fetch.
+///
+/// - `x-arango-replication-checkmore`: whether or not there already exists more
+///   log data which the client could fetch immediately. If there is more log data
+///   available, the client could call `logger-follow` again with an adjusted `from`
+///   value to fetch remaining log entries until there are no more.
+///
+///   If there isn't any more log data to fetch, the client might decide to go
+///   to sleep for a while before calling the logger again. 
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger state could be determined successfully.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger state could not be determined.
+///
+/// @EXAMPLES
+///
+/// No log events available:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowEmpty}
+///     var re = require("org/arangodb/replication");
+///     re.logger.start();
+///     var lastTick = re.logger.state().state.lastLogTick;
+///
+///     var url = "/_api/replication/logger-follow?from=" + lastTick;
+///     var response = logCurlRequest('GET', url);
+///
+///     re.logger.stop();
+///     assert(response.code === 204);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// A few log events:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
+///     var re = require("org/arangodb/replication");
+///     db._drop("products"); 
+///
+///     re.logger.start();
+///     var lastTick = re.logger.state().state.lastLogTick;
+///
+///     db._create("products"); 
+///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
+///     db.products.remove("p1");
+///     db.products.update("p2", { "name" : "broken hovercraft" });
+///     db.products.drop();
+///
+///     var url = "/_api/replication/logger-follow?from=" + lastTick;
+///     var response = logCurlRequest('GET', url);
+///
+///     re.logger.stop();
+///     assert(response.code === 200);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// More events than would fit into the response:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowBufferLimit}
+///     var re = require("org/arangodb/replication");
+///     db._drop("products"); 
+///
+///     re.logger.start();
+///     var lastTick = re.logger.state().state.lastLogTick;
+///
+///     db._create("products"); 
+///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
+///     db.products.remove("p1");
+///     db.products.update("p2", { "name" : "broken hovercraft" });
+///     db.products.drop();
+///
+///     var url = "/_api/replication/logger-follow?from=" + lastTick + "&chunkSize=400";
+///     var response = logCurlRequest('GET', url);
+///
+///     re.logger.stop();
+///     assert(response.code === 200);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFollow () {
@@ -523,7 +733,14 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
 
     // generate the result
-    _response = createResponse(HttpResponse::OK);
+    const size_t length = TRI_LengthStringBuffer(dump._buffer);
+
+    if (length == 0) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      _response = createResponse(HttpResponse::OK);
+    }
 
     _response->setContentType("application/x-arango-dump; charset=utf-8");
 
@@ -544,10 +761,12 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
                          strlen(TRI_REPLICATION_HEADER_ACTIVE), 
                          state._active ? "true" : "false");
 
-    // transfer ownership of the buffer contents
-    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
-    // avoid double freeing
-    TRI_StealStringBuffer(dump._buffer);
+    if (length > 0) {
+      // transfer ownership of the buffer contents
+      _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
+      // avoid double freeing
+      TRI_StealStringBuffer(dump._buffer);
+    }
     
     insertClient();
   }

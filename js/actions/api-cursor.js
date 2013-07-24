@@ -438,8 +438,6 @@ function put_api_cursor (req, res) {
 ///     response = logCurlRequest('DELETE', url + '/' + _id);
 /// 
 ///     assert(response.code === 202);
-/// 
-///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
