@@ -30,7 +30,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConfig) {
+function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConfig, startNode) {
   "use strict";
   
   if (container === undefined) {
@@ -287,13 +287,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchDiv.className = "pull-left";
       
       searchAttrField.id = "attribute";
-      searchAttrField.className = "input-mini searchByAttribute";
+      searchAttrField.className = "input searchByAttribute";
       searchAttrField.type = "text";
-      searchAttrField.placeholder = "key";
+      searchAttrField.placeholder = "Attribute";
       searchValueField.id = "value";
-      searchValueField.className = "searchInput";
+      searchValueField.className = "input-xlarge searchInput";
       searchValueField.type = "text";
-      searchValueField.placeholder = "value";
+      searchValueField.placeholder = "Value";
       searchStart.id = "loadnode";
       searchStart.className = "searchSubmit";
       equalsField.className = "searchEqualsLabel";
@@ -371,5 +371,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   createZoomUIWidget();
   createMenu();
   createColourList();
+
+  if (startNode) {
+    graphViewer.loadGraph(startNode);
+  }
 
 }

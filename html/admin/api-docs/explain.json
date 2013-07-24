@@ -14,6 +14,10 @@
                         {
                             "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object. Omitting bind variables if the query references any will result also result in an <em>HTTP 400</em> error. ",
                             "code": "400"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 404</em> in case a non-existing collection is accessed in the query. ",
+                            "code": "404"
                         }
                     ],
                     "parameters": [

@@ -1,0 +1,76 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger was started successfully, or was already running. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger could not be started. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Starts the server's replication logger. Will do nothing if the replication logger is already running. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>true</em><br><br>",
+                    "summary": "starts the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-start\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"running\" : true \n}\n\n</code></pre><br>",
+                    "nickname": "startsTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-start"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger was stopped successfully, or was not running before. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger could not be stopped. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Stops the server's replication logger. Will do nothing if the replication logger is not running. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>false</em><br><br>",
+                    "summary": "stops the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-stop\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"running\" : false \n}\n\n</code></pre><br>",
+                    "nickname": "stopsTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-stop"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger state could be determined successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger state could not be determined. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the current state of the server's replication logger. The state will include information about whether the logger is running and about the last logged tick value. This tick value is important for incremental fetching of data. <br><br>The state API can be called regardless of whether the logger is currently running or not. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>false</em><br><br>",
+                    "summary": "returns the replication logger state",
+                    "httpMethod": "GET",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"319023752\", \n    \"time\" : \"2013-07-24T12:34:44Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"206115327153446\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>",
+                    "nickname": "returnsTheReplicationLoggerState"
+                }
+            ],
+            "path": "/_api/replication/logger-state"
+        }
+    ]
+}
