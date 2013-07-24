@@ -343,3 +343,7 @@ input[type="radio"]:checked + label span {
 #applyReplicationTable {
   width: 100% !important;
 }
+
+#filterHeader input, #filterHeader select, #filterHeader button {
+  margin-bottom: 6px;
+}
