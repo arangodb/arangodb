@@ -97,3 +97,9 @@
   width: 33.3%;
   float: left;
 }
+
+.footer-right p {
+  color: white;
+  text-align: right;
+  padding-right: 15px;
+}
