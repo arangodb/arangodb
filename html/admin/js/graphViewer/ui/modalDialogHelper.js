@@ -155,7 +155,134 @@ var modalDialogHelper = modalDialogHelper || {};
     
     _.each(object, insertRow);
     $("#" + idprefix + "modal").modal('show');
-  };
+  },
+  
+  createViewWithObject = function (title, buttonTitle, idprefix, object, callback) {
+    var table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback),
+      firstRow = document.createElement("tr"),
+      firstCell = document.createElement("th"),
+      pre = document.createElement("pre");
+    table.appendChild(firstRow);
+    firstRow.appendChild(firstCell);
+    firstCell.appendChild(pre);
+    pre.className = "gv_object_view";
+    pre.innerHTML = JSON.stringify(object, null, 2);
+      
+    
+    
+    /*
+      var tableToJSON,
+        callbackCapsule = function() {
+          callback(tableToJSON);
+        },
+        table = 
+        firstRow = document.createElement("tr"),
+        firstCell = document.createElement("th"),
+        secondCell = document.createElement("th"),
+        thirdCell = document.createElement("th"),
+        addRow = document.createElement("button"),
+        addImg = document.createElement("img"),
+        newCounter = 1,
+        insertRow;
+
+      tableToJSON = function() {
+        var result = {};
+        _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
+      
+          var key = $(".keyCell input", tr).val(),
+            value = $(".valueCell input", tr).val();
+          result[key] = value;
+        });
+        return result;
+      };
+  
+      table.appendChild(firstRow);
+      firstRow.id = "first_row";
+      firstRow.appendChild(firstCell);
+      firstCell.className = "keyCell";
+  
+      firstRow.appendChild(secondCell);
+      secondCell.className = "valueCell";
+  
+      firstRow.appendChild(thirdCell);
+  
+      thirdCell.className = "actionCell";
+      thirdCell.appendChild(addRow);
+  
+  
+      addRow.id = idprefix + "new";
+      addRow.className = "graphViewer-icon-button";
+  
+      addRow.appendChild(addImg);
+      addImg.className = "gv-icon-small add";
+  
+      insertRow = function(value, key) {
+        var internalRegex = /^_(id|rev|key|from|to)/,
+          tr = document.createElement("tr"),
+          actTh = document.createElement("th"),
+          keyTh = document.createElement("th"),
+          valueTh = document.createElement("th"),
+          deleteInput,
+          keyInput,
+          valueInput,
+          delImg;
+        if (internalRegex.test(key)) {
+          return;
+        }
+        table.appendChild(tr);
+    
+        tr.appendChild(keyTh);
+        keyTh.className = "keyCell";
+        keyInput = document.createElement("input");
+        keyInput.type = "text";
+        keyInput.id = idprefix + key + "_key";
+        keyInput.value = key;
+        keyTh.appendChild(keyInput);
+    
+    
+        tr.appendChild(valueTh);
+        valueTh.className = "valueCell";
+        valueInput = document.createElement("input");
+        valueInput.type = "text";
+        valueInput.id = idprefix + key + "_value";
+        if ("object" === typeof value) {
+          valueInput.value = JSON.stringify(value);
+        } else {
+          valueInput.value = value;
+        }
+    
+        valueTh.appendChild(valueInput);
+    
+
+        tr.appendChild(actTh);
+        actTh.className = "actionCell";
+        deleteInput = document.createElement("button");
+        deleteInput.id = idprefix + key + "_delete";
+        deleteInput.className = "graphViewer-icon-button";
+    
+        actTh.appendChild(deleteInput);
+    
+        delImg = document.createElement("img");
+        delImg.className = "gv-icon-small delete";
+        deleteInput.appendChild(delImg);
+    
+        deleteInput.onclick = function() {
+          table.removeChild(tr);
+        };
+    
+      };
+  
+      addRow.onclick = function() {
+        insertRow("", "new_" + newCounter);
+        newCounter++;
+      };
+  
+      _.each(object, insertRow);
+      */
+      $("#" + idprefix + "modal").modal('show');
+    };
+  
+  
   
   
   modalDialogHelper.modalDivTemplate = function (title, buttonTitle, idprefix, callback) {
@@ -358,11 +485,16 @@ var modalDialogHelper = modalDialogHelper || {};
   };
   
   modalDialogHelper.createModalEditDialog = function(title, idprefix, object, callback) {
-    createDialogWithObject(title, "Edit", idprefix, object, callback);
+    createDialogWithObject(title, "Save", idprefix, object, callback);
   };
   
   modalDialogHelper.createModalCreateDialog = function(title, idprefix, object, callback) {
     createDialogWithObject(title, "Create", idprefix, object, callback);
+  };
+  
+  
+  modalDialogHelper.createModalViewDialog = function(title, idprefix, object, callback) {
+    createViewWithObject(title, "Edit", idprefix, object, callback);
   };
   
 }());
