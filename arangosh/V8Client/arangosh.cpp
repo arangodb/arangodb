@@ -645,7 +645,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
       if (dbObj->Has(TRI_V8_STRING("_flushCache")) && dbObj->Get(TRI_V8_STRING("_flushCache"))->IsFunction()) {
         v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(dbObj->Get(TRI_V8_STRING("_flushCache")));
       
-        v8::Handle<v8::Value> args[] = { };
+        v8::Handle<v8::Value>* args = 0;
         func->Call(dbObj, 0, args);
       }
     }
