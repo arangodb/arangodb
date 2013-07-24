@@ -339,3 +339,7 @@ input[type="radio"]:checked + label span {
 .falseClass {
   color: red;
 }
+
+#applyReplicationTable {
+  width: 100% !important;
+}
