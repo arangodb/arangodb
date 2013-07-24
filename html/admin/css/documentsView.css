@@ -387,6 +387,14 @@ table.dataTable thead th {
   margin-left: 5px;
 }
 
-#addFilterItem i { {
-  margin-bottom: 20px !important;
+#addFilterItem i {
+  margin-top: -5px !important;
+}
+
+#filterHeader input, #filterHeader select, #filterHeader button {
+}
+
+#filterHeader select {
+  margin-left: 10px !important;
+  margin-right: 10px !important;
 }

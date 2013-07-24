@@ -344,6 +344,3 @@ input[type="radio"]:checked + label span {
   width: 100% !important;
 }
 
-#filterHeader input, #filterHeader select, #filterHeader button {
-  margin-bottom: 6px;
-}
