@@ -7,6 +7,7 @@ var queryView = Backbone.View.extend({
 
   initialize: function () {
     this.getAQL();
+    this.getSystemQueries();
     localStorage.setItem("queryContent", "");
     localStorage.setItem("queryOutput", "");
   },
@@ -60,8 +61,6 @@ var queryView = Backbone.View.extend({
   },
 
   queries: [
-    {name: "TestA", value: "return [1,2,3,4,5]"},
-    {name: "TestB", value: "return [6,7,8,9,10]"}
   ],
 
   customQueries: [],
@@ -240,6 +239,23 @@ var queryView = Backbone.View.extend({
     var value = this.getCustomQueryValueByName($('#queryModalSelect').val());
     $('#edit-aql-textarea').val(value);
     $('#edit-aql-textarea').focus();
+  },
+  getSystemQueries: function() {
+    var self = this;
+    $.ajax({
+      type: "GET",
+      cache: false,
+      url: "js/arango/aqltemplates.json",
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        self.queries = data;
+      },
+      error: function(data) {
+        arangoHelper.arangoNotification("Error while loading system templates");
+      }
+    });
   },
   getCustomQueryValueByName: function (qName) {
     var returnVal;
