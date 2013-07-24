@@ -99,6 +99,8 @@ var documentsView = Backbone.View.extend({
               arangoHelper.arangoNotification("Upload successful");
               self.hideSpinner();
               self.hideImportModal();
+              self.clearTable();
+              window.arangoDocumentsStore.getDocuments(self.collectionID, 1);
               return;
             }
           }
@@ -380,8 +382,6 @@ var documentsView = Backbone.View.extend({
   },
 
   initTable: function (colid, pageid) {
-    this.collectionID = colid;
-    this.currentPage = pageid;
     var documentsTable = $('#documentsTableID').dataTable({
       "aaSorting": [[ 1, "asc" ]],
       "bFilter": false,
