@@ -111,16 +111,30 @@ var dashboardView = Backbone.View.extend({
 
     time = this.replLogState.state.time;
 
+    var runningLog;
+    if (this.replLogState.state.running === true) {
+      console.log(true);
+      runningLog = '<div class="trueClass">true</div>';
+    }
+    else {
+      runningLog = '<div class="falseClass">false</div>';
+    }
+
     if (this.replLogState.state.clients) {
       $.each(this.replLogState.state.clients, function(k,v) {
         clientString = clientString + "Server: "+v.serverId+" | Time: "+v.time+"\n";
       });
     }
 
+    var lastLog;
+    if (this.replLogState.state.lastLogTick === '0') {
+      lastLog = '-';
+    }
+
     //log table
-    $('#logRunningVal').text(this.replLogState.state.running);
+    $('#logRunningVal').html(runningLog);
     $('#logTimeVal').text(time);
-    $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
+    $('#logLastTickVal').text(lastLog);
     $('#logClientsVal').text(clientString);
 
 
@@ -159,9 +173,16 @@ var dashboardView = Backbone.View.extend({
     if (this.replApplyState.state.lastError) {
       lastError = this.replApplyState.state.lastError.errorMessage;
     }
+    var runningApply;
+    if (this.replApplyState.state.running === true) {
+      runningApply = '<div class="trueClass">true</div>';
+    }
+    else {
+      runningApply = '<div class="falseClass">false</div>';
+    }
 
 
-    $('#applyRunningVal').text(this.replApplyState.state.running);
+    $('#applyRunningVal').html(runningApply);
     $('#applyEndpointVal').text(endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
     $('#applyCurrentPhaseLabelVal').text(phase);
