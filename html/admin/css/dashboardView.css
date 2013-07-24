@@ -317,6 +317,7 @@ input[type="radio"]:checked + label span {
   min-height: 150px;
   float: left;
   margin-left: 10px;
+  margin-bottom: 8px;
 }
 
 .alignLeft {
@@ -329,7 +330,7 @@ input[type="radio"]:checked + label span {
 }
 
 #detailReplication {
-  height: 190px;
+  height: auto !important;
 }
 
 .trueClass {

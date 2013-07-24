@@ -99,6 +99,7 @@ var dashboardView = Backbone.View.extend({
 
   putReplicationStatus: function () {
     var time;
+    var clientString = '';
 
     if (this.replApplyState.state.running === true) {
       $('#detailReplication').height(290);
@@ -107,14 +108,21 @@ var dashboardView = Backbone.View.extend({
     else {
       $('.checkApplyRunningStatus').hide();
     }
-    
+
     time = this.replLogState.state.time;
+
+    if (this.replLogState.state.clients) {
+      $.each(this.replLogState.state.clients, function(k,v) {
+        clientString = clientString + "Server: "+v.serverId+" | Time: "+v.time+"\n";
+      });
+    }
 
     //log table
     $('#logRunningVal').text(this.replLogState.state.running);
     $('#logTimeVal').text(time);
     $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
     $('#logClientsVal').text(JSON.stringify(this.replLogState.clients));
+
 
     //apply table
     var lastAppliedTick;
