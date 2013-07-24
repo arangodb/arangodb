@@ -120,25 +120,25 @@ Handler::status_e RestReplicationHandler::execute() {
   if (len == 1) {
     const string& command = suffix[0];
 
-    if (command == "log-start") {
+    if (command == "logger-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       handleCommandLoggerStart();
     }
-    else if (command == "log-stop") {
+    else if (command == "logger-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       handleCommandLoggerStop();
     }
-    else if (command == "log-state") {
+    else if (command == "logger-state") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
     }
-    else if (command == "log-follow") {
+    else if (command == "logger-follow") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
@@ -156,7 +156,7 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandDump(); 
     }
-    else if (command == "apply-config") {
+    else if (command == "applier-config") {
       if (type == HttpRequest::HTTP_REQUEST_GET) {
         handleCommandApplierGetConfig();
       }
@@ -167,19 +167,19 @@ Handler::status_e RestReplicationHandler::execute() {
         handleCommandApplierSetConfig();
       }
     }
-    else if (command == "apply-start") {
+    else if (command == "applier-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       handleCommandApplierStart();
     }
-    else if (command == "apply-stop") {
+    else if (command == "applier-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       handleCommandApplierStop();
     }
-    else if (command == "apply-state") {
+    else if (command == "applier-state") {
       if (type == HttpRequest::HTTP_REQUEST_DELETE) {
         handleCommandApplierDeleteState();
       }
@@ -290,9 +290,11 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
   const char* value = _request->value("chunkSize", found);
 
   if (found) {
+    // url parameter "chunkSize" specified
     chunkSize = (uint64_t) StringUtils::uint64(value);
   }
-  if (chunkSize < minChunkSize) {
+  else {
+    // not specified, use default
     chunkSize = minChunkSize;
   }
 
@@ -342,7 +344,6 @@ void RestReplicationHandler::handleCommandLoggerStop () {
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
 
   generateResult(&result);
-  
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 }
 
