@@ -99,7 +99,7 @@ var dashboardView = Backbone.View.extend({
 
   putReplicationStatus: function () {
     var time;
-    var clientString = '';
+    var clientString = '-';
 
     if (this.replApplyState.state.running === true) {
       $('#detailReplication').height(290);
@@ -121,7 +121,7 @@ var dashboardView = Backbone.View.extend({
     $('#logRunningVal').text(this.replLogState.state.running);
     $('#logTimeVal').text(time);
     $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
-    $('#logClientsVal').text(JSON.stringify(this.replLogState.clients));
+    $('#logClientsVal').text(clientString);
 
 
     //apply table
@@ -129,18 +129,23 @@ var dashboardView = Backbone.View.extend({
     var phase = "-";
     var progress = "-";
     var lastError = "-";
-    
+    var endpoint = "-";
+
     if (this.replApplyState.state.lastAppliedContinuousTick === null) {
       lastAppliedTick = this.replApplyState.state.lastAppliedInitialTick;
     }
     else {
       lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
     }
-    
+
     if (lastAppliedTick === null) {
       lastAppliedTick = "-";
-    } 
-    
+    }
+
+    if (this.replApplyState.state.endpoint !== undefined) {
+      endpoint = this.replApplyState.state.endpoint;
+    }
+
     if (this.replApplyState.state.currentPhase) {
       phase = this.replApplyState.state.currentPhase.label;
     }
@@ -157,7 +162,7 @@ var dashboardView = Backbone.View.extend({
 
 
     $('#applyRunningVal').text(this.replApplyState.state.running);
-    $('#applyEndpointVal').text(this.replApplyState.endpoint);
+    $('#applyEndpointVal').text(endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
     $('#applyCurrentPhaseLabelVal').text(phase);
     $('#applyTimeVal').text(time);
