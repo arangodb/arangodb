@@ -95,6 +95,9 @@ var dashboardView = Backbone.View.extend({
     this.replLogState = this.arangoReplication.getLogState();
     this.replApplyState = this.arangoReplication.getApplyState();
     this.putReplicationStatus();
+
+    console.log(this.replLogState);
+    console.log(this.replApplyState);
   },
   putReplicationStatus: function () {
 
