@@ -32,6 +32,7 @@ var queryView = Backbone.View.extend({
     'change #queryModalSelect'       : 'updateEditSelect',
     'change #querySelect'            : 'importSelected'
   },
+
   listenKey: function (e) {
     if (e.keyCode === 13) {
       this.saveAQL(e);
@@ -42,7 +43,7 @@ var queryView = Backbone.View.extend({
     var outputEditor = ace.edit("queryOutput");
     outputEditor.setValue('');
   },
-  
+
   clearInput: function() {
     var inputEditor = ace.edit("aqlEditor");
     inputEditor.setValue('');
@@ -126,6 +127,7 @@ var queryView = Backbone.View.extend({
     outputEditor.resize();
 
     this.renderSelectboxes();
+    $('#queryDiv').show();
 
     return this;
   },

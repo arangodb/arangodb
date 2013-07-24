@@ -14,7 +14,7 @@ window.CollectionListItemView = Backbone.View.extend({
   events: {
     'click .pull-left' : 'noop',
     'click .icon-edit' : 'editProperties',
-    'click .icon-info-sign' : 'showProperties',
+    'click .show-info-view' : 'showProperties',
     'click': 'selectCollection'
   },
   render: function () {
