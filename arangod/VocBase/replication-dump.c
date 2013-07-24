@@ -260,6 +260,8 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
   APPEND_STRING(buffer, ",\"key\":\""); 
   // key is user-defined, but does not need escaping
   APPEND_STRING(buffer, key); 
+  APPEND_STRING(buffer, "\",\"rev\":\""); 
+  APPEND_UINT64(buffer, (uint64_t) rid); 
 
   // document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||

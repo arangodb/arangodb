@@ -191,6 +191,12 @@ bool TRI_WaitReplicationApplier (TRI_replication_applier_t*,
                                  uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the replication apply configuration
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_JsonConfigurationReplicationApplier (TRI_replication_apply_configuration_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -201,7 +207,8 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t*,
 /// @brief stop the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StopReplicationApplier (TRI_replication_applier_t*);
+int TRI_StopReplicationApplier (TRI_replication_applier_t*,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier
@@ -218,10 +225,10 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t*,
                                  TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a JSON representation of an applier state
+/// @brief get a JSON representation of an applier
 ////////////////////////////////////////////////////////////////////////////////
-  
-struct TRI_json_s* TRI_JsonStateReplicationApplier (TRI_replication_apply_state_t const*);
+
+struct TRI_json_s* TRI_JsonReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register an applier error
@@ -250,74 +257,73 @@ void TRI_SetProgressReplicationApplier (TRI_replication_applier_t*,
 /// @brief initialise an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitApplyStateReplicationApplier (TRI_replication_apply_state_t*);
+void TRI_InitStateReplicationApplier (TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyApplyStateReplicationApplier (TRI_replication_apply_state_t*);
+void TRI_DestroyStateReplicationApplier (TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application state to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveStateFileReplicationApplier (struct TRI_vocbase_s*,
-                                         TRI_replication_apply_state_t const*,
-                                         bool);
+int TRI_SaveStateReplicationApplier (struct TRI_vocbase_s*,
+                                     TRI_replication_apply_state_t const*,
+                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the replication application state file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveStateFileReplicationApplier (struct TRI_vocbase_s*);
+int TRI_RemoveStateReplicationApplier (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application state from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadStateFileReplicationApplier (struct TRI_vocbase_s*,
-                                         TRI_replication_apply_state_t*);
+int TRI_LoadStateReplicationApplier (struct TRI_vocbase_s*,
+                                     TRI_replication_apply_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
+void TRI_InitConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
+void TRI_DestroyConfigurationReplicationApplier (TRI_replication_apply_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyApplyConfigurationReplicationApplier (TRI_replication_apply_configuration_t const*,
-                                                   TRI_replication_apply_configuration_t*);
+void TRI_CopyConfigurationReplicationApplier (TRI_replication_apply_configuration_t const*,
+                                              TRI_replication_apply_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the replication application configuration file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveConfigurationFileReplicationApplier (struct TRI_vocbase_s*);
+int TRI_RemoveConfigurationReplicationApplier (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application configuration to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveConfigurationFileReplicationApplier (struct TRI_vocbase_s*,
-                                                 TRI_replication_apply_configuration_t const*,
-                                                 bool);
+int TRI_SaveConfigurationReplicationApplier (struct TRI_vocbase_s*,
+                                             TRI_replication_apply_configuration_t const*,
+                                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief load the replication application configuration from a file
+/// @brief stop the applier and "forget" everything
 ////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LoadConfigurationFileReplicationApplier (struct TRI_vocbase_s*,
-                                                 TRI_replication_apply_configuration_t*);
+  
+int TRI_ForgetReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

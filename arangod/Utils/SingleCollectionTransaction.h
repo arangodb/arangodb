@@ -73,7 +73,7 @@ namespace triagens {
                                      const triagens::arango::CollectionNameResolver& resolver,
                                      const TRI_voc_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, resolver),
+          Transaction<T>(vocbase, resolver, true),
           _cid(cid),
           _accessType(accessType) {
 

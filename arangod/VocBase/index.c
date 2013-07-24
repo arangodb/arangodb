@@ -214,6 +214,7 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
 int TRI_SaveIndex (TRI_primary_collection_t* collection, 
                    TRI_index_t* idx) {
   TRI_json_t* json;
+  TRI_vocbase_t* vocbase;
   char* filename;
   char* name;
   char* number;
@@ -235,8 +236,10 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
+  vocbase = collection->base._vocbase;
+
   // and save
-  ok = TRI_SaveJson(filename, json, collection->base._vocbase->_forceSyncProperties);
+  ok = TRI_SaveJson(filename, json, vocbase->_forceSyncProperties);
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -248,7 +251,12 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
   }
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_LogCreateIndexReplication(collection->base._vocbase, collection->base._info._cid, idx->_iid, json);
+  // it is safe to use _name as we hold a read-lock on the collection status
+  TRI_LogCreateIndexReplication(vocbase, 
+                                collection->base._info._cid, 
+                                collection->base._info._name, 
+                                idx->_iid, 
+                                json);
 #endif
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

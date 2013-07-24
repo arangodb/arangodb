@@ -35,6 +35,7 @@ unittests-brief: \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
+	unittests-replication \
 	unittests-arangob \
 	unittests-import \
 	unittests-upgrade \
@@ -269,7 +270,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "to enable unit-testing, configure with --enable-maintainer-mode"
+	@echo "to enable boost unit-tests, install Boost test and configure with --enable-maintainer-mode"
 
 	@echo
 endif
@@ -279,7 +280,7 @@ endif
 ################################################################################
 
 SHELL_COMMON = \
-							 @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-require.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
@@ -303,6 +304,13 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
+
+
+if ENABLE_REPLICATION
+SHELL_COMMON += \
+               @top_srcdir@/js/common/tests/shell-replication.js
+
+endif
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
@@ -558,15 +566,19 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication
+.PHONY: unittests-replication unittests-replication-data unittests-replication-logger
+	
+if ENABLE_REPLICATION
 
-unittests-replication:
+unittests-replication: unittests-replication-data unittests-replication-logger
+
+unittests-replication-data:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
 	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
 
 	@echo
 	@echo "================================================================================"
-	@echo "<< REPLICATION TESTS                                                          >>"
+	@echo "<< REPLICATION DATA TESTS                                                     >>"
 	@echo "================================================================================"
 	@echo
 
@@ -583,6 +595,38 @@ unittests-replication:
 	@rm -rf "$(SLAVEDIR)"
 	@echo
 
+unittests-replication-logger:
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION LOGGER TESTS                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --replication.enable-logger true $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+else
+
+unittests-replication:
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION TESTS                                                          >>"
+	@echo "================================================================================"
+	@echo
+	@echo "to enable replication tests, configure with --enable-replication"
+	@echo
+
+
+unittests-replication-data:
+
+unittests-replication-logger:
+
+endif
 
 ################################################################################
 ### @brief UPGRADE TESTS

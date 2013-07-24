@@ -35,6 +35,7 @@
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server-id.h"
+#include "VocBase/update-policy.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -238,6 +239,7 @@ namespace triagens {
         int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
+                                       const TRI_voc_rid_t,
                                        struct TRI_json_s const*,
                                        std::string&);
 
@@ -391,6 +393,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _forceFullSynchronisation;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the update policy object (will be the same for all actions)
+////////////////////////////////////////////////////////////////////////////////
+  
+        TRI_doc_update_policy_t _policy;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the endpoint (master) we're connected to
