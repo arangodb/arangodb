@@ -64,7 +64,7 @@ namespace triagens {
         AhuacatlTransaction (struct TRI_vocbase_s* const vocbase,
                              const triagens::arango::CollectionNameResolver& resolver,
                              TRI_aql_context_t* const context) :
-          Transaction<T>(vocbase, resolver) {
+          Transaction<T>(vocbase, resolver, false) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 

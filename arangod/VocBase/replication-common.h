@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_COMMON_H
 #define TRIAGENS_VOC_BASE_REPLICATION_COMMON_H 1
 
+#include "build.h"
 #include "BasicsC/common.h"
 
 #include "VocBase/voc-types.h"

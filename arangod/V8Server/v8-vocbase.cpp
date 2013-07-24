@@ -2086,6 +2086,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     }
 
     lockTimeout = (double) TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("lockTimeout")));
+
     if (lockTimeout < 0.0) {
       TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
     }
@@ -2100,6 +2101,17 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     }
     
     waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
+  }
+  
+  // "replicate"
+  bool replicate = true;
+
+  if (object->Has(TRI_V8_SYMBOL("replicate"))) {
+    if (! object->Get(TRI_V8_SYMBOL("replicate"))->IsBoolean()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<replicate> must be a boolean value");
+    }
+    
+    replicate = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("replicate")));
   }
 
   // "collections"
@@ -2228,7 +2240,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                                         readCollections, 
                                                                         writeCollections, 
                                                                         lockTimeout,
-                                                                        waitForSync); 
+                                                                        waitForSync,
+                                                                        replicate); 
 
   int res = trx.begin();
 
@@ -3099,15 +3112,12 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   if (vocbase == 0 || vocbase->_replicationLogger == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
-
-  TRI_replication_log_state_t state;
-  int res = TRI_StateReplicationLogger(vocbase->_replicationLogger, &state);
   
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
+  TRI_json_t* json = TRI_JsonReplicationLogger(vocbase->_replicationLogger);
 
-  TRI_json_t* json = TRI_JsonStateReplicationLogger(&state);
+  if (json == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   v8::Handle<v8::Value> result = TRI_ObjectJson(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -3128,80 +3138,104 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
   
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
-  }
-
   if (vocbase == 0 || vocbase->_replicationApplier == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
   
-  TRI_replication_apply_configuration_t configuration;
+  
+  if (argv.Length() == 0) {
+    // no argument: return the current configuration
+    
+    TRI_replication_apply_configuration_t config;
+    TRI_InitConfigurationReplicationApplier(&config);
+    
+    TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
+    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
+  
+    TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
+    TRI_DestroyConfigurationReplicationApplier(&config);
 
-  TRI_InitApplyConfigurationReplicationApplier(&configuration);
+    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   
-  // treat the argument as an object from now on
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
-  
-  string endpoint = "";
-   
-  if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
-    if (object->Get(TRI_V8_SYMBOL("endpoint"))->IsString()) {
-      endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
-    }
-  }
-
-  configuration._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  
-  if (object->Has(TRI_V8_SYMBOL("requestTimeout"))) {
-    if (object->Get(TRI_V8_SYMBOL("requestTimeout"))->IsNumber()) {
-      configuration._requestTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("requestTimeout")));
-    }
-  }
-  
-  if (object->Has(TRI_V8_SYMBOL("connectTimeout"))) {
-    if (object->Get(TRI_V8_SYMBOL("connectTimeout"))->IsNumber()) {
-      configuration._connectTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("connectTimeout")));
-    }
-  }
-  
-  if (object->Has(TRI_V8_SYMBOL("ignoreErrors"))) {
-    if (object->Get(TRI_V8_SYMBOL("ignoreErrors"))->IsNumber()) {
-      configuration._ignoreErrors = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("ignoreErrors")), false);
-    }
-  }
-  
-  if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
-    if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
-      configuration._maxConnectRetries = (int) TRI_ObjectToInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")));
-    }
-  }
-  
-  if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
-    if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
-      configuration._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
-    }
-  }
-  
-  if (object->Has(TRI_V8_SYMBOL("adaptivePolling"))) {
-    if (object->Get(TRI_V8_SYMBOL("adaptivePolling"))->IsBoolean()) {
-      configuration._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("adaptivePolling")));
-    }
+    return scope.Close(result);
   }
 
-  int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &configuration);
-  
-  TRI_DestroyApplyConfigurationReplicationApplier(&configuration);
-   
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+  else {
+    // set the configuration
+
+    if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+      TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
+    }
+
+    TRI_replication_apply_configuration_t config;
+
+    TRI_InitConfigurationReplicationApplier(&config);
+
+    // treat the argument as an object from now on
+    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+
+    string endpoint = "";
+
+    if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
+      if (object->Get(TRI_V8_SYMBOL("endpoint"))->IsString()) {
+        endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+      }
+    }
+
+    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+
+    if (object->Has(TRI_V8_SYMBOL("requestTimeout"))) {
+      if (object->Get(TRI_V8_SYMBOL("requestTimeout"))->IsNumber()) {
+        config._requestTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("requestTimeout")));
+      }
+    }
+
+    if (object->Has(TRI_V8_SYMBOL("connectTimeout"))) {
+      if (object->Get(TRI_V8_SYMBOL("connectTimeout"))->IsNumber()) {
+        config._connectTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("connectTimeout")));
+      }
+    }
+
+    if (object->Has(TRI_V8_SYMBOL("ignoreErrors"))) {
+      if (object->Get(TRI_V8_SYMBOL("ignoreErrors"))->IsNumber()) {
+        config._ignoreErrors = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("ignoreErrors")), false);
+      }
+    }
+
+    if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
+      if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
+        config._maxConnectRetries = (int) TRI_ObjectToInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")));
+      }
+    }
+
+    if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
+      if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
+        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
+      }
+    }
+
+    if (object->Has(TRI_V8_SYMBOL("adaptivePolling"))) {
+      if (object->Get(TRI_V8_SYMBOL("adaptivePolling"))->IsBoolean()) {
+        config._adaptivePolling = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("adaptivePolling")));
+      }
+    }
+
+    int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
+
+    TRI_DestroyConfigurationReplicationApplier(&config);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+
+    return scope.Close(v8::True());
   }
-  
-  return scope.Close(v8::True());
 }
 
 #endif
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
@@ -3256,7 +3290,7 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
-  int res = TRI_StopReplicationApplier(vocbase->_replicationApplier);
+  int res = TRI_StopReplicationApplier(vocbase->_replicationApplier, true);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication applier");
@@ -3286,20 +3320,46 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
 
-  TRI_replication_apply_state_t state;
-  int res = TRI_StateReplicationApplier(vocbase->_replicationApplier, &state);
+  TRI_json_t* json = TRI_JsonReplicationApplier(vocbase->_replicationApplier);
   
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+  if (json == 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
   }
- 
-  TRI_json_t* json = TRI_JsonStateReplicationApplier(&state);
-  TRI_DestroyApplyStateReplicationApplier(&state);
 
   v8::Handle<v8::Value> result = TRI_ObjectJson(json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   return scope.Close(result);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier and "forget" all state
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_REPLICATION
+
+static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_FORGET()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0 || vocbase->_replicationApplier == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+  
+  int res = TRI_ForgetReplicationApplier(vocbase->_replicationApplier);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::True());
 }
 
 #endif
@@ -5530,7 +5590,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       // get the old values
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-      size_t maximalSize = base->_info._maximalSize;
+      TRI_voc_size_t maximalSize = base->_info._maximalSize;
       bool doCompact     = base->_info._doCompact;
       bool waitForSync   = base->_info._waitForSync;
 
@@ -5548,7 +5608,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
       // extract the journal size
       if (po->Has(v8g->JournalSizeKey)) {
-        maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
+        maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(v8g->JournalSizeKey), false);
 
         if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
           ReleaseCollection(collection);
@@ -5586,7 +5646,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
 #ifdef TRI_ENABLE_REPLICATION
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
-      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, json); 
+      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, base->_info._name, json); 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 #endif
     }
@@ -8253,6 +8313,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication);
 #endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
