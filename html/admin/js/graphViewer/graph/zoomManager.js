@@ -67,6 +67,8 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
     labelToggle,
     currentZoom,
     currentTranslation,
+    lastD3Translation,
+    lastD3Scale,
     currentLimit,
     fisheye,
     currentDistortion,
@@ -75,6 +77,8 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
     baseDRadius,
     size =  width * height,
     zoom,
+    slider,
+    minZoom,
     limitCB = limitCallback || function() {},
     
     calcNodeLimit = function () {
@@ -98,6 +102,51 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       fisheye.radius(currentDistortionRadius);
     },
     
+    reactToZoom = function(scale, transX, transY, fromButton) {
+      if (fromButton) {
+        if (scale !== null) {
+          currentZoom = scale;
+        }
+      } else {
+        currentZoom = scale;
+      }
+      if (transX !== null) {
+        currentTranslation[0] += transX;
+      }
+      if (transY !== null) {
+        currentTranslation[1] += transY;
+      }
+      currentLimit = calcNodeLimit();
+      limitCB(currentLimit);
+      nodeShaper.activateLabel(currentZoom >= labelToggle);
+      edgeShaper.activateLabel(currentZoom >= labelToggle);
+      calcDistortionValues();
+      
+      var transT = "translate(" + currentTranslation + ")",
+      scaleT = " scale(" + currentZoom + ")";
+      if (g._isCommunity) {
+        g.attr("transform", transT);
+      } else {
+        g.attr("transform", transT + scaleT);
+      }
+      slider.slider("option", "value", currentZoom);
+    },
+    
+    getScaleDelta = function(nextScale) {
+      var diff = lastD3Scale - nextScale;
+      lastD3Scale = nextScale;
+      return diff;
+    },
+    
+    getTranslationDelta = function(nextTrans) {
+      var tmp = [];
+      tmp[0] = nextTrans[0] - lastD3Translation[0];
+      tmp[1] = nextTrans[1] - lastD3Translation[1];
+      lastD3Translation[0] = nextTrans[0];
+      lastD3Translation[1] = nextTrans[1];
+      return tmp;
+    },
+    
     parseConfig = function (conf) {
       if (conf === undefined) {
         conf = {};
@@ -108,35 +157,58 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       rMin = conf.minRadius || 4;
       baseDist = conf.focusZoom || 1;
       baseDRadius = conf.focusRadius || 100;
-      
+      minZoom = rMin/rMax;
       fontSize = fontMax;
       nodeRadius = rMax;
       
       labelToggle = fontMin / fontMax;
       currentZoom = 1;
       currentTranslation = [0, 0];
+      lastD3Translation = [0, 0];
       calcDistortionValues();
       
       currentLimit = calcNodeLimit();
       
       zoom = d3.behavior.zoom()
-        .scaleExtent([rMin/rMax, 1])
+        .scaleExtent([minZoom, 1])
         .on("zoom", function() {
-          currentZoom = d3.event.scale;
-          currentLimit = calcNodeLimit();
-          limitCB(currentLimit);
-          nodeShaper.activateLabel(currentZoom >= labelToggle);
-          edgeShaper.activateLabel(currentZoom >= labelToggle);
-          calcDistortionValues();
-          currentTranslation = $.extend({}, d3.event.translate);
-          var trans = "translate(" + d3.event.translate + ")",
-          scale = " scale(" + currentZoom + ")";
-          if (g._isCommunity) {
-            g.attr("transform", trans);
+          //  scaleDiff = getScaleDelta(d3.event.scale),
+          var
+            sEvent = d3.event.sourceEvent,
+            scale = currentZoom,
+            translation;
+          if (sEvent.type === "mousewheel" || sEvent.type === "DOMMouseScroll") {
+            if (sEvent.wheelDelta) {
+              if (sEvent.wheelDelta > 0) {
+                scale += 0.01;
+                if (scale > 1) {
+                  scale = 1;
+                }
+              } else {
+                scale -= 0.01;
+                if (scale < minZoom) {
+                  scale = minZoom;
+                }
+              }
+            } else {
+              if (sEvent.detail > 0) {
+                scale += 0.01;
+                if (scale > 1) {
+                  scale = 1;
+                }
+              } else {
+                scale -= 0.01;
+                if (scale < minZoom) {
+                  scale = minZoom;
+                }
+              }
+            }
+            translation = [0, 0];
           } else {
-            g.attr("transform", trans + scale);
+            translation = getTranslationDelta(d3.event.translate);
           }
           
+          reactToZoom(scale, translation[0], translation[1]);
        });
       
     },
@@ -189,5 +261,20 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
     return currentLimit;
   };
   
+  self.getMinimalZoomFactor = function() {
+    return minZoom;
+  };
+  
+  self.registerSlider = function(s) {
+    slider = s;
+  };
+  
+  self.triggerScale = function(s) {
+    reactToZoom(s, null, null, true);
+  };
+  
+  self.triggerTranslation = function(x, y) {
+    reactToZoom(null, x, y, true);
+  };
  
 }
