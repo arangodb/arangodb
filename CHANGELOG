@@ -1,7 +1,10 @@
 v1.4
 ----
 
-* added arango.reconnect(<host>) method for arangosh
+* added example queries in web interface AQL editor
+
+* added arango.reconnect(<host>) method for arangosh to dynamically switch server or
+  user name
 
 * added AQL range operator `..`
 
