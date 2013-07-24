@@ -369,6 +369,11 @@ table.dataTable thead th {
   width: 1;
 }
 
-#documentsUploadDiv:hover, #uploadIndicator:hover, #documentsUpload:hover {
+#uploadIndicator {
+  padding-right: 10px;
+  margin-top: -3px;
+}
+
+#documentsUploadDiv:hover, #documentsUpload:hover {
   cursor: pointer !important;
 }

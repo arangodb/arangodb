@@ -73,7 +73,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       trash: "trash",
       drag: "drag",
       edge: "connect",
-      edit: "edit"
+      edit: "edit",
+      view: "view"
     },
     baseClass = "event",
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
@@ -196,6 +197,57 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     };
   };
   
+  this.viewRebinds = function() {
+    var prefix = "control_event_view",
+      idprefix = prefix + "_",
+      nodeCallback = function(n) {
+        modalDialogHelper.createModalViewDialog(
+          "View Node " + n._id,
+          "control_event_node_view_",
+          n._data,
+          function() {
+            modalDialogHelper.createModalEditDialog(
+              "Edit Node " + n._id,
+              "control_event_node_edit_",
+              n._data,
+              function(newData) {
+                dispatcher.events.PATCHNODE(n, newData, function() {
+                  $("#control_event_node_edit_modal").modal('hide');
+                })();
+              }
+            );
+          }
+        );
+      },
+      edgeCallback = function(e) {
+        modalDialogHelper.createModalViewDialog(
+          "View Edge " + e._id,
+          "control_event_edge_view_",
+          e._data,
+          function() {
+            modalDialogHelper.createModalEditDialog(
+              "Edit Edge " + e._id,
+              "control_event_edge_edit_",
+              e._data,
+              function(newData) {
+                dispatcher.events.PATCHEDGE(e, newData, function() {
+                  $("#control_event_edge_edit_modal").modal('hide');
+                })();
+              }
+            );
+          }
+        );
+      };
+      return {
+        nodes: {
+          click: nodeCallback
+        },
+        edges: {
+          click: edgeCallback
+        }
+      };
+  };
+  
   this.connectNodesRebinds = function() {
     var prefix = "control_event_connect",
       idprefix = prefix + "_",
@@ -243,7 +295,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       },
       edgeCallback = function(e) {
         modalDialogHelper.createModalEditDialog(
-          "Edit Edge " + e._data._from + "->" + e._data._to,
+          "Edit Edge " + e._id,
           "control_event_edge_edit_",
           e._data,
           function(newData) {
@@ -307,6 +359,15 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     createIcon(icon, "new_node", callback);
   };
   
+  this.addControlView = function() {
+    var icon = icons.view,
+      callback = function() {
+        setCursorIcon(icon);
+        self.rebindAll(self.viewRebinds());
+      };
+    createIcon(icon, "view", callback);
+  };
+  
   this.addControlDrag = function() {
     var prefix = "control_event_drag",
       idprefix = prefix + "_",
@@ -362,6 +423,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   
   this.addAll = function () {
     self.addControlDrag();
+    self.addControlView();
     self.addControlEdit();
     self.addControlExpand();
     self.addControlDelete();

@@ -20,13 +20,16 @@ window.graphView = Backbone.View.extend({
     ncol,
     aaconfig,
     undirected,
+    randomStart,
     label,
-    config;
+    config,
+    ui;
 
     ecol = $("#edgeCollection").val();
     ncol = $("#nodeCollection").val();
     undirected = !!$("#undirected").attr("checked");
     label = $("#nodeLabel").val();
+    randomStart = !!$("#randomStart").attr("checked");
 
     aaconfig = {
       type: "arango",
@@ -44,7 +47,26 @@ window.graphView = Backbone.View.extend({
     }
 
     $("#background").remove();
-    var ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config);
+    if (randomStart) {
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: '/_api/simple/any',
+        data: JSON.stringify({
+          collection: ncol
+        }),
+        contentType: "application/json",
+        success: function(data) {
+          ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config, data.document._id);
+        }
+      });
+    } else {
+      ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config);
+    }
+    
+    
+    
+    
   },
 
 

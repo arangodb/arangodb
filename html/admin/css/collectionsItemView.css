@@ -66,3 +66,12 @@
 .icon-edit:hover, .icon-info-sign:hover { 
   opacity: 1.0;
 }
+
+.disabled-info-view {
+  opacity: 0.2 !important;
+}
+
+.disabled-info-view:hover {
+  opacity: 0.2 !important;
+  cursor: default !important;
+}
