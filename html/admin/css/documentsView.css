@@ -377,3 +377,24 @@ table.dataTable thead th {
 #documentsUploadDiv:hover, #documentsUpload:hover {
   cursor: pointer !important;
 }
+
+#filterHeader button {
+  float: right;
+  margin-left: 10px !important;
+}
+
+#addFilterItem {
+  margin-left: 5px;
+}
+
+#addFilterItem i {
+  margin-top: -5px !important;
+}
+
+#filterHeader input, #filterHeader select, #filterHeader button {
+}
+
+#filterHeader select {
+  margin-left: 10px !important;
+  margin-right: 10px !important;
+}
