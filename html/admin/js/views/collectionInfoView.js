@@ -13,8 +13,6 @@ var collectionInfoView = Backbone.View.extend({
   render: function() {
     $(this.el).html(this.template.text);
     $('#show-collection').modal('show');
-    $('#show-collection').on('hidden', function () {
-    });
     this.fillModal();
 
     $('.modalInfoTooltips').tooltip({
