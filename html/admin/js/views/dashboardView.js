@@ -96,7 +96,9 @@ var dashboardView = Backbone.View.extend({
     this.replApplyState = this.arangoReplication.getApplyState();
     this.putReplicationStatus();
   },
+
   putReplicationStatus: function () {
+    var time;
 
     if (this.replApplyState.state.running === true) {
       $('#detailReplication').height(290);
@@ -105,10 +107,14 @@ var dashboardView = Backbone.View.extend({
     else {
       $('.checkApplyRunningStatus').hide();
     }
+    
+    time = this.replLogState.state.time;
 
     //log table
     $('#logRunningVal').text(this.replLogState.state.running);
+    $('#logTimeVal').text(time);
     $('#logLastTickVal').text(this.replLogState.state.lastLogTick);
+    $('#logClientsVal').text(JSON.stringify(this.replLogState.clients));
 
     //apply table
     var lastAppliedTick;
@@ -131,6 +137,8 @@ var dashboardView = Backbone.View.extend({
       phase = this.replApplyState.state.currentPhase.label;
     }
 
+    time = this.replApplyState.state.time;
+
     if (this.replApplyState.state.progress) {
       progress = this.replApplyState.state.progress.message;
     }
@@ -141,10 +149,12 @@ var dashboardView = Backbone.View.extend({
 
 
     $('#applyRunningVal').text(this.replApplyState.state.running);
+    $('#applyEndpointVal').text(this.replApplyState.endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
-    $('#applyCurrentPhaseLabel').text(phase);
+    $('#applyCurrentPhaseLabelVal').text(phase);
+    $('#applyTimeVal').text(time);
     $('#applyProgressVal').text(progress);
-    $('#applyLastError').text(lastError);
+    $('#applyLastErrorVal').text(lastError);
 
   },
 
