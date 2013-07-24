@@ -83,6 +83,7 @@ var documentsView = Backbone.View.extend({
     //clear all input/select - fields
     $('input').val('');
     $('select').val('==');
+    this.removeAllFilterItems();
 
     this.clearTable();
     window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
@@ -247,6 +248,16 @@ var documentsView = Backbone.View.extend({
 
     // remove the line from the DOM
     $(button.parentElement).remove();
+  },
+
+  removeAllFilterItems : function () {
+    var childrenLength = $('#filterHeader').children().length;
+    var i;
+    for (i = 1; i <= childrenLength; i++) {
+      $('#removeFilter'+i).parent().remove();
+    }
+    this.filters = { "0" : true };
+    this.filterId = 0;
   },
 
   addDocument: function () {
