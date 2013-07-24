@@ -305,13 +305,21 @@ var queryView = Backbone.View.extend({
     else {
       selector = '#querySelect';
       $(selector).empty();
-      $(selector).append('<option id="_emptyquery">(please select)</option>');
+      $(selector).append('<option id="emptyquery">(please select)</option>');
+
+      $(selector).append('<optgroup label="Example queries">');
       $.each(this.queries, function(k,v) {
         $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
       });
-      $.each(this.customQueries, function(k,v) {
-        $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
-      });
+      $(selector).append('</optgroup>');
+
+      if (this.customQueries.length > 0) {
+        $(selector).append('<optgroup label="Custom queries">');
+        $.each(this.customQueries, function(k,v) {
+          $(selector).append('<option id="'+v.name+'">'+v.name+'</option>');
+        });
+        $(selector).append('</optgroup>');
+      }
     }
   },
   undoText: function () {
