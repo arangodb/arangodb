@@ -3,10 +3,6 @@
     <div id="documentsToolbar" class="pagination pagination-small pagination-right">
 
     <!-- remove marker for docupdiv--!>
-    <div id="documentsUploadDiv" class="btn btn-primary btn-success btn-block" style="display:none">
-      <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>
-        <input id="documentsUploadFile" name="documentsUploadFile" type="file" accept="application/json" />Import
-    </div>
     <ul><li class="enabled"><a id="filterCollection"><i class="icon icon-white icon-filter"></i></a></li></ul>
 
     <ul>
@@ -110,6 +106,8 @@
     </table>
   </div>
   <div class="modal-footer">
-    <button id="confirmDocImport" class="btn btn-success" style="float:right">Import</button>
+    <button id="confirmDocImport" class="btn btn-success" style="float:right">
+      <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>Import
+    </button>
   </div>
 </div>
