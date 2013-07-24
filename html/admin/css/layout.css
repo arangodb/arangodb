@@ -40,6 +40,14 @@ input {
   box-shadow: 0;
 }
 
+.btn-close {
+  float:left;
+}
+
+.btn-margin {
+  margin-left: 15px !important;
+}
+
 #transparentHeader h4 {
   margin-top: 7px;
 }
