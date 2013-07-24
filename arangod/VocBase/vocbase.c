@@ -1270,7 +1270,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
   if (id != NULL && id->_type == TRI_JSON_NUMBER) {
     uint64_t iid = (uint64_t) id->_value._number;
 
-    if (iid >= (uint64_t) ij->_maxTick) {
+    if (iid > (uint64_t) ij->_maxTick) {
       // index too new
       TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
     }
@@ -1286,7 +1286,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
   else if (TRI_IsStringJson(id)) {
     uint64_t iid = TRI_UInt64String2(id->_value._string.data, id->_value._string.length - 1);
 
-    if (iid >= (uint64_t) ij->_maxTick) {
+    if (iid > (uint64_t) ij->_maxTick) {
       // index too new
       TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
     }
@@ -1947,6 +1947,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
         TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
 
         indexesInfo = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
         if (indexesInfo != NULL) {
           index_json_helper_t ij;
           ij._list    = indexesInfo;
