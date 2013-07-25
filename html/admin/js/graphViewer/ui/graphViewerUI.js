@@ -52,6 +52,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     nodeShaperUI,
     adapterUI,
     slider,
+    searchAttrField,
+    searchAttrExampleList,
     //mousePointerBox = document.createElement("div"),
     svg,
     
@@ -170,10 +172,37 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       */
       dispatcherUI.addAll();
     },
+    
+    updateAttributeExamples = function() {
+      searchAttrExampleList.innerHTML = "";
+      var throbber = document.createElement("li"),
+        throbberImg = document.createElement("img");
+      throbber.appendChild(throbberImg);
+      throbberImg.className = "gv-throbber";
+      searchAttrExampleList.appendChild(throbber);
+      graphViewer.adapter.getAttributeExamples(function(res) {
+        searchAttrExampleList.innerHTML = "";
+        _.each(res, function(r) {
+          var entry = document.createElement("li"),
+            link = document.createElement("a"),
+            lbl = document.createElement("label");
+          entry.appendChild(link);
+          link.appendChild(lbl);
+          lbl.appendChild(document.createTextNode(r));
+          searchAttrExampleList.appendChild(entry);
+          entry.onclick = function() {
+            searchAttrField.value = r;
+          }
+        });
+      });
+    },
+    
     createMenu = function() {
       var transparentHeader = document.createElement("div"),
         searchDiv = document.createElement("div"),
-        searchAttrField = document.createElement("input"),
+        searchAttrDiv = document.createElement("div"),
+        searchAttrExampleToggle = document.createElement("button"),
+        searchAttrExampleCaret = document.createElement("span"),
         searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         buttons = document.createElement("div"),
@@ -274,7 +303,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         configureList,
         graphViewer.adapter
       );
-
+      
+      searchAttrField = document.createElement("input");
+      searchAttrExampleList = document.createElement("ul");
+      
       menubar.id = "menubar";
       menubar.className = "thumbnails2";
       
@@ -286,10 +318,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchDiv.id = "transparentPlaceholder";
       searchDiv.className = "pull-left";
       
+      searchAttrDiv.className = "pull-left input-append searchByAttribute";
       searchAttrField.id = "attribute";
-      searchAttrField.className = "input searchByAttribute";
+      searchAttrField.className = "input";
       searchAttrField.type = "text";
       searchAttrField.placeholder = "Attribute";
+      searchAttrExampleToggle.id = "attribute_example_toggle";
+      searchAttrExampleToggle.className = "btn gv_example_toggle";
+      searchAttrExampleToggle.setAttribute("data-toggle", "dropdown");
+      searchAttrExampleCaret.className = "caret";
+      searchAttrExampleList.className = "dropdown-menu";
       searchValueField.id = "value";
       searchValueField.className = "input-xlarge searchInput";
       searchValueField.type = "text";
@@ -319,7 +357,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       
       menubar.appendChild(transparentHeader);
       transparentHeader.appendChild(searchDiv);
-      searchDiv.appendChild(searchAttrField);
+      searchDiv.appendChild(searchAttrDiv);
+      searchAttrDiv.appendChild(searchAttrField);
+      searchAttrDiv.appendChild(searchAttrExampleToggle);
+      searchAttrDiv.appendChild(searchAttrExampleList);
+      searchAttrExampleToggle.appendChild(searchAttrExampleCaret);
       searchDiv.appendChild(equalsField);
       searchDiv.appendChild(searchValueField);
       searchDiv.appendChild(searchStart);
@@ -327,7 +369,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       
       buttons.appendChild(configureDropDown);
       
-      adapterUI.addControlChangeCollections();
+      adapterUI.addControlChangeCollections(updateAttributeExamples);
       adapterUI.addControlChangePriority();
       nodeShaperUI.addControlOpticLabelAndColour();
       
@@ -342,7 +384,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       layouterUI.addAll();
       adapterUI.addAll();
       */
-      
+      updateAttributeExamples();
     },
     
     createColourList = function() {

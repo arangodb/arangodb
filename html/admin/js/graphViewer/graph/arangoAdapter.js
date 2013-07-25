@@ -40,12 +40,15 @@ function ArangoAdapter(nodes, edges, config) {
   if (config === undefined) {
     throw "A configuration with node- and edgeCollection has to be given.";
   }
-  if (config.nodeCollection === undefined) {
-    throw "The nodeCollection has to be given.";
+  if (config.graph === undefined) {
+    if (config.nodeCollection === undefined) {
+      throw "The nodeCollection or a graphname has to be given.";
+    }
+    if (config.edgeCollection === undefined) {
+      throw "The edgeCollection or a graphname has to be given.";
+    }
   }
-  if (config.edgeCollection === undefined) {
-    throw "The edgeCollection has to be given.";
-  }
+
   
   var self = this,
     absAdapter,
@@ -57,9 +60,31 @@ function ArangoAdapter(nodes, edges, config) {
     arangodb,
     direction,
 
+    setNodeCollection = function(name) {
+      nodeCollection = name;
+      api.node = api.base + "document?collection=" + nodeCollection;
+    },
+
+    setEdgeCollection = function(name) {
+      edgeCollection = name;
+      api.edge = api.base + "edge?collection=" + edgeCollection;
+    },
+
+    getCollectionsFromGraph = function(name) {
+      $.ajax({
+        cache: false,
+        type: 'GET',
+        async: false,
+        url: api.graph + "/" + name,
+        contentType: "application/json",
+        success: function(data) {
+          setNodeCollection(data.graph.vertices);
+          setEdgeCollection(data.graph.edges);
+        }
+      });
+    },
+
     parseConfig = function(config) {
-      nodeCollection = config.nodeCollection;
-      edgeCollection = config.edgeCollection;
       if (config.host === undefined) {
         arangodb = "http://" + document.location.host;
       } else {
@@ -80,16 +105,33 @@ function ArangoAdapter(nodes, edges, config) {
       } else {
         direction = "outbound";
       }
+      api.base = arangodb.lastIndexOf("http://", 0) === 0
+        ? arangodb + "/_api/"
+        : "http://" + arangodb + "/_api/";
+      api.cursor = api.base + "cursor";
+      api.graph = api.base + "graph";
+      api.collection = api.base + "collection/";
+      api.document = api.base + "document/";
+      api.any = api.base + "simple/any";      
+      if (config.graph) {
+        getCollectionsFromGraph(config.graph);
+      } else {
+        setNodeCollection(config.nodeCollection);
+        setEdgeCollection(config.edgeCollection);
+      }
     },
   
     sendQuery = function(query, bindVars, onSuccess) {
       if (query !== queries.connectedEdges) {
         bindVars["@nodes"] = nodeCollection;
       }
-      if (query !== queries.childrenCentrality) {
+      if (query !== queries.childrenCentrality
+      && query !== queries.randomDocuments) {
         bindVars.dir = direction;
       }
-      bindVars["@edges"] = edgeCollection;
+      if (query !== queries.randomDocuments) {
+        bindVars["@edges"] = edgeCollection;
+      }
       var data = {
         query: query,
         bindVars: bindVars
@@ -117,6 +159,28 @@ function ArangoAdapter(nodes, edges, config) {
       });
     },
   
+    getNRandom = function(n, callback) {
+      var list = [],
+        i = 0;
+      for (i = 0; i < n; i++) {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: api.any,
+          data: JSON.stringify({
+            collection: nodeCollection
+          }),
+          contentType: "application/json",
+          success: function(data) {
+            list.push(data.document);
+            if (list.length === n) {
+              callback(list);
+            }
+          }
+        });
+      }
+    },
+    
     parseResultOfTraversal = function (result, callback) {
       if (result.length === 0) {
         if (callback) {
@@ -206,18 +270,13 @@ function ArangoAdapter(nodes, edges, config) {
     absConfig.prioList = config.prioList;
   }
   absAdapter = new AbstractAdapter(nodes, edges, this, absConfig);
-     
+  
   parseConfig(config);
   
-  api.base = arangodb.lastIndexOf("http://", 0) === 0
-    ? arangodb + "/_api/"
-    : "http://" + arangodb + "/_api/";
-  api.cursor = api.base + "cursor";
-  api.collection = api.base + "collection/";
-  api.document = api.base + "document/";
-  api.node = api.base + "document?collection=" + nodeCollection; 
-  api.edge = api.base + "edge?collection=" + edgeCollection; 
-  
+  queries.randomDocuments = "FOR u IN @@nodes"
+    + " sort rand()"
+    + " limit 10"
+    + " return u";
   queries.nodeById = "FOR n IN @@nodes"
     + " FILTER n._id == @id"
     + " LET links = ("
@@ -442,8 +501,8 @@ function ArangoAdapter(nodes, edges, config) {
   
   self.changeToCollections = function (nodesCol, edgesCol, dir) {
     absAdapter.cleanUp();
-    nodeCollection = nodesCol;
-    edgeCollection = edgesCol;
+    setNodeCollection(nodesCol);
+    setEdgeCollection(edgesCol);
     if (dir !== undefined) {
       if (dir === true) {
         direction = "any";
@@ -451,8 +510,6 @@ function ArangoAdapter(nodes, edges, config) {
         direction = "outbound";
       }
     }
-    api.node = api.base + "document?collection=" + nodeCollection; 
-    api.edge = api.base + "edge?collection=" + edgeCollection;
   };
   
   self.setNodeLimit = function (pLimit, callback) {
@@ -497,6 +554,21 @@ function ArangoAdapter(nodes, edges, config) {
         error: function(data) {
           throw data.statusText;
         }
+      });
+    }
+  };
+  
+  self.getAttributeExamples = function(callback) {
+    if (callback && callback.length >= 1) {
+      getNRandom(10, function(l) {
+        var ret = _.uniq(
+          _.flatten(
+            _.map(l, function(o) {
+              return _.keys(o);
+            })
+          )
+        );
+        callback(ret);
       });
     }
   };
