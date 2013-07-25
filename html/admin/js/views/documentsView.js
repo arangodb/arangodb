@@ -9,6 +9,8 @@ var documentsView = Backbone.View.extend({
   filters : { "0" : true },
   filterId : 0,
 
+  addDocumentSwitch: true,
+
   allowUpload: false,
 
   collectionContext : {
@@ -86,6 +88,8 @@ var documentsView = Backbone.View.extend({
     this.removeAllFilterItems();
 
     this.clearTable();
+    $('#documentsToolbarF ul').css("visibility", "visible");
+    this.addDocumentSwitch = true;
     window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
   },
 
@@ -202,8 +206,10 @@ var documentsView = Backbone.View.extend({
       }
     }
 
+    this.addDocumentSwitch = false;
     window.documentsView.clearTable();
     window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, filters, bindValues);
+    $('#documentsToolbarF ul').css("visibility", "hidden");
   },
 
   addFilterItem : function () {
@@ -426,13 +432,15 @@ var documentsView = Backbone.View.extend({
   drawTable: function() {
     var self = this;
 
-    $(self.table).dataTable().fnAddData(
-      [
-        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-        '',
-        '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
-      ]
-    );
+    if (this.addDocumentSwitch === true) {
+      $(self.table).dataTable().fnAddData(
+        [
+          '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+          '',
+          '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
+        ]
+      );
+    }
 
     $.each(window.arangoDocumentsStore.models, function(key, value) {
 
