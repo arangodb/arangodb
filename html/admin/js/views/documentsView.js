@@ -111,9 +111,10 @@ var documentsView = Backbone.View.extend({
         complete: function(xhr) {
           if (xhr.readyState === 4) {
             if (xhr.status === 201) {
+              var data;
 
               try {
-                var data = JSON.parse(xhr.responseText);
+                data = JSON.parse(xhr.responseText);
               }
 
               catch (e) {
@@ -125,10 +126,12 @@ var documentsView = Backbone.View.extend({
               }
 
               if (data.errors === 0) {
-                arangoHelper.arangoNotification("Upload successful. " + data.created + "documents imported.");
+                arangoHelper.arangoNotification("Upload successful. " + 
+                                                data.created + "document(s) imported.");
               }
               else if (data.errors !== 0) {
-                arangoHelper.arangoNotification("Upload failed." + data.errors + "errors.");
+                arangoHelper.arangoNotification("Upload failed." + 
+                                                data.errors + "error(s).");
               }
               self.hideSpinner();
               self.hideImportModal();
