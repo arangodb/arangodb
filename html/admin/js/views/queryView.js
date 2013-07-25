@@ -136,7 +136,16 @@ var queryView = Backbone.View.extend({
     var currentRow = current.lead.row;
     var currentColumn = current.lead.column;
 
-    current.setSelectionRange({ start: { row: currentRow, column: currentColumn }, end: { row: currentRow, column: currentColumn } });
+    current.setSelectionRange({ 
+      start: { 
+        row: currentRow, 
+        column: currentColumn 
+      }, 
+      end: { 
+        row: currentRow, 
+        column: currentColumn 
+      } 
+    });
 
     editor.focus();
   },
