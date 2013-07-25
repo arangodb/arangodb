@@ -225,7 +225,7 @@ function NodeShaperControls(list, shaper) {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
-          id: "key"
+          id: "attribute"
         }], function () {
           var key = $("#" + idprefix + "key").attr("value");
           shaper.changeTo({

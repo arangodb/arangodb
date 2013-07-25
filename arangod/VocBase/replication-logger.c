@@ -48,6 +48,116 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   CLIENT HANDLING
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to hold a client action
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct logger_client_s {
+  TRI_server_id_t _serverId;
+  char*           _url;
+  char            _stamp[24];
+}
+logger_client_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a client id
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyClient (TRI_associative_pointer_t* array, 
+                               void const* key) {
+  TRI_server_id_t const* k = key;
+
+  return (uint64_t) *k;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes a client struct
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementClient (TRI_associative_pointer_t* array, 
+                                   void const* element) {
+  logger_client_t const* e = element;
+  
+  return (uint64_t) e->_serverId;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a client key and a client struct
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyClient (TRI_associative_pointer_t* array, 
+                              void const* key, 
+                              void const* element) {
+  TRI_server_id_t const* k = key;
+  logger_client_t const* e = element;
+
+  return *k == e->_serverId;
+}
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a single registered client
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeClient (logger_client_t* client) {
+  if (client->_url != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, client->_url);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, client);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free registered clients
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeClients (TRI_replication_logger_t* logger) {
+  uint32_t i, n;
+  
+  n = logger->_clients._nrAlloc;
+
+  for (i = 0; i < n; ++i) {
+    logger_client_t* client = logger->_clients._table[i];
+
+    if (client != NULL) {
+      FreeClient(client);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           LOGGING
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
 
@@ -112,37 +222,13 @@
 /// @brief number of pre-allocated string buffers for logging
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t NumBuffers = 8;
+static size_t NumBuffers = 16;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pre-allocated size for each log buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t BufferSize = 256;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to hold a client action
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct logger_client_s {
-  TRI_server_id_t _serverId;
-  char*           _url;
-  char            _stamp[24];
-}
-logger_client_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -163,10 +249,10 @@ logger_client_t;
 
 static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type,
                                                                TRI_document_collection_t const* document) {
-  const bool isEdge = (document->base.base._info._type == TRI_COL_TYPE_EDGE);
-
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT || type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    return isEdge ? MARKER_EDGE : MARKER_DOCUMENT;
+    const bool isEdgeCollection = (document->base.base._info._type == TRI_COL_TYPE_EDGE);
+
+    return isEdgeCollection ? MARKER_EDGE : MARKER_DOCUMENT;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     return MARKER_REMOVE;
@@ -315,7 +401,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
                          true);
   }
 
-  LOG_TRACE("replication event, type: %d, tid: %llu, sync: %d, data: %s", 
+  LOG_TRACE("logging replication event, type: %d, tid: %llu, sync: %d, data: %s", 
             (int) type,
             (unsigned long long) tid,
             (int) forceSync,
@@ -347,9 +433,10 @@ static int LogEvent (TRI_replication_logger_t* logger,
     return res;
   }
 
+  // assert the write was successful
   assert(mptr._data != NULL);
   
-  // note the last id that we've logged
+  // update the last tick that we've logged
   TRI_LockSpin(&logger->_idLock);
   logger->_state._lastLogTick = ((TRI_df_marker_t*) mptr._data)->_tick;
   TRI_UnlockSpin(&logger->_idLock);
@@ -398,6 +485,10 @@ static bool StringifyTickReplication (TRI_string_buffer_t* buffer,
 static bool StringifyCreateCollection (TRI_string_buffer_t* buffer,
                                        TRI_voc_cid_t cid,
                                        TRI_json_t const* json) {
+  if (buffer == NULL) {
+    return false;
+  }
+
   APPEND_STRING(buffer, "{\"cid\":\"");
   APPEND_UINT64(buffer, (uint64_t) cid);
   APPEND_STRING(buffer, "\",\"collection\":");
@@ -413,6 +504,10 @@ static bool StringifyCreateCollection (TRI_string_buffer_t* buffer,
 
 static bool StringifyDropCollection (TRI_string_buffer_t* buffer,
                                      TRI_voc_cid_t cid) {
+  if (buffer == NULL) {
+    return false;
+  }
+
   APPEND_CHAR(buffer, '{');
 
   if (! StringifyCollection(buffer, cid)) {
@@ -432,6 +527,10 @@ static bool StringifyRenameCollection (TRI_string_buffer_t* buffer,
                                        TRI_voc_cid_t cid,
                                        char const* name) {
   
+  if (buffer == NULL) {
+    return false;
+  }
+
   APPEND_CHAR(buffer, '{');
 
   if (! StringifyCollection(buffer, cid)) {
@@ -453,6 +552,10 @@ static bool StringifyRenameCollection (TRI_string_buffer_t* buffer,
 static bool StringifyCreateIndex (TRI_string_buffer_t* buffer,
                                   TRI_voc_cid_t cid,
                                   TRI_json_t const* json) {
+  if (buffer == NULL) {
+    return false;
+  }
+
   APPEND_CHAR(buffer, '{');
   
   if (! StringifyCollection(buffer, cid)) {
@@ -473,6 +576,10 @@ static bool StringifyCreateIndex (TRI_string_buffer_t* buffer,
 static bool StringifyDropIndex (TRI_string_buffer_t* buffer,
                                 TRI_voc_cid_t cid,
                                 TRI_idx_iid_t iid) {
+  if (buffer == NULL) {
+    return false;
+  }
+
   APPEND_CHAR(buffer, '{');
   
   if (! StringifyCollection(buffer, cid)) {
@@ -499,6 +606,10 @@ static bool StringifyDocumentOperation (TRI_string_buffer_t* buffer,
   TRI_voc_key_t key;
   TRI_voc_rid_t oldRev;
   TRI_voc_rid_t rid;
+  
+  if (buffer == NULL) {
+    return false;
+  }
 
   if (TRI_ReserveStringBuffer(buffer, 256) != TRI_ERROR_NO_ERROR) {
     return false;
@@ -614,6 +725,10 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
                                       TRI_transaction_t const* trx) {
   size_t i, n;
   bool printed;
+  
+  if (buffer == NULL) {
+    return false;
+  }
 
   APPEND_STRING(buffer, "{\"collections\":[");
 
@@ -1047,71 +1162,6 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
   res = LogEvent(logger, trx->_id, false, TRI_TRANSACTION_COMMIT, buffer);
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes a client id
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyClient (TRI_associative_pointer_t* array, 
-                               void const* key) {
-  TRI_server_id_t const* k = key;
-
-  return (uint64_t) *k;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes a client struct
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementClient (TRI_associative_pointer_t* array, 
-                                   void const* element) {
-  logger_client_t const* e = element;
-  
-  return (uint64_t) e->_serverId;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a client key and a client struct
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualKeyClient (TRI_associative_pointer_t* array, 
-                              void const* key, 
-                              void const* element) {
-  TRI_server_id_t const* k = key;
-  logger_client_t const* e = element;
-
-  return *k == e->_serverId;
-}
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a single registered client
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeClient (logger_client_t* client) {
-  if (client->_url != NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, client->_url);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, client);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free registered clients
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeClients (TRI_replication_logger_t* logger) {
-  uint32_t i, n;
-  
-  n = logger->_clients._nrAlloc;
-
-  for (i = 0; i < n; ++i) {
-    logger_client_t* client = logger->_clients._table[i];
-
-    if (client != NULL) {
-      FreeClient(client);
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

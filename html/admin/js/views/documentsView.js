@@ -41,6 +41,7 @@ var documentsView = Backbone.View.extend({
     "keyup"                      : "returnPressedHandler",
     "keydown .filterValue"       : "filterValueKeydown",
     "click #importModal"         : "showImportModal",
+    "click #resetView"           : "resetView",
     "click #confirmDocImport"    : "startUpload"
   },
 
@@ -78,6 +79,16 @@ var documentsView = Backbone.View.extend({
     }
   },
 
+  resetView: function () {
+    //clear all input/select - fields
+    $('input').val('');
+    $('select').val('==');
+    this.removeAllFilterItems();
+
+    this.clearTable();
+    window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
+  },
+
   startUpload: function () {
     var self = this;
     if (self.allowUpload === true) {
@@ -99,8 +110,7 @@ var documentsView = Backbone.View.extend({
               arangoHelper.arangoNotification("Upload successful");
               self.hideSpinner();
               self.hideImportModal();
-              self.clearTable();
-              window.arangoDocumentsStore.getDocuments(self.collectionID, 1);
+              self.resetView();
               return;
             }
           }
@@ -238,6 +248,16 @@ var documentsView = Backbone.View.extend({
 
     // remove the line from the DOM
     $(button.parentElement).remove();
+  },
+
+  removeAllFilterItems : function () {
+    var childrenLength = $('#filterHeader').children().length;
+    var i;
+    for (i = 1; i <= childrenLength; i++) {
+      $('#removeFilter'+i).parent().remove();
+    }
+    this.filters = { "0" : true };
+    this.filterId = 0;
   },
 
   addDocument: function () {
@@ -394,8 +414,8 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"","bSortable": false, "sWidth":"500px"},
-        { "sClass":"", "bSortable": false, "sWidth":"30px"},
+        { "sClass":"","bSortable": false, "sWidth":"470px"},
+        { "sClass":"", "bSortable": false, "sWidth":"100px"},
         { "bSortable": false, "sClass": "", "sWidth":"20px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}

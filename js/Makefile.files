@@ -25,6 +25,7 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
 	html/admin/js/modules/org/arangodb/aql/functions.js \
 	html/admin/js/modules/org/arangodb/mimetypes.js \
+	html/admin/js/modules/org/arangodb/replication.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js \
 	\
 	html/admin/js/bootstrap/errors.js \
