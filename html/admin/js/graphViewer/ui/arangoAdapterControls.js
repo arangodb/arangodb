@@ -40,33 +40,66 @@ function ArangoAdapterControls(list, adapter) {
   var self = this,
     baseClass = "adapter";
   
-  this.addControlChangeCollections = function() {
+  this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",
       idprefix = prefix + "_";
     adapter.getCollections(function(nodeCols, edgeCols) {
-      uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
-        modalDialogHelper.createModalDialog("Switch Collections",
-          idprefix, [{
-            type: "list",
-            id: "nodecollection",
-            objects: nodeCols
-          },{
-            type: "list",
-            id: "edgecollection",
-            objects: edgeCols
-          },{
-            type: "checkbox",
-            id: "undirected"
-          }], function () {
-            var nodes = $("#" + idprefix + "nodecollection").attr("value"),
-              edges = $("#" + idprefix + "edgecollection").attr("value"),
-              undirected = !!$("#" + idprefix + "undirected").attr("checked");
-            adapter.changeToCollections(nodes, edges, undirected);
-          }
-        );
+      adapter.getGraphs(function(graphs) {
+        uiComponentsHelper.createButton(baseClass, list, "Collections", prefix, function() {
+          modalDialogHelper.createModalDialog("Switch Collections",
+            idprefix, [{
+              type: "decission",
+              id: "collections",
+              group: "loadtype",
+              text: "Use Collections",
+              isDefault: true,
+              interior: [
+                {
+                  type: "list",
+                  id: "node-collection",
+                  objects: nodeCols
+                },{
+                  type: "list",
+                  id: "edge-collection",
+                  objects: edgeCols
+                }
+              ]
+            },{
+              type: "decission",
+              id: "graphs",
+              group: "loadtype",
+              text: "Use Graph",
+              isDefault: false,
+              interior: [
+                {
+                  type: "list",
+                  id: "graph",
+                  objects: graphs
+                }
+              ]
+            },,{
+              type: "checkbox",
+              id: "undirected"
+            }], function () {
+              var nodes = $("#" + idprefix + "node-collection").attr("value"),
+                edges = $("#" + idprefix + "edge-collection").attr("value"),
+                graph = $("#" + idprefix + "graph").attr("value"),
+                undirected = !!$("#" + idprefix + "undirected").attr("checked"),
+                selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
+              if (selected === "collections") {
+                adapter.changeToCollections(nodes, edges, undirected);
+              } else {
+                adapter.changeToGraph(graph, undirected);
+              }
+              
+              if (_.isFunction(callback)) {
+                callback();
+              }
+            }
+          );
+        });
       });
     });
-    
   };
   
   this.addControlChangePriority = function() {

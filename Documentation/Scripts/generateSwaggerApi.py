@@ -77,6 +77,13 @@ relDir = sys.argv[3]
 if not relDir.endswith("/"):
   relDir += "/"
 
+# read ArangoDB version
+f = open(scriptDir + "VERSION", "r")
+for version in f:
+  version = version.strip('\n')
+f.close()
+
+
 apis = [ ];
 
 # print "Generating Swagger docs for code in " + scriptDir + ", outdir: " + outDir + "\n"
@@ -89,7 +96,7 @@ for filename, name in sorted(files.iteritems(), key=lambda (k, v): (v, k)):
 
 
 out = {
-  "apiVersion" : "1.4",
+  "apiVersion" : version,
   "swaggerVersion" : "1.1",
   "apis" : apis
 }

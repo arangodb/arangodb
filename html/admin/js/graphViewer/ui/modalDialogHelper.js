@@ -47,135 +47,11 @@ var modalDialogHelper = modalDialogHelper || {};
     },
   
     createDialogWithObject = function (title, buttonTitle, idprefix, object, callback) {
-    var tableToJSON,
-      callbackCapsule = function() {
-        callback(tableToJSON);
-      },
-      table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule),
-      firstRow = document.createElement("tr"),
-      firstCell = document.createElement("th"),
-      secondCell = document.createElement("th"),
-      thirdCell = document.createElement("th"),
-      addRow = document.createElement("button"),
-      addImg = document.createElement("img"),
-      newCounter = 1,
-      insertRow;
-
-    tableToJSON = function() {
-      var result = {};
-      _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
-        
-        var key = $(".keyCell input", tr).val(),
-          value = $(".valueCell input", tr).val();
-        result[key] = value;
-      });
-      return result;
-    };
-    
-    table.appendChild(firstRow);
-    firstRow.id = "first_row";
-    firstRow.appendChild(firstCell);
-    firstCell.className = "keyCell";
-    
-    firstRow.appendChild(secondCell);
-    secondCell.className = "valueCell";
-    
-    firstRow.appendChild(thirdCell);
-    
-    thirdCell.className = "actionCell";
-    thirdCell.appendChild(addRow);
-    
-    
-    addRow.id = idprefix + "new";
-    addRow.className = "graphViewer-icon-button";
-    
-    addRow.appendChild(addImg);
-    addImg.className = "gv-icon-small add";
-    
-    insertRow = function(value, key) {
-      var internalRegex = /^_(id|rev|key|from|to)/,
-        tr = document.createElement("tr"),
-        actTh = document.createElement("th"),
-        keyTh = document.createElement("th"),
-        valueTh = document.createElement("th"),
-        deleteInput,
-        keyInput,
-        valueInput,
-        delImg;
-      if (internalRegex.test(key)) {
-        return;
-      }
-      table.appendChild(tr);
-      
-      tr.appendChild(keyTh);
-      keyTh.className = "keyCell";
-      keyInput = document.createElement("input");
-      keyInput.type = "text";
-      keyInput.id = idprefix + key + "_key";
-      keyInput.value = key;
-      keyTh.appendChild(keyInput);
-      
-      
-      tr.appendChild(valueTh);
-      valueTh.className = "valueCell";
-      valueInput = document.createElement("input");
-      valueInput.type = "text";
-      valueInput.id = idprefix + key + "_value";
-      if ("object" === typeof value) {
-        valueInput.value = JSON.stringify(value);
-      } else {
-        valueInput.value = value;
-      }
-      
-      valueTh.appendChild(valueInput);
-      
-
-      tr.appendChild(actTh);
-      actTh.className = "actionCell";
-      deleteInput = document.createElement("button");
-      deleteInput.id = idprefix + key + "_delete";
-      deleteInput.className = "graphViewer-icon-button";
-      
-      actTh.appendChild(deleteInput);
-      
-      delImg = document.createElement("img");
-      delImg.className = "gv-icon-small delete";
-      deleteInput.appendChild(delImg);
-      
-      deleteInput.onclick = function() {
-        table.removeChild(tr);
-      };
-      
-    };
-    
-    addRow.onclick = function() {
-      insertRow("", "new_" + newCounter);
-      newCounter++;
-    };
-    
-    _.each(object, insertRow);
-    $("#" + idprefix + "modal").modal('show');
-  },
-  
-  createViewWithObject = function (title, buttonTitle, idprefix, object, callback) {
-    var table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback),
-      firstRow = document.createElement("tr"),
-      firstCell = document.createElement("th"),
-      pre = document.createElement("pre");
-    table.appendChild(firstRow);
-    firstRow.appendChild(firstCell);
-    firstCell.appendChild(pre);
-    pre.className = "gv_object_view";
-    pre.innerHTML = JSON.stringify(object, null, 2);
-      
-    
-    
-    /*
       var tableToJSON,
         callbackCapsule = function() {
           callback(tableToJSON);
         },
-        table = 
+        table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callbackCapsule),
         firstRow = document.createElement("tr"),
         firstCell = document.createElement("th"),
         secondCell = document.createElement("th"),
@@ -188,34 +64,34 @@ var modalDialogHelper = modalDialogHelper || {};
       tableToJSON = function() {
         var result = {};
         _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
-      
+        
           var key = $(".keyCell input", tr).val(),
             value = $(".valueCell input", tr).val();
           result[key] = value;
         });
         return result;
       };
-  
+    
       table.appendChild(firstRow);
       firstRow.id = "first_row";
       firstRow.appendChild(firstCell);
       firstCell.className = "keyCell";
-  
+    
       firstRow.appendChild(secondCell);
       secondCell.className = "valueCell";
-  
+    
       firstRow.appendChild(thirdCell);
-  
+    
       thirdCell.className = "actionCell";
       thirdCell.appendChild(addRow);
-  
-  
+    
+    
       addRow.id = idprefix + "new";
       addRow.className = "graphViewer-icon-button";
-  
+    
       addRow.appendChild(addImg);
       addImg.className = "gv-icon-small add";
-  
+    
       insertRow = function(value, key) {
         var internalRegex = /^_(id|rev|key|from|to)/,
           tr = document.createElement("tr"),
@@ -230,7 +106,7 @@ var modalDialogHelper = modalDialogHelper || {};
           return;
         }
         table.appendChild(tr);
-    
+      
         tr.appendChild(keyTh);
         keyTh.className = "keyCell";
         keyInput = document.createElement("input");
@@ -238,8 +114,8 @@ var modalDialogHelper = modalDialogHelper || {};
         keyInput.id = idprefix + key + "_key";
         keyInput.value = key;
         keyTh.appendChild(keyInput);
-    
-    
+      
+      
         tr.appendChild(valueTh);
         valueTh.className = "valueCell";
         valueInput = document.createElement("input");
@@ -250,40 +126,216 @@ var modalDialogHelper = modalDialogHelper || {};
         } else {
           valueInput.value = value;
         }
-    
+      
         valueTh.appendChild(valueInput);
-    
+      
 
         tr.appendChild(actTh);
         actTh.className = "actionCell";
         deleteInput = document.createElement("button");
         deleteInput.id = idprefix + key + "_delete";
         deleteInput.className = "graphViewer-icon-button";
-    
+      
         actTh.appendChild(deleteInput);
-    
+      
         delImg = document.createElement("img");
         delImg.className = "gv-icon-small delete";
         deleteInput.appendChild(delImg);
-    
+      
         deleteInput.onclick = function() {
           table.removeChild(tr);
         };
-    
+      
       };
-  
+    
       addRow.onclick = function() {
         insertRow("", "new_" + newCounter);
         newCounter++;
       };
-  
+    
       _.each(object, insertRow);
-      */
       $("#" + idprefix + "modal").modal('show');
+    },
+  
+    createViewWithObject = function (title, buttonTitle, idprefix, object, callback) {
+      var table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback),
+        firstRow = document.createElement("tr"),
+        firstCell = document.createElement("th"),
+        pre = document.createElement("pre");
+      table.appendChild(firstRow);
+      firstRow.appendChild(firstCell);
+      firstCell.appendChild(pre);
+      pre.className = "gv_object_view";
+      pre.innerHTML = JSON.stringify(object, null, 2);
+      $("#" + idprefix + "modal").modal('show');
+    },
+    
+    createTextInput = function(id) {
+      var input = document.createElement("input");
+        input.type = "text";
+        input.id = id;
+        return input;
+    },
+    
+    createCheckboxInput = function(id) {
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.id = id;
+      return input;
+    },
+    
+    createListInput = function(id, list) {
+      var input = document.createElement("select");
+      input.id = id;
+      _.each(list, function(entry) {
+        var option = document.createElement("option");
+        option.value = entry;
+        option.appendChild(
+          document.createTextNode(entry)
+        );
+        input.appendChild(option);
+      });
+      return input;
+    },
+    
+    displayDecissionRowsOfGroup = function(group) {
+      var rows = $(".decission_" + group),
+      selected = $("input[type='radio'][name='" + group + "']:checked").attr("id");
+      rows.each(function() {
+        if ($(this).attr("decider") === selected) {
+          $(this).css("display", "");
+        } else {
+          $(this).css("display", "none");
+        }
+      });
+    },
+    
+    insertDecissionInput = function(idPre, idPost, group, text, isDefault, interior, contentTh, table) {
+      var input = document.createElement("input"),
+        id = idPre + idPost,
+        lbl = document.createElement("label");
+      input.id = id;
+      input.type = "radio";
+      input.name = group;
+      input.className = "gv_radio_button";
+      lbl.className = "radio";
+      contentTh.appendChild(lbl);
+      lbl.appendChild(input);
+      lbl.appendChild(document.createTextNode(text));
+      _.each(interior, function(o) {
+        var row = $(insertModalRow(table, idPre, o));
+        row.toggleClass("decission_" + group, true);
+        row.attr("decider", id);
+      });
+      if (isDefault) {
+        input.checked = true;
+      } else {
+        input.checked = false;
+      }
+      lbl.onclick = function(e) {
+        displayDecissionRowsOfGroup(group);
+        e.stopPropagation();
+      };
+      displayDecissionRowsOfGroup(group);
+    },
+    
+    insertExtendableInput = function(idPre, idPost, list, contentTh, table, tr) {
+      var rows = [],
+        i,
+        id = idPre + idPost,
+        lastId = 1,
+        addLineButton = document.createElement("button"),
+        input = document.createElement("input"),
+        icon = document.createElement("img"),
+        addNewLine = function(content) {
+          lastId++;
+          var innerTr = document.createElement("tr"),
+            innerLabelTh = document.createElement("th"),
+            innerContentTh = document.createElement("th"),
+            innerInput = document.createElement("input"),
+            removeRow = document.createElement("button"),
+            innerIcon = document.createElement("img"),
+            lastItem;
+          innerInput.type = "text";
+          innerInput.id = id + "_" + lastId;
+          innerInput.value = content || "";
+          if (rows.length === 0) {
+            lastItem = $(tr);
+          } else {
+            lastItem = $(rows[rows.length - 1]);
+          }
+          lastItem.after(innerTr);
+          innerTr.appendChild(innerLabelTh);
+          innerLabelTh.className = "collectionTh capitalize";
+          innerLabelTh.appendChild(document.createTextNode(idPost + " " + lastId + ":"));
+          innerTr.appendChild(innerContentTh);
+          innerContentTh.className = "collectionTh";
+          innerContentTh.appendChild(innerInput);
+          removeRow.id = id + "_" + lastId + "_remove";
+          removeRow.className = "graphViewer-icon-button";
+          removeRow.appendChild(innerIcon);
+          innerIcon.className = "gv-icon-small delete";
+          removeRow.onclick = function() {
+            table.removeChild(innerTr);
+            rows.splice(rows.indexOf(innerTr), 1 );
+          };
+          
+          innerContentTh.appendChild(removeRow);
+          rows.push(innerTr);
+        };
+      input.type = "text";
+      input.id = id + "_1";
+      contentTh.appendChild(input);
+      contentTh.appendChild(addLineButton);
+      addLineButton.onclick = function() {
+        addNewLine();
+      };
+      addLineButton.id = id + "_addLine";
+      addLineButton.className = "graphViewer-icon-button";
+      addLineButton.appendChild(icon);
+      icon.className = "gv-icon-small add";
+      if (list.length > 0) {
+        input.value = o.objects[0];
+      }
+      for (i = 1; i < list.length; i++) {
+        addNewLine(list[i]);
+      }
+    },
+    
+    insertModalRow = function(table, idprefix, o) {
+      var tr = document.createElement("tr"),
+        labelTh = document.createElement("th"),
+        contentTh = document.createElement("th");
+      table.appendChild(tr);
+      tr.appendChild(labelTh);
+      labelTh.className = "collectionTh capitalize";
+      labelTh.appendChild(document.createTextNode(o.id + ":"));
+      tr.appendChild(contentTh);
+      contentTh.className = "collectionTh";
+      switch(o.type) {
+        case "text":
+          contentTh.appendChild(createTextInput(idprefix + o.id));
+          break;
+        case "checkbox":
+          contentTh.appendChild(createCheckboxInput(idprefix + o.id));
+          break;
+        case "list":
+          contentTh.appendChild(createListInput(idprefix + o.id, o.objects));
+          break;
+        case "extendable":
+          insertExtendableInput(idprefix, o.id, o.objects, contentTh, table, tr);
+          break;
+        case "decission":
+          insertDecissionInput(idprefix, o.id, o.group, o.text, o.isDefault, o.interior, contentTh, table);
+          labelTh.innerHTML = "";
+          break;
+        default:
+          //Sorry unknown
+          table.removeChild(tr);
+          break;
+      }
+      return tr;
     };
-  
-  
-  
   
   modalDialogHelper.modalDivTemplate = function (title, buttonTitle, idprefix, callback) {
     // Create needed Elements
@@ -371,115 +423,8 @@ var modalDialogHelper = modalDialogHelper || {};
   
   modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
     var table =  modalDialogHelper.modalDivTemplate(title, null, idprefix, callback);
-    
     _.each(objects, function(o) {
-      var tr = document.createElement("tr"),
-        labelTh = document.createElement("th"),
-        contentTh = document.createElement("th"),
-        input,
-        icon,
-        addLineButton,
-        rows,
-        lastId,
-        i,
-        addNewLine = function(content) {
-          lastId++;
-          var innerTr = document.createElement("tr"),
-            innerLabelTh = document.createElement("th"),
-            innerContentTh = document.createElement("th"),
-            innerInput = document.createElement("input"),
-            removeRow = document.createElement("button"),
-            innerIcon = document.createElement("img"),
-            lastItem;
-          innerInput.type = "text";
-          innerInput.id = idprefix + o.id + "_" + lastId;
-          innerInput.value = content || "";
-          if (rows.length === 0) {
-            lastItem = $(tr);
-          } else {
-            lastItem = $(rows[rows.length - 1]);
-          }
-          lastItem.after(innerTr);
-          innerTr.appendChild(innerLabelTh);
-          innerLabelTh.className = "collectionTh capitalize";
-          innerLabelTh.appendChild(document.createTextNode(o.id + " " + lastId + ":"));
-          innerTr.appendChild(innerContentTh);
-          innerContentTh.className = "collectionTh";
-          innerContentTh.appendChild(innerInput);
-          removeRow.id = idprefix + o.id + "_" + lastId + "_remove";
-          removeRow.className = "graphViewer-icon-button";
-          removeRow.appendChild(innerIcon);
-          innerIcon.className = "gv-icon-small delete";
-          removeRow.onclick = function() {
-            table.removeChild(innerTr);
-            rows.splice(rows.indexOf(innerTr), 1 );
-          };
-          
-          innerContentTh.appendChild(removeRow);
-          rows.push(innerTr);
-        };
-      
-      table.appendChild(tr);
-      tr.appendChild(labelTh);
-      labelTh.className = "collectionTh capitalize";
-      labelTh.appendChild(document.createTextNode(o.id + ":"));
-      tr.appendChild(contentTh);
-      contentTh.className = "collectionTh";
-      switch(o.type) {
-        case "text":
-          input = document.createElement("input");
-          input.type = "text";
-          input.id = idprefix + o.id;
-          contentTh.appendChild(input);
-          break;
-        case "checkbox":
-          input = document.createElement("input");
-          input.type = "checkbox";
-          input.id = idprefix + o.id;
-          contentTh.appendChild(input);
-          break;
-        case "list":
-          input = document.createElement("select");
-          input.id = idprefix + o.id;
-          contentTh.appendChild(input);
-          _.each(o.objects, function(entry) {
-            var option = document.createElement("option");
-            option.value = entry;
-            option.appendChild(
-              document.createTextNode(entry)
-            );
-            input.appendChild(option);
-          });
-          break;
-        case "extendable":
-          rows = [];
-          lastId = 1;
-          addLineButton = document.createElement("button");
-          input = document.createElement("input");
-          icon = document.createElement("img");
-          input.type = "text";
-          input.id = idprefix + o.id + "_1";
-          contentTh.appendChild(input);
-          contentTh.appendChild(addLineButton);
-          addLineButton.onclick = function() {
-            addNewLine();
-          };
-          addLineButton.id = idprefix + o.id + "_addLine";
-          addLineButton.className = "graphViewer-icon-button";
-          addLineButton.appendChild(icon);
-          icon.className = "gv-icon-small add";
-          if (o.objects.length > 0) {
-            input.value = o.objects[0];
-          }
-          for (i = 1; i < o.objects.length; i++) {
-            addNewLine(o.objects[i]);
-          }
-          break;
-        default:
-          //Sorry unknown
-          table.removeChild(tr);
-          break;
-      }
+      insertModalRow(table, idprefix, o);
     });
     $("#" + idprefix + "modal").modal('show');
   };
