@@ -40,11 +40,6 @@ var arangodb = require("org/arangodb");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Foxx
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the aal collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,26 +48,30 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts the mount point into the default prefix
+////////////////////////////////////////////////////////////////////////////////
+
+function prefixFromMount (mount) {
+  return mount.substr(1).replace(/\//g, "_");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief builds one asset of an app
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildAssetContent (app, assets, basePath) {
-  var files;
   var i;
   var j;
   var m;
-  var match;
-  var content;
 
   var reSub = /(.*)\/\*\*$/;
   var reAll = /(.*)\/\*$/;
 
-  files = [];
+  var files = [];
 
   for (j = 0; j < assets.length; ++j) {
     var asset = assets[j];
-
-    match = reSub.exec(asset);
+    var match = reSub.exec(asset);
 
     if (match !== null) {
       m = fs.listTree(fs.join(basePath, match[1]));
@@ -103,7 +102,7 @@ function buildAssetContent (app, assets, basePath) {
     }
   }
 
-  content = "";
+  var content = "";
 
   for (i = 0; i < files.length; ++i) {
     try {
@@ -124,23 +123,22 @@ function buildAssetContent (app, assets, basePath) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function installAssets (app, routes) {
-  var desc;
   var path;
-  var normalized;
-  var type;
-  var route;
 
-  desc = app._manifest;
+  var desc = app._manifest;
 
   if (! desc) {
     throw new Error("invalid application manifest");
   }
 
+  var normalized;
+  var route;
+
   if (desc.hasOwnProperty('assets')) {
     for (path in desc.assets) {
       if (desc.assets.hasOwnProperty(path)) {
-        var asset = desc.assets[path], 
-          basePath = fs.join(app._root, app._path);
+        var asset = desc.assets[path];
+        var basePath = fs.join(app._root, app._path);
 
         if (asset.hasOwnProperty('basePath')) {
           basePath = asset.basePath;
@@ -150,7 +148,7 @@ function installAssets (app, routes) {
           var content = buildAssetContent(app, asset.files, basePath);
 
           normalized = arangodb.normalizeURL("/" + path);
-          type = arangodb.guessContentType(normalized);
+          var type = arangodb.guessContentType(normalized);
 
           route = {
             url: { match: normalized },
@@ -188,22 +186,11 @@ function installAssets (app, routes) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up an app
+/// @brief executes an app script
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAppScript (app, name, mount, prefix) {
-  var desc;
-  var appContext;
-
-  appContext = {
-    name: app._name,
-    version: app._version,
-    appId: app._id,
-    mount: mount,
-    collectionPrefix: prefix
-  };
-
-  desc = app._manifest;
+  var desc = app._manifest;
   
   if (! desc) {
     throw new Error("invalid application manifest, app " + internal.inspect(app));
@@ -222,6 +209,15 @@ function executeAppScript (app, name, mount, prefix) {
   }
 
   if (desc.hasOwnProperty(name)) {
+    var appContext = {
+      name: app._name,
+      version: app._version,
+      appId: app._id,
+      mount: mount,
+      collectionPrefix: prefix,
+      appModule: app.createAppModule()
+    };
+
     var cp = appContext.collectionPrefix;
     var cname = "";
 
@@ -241,7 +237,7 @@ function executeAppScript (app, name, mount, prefix) {
       }
     };
 
-    app.loadAppScript(app.createAppModule(), desc[name], appContext, context);
+    app.loadAppScript(appContext.appModule, desc[name], appContext, context);
   }
 }
 
@@ -281,9 +277,13 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
     });
   }
   else {
-    if (doc.path !== path || doc.thumbnail !== thumbnail) {
+    if (   doc.path !== path
+        || doc.thumbnail !== thumbnail
+        || doc.description !== manifest.description) {
       doc.path = path;
       doc.thumbnail = thumbnail;
+      doc.description = manifest.description;
+
       aal.replace(doc, doc);
     }
   }
@@ -293,20 +293,16 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
 /// @brief installs an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAalApp (app, mount, prefix, development) {
+function installAalApp (app, mount, prefix) {
   'use strict';
 
-  var aal;
-  var desc;
-  var find;
-
-  aal = getStorage();
+  var aal = getStorage();
 
   // .............................................................................
   // check that the mount path is free
   // .............................................................................
 
-  find = aal.firstExample({ type: "mount", mount: mount, active: true });
+  var find = aal.firstExample({ type: "mount", mount: mount, active: true });
 
   if (find !== null) {
     throw new Error("cannot use mount path '" + mount + "', already used by '" 
@@ -318,7 +314,7 @@ function installAalApp (app, mount, prefix, development) {
   // .............................................................................
 
   if (prefix === undefined) {
-    prefix = mount.substr(1).replace(/\//g, "_");
+    prefix = prefixFromMount(mount);
   }
 
   setupApp(app, mount, prefix);
@@ -327,14 +323,13 @@ function installAalApp (app, mount, prefix, development) {
   // create a new (unique) entry in aal
   // .............................................................................
 
-  desc = {
+  var desc = {
     type: "mount",
     app: app._id,
     description: app.description,
     mount: mount,
-    active: false,
-    collectionPrefix: prefix,
-    development: development
+    active: true,
+    collectionPrefix: prefix
   };
 
   return aal.save(desc);
@@ -344,15 +339,11 @@ function installAalApp (app, mount, prefix, development) {
 /// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function routingAalApp (app, mount, prefix) {
+function routingAalApp (app, mount, prefix, dev) {
   'use strict';
 
   try {
-    var apps;
     var i;
-    var context;
-    var routes;
-    var defaultDocument;
 
     if (mount === "") {
       mount = "/";
@@ -367,22 +358,24 @@ function routingAalApp (app, mount, prefix) {
 
     // compute the collection prefix
     if (prefix === undefined) {
-      prefix = mount.substr(1).replace(/\//g, "_");
+      prefix = prefixFromMount(mount);
     }
+
+    var defaultDocument = "index.html";
 
     if (app._manifest.hasOwnProperty("defaultDocument")) {
       defaultDocument = app._manifest.defaultDocument;
     }
-    else {
-      defaultDocument = "index.html";
-    }
 
     // setup the routes
-    routes = {
+    var routes = {
       urlPrefix: mount,
       routes: [],
       middleware: [],
       context: {},
+
+      foxx: true,
+      development: dev,
 
       appContext: {
         name: app._name,                        // app name
@@ -411,74 +404,66 @@ function routingAalApp (app, mount, prefix) {
     });
 
     // mount all applications
-    apps = app._manifest.apps;
+    var apps = app._manifest.apps;
 
     for (i in apps) {
       if (apps.hasOwnProperty(i)) {
         var file = apps[i];
 
-
-        // set up a context for the routing table
-        routes.context[i] = {
-          repositories: {},
-          requires: {}
-        };
-
         // set up a context for the application start function
-        context = {
+        var context = {
+          name: app._name,                          // app name
+          version: app._version,                    // app version
+          appId: app._id,                           // app identifier
+          mount: mount,                             // global mount
           prefix: arangodb.normalizeURL("/" + i),   // app mount
-          requires: {},
-          routingInfo: {}
+          collectionPrefix: prefix,                 // collection prefix
+          appModule: app.createAppModule(),         // app module
+
+          routingInfo: {},
+          foxxes: []
         };
 
-        app.loadAppScript(app.createAppModule(), file, context);
+        app.loadAppScript(context.appModule, file, context);
 
         // .............................................................................
         // routingInfo
         // .............................................................................
 
-        var ri = context.routingInfo;
-        var rm = [ "routes", "middleware" ];
+        var foxxes = context.foxxes;
+        var u;
 
-        var route;
-        var j;
-        var k;
+        for (u = 0;  u < foxxes.length;  ++u) {
+          var foxx = foxxes[u];
+          var ri = foxx.routingInfo;
+          var rm = [ "routes", "middleware" ];
 
-        p = ri.urlPrefix;
+          var route;
+          var j;
+          var k;
 
-        for (k = 0;  k < rm.length;  ++k) {
-          var key = rm[k];
+          p = ri.urlPrefix;
 
-          if (ri.hasOwnProperty(key)) {
-            var rt = ri[key];
+          for (k = 0;  k < rm.length;  ++k) {
+            var key = rm[k];
 
-            for (j = 0;  j < rt.length;  ++j) {
-              route = rt[j];
+            if (ri.hasOwnProperty(key)) {
+              var rt = ri[key];
 
-              if (route.hasOwnProperty("url")) {
-                route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
+              for (j = 0;  j < rt.length;  ++j) {
+                route = rt[j];
+                
+                if (route.hasOwnProperty("url")) {
+                  route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
+                }
+
+                route.context = i;
+                
+                routes[key].push(route);
               }
-
-              route.context = i;
-
-              routes[key].push(route);
             }
           }
-
-          // .............................................................................
-          // repositories
-          // .............................................................................
-
-          if (ri.hasOwnProperty("repositories")) {
-            routes.context[i].repositories = ri.repositories;
-          }
         }
-
-        // .............................................................................
-        // requires
-        // .............................................................................
-
-        routes.context[i].requires = context.requires;
       }
     }
 
@@ -495,18 +480,9 @@ function routingAalApp (app, mount, prefix) {
   return null;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Foxx
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scans available FOXX applications
@@ -596,7 +572,7 @@ exports.installApp = function (appId, mount, options) {
   // .............................................................................
 
   prefix = options && options.collectionPrefix;
-  routes = routingAalApp(app, mount, prefix);
+  routes = routingAalApp(app, mount, prefix, false);
 
   if (routes === null) {
     throw new Error("cannot compute the routing table for fox application '" 
@@ -609,10 +585,6 @@ exports.installApp = function (appId, mount, options) {
 
   try {
     doc = installAalApp(app, mount, prefix, false);
-
-    // and save the routings
-    routes.foxxMount = doc._key;
-    arangodb.db._collection("_routing").save(routes);
   }
   catch (err) {
     if (doc !== undefined) {
@@ -627,83 +599,11 @@ exports.installApp = function (appId, mount, options) {
     throw err;
   }
 
-  desc = aal.document(doc)._shallowCopy;
-  desc.active = true;
-  doc = aal.replace(doc, desc);
-
-  if (typeof options === "undefined" 
-   || typeof options.reload === "undefined" 
+  if (   typeof options === "undefined" 
+      || typeof options.reload === "undefined" 
       || options.reload === true) {
     internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
   }
-
-  return { appId: app._id, mountId: doc._key };
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a FOXX application in development
-////////////////////////////////////////////////////////////////////////////////
-
-exports.installDevApp = function (name, mount, options) {
-  'use strict';
-
-  var aal;
-  var desc;
-  var doc;
-  var prefix;
-  var i;
-
-  aal = getStorage();
-
-  // .............................................................................
-  // locate the application
-  // .............................................................................
-
-  var path = module.devAppPath();
-
-  if (typeof path === "undefined" || path === "") {
-    throw new Error("dev-app-path is not set, cannot install development app '" + name + "'");
-  }
-
-  var appId = null;
-  var filename = fs.join(path, name, "manifest.json");
-
-  if (fs.exists(filename)) {
-    appId = "dev:" + name + ":" + name;
-  }
-  else {
-    throw new Error("no manifest found at '" + filename + "'");
-  }
-
-  var app = null;
-
-  if (appId !== null) {
-    app = module.createApp(appId);
-  }
-
-  if (app === null) {
-    throw new Error("cannot find development application '" + appId + "'");
-  }
-
-  // .............................................................................
-  // install the application
-  // .............................................................................
-
-  try {
-    prefix = options && options.collectionPrefix;
-    doc = installAalApp(app, mount, prefix, true);
-  }
-  catch (err) {
-    if (doc !== undefined) {
-      aal.remove(doc._key);
-    }
-
-    throw err;
-  }
-
-  desc = aal.document(doc)._shallowCopy;
-  desc.active = true;
-  doc = aal.replace(doc, desc);
 
   return { appId: app._id, mountId: doc._key };
 };
@@ -760,41 +660,155 @@ exports.uninstallApp = function (key) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the development routes
+/// @brief sets up a development app
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.developmentRoutes = function () {
-  var routes = [];
-  var aal = getStorage();
-  var cursor = aal.byExample({ type: "mount", active: true, development: true });
+exports.devSetup = function (filename) {
+  var root = module.devAppPath();
+  var m = fs.join(root, filename, "manifest.json");
+  
+  if (fs.exists(m)) {
+    try {
+      var mf = JSON.parse(fs.read(m));
 
-  while (cursor.hasNext()) {
-    var doc = cursor.next();
+      var appId = "dev:" + mf.name + ":" + filename;
+      var mount = "/dev/" + filename;
+      var prefix = prefixFromMount(mount);
+
+      var app = module.createApp(appId);
+
+      if (app === null) {
+        throw new Error("cannot find application '" + appId + "'");
+      }
+
+      setupApp(app, mount, prefix);
+    }
+    catch (err) {
+      throw new Error("cannot read app manifest '" + m + "': " + String(err.stack || err));
+    }
+  }
+  else {
+    throw new Error("cannot find manifest file '" + m + "'");
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down up a development app
+////////////////////////////////////////////////////////////////////////////////
+
+exports.devTeardown = function (filename) {
+  var root = module.devAppPath();
+  var m = fs.join(root, filename, "manifest.json");
+  
+  if (fs.exists(m)) {
+    try {
+      var mf = JSON.parse(fs.read(m));
+
+      var appId = "dev:" + mf.name + ":" + filename;
+      var mount = "/dev/" + filename;
+      var prefix = prefixFromMount(mount);
+
+      var app = module.createApp(appId);
+
+      if (app === null) {
+        throw new Error("cannot find application '" + appId + "'");
+      }
+
+      teardownApp(app, mount, prefix);
+    }
+    catch (err) {
+      throw new Error("cannot read app manifest '" + m + "': " + String(err.stack || err));
+    }
+  }
+  else {
+    throw new Error("cannot find manifest file '" + m + "'");
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the app routes
+////////////////////////////////////////////////////////////////////////////////
+
+exports.appRoutes = function () {
+  var aal = getStorage();
+  var find = aal.byExample({ type: "mount", active: true });
+
+  var routes = [];
+
+  while (find.hasNext()) {
+    var doc = find.next();
+
     var appId = doc.app;
     var mount = doc.mount;
     var prefix = doc.collectionPrefix;
 
-    var app = module.createApp(appId);
+    try {
+      var app = module.createApp(appId);
 
-    if (app === null) {
-      throw new Error("cannot find application '" + appId + "'");
+      if (app === null) {
+        throw new Error("cannot find application '" + appId + "'");
+      }
+
+      var r = routingAalApp(app, mount, prefix, false);
+
+      routes.push(r);
+
+      console.log("installed foxx app %s", appId);
     }
-
-    var r = routingAalApp(app, mount, prefix);
-
-    routes.push(r);
+    catch (err) {
+      console.error("cannot install foxx app '%s': %s", appId, String(err.stack || err));
+    }
   }
 
   return routes;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief returns the development routes
 ////////////////////////////////////////////////////////////////////////////////
 
-/// -----------------------------------------------------------------------------
-/// --SECTION--                                                       END-OF-FILE
-/// -----------------------------------------------------------------------------
+exports.developmentRoutes = function () {
+  var routes = [];
+
+  var root = module.devAppPath();
+  var files = fs.list(root);
+  var j;
+
+  for (j = 0;  j < files.length;  ++j) {
+    var m = fs.join(root, files[j], "manifest.json");
+
+    if (fs.exists(m)) {
+      try {
+        var mf = JSON.parse(fs.read(m));
+
+        var appId = "dev:" + mf.name + ":" + files[j];
+        var mount = "/dev/" + files[j];
+        var prefix = prefixFromMount(mount);
+
+        var app = module.createApp(appId);
+
+        if (app === null) {
+          throw new Error("cannot find application '" + appId + "'");
+        }
+
+        var r = routingAalApp(app, mount, prefix, true);
+
+        routes.push(r);
+
+        console.log("installed dev app %s", appId);
+      }
+      catch (err) {
+        console.error("cannot read app manifest '%s': %s", m, String(err.stack || err));
+      }
+    }
+  }
+
+  return routes;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 /// Local Variables:
 /// mode: outline-minor
