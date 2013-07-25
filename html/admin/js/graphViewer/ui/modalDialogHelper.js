@@ -187,7 +187,10 @@ var modalDialogHelper = modalDialogHelper || {};
     createListInput = function(id, list) {
       var input = document.createElement("select");
       input.id = id;
-      _.each(list, function(entry) {
+      _.each(
+        _.sortBy(list, function(e) {
+          return e.toLowerCase();
+        }), function(entry) {
         var option = document.createElement("option");
         option.value = entry;
         option.appendChild(
