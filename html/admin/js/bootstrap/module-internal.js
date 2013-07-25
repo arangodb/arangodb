@@ -934,6 +934,7 @@
     var useColor = context.useColor;
     var customInspect = context.customInspect;
     var useToString = context.useToString;
+    var limitString = context.limitString;
 
     if (typeof context.seen === "undefined") {
       context.seen = [];
@@ -1026,6 +1027,12 @@
       else if (typeof(value) === "string") {
         if (useColor) {
           context.output += colors.COLOR_STRING;
+        }
+
+        if (limitString) {
+          if (limitString < value.length) {
+            value = value.substr(0, limitString) + "...";
+          }
         }
 
         context.output += quoteJsonString(value);
@@ -1143,6 +1150,7 @@
           prettyPrint: usePrettyPrint,
           useColor: useColor,
           customInspect: true,
+          limitString: 80,
           useToString: true
         };
 
