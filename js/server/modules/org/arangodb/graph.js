@@ -512,6 +512,32 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_graph_getAll
+/// @brief returns all available graphs
+///
+/// @FUN{@FA{graph}.getAll()}
+///
+/// Returns all available graphs.
+////////////////////////////////////////////////////////////////////////////////
+
+function getAllGraphs () {
+  var gdb = db._collection("_graphs"),
+    graphs = [ ];
+
+  gdb.toArray().forEach(function(doc) {
+    var g = new Graph(doc._key);
+
+    if (g._properties !== null) {
+      graphs.push(g._properties);
+    }
+  });
+
+  return graphs;
+}
+
+Graph.getAll = getAllGraphs;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the graph, the vertices, and the edges
 ///
 /// @FUN{@FA{graph}.drop(@FA{waitForSync})}

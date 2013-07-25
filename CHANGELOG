@@ -1,6 +1,34 @@
 v1.4
 ----
 
+* added collection detail dialog (web interface)
+
+  Shows collection properties, figures (datafiles, journals, attributes, etc.)
+  and indexes.
+
+* added documents filter (web interface)
+
+  Allows searching for documents based on attribute values. One or many filter
+  conditions can be defined, using comparison operators such as '==', '<=', etc.
+
+* improved AQL editor (web interface)
+
+  Editor supports keyboard shortcuts (Submit, Undo, Redo, Select).
+  Editor allows saving and reusing of user-defined queries.
+  Added example queries to AQL editor.
+  Added comment button.
+
+* added document import (web interface)
+
+  Allows upload of JSON-data from files. Files must have an extension of .json.
+
+* added dashboard (web interface)
+
+  Shows the status of replication and multiple system charts, e.g.
+  Virtual Memory Size, Request Time, HTTP Connections etc.
+
+* added API method `/_api/graph` to query all graphs with all properties.
+
 * added example queries in web interface AQL editor
 
 * added arango.reconnect(<host>) method for arangosh to dynamically switch server or

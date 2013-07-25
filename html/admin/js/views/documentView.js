@@ -260,7 +260,7 @@ var documentView = Backbone.View.extend({
         return ("<a class=\"sh_object\">"+ self.escaped(JSON.stringify(value)) + "</a>");
       }
     };
-    return (isReadOnly ? "(read-only) " : "") + typify(value);
+    return (isReadOnly ? '<i class="readOnlyClass">' : '') + typify(value) + '</i>';
   },
 
   escaped: function (value) {

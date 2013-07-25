@@ -16,28 +16,52 @@ console.log(ds, es);
   <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
     <fieldset>
       <legend>Configuration</legend>
-      <div class="control-group">
-        <label for="nodeCollection" class="control-label">Node Collection</label>
-        <div class="controls">
-          <select id="nodeCollection" name="nodeCollection">
-          <%_.each(ds, function(d) {%>
-            <option value="<%= d %>"><%= d %></option>
-          <%}); %>
-          </select>
+      
+      <label class="radio">
+        <input type="radio" name="loadtype" id="collections" checked>
+        Define specific collections
+      </label>
+      <div id="collection_config">
+        <div class="control-group">
+          <label for="nodeCollection" class="control-label">Node-Collection</label>
+          <div class="controls">
+            <select id="nodeCollection" name="nodeCollection">
+            <%_.each(ds, function(d) {%>
+              <option value="<%= d %>"><%= d %></option>
+            <%}); %>
+            </select>
+          </div>
+        </div>
+      
+        <div class="control-group">
+          <label for="edgeCollection" class="control-label">Edge-Collection</label>
+          <div class="controls">
+            <select id="edgeCollection" name="edgeCollection">
+            <%_.each(es, function(e) {%>
+              <option value="<%= e %>"><%= e %></option>
+            <%}); %>
+            </select>
+          </div>
         </div>
       </div>
-      
-      <div class="control-group">
-        <label for="edgeCollection" class="control-label">Edge Collection</label>
-        <div class="controls">
-          <select id="edgeCollection" name="edgeCollection">
-          <%_.each(es, function(e) {%>
-            <option value="<%= e %>"><%= e %></option>
-          <%}); %>
-          </select>
+
+      <label class="radio">
+        <input type="radio" name="loadtype" id="graphs">
+        Use a graph
+      </label>
+      <div id="graph_config" style="display:none">
+        <div class="control-group">
+          <label for="graph" class="control-label">Graph-Name</label>
+          <div class="controls">
+            <select id="graph" name="graph">
+            <%_.each(gs, function(g) {%>
+              <option value="<%= g %>"><%= g %></option>
+            <%}); %>
+            </select>
+          </div>
         </div>
       </div>
-      
+
       <div class="control-group">
         <label for="undirected" class="control-label">Undirected Graph</label>
         <div class="controls">
@@ -66,9 +90,9 @@ console.log(ds, es);
               
               
               <div class="control-group">
-                <label for="nodeLabel" class="control-label">Node Label</label>
+                <label for="nodeLabel" class="control-label">Node-Label-Attribute</label>
                 <div class="controls">
-                  <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Node Label" maxlength="75" class="input-xlarge">
+                  <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Attribute" maxlength="75" class="input-xlarge">
                 </div>
               </div>
             </div>
