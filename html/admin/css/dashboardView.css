@@ -352,3 +352,9 @@
 .firstTh {
   padding-left: 8px;
 }
+
+#shortcutDiv {
+  font-size: 10px;
+  font-weight: 200;
+}
+}
