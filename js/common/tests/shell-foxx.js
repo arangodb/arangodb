@@ -308,26 +308,12 @@ function DocumentationAndConstraintsSpec () {
     testDefineMetaData: function () {
       app.get('/foxx', function () {
         //nothing
-      }).nickname("a").summary("b").notes("c");
+      }).summary("b").notes("c");
 
       assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.nickname, "a");
+      assertEqual(routes[0].docs.nickname, "get_foxx");
       assertEqual(routes[0].docs.summary, "b");
       assertEqual(routes[0].docs.notes, "c");
-    },
-
-    testNicknameFormat: function () {
-      var error;
-
-      try {
-        app.get('/foxx', function () {
-          //nothing
-        }).nickname("a b");
-      } catch(e) {
-        error = e;
-      }
-
-      assertEqual(error.substr(0,31), "Nickname may only contain [a-z]".substr(0,31));
     },
 
     testSummaryRestrictedTo60Characters: function () {
