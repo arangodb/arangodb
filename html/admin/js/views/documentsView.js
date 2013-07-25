@@ -135,7 +135,6 @@ var documentsView = Backbone.View.extend({
       if (self.file.type !== 'application/json') {
         arangoHelper.arangoNotification("Unsupported filetype: " + self.file.type);
         self.allowUpload = false;
-        return;
       }
       else {
         self.allowUpload = true;
@@ -439,9 +438,7 @@ var documentsView = Backbone.View.extend({
 
       var tempObj = {};
       $.each(value.attributes.content, function(k, v) {
-        if (k === '_id' || k === '_rev' || k === '_key') {
-        }
-        else {
+        if (! (k === '_id' || k === '_rev' || k === '_key')) {
           tempObj[k] = v;
         }
       });
