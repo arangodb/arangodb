@@ -225,14 +225,37 @@ function NodeShaperControls(list, shaper) {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
-          id: "attribute"
+          id: "label-attribute"
+        },{
+          type: "decission",
+          id: "samecolour",
+          group: "colour",
+          text: "Use same for colour",
+          isDefault: true
+        },{
+          type: "decission",
+          id: "othercolour",
+          group: "colour",
+          text: "Use other for colour",
+          isDefault: false,
+          interior: [
+          {
+            type: "text",
+            id: "colour-attribute"
+          }
+          ]
         }], function () {
-          var key = $("#" + idprefix + "key").attr("value");
+          var key = $("#" + idprefix + "label-attribute").attr("value"),
+            colourkey = $("#" + idprefix + "colour-attribute").attr("value"),
+            selected = $("input[type='radio'][name='colour']:checked").attr("id");
+          if (selected === idprefix + "samecolour") {
+            colourkey = key
+          }
           shaper.changeTo({
             label: key,
             color: {
               type: "attribute",
-              key: key
+              key: colourkey
             }
           });
           if (colourDiv === undefined) {
