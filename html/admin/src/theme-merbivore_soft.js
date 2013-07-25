@@ -119,7 +119,7 @@ border-color: #E6E1DC\
 .ace-merbivore-soft .ace_comment,\
 .ace-merbivore-soft .ace_meta {\
 font-style: italic;\
-color: #AC4BB8\
+color: #8AA051\
 }\
 .ace-merbivore-soft .ace_entity.ace_other.ace_attribute-name {\
 color: #EAF1A3\
