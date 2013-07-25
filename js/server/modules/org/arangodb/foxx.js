@@ -116,7 +116,11 @@ Application = function (context, options) {
   if (urlPrefix === "") {
     urlPrefix = context.prefix;
   } else {
-    urlPrefix = context.prefix + "/" + urlPrefix;
+    if (context.prefix === "") {
+      urlPrefix = urlPrefix;
+    } else {
+      urlPrefix = context.prefix + "/" + urlPrefix;
+    }
   }
 
   this.helperCollection = {};
