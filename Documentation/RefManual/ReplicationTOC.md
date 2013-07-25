@@ -6,3 +6,4 @@ TOC {#RefManualReplicationTOC}
     - @ref RefManualReplicationEventTypes
     - @ref RefManualReplicationExamples
     - @ref RefManualReplicationTransactions
+    - @ref RefManualReplicationCollections
