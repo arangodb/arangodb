@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* added API method `/_api/graph` to query all graphs with all properties.
+
 * added example queries in web interface AQL editor
 
 * added arango.reconnect(<host>) method for arangosh to dynamically switch server or
