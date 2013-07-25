@@ -13,6 +13,7 @@ TOC {#JSModuleGraphTOC}
        - @ref JSModuleGraphGraphRemoveEdge "Graph.removeEdge"
        - @ref JSModuleGraphGraphRemoveVertex "Graph.removeVertex"
        - @ref JSModuleGraphGraphDrop "Graph.drop"
+       - @ref JSModuleGraphGraphGetAll "Graph.getAll"
        - @ref JSModuleGraphGraphGeodesics "Graph.geodesics"
        - @ref JSModuleGraphGraphMeasurement "Graph.measurement"
        - @ref JSModuleGraphGraphNormalizedMeasurement "Graph.normalizedMeasurement"

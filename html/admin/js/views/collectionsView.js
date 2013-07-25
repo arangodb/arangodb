@@ -8,20 +8,6 @@ var collectionsView = Backbone.View.extend({
   searchTimeout: null,
 
   initialize: function () {
-    var self = this;
-    self.system = {};
-    $.ajax({
-      type: "GET",
-      cache: false,
-      url: "/_admin/version",
-      contentType: "application/json",
-      processData: false,
-      async: false,
-      success: function(data) {
-        self.system.name = data.server;
-        self.system.version = data.version;
-      }
-    });
   },
 
   template: new EJS({url: 'js/templates/collectionsView.ejs'}),
@@ -58,7 +44,6 @@ var collectionsView = Backbone.View.extend({
     $('#searchInput').val('');
     $('#searchInput').val(val);
 
-    $('.footer-right p').html(this.system.name+' : '+this.system.version);
 
     return this;
   },

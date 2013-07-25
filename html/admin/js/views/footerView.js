@@ -3,13 +3,28 @@
 
 var footerView = Backbone.View.extend({
   el: '.footer',
-  init: function () {
+  initialize: function () {
+    var self = this;
+    self.system = {};
+    $.ajax({
+      type: "GET",
+      cache: false,
+      url: "/_admin/version",
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        self.system.name = data.server;
+        self.system.version = data.version;
+      }
+    });
   },
 
   template: new EJS({url: 'js/templates/footerView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);
+    $('.footer-right p').html(this.system.name+' : '+this.system.version);
     return this;
   }
 
