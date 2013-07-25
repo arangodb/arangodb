@@ -78,7 +78,6 @@ describe ArangoDB do
     return doc
   end
 
-
 ################################################################################
 ## checking graph responses
 ################################################################################
@@ -158,6 +157,20 @@ describe ArangoDB do
         doc2 = create_graph( prefix, "recreate_2", vertex_collection, edge_collection )
         doc2.code.should eq(400)
         doc2.parsed_response['error'].should eq(true)
+      end
+      
+      it "checks get all graphs" do
+        doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+        doc1.code.should eq(201)
+        etag = doc1.headers['etag']
+        
+        cmd = "/_api/graph"
+        doc2 = ArangoDB.log_get("#{prefix}", cmd)
+
+        doc2.code.should eq(200)
+        doc2.parsed_response['graphs'].length.should eq(1)
+        doc2.parsed_response['graphs'][0]['_rev'].should eq(etag)
+        doc2.parsed_response['graphs'][0]['_key'].should eq(graph_name)
       end
 
       it "checks create and get graph" do

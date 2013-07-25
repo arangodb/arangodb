@@ -64,6 +64,9 @@ line-wise processing.
 
 To use this method, the `type` URL parameter should be set to `array`.
 
+Setting the `type` URL parameter to `auto` will make the server auto-detect whether
+the data are line-wise JSON documents (type = documents) or a JSON list (type = array).
+
 @EXAMPLES
 
 @verbinclude api-import-documents

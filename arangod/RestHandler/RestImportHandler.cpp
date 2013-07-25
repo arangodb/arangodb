@@ -32,7 +32,6 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
-#include "Utilities/ResourceHolder.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
@@ -121,24 +120,24 @@ HttpHandler::status_e RestImportHandler::execute () {
 
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
-        // extract the import type
-        bool found;
-        string documentType = _request->value("type", found);
+      // extract the import type
+      bool found;
+      string documentType = _request->value("type", found);
 
-        if (found && documentType == "documents") {
-          // lines with individual JSON documents
-          res = createByDocumentsLines();
-        }
-        else if (found && documentType == "array") {
-          // one JSON array
-          res = createByDocumentsList();
-        }
-        else {
-          // CSV
-          res = createByKeyValueList();
-        }
+      if (found && 
+          (documentType == "documents" ||
+           documentType == "array" ||
+           documentType == "list" ||
+           documentType == "auto")) {
+        res = createFromJson(documentType);
+      }
+      else {
+        // CSV
+        res = createFromKeyValueList();
       }
       break;
+    }
+
     default:
       res = false;
       generateNotImplemented("ILLEGAL " + DOCUMENT_IMPORT_PATH);
@@ -168,11 +167,12 @@ HttpHandler::status_e RestImportHandler::execute () {
 /// @brief log an error document
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestImportHandler::logDocument (const TRI_json_t* const json) const {
+void RestImportHandler::logDocument (TRI_json_t const* json) const {
   TRI_string_buffer_t buffer;
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
   int res = TRI_StringifyJson(&buffer, json);
+
   if (res == TRI_ERROR_NO_ERROR) {
     LOGGER_WARNING("offending document: " << buffer._buffer);
   }
@@ -180,372 +180,90 @@ void RestImportHandler::logDocument (const TRI_json_t* const json) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates documents
-///
-/// @REST{POST /_api/import?type=documents&collection=`collection-name`}
-///
-/// Creates documents in the collection identified by `collection-name`.
-/// The JSON representations of the documents must be passed as the body of the
-/// POST request.
-///
-/// If the documents were created successfully, then a `HTTP 201` is returned.
+/// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createByDocumentsLines () {
-  size_t numCreated = 0;
-  size_t numError = 0;
-  size_t numEmpty = 0;
+bool RestImportHandler::handleSingleDocument (ImportTransactionType& trx, 
+                                              TRI_json_t const* json,
+                                              const bool isEdgeCollection,
+                                              const bool waitForSync,
+                                              const size_t i) {
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    LOGGER_WARNING("invalid JSON type (expecting array) at position " << i);
 
-  vector<string> const& suffix = _request->suffix();
-
-  if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=documents&collection=<identifier>");
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
+  // document ok, now import it
+  TRI_doc_mptr_t document;
+  int res = TRI_ERROR_NO_ERROR;
 
-  // extract the collection name
-  bool found;
-  const string& collection = _request->value("collection", found);
+  if (isEdgeCollection) {
+    const char* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
+    const char* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
 
-  if (! found || collection.empty()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
-    return false;
-  }
+    if (from == 0 || to == 0) {
+      LOGGER_WARNING("missing '_from' or '_to' attribute at position " << i);
 
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
-    return false;
-  }
+      return false;
+    }
 
-  // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
+    TRI_document_edge_t edge;
 
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
+    edge._fromCid = 0;
+    edge._toCid   = 0;
+    edge._fromKey = 0;
+    edge._toKey   = 0;
 
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-    return false;
-  }
+    int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
+    int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  const TRI_voc_cid_t cid = trx.cid();
-  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
-
-  trx.lockWrite();
-
-  const char* ptr = _request->body();
-  const char* end = ptr + _request->bodySize();
-  string line;
-  size_t i = 0;
-
-  while (ptr < end) {
-    i++;
-    const char* pos = strchr(ptr, '\n');
-
-    if (pos == 0) {
-      line.assign(ptr, (size_t) (end - ptr));
-      ptr = end;
+    if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
+      res = trx.createEdge(&document, json, waitForSync, &edge);
     }
     else {
-      line.assign(ptr, (size_t) (pos - ptr));
-      ptr = pos + 1;
+      res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
     }
 
-    StringUtils::trimInPlace(line, "\r\n\t ");
-    if (line.length() == 0) {
-      ++numEmpty;
-      continue;
+    if (edge._fromKey != 0) {
+      TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
-
-    TRI_json_t* values = parseJsonLine(line);
-
-    if (values == 0 || values->_type != TRI_JSON_ARRAY) {
-      LOGGER_WARNING("invalid JSON type (expecting array) at position " << i);
-      ++numError;
+    if (edge._toKey != 0) {
+      TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
     }
-    else {
-      // now save the document
-      TRI_doc_mptr_t document;
-
-      if (isEdgeCollection) {
-        const char* from = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_FROM);
-
-        if (from == 0) {
-          LOGGER_WARNING("missing '_from' attribute at position " << i);
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-          ++numError;
-          continue;
-        }
-
-        const char* to = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_TO);
-        if (to == 0) {
-          LOGGER_WARNING("missing '_to' attribute at position " << i);
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-          ++numError;
-          continue;
-        }
-
-        TRI_document_edge_t edge;
-
-        edge._fromCid = cid;
-        edge._toCid = cid;
-        edge._fromKey = 0;
-        edge._toKey = 0;
-
-        int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
-        int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
-
-        if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, values, waitForSync, &edge);
-        }
-        else {
-          res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
-        }
-
-        if (edge._fromKey != 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
-        }
-        if (edge._toKey != 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
-        }
-      }
-      else {
-        // do not acquire an extra lock
-        res = trx.createDocument(&document, values, waitForSync);
-      }
-
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        ++numCreated;
-      }
-      else {
-        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
-        logDocument(values);
-        ++numError;
-      }
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-    }
-  }
-
-  // this will commit, even if previous errors occurred
-  res = trx.commit();
-
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
   }
   else {
-    // generate result
-    generateDocumentsCreated(numCreated, numError, numEmpty);
+    // do not acquire an extra lock
+    res = trx.createDocument(&document, json, waitForSync);
   }
 
-  return true;
+  if (res == TRI_ERROR_NO_ERROR) {
+    return true;
+  }
+
+  LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
+  logDocument(json);
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates documents
+/// @brief creates documents from JSON
 ///
-/// @REST{POST /_api/import?type=array&collection=`collection-name`}
+/// @REST{POST /_api/import?type=auto&collection=`collection-name`}
 ///
 /// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
-/// POST request.
+/// POST request. The request body can either consist of multiple lines, with
+/// each line being a single stand-alone JSON document, or a JSON list.
 ///
 /// If the documents were created successfully, then a `HTTP 201` is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createByDocumentsList () {
+bool RestImportHandler::createFromJson (const string& type) {
   size_t numCreated = 0;
-  size_t numError = 0;
-
-  vector<string> const& suffix = _request->suffix();
-
-  if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=array&collection=<identifier>");
-    return false;
-  }
-
-  const bool waitForSync = extractWaitForSync();
-
-  // extract the collection name
-  bool found;
-  const string& collection = _request->value("collection", found);
-
-  if (! found || collection.empty()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
-    return false;
-  }
-
-  ResourceHolder holder;
-
-  char* errmsg = 0;
-  TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), &errmsg);
-
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, documents)) {
-    if (errmsg == 0) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    "cannot parse json object");
-    }
-    else {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    errmsg);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
-    }
-    return false;
-  }
-
-  if (documents->_type != TRI_JSON_LIST) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting a JSON list in the request");
-    return false;
-  }
-
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
-    return false;
-  }
-
-  // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
-
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
-
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-    return false;
-  }
-
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  const TRI_voc_cid_t cid = trx.cid();
-  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
-
-  trx.lockWrite();
-
-  for (size_t i = 0; i < documents->_value._objects._length; ++i) {
-    TRI_json_t* values = (TRI_json_t*) TRI_AtVector(&documents->_value._objects, i);
-
-    if (values == 0 || values->_type != TRI_JSON_ARRAY) {
-      LOGGER_WARNING("invalid JSON type (expecting array) at position " << (i + 1));
-      ++numError;
-    }
-    else {
-      // now save the document
-      TRI_doc_mptr_t document;
-
-      if (isEdgeCollection) {
-        const char* from = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_FROM);
-
-        if (from == 0) {
-          LOGGER_WARNING("missing '_from' attribute at position " << (i + 1));
-          ++numError;
-          continue;
-        }
-
-        const char* to = extractJsonStringValue(values, TRI_VOC_ATTRIBUTE_TO);
-        if (to == 0) {
-          LOGGER_WARNING("missing '_to' attribute at position " << (i + 1));
-          ++numError;
-          continue;
-        }
-
-        TRI_document_edge_t edge;
-
-        edge._fromCid = cid;
-        edge._toCid = cid;
-        edge._fromKey = 0;
-        edge._toKey = 0;
-
-        int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
-        int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
-
-        if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, values, waitForSync, &edge);
-        }
-        else {
-          res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
-        }
-
-        if (edge._fromKey != 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
-        }
-        if (edge._toKey != 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
-        }
-      }
-      else {
-        // do not acquire an extra lock
-        res = trx.createDocument(&document, values, waitForSync);
-      }
-
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        ++numCreated;
-      }
-      else {
-        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
-        logDocument(values);
-        ++numError;
-      }
-    }
-  }
-
-  // this will commit, even if previous errors occurred
-  res = trx.commit();
-
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-  }
-  else {
-    // generate result
-    size_t numEmpty = 0;
-    generateDocumentsCreated(numCreated, numError, numEmpty);
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates documents
-///
-/// @REST{POST /_api/import?collection=`collection-name`}
-///
-/// Creates documents in the collection identified by `collection-name`.
-/// The JSON representations of the documents must be passed as the body of the
-/// POST request.
-///
-/// If the documents were created successfully, then a `HTTP 201` is returned.
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestImportHandler::createByKeyValueList () {
-  size_t numCreated = 0;
-  size_t numError = 0;
-  size_t numEmpty = 0;
+  size_t numError   = 0;
+  size_t numEmpty   = 0;
 
   vector<string> const& suffix = _request->suffix();
 
@@ -569,13 +287,226 @@ bool RestImportHandler::createByKeyValueList () {
     return false;
   }
 
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+    return false;
+  }
+  
+  bool linewise;
+
+  if (type == "documents") {
+    // linewise import
+    linewise = true;
+  }
+  else if (type == "array" || type == "list") {
+    // non-linewise import
+    linewise = false;
+  }
+  else if (type == "auto") {
+    linewise = true;
+
+    // auto detect import type by peeking at first character
+    const char* ptr = _request->body();
+    const char* end = ptr + _request->bodySize();
+
+    while (ptr < end) {
+      const char c = *ptr;
+      if (c == '\r' || c == '\n' || c == '\t' || c == ' ') {
+        ptr++;
+        continue;
+      }
+      else if (c == '[') {
+        linewise = false;
+      }
+
+      break;
+    }
+  }
+  else {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  "invalid value for 'type'");
+    return false;
+  }
+
+
+  // find and load collection given by name or identifier
+  ImportTransactionType trx(_vocbase, _resolver, collection);
+
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return false;
+  }
+
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+
+  trx.lockWrite();
+
+  if (linewise) {
+    // each line is a separate JSON document
+    const char* ptr = _request->body();
+    const char* end = ptr + _request->bodySize();
+    string line;
+    size_t i = 0;
+
+    while (ptr < end) {
+      // read line until done
+      i++;
+      const char* pos = strchr(ptr, '\n');
+
+      if (pos == 0) {
+        line.assign(ptr, (size_t) (end - ptr));
+        ptr = end;
+      }
+      else {
+        line.assign(ptr, (size_t) (pos - ptr));
+        ptr = pos + 1;
+      }
+
+      StringUtils::trimInPlace(line, "\r\n\t ");
+      if (line.length() == 0) {
+        ++numEmpty;
+        continue;
+      }
+
+      TRI_json_t* json = parseJsonLine(line);
+
+      bool success = handleSingleDocument(trx, json, isEdgeCollection, waitForSync, i);
+
+      if (success) {
+        ++numCreated;
+      }
+      else {
+        ++numError;
+      }
+
+      if (json != 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+    }
+  }
+
+  else {
+    // the entire request body is one JSON document
+    char* errmsg = 0;
+    TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), &errmsg);
+
+    if (documents == 0) {
+      if (errmsg == 0) {
+        generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+      }
+      else {
+        generateError(HttpResponse::BAD,
+                      TRI_ERROR_HTTP_CORRUPTED_JSON,
+                      errmsg);
+
+        TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
+      }
+
+      return false;
+    }
+
+    if (documents->_type != TRI_JSON_LIST) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
+
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting a JSON list in the request");
+      return false;
+    }
+  
+    const size_t n = documents->_value._objects._length; 
+
+    for (size_t i = 0; i < n; ++i) {
+      TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&documents->_value._objects, i);
+      
+      bool success = handleSingleDocument(trx, json, isEdgeCollection, waitForSync, i + 1);
+
+      if (success) {
+        ++numCreated;
+      }
+      else {
+        ++numError;
+      }
+    }
+      
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
+  }
+
+
+  // this will commit, even if previous errors occurred
+  res = trx.commit();
+
+  // .............................................................................
+  // outside write transaction
+  // .............................................................................
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+  }
+  else {
+    // generate result
+    generateDocumentsCreated(numCreated, numError, numEmpty);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates documents
+///
+/// @REST{POST /_api/import?collection=`collection-name`}
+///
+/// Creates documents in the collection identified by `collection-name`.
+/// The JSON representations of the documents must be passed as the body of the
+/// POST request.
+///
+/// If the documents were created successfully, then a `HTTP 201` is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestImportHandler::createFromKeyValueList () {
+  size_t numCreated = 0;
+  size_t numError   = 0;
+  size_t numEmpty   = 0;
+
+  vector<string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+    return false;
+  }
+
+  const bool waitForSync = extractWaitForSync();
+
+  // extract the collection name
+  bool found;
+  const string& collection = _request->value("collection", found);
+
+  if (! found || collection.empty()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+    return false;
+  }
+
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+    return false;
+  }
+
   // read line number (optional)
-  const string& lineNumValue = _request->value("line", found);
   int64_t lineNumber = 0;
+  const string& lineNumValue = _request->value("line", found);
   if (found) {
     lineNumber = StringUtils::int64(lineNumValue);
   }
-
 
   size_t start = 0;
   string body(_request->body(), _request->bodySize());
@@ -588,69 +519,57 @@ bool RestImportHandler::createByKeyValueList () {
     return false;
   }
 
-  ResourceHolder holder;
-  TRI_json_t* keys = 0;
-
   string line = body.substr(start, next);
   StringUtils::trimInPlace(line, "\r\n\t ");
 
   // get first line
+  TRI_json_t* keys = 0;
+
   if (line != "") {
     keys = parseJsonLine(line);
-    if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, keys)) {
-      LOGGER_WARNING("no JSON data in first line");
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "no JSON string list in first line found");
-      return false;
+  }
+
+  if (keys == 0 || keys->_type != TRI_JSON_LIST) {
+    if (keys != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     }
 
-    if (keys->_type == TRI_JSON_LIST) {
-      if (! checkKeys(keys)) {
-        LOGGER_WARNING("no JSON string list in first line found");
-        generateError(HttpResponse::BAD,
-                      TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "no JSON string list in first line found");
-        return false;
-      }
-      start = next + 1;
-    }
-    else {
-      LOGGER_WARNING("no JSON string list in first line found");
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "no JSON string list in first line found");
-      return false;
-    }
+    LOGGER_WARNING("no JSON string list found first line");
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string list found in first line");
+    return false;
   }
-  else {
+
+  if (! checkKeys(keys)) {
     LOGGER_WARNING("no JSON string list in first line found");
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string list in first line found");
-    return false;
-  }
 
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     return false;
   }
+  
+  start = next + 1;
 
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
+  ImportTransactionType trx(_vocbase, _resolver, collection);
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     generateTransactionError(collection, res);
     return false;
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
-  const TRI_voc_cid_t cid = trx.cid();
   const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
@@ -659,8 +578,10 @@ bool RestImportHandler::createByKeyValueList () {
   // inside write transaction
   // .............................................................................
 
+  size_t i = (size_t) lineNumber;
+
   while (next != string::npos && start < body.length()) {
-    lineNumber++;
+    i++;
 
     next = body.find('\n', start);
 
@@ -679,91 +600,35 @@ bool RestImportHandler::createByKeyValueList () {
     }
 
     TRI_json_t* values = parseJsonLine(line);
-
-    if (values) {
-      // got a json document or list
-      TRI_json_t* json;
-
+     
+    if (values != 0) { 
       // build the json object from the list
-      json = createJsonObject(keys, values, line);
+      TRI_json_t* json = createJsonObject(keys, values, line);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-
-      if (json == 0) {
-        ++numError;
-        continue;
+    
+      bool success = handleSingleDocument(trx, json, isEdgeCollection, waitForSync, i);
+      
+      if (json != 0) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
-
-      // now save the document
-      TRI_doc_mptr_t document;
-
-      if (isEdgeCollection) {
-        const char* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
-
-        if (from == 0) {
-          LOGGER_WARNING("missing '_from' attribute at line " << lineNumber);
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          ++numError;
-          continue;
-        }
-
-        const char* to = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
-        if (to == 0) {
-          LOGGER_WARNING("missing '_to' attribute at line " << lineNumber);
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          ++numError;
-          continue;
-        }
-
-        TRI_document_edge_t edge;
-
-        edge._fromCid = cid;
-        edge._toCid = cid;
-        edge._fromKey = 0;
-        edge._toKey = 0;
-
-        int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
-        int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
-
-        if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-          res = trx.createEdge(&document, json, waitForSync, &edge);
-        }
-        else {
-          res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
-        }
-
-        if (edge._fromKey != 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
-        }
-        if (edge._toKey != 0) {
-          TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
-        }
-      }
-      else {
-        // do not acquire an extra lock
-        res = trx.createDocument(&document, json, waitForSync);
-      }
-
-
-      if (res == TRI_ERROR_NO_ERROR) {
+      
+      if (success) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
-        logDocument(json);
         ++numError;
       }
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     else {
       LOGGER_WARNING("no valid JSON data in line: " << line);
       ++numError;
     }
-
   }
 
   // we'll always commit, even if previous errors occurred
   res = trx.commit();
+    
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
 
   // .............................................................................
   // outside write transaction
