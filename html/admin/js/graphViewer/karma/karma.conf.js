@@ -32,6 +32,7 @@ module.exports = function(karma) {
 
     // Core Modules
       '../graphViewer.js',
+      '../graph/domObserverFactory.js',
       '../graph/colourMapper.js',
       '../graph/communityNode.js',
       '../graph/webWorkerWrapper.js',
@@ -63,6 +64,7 @@ module.exports = function(karma) {
     // Specs
     
       'specColourMapper/colourMapperSpec.js',
+      'specWindowObjects/domObserverFactorySpec.js',
       'specCommunityNode/communityNodeSpec.js',
       'specAdapter/interfaceSpec.js',
       'specAdapter/abstractAdapterSpec.js',
@@ -87,7 +89,7 @@ module.exports = function(karma) {
       'specGraphViewer/graphViewerPreviewSpec.js',
       'specNodeReducer/nodeReducerSpec.js',
       'specNodeReducer/modularityJoinerSpec.js',
-      'specWebWorker/workerWrapperSpec.js',
+      'specWindowObjects/workerWrapperSpec.js',
       'specJSLint/jsLintSpec.js'
     ],
 

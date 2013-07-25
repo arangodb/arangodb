@@ -53,7 +53,7 @@ function EdgeShaper(parent, flags, idfunc) {
     followEdge = {},
     followEdgeG,
     idFunction = function(d) {
-      return d.source._id + "-" + d.target._id;
+      return d._id;
     },
     noop = function (line, g) {
     
@@ -109,13 +109,35 @@ function EdgeShaper(parent, flags, idfunc) {
       }
     },
     
+    calculateNodePositions = function (e) {
+      var sp, tp, s, t;
+      s = e.source;
+      t = e.target;
+      if (s._isCommunity) {
+        sp = s.getSourcePosition(e);
+      } else {
+        sp = s.position;
+      }
+      if (t._isCommunity) {
+        tp = t.getTargetPosition(e);
+      } else {
+        tp = t.position;
+      }
+      return {
+        s: sp,
+        t: tp
+      };
+    },
+    
     addPosition = function (line, g) {
+     
       g.attr("transform", function(d) {
+        var p = calculateNodePositions(d);
         return "translate("
-          + d.source.position.x + ", "
-          + d.source.position.y + ")"
+          + p.s.x + ", "
+          + p.s.y + ")"
           + "rotate("
-          + getCorner(d.source.position, d.target.position)
+          + getCorner(p.s, p.t)
           + ")";
       });
       line.attr("x2", function(d) {
@@ -127,7 +149,8 @@ function EdgeShaper(parent, flags, idfunc) {
           console.log(d.target);
         }
         */
-        return getDistance(d.source.position, d.target.position);
+        var p = calculateNodePositions(d);
+        return getDistance(p.s, p.t);
       });
     },
     

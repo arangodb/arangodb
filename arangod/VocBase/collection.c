@@ -284,7 +284,7 @@ static int DatafileComparator (const void* lhs, const void* rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void SortFilenames (TRI_vector_string_t* files) {
-  if (files->_length < 1) {
+  if (files->_length <= 1) {
     return;
   }
 
@@ -296,7 +296,7 @@ static void SortFilenames (TRI_vector_string_t* files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void SortDatafiles (TRI_vector_pointer_t* files) {
-  if (files->_length < 1) {
+  if (files->_length <= 1) {
     return;
   }
 
@@ -908,7 +908,12 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameter->_maximalSize = PageSize;
   }
   parameter->_waitForSync   = vocbase->_defaultWaitForSync;
-  parameter->_keyOptions    = keyOptions;
+
+  parameter->_keyOptions    = NULL;
+
+  if (keyOptions != NULL) {
+    parameter->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, keyOptions);
+  }
 
   TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
 }
@@ -934,7 +939,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_waitForSync   = src->_waitForSync;
 
   if (src->_keyOptions) {
-    dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
+    dst->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, src->_keyOptions);
   }
   else {
     dst->_keyOptions  = NULL;
@@ -949,7 +954,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
 
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
   if (parameter->_keyOptions != NULL) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_keyOptions);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, parameter->_keyOptions);
     parameter->_keyOptions = NULL;
   }
 }
@@ -1176,7 +1181,7 @@ TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
 /// @brief iterate over the index (JSON) files of a collection, using a callback
 /// function for each.
 /// This function does not require the collection to be loaded.
-/// The caller must make sure that the files is not modified while this 
+/// The caller must make sure that the files are not modified while this 
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -1197,13 +1202,16 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
   files = TRI_FilesDirectory(collection->_path);
   n = files._length;
   res = TRI_ERROR_NO_ERROR;
-  
+ 
+  // sort by index id
+  SortFilenames(&files);
+ 
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
        
     if (regexec(&re, file, (size_t) 0, NULL, 0) == 0) {
       char* fqn = TRI_Concatenate2File(collection->_path, file);
-
+ 
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 
@@ -1271,17 +1279,27 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
   TRI_json_t* json;
   char* cidString;
    
-  cidString = TRI_StringUInt64((uint64_t) info->_cid);
-  
   // create a json info object
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
+  if (json == NULL) {
+    return NULL;
+  }
+  
+  cidString = TRI_StringUInt64((uint64_t) info->_cid);
+
+  if (cidString == NULL) {
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+    return NULL;
+  }
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_version));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_type));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_maximalSize));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
@@ -1407,7 +1425,7 @@ int TRI_LoadCollectionInfo (char const* path,
     }
     else if (value->_type == TRI_JSON_ARRAY) {
       if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
-        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+        parameter->_keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, value);
       }
     }
   }

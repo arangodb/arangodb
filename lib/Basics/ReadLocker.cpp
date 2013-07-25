@@ -28,9 +28,6 @@
 
 #include "ReadLocker.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
-
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
@@ -43,9 +40,9 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock
+/// @brief acquires a read-lock
 ///
-/// The constructors read-locks the lock, the destructors unlocks the lock.
+/// The constructors read-lock the lock, the destructors unlock the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
@@ -54,9 +51,9 @@ ReadLocker::ReadLocker (ReadWriteLock* readWriteLock)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires a read-lock
+/// @brief acquires a read-lock
 ///
-/// The constructors read-locks the lock, the destructors unlocks the lock.
+/// The constructors read-lock the lock, the destructors unlock the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
 ReadLocker::ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line)

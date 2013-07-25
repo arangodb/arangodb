@@ -2,11 +2,8 @@
   <div id="transparentHeader">
     <div id="documentsToolbar" class="pagination pagination-small pagination-right">
 
-    <div id="documentsUploadDiv" class="btn btn-primary btn-success btn-block">
-      <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>
-        <input id="documentsUploadFile" name="documentsUploadFile" type="file" accept="application/json" />Import
-    </div>
-    <ul><li class="enabled"><a id="filterCollection"><i class="icon icon-white icon-filter"></i></a></li></ul>
+    <!-- remove marker for docupdiv--!>
+    <ul><li class="enabled"><a id="filterCollection"><i class="icon icon-white icon-cog"></i></a></li></ul>
 
     <ul>
       <li class="enabled"><a id="collectionPrev"><i class="icon icon-white icon-chevron-left"></i></a></li>
@@ -27,8 +24,10 @@
            <option value="&gt;">&gt;</option>
            <option value="&gt;=">&gt;=</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
-        <a id="addFilterItem"><i class="icon icon-white icon-plus"></i></a>
-        <button id="filterSend">Filter</button>
+        <a id="addFilterItem"><i class="icon-white icon-plus"></i></a>
+        <button id="importModal" class="btn btn-primary btn-success">Import</button>
+        <button id="resetView" class="btn btn-primary btn-success">Reset</button>
+        <button id="filterSend" class="btn btn-primary btn-success">Filter</button>
     </div>
 </div>
 
@@ -37,8 +36,8 @@
 <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID">
   <thead>
     <tr>
-      <th style="width: 490px">Content</th>
-      <th style="width: 100px">_key</th>
+      <th style="width: 385px">Content</th>
+      <th style="width: 200px">_key</th>
       <th style="width: 10px"></th>
     </tr>
   </thead>
@@ -59,6 +58,7 @@
     <p>Theres no way back…</p>
   </div>
   <div class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmDeleteBtn" class="btn btn-danger" style="float:right" disabled="true">Delete</button>
   </div>
 </div>
@@ -85,6 +85,33 @@
     </table>
   </div>
   <div class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmCreateEdge" class="btn btn-success" style="float:right">Create</button>
+  </div>
+</div>
+
+<!-- Document Import Modal -->
+<div id="docImportModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Import documents</h3>
+  </div>
+  <div class="modal-body" id="importDocument">
+    <p style="float:left">Choose your file:</p>
+    <i class="icon-info-sign modalImportTooltips" title="Supported filetype: json" style="float:right"></i>
+    <br></br>
+    <table>
+      <tr>
+        <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
+      </tr>
+      <tr>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmDocImport" class="btn btn-success" style="float:right">
+      <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>Import
+    </button>
   </div>
 </div>

@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* added arango.reconnect(<host>) method for arangosh
+
 * added AQL range operator `..`
 
   The `..` operator can be used to easily iterate over a sequence of numeric

@@ -248,9 +248,7 @@ void TRI_CleanupVocBase (void* data) {
 
     // copy all collections
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-
     TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
-
     TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
     n = collections._length;

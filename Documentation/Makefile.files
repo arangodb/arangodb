@@ -313,53 +313,7 @@ CLEANUP += \
 .PHONY: swagger
 
 swagger:
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/html/admin/api-docs/edge	
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-collection.js  > @srcdir@/html/admin/api-docs/collection
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-graph.js  > @srcdir@/html/admin/api-docs/graph
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-edges.js  > @srcdir@/html/admin/api-docs/edges
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-user.js  > @srcdir@/html/admin/api-docs/user
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-system.js  > @srcdir@/html/admin/api-docs/system
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-explain.js  > @srcdir@/html/admin/api-docs/explain
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-index.js  > @srcdir@/html/admin/api-docs/index
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-aqlfunction.js  > @srcdir@/html/admin/api-docs/aqlfunction
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-simple.js  > @srcdir@/html/admin/api-docs/simple
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-query.js  > @srcdir@/html/admin/api-docs/query
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-structure.js  > @srcdir@/html/admin/api-docs/structure
-	
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-transaction.js  > @srcdir@/html/admin/api-docs/transaction
-
-	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/api-traversal.js  > @srcdir@/html/admin/api-docs/traversal
+	(python @srcdir@/Documentation/Scripts/generateSwaggerApi.py @srcdir@ @srcdir@/html/admin/api-docs api-docs) > @srcdir@/html/admin/api-docs.json	
 
 ################################################################################
 ### @brief generate examples

@@ -44,35 +44,32 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Replication
+/// {
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a timestamp string in a target buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_GetTimeStampReplication (char* dst,
+                                  size_t maxLength) {
+  time_t tt;
+  struct tm tb;
+  
+  tt = time(0);
+  TRI_gmtime(tt, &tb);
+
+  strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExcludeCollectionReplication (const char* name) {
-  if (TRI_EqualString(name, TRI_COL_NAME_DATABASES)) {
-    return true;
-  }
-  
-  if (TRI_EqualString(name, TRI_COL_NAME_ENDPOINTS)) {
-    return true;
-  }
-  
-  if (TRI_EqualString(name, TRI_COL_NAME_PREFIXES)) {
-    return true;
-  }
-
-  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION)) {
-    return true;
-  }
-
-  if (TRI_EqualString(name, TRI_COL_NAME_TRANSACTION)) {
-    return true;
-  }
-  
-  if (TRI_EqualString(name, TRI_COL_NAME_USERS)) {
+  // exclude all invalid & system collections
+  if (name == NULL || *name == '_') {
     return true;
   }
 

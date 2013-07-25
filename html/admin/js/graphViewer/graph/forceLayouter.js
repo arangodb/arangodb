@@ -52,15 +52,23 @@ function ForceLayouter(config) {
     gravity = config.gravity || 0.01, // 0.08
     charge = config.charge || -1000, // -240
     */
-    distance = config.distance || 160,
+    defaultCharge = config.charge ||  -600,
+    defaultDistance = config.distance || 160,
     gravity = config.gravity || 0.08,
-    //charge = config.charge ||  -600,
-    
-    charge = config.charge || function(d) {
-      if (d._isCommunity && d._expanded) {
-        return -5000;
+    distance = function(d) {
+      if (d.source._isCommunity) {
+        return d.source.getDistance(defaultDistance);
       }
-      return -600;    
+      if (d.target._isCommunity) {
+        return d.target.getDistance(defaultDistance);
+      }
+      return defaultDistance;
+    },
+    charge = function(d) {
+      if (d._isCommunity) {
+        return d.getCharge(defaultCharge);
+      }
+      return defaultCharge;
     },
     
     onUpdate = config.onUpdate || function () {},
@@ -68,13 +76,13 @@ function ForceLayouter(config) {
     height = config.height || 680,
     parseConfig = function(config) {
       if (config.distance) {
-        force.linkDistance(config.distance);
+        defaultDistance = config.distance;
       }
       if (config.gravity) {
         force.gravity(config.gravity);
       }
       if (config.charge) {
-        force.charge(config.charge);
+        defaultCharge = config.charge;
       }
     };
    

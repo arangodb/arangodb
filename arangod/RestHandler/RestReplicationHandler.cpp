@@ -28,6 +28,7 @@
 #include "RestReplicationHandler.h"
 
 #include "build.h"
+#include "Basics/JsonHelper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "Logger/Logger.h"
@@ -119,29 +120,29 @@ Handler::status_e RestReplicationHandler::execute() {
   if (len == 1) {
     const string& command = suffix[0];
 
-    if (command == "log-start") {
+    if (command == "logger-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandLogStart();
+      handleCommandLoggerStart();
     }
-    else if (command == "log-stop") {
+    else if (command == "logger-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandLogStop();
+      handleCommandLoggerStop();
     }
-    else if (command == "log-state") {
+    else if (command == "logger-state") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      handleCommandLogState();
+      handleCommandLoggerState();
     }
-    else if (command == "log-follow") {
+    else if (command == "logger-follow") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      handleCommandLogFollow(); 
+      handleCommandLoggerFollow(); 
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
@@ -155,23 +156,39 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandDump(); 
     }
-    else if (command == "apply-start") {
+    else if (command == "applier-config") {
+      if (type == HttpRequest::HTTP_REQUEST_GET) {
+        handleCommandApplierGetConfig();
+      }
+      else {
+        if (type != HttpRequest::HTTP_REQUEST_PUT) {
+          goto BAD_CALL;
+        }
+        handleCommandApplierSetConfig();
+      }
+    }
+    else if (command == "applier-start") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandApplyStart();
+      handleCommandApplierStart();
     }
-    else if (command == "apply-stop") {
+    else if (command == "applier-stop") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      handleCommandApplyStop();
+      handleCommandApplierStop();
     }
-    else if (command == "apply-state") {
-      if (type != HttpRequest::HTTP_REQUEST_GET) {
-        goto BAD_CALL;
+    else if (command == "applier-state") {
+      if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+        handleCommandApplierDeleteState();
       }
-      handleCommandApplyState();
+      else {
+        if (type != HttpRequest::HTTP_REQUEST_GET) {
+          goto BAD_CALL;
+        }
+        handleCommandApplierGetState();
+      }
     }
     else {
       generateError(HttpResponse::BAD,
@@ -214,21 +231,14 @@ BAD_CALL:
 
 bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection, 
                                                void* data) {
-  const char* name = collection->_name;
-
-  if (name == NULL) {
-    // invalid collection
-    return false;
-  }
-
   if (collection->_type != (TRI_col_type_t) TRI_COL_TYPE_DOCUMENT && 
       collection->_type != (TRI_col_type_t) TRI_COL_TYPE_EDGE) {
     // invalid type
     return false;
   }
 
-  if (*name == '_' && TRI_ExcludeCollectionReplication(name)) {
-    // system collection
+  if (TRI_ExcludeCollectionReplication(collection->_name)) {
+    // collection is excluded
     return false;
   }
 
@@ -250,6 +260,25 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the applier action into an action list
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::insertClient () {
+  bool found;
+  char const* value;
+
+  value = _request->value("serverId", found);
+
+  if (found) {
+    TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
+
+    if (serverId > 0) {
+      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, _request->fullUrl().c_str());
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the minimum chunk size
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -261,9 +290,11 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
   const char* value = _request->value("chunkSize", found);
 
   if (found) {
+    // url parameter "chunkSize" specified
     chunkSize = (uint64_t) StringUtils::uint64(value);
   }
-  if (chunkSize < minChunkSize) {
+  else {
+    // not specified, use default
     chunkSize = minChunkSize;
   }
 
@@ -271,95 +302,389 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remotely start the replication logger
+/// @brief starts the replication logger
+///
+/// @RESTHEADER{PUT /_api/replication/logger-start,starts the replication logger}
+///
+/// @RESTDESCRIPTION
+/// Starts the server's replication logger. Will do nothing if the replication
+/// logger is already running.
+///
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `running`: will contain `true`
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger was started successfully, or was already running.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger could not be started.
+///
+/// @EXAMPLES
+///
+/// Starts the replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStart}
+///     var url = "/_api/replication/logger-start";
+///
+///     var response = logCurlRequest('PUT', url, "");
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLogStart () {
+void RestReplicationHandler::handleCommandLoggerStart () {
   assert(_vocbase->_replicationLogger != 0);
 
   int res = TRI_StartReplicationLogger(_vocbase->_replicationLogger);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
+    return;
   }
-  else {
-    TRI_json_t result;
-    
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
-    generateResult(&result);
-  
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-  }
+  TRI_json_t result;
+    
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remotely stop the replication logger
+/// @brief stops the replication logger
+///
+/// @RESTHEADER{PUT /_api/replication/logger-stop,stops the replication logger}
+///
+/// @RESTDESCRIPTION
+/// Stops the server's replication logger. Will do nothing if the replication
+/// logger is not running.
+///
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `running`: will contain `false`
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger was stopped successfully, or was not running
+/// before.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger could not be stopped.
+///
+/// @EXAMPLES
+///
+/// Starts the replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStop}
+///     var url = "/_api/replication/logger-stop";
+///
+///     var response = logCurlRequest('PUT', url, "");
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLogStop () {
+void RestReplicationHandler::handleCommandLoggerStop () {
   assert(_vocbase->_replicationLogger != 0);
 
   int res = TRI_StopReplicationLogger(_vocbase->_replicationLogger);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
+    return;
   }
-  else {
-    TRI_json_t result;
-    
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
 
-    generateResult(&result);
-  
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-  }
+  TRI_json_t result;
+    
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the state of the replication logger
+/// @brief returns the state of the replication logger
+///
+/// @RESTHEADER{GET /_api/replication/logger-state,returns the replication logger state}
+///
+/// @RESTDESCRIPTION
+/// Returns the current state of the server's replication logger. The state will
+/// include information about whether the logger is running and about the last
+/// logged tick value. This tick value is important for incremental fetching of
+/// data.
+///
+/// The state API can be called regardless of whether the logger is currently
+/// running or not.
+///
+/// The body of the response contains a JSON object with the following
+/// attributes:
+///
+/// - `state`: the current logger state as a JSON hash array with the following
+///   sub-attributes:
+///
+///   - `running`: whether or not the logger is running
+///
+///   - `lastLogTick`: the tick value of the latest tick the logger has logged. 
+///     This value can be used for incremental fetching of log data.
+///
+///   - `time`: the current date and time on the logger server
+///
+/// - `server`: a JSON hash with the following sub-attributes:
+///
+///   - `version`: the logger server's version
+///
+///   - `serverId`: the logger server's id
+///
+/// - `clients`: a list of all replication clients that ever connected to
+///   the logger since it was started. This list can be used to determine 
+///   approximately how much data the individual clients have already fetched 
+///   from the logger server.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger state could be determined successfully.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger state could not be determined.
+///
+/// @EXAMPLES
+///
+/// Returns the state of an inactive replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStateInactive}
+///     var re = require("org/arangodb/replication");
+///     re.logger.stop();
+///
+///     var url = "/_api/replication/logger-state";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Returns the state of an active replication logger.
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStateActive}
+///     var re = require("org/arangodb/replication");
+///     re.logger.start();
+///
+///     var url = "/_api/replication/logger-state";
+///
+///     var response = logCurlRequest('GET', url);
+///     re.logger.stop();
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLogState () {
+void RestReplicationHandler::handleCommandLoggerState () {
   assert(_vocbase->_replicationLogger != 0);
 
-  TRI_replication_log_state_t state;
+  TRI_json_t* json = TRI_JsonReplicationLogger(_vocbase->_replicationLogger);
 
-  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+  if (json == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
   }
-  else {
-    TRI_json_t result;
-    
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationLogger(&state)); 
-    
-    // add server info
-    TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
-
-    TRI_server_id_t serverId = TRI_GetServerId();  
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
-
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
-
-    generateResult(&result);
   
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-  }
+  generateResult(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle a follow command for the replication log
+/// @brief returns ranged data from the replication log
+///
+/// @RESTHEADER{GET /_api/replication/logger-follow,returns recent log entries from the replication log}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{from,string,optional}
+/// Lower bound tick value for results.
+///
+/// @RESTQUERYPARAM{to,string,optional}
+/// Upper bound tick value for results.
+///
+/// @RESTQUERYPARAM{chunkSize,number,optional}
+/// Approximate maximum size of the returned result.
+///
+/// @RESTDESCRIPTION
+/// Returns data from the server's replication log. This method can be called
+/// by replication clients after an initial synchronisation of data. The method 
+/// will return all "recent" log entries from the logger server, and the clients
+/// can replay and apply these entries locally so they get to the same data
+/// state as the logger server.
+///
+/// Clients can call this method repeatedly to incrementally fetch all changes
+/// from the logger server. In this case, they should provide the `from` value so
+/// they will only get returned the log events since their last fetch.
+///
+/// When the `from` URL parameter is not used, the logger server will return log 
+/// entries starting at the beginning of its replication log. When the `from`
+/// parameter is used, the logger server will only return log entries which have 
+/// higher tick values than the specified `from` value (note: the log entry with a
+/// tick value equal to `from` will be excluded). Use the `from` value when
+/// incrementally fetching log data.
+///
+/// The `to` URL parameter can be used to optionally restrict the upper bound of
+/// the result to a certain tick. If used, the result will contain only log events
+/// with tick values up to (including) `to`. In incremental fetching, there is no
+/// need to use the `to` parameter. It only makes sense in special situations, 
+/// when only parts of the change log are required.
+///
+/// The `chunkSize` URL parameter can be used to control the size of the result. 
+/// It must be specified in bytes. The `chunkSize` value will only be honored 
+/// approximately. Otherwise a too low `chunkSize` value could cause the server 
+/// to not be able to put just one log entry into the result and return it. 
+/// Therefore, the `chunkSize` value will only be consulted after a log entry has
+/// been written into the result. If the result size is then bigger than 
+/// `chunkSize`, the server will respond with as many log entries as there are
+/// in the response already. If the result size is still smaller than `chunkSize`,
+/// the server will try to return more data if there's more data left to return.
+///
+/// If `chunkSize` is not specified, some server-side default value will be used.
+///
+/// The `Content-Type` of the result is `application/x-arango-dump`. This is an 
+/// easy-to-process format, with all log events going onto separate lines in the
+/// response body. Each log event itself is a JSON hash, with at least the 
+/// following attributes:
+///
+/// - `tick`: the log event tick value
+///
+/// - `type`: the log event type
+///
+/// Individual log events will also have additional attributes, depending on the
+/// event type. A few common attributes which are used for multiple events types
+/// are:
+///
+/// - `cid`: id of the collection the event was for
+///
+/// - `tid`: id of the transaction the event was contained in
+/// 
+/// - `key`: document key
+///
+/// - `rev`: document revision id
+///
+/// - `data`: the original document data
+///
+/// The response will also contain the following HTTP headers:
+///
+/// - `x-arango-replication-active`: whether or not the logger is active
+///
+/// - `x-arango-replication-lastincluded`: the tick value of the last included
+///   value in the result. In incremental log fetching, this value can be used 
+///   as the `from` value for the following request. Note that if the result is
+///   empty, the value will be `0`. This value should not be used as `from` value
+///   by clients in the next request (otherwise the server would return the log
+///   events from the start of the log again).
+///
+/// - `x-arango-replication-lasttick`: the last tick value the logger server has
+///   logged (not necessarily included in the result). By comparing the the last
+///   tick and last included tick values, clients have an approximate indication of
+///   how many events there are still left to fetch.
+///
+/// - `x-arango-replication-checkmore`: whether or not there already exists more
+///   log data which the client could fetch immediately. If there is more log data
+///   available, the client could call `logger-follow` again with an adjusted `from`
+///   value to fetch remaining log entries until there are no more.
+///
+///   If there isn't any more log data to fetch, the client might decide to go
+///   to sleep for a while before calling the logger again. 
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the logger state could be determined successfully.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if the logger state could not be determined.
+///
+/// @EXAMPLES
+///
+/// No log events available:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowEmpty}
+///     var re = require("org/arangodb/replication");
+///     re.logger.start();
+///     var lastTick = re.logger.state().state.lastLogTick;
+///
+///     var url = "/_api/replication/logger-follow?from=" + lastTick;
+///     var response = logCurlRequest('GET', url);
+///
+///     re.logger.stop();
+///     assert(response.code === 204);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// A few log events:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
+///     var re = require("org/arangodb/replication");
+///     db._drop("products"); 
+///
+///     re.logger.start();
+///     var lastTick = re.logger.state().state.lastLogTick;
+///
+///     db._create("products"); 
+///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
+///     db.products.remove("p1");
+///     db.products.update("p2", { "name" : "broken hovercraft" });
+///     db.products.drop();
+///
+///     var url = "/_api/replication/logger-follow?from=" + lastTick;
+///     var response = logCurlRequest('GET', url);
+///
+///     re.logger.stop();
+///     assert(response.code === 200);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// More events than would fit into the response:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowBufferLimit}
+///     var re = require("org/arangodb/replication");
+///     db._drop("products"); 
+///
+///     re.logger.start();
+///     var lastTick = re.logger.state().state.lastLogTick;
+///
+///     db._create("products"); 
+///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
+///     db.products.remove("p1");
+///     db.products.update("p2", { "name" : "broken hovercraft" });
+///     db.products.drop();
+///
+///     var url = "/_api/replication/logger-follow?from=" + lastTick + "&chunkSize=400";
+///     var response = logCurlRequest('GET', url);
+///
+///     re.logger.stop();
+///     assert(response.code === 200);
+///
+///     logRawResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandLogFollow () {
+void RestReplicationHandler::handleCommandLoggerFollow () {
   // determine start tick
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
@@ -408,7 +733,14 @@ void RestReplicationHandler::handleCommandLogFollow () {
     const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
 
     // generate the result
-    _response = createResponse(HttpResponse::OK);
+    const size_t length = TRI_LengthStringBuffer(dump._buffer);
+
+    if (length == 0) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      _response = createResponse(HttpResponse::OK);
+    }
 
     _response->setContentType("application/x-arango-dump; charset=utf-8");
 
@@ -429,10 +761,14 @@ void RestReplicationHandler::handleCommandLogFollow () {
                          strlen(TRI_REPLICATION_HEADER_ACTIVE), 
                          state._active ? "true" : "false");
 
-    // transfer ownership of the buffer contents
-    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
-    // avoid double freeing
-    TRI_StealStringBuffer(dump._buffer);
+    if (length > 0) {
+      // transfer ownership of the buffer contents
+      _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
+      // avoid double freeing
+      TRI_StealStringBuffer(dump._buffer);
+    }
+    
+    insertClient();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -453,6 +789,11 @@ void RestReplicationHandler::handleCommandInventory () {
   // collections
   TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
 
+  if (collections == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
   TRI_replication_log_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
@@ -461,21 +802,21 @@ void RestReplicationHandler::handleCommandInventory () {
     TRI_Free(TRI_CORE_MEM_ZONE, collections);
 
     generateError(HttpResponse::SERVER_ERROR, res);
+    return;
   }
-  else {
-    TRI_json_t result;
-  
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-
-    // add collections data
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", collections);
     
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationLogger(&state)); 
+  TRI_json_t json;
   
-    generateResult(&result);
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+
+  // add collections data
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state)); 
   
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-  }
+  generateResult(&json);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+    
+  insertClient();
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,6 +914,8 @@ void RestReplicationHandler::handleCommandDump () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
+    
+    insertClient();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -582,10 +925,77 @@ void RestReplicationHandler::handleCommandDump () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the configuration of the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplierGetConfig () {
+  assert(_vocbase->_replicationApplier != 0);
+    
+  TRI_replication_apply_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+    
+  TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  
+  TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
+  TRI_DestroyConfigurationReplicationApplier(&config);
+    
+  if (json == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+    
+  generateResult(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplierSetConfig () {
+  assert(_vocbase->_replicationApplier != 0);
+  
+  TRI_replication_apply_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+  
+  TRI_json_t* json = parseJsonBody();
+
+  if (json == 0) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
+
+  config._endpoint          = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", config._requestTimeout);
+  config._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", config._connectTimeout);
+  config._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries = JsonHelper::getIntValue(json, "maxConnectRetries", config._maxConnectRetries);
+  config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
+  config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+  
+  TRI_DestroyConfigurationReplicationApplier(&config);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+  
+  handleCommandApplierGetState();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplyStart () {
+void RestReplicationHandler::handleCommandApplierStart () {
   assert(_vocbase->_replicationApplier != 0);
   
   bool found;
@@ -603,65 +1013,62 @@ void RestReplicationHandler::handleCommandApplyStart () {
     
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
+    return;
   }
-  else {
-    handleCommandApplyState();
-  }
+  
+  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplyStop () {
+void RestReplicationHandler::handleCommandApplierStop () {
   assert(_vocbase->_replicationApplier != 0);
 
-  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier);
+  int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
   
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
+    return;
   }
-  else {
-    handleCommandApplyState();
-  }
+    
+  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the state of the replication apply
+/// @brief return the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandApplyState () {
+void RestReplicationHandler::handleCommandApplierGetState () {
   assert(_vocbase->_replicationApplier != 0);
 
-  TRI_replication_apply_state_t state;
+  TRI_json_t* json = TRI_JsonReplicationApplier(_vocbase->_replicationApplier); 
+  
+  if (json == 0) {  
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+    
+  generateResult(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+}
 
-  int res = TRI_StateReplicationApplier(_vocbase->_replicationApplier, &state);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete the state of the replication applier
+////////////////////////////////////////////////////////////////////////////////
 
+void RestReplicationHandler::handleCommandApplierDeleteState () {
+  assert(_vocbase->_replicationApplier != 0);
+
+  int res = TRI_ForgetReplicationApplier(_vocbase->_replicationApplier);
+  
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
+    return;
   }
-  else {
-    TRI_json_t result;
-    
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-  
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "state", TRI_JsonStateReplicationApplier(&state));
-    
-    // add server info
-    TRI_json_t* server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRIAGENS_VERSION));
-
-    TRI_server_id_t serverId = TRI_GetServerId();  
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
-
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", server);
-
-    generateResult(&result);
-
-    TRI_DestroyApplyStateReplicationApplier(&state);
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-  }
+  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

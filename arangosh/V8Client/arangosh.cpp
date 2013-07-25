@@ -43,6 +43,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/shell-colors.h"
+#include "BasicsC/terminal-utils.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
@@ -562,6 +563,120 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "reconnect"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+  
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>[, <username>, <password>])");
+  }
+
+  string definition = TRI_ObjectToString(argv[0]);
+  
+  string username;
+  if (argv.Length() < 2) {
+    username = BaseClient.username();
+  }
+  else {
+    username = TRI_ObjectToString(argv[1]);
+  }
+
+  string password;
+  if (argv.Length() < 3) {
+    cout << "Please specify a password: " << flush;
+
+    // now prompt for it
+#ifdef TRI_HAVE_TERMIOS_H
+    TRI_SetStdinVisibility(false);
+    getline(cin, password);
+
+    TRI_SetStdinVisibility(true);
+#else
+    getline(cin, password);
+#endif
+    cout << "\n";
+  }
+  else {
+    password = TRI_ObjectToString(argv[2]);
+  }
+  
+  delete connection;
+
+  const string oldDefinition = BaseClient.endpointString();
+  const string oldUsername   = BaseClient.username();
+  const string oldPassword   = BaseClient.password();
+
+  BaseClient.setEndpointString(definition);
+  BaseClient.setUsername(username); 
+  BaseClient.setPassword(password); 
+  
+  // re-connect using new options
+  BaseClient.createEndpoint();
+  if (BaseClient.endpointServer() == 0) {
+    BaseClient.setEndpointString(oldDefinition);
+    BaseClient.setUsername(oldUsername); 
+    BaseClient.setPassword(oldPassword); 
+    BaseClient.createEndpoint();
+
+    string errorMessage = "error in '" + definition + "'";
+    TRI_V8_EXCEPTION_PARAMETER(scope, errorMessage.c_str());
+  }
+
+  V8ClientConnection* newConnection = CreateConnection();
+
+  if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
+    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+         << "' version " << newConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
+ 
+    argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(newConnection));
+
+    v8::Handle<v8::Value> db = v8::Context::GetCurrent()->Global()->Get(TRI_V8_SYMBOL("db"));
+    if (db->IsObject()) {
+      v8::Handle<v8::Object> dbObj = v8::Handle<v8::Object>::Cast(db);
+
+      if (dbObj->Has(TRI_V8_STRING("_flushCache")) && dbObj->Get(TRI_V8_STRING("_flushCache"))->IsFunction()) {
+        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(dbObj->Get(TRI_V8_STRING("_flushCache")));
+      
+        v8::Handle<v8::Value>* args = 0;
+        func->Call(dbObj, 0, args);
+      }
+    }
+    
+    // ok 
+    return scope.Close(v8::True());
+  }
+  else {
+    cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
+
+    // rollback
+    BaseClient.setEndpointString(oldDefinition);
+    BaseClient.setUsername(oldUsername); 
+    BaseClient.setPassword(oldPassword); 
+    BaseClient.createEndpoint();
+
+    ClientConnection = CreateConnection();
+    argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(ClientConnection));
+
+    string errorMsg = "could not connect";
+    if (newConnection->getErrorMessage() != "") {
+      errorMsg = newConnection->getErrorMessage();
+    }
+    
+    delete newConnection;
+    
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, errorMsg.c_str());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "GET" helper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -936,6 +1051,29 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
   }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getEndpoint"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_getEndpoint (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  // check params
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getEndpoint()");
+  }
+
+  const string endpoint = BaseClient.endpointString();
+  return scope.Close(v8::String::New(endpoint.c_str(), endpoint.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1487,9 +1625,11 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
     connection_proto->Set("PUT_RAW", v8::FunctionTemplate::New(ClientConnection_httpPutRaw));
     connection_proto->Set("SEND_FILE", v8::FunctionTemplate::New(ClientConnection_httpSendFile));
+    connection_proto->Set("getEndpoint", v8::FunctionTemplate::New(ClientConnection_getEndpoint));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
+    connection_proto->Set("reconnect", v8::FunctionTemplate::New(ClientConnection_reconnect));
     connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
     connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);

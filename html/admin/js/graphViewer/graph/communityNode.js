@@ -32,7 +32,9 @@
 function CommunityNode(parent, initial) {
   "use strict";
   
-  if (_.isUndefined(parent) || !_.isFunction(parent.dissolveCommunity)) {
+  if (_.isUndefined(parent)
+    || !_.isFunction(parent.dissolveCommunity)
+    || !_.isFunction(parent.checkNodeLimit)) {
     throw "A parent element has to be given.";
   }
   
@@ -44,7 +46,9 @@ function CommunityNode(parent, initial) {
   // Private variables              //
   ////////////////////////////////////   
     self = this,
-    boundingBox,
+    bBox,
+    bBoxBorder,
+    bBoxTitle,
     nodes = {},
     observer,
     nodeArray = [],
@@ -58,21 +62,59 @@ function CommunityNode(parent, initial) {
   // Private functions              //
   //////////////////////////////////// 
   
-    getDistance = function() {
-      return 160;
+    getDistance = function(def) {
+      if (self._expanded) {
+        return 2 * def;
+      }
+      return def;
     },
   
-    getCharge = function() {
-      return -5000;
+    getCharge = function(def) {
+      if (self._expanded) {
+        return 8 * def;
+      }
+      return def;
     },
   
+    getSourcePosition = function(e) {    
+      if (self._expanded) {
+        var p = self.position,
+          diff = e._source.position,
+          x = p.x + diff.x,
+          y = p.y + diff.y,
+          z = p.z + diff.z;
+        return {
+          x: x,
+          y: y,
+          z: z
+        };
+      }
+      return self.position;
+    },
+  
+  
+    getTargetPosition = function(e) {
+      if (self._expanded) {
+        var p = self.position,
+          diff = e._target.position,
+          x = p.x + p.z * diff.x,
+          y = p.y + p.z * diff.y,
+          z = p.z + diff.z;
+        return {
+          x: x,
+          y: y,
+          z: z
+        };
+      }
+      return self.position;
+    },
 
     updateBoundingBox = function() {
-      var bbox = document.getElementById(self._id).getBBox();
-      boundingBox.attr("width", bbox.width + 10)
-       .attr("height", bbox.height + 10)
-       .attr("x", bbox.x - 5)
-       .attr("y", bbox.y - 5);
+      var boundingBox = document.getElementById(self._id).getBBox();
+      bBox.attr("transform", "translate(" + (boundingBox.x - 5) + "," + (boundingBox.y - 25) + ")");
+      bBoxBorder.attr("width", boundingBox.width + 10)
+        .attr("height", boundingBox.height + 30);
+      bBoxTitle.attr("width", boundingBox.width + 10);
     },
   
     getObserver = function() {
@@ -252,31 +294,7 @@ function CommunityNode(parent, initial) {
     collapse = function() {
       this._expanded = false;
     },
-    
-    addDistortion = function() {
-      // Fake Layouting TODO
-      _.each(nodeArray, function(n) {
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
-    },
-    
-    addShape = function (g, shapeFunc, colourMapper) {
-      g.attr("stroke", colourMapper.getForegroundCommunityColour());
-      shapeFunc(g);
-    },
-    
-    addCollapsedShape = function(g, shapeFunc, colourMapper) {
-      g.attr("stroke", colourMapper.getForegroundCommunityColour());
-      shapeFunc(g, 9);
-      shapeFunc(g, 6);
-      shapeFunc(g, 3);
-      shapeFunc(g);
-    },
-    
+
     addCollapsedLabel = function(g, colourMapper) {
       var width = g.select("rect").attr("width"),
         textN = g.append("text") // Append a label for the node
@@ -302,7 +320,23 @@ function CommunityNode(parent, initial) {
         .text(self._size);
     },
     
-    addNodeShapes = function(g, shapeFunc, colourMapper) {
+    addCollapsedShape = function(g, shapeFunc, start, colourMapper) {
+      var inner = g.append("g")
+        .attr("stroke", colourMapper.getForegroundCommunityColour())
+        .attr("fill", colourMapper.getCommunityColour());
+      shapeFunc(inner, 9);
+      shapeFunc(inner, 6);
+      shapeFunc(inner, 3);
+      shapeFunc(inner);
+      inner.on("click", function() {
+        self.expand();
+        parent.checkNodeLimit(self);
+        start();
+      });
+      addCollapsedLabel(inner, colourMapper);
+    },
+
+    addNodeShapes = function(g, shapeQue) {
       var interior = g.selectAll(".node")
       .data(nodeArray, function(d) {
         return d._id;
@@ -316,30 +350,81 @@ function CommunityNode(parent, initial) {
       // Remove all old
       interior.exit().remove();
       interior.selectAll("* > *").remove();
-      addShape(interior, shapeFunc, colourMapper);
+      shapeQue(interior);
     },
     
-    addBoundingBox = function(g) {
-      boundingBox = g.append("rect")
+    addBoundingBox = function(g, start) {
+      bBox = g.append("g");
+      bBoxBorder = bBox.append("rect")
         .attr("rx", "8")
         .attr("ry", "8")
         .attr("fill", "none")
         .attr("stroke", "black");
+      bBoxTitle = bBox.append("rect")
+        .attr("rx", "8")
+        .attr("ry", "8")
+        .attr("height", "20")
+        .attr("fill", "#686766")
+        .attr("stroke", "none");
+      var dissolveBtn = bBox.append("image")
+        .attr("id", self._id + "_dissolve")
+        .attr("xlink:href", "img/icon_delete.png")
+        .attr("width", "16")
+        .attr("height", "16")
+        .attr("x", "5")
+        .attr("y", "2")
+        .attr("style", "cursor:pointer")
+        .on("click", function() {
+          self.dissolve();
+          start();
+        }),
+      collapseBtn = bBox.append("image")
+        .attr("id", self._id + "_collapse")
+        .attr("xlink:href", "img/gv_collapse.png")
+        .attr("width", "16")
+        .attr("height", "16")
+        .attr("x", "25")
+        .attr("y", "2")
+        .attr("style", "cursor:pointer")
+        .on("click", function() {
+          self.collapse();
+          start();
+        }),
+      title = bBox.append("text")
+        .attr("x", "45")
+        .attr("y", "15")
+        .attr("fill", "white")
+        .attr("stroke", "none")
+        .attr("text-anchor", "left");
+      if (self._reason) {
+        title.text(self._reason.text);
+      }
       getObserver().observe(document.getElementById(self._id), {
         subtree:true,
         attributes:true
       });
     },
     
-    shapeAll = function(g, shapeFunc, colourMapper) {
+    addDistortion = function(distFunc) {
+      _.each(nodeArray, function(n) {
+        //n.position = distFunc(n);
+        n.position = {
+          x: n.x,
+          y: n.y,
+          z: 1
+        };
+      });
+    },
+    
+    shapeAll = function(g, shapeFunc, shapeQue, start, colourMapper) {
+      // First unbind all click events that are proably still bound
+      g.on("click", null);
       if (self._expanded) {
-        addBoundingBox(g);
-        addDistortion();
-        addNodeShapes(g, shapeFunc, colourMapper);
+        addBoundingBox(g, start);
+        addNodeShapes(g, shapeQue, start, colourMapper);
         return;
       }
-      addCollapsedShape(g, shapeFunc, colourMapper);
-      addCollapsedLabel(g, colourMapper);
+      addCollapsedShape(g, shapeFunc, start, colourMapper);
     };
   
   ////////////////////////////////////
@@ -406,4 +491,9 @@ function CommunityNode(parent, initial) {
   this.expand = expand;
   
   this.shape = shapeAll;
+  this.addDistortion = addDistortion;
+
+  this.getSourcePosition = getSourcePosition;
+  
+  this.getTargetPosition = getTargetPosition;
 }

@@ -35,7 +35,7 @@ var internal = require("internal");
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,51 +43,56 @@ var internal = require("internal");
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+var logger  = { };
+var applier = { };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication logger
 ////////////////////////////////////////////////////////////////////////////////
-  
-exports.startLogger = function () {
+
+logger.start = function () {
+  'use strict';
+
   return internal.startReplicationLogger();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the replication logger
 ////////////////////////////////////////////////////////////////////////////////
-  
-exports.stopLogger = function () {
+
+logger.stop = function () {
+  'use strict';
+
   return internal.stopReplicationLogger();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the replication logger state
 ////////////////////////////////////////////////////////////////////////////////
-  
-exports.getLoggerState = function () {
-  return internal.getStateReplicationLogger();
-};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configures the replication applier
-////////////////////////////////////////////////////////////////////////////////
-  
-exports.configureApplier = function (config) {
-  return internal.configureReplicationApplier(config);
+logger.state = function () {  
+  'use strict';
+
+  return internal.getStateReplicationLogger();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
-  
-exports.startApplier = function (forceFullSynchronisation) {
-  return internal.startReplicationApplier(forceFullSynchronisation);
+
+applier.start = function (forceFullSynchronisation) {
+  'use strict';
+
+  return internal.startReplicationApplier(forceFullSynchronisation || false);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the replication applier
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.stopApplier = function () {
+applier.stop = function () {
+  'use strict';
+
   return internal.stopReplicationApplier();
 };
 
@@ -95,9 +100,51 @@ exports.stopApplier = function () {
 /// @brief return the replication applier state
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.getApplierState = function () {
+applier.state = function () {
+  'use strict';
+
   return internal.getStateReplicationApplier();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the applier and "forget" all configuration
+////////////////////////////////////////////////////////////////////////////////
+  
+applier.forget = function () {
+  'use strict';
+
+  return internal.forgetStateReplicationApplier();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the configuration of the replication applier
+////////////////////////////////////////////////////////////////////////////////
+ 
+applier.properties = function (config) {
+  'use strict';
+
+  if (config === undefined) {
+    return internal.configureReplicationApplier();
+  }
+  
+  return internal.configureReplicationApplier(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    module exports
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.logger  = logger; 
+exports.applier = applier; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -87,7 +87,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Transaction (TRI_vocbase_t* const vocbase,
-                     const triagens::arango::CollectionNameResolver& resolver) :
+                     const triagens::arango::CollectionNameResolver& resolver,
+                     const bool replicate) :
           T(),
           _setupState(TRI_ERROR_NO_ERROR),
           _nestingLevel(0),
@@ -95,6 +96,7 @@ namespace triagens {
           _hints(0),
           _timeout(0.0),
           _waitForSync(false),
+          _replicate(replicate),
           _trx(0),
           _vocbase(vocbase),
           _resolver(resolver) {
@@ -852,6 +854,7 @@ namespace triagens {
 
         int update (TRI_transaction_collection_t* trxCollection,
                     const string& key,
+                    TRI_voc_rid_t rid,
                     TRI_doc_mptr_t* mptr,
                     TRI_json_t* const json,
                     const TRI_doc_update_policy_e policy,
@@ -867,6 +870,7 @@ namespace triagens {
 
           int res = update(trxCollection, 
                            key, 
+                           rid,
                            mptr, 
                            shaped, 
                            policy, 
@@ -885,6 +889,7 @@ namespace triagens {
 
         inline int update (TRI_transaction_collection_t* const trxCollection,
                            const string& key,
+                           TRI_voc_rid_t rid,
                            TRI_doc_mptr_t* mptr,
                            TRI_shaped_json_t* const shaped,
                            const TRI_doc_update_policy_e policy,
@@ -898,7 +903,8 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
           
           int res = primary->update(trxCollection, 
-                                    (const TRI_voc_key_t) key.c_str(), 
+                                    (const TRI_voc_key_t) key.c_str(),
+                                    rid, 
                                     mptr, 
                                     shaped, 
                                     &updatePolicy, 
@@ -914,6 +920,7 @@ namespace triagens {
 
         int remove (TRI_transaction_collection_t* trxCollection,
                     const string& key,
+                    TRI_voc_rid_t rid,
                     const TRI_doc_update_policy_e policy,
                     const TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
@@ -926,6 +933,7 @@ namespace triagens {
 
           int res = primary->remove(trxCollection,
                                     (TRI_voc_key_t) key.c_str(), 
+                                    rid,
                                     &updatePolicy, 
                                     ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
                                     forceSync);
@@ -968,6 +976,7 @@ namespace triagens {
           
             res = primary->remove(trxCollection,
                                   (const TRI_voc_key_t) id.c_str(), 
+                                  0,
                                   &updatePolicy, 
                                   false,
                                   forceSync);
@@ -1107,7 +1116,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, true, _timeout, _waitForSync);
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _replicate, _timeout, _waitForSync);
 
           if (_trx == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -1184,6 +1193,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _waitForSync;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replicate flag for transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _replicate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

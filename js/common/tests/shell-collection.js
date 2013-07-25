@@ -1145,6 +1145,51 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test first / last after reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstLastAfterReload : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      for (var i = 0; i < 1000; ++i) {
+        c1.save({ _key : "test" + i, "value" : i });
+      }
+      c1.unload();
+      c1 = null;
+
+      require("internal").wait(5);
+
+      c1 = db._collection(cn);
+
+      for (i = 1000; i < 2000; ++i) {
+        c1.save({ _key : "test" + i, "value" : i });
+      }
+
+      var actual = c1.first(10);
+      assertEqual(10, actual.length);
+      assertEqual(0, actual[0].value);
+      assertEqual(1, actual[1].value);
+      assertEqual(9, actual[9].value);
+      assertEqual("test0", actual[0]._key);
+      assertEqual("test1", actual[1]._key);
+      assertEqual("test9", actual[9]._key);
+      
+      actual = c1.last(10);
+      assertEqual(10, actual.length);
+      assertEqual(1999, actual[0].value);
+      assertEqual(1998, actual[1].value);
+      assertEqual(1990, actual[9].value);
+      assertEqual("test1999", actual[0]._key);
+      assertEqual("test1998", actual[1]._key);
+      assertEqual("test1990", actual[9]._key);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test system collection dropping / renaming / unloading
 ////////////////////////////////////////////////////////////////////////////////
 

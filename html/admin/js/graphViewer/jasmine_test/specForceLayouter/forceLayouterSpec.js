@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
@@ -363,10 +363,17 @@
       });
       
       it('should set the distance', function() {
-        spyOn(mock, "linkDistance");
+        var func, tmp;
+        spyOn(mock, "linkDistance").andCallFake(function(f) {
+          func = f;
+        });
         config.distance = 100;
-        var tmp = new ForceLayouter(config);
-        expect(mock.linkDistance).wasCalledWith(100);
+        tmp = new ForceLayouter(config);
+        expect(mock.linkDistance).wasCalledWith(jasmine.any(Function));
+        expect(func({
+          source: {},
+          target: {}
+        })).toEqual(config.distance);
       });
       
       it('should set the gravity', function() {
@@ -377,19 +384,29 @@
       });
       
       it('should set the charge', function() {
-        spyOn(mock, "charge");
+        var func, tmp;
+        spyOn(mock, "charge").andCallFake(function(f) {
+          func = f;
+        });
         config.charge = 100;
-        var tmp = new ForceLayouter(config);
-        expect(mock.charge).wasCalledWith(100);
+        tmp = new ForceLayouter(config);
+        expect(mock.charge).wasCalledWith(jasmine.any(Function));
+        expect(func({})).toEqual(config.charge);
       });
       
       it('should set default values', function() {
-        spyOn(mock, "size");
-        spyOn(mock, "linkDistance");
-        spyOn(mock, "gravity");
-        spyOn(mock, "charge");
+        var fd, fc, tmp;
         
-        var tmp = new ForceLayouter(config);
+        spyOn(mock, "size");
+        spyOn(mock, "linkDistance").andCallFake(function(f) {
+          fd = f;
+        });
+        spyOn(mock, "gravity");
+        spyOn(mock, "charge").andCallFake(function(f) {
+          fc = f;
+        });
+        
+        tmp = new ForceLayouter(config);
         
         /*
         expect(mock.size).wasCalledWith([940, 640]);
@@ -398,18 +415,37 @@
         expect(mock.charge).wasCalledWith(-240);
         */
         expect(mock.size).wasCalledWith([880, 680]);
-        expect(mock.linkDistance).wasCalledWith(160);
+        expect(mock.linkDistance).wasCalledWith(jasmine.any(Function));
         expect(mock.gravity).wasCalledWith(0.08);
-        expect(mock.charge).wasCalledWith(-600);
+        expect(mock.charge).wasCalledWith(jasmine.any(Function));
+        
+        expect(fd({
+          source: {},
+          target: {}
+        })).toEqual(160);
+        
+        expect(fc({})).toEqual(-600);
+        
       });
       
       it('should be able to switch the distance', function() {
-        var tmp = new ForceLayouter(config);
-        spyOn(mock, "linkDistance");
+        var func, tmp;
+        spyOn(mock, "linkDistance").andCallFake(function(f) {
+          func = f;
+        });
+        tmp = new ForceLayouter(config);
+        expect(mock.linkDistance).wasCalledWith(jasmine.any(Function));
+        expect(func({
+          source: {},
+          target: {}
+        })).toEqual(160); // This is default
         tmp.changeTo({
           distance: 200
         });
-        expect(mock.linkDistance).wasCalledWith(200);
+        expect(func({
+          source: {},
+          target: {}
+        })).toEqual(200);
       });
       
       it('should be able to switch the gravity', function() {
@@ -422,15 +458,17 @@
       });
       
       it('should be able to switch the charge', function() {
-        var tmp = new ForceLayouter(config);
-        spyOn(mock, "charge");
+        var func, tmp;
+        spyOn(mock, "charge").andCallFake(function(f) {
+          func = f;
+        });
+        tmp = new ForceLayouter(config);
+        expect(func({})).toEqual(-600); // This is default
         tmp.changeTo({
           charge: 200
         });
-        expect(mock.charge).wasCalledWith(200);
+        expect(func({})).toEqual(200);
       });
-      
-      
     });
     
     /*

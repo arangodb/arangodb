@@ -4,7 +4,7 @@
   </div>
 </ul>
 
-<div id="queryDiv" class="form-actions">
+<div id="queryDiv" class="form-actions" style="display:none">
   <div id="outputLabel">Result</div>
   <div id="outputToolbar">
     <i class="icon-ban-circle queryTooltips" title="Clear" id="clearOutput"></i>
@@ -42,6 +42,7 @@
     </table>
   </div>
   <div id="colFooter" class="modal-footer">
+    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="save-new-query" class="btn btn-success pull-right">Save</button>
   </div>
 </div>
@@ -60,12 +61,13 @@
         </th>
       </tr>
     </table>
-    Content<br/>
+    Query<br/>
     <textarea id="edit-aql-textarea"/>
   </div>
   <div id="colFooter" class="modal-footer">
     <button id="save-edit-query" class="btn btn-success pull-right">Save</button>
     <button id="delete-edit-query" class="btn btn-danger pull-left">Delete</button>
+    <button class="btn btn-close btn-margin" data-dismiss="modal" aria-hidden="true">Close</button>
   </div>
   <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">
     <strong>Really delete query?</strong>

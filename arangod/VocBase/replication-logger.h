@@ -30,10 +30,12 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
 
 #include "VocBase/replication-common.h"
+#include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -86,6 +88,9 @@ typedef struct TRI_replication_logger_s {
   TRI_spin_t                           _idLock;
   TRI_spin_t                           _bufferLock;
   TRI_vector_pointer_t                 _buffers;
+  TRI_read_write_lock_t                _clientsLock;
+  TRI_associative_pointer_t            _clients;
+
   struct TRI_vocbase_s*                _vocbase;
   struct TRI_transaction_s*            _trx;
   struct TRI_transaction_collection_s* _trxCollection;
@@ -141,6 +146,20 @@ void TRI_FreeReplicationLogger (TRI_replication_logger_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of clients as a JSON array
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert an applier action into an action list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t*,
+                                        TRI_server_id_t,
+                                        char const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,6 +183,12 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t*,
 ////////////////////////////////////////////////////////////////////////////////
   
 struct TRI_json_s* TRI_JsonStateReplicationLogger (TRI_replication_log_state_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_json_s* TRI_JsonReplicationLogger (TRI_replication_logger_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -200,7 +225,8 @@ int TRI_LogTransactionReplication (struct TRI_vocbase_s*,
 #ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogCreateCollectionReplication (struct TRI_vocbase_s*,
-                                        TRI_voc_cid_t, 
+                                        TRI_voc_cid_t,
+                                        char const*, 
                                         struct TRI_json_s const*);
 
 #else
@@ -216,7 +242,8 @@ int TRI_LogCreateCollectionReplication (struct TRI_vocbase_s*,
 #ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogDropCollectionReplication (struct TRI_vocbase_s*,
-                                      TRI_voc_cid_t);
+                                      TRI_voc_cid_t,
+                                      char const*);
 
 #else
 
@@ -248,6 +275,7 @@ int TRI_LogRenameCollectionReplication (struct TRI_vocbase_s*,
 
 int TRI_LogChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
                                                   TRI_voc_cid_t,
+                                                  char const*,
                                                   struct TRI_json_s const*);
 
 #else
@@ -264,6 +292,7 @@ int TRI_LogChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
 
 int TRI_LogCreateIndexReplication (struct TRI_vocbase_s*,
                                    TRI_voc_cid_t,
+                                   char const*,
                                    TRI_idx_iid_t,
                                    struct TRI_json_s const*);
 
@@ -281,6 +310,7 @@ int TRI_LogCreateIndexReplication (struct TRI_vocbase_s*,
 
 int TRI_LogDropIndexReplication (struct TRI_vocbase_s*,
                                  TRI_voc_cid_t,
+                                 char const*,
                                  TRI_idx_iid_t iid);
 
 #else
