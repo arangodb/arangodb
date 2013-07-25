@@ -40,7 +40,7 @@ function ArangoAdapterControls(list, adapter) {
   var self = this,
     baseClass = "adapter";
   
-  this.addControlChangeCollections = function() {
+  this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",
       idprefix = prefix + "_";
     adapter.getCollections(function(nodeCols, edgeCols) {
@@ -62,6 +62,9 @@ function ArangoAdapterControls(list, adapter) {
               edges = $("#" + idprefix + "edgecollection").attr("value"),
               undirected = !!$("#" + idprefix + "undirected").attr("checked");
             adapter.changeToCollections(nodes, edges, undirected);
+            if (_.isFunction(callback)) {
+              callback();
+            }
           }
         );
       });

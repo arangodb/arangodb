@@ -238,6 +238,11 @@ img.gv-zoom-btn.pan-bottom{
   content:url("../img/gv_arrow_bottom.png");
 }
 
+
+img.gv-throbber {
+  content:url("../img/swagger/throbber.gif");
+}
+
 pre.gv_object_view {
   text-align: left;
   white-space: pre;
@@ -265,4 +270,13 @@ pre.gv_object_view {
   outline-color: #333333;
   border-color: #686766;
   background: white;
+}
+
+.gv_example_toggle {
+  background-color:white;
+  height: 30px;
+}
+
+.gv_example_toggle:hover {
+  background-color:white;
 }

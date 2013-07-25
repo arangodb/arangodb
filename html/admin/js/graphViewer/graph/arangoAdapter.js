@@ -86,10 +86,13 @@ function ArangoAdapter(nodes, edges, config) {
       if (query !== queries.connectedEdges) {
         bindVars["@nodes"] = nodeCollection;
       }
-      if (query !== queries.childrenCentrality) {
+      if (query !== queries.childrenCentrality
+      && query !== queries.randomDocuments) {
         bindVars.dir = direction;
       }
-      bindVars["@edges"] = edgeCollection;
+      if (query !== queries.randomDocuments) {
+        bindVars["@edges"] = edgeCollection;
+      }
       var data = {
         query: query,
         bindVars: bindVars
@@ -117,6 +120,28 @@ function ArangoAdapter(nodes, edges, config) {
       });
     },
   
+    getNRandom = function(n, callback) {
+      var list = [],
+        i = 0;
+      for (i = 0; i < n; i++) {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: api.any,
+          data: JSON.stringify({
+            collection: nodeCollection
+          }),
+          contentType: "application/json",
+          success: function(data) {
+            list.push(data.document);
+            if (list.length === n) {
+              callback(list);
+            }
+          }
+        });
+      }
+    },
+    
     parseResultOfTraversal = function (result, callback) {
       if (result.length === 0) {
         if (callback) {
@@ -215,9 +240,14 @@ function ArangoAdapter(nodes, edges, config) {
   api.cursor = api.base + "cursor";
   api.collection = api.base + "collection/";
   api.document = api.base + "document/";
+  api.any = api.base + "simple/any";
   api.node = api.base + "document?collection=" + nodeCollection; 
   api.edge = api.base + "edge?collection=" + edgeCollection; 
   
+  queries.randomDocuments = "FOR u IN @@nodes"
+    + " sort rand()"
+    + " limit 10"
+    + " return u";
   queries.nodeById = "FOR n IN @@nodes"
     + " FILTER n._id == @id"
     + " LET links = ("
@@ -497,6 +527,21 @@ function ArangoAdapter(nodes, edges, config) {
         error: function(data) {
           throw data.statusText;
         }
+      });
+    }
+  };
+  
+  self.getAttributeExamples = function(callback) {
+    if (callback && callback.length >= 1) {
+      getNRandom(10, function(l) {
+        var ret = _.uniq(
+          _.flatten(
+            _.map(l, function(o) {
+              return _.keys(o);
+            })
+          )
+        );
+        callback(ret);
       });
     }
   };
