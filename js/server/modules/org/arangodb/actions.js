@@ -1178,6 +1178,9 @@ function reloadRouting () {
   i  = null;
   routing = null;
 
+  // install the foxx routes
+  routes = routes.concat(foxxManager.appRoutes());
+
   // check development routes
   if (internal.developmentMode) {
     routes = routes.concat(foxxManager.developmentRoutes());
