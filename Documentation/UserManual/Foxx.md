@@ -305,8 +305,11 @@ A Foxx Model can be initialized with an object of attributes and their values.
 
 The attributes property is the internal hash containing the model's state.
 
-#### Foxx.Model#toJSON
-@copydetails JSF_foxx_model_toJSON
+#### Foxx.Model#forDB
+@copydetails JSF_foxx_model_forDB
+
+#### Foxx.Model#forClient
+@copydetails JSF_foxx_model_forClient
 
 ## Foxx.Repository
 

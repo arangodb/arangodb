@@ -1029,14 +1029,24 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_toJSON
+/// @fn JSF_foxx_model_forDB
 /// @brief Return a copy of the model which can be saved into ArangoDB
 ///
 /// Return a copy of the model which can be saved into ArangoDB
-/// (or send to the client).
 ////////////////////////////////////////////////////////////////////////////////
 
-  toJSON: function () {
+  forDB: function () {
+    return this.attributes;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_forClient
+/// @brief Return a copy of the model which can be returned to the client
+///
+/// Return a copy of the model which you can send to the client.
+////////////////////////////////////////////////////////////////////////////////
+
+  forClient: function () {
     return this.attributes;
   }
 });
