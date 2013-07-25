@@ -65,6 +65,16 @@ var queryView = Backbone.View.extend({
     if (e.ctrlKey && e.keyCode === 13) {
       this.submitQuery();
     }
+    else if (e.metaKey && !e.ctrlKey && e.keyCode === 13) {
+      this.submitQuery();
+    }
+    else if (e.ctrlKey && e.keyCode === 90) {
+      this.undoText();
+    }
+    else if (e.ctrlKey && e.shiftKey && e.keyCode === 90) {
+      this.redeText();
+    }
+
   },
 
   queries: [
@@ -85,7 +95,6 @@ var queryView = Backbone.View.extend({
 
     inputEditor.getSession().setMode("ace/mode/aql");
     outputEditor.getSession().setMode("ace/mode/json");
-    inputEditor.setTheme("ace/theme/merbivore_soft");
     outputEditor.setValue('');
 
     $('#queryOutput').resizable({
@@ -131,6 +140,8 @@ var queryView = Backbone.View.extend({
 
     inputEditor.resize();
     outputEditor.resize();
+
+    inputEditor.setTheme("ace/theme/merbivore_soft");
 
     this.renderSelectboxes();
     $('#queryDiv').show();
