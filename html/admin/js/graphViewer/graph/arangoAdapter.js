@@ -122,14 +122,13 @@ function ArangoAdapter(nodes, edges, config) {
     },
   
     sendQuery = function(query, bindVars, onSuccess) {
-      if (query !== queries.connectedEdges) {
-        bindVars["@nodes"] = nodeCollection;
-      }
-      if (query !== queries.childrenCentrality
-      && query !== queries.randomDocuments) {
-        bindVars.dir = direction;
-      }
-      if (query !== queries.randomDocuments) {
+      if (query !== queries.getAllGraphs) {
+        if (query !== queries.connectedEdges) {
+          bindVars["@nodes"] = nodeCollection;
+        }
+        if (query !== queries.childrenCentrality) {
+          bindVars.dir = direction;
+        }
         bindVars["@edges"] = edgeCollection;
       }
       var data = {
@@ -273,6 +272,8 @@ function ArangoAdapter(nodes, edges, config) {
   
   parseConfig(config);
   
+  queries.getAllGraphs = "FOR g IN _graphs"
+    + " return g._key";
   queries.randomDocuments = "FOR u IN @@nodes"
     + " sort rand()"
     + " limit 10"
@@ -512,6 +513,18 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.changeToGraph = function (name, dir) {
+    absAdapter.cleanUp();
+    getCollectionsFromGraph(name);
+    if (dir !== undefined) {
+      if (dir === true) {
+        direction = "any";
+      } else {
+        direction = "outbound";
+      }
+    }
+  };
+  
   self.setNodeLimit = function (pLimit, callback) {
     absAdapter.setNodeLimit(pLimit, callback);
   };
@@ -558,6 +571,16 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.getGraphs = function(callback) {
+    if (callback && callback.length >= 1) {      
+      sendQuery(
+        queries.getAllGraphs,
+        {}, 
+        callback
+      );
+    }
+  };
+  
   self.getAttributeExamples = function(callback) {
     if (callback && callback.length >= 1) {
       getNRandom(10, function(l) {
@@ -575,4 +598,6 @@ function ArangoAdapter(nodes, edges, config) {
   
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;
+  
+  self.getGraphs(function(l) {console.log(l)});
 }
