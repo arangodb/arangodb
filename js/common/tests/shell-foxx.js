@@ -838,7 +838,7 @@ function ModelSpec () {
       assertFalse(instance.has("c"));
     },
 
-    testToJson: function () {
+    testSerialization: function () {
       var raw = {
         a: 1,
         b: 2
