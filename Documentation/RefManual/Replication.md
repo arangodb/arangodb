@@ -7,6 +7,16 @@ Replication Events{#RefManualReplication}
 The replication logger in ArangoDB will log all events into the `_replication`
 system collection. It will only log events when the logger is enabled.
 
+Continuous Replication Log{#RefManualReplicationContinuous}
+===========================================================
+
+Replication log events are made available to replication clients via the API at
+`/_api/replication/logger-follow`. This API can be called by clients to fetch
+replication log events repeatedly.
+
+The following sections describe in detail the structure of the log events
+returned by this API.
+
 Replication Event Types{#RefManualReplicationEventTypes}
 --------------------------------------------------------
 
@@ -41,25 +51,6 @@ When replication events are queried via the `/_api/replication/logger-follow` AP
 the `tick` attribute will also be returned for each replication event. The `tick`
 value is a sequence number and is used by the replication applier to determine 
 whether a replication event was already processed.
-
-Transactions{#RefManualReplicationTransactions}
------------------------------------------------
-
-Transactions are logged as an uninterrupted sequence, starting with a `transaction start` 
-event, and finishing with a `transaction commit` event. Between these two events, all
-transactional document/edge operations will be logged. 
-
-All transactional document/edge operations will carry a `tid` attribute, which indicates
-the transaction id. Non-transactional operations will not carry a `tid` attribute.
-
-Replication clients can apply non-transactional operations directly. In constrast, they
-should not apply transactional operations directly, but buffer them first and apply them
-altogether when they encounter the `transaction commit` event for the transaction.
-
-If a replication client encounters some unexpected event during a transaction (i.e. some
-event that is neither a ocument/edge operation nor a `transaction commit` event), it 
-should abort the ongoing transaction and discard all buffered operations. It can then
-consider the current transaction as failed.
 
 Examples{#RefManualReplicationExamples}
 ---------------------------------------
@@ -422,3 +413,21 @@ Examples{#RefManualReplicationExamples}
         "oldRev":"247908302865807"
       }
 
+Transactions{#RefManualReplicationTransactions}
+-----------------------------------------------
+
+Transactions are logged as an uninterrupted sequence, starting with a `transaction start` 
+event, and finishing with a `transaction commit` event. Between these two events, all
+transactional document/edge operations will be logged. 
+
+All transactional document/edge operations will carry a `tid` attribute, which indicates
+the transaction id. Non-transactional operations will not carry a `tid` attribute.
+
+Replication clients can apply non-transactional operations directly. In constrast, they
+should not apply transactional operations directly, but buffer them first and apply them
+altogether when they encounter the `transaction commit` event for the transaction.
+
+If a replication client encounters some unexpected event during a transaction (i.e. some
+event that is neither a ocument/edge operation nor a `transaction commit` event), it 
+should abort the ongoing transaction and discard all buffered operations. It can then
+consider the current transaction as failed.
