@@ -1037,6 +1037,9 @@ void RestReplicationHandler::handleCommandInventory () {
 /// @RESTRETURNCODE{404}
 /// is returned when the collection could not be found.
 ///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
 ///
@@ -1187,7 +1190,52 @@ void RestReplicationHandler::handleCommandDump () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the configuration of the replication applier
+/// @brief get the configuration of the replication applier
+///
+/// @RESTHEADER{GET /_api/replication/applier-config,returns the configuration of the replication applier}
+///
+/// @RESTDESCRIPTION
+/// Returns the configuration of the replication applier.
+///
+/// The body of the response is a JSON hash with the configuration. The
+/// following attributes may be present in the configuration:
+///
+/// - `endpoint`: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
+///
+/// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
+///
+/// - `password`: the password to use when connecting to the endpoint.
+///
+/// - `connectTimeout`: the timeout (in seconds) when connecting to the endpoint.
+///
+/// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
+///
+/// - `autoStart`: whether or not to auto-start the replication applier on
+///   (next and following) server starts
+///
+/// - `adaptivePolling`: whether or not the replication applier will use
+///   adaptive polling.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierGetConfig}
+///     var url = "/_api/replication/applier-config";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetConfig () {
@@ -1213,7 +1261,87 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief configure the replication applier
+/// @brief set the configuration of the replication applier
+///
+/// @RESTHEADER{PUT /_api/replication/applier-config,adjusts the configuration of the replication applier}
+///
+/// @RESTBODYPARAM{configuration,json,required}
+/// A JSON representation of the configuration.
+///
+/// @RESTDESCRIPTION
+/// Sets the configuration of the replication applier. The configuration can
+/// only be changed while the applier is not running. The updated configuration 
+/// will be saved immediately but only become active with the next start of the 
+/// applier.
+///
+/// The body of the request must be JSON hash with the configuration. The
+/// following attributes are allowed for the configuration:
+///
+/// - `endpoint`: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
+///   The endpoint must be specified.
+///
+/// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
+///
+/// - `password`: the password to use when connecting to the endpoint.
+///
+/// - `connectTimeout`: the timeout (in seconds) when connecting to the endpoint.
+///
+/// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
+///
+/// - `autoStart`: whether or not to auto-start the replication applier on
+///   (next and following) server starts
+///
+/// - `adaptivePolling`: if set to `true`, the replication applier will fall
+///   to sleep for an increasingly long period in case the logger server at the
+///   endpoint does not have any more replication events to apply. Using
+///   adaptive polling is thus useful to reduce the amount of work for both the
+///   applier and the logger server for cases when there are only infrequent
+///   changes. The downside is that when using adaptive polling, it might take
+///   longer for the replication applier to detect that there are new replication
+///   events on the logger server.
+///
+///   Setting `adaptivePolling` to false will make the replication applier 
+///   contact the logger server in a constant interval, regardless of whether
+///   the logger server provides updates frequently or seldomly.
+///
+/// In case of success, the body of the response is a JSON hash with the updated
+/// configuration.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the configuration is incomplete or malformed, or if the
+/// replication applier is currently running.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierSetConfig}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///
+///     var url = "/_api/replication/applier-config";
+///     var body = { 
+///       endpoint: "tcp://127.0.0.1:8529",
+///       username: "replicationApplier",
+///       password: "applier1234@foxx",
+///       autoStart: false,
+///       adaptivePolling: true
+///     };
+///
+///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig () {
@@ -1229,9 +1357,21 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     return;
   }
 
+  TRI_json_t const* value;
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
 
-  config._endpoint          = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  
+  value = JsonHelper::getArrayElement(json, "username");
+  if (JsonHelper::isString(value)) {
+    config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
+  }
+
+  value = JsonHelper::getArrayElement(json, "password");
+  if (JsonHelper::isString(value)) {
+    config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
+  }
+
   config._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", config._requestTimeout);
   config._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", config._ignoreErrors);
@@ -1246,15 +1386,72 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_DestroyConfigurationReplicationApplier(&config);
     
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||
+        res == TRI_ERROR_REPLICATION_RUNNING) {
+      generateError(HttpResponse::BAD, res);
+    }
+    else {
+      generateError(HttpResponse::SERVER_ERROR, res);
+    }
     return;
   }
-  
-  handleCommandApplierGetState();
+ 
+  handleCommandApplierGetConfig();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier
+///
+/// @RESTHEADER{PUT /_api/replication/applier-start,starts the replication applier}
+///
+/// @RESTDESCRIPTION
+/// Starts the replication applier. This will return immediately if the
+/// replication applier is already running.
+///
+/// If the replication applier is not already running, the applier configuration
+/// will be checked, and if it is complete, the applier will be started in a
+/// background thread. This means that even if the applier will encounter any
+/// errors while running, they will not be reported in the response to this 
+/// method. 
+///
+/// To detect replication applier errors after the applier was started, use the 
+/// `/_api/replication/applier-state` API instead.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the replication applier is not fully configured or the
+/// configuration is invalid.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStart}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///     re.applier.properties({
+///       endpoint: "tcp://127.0.0.1:8529",
+///       username: "replicationApplier",
+///       password: "applier1234@foxx",
+///       autoStart: false,
+///       adaptivePolling: true
+///     });
+///
+///     var url = "/_api/replication/applier-start";
+///     var response = logCurlRequest('PUT', url, "");
+///     re.applier.stop();
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStart () {
@@ -1274,7 +1471,13 @@ void RestReplicationHandler::handleCommandApplierStart () {
   int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, fullSync);
     
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||
+        res == TRI_ERROR_REPLICATION_RUNNING) {
+      generateError(HttpResponse::BAD, res);
+    }
+    else {
+      generateError(HttpResponse::SERVER_ERROR, res);
+    }
     return;
   }
   
@@ -1282,7 +1485,46 @@ void RestReplicationHandler::handleCommandApplierStart () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication applier
+/// @brief stops the replication applier
+///
+/// @RESTHEADER{PUT /_api/replication/applier-stop,stops the replication applier}
+///
+/// @RESTDESCRIPTION
+/// Stops the replication applier. This will return immediately if the
+/// replication applier is not running.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStop}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///     re.applier.properties({
+///       endpoint: "tcp://127.0.0.1:8529",
+///       username: "replicationApplier",
+///       password: "applier1234@foxx",
+///       autoStart: false,
+///       adaptivePolling: true
+///     });
+///
+///     re.applier.start();
+///     var url = "/_api/replication/applier-stop";
+///     var response = logCurlRequest('PUT', url, "");
+///     re.applier.stop();
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStop () {
@@ -1299,7 +1541,105 @@ void RestReplicationHandler::handleCommandApplierStop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the state of the replication applier
+/// @brief returns the state of the replication applier
+///
+/// @RESTHEADER{GET /_api/replication/applier-state,returns the state of the replication applier}
+///
+/// @RESTDESCRIPTION
+/// Returns the state of the replication applier, regardless of whether the
+/// applier is currently running or not.
+///
+/// The response is a JSON hash with the following attributes:
+///
+/// - `state`: a JSON hash with the following sub-attributes:
+/// 
+///   - `running`: whether or not the applier is active and running
+///
+///   - `lastAppliedContinuousTick`: the last tick value from the continuous
+///     replication log the applier has applied.
+///
+///   - `lastProcessedContinuousTick`: the last tick value from the continuous
+///     replication log the applier has processed. 
+///
+///     Regularly, the last applied and last processed tick values should be
+///     identical. For transactional operations, the replication applier will first
+///     process incoming log events before applying them, so the processed tick
+///     value might be higher than the applied tick value. This will be the case
+///     until the applier encounters the `transaction commit` log event for the
+///     transaction.
+///
+///   - `lastAvailableContinuousTick`: the last tick value the logger server can
+///     provide.
+///
+///   - `time`: the time on the applier server.
+///
+///   - `progress`: a JSON hash with details about the replication applier progress.
+///     It contains the following sub-attributes if there is progress to report:
+///
+///     - `message`: a textual description of the progress
+///
+///     - `time`: the date and time the progress was logged
+///
+///   - `lastError`: a JSON hash with details about the last error that happened on
+///     the applier. It contains the following sub-attributes if there was an error:
+///
+///     - `errorNum`: a numerical error code
+///
+///     - `errorMessage`: a textual error description
+///
+///     - `time`: the date and time the error occurred
+///
+///     In case no error has occurred, `lastError` will be empty.
+///
+/// - `server`: a JSON hash with the following sub-attributes:
+///
+///   - `version`: the applier server's version
+///
+///   - `serverId`: the applier server's id
+///  
+/// - `endpoint`: the endpoint the applier is connected to (if applier is
+///   active) or will connect to (if applier is currently inactive)
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// Fetching the state of an inactive applier:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateNotRunning}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///
+///     var url = "/_api/replication/applier-state";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Fetching the state of an active applier:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateRunning}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///     re.applier.start();
+///
+///     var url = "/_api/replication/applier-state";
+///     var response = logCurlRequest('GET', url);
+///     re.applier.stop();
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState () {
