@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, continue: true, regexp: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB Application Launcher
@@ -521,11 +521,13 @@ function updateFishbowl () {
 function compareApps (l, r) { 
   'use strict';
 
-  var left = l.name.toLowerCase(), right = r.name.toLowerCase();
+  var left = l.name.toLowerCase();
+  var right = r.name.toLowerCase();
 
   if (left < right) { 
     return -1; 
   }
+
   if (right < left) { 
     return 1; 
   }
@@ -538,6 +540,8 @@ function compareApps (l, r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function cmdUsage () {
+  'use strict';
+
   var printf = arangodb.printf;
   var fm = "foxx-manager";
 
@@ -558,6 +562,8 @@ function cmdUsage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.run = function (args) {
+  'use strict';
+
   if (typeof args === 'undefined' || args.length === 0) {
     console.error("expecting a command, please try: ");
     cmdUsage();
@@ -568,7 +574,7 @@ exports.run = function (args) {
 
   try {
     if (type === 'fetch') {
-      exports.fecth(args[1], args[2], args[3]);
+      exports.fetch(args[1], args[2], args[3]);
     }
     else if (type === 'mount') {
       if (3 < args.length) {
@@ -576,6 +582,14 @@ exports.run = function (args) {
       }
       else {
         exports.mount(args[1], args[2]);
+      }
+    }
+    else if (type === 'install') {
+      if (3 < args.length) {
+        exports.install(args[1], args[2], JSON.parse(args[3]));
+      }
+      else {
+        exports.install(args[1], args[2]);
       }
     }
     else if (type === 'unmount') {
@@ -662,7 +676,7 @@ exports.fetch = function (type, location, version) {
   var res = arango.POST("/_admin/foxx/fetch", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return { path: res.path };
+  return { path: res.path, app: res.app };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -718,6 +732,86 @@ exports.unmount = exports.uninstall = function (key) {
 
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
   arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installs a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.install = function (name, mount, options) {
+  'use strict';
+
+  var usage = ", usage: install(<name>, <mount>, [<options>])";
+
+  if (typeof name === "undefined") {
+    throwBadParameter("name missing" + usage);
+  }
+
+  if (typeof mount === "undefined") {
+    throwBadParameter("mount missing" + usage);
+  }
+
+  validateMount(mount);
+
+  // .............................................................................
+  // latest fishbowl version
+  // .............................................................................
+
+  var fishbowl = getFishbowlStorage();
+  var available = fishbowl.firstExample({name: name});
+  var source = null;
+  var version = null;
+
+  if (available !== null) {
+    var keys = [];
+    var key;
+
+    for (key in available.versions) {
+      if (available.versions.hasOwnProperty(key)) {
+        keys.push(key);
+      }
+    }
+    
+    keys = keys.sort(module.compareVersions);
+    version = keys[keys.length - 1];
+    source = available.versions[version];
+  }
+
+  // .............................................................................
+  // latest fetched version
+  // .............................................................................
+
+  var appId = null;
+  var aal = getStorage();
+  var cursor = aal.byExample({ type: "app", name: name });
+
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+
+    if (module.compareVersions(version, doc.version) <= 0) {
+      version = doc.version;
+      source = "fetched";
+      appId = doc.app;
+    }
+  }
+
+  // .............................................................................
+  // fetched latest version
+  // .............................................................................
+
+  if (source !== "fetched") {
+    appId = exports.fetch(source.type, source.location, source.tag).app;
+  }
+
+  // .............................................................................
+  // install at path
+  // .............................................................................
+
+  if (appId === null) {
+    throw new Error("cannot extract application id");
+  }
+
+  return exports.mount(appId, mount, options);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
