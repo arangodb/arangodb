@@ -8,12 +8,31 @@ window.graphView = Backbone.View.extend({
 
   initialize: function () {
     var self = this;
+    this.newLineTmpl = new EJS({url: "js/templates/graphViewGroupByEntry.ejs"});
     this.graphs = [];
+    this.i = 1;
   },
 
   events: {
     "click input[type='radio'][name='loadtype']": "toggleLoadtypeDisplay",
-    "click #createViewer": "createViewer"
+    "click #createViewer": "createViewer",
+    "click #add_group_by": "insertNewAttrLine",
+    "click .gv_internal_remove_line": "removeAttrLine"
+  },
+
+  removeAttrLine: function(e) {
+    var g = $(e.currentTarget)
+      .parent()
+      .parent(),
+      set = g.parent();
+    set.get(0).removeChild(g.get(0));
+  }, 
+
+
+  insertNewAttrLine: function() {
+    this.i++;
+    var next = this.newLineTmpl.render({id: this.i});
+    $("#group_by_list").append(next);
   },
 
   toggleLoadtypeDisplay: function() {
