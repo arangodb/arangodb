@@ -417,6 +417,34 @@ ArangoDatabase.prototype._drop = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the local cache
+/// this is called by connection.reconnect() 
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._flushCache = function () {
+  var name;
+ 
+  for (name in this) {
+    if (this.hasOwnProperty(name)) {
+      var collection = this[name];
+
+      if (collection instanceof this._collectionConstructor) {
+        this[name] = undefined;
+      }
+    }
+  }
+
+  try {
+    // repopulate cache
+    this._collections();
+  }
+  catch (err) {
+  }
+  
+  this._properties = null;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief query the database properties
 ////////////////////////////////////////////////////////////////////////////////
 

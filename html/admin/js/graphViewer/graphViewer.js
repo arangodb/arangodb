@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _*/
+/*global _, $*/
 /*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,8 +31,11 @@
 
 
 function GraphViewer(svg, width, height, adapterConfig, config) {
-  
   "use strict";
+  
+  // Make the html aware of xmlns:xlink
+  $("html").attr("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  
   // Check if all required inputs are given
   if (svg === undefined || svg.append === undefined) {
     throw "SVG has to be given and has to be selected using d3.select";
@@ -54,7 +57,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     graphContainer,
     nodeContainer,
     edgeContainer,
-    zoomManager,
     fixedSize,
     edges = [],
     nodes = [],
@@ -89,7 +91,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   parseZoomConfig = function(config) {
     if (config) {
-      zoomManager = new ZoomManager(width, height, svg,
+      self.zoomManager = new ZoomManager(width, height, svg,
         graphContainer, self.nodeShaper, self.edgeShaper,
         {}, nodeLimitCallBack);
     }

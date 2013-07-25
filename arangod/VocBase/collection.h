@@ -205,11 +205,11 @@ TRI_col_file_structure_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_STATE_CLOSED = 1,        // collection is closed
-  TRI_COL_STATE_READ = 2,          // collection is opened read only
-  TRI_COL_STATE_WRITE = 3,         // collection is opened read/append
-  TRI_COL_STATE_OPEN_ERROR = 4,    // an error has occurred while opening
-  TRI_COL_STATE_WRITE_ERROR = 5    // an error has occurred while writing
+  TRI_COL_STATE_CLOSED      = 1,    // collection is closed
+  TRI_COL_STATE_READ        = 2,    // collection is opened read only
+  TRI_COL_STATE_WRITE       = 3,    // collection is opened read/append
+  TRI_COL_STATE_OPEN_ERROR  = 4,    // an error has occurred while opening
+  TRI_COL_STATE_WRITE_ERROR = 5     // an error has occurred while writing
 }
 TRI_col_state_e;
 
@@ -224,9 +224,9 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_TYPE_SHAPE = 1,
+  TRI_COL_TYPE_SHAPE    = 1,
   TRI_COL_TYPE_DOCUMENT = 2,
-  TRI_COL_TYPE_EDGE = 3
+  TRI_COL_TYPE_EDGE     = 3
 }
 TRI_col_type_e;
 
@@ -235,15 +235,15 @@ TRI_col_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_header_marker_s {
-  TRI_df_marker_t base;                 // 24 bytes
+  TRI_df_marker_t base;                // 24 bytes
 
-  TRI_col_type_t _type;                 //  4 bytes
+  TRI_col_type_t _type;                //  4 bytes
 
 #ifdef TRI_PADDING_32
   char _padding_col_header_marker[4];
 #endif
 
-  TRI_voc_cid_t  _cid;                   //  8 bytes
+  TRI_voc_cid_t  _cid;                 //  8 bytes
 }
 TRI_col_header_marker_t;
 
@@ -262,11 +262,11 @@ typedef struct TRI_col_info_s {
   struct TRI_json_s* _keyOptions;      // options for key creation
 
   // flags
-  bool               _deleted : 1;     // if true, collection has been deleted
-  bool               _doCompact: 1;    // if true, collection will be compacted 
-  bool               _isSystem : 1;    // if true, this is a system collection
-  bool               _isVolatile : 1;  // if true, collection is memory-only
-  bool               _waitForSync : 1; // if true, wait for msync
+  bool               _deleted;         // if true, collection has been deleted
+  bool               _doCompact;       // if true, collection will be compacted 
+  bool               _isSystem;        // if true, this is a system collection
+  bool               _isVolatile;      // if true, collection is memory-only
+  bool               _waitForSync;     // if true, wait for msync
 }
 TRI_col_info_t;
 
@@ -275,12 +275,12 @@ TRI_col_info_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_collection_s {
-  TRI_col_info_t _info;
+  TRI_col_info_t       _info;
 
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t*       _vocbase;
 
-  TRI_col_state_e _state;            // state of the collection
-  int _lastError;                    // last (critical) error
+  TRI_col_state_e      _state;       // state of the collection
+  int                  _lastError;   // last (critical) error
 
   char* _directory;                  // directory of the collection
 

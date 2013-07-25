@@ -36,7 +36,7 @@ var arangosh = require("org/arangodb/arangosh");
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,14 +44,19 @@ var arangosh = require("org/arangodb/arangosh");
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+var logger  = { };
+var applier = { };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication logger
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.startLogger = function () {
+logger.start = function () {
+  'use strict';
+
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/log-start", "");
+  var requestResult = db._connection.PUT("_api/replication/logger-start", "");
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -61,10 +66,12 @@ exports.startLogger = function () {
 /// @brief stops the replication logger
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.stopLogger = function () {
+logger.stop = function () {
+  'use strict';
+
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/log-stop", "");
+  var requestResult = db._connection.PUT("_api/replication/logger-stop", "");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -74,10 +81,12 @@ exports.stopLogger = function () {
 /// @brief return the replication logger state
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.getLoggerState = function () {
+logger.state = function () {
+  'use strict';
+
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/log-state");
+  var requestResult = db._connection.GET("_api/replication/logger-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -87,11 +96,13 @@ exports.getLoggerState = function () {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.startApplier = function (forceFullSynchronisation) {
+applier.start = function (forceFullSynchronisation) {
+  'use strict';
+
   var db = internal.db;
   var append = (forceFullSynchronisation ? "?fullSync=true" : "");
 
-  var requestResult = db._connection.PUT("_api/replication/apply-start" + append, "");
+  var requestResult = db._connection.PUT("_api/replication/applier-start" + append, "");
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -101,10 +112,12 @@ exports.startApplier = function (forceFullSynchronisation) {
 /// @brief stops the replication applier
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.stopApplier = function () {
+applier.stop = function () {
+  'use strict';
+
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/apply-stop", "");
+  var requestResult = db._connection.PUT("_api/replication/applier-stop", "");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -114,14 +127,70 @@ exports.stopApplier = function () {
 /// @brief return the replication applier state
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.getApplierState = function () {
+applier.state = function () {
+  'use strict';
+
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/apply-state");
+  var requestResult = db._connection.GET("_api/replication/applier-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier state and "forget" all state
+////////////////////////////////////////////////////////////////////////////////
+  
+applier.forget = function () {
+  'use strict';
+
+  var db = internal.db;
+
+  var requestResult = db._connection.DELETE("_api/replication/applier-state");
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures the replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+applier.properties = function (config) {
+  'use strict';
+
+  var db = internal.db;
+
+  var requestResult;
+  if (config === undefined) {
+    requestResult = db._connection.GET("_api/replication/applier-config");
+  }
+  else {
+    requestResult = db._connection.PUT("_api/replication/applier-config",
+      JSON.stringify(config));
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    module exports
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.logger  = logger; 
+exports.applier = applier; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

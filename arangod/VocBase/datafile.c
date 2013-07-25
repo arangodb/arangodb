@@ -235,9 +235,12 @@ static void InitDatafile (TRI_datafile_t* datafile,
 
   datafile->_synced      = data;
   datafile->_written     = NULL;
-  
+ 
+  // reset tick aggregates 
   datafile->_tickMin     = 0;
   datafile->_tickMax     = 0;
+  datafile->_dataMin     = 0;
+  datafile->_dataMax     = 0;
 
   // initialise function pointers
   datafile->isPhysical   = &IsPhysicalDatafile;
@@ -1196,15 +1199,17 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
                               bool forceSync) {
-  TRI_voc_tick_t tick = marker->_tick;
+
+  TRI_voc_tick_t tick       = marker->_tick;
+  TRI_df_marker_type_e type = marker->_type;
    
   assert(tick > 0);
 
-  if (marker->_type != TRI_DF_MARKER_HEADER && 
-      marker->_type != TRI_DF_MARKER_FOOTER &&
-      marker->_type != TRI_COL_MARKER_HEADER) {
+  if (type != TRI_DF_MARKER_HEADER && 
+      type != TRI_DF_MARKER_FOOTER &&
+      type != TRI_COL_MARKER_HEADER) {
 
-    // check _tick value of marker and set min/max values for datafile
+    // check _tick value of marker and set min/max tick values for datafile
     if (tick <= datafile->_tickMin || tick <= (TRI_voc_tick_t) datafile->_fid) {
       LOG_WARNING("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
           "expected tick value > tickMin %llu",
@@ -1222,13 +1227,28 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
           datafile->getName(datafile),
           (unsigned long long) datafile->_tickMax);
     }
+
+    // set data tick values (for documents and edge markers)
+    if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+        type == TRI_DOC_MARKER_KEY_EDGE) {
+
+      if (datafile->_dataMin == 0) {
+        datafile->_dataMin = tick;
+      }
+
+      if (datafile->_dataMax < tick) {
+        datafile->_dataMax = tick;
+      }
+    }
   }
 
   if (datafile->_tickMin == 0) {
     datafile->_tickMin = tick;
   }
 
-  datafile->_tickMax = tick;
+  if (datafile->_tickMax < tick) {
+    datafile->_tickMax = tick;
+  }
    
   assert(markerSize > 0);
 
@@ -1350,6 +1370,19 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 
       if (tick > datafile->_tickMax) {
         datafile->_tickMax = tick;
+      }
+
+      // set tick values for data markers (document/edge), too
+      if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+          marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+
+        if (datafile->_dataMin == 0) {
+          datafile->_dataMin = tick;
+        }
+
+        if (tick > datafile->_dataMax) {
+          datafile->_dataMax = tick;
+        }
       }
     }
 

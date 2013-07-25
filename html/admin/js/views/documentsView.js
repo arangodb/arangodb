@@ -9,6 +9,8 @@ var documentsView = Backbone.View.extend({
   filters : { "0" : true },
   filterId : 0,
 
+  allowUpload: false,
+
   collectionContext : {
     prev: null,
     next: null
@@ -37,7 +39,10 @@ var documentsView = Backbone.View.extend({
     "keyup #createEdge"          : "listenKey",
     "click .key"                 : "nop",
     "keyup"                      : "returnPressedHandler",
-    "keydown .filterValue"       : "filterValueKeydown"
+    "keydown .filterValue"       : "filterValueKeydown",
+    "click #importModal"         : "showImportModal",
+    "click #resetView"           : "resetView",
+    "click #confirmDocImport"    : "startUpload"
   },
 
   showSpinner: function() {
@@ -46,6 +51,14 @@ var documentsView = Backbone.View.extend({
 
   hideSpinner: function() {
     $('#uploadIndicator').hide();
+  },
+
+  showImportModal: function() {
+    $("#docImportModal").modal('show');
+  },
+
+  hideImportModal: function() {
+    $("#docImportModal").modal('hide');
   },
 
   returnPressedHandler: function(event) {
@@ -66,23 +79,20 @@ var documentsView = Backbone.View.extend({
     }
   },
 
-  uploadSetup: function () {
+  resetView: function () {
+    //clear all input/select - fields
+    $('input').val('');
+    $('select').val('==');
+    this.removeAllFilterItems();
+
+    this.clearTable();
+    window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
+  },
+
+  startUpload: function () {
     var self = this;
-
-    $('#documentsUploadFile').change(function(e) {
-      var file;
-      var filetype;
-
-      var files = e.target.files || e.dataTransfer.files;
-      file = files[0];
-
-      if (file.type !== 'application/json') {
-        arangoHelper.arangoNotification("Unsupported filetype: " + file.type);
-        return;
-      }
-      
+    if (self.allowUpload === true) {
       self.showSpinner();
-
       $.ajax({
         type: "POST",
         async: false,
@@ -90,7 +100,7 @@ var documentsView = Backbone.View.extend({
           '/_api/import?type=documents&collection='+
           encodeURIComponent(self.colid)+
           '&createCollection=false',
-        data: file,
+        data: self.file,
         processData: false,
         contentType: 'json',
         dataType: 'json',
@@ -99,6 +109,8 @@ var documentsView = Backbone.View.extend({
             if (xhr.status === 201) {
               arangoHelper.arangoNotification("Upload successful");
               self.hideSpinner();
+              self.hideImportModal();
+              self.resetView();
               return;
             }
           }
@@ -106,6 +118,28 @@ var documentsView = Backbone.View.extend({
           arangoHelper.arangoNotification("Upload error");
         }
       });
+    }
+    else {
+      arangoHelper.arangoNotification("Unsupported filetype: " + self.file.type);
+    }
+  },
+
+  uploadSetup: function () {
+    var self = this;
+
+    //$('#documentsUploadFile').change(function(e) {
+    $('#importDocuments').change(function(e) {
+      self.files = e.target.files || e.dataTransfer.files;
+      self.file = self.files[0];
+
+      if (self.file.type !== 'application/json') {
+        arangoHelper.arangoNotification("Unsupported filetype: " + self.file.type);
+        self.allowUpload = false;
+        return;
+      }
+      else {
+        self.allowUpload = true;
+      }
     });
   },
 
@@ -211,9 +245,19 @@ var documentsView = Backbone.View.extend({
     var filterId = button.id.replace(/^removeFilter/, '');
     // remove the filter from the list
     delete this.filters[filterId];
-    
+
     // remove the line from the DOM
     $(button.parentElement).remove();
+  },
+
+  removeAllFilterItems : function () {
+    var childrenLength = $('#filterHeader').children().length;
+    var i;
+    for (i = 1; i <= childrenLength; i++) {
+      $('#removeFilter'+i).parent().remove();
+    }
+    this.filters = { "0" : true };
+    this.filterId = 0;
   },
 
   addDocument: function () {
@@ -358,8 +402,6 @@ var documentsView = Backbone.View.extend({
   },
 
   initTable: function (colid, pageid) {
-    this.collectionID = colid;
-    this.currentPage = pageid;
     var documentsTable = $('#documentsTableID').dataTable({
       "aaSorting": [[ 1, "asc" ]],
       "bFilter": false,
@@ -372,8 +414,8 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"","bSortable": false, "sWidth":"500px"},
-        { "sClass":"", "bSortable": false, "sWidth":"30px"},
+        { "sClass":"","bSortable": false, "sWidth":"470px"},
+        { "sClass":"", "bSortable": false, "sWidth":"100px"},
         { "bSortable": false, "sClass": "", "sWidth":"20px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
@@ -397,7 +439,9 @@ var documentsView = Backbone.View.extend({
 
       var tempObj = {};
       $.each(value.attributes.content, function(k, v) {
-        if (k !== '_id' || k !== '_rev' || k !== '_key') {
+        if (k === '_id' || k === '_rev' || k === '_key') {
+        }
+        else {
           tempObj[k] = v;
         }
       });
@@ -454,6 +498,11 @@ var documentsView = Backbone.View.extend({
     $.gritter.removeAll();
 
     this.uploadSetup();
+
+    $('.modalImportTooltips').tooltip({
+            placement: "left"
+    });
+
     return this;
   },
   renderPagination: function (totalPages) {

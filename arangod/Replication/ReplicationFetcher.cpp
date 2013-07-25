@@ -41,7 +41,6 @@
 #include "VocBase/primary-collection.h"
 #include "VocBase/server-id.h"
 #include "VocBase/transaction.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -91,21 +90,28 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _masterInfo(),
   _applyState(),
   _forceFullSynchronisation(forceFullSynchronisation),
+  _policy(),
   _endpoint(0),
   _connection(0),
   _client(0) {
-   
+    
+  // get our own server-id as a string
+  _localServerIdString = StringUtils::itoa(TRI_GetServerId());
+ 
+  // init the update policy
+  TRI_InitUpdatePolicy(&_policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
+
   if (_forceFullSynchronisation) {
-    TRI_RemoveStateFileReplicationApplier(_vocbase);
+    TRI_RemoveStateReplicationApplier(_vocbase);
   }
 
-  TRI_InitApplyConfigurationReplicationApplier(&_configuration);
-  TRI_CopyApplyConfigurationReplicationApplier(configuration, &_configuration);
+  TRI_InitConfigurationReplicationApplier(&_configuration);
+  TRI_CopyConfigurationReplicationApplier(configuration, &_configuration);
  
   TRI_InitMasterInfoReplication(&_masterInfo, configuration->_endpoint);
   _applyState._trx         = 0;
   _applyState._externalTid = 0;
-
+    
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
   if (_endpoint != 0) { 
@@ -156,7 +162,7 @@ ReplicationFetcher::~ReplicationFetcher () {
   }
 
   TRI_DestroyMasterInfoReplication(&_masterInfo);
-  TRI_DestroyApplyConfigurationReplicationApplier(&_configuration);
+  TRI_DestroyConfigurationReplicationApplier(&_configuration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,7 +225,7 @@ int ReplicationFetcher::run () {
     TRI_SetErrorReplicationApplier(_applier, res, errorMsg.c_str());
 
     // stop ourselves
-    TRI_StopReplicationApplier(_applier);
+    TRI_StopReplicationApplier(_applier, false);
 
     return res;
   }
@@ -229,15 +235,16 @@ int ReplicationFetcher::run () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
-/// sort order is by collection type first (vertices before edges), then name 
+/// sort order is by collection type first (vertices before edges, this is
+/// because edges depend on vertices being there), then name 
 ////////////////////////////////////////////////////////////////////////////////
 
 int ReplicationFetcher::sortCollections (const void* l, const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
-  int leftType  = (int) JsonHelper::getNumberValue(left,  "type", 2.0);
-  int rightType = (int) JsonHelper::getNumberValue(right, "type", 2.0);
+  int leftType  = (int) JsonHelper::getIntValue(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int rightType = (int) JsonHelper::getIntValue(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
 
   if (leftType != rightType) {
@@ -271,7 +278,7 @@ int ReplicationFetcher::saveApplyState () {
   LOGGER_TRACE("saving replication apply state. "
                "last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick);
 
-  int res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, false);
+  int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
         
   if (res != TRI_ERROR_NO_ERROR) {
     LOGGER_WARNING("unable to save replication apply state: " << TRI_errno_string(res));
@@ -401,6 +408,17 @@ int ReplicationFetcher::processDocument (TRI_replication_operation_e type,
   if (! JsonHelper::isString(keyJson)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+
+  // extract "rev"
+  TRI_voc_rid_t rid;
+
+  const string ridString = JsonHelper::getStringValue(json, "rev", "");
+  if (ridString.empty()) {
+    rid = 0;
+  }
+  else {
+    rid = StringUtils::uint64(ridString.c_str(), ridString.size());
+  }
   
   // extract "data"
   TRI_json_t const* doc = JsonHelper::getArrayElement(json, "data");
@@ -444,6 +462,7 @@ int ReplicationFetcher::processDocument (TRI_replication_operation_e type,
     int res = applyCollectionDumpMarker(trxCollection, 
                                         type, 
                                         (const TRI_voc_key_t) keyJson->_value._string.data, 
+                                        rid,
                                         doc, 
                                         errorMsg);
 
@@ -475,6 +494,7 @@ int ReplicationFetcher::processDocument (TRI_replication_operation_e type,
     res = applyCollectionDumpMarker(trxCollection, 
                                     type, 
                                     (const TRI_voc_key_t) keyJson->_value._string.data, 
+                                    rid,
                                     doc, 
                                     errorMsg);
 
@@ -642,7 +662,7 @@ int ReplicationFetcher::createCollection (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumberValue(json, "type", (double) TRI_COL_TYPE_DOCUMENT);
+  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getIntValue(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -823,6 +843,7 @@ int ReplicationFetcher::dropIndex (TRI_json_t const* json) {
 int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
                                                    TRI_replication_operation_e type,
                                                    const TRI_voc_key_t key,
+                                                   const TRI_voc_rid_t rid,
                                                    TRI_json_t const* json,
                                                    string& errorMsg) {
 
@@ -832,19 +853,15 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
     assert(json != 0);
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-
     TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-
-    int res;
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
 
-      res = primary->read(trxCollection, key, &mptr, false);
+      int res = primary->read(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
-        const TRI_voc_rid_t rid = StringUtils::uint64(JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_REV, ""));
 
         if (type == MARKER_EDGE) {
           // edge
@@ -855,8 +872,8 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
             res = TRI_ERROR_NO_ERROR;
           }
 
-          string from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
-          string to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
+          const string from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
+          const string to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
           
 
           // parse _from
@@ -886,31 +903,25 @@ int ReplicationFetcher::applyCollectionDumpMarker (TRI_transaction_collection_t*
       }
       else {
         // update
-        TRI_doc_update_policy_t policy;
-        TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
-
-        res = primary->update(trxCollection, key, &mptr, shaped, &policy, false, false);
+        res = primary->update(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
       }
       
       TRI_FreeShapedJson(primary->_shaper, shaped);
+
+      return res;
     }
     else {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      errorMsg = TRI_errno_string(res);
+      errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+      
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
-
-    return res; 
   }
 
   else if (type == MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
 
-    TRI_doc_update_policy_t policy;
-    TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
-
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-
-    int res = primary->remove(trxCollection, key, &policy, false, false);
+    int res = primary->remove(trxCollection, key, rid, &_policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -968,7 +979,8 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
     }
 
     TRI_replication_operation_e type = REPLICATION_INVALID;
-    const char* key  = 0;
+    const char* key       = 0;
+    TRI_voc_rid_t rid     = 0;
     TRI_json_t const* doc = 0;
 
     const size_t n = json->_value._objects._length;
@@ -997,6 +1009,12 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
           key = value->_value._string.data;
         }
       }
+      
+      else if (TRI_EqualString(attributeName, "rev")) {
+        if (JsonHelper::isString(value)) {
+          rid = StringUtils::uint64(value->_value._string.data, value->_value._string.length - 1);
+        }
+      }
 
       else if (TRI_EqualString(attributeName, "data")) {
         if (JsonHelper::isArray(value)) {
@@ -1013,7 +1031,7 @@ int ReplicationFetcher::applyCollectionDump (TRI_transaction_collection_t* trxCo
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
  
-    int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, doc, errorMsg);
+    int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
       
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -1043,7 +1061,7 @@ int ReplicationFetcher::applyLogMarker (TRI_json_t const* json,
   }
 
   // fetch marker "type"
-  int typeValue = (int) JsonHelper::getNumberValue(json, "type", 0.0);
+  int typeValue = (int) JsonHelper::getIntValue(json, "type", 0);
  
   // fetch "tick"
   const string tick = JsonHelper::getStringValue(json, "tick", "");
@@ -1208,14 +1226,14 @@ int ReplicationFetcher::applyLog (SimpleHttpResult* response,
 int ReplicationFetcher::getLocalState (string& errorMsg) { 
   int res;
 
-  res = TRI_LoadStateFileReplicationApplier(_vocbase, &_applier->_state);
+  res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
   _applier->_state._active = true;
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // no state file found, so this is the initialisation
     _applier->_state._serverId = _masterInfo._serverId;
 
-    res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, true);
+    res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not save replication state information";
@@ -1246,7 +1264,9 @@ int ReplicationFetcher::getLocalState (string& errorMsg) {
 
 int ReplicationFetcher::getMasterState (string& errorMsg) {
   map<string, string> headers;
-  static const string url = BaseUrl + "/log-state";
+  static const string url = BaseUrl + 
+                            "/logger-state" + 
+                            "?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master state from " + url;
@@ -1258,42 +1278,39 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
                                                 0,  
                                                 headers); 
 
-  if (response == 0) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
   int res = TRI_ERROR_NO_ERROR;
 
-  if (! response->isComplete()) {
-    res = TRI_ERROR_REPLICATION_NO_RESPONSE;
-   
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-               ": " + _client->getErrorMessage();
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+               ": " + response->getHttpReturnMessage();
   }
   else {
-    if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
-                 ": " + response->getHttpReturnMessage();
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+
+    if (JsonHelper::isArray(json)) {
+      res = handleStateResponse(json, errorMsg);
+
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     else {
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      if (JsonHelper::isArray(json)) {
-        res = handleStateResponse(json, errorMsg);
-
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
-      else {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                   ": invalid JSON";
-      }
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+        ": invalid JSON";
     }
   }
 
@@ -1308,7 +1325,9 @@ int ReplicationFetcher::getMasterState (string& errorMsg) {
 
 int ReplicationFetcher::performInitialSync (string& errorMsg) {
   map<string, string> headers;
-  static const string url = BaseUrl + "/inventory";
+  static const string url = BaseUrl + 
+                            "/inventory" + 
+                            "?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master inventory from " + url;
@@ -1320,42 +1339,39 @@ int ReplicationFetcher::performInitialSync (string& errorMsg) {
                                                 0,  
                                                 headers); 
 
-  if (response == 0) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
   int res = TRI_ERROR_NO_ERROR;
   
-  if (! response->isComplete()) {
-    res = TRI_ERROR_REPLICATION_NO_RESPONSE;
-   
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-               ": " + _client->getErrorMessage();
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+               ": " + response->getHttpReturnMessage();
   }
   else {
-    if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
-                 ": " + response->getHttpReturnMessage();
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+
+    if (JsonHelper::isArray(json)) {
+      res = handleInventoryResponse(json, errorMsg);
+
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     else {
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().str().c_str());
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      if (JsonHelper::isArray(json)) {
-        res = handleInventoryResponse(json, errorMsg);
-
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
-      else {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                   ": invalid JSON";
-      }
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+        ": invalid JSON";
     }
   }
 
@@ -1410,21 +1426,21 @@ int ReplicationFetcher::performContinuousSync (string& errorMsg) {
         }
         else {
           if (masterActive) {
-            sleepTime = 1 * 1000 * 1000;
+            sleepTime = 500 * 1000;
           }
           else {
-            sleepTime = 10 * 1000 * 1000;
+            sleepTime = 5 * 1000 * 1000;
           }
 
           if (_configuration._adaptivePolling) {
             inactiveCycles++;
-            if (inactiveCycles > 30) {
+            if (inactiveCycles > 60) {
               sleepTime *= 5;
             }
-            else if (inactiveCycles > 20) {
+            else if (inactiveCycles > 30) {
               sleepTime *= 3;
             }
-            if (inactiveCycles > 10) {
+            if (inactiveCycles > 15) {
               sleepTime *= 2;
             }
           }
@@ -1452,7 +1468,8 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                                               string& errorMsg) {
   const string cid = StringUtils::itoa(trxCollection->_cid);
 
-  const string baseUrl = BaseUrl + "/dump?collection=" + cid +
+  const string baseUrl = BaseUrl + 
+                         "/dump?collection=" + cid +
                          "&chunkSize=" + StringUtils::itoa(getChunkSize());
 
   map<string, string> headers;
@@ -1463,7 +1480,8 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
   while (1) {
     const string url = baseUrl + 
                        "&from=" + StringUtils::itoa(fromTick) + 
-                       "&to=" + StringUtils::itoa(maxTick);
+                       "&to=" + StringUtils::itoa(maxTick) +
+                       "&serverId=" + _localServerIdString;
 
     // send request
     const string progress = "fetching master collection dump for collection '" + collectionName + 
@@ -1477,17 +1495,13 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
                                                   0,  
                                                   headers); 
 
-    if (response == 0) {
-      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
-
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
-    }
-
-    if (! response->isComplete()) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+    if (response == 0 || ! response->isComplete()) {
+      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
                  ": " + _client->getErrorMessage();
 
-      delete response;
+      if (response != 0) {
+        delete response;
+      }
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
     }
@@ -1775,7 +1789,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-  const TRI_voc_tick_t lastTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
+  const TRI_voc_tick_t lastLogTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
 
   // state."running"
   bool running = JsonHelper::getBooleanValue(state, "running", false);
@@ -1808,7 +1822,8 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   }
 
   // validate all values we got
-  const TRI_server_id_t masterId = StringUtils::uint64(serverId->_value._string.data, serverId->_value._string.length - 1);
+  const string masterIdString = string(serverId->_value._string.data, serverId->_value._string.length - 1);
+  const TRI_server_id_t masterId = StringUtils::uint64(masterIdString);
 
   if (masterId == 0) {
     // invalid master id
@@ -1817,7 +1832,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  if (masterId == TRI_GetServerId()) {
+  if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
     errorMsg = "master's id is the same as the local server's id";
 
@@ -1845,7 +1860,7 @@ int ReplicationFetcher::handleStateResponse (TRI_json_t const* json,
   _masterInfo._majorVersion        = major;
   _masterInfo._minorVersion        = minor;
   _masterInfo._serverId            = masterId;
-  _masterInfo._state._lastLogTick  = lastTick;
+  _masterInfo._state._lastLogTick  = lastLogTick;
   _masterInfo._state._active       = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
@@ -1925,7 +1940,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   TRI_WriteLockReadWriteLock(&_applier->_statusLock);
 
   _applier->_state._lastAppliedInitialTick = _masterInfo._state._lastLogTick;
-  res = TRI_SaveStateFileReplicationApplier(_vocbase, &_applier->_state, true);
+  res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
   TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1993,7 +2008,8 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
                                          uint64_t& ignoreCount,
                                          bool& worked,
                                          bool& masterActive) {
-  const string baseUrl = BaseUrl + "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize());
+  const string baseUrl = BaseUrl + 
+                         "/logger-follow?chunkSize=" + StringUtils::itoa(getChunkSize()); 
 
   map<string, string> headers;
 
@@ -2014,7 +2030,9 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
   LOGGER_TRACE("starting continuous replication with tick " << fromTick);
 
   const string tickString = StringUtils::itoa(fromTick); 
-  const string url = baseUrl + "&from=" + tickString;
+  const string url = baseUrl + 
+                     "&from=" + tickString +
+                     "&serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master log from offset " + tickString;
@@ -2026,17 +2044,13 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
                                                 0,  
                                                 headers); 
 
-  if (response == 0) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint);
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
-  }
-
-  if (! response->isComplete()) {
+  if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
                ": " + _client->getErrorMessage();
 
-    delete response;
+    if (response != 0) {
+      delete response;
+    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }

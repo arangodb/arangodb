@@ -129,6 +129,7 @@ $(document).ready(function() {
       if (!window.documentsView) {
         window.documentsView.initTable(colid, pageid);
       }
+      window.documentsView.collectionID = colid;
       var type = arangoHelper.collectionApiType(colid);
       window.documentsView.colid = colid;
       window.documentsView.pageid = pageid;

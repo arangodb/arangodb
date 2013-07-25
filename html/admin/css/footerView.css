@@ -10,7 +10,7 @@
   left: 0;
   right: 0;
   bottom: 0px;
-  z-index: 9999;
+  z-index: 1000;
 }
 
 .footerExtra {
@@ -96,4 +96,10 @@
   color: #383434;
   width: 33.3%;
   float: left;
+}
+
+.footer-right p {
+  color: white;
+  text-align: right;
+  padding-right: 15px;
 }

@@ -22,10 +22,11 @@ var dashboardView = Backbone.View.extend({
   detailGraph: "userTime",
 
   initialize: function () {
+    this.arangoReplication = new window.ArangoReplication();
     var self = this;
 
     this.initUnits();
-    self.addCustomCharts();
+    this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
@@ -44,6 +45,9 @@ var dashboardView = Backbone.View.extend({
 
           if (self.updateCounter < self.updateFrequency) {
             return false;
+          }
+          if (window.location.hash === '#dashboard') {
+            self.getReplicationStatus();
           }
 
           self.updateCounter = 0;
@@ -87,10 +91,112 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  getReplicationStatus: function () {
+    this.replLogState = this.arangoReplication.getLogState();
+    this.replApplyState = this.arangoReplication.getApplyState();
+    this.putReplicationStatus();
+  },
+
+  putReplicationStatus: function () {
+    var time;
+    var clientString = '-';
+
+    if (this.replApplyState.state.running === true) {
+      $('#detailReplication').height(290);
+      $('.checkApplyRunningStatus').show();
+    }
+    else {
+      $('.checkApplyRunningStatus').hide();
+    }
+
+    time = this.replLogState.state.time;
+
+    var runningLog;
+    if (this.replLogState.state.running === true) {
+      console.log(true);
+      runningLog = '<div class="trueClass">true</div>';
+    }
+    else {
+      runningLog = '<div class="falseClass">false</div>';
+    }
+
+    if (this.replLogState.state.clients) {
+      $.each(this.replLogState.state.clients, function(k,v) {
+        clientString = clientString + "Server: "+v.serverId+" | Time: "+v.time+"\n";
+      });
+    }
+
+    var lastLog;
+    if (this.replLogState.state.lastLogTick === '0') {
+      lastLog = '-';
+    }
+
+    //log table
+    $('#logRunningVal').html(runningLog);
+    $('#logTimeVal').text(time);
+    $('#logLastTickVal').text(lastLog);
+    $('#logClientsVal').text(clientString);
+
+
+    //apply table
+    var lastAppliedTick;
+    var phase = "-";
+    var progress = "-";
+    var lastError = "-";
+    var endpoint = "-";
+
+    if (this.replApplyState.state.lastAppliedContinuousTick === null) {
+      lastAppliedTick = this.replApplyState.state.lastAppliedInitialTick;
+    }
+    else {
+      lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
+    }
+
+    if (lastAppliedTick === null) {
+      lastAppliedTick = "-";
+    }
+
+    if (this.replApplyState.state.endpoint !== undefined) {
+      endpoint = this.replApplyState.state.endpoint;
+    }
+
+    if (this.replApplyState.state.currentPhase) {
+      phase = this.replApplyState.state.currentPhase.label;
+    }
+
+    time = this.replApplyState.state.time;
+
+    if (this.replApplyState.state.progress) {
+      progress = this.replApplyState.state.progress.message;
+    }
+
+    if (this.replApplyState.state.lastError) {
+      lastError = this.replApplyState.state.lastError.errorMessage;
+    }
+    var runningApply;
+    if (this.replApplyState.state.running === true) {
+      runningApply = '<div class="trueClass">true</div>';
+    }
+    else {
+      runningApply = '<div class="falseClass">false</div>';
+    }
+
+
+    $('#applyRunningVal').html(runningApply);
+    $('#applyEndpointVal').text(endpoint);
+    $('#applyLastAppliedTickVal').text(lastAppliedTick);
+    $('#applyCurrentPhaseLabelVal').text(phase);
+    $('#applyTimeVal').text(time);
+    $('#applyProgressVal').text(progress);
+    $('#applyLastErrorVal').text(lastError);
+
+  },
+
   render: function() {
     var self = this;
     self.updateNOW = true;
     $(this.el).html(this.template.text);
+    this.getReplicationStatus();
 
     //Client calculated charts
     /*self.genCustomCategories();

@@ -7,7 +7,21 @@ var collectionsView = Backbone.View.extend({
 
   searchTimeout: null,
 
-  init: function () {
+  initialize: function () {
+    var self = this;
+    self.system = {};
+    $.ajax({
+      type: "GET",
+      cache: false,
+      url: "/_admin/version",
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        self.system.name = data.server;
+        self.system.version = data.version;
+      }
+    });
   },
 
   template: new EJS({url: 'js/templates/collectionsView.ejs'}),
@@ -30,8 +44,12 @@ var collectionsView = Backbone.View.extend({
 
     //append info icon for loaded collections
     $('.loaded').parent().prev().append(
-      '<i class="icon-info-sign" alt="Show collection properties"'+
+      '<i class="icon-info-sign show-info-view" alt="Show collection properties"'+
       'title="Show collection properties"></i>'
+    );
+    $('.unloaded').parent().prev().append(
+      '<i class="icon-info-sign disabled-info-view" alt="disabled"'+
+      'title="disabled"></i>'
     );
 
     $('#searchInput').val(searchOptions.searchPhrase);
@@ -39,7 +57,9 @@ var collectionsView = Backbone.View.extend({
     var val = $('#searchInput').val();
     $('#searchInput').val('');
     $('#searchInput').val(val);
-    
+
+    $('.footer-right p').html(this.system.name+' : '+this.system.version);
+
     return this;
   },
   events: {

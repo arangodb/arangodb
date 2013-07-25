@@ -64,8 +64,9 @@ namespace triagens {
                              const vector<string>& readCollections,
                              const vector<string>& writeCollections,
                              const double lockTimeout,
-                             const bool waitForSync) :
-          Transaction<T>(vocbase, resolver) {
+                             const bool waitForSync,
+                             const bool doReplicate) :
+          Transaction<T>(vocbase, resolver, doReplicate) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 

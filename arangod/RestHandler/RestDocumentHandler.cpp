@@ -185,7 +185,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// collection must be present for the operation to succeed.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until document has been synced to disk.
 ///
 /// @RESTDESCRIPTION
 /// Creates a new document in the collection named `collection`.  A JSON
@@ -204,8 +204,8 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// - `_rev` contains the document revision
 ///
 /// If the collection parameter `waitForSync` is `false`, then the call returns
-/// as soon as the document has been accepted. It will not wait, until the
-/// documents has been sync to disk.
+/// as soon as the document has been accepted. It will not wait until the
+/// document has been synced to disk.
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document creation operation to disk even in case that
@@ -532,13 +532,11 @@ bool RestDocumentHandler::readDocument () {
 /// 
 ///     var document = db.products.save({"hello":"world"});
 ///     var url = "/_api/document/" + document._id;
-///     var headers = {"If-None-Match":  "\"" + document._rev + "\""};
+///     var headers = {"If-None-Match": "\"" + document._rev + "\""};
 /// 
 ///     var response = logCurlRequest('GET', url, "", headers);
 /// 
 ///     assert(response.code === 304);
-///
-///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -820,8 +818,6 @@ bool RestDocumentHandler::readAllDocuments () {
 ///     var response = logCurlRequest('HEAD', url);
 /// 
 ///     assert(response.code === 200);
-/// 
-///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -851,7 +847,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until document has been synced to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace a document based on a target revision id by
@@ -1073,7 +1069,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// attribute value of `null`.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until document has been synced to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch a document based on a target revision id by
@@ -1348,7 +1344,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// documents (see replacing documents for more details).
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until document has been synced to disk.
 ///
 /// @RESTHEADERPARAMETERS
 ///

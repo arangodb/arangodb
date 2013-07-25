@@ -82,7 +82,6 @@ function NodeShaper(parent, flags, idfunc) {
   var self = this,
     nodes = [],
     visibleLabels = true,
-    
     splitLabel = function(label) {
       if (label === undefined) {
         return [""];
@@ -103,6 +102,7 @@ function NodeShaper(parent, flags, idfunc) {
     noop = function (node) {
     
     },
+    start = noop,
     defaultDistortion = function(n) {
       return {
         x: n.x,
@@ -114,6 +114,9 @@ function NodeShaper(parent, flags, idfunc) {
     addDistortion = function() {
       _.each(nodes, function(n) {
         n.position = distortion(n);
+        if (n._isCommunity) {
+          n.addDistortion(distortion);
+        }
       });
     },
     colourMapper = new ColourMapper(),
@@ -165,13 +168,13 @@ function NodeShaper(parent, flags, idfunc) {
         });
       addShape(normal);
       community.each(function(c) {
-        c.shape(d3.select(this), addShape, colourMapper);
+        c.shape(d3.select(this), addShape, addQue, start, colourMapper);
       });
       if (visibleLabels) {
         addLabel(normal);
       }
-      addColor(g);
-      addEvents(g);
+      addColor(normal);
+      addEvents(normal);
       addDistortion();
     },
     
@@ -270,8 +273,6 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case NodeShaper.shapes.IMAGE:
-          // Make the html aware of xmlns:xlink
-          $("html").attr("xmlns:xlink", "http://www.w3.org/1999/xlink");
           width = shape.width || 32;
           height = shape.height || 32;
           fallback = shape.fallback || "";
@@ -512,6 +513,10 @@ function NodeShaper(parent, flags, idfunc) {
   
   self.setColourMappingListener = function(callback) {
     colourMapper.setChangeListener(callback);
+  };
+  
+  self.setGVStartFunction = function(func) {
+    start = func;
   };
   
 }

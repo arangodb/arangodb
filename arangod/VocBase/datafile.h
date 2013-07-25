@@ -211,7 +211,7 @@ typedef struct TRI_df_scan_s {
   TRI_voc_size_t _endPosition;
   TRI_voc_size_t _numberMarkers;
 
-  TRI_vector_t _entries;
+  TRI_vector_t   _entries;
 
   uint32_t _status;
 }
@@ -253,6 +253,8 @@ typedef struct TRI_datafile_s {
 
   TRI_voc_tick_t _tickMin;       // minimum tick value contained
   TRI_voc_tick_t _tickMax;       // maximum tick value contained
+  TRI_voc_tick_t _dataMin;       // minimum tick value of document/edge marker
+  TRI_voc_tick_t _dataMax;       // maximum tick value of document/edge marker
   
   char* _filename;               // underlying filename
 
