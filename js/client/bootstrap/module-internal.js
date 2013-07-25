@@ -227,10 +227,10 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a response in JSON
+/// @brief logs a raw response
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendJsonResponse = function (appender) {
+  internal.appendRawResponse = function (appender) {
     return function (response) {
       var key;
       var headers = response.headers;
@@ -250,12 +250,32 @@
 
       appender("\n");
 
-      // pretty print body
-      internal.startCaptureMode();
-      print(JSON.parse(response.body));
-      output = internal.stopCaptureMode();
-      appender(output);
-      appender("\n");
+      // append body
+      if (response.body !== undefined) {
+        internal.startCaptureMode();
+        print(response.body);
+        output = internal.stopCaptureMode();
+        appender(output);
+        appender("\n");
+      }
+    };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a response in JSON
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.appendJsonResponse = function (appender) {
+    return function (response) {
+      var rawAppend = internal.appendRawResponse(appender);
+
+      // copy original body (this is necessary because "response" is passed by reference)
+      var copy = response.body;
+      // overwrite body with parsed JSON && append
+      response.body = JSON.parse(response.body);
+      rawAppend(response);
+      // restore original body
+      response.body = copy;
     };
   };
 

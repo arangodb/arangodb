@@ -1265,7 +1265,7 @@ int ReplicationFetcher::getLocalState (string& errorMsg) {
 int ReplicationFetcher::getMasterState (string& errorMsg) {
   map<string, string> headers;
   static const string url = BaseUrl + 
-                            "/log-state" + 
+                            "/logger-state" + 
                             "?serverId=" + _localServerIdString;
 
   // send request
@@ -2009,7 +2009,7 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
                                          bool& worked,
                                          bool& masterActive) {
   const string baseUrl = BaseUrl + 
-                         "/log-follow?chunkSize=" + StringUtils::itoa(getChunkSize()); 
+                         "/logger-follow?chunkSize=" + StringUtils::itoa(getChunkSize()); 
 
   map<string, string> headers;
 

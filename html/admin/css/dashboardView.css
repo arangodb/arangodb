@@ -292,8 +292,12 @@ input[type="radio"]:checked + label span {
   padding-top: 2px !important;
 }
 
-#detailReplicationDiv table th {
-  width: 215px;
+#detailReplicationDiv table {
+  width: 100%;
+}
+
+#detailReplicationDiv table {
+  text-align:left !important;
 }
 
 #detailReplicationDiv table tr {
@@ -306,20 +310,21 @@ input[type="radio"]:checked + label span {
 }
 
 #rightReplicationDiv {
-  width: 557px;
+  width: 868px;
   min-height: 150px;
-  float: left;
   margin-left: 10px;
+  margin-bottom: 8px;
 }
 
 #leftReplicationDiv {
-  width: 300px;
+  width: 868px;
   min-height: 150px;
-  float: left;
   margin-left: 10px;
+  margin-bottom: 8px;
 }
 
 .alignLeft {
+  width: 200px !important;
   text-align:left !important;
   padding-left: 7px;
 }
@@ -329,7 +334,7 @@ input[type="radio"]:checked + label span {
 }
 
 #detailReplication {
-  height: 190px;
+  height: auto !important;
 }
 
 .trueClass {
@@ -338,4 +343,12 @@ input[type="radio"]:checked + label span {
 
 .falseClass {
   color: red;
+}
+
+#applyReplicationTable {
+  width: 100% !important;
+}
+
+.firstTh {
+  padding-left: 8px;
 }
