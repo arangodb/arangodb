@@ -584,12 +584,16 @@ function ArangoAdapter(nodes, edges, config) {
   self.getAttributeExamples = function(callback) {
     if (callback && callback.length >= 1) {
       getNRandom(10, function(l) {
-        var ret = _.uniq(
-          _.flatten(
-            _.map(l, function(o) {
-              return _.keys(o);
-            })
-          )
+        var ret = _.sortBy(
+          _.uniq(
+            _.flatten(
+              _.map(l, function(o) {
+                return _.keys(o);
+              })
+            )
+          ), function(e) {
+            return e.toLowerCase();
+          }
         );
         callback(ret);
       });
