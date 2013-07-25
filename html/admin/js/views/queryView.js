@@ -95,7 +95,6 @@ var queryView = Backbone.View.extend({
 
     inputEditor.getSession().setMode("ace/mode/aql");
     outputEditor.getSession().setMode("ace/mode/json");
-    inputEditor.setTheme("ace/theme/merbivore_soft");
     outputEditor.setValue('');
 
     $('#queryOutput').resizable({
@@ -141,6 +140,8 @@ var queryView = Backbone.View.extend({
 
     inputEditor.resize();
     outputEditor.resize();
+
+    inputEditor.setTheme("ace/theme/merbivore_soft");
 
     this.renderSelectboxes();
     $('#queryDiv').show();
