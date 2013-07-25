@@ -1,14 +1,14 @@
-Replication Events{#RefManualReplicationEvents}
-===============================================
+Replication Events{#RefManualReplication}
+=========================================
 
-@NAVIGATE_RefManualReplicationEvents
-@EMBEDTOC{RefManualReplicationEventsTOC}
+@NAVIGATE_RefManualReplication
+@EMBEDTOC{RefManualReplicationTOC}
 
 The replication logger in ArangoDB will log all events into the `_replication`
 system collection. It will only log events when the logger is enabled.
 
-Replication Event Types
------------------------
+Replication Event Types{#RefManualReplicationEventTypes}
+--------------------------------------------------------
 
 The following replication event types will be logged by ArangoDB 1.4:
 
@@ -42,8 +42,8 @@ the `tick` attribute will also be returned for each replication event. The `tick
 value is a sequence number and is used by the replication applier to determine 
 whether a replication event was already processed.
 
-Transactions
-------------
+Transactions{#RefManualReplicationTransactions}
+-----------------------------------------------
 
 Transactions are logged as an uninterrupted sequence, starting with a `transaction start` 
 event, and finishing with a `transaction commit` event. Between these two events, all
@@ -61,8 +61,8 @@ event that is neither a ocument/edge operation nor a `transaction commit` event)
 should abort the ongoing transaction and discard all buffered operations. It can then
 consider the current transaction as failed.
 
-Examples
---------
+Examples{#RefManualReplicationExamples}
+---------------------------------------
 
 - 1000: the replication logger was stopped:
 
@@ -402,7 +402,7 @@ Examples
 
 - 2302: document/edge deletion:
 
-  This event is logged for document or edge deletions. The `cid` attribute contains the
+  This event is logged for deletions of documents and edges. The `cid` attribute contains the
   id of the collection the document/edge is deleted in. The `key` attribute indicates the
   key of the deleted document/edge. The `rev` attribute contains the revision id of the
   deletion, and the `oldRev` attribute contains the revision id of the deleted document/edge.

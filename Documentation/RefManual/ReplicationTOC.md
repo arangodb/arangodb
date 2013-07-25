@@ -1,4 +1,7 @@
-TOC {#RefManualReplicationEventsTOC}
+TOC {#RefManualReplicationTOC}
 ====================================
 
-- @ref RefManualReplicationEvents
+- @ref RefManualReplication
+  - @ref RefManualReplicationEventTypes
+  - @ref RefManualReplicationTransactions
+  - @ref RefManualReplicationExamples
