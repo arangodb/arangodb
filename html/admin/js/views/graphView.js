@@ -52,6 +52,8 @@ window.graphView = Backbone.View.extend({
     aaconfig,
     undirected,
     randomStart,
+    groupByList,
+    groupByAttribute,
     label,
     config,
     ui;
@@ -62,12 +64,24 @@ window.graphView = Backbone.View.extend({
     label = $("#nodeLabel").val();
     randomStart = !!$("#randomStart").attr("checked");
 
+    groupByAttribute = [];
+    $("#group_by_list input").each(function() {
+      var a = $(this).val();
+      if (a) {
+        groupByAttribute.push(a);
+      }
+    });
+
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
       edgeCollection: ecol,
       undirected: undirected
     };
+    
+    if (groupByAttribute.length > 0) {
+      aaconfig.prioList = groupByAttribute;
+    }
 
     if (label !== undefined && label !== "") {
       config = {
