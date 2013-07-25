@@ -11,7 +11,7 @@ window.ArangoReplication = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/replication/log-state",
+      url: "/_api/replication/logger-state",
       contentType: "application/json",
       processData: false,
       async: false,
@@ -29,7 +29,7 @@ window.ArangoReplication = Backbone.Collection.extend({
     $.ajax({
       type: "GET",
       cache: false,
-      url: "/_api/replication/apply-state",
+      url: "/_api/replication/applier-state",
       contentType: "application/json",
       processData: false,
       async: false,

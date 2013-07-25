@@ -110,7 +110,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_client.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;common_icu32d.lib;i18n_icu32d.lib;icudt50_32.lib;io_icu32d.lib;layout_icu32d.lib;layoutex_icu32d.lib;stubdata_icu32d.lib;toolutil_icu32d.lib;zlibstat_MTd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -134,7 +134,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Debug;%(AdditionalLibraryDirectories);$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Debug;%(AdditionalLibraryDirectories);$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\lib64</AdditionalLibraryDirectories>
       <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_client.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;common_icu64d.lib;i18n_icu64d.lib;icudt50_64.lib;io_icu64d.lib;layout_icu64d.lib;layoutex_icu64d.lib;stubdata_icu64d.lib;toolutil_icu64d.lib;%(AdditionalDependencies);zlibstat_MTd.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -158,7 +158,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Release;$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Release;$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_client.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;common_icu32.lib;i18n_icu32.lib;icudt50_32.lib;io_icu32.lib;layout_icu32.lib;layoutex_icu32.lib;stubdata_icu32.lib;toolutil_icu32.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -182,7 +182,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories);$(SolutionDir)..\3rdParty\VisualStudio\zlib\lib64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories);$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\lib64</AdditionalLibraryDirectories>
       <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_client.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;common_icu64.lib;i18n_icu64.lib;icudt50_64.lib;io_icu64.lib;layout_icu64.lib;layoutex_icu64.lib;stubdata_icu64.lib;toolutil_icu64.lib;%(AdditionalDependencies);zlibstat.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

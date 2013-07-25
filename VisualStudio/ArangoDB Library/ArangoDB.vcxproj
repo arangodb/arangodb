@@ -81,7 +81,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=2048;WIN32;TRI_BITS=32;_DEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -100,7 +100,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;TRI_BITS=64;FD_SETSIZE=2048;WIN32;_DEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -119,7 +119,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=2048;WIN32;TRI_BITS=32;NDEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -137,7 +137,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\1.2.7\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;TRI_BITS=64;FD_SETSIZE=2048;WIN32;NDEBUG;_LIB;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -204,6 +204,7 @@
     <ClInclude Include="..\..\lib\Basics\FileUtils.h" />
     <ClInclude Include="..\..\lib\Basics\Functor.h" />
     <ClInclude Include="..\..\lib\Basics\InitialiseBasics.h" />
+    <ClInclude Include="..\..\lib\Basics\JsonHelper.h" />
     <ClInclude Include="..\..\lib\Basics\LibraryLoader.h" />
     <ClInclude Include="..\..\lib\Basics\Mutex.h" />
     <ClInclude Include="..\..\lib\Basics\MutexLocker.h" />
@@ -302,6 +303,7 @@
     <ClCompile Include="..\..\lib\Basics\Exceptions.cpp" />
     <ClCompile Include="..\..\lib\Basics\FileUtils.cpp" />
     <ClCompile Include="..\..\lib\Basics\InitialiseBasics.cpp" />
+    <ClCompile Include="..\..\lib\Basics\JsonHelper.cpp" />
     <ClCompile Include="..\..\lib\Basics\LibraryLoader.cpp" />
     <ClCompile Include="..\..\lib\Basics\Mutex.cpp" />
     <ClCompile Include="..\..\lib\Basics\MutexLocker.cpp" />

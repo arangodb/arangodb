@@ -116,6 +116,7 @@ typedef struct {
   TRI_datafile_t* _data;
   TRI_voc_tick_t  _dataMin;
   TRI_voc_tick_t  _dataMax;
+  TRI_voc_tick_t  _tickMax;
   bool            _isJournal;
 }
 df_entry_t;
@@ -158,13 +159,15 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
       df,
       df->_dataMin,
       df->_dataMax,
+      df->_tickMax,
       isJournal
     };
     
-    LOG_TRACE("checking datafile %llu with data range %llu - %llu", 
+    LOG_TRACE("checking datafile %llu with data range %llu - %llu, tick max: %llu", 
               (unsigned long long) df->_fid,
               (unsigned long long) df->_dataMin, 
-              (unsigned long long) df->_dataMax);
+              (unsigned long long) df->_dataMax,
+              (unsigned long long) df->_tickMax);
     
     if (df->_dataMin == 0 || df->_dataMax == 0) {
       // datafile doesn't have any data
@@ -548,7 +551,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
-  size_t i; 
+  size_t i, n; 
   int res;
   bool hasMore;
   bool bufferFull;
@@ -572,7 +575,9 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bufferFull     = false;
   ignoreMarkers  = false;
 
-  for (i = 0; i < datafiles._length; ++i) {
+  n = datafiles._length;
+
+  for (i = 0; i < n; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
     TRI_datafile_t* datafile = e->_data;
     TRI_vector_t* failedList;
@@ -631,12 +636,6 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
           
-      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
-          marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
-          marker->_type != TRI_DOC_MARKER_KEY_DELETION) {
-        continue;
-      }
-
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
@@ -649,6 +648,23 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         // marker too new
         hasMore = false;
         goto NEXT_DF;
+      }
+      
+      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
+          marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
+          marker->_type != TRI_DOC_MARKER_KEY_DELETION) {
+
+        // found a non-data marker...
+
+        // check if we can abort searching
+        if (foundTick >= dataMax || 
+            (foundTick >= e->_tickMax && i == (n - 1))) {
+          // fetched the last available marker
+          hasMore = false;
+          goto NEXT_DF;
+        }
+
+        continue;
       }
 
       // note the last tick we processed
@@ -684,9 +700,17 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         }
       }
 
+
       if (! StringifyMarkerDump(buffer, document, marker)) {
         res = TRI_ERROR_INTERNAL;
 
+        goto NEXT_DF;
+      }
+      
+      if (foundTick >= dataMax || 
+          (foundTick >= e->_tickMax && i == (n - 1))) {
+        // fetched the last available marker
+        hasMore = false;
         goto NEXT_DF;
       }
 
@@ -748,7 +772,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
   TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
-  size_t i; 
+  size_t i, n; 
   int res;
   bool hasMore;
   bool bufferFull;
@@ -769,7 +793,9 @@ static int DumpLog (TRI_replication_dump_t* dump,
   hasMore        = true;
   bufferFull     = false;
 
-  for (i = 0; i < datafiles._length; ++i) {
+  n = datafiles._length;
+
+  for (i = 0; i < n; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
     TRI_datafile_t* datafile = e->_data;
     char const* ptr;
@@ -805,15 +831,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
       }
       
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
-          
-      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT) {
-        // we're only interested in document markers here
-        // the replication collection does not contain any edge markers
-        // and deletion markers in the replication collection
-        // will not be replicated
-        continue;
-      }
-
+      
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
       
@@ -821,11 +839,28 @@ static int DumpLog (TRI_replication_dump_t* dump,
         // marker too old
         continue;
       }
-
+      
       if (foundTick > dataMax) {
         // marker too new
         hasMore = false;
         goto NEXT_DF;
+      }
+          
+      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT) {
+        // we're only interested in document markers here
+        // the replication collection does not contain any edge markers
+        // and deletion markers in the replication collection
+        // will not be replicated
+
+        // check if we can abort searching
+        if (foundTick >= dataMax || 
+            (foundTick >= e->_tickMax && i == (n - 1))) {
+          // fetched the last available marker
+          hasMore = false;
+          goto NEXT_DF;
+        }
+
+        continue;
       }
 
       // note the last tick we processed
@@ -834,6 +869,13 @@ static int DumpLog (TRI_replication_dump_t* dump,
       if (! StringifyMarkerLog(dump, document, marker)) {
         res = TRI_ERROR_INTERNAL;
 
+        goto NEXT_DF;
+      }
+
+      if (foundTick >= dataMax || 
+          (foundTick >= e->_dataMax && i == (n - 1))) {
+        // fetched the last available marker
+        hasMore = false;
         goto NEXT_DF;
       }
 

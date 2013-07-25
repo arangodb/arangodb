@@ -2269,7 +2269,7 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
 
       // configure && start 
-      replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket1234" });
+      replication.applier.properties({ endpoint: "tcp://9.9.9.9:9999" });
       replication.applier.start();
 
       state = replication.applier.state();
@@ -2294,7 +2294,7 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
 
       // configure && start 
-      replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket1234" });
+      replication.applier.properties({ endpoint: "tcp://9.9.9.9:9999" });
       replication.applier.start();
 
       state = replication.applier.state();
@@ -2341,11 +2341,11 @@ function ReplicationApplierSuite () {
       }
       
       replication.applier.properties({
-        endpoint: "unix:///tmp/non-existing-socket1234"
+        endpoint: "tcp://9.9.9.9:9999"
       });
       
       properties = replication.applier.properties();
-      assertEqual(properties.endpoint, "unix:///tmp/non-existing-socket1234");
+      assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(10, properties.maxConnectRetries);
@@ -2353,7 +2353,7 @@ function ReplicationApplierSuite () {
       assertTrue(properties.adaptivePolling);
 
       replication.applier.properties({
-        endpoint: "unix:///tmp/non-existing-socket5678",
+        endpoint: "tcp://9.9.9.9:9998",
         autoStart: true,
         adaptivePolling: false,
         requestTimeout: 5,
@@ -2362,7 +2362,7 @@ function ReplicationApplierSuite () {
       });
       
       properties = replication.applier.properties();
-      assertEqual(properties.endpoint, "unix:///tmp/non-existing-socket5678");
+      assertEqual(properties.endpoint, "tcp://9.9.9.9:9998");
       assertEqual(5, properties.requestTimeout);
       assertEqual(9, properties.connectTimeout);
       assertEqual(4, properties.maxConnectRetries);
@@ -2377,14 +2377,14 @@ function ReplicationApplierSuite () {
     testApplierPropertiesChange : function () {
       var state;
 
-      replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket1234" });
+      replication.applier.properties({ endpoint: "tcp://9.9.9.9:9999" });
       replication.applier.start();
 
       state = replication.applier.state();
       assertTrue(state.state.running);
       
       try {
-        replication.applier.properties({ endpoint: "unix:///tmp/non-existing-socket5678" });
+        replication.applier.properties({ endpoint: "tcp://9.9.9.9:9998" });
       }
       catch (err) {
         assertEqual(errors.ERROR_REPLICATION_RUNNING.code, err.errorNum);

@@ -112,7 +112,8 @@ window.arangoDocuments = Backbone.Collection.extend({
           filterString = ' FILTER' + filter.join(' && ');
         }
         var body = {
-          query: "FOR u IN " + this.collectionID + filterString + " RETURN u",
+          //temp solution, waiting for api with paging possibility
+          query: "FOR u IN " + this.collectionID + filterString + " LIMIT 0,10 RETURN u",
           bindVars: bindValues
         };
         $.ajax({

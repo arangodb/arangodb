@@ -284,7 +284,7 @@ static int DatafileComparator (const void* lhs, const void* rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void SortFilenames (TRI_vector_string_t* files) {
-  if (files->_length < 1) {
+  if (files->_length <= 1) {
     return;
   }
 
@@ -296,7 +296,7 @@ static void SortFilenames (TRI_vector_string_t* files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void SortDatafiles (TRI_vector_pointer_t* files) {
-  if (files->_length < 1) {
+  if (files->_length <= 1) {
     return;
   }
 
@@ -1181,7 +1181,7 @@ TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
 /// @brief iterate over the index (JSON) files of a collection, using a callback
 /// function for each.
 /// This function does not require the collection to be loaded.
-/// The caller must make sure that the files is not modified while this 
+/// The caller must make sure that the files are not modified while this 
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -1202,13 +1202,16 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
   files = TRI_FilesDirectory(collection->_path);
   n = files._length;
   res = TRI_ERROR_NO_ERROR;
-  
+ 
+  // sort by index id
+  SortFilenames(&files);
+ 
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
        
     if (regexec(&re, file, (size_t) 0, NULL, 0) == 0) {
       char* fqn = TRI_Concatenate2File(collection->_path, file);
-
+ 
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 

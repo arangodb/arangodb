@@ -1,0 +1,118 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger was started successfully, or was already running. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger could not be started. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Starts the server's replication logger. Will do nothing if the replication logger is already running. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>true</em><br><br>",
+                    "summary": "starts the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-start\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"running\" : true \n}\n\n</code></pre><br>",
+                    "nickname": "startsTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-start"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger was stopped successfully, or was not running before. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger could not be stopped. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Stops the server's replication logger. Will do nothing if the replication logger is not running. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>running</em>: will contain <em>false</em><br><br>",
+                    "summary": "stops the replication logger",
+                    "httpMethod": "PUT",
+                    "examples": "Starts the replication logger. <br><br><pre><code class=\"json\" >unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-stop\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"running\" : false \n}\n\n</code></pre><br>",
+                    "nickname": "stopsTheReplicationLogger"
+                }
+            ],
+            "path": "/_api/replication/logger-stop"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger state could be determined successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger state could not be determined. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "Returns the current state of the server's replication logger. The state will include information about whether the logger is running and about the last logged tick value. This tick value is important for incremental fetching of data. <br><br>The state API can be called regardless of whether the logger is currently running or not. <br><br>The body of the response contains a JSON object with the following attributes: <br><br>- <em>state</em>: the current logger state as a JSON hash array with the following  sub-attributes: <br><br>  - <em>running</em>: whether or not the logger is running <br><br>  - <em>lastLogTick</em>: the tick value of the latest tick the logger has logged.      This value can be used for incremental fetching of log data. <br><br>  - <em>time</em>: the current date and time on the logger server <br><br>- <em>server</em>: a JSON hash with the following sub-attributes:<br><br>  - <em>version</em>: the logger server's version <br><br>  - <em>serverId</em>: the logger server's id <br><br>- <em>clients</em>: a list of all replication clients that ever connected to  the logger since it was started. This list can be used to determine    approximately how much data the individual clients have already fetched    from the logger server. <br><br>",
+                    "summary": "returns the replication logger state",
+                    "httpMethod": "GET",
+                    "examples": "Returns the state of an inactive replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : false, \n    \"lastLogTick\" : \"319061308\", \n    \"time\" : \"2013-07-24T15:29:12Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"180066002442667\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>Returns the state of an active replication logger. <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-state\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"state\" : { \n    \"running\" : true, \n    \"lastLogTick\" : \"319257916\", \n    \"time\" : \"2013-07-24T15:29:12Z\" \n  }, \n  \"server\" : { \n    \"version\" : \"1.4.devel\", \n    \"serverId\" : \"180066002442667\" \n  }, \n  \"clients\" : [ ] \n}\n\n</code></pre><br>",
+                    "nickname": "returnsTheReplicationLoggerState"
+                }
+            ],
+            "path": "/_api/replication/logger-state"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "is returned if the logger state could be determined successfully. ",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "is returned if the logger state could not be determined. ",
+                            "code": "500"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "from",
+                            "description": "Lower bound tick value for results. "
+                        },
+                        {
+                            "dataType": "String",
+                            "paramType": "query",
+                            "name": "to",
+                            "description": "Upper bound tick value for results. "
+                        },
+                        {
+                            "dataType": "Number",
+                            "paramType": "query",
+                            "name": "chunkSize",
+                            "description": "Approximate maximum size of the returned result. "
+                        }
+                    ],
+                    "notes": "Returns data from the server's replication log. This method can be called by replication clients after an initial synchronisation of data. The method  will return all \"recent\" log entries from the logger server, and the clients can replay and apply these entries locally so they get to the same data state as the logger server. <br><br>Clients can call this method repeatedly to incrementally fetch all changes from the logger server. In this case, they should provide the <em>from</em> value so they will only get returned the log events since their last fetch. <br><br>When the <em>from</em> URL parameter is not used, the logger server will return log  entries starting at the beginning of its replication log. When the <em>from</em> parameter is used, the logger server will only return log entries which have  higher tick values than the specified <em>from</em> value (note: the log entry with a tick value equal to <em>from</em> will be excluded). Use the <em>from</em> value when incrementally fetching log data. <br><br>The <em>to</em> URL parameter can be used to optionally restrict the upper bound of the result to a certain tick. If used, the result will contain only log events with tick values up to (including) <em>to</em>. In incremental fetching, there is no need to use the <em>to</em> parameter. It only makes sense in special situations,  when only parts of the change log are required. <br><br>The <em>chunkSize</em> URL parameter can be used to control the size of the result.  It must be specified in bytes. The <em>chunkSize</em> value will only be honored  approximately. Otherwise a too low <em>chunkSize</em> value could cause the server  to not be able to put just one log entry into the result and return it.  Therefore, the <em>chunkSize</em> value will only be consulted after a log entry has been written into the result. If the result size is then bigger than  <em>chunkSize</em>, the server will respond with as many log entries as there are in the response already. If the result size is still smaller than <em>chunkSize</em>, the server will try to return more data if there's more data left to return. <br><br>If <em>chunkSize</em> is not specified, some server-side default value will be used. <br><br>The <em>Content-Type</em> of the result is <em>application/x-arango-dump</em>. This is an  easy-to-process format, with all log events going onto separate lines in the response body. Each log event itself is a JSON hash, with at least the  following attributes: <br><br>- <em>tick</em>: the log event tick value<br><br>- <em>type</em>: the log event type<br><br>Individual log events will also have additional attributes, depending on the event type. A few common attributes which are used for multiple events types are: <br><br>- <em>cid</em>: id of the collection the event was for<br><br>- <em>tid</em>: id of the transaction the event was contained in<br><br>- <em>key</em>: document key<br><br>- <em>rev</em>: document revision id<br><br>- <em>data</em>: the original document data<br><br>The response will also contain the following HTTP headers: <br><br>- <em>x-arango-replication-active</em>: whether or not the logger is active<br><br>- <em>x-arango-replication-lastincluded</em>: the tick value of the last included  value in the result. In incremental log fetching, this value can be used    as the <em>from</em> value for the following request. Note that if the result is   empty, the value will be <em>0</em>. This value should not be used as <em>from</em> value   by clients in the next request (otherwise the server would return the log   events from the start of the log again). <br><br>- <em>x-arango-replication-lasttick</em>: the last tick value the logger server has  logged (not necessarily included in the result). By comparing the the last   tick and last included tick values, clients have an approximate indication of   how many events there are still left to fetch. <br><br>- <em>x-arango-replication-checkmore</em>: whether or not there already exists more  log data which the client could fetch immediately. If there is more log data   available, the client could call <em>logger-follow</em> again with an adjusted <em>from</em>   value to fetch remaining log entries until there are no more. <br><br>  If there isn't any more log data to fetch, the client might decide to go   to sleep for a while before calling the logger again.  <br><br>",
+                    "summary": "returns recent log entries from the replication log",
+                    "httpMethod": "GET",
+                    "examples": "No log events available: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=319585596\n\nHTTP/1.1 204 No Content\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 0\nx-arango-replication-lasttick: 319585596\n\n</code></pre><br>A few log events: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=319913276\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: false\nx-arango-replication-lastincluded: 322469180\nx-arango-replication-lasttick: 322469180\n\n{\"tick\":\"320699708\",\"type\":2000,\"cid\":\"319978812\",\"collection\":{\"version\":4,\"type\":2,\"cid\":\"319978812\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"321223996\",\"type\":2300,\"cid\":\"319978812\",\"key\":\"p1\",\"rev\":\"320961852\",\"data\":{\"_key\":\"p1\",\"_rev\":\"320961852\",\"name\":\"flux compensator\"}}\n{\"tick\":\"321682748\",\"type\":2300,\"cid\":\"319978812\",\"key\":\"p2\",\"rev\":\"321486140\",\"data\":{\"_key\":\"p2\",\"_rev\":\"321486140\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"322010428\",\"type\":2302,\"cid\":\"319978812\",\"key\":\"p1\",\"rev\":\"321813820\",\"oldRev\":\"320961852\"}\n{\"tick\":\"322338108\",\"type\":2300,\"cid\":\"319978812\",\"key\":\"p2\",\"rev\":\"322141500\",\"oldRev\":\"321486140\",\"data\":{\"_key\":\"p2\",\"_rev\":\"322141500\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"322469180\",\"type\":2001,\"cid\":\"319978812\"}\n\n\n</code></pre><br>More events than would fit into the response: <br><br><pre><code class=\"json\" >unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=322796860&chunkSize=400\n\nHTTP/1.1 200 OK\ncontent-type: application/x-arango-dump; charset=utf-8\nx-arango-replication-active: true\nx-arango-replication-checkmore: true\nx-arango-replication-lastincluded: 324566332\nx-arango-replication-lasttick: 325352764\n\n{\"tick\":\"323583292\",\"type\":2000,\"cid\":\"322862396\",\"collection\":{\"version\":4,\"type\":2,\"cid\":\"322862396\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"324107580\",\"type\":2300,\"cid\":\"322862396\",\"key\":\"p1\",\"rev\":\"323845436\",\"data\":{\"_key\":\"p1\",\"_rev\":\"323845436\",\"name\":\"flux compensator\"}}\n{\"tick\":\"324566332\",\"type\":2300,\"cid\":\"322862396\",\"key\":\"p2\",\"rev\":\"324369724\",\"data\":{\"_key\":\"p2\",\"_rev\":\"324369724\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n\n\n</code></pre><br>",
+                    "nickname": "returnsRecentLogEntriesFromTheReplicationLog"
+                }
+            ],
+            "path": "/_api/replication/logger-follow"
+        }
+    ]
+}
