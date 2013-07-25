@@ -31,7 +31,8 @@ var queryView = Backbone.View.extend({
     'click #abortDeleteQuery'        : 'hideDeleteField',
     'keydown #new-query-name'        : 'listenKey',
     'change #queryModalSelect'       : 'updateEditSelect',
-    'change #querySelect'            : 'importSelected'
+    'change #querySelect'            : 'importSelected',
+    'keypress #aqlEditor'            : 'aqlShortcuts'
   },
 
   listenKey: function (e) {
@@ -58,6 +59,12 @@ var queryView = Backbone.View.extend({
   bigOutput: function() {
     var outputEditor = ace.edit("queryOutput");
     outputEditor.getSession().unfold();
+  },
+
+  aqlShortcuts: function (e) {
+    if (e.ctrlKey && e.keyCode == 13) {
+      this.submitQuery();
+    }
   },
 
   queries: [
