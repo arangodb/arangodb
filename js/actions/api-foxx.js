@@ -79,11 +79,11 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a FOXX application
+/// @brief sets up a FOXX dev application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/dev-install",
+  url : "_admin/foxx/dev-setup",
   context : "admin",
   prefix : false,
 
@@ -98,11 +98,40 @@ actions.defineHttp({
     }
 
     var name = body.name;
-    var mount = body.mount;
-    var options = body.options || {};
 
     try {
-      result = foxxManager.installDevApp(name, mount, options);
+      result = foxxManager.devSetup(name);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a FOXX dev application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/dev-teardown",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var result;
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var name = body.name;
+
+    try {
+      result = foxxManager.devTeardown(name);
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {

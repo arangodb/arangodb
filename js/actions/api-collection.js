@@ -162,31 +162,48 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
 ///     var url = "/_api/collection";
-///     var body = '{ "name": "testCollectionBasics" }';
+///     var body = { 
+///       name: "testCollectionBasics" 
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-///     body = '{ "name": "testCollectionEdges", "type" : 3 }';
-///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
+///     body = { 
+///       name: "testCollectionEdges", 
+///       type : 3 
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+///
+///     db._flushCache();
+///     db._drop("testCollectionBasics");
+///     db._drop("testCollectionEdges");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateKeyopt}
 ///     var url = "/_api/collection";
-///     var body = '{ "name": "testCollectionUsers", "keyOptions" : { "type" : "autoincrement", "increment" : 5, "allowUserKeys" : true }}';
+///     var body = { 
+///       name: "testCollectionUsers", 
+///       keyOptions : { 
+///         type : "autoincrement", 
+///         increment : 5, 
+///         allowUserKeys : true 
+///       }
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     assert(response.code === 200);
-///
 ///     logJsonResponse(response);
+///
+///     db._flushCache();
+///     db._drop("testCollectionUsers");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1091,9 +1108,11 @@ function put_api_collection_properties (req, res, collection) {
 ///     var coll = db._create(cn);
 ///     var url = "/_api/collection/"+ coll._id + "/rename";
 ///
-///     var response = logCurlRequest('PUT', url, { "name": "newname" });
+///     var response = logCurlRequest('PUT', url, { name: "newname" });
 ///
 ///     assert(response.code === 200);
+///     db._flushCache();
+///     db._drop("newname");
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN

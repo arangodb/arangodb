@@ -2,7 +2,8 @@
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError,
   REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE, 
-  REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, 
+  REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, 
+  REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, 
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
@@ -934,6 +935,7 @@
     var useColor = context.useColor;
     var customInspect = context.customInspect;
     var useToString = context.useToString;
+    var limitString = context.limitString;
 
     if (typeof context.seen === "undefined") {
       context.seen = [];
@@ -1026,6 +1028,12 @@
       else if (typeof(value) === "string") {
         if (useColor) {
           context.output += colors.COLOR_STRING;
+        }
+
+        if (limitString) {
+          if (limitString < value.length) {
+            value = value.substr(0, limitString) + "...";
+          }
         }
 
         context.output += quoteJsonString(value);
@@ -1143,6 +1151,7 @@
           prettyPrint: usePrettyPrint,
           useColor: useColor,
           customInspect: true,
+          limitString: 80,
           useToString: true
         };
 

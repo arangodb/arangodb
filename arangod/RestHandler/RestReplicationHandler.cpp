@@ -320,6 +320,9 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 /// @RESTRETURNCODE{200}
 /// is returned if the logger was started successfully, or was already running.
 ///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
 /// @RESTRETURNCODE{500}
 /// is returned if the logger could not be started.
 ///
@@ -376,6 +379,9 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 /// @RESTRETURNCODE{200}
 /// is returned if the logger was stopped successfully, or was not running
 /// before.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if the logger could not be stopped.
@@ -457,6 +463,9 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 /// @RESTRETURNCODE{200}
 /// is returned if the logger state could be determined successfully.
 ///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
 /// @RESTRETURNCODE{500}
 /// is returned if the logger state could not be determined.
 ///
@@ -515,10 +524,10 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{from,string,optional}
+/// @RESTQUERYPARAM{from,number,optional}
 /// Lower bound tick value for results.
 ///
-/// @RESTQUERYPARAM{to,string,optional}
+/// @RESTQUERYPARAM{to,number,optional}
 /// Upper bound tick value for results.
 ///
 /// @RESTQUERYPARAM{chunkSize,number,optional}
@@ -543,7 +552,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// incrementally fetching log data.
 ///
 /// The `to` URL parameter can be used to optionally restrict the upper bound of
-/// the result to a certain tick. If used, the result will contain only log events
+/// the result to a certain tick value. If used, the result will contain only log events
 /// with tick values up to (including) `to`. In incremental fetching, there is no
 /// need to use the `to` parameter. It only makes sense in special situations, 
 /// when only parts of the change log are required.
@@ -582,10 +591,17 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// - `rev`: document revision id
 ///
 /// - `data`: the original document data
+/// 
+/// A more detailed description of the individual replication event types and their 
+/// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
 /// The response will also contain the following HTTP headers:
 ///
-/// - `x-arango-replication-active`: whether or not the logger is active
+/// - `x-arango-replication-active`: whether or not the logger is active. Clients
+///   can use this flag as an indication for their polling frequency. If the 
+///   logger is not active and there are no more replication events available, it
+///   might be sensible for a client to abort, or to go to sleep for a long time
+///   and try again later to check whether the logger has been activated.
 ///
 /// - `x-arango-replication-lastincluded`: the tick value of the last included
 ///   value in the result. In incremental log fetching, this value can be used 
@@ -610,10 +626,23 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the logger state could be determined successfully.
+/// is returned if the request was executed successfully, and there are log
+/// events available for the requested range. The response body will not be empty
+/// in this case.
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the request was executed successfully, but there are no log
+/// events available for the requested range. The response body will be empty
+/// in this case.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if either the `from` or `to` values are invalid.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
 ///
 /// @RESTRETURNCODE{500}
-/// is returned if the logger state could not be determined.
+/// is returned if an error occurred while assembling the response.
 ///
 /// @EXAMPLES
 ///
@@ -778,7 +807,116 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the inventory (current replication and collection state)
+/// @brief returns the server inventory
+///
+/// @RESTHEADER{GET /_api/replication/inventory,returns an inventory of collections and indexes}
+///
+/// @RESTDESCRIPTION
+/// Returns the list of collections and indexes available on the server. This
+/// list can be used by replication clients to initiate an initial sync with the
+/// server.
+///
+/// The response will contain a JSON hash array with the `collection` and `state`
+/// attributes.
+///
+/// `collections` is a list of collections with the following sub-attributes:
+///
+/// - `parameters`: the collection properties
+///
+/// - `indexes`: a list of the indexes of a the collection. Primary indexes and edges indexes
+///    are not included in this list.
+///
+/// The `state` attribute contains the current state of the replication logger. It
+/// contains the following sub-attributes:
+///
+/// - `running`: whether or not the replication logger is currently active
+///
+/// - `lastLogTick`: the value of the last tick the replication logger has written  
+///
+/// - `time`: the current time on the server
+///
+/// Replication clients should note the `lastLogTick` value returned. They can then
+/// fetch collections' data using the dump method up to the value of lastLogTick, and
+/// query the continuous replication log for log events after this tick value.
+///
+/// To create a full copy of the collections on the logger server, a replication client
+/// can execute these steps:
+///
+/// - call the `/inventory` API method. This returns the `lastLogTick` value and the 
+///   list of collections and indexes from the logger server.
+///
+/// - for each collection returned by `/inventory`, create the collection locally and 
+///   call `/dump` to stream the collection data to the client, up to the value of 
+///   `lastLogTick`. 
+///   After that, the client can create the indexes on the collections as they were 
+///   reported by `/inventory`.
+///
+/// If the clients wants to continuously stream replication log events from the logger
+/// server, the following additional steps need to be carried out:
+///
+/// - the client should call `/logger-follow` initially to fetch the first batch of 
+///   replication events that were logged after the client's call to `/inventory`.
+/// 
+///   The call to `/logger-follow` should use a `from` parameter with the value of the
+///   `lastLogTick` as reported by `/inventory`. The call to `/logger-follow` will return the 
+///   `x-arango-replication-lastincluded` which will contain the last tick value included 
+///   in the response.
+///
+/// - the client can then continuously call `/logger-follow` to incrementally fetch new 
+///   replication events that occurred after the last transfer.
+///
+///   Calls should use a `from` parameter with the value of the `x-arango-replication-lastincluded`
+///   header of the previous response. If there are no more replication events, the 
+///   response will be empty and clients can go to sleep for a while and try again
+///   later.  
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationInventory}
+///     var url = "/_api/replication/inventory";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// With some additional indexes:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes}
+///     db._drop("IndexedCollection1");
+///     var c1 = db._create("IndexedCollection1");
+///     c1.ensureHashIndex("name");
+///     c1.ensureUniqueSkiplist("a", "b");
+///     c1.ensureCapConstraint(500);
+///
+///     db._drop("IndexedCollection2");
+///     var c2 = db._create("IndexedCollection2");
+///     c2.ensureFulltextIndex("text", 10);
+///     c2.ensureSkiplist("a");
+///     c2.ensureCapConstraint(0, 1048576);
+///
+///     var url = "/_api/replication/inventory";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+///
+///     db._flushCache();
+///     db._drop("IndexedCollection1");
+///     db._drop("IndexedCollection2");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandInventory () {
@@ -820,7 +958,124 @@ void RestReplicationHandler::handleCommandInventory () {
 }
     
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle a dump command for a specific collection
+/// @brief dumps the data of a collection
+///
+/// @RESTHEADER{GET /_api/replication/dump,returns the data of a collection}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{collection,string,required}
+/// The name or id of the collection to dump.
+///
+/// @RESTQUERYPARAM{from,number,optional}
+/// Lower bound tick value for results.
+///
+/// @RESTQUERYPARAM{to,number,optional}
+/// Upper bound tick value for results.
+///
+/// @RESTQUERYPARAM{chunkSize,number,optional}
+/// Approximate maximum size of the returned result.
+///
+/// @RESTDESCRIPTION
+/// Returns the data from the collection for the requested range.
+///
+/// When the `from` URL parameter is not used, collection events are returned from
+/// the beginning. When the `from` parameter is used, the result will only contain
+/// collection entries which have higher tick values than the specified `from` value 
+/// (note: the log entry with a tick value equal to `from` will be excluded). 
+///
+/// The `to` URL parameter can be used to optionally restrict the upper bound of
+/// the result to a certain tick value. If used, the result will only contain
+/// collection entries with tick values up to (including) `to`. 
+///
+/// The `chunkSize` URL parameter can be used to control the size of the result. 
+/// It must be specified in bytes. The `chunkSize` value will only be honored 
+/// approximately. Otherwise a too low `chunkSize` value could cause the server 
+/// to not be able to put just one entry into the result and return it. 
+/// Therefore, the `chunkSize` value will only be consulted after an entry has
+/// been written into the result. If the result size is then bigger than 
+/// `chunkSize`, the server will respond with as many entries as there are
+/// in the response already. If the result size is still smaller than `chunkSize`,
+/// the server will try to return more data if there's more data left to return.
+///
+/// If `chunkSize` is not specified, some server-side default value will be used.
+///
+/// The `Content-Type` of the result is `application/x-arango-dump`. This is an 
+/// easy-to-process format, with all entries going onto separate lines in the
+/// response body. 
+///
+/// Each line itself is a JSON hash, with at least the following attributes:
+///
+/// - `type`: the type of entry. Possible values for `type` are:
+///
+///   - 2300: document insertion/update
+///
+///   - 2301: edge insertion/update
+///
+///   - 2302: document/edge deletion
+///
+/// - `key`: the key of the document/edge or the key used in the deletion operation
+///
+/// - `rev`: the revision id of the document/edge or the deletion operation
+///
+/// - `data`: the actual document/edge data for types 2300 and 2301. The full
+///   document/edge data will be returned even for updates.
+///
+/// A more detailed description of the different entry types and their 
+/// data structures can be found in @ref RefManualReplicationEventTypes.
+///
+/// Note: there will be no distinction between inserts and updates when calling this method.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if either the `from` or `to` values are invalid.
+///
+/// @RESTRETURNCODE{404}
+/// is returned when the collection could not be found.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// Empty collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationDumpEmpty}
+///     db._drop("testCollection");
+///     var c = db._create("testCollection");
+///     var url = "/_api/replication/dump?collection=" + c.name();
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 204);
+///     logRawResponse(response);
+///
+///     c.drop();
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Non-empty collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationDump}
+///     db._drop("testCollection");
+///     var c = db._create("testCollection");
+///     c.save({ "test" : true, "a" : "abc", "_key" : "abcdef" });
+///     c.save({ "b" : 1, "c" : false, "_key" : "123456" });
+///     c.update("123456", { "d" : "additional value" });
+///     c.save({ "_key": "foobar" });
+///     c.remove("foobar");
+///     c.remove("abcdef");
+///
+///     var url = "/_api/replication/dump?collection=" + c.name();
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logRawResponse(response);
+///
+///     c.drop();
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandDump () {
@@ -897,7 +1152,14 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
-    _response = createResponse(HttpResponse::OK);
+    const size_t length = TRI_LengthStringBuffer(dump._buffer);
+
+    if (length == 0) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      _response = createResponse(HttpResponse::OK);
+    }
 
     _response->setContentType("application/x-arango-dump; charset=utf-8");
 
@@ -911,7 +1173,7 @@ void RestReplicationHandler::handleCommandDump () {
                          StringUtils::itoa(dump._lastFoundTick));
     
     // transfer ownership of the buffer contents
-    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), TRI_LengthStringBuffer(dump._buffer));
+    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
     
