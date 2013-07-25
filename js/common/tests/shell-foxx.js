@@ -846,7 +846,8 @@ function ModelSpec () {
 
       instance = new FoxxModel(raw);
 
-      assertEqual(instance.toJSON(), raw);
+      assertEqual(instance.forDB(), raw);
+      assertEqual(instance.forClient(), raw);
     }
   };
 }
