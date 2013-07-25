@@ -197,9 +197,6 @@ properties of the request.
 #### Describing a queryParam
 @copydetails JSF_foxx_RequestContext_queryParam
 
-#### Documenting the nickname of a route
-@copydetails JSF_foxx_RequestContext_nickname
-
 #### Documenting the summary of a route
 @copydetails JSF_foxx_RequestContext_summary
 
