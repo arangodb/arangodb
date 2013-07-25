@@ -2,6 +2,7 @@ TOC {#RefManualReplicationTOC}
 ====================================
 
 - @ref RefManualReplication
-  - @ref RefManualReplicationEventTypes
-  - @ref RefManualReplicationTransactions
-  - @ref RefManualReplicationExamples
+  - @ref RefManualReplicationContinuous
+    - @ref RefManualReplicationEventTypes
+    - @ref RefManualReplicationExamples
+    - @ref RefManualReplicationTransactions
