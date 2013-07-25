@@ -101,7 +101,7 @@ var documentsView = Backbone.View.extend({
         type: "POST",
         async: false,
         url:
-          '/_api/import?type=documents&collection='+
+          '/_api/import?type=auto&collection='+
           encodeURIComponent(self.colid)+
           '&createCollection=false',
         data: self.file,
