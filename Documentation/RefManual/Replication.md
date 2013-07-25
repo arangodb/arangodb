@@ -331,8 +331,13 @@ Examples{#RefManualReplicationExamples}
   
   If the event contains the `oldRev` attribute, then the operation was carried out
   as an update of an existing document. The `oldRev` attribute contains the 
-  revision id of the replaced document. If the `oldRev` attribute is not present,
-  the operation was carried out as an insert.
+  revision id of the updated/replaced document. `data` will contain the full
+  document and not just the updated/replaced parts.
+  
+  If the `oldRev` attribute is not present, the operation was carried out as an insert.
+  Note that some API methods cannot distinguish between inserts and updates, and 
+  will return any operation as an insert. Replication clients should therefore first
+  check for document existance and then either carry out an insert or an update.
 
   The `data` attribute contains the actual document, with the usual `_key` and 
   `_rev` attributes plus all user-defined data.
@@ -371,9 +376,12 @@ Examples{#RefManualReplicationExamples}
 
 - 2301: edge insert/update operation:
 
-  This event is logged for edge inserts/updates. The structure is the same as for
-  the document insert/update event. Additional, the `data` attribute will contain the
-  sub-attributes `_from` and `_to`, which indicate the vertices connected by the edge.
+  This event is logged for edge inserts/updates. The structure and meanings are the 
+  same as for the document insert/update event. 
+  
+  Additional, the `data` attribute will contain the sub-attributes `_from` and `_to`, 
+  which indicate the vertices connected by the edge.
+
   `_from` and `_to` will contain the vertex collection id plus the vertex document key:
 
       {
@@ -431,3 +439,10 @@ If a replication client encounters some unexpected event during a transaction (i
 event that is neither a ocument/edge operation nor a `transaction commit` event), it 
 should abort the ongoing transaction and discard all buffered operations. It can then
 consider the current transaction as failed.
+
+Collections{#RefManualReplicationCollections}
+---------------------------------------------
+
+The replication logger will only log events that affect user-defined collections. Any
+events for system collections (collections with names that start with an underscore) are
+not logged by the replication logger, and thus cannot be fetched from the continuous log.

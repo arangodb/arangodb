@@ -234,8 +234,10 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
 
-  APPEND_CHAR(buffer, '{');
-  
+  if (buffer == NULL) {
+    return false;
+  }
+
   if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     TRI_doc_deletion_key_marker_t const* m = (TRI_doc_deletion_key_marker_t const*) marker; 
     key = ((char*) m) + m->_offsetKey;
@@ -257,8 +259,11 @@ static bool StringifyMarkerDump (TRI_string_buffer_t* buffer,
   else {
     return false;
   }
+  
+  APPEND_STRING(buffer, "{\"tick\":\"");
+  APPEND_UINT64(buffer, (uint64_t) marker->_tick);
 
-  APPEND_STRING(buffer, "\"type\":"); 
+  APPEND_STRING(buffer, "\",\"type\":"); 
   APPEND_UINT64(buffer, (uint64_t) type); 
   APPEND_STRING(buffer, ",\"key\":\""); 
   // key is user-defined, but does not need escaping
