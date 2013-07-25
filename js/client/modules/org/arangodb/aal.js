@@ -633,26 +633,35 @@ exports.installApp = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs (aka mounts) a FOXX dev application
+/// @brief sets up a FOXX dev application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.installDevApp = function (name, mount, options) {
+exports.devSetup = function (name) {
   'use strict';
 
   var res;
   var req = {
-    name: name,
-    mount: mount,
-    options: options
+    name: name
   };
   
-  validateAppName(name);
-  validateMount(mount);
-
-  res = arango.POST("/_admin/foxx/dev-install", JSON.stringify(req));
+  res = arango.POST("/_admin/foxx/dev-setup", JSON.stringify(req));
   arangosh.checkRequestResult(res);
+};
 
-  return { appId: res.appId, mountId: res.mountId };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a FOXX dev application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.devTeardown = function (name) {
+  'use strict';
+
+  var res;
+  var req = {
+    name: name
+  };
+  
+  res = arango.POST("/_admin/foxx/dev-teardown", JSON.stringify(req));
+  arangosh.checkRequestResult(res);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
