@@ -113,7 +113,6 @@ var dashboardView = Backbone.View.extend({
 
     var runningLog;
     if (this.replLogState.state.running === true) {
-      console.log(true);
       runningLog = '<div class="trueClass">true</div>';
     }
     else {
