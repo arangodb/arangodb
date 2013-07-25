@@ -8,11 +8,32 @@ window.graphView = Backbone.View.extend({
 
   initialize: function () {
     var self = this;
-
+    this.graphs = [];
+    $.ajax({
+      cache: false,
+      type: 'GET',
+      url: "_api/graph",
+      contentType: "application/json",
+      success: function(data) {
+        this.graphs = _.pluck(data, "_key");
+      }
+    });
   },
 
   events: {
-    "click #createViewer" : "createViewer"
+    "click input[type='radio'][name='loadtype']": "toggleLoadtypeDisplay",
+    "click #createViewer": "createViewer"
+  },
+
+  toggleLoadtypeDisplay: function() {
+    var selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
+    if (selected === "collections") {
+      $("#collection_config").css("display", "block");
+      $("#graph_config").css("display", "none");
+    } else {
+      $("#collection_config").css("display", "none");
+      $("#graph_config").css("display", "block");
+    }
   },
 
   createViewer: function() {
@@ -63,15 +84,11 @@ window.graphView = Backbone.View.extend({
     } else {
       ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config);
     }
-    
-    
-    
-    
   },
 
 
   render: function() {
-    $(this.el).html(this.template.render({col: this.collection}));
+    $(this.el).html(this.template.render({col: this.collection, gs: this.graphs}));
 
     return this;
   }
