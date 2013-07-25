@@ -9,17 +9,6 @@ window.graphView = Backbone.View.extend({
   initialize: function () {
     var self = this;
     this.graphs = [];
-    $.ajax({
-      cache: false,
-      type: 'GET',
-      url: "/_api/graph",
-      contentType: "application/json",
-      success: function(data) {
-        console.log(data);
-        self.graphs = _.pluck(data.graphs, "_key");
-        self.render();
-      }
-    });
   },
 
   events: {
@@ -90,8 +79,17 @@ window.graphView = Backbone.View.extend({
 
 
   render: function() {
-    $(this.el).html(this.template.render({col: this.collection, gs: this.graphs}));
-
+    var self = this;
+    $.ajax({
+      cache: false,
+      type: 'GET',
+      url: "/_api/graph",
+      contentType: "application/json",
+      success: function(data) {
+        self.graphs = _.pluck(data.graphs, "_key");
+        $(self.el).html(self.template.render({col: self.collection, gs: self.graphs}));
+      }
+    });
     return this;
   }
 
