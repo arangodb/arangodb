@@ -197,11 +197,11 @@
 }
 
 /*Dashboard Checkbox*/
-input[type=checkbox].css-checkbox {
+#dashboardHeader input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox {
   display:none;
 }
 
-input[type=checkbox].css-checkbox + label.css-label {
+#dashboardHeader input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
   margin-bottom: -0px;
@@ -215,7 +215,7 @@ input[type=checkbox].css-checkbox + label.css-label {
   cursor:pointer;
 }
 
-input[type=checkbox].css-checkbox:checked + label.css-label {
+#dashboardHeader input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label {
   background-position: 0 -15px;
 }
 
@@ -229,17 +229,17 @@ input[type=checkbox].css-checkbox:checked + label.css-label {
   margin-left: -21px;
 }
 
-input[type="radio"] {
+#dashboardHeader input[type="radio"], #transparentHeader input[type="radio"] {
   display:none;
 }
 
-input[type="radio"] + label {
+#dashboardHeader input[type="radio"] + label, #transparentHeader input[type="radio"] + label {
   /*color:#f2f2f2;*/
   /*font-family:Arial, sans-serif;
   font-size:14px;*/
 }
 
-input[type="radio"] + label span {
+#dashboardHeader input[type="radio"] + label span, #transparentHeader input[type="radio"] + label span {
   display:inline-block;
   width:19px;
   height:19px;
@@ -249,7 +249,7 @@ input[type="radio"] + label span {
   cursor:pointer;
 }
 
-input[type="radio"]:checked + label span {
+#dashboardHeader input[type="radio"]:checked + label span, #transparentHeader input[type="radio"]:checked + label span {
   background:url(../img/check_radio_sheet.png) -57px top no-repeat;
 }
 
