@@ -58,6 +58,12 @@ GraphAPI = {
     return GraphAPI.sendWithoutData("GET", graphKey, "");
   },
 
+  getAllGraphs: function () {
+    var results = arangodb.arango.GET("/_api/graph");
+    arangosh.checkRequestResult(results);
+    return results.graphs;
+  },
+
   postGraph: function (data) {
     var results = arangodb.arango.POST("/_api/graph", JSON.stringify(data));
     arangosh.checkRequestResult(results);
