@@ -55,11 +55,6 @@ size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore sequence used for prompt length calculation (starting point)
 ///
 /// This sequence must be used before any non-visible characters in the prompt.
@@ -75,18 +70,9 @@ char const * ArangoClient::PROMPT_IGNORE_START = "\001";
 
 char const * ArangoClient::PROMPT_IGNORE_END = "\002";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -126,25 +112,16 @@ ArangoClient::ArangoClient ()
     _requestTimeout(DEFAULT_REQUEST_TIMEOUT) {
 
   char* p = TRI_GetTempPath();
- 
+
   if (p != NULL) {
     _tempPath = string(p);
-    TRI_Free(TRI_CORE_MEM_ZONE, p); 
+    TRI_Free(TRI_CORE_MEM_ZONE, p);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the general and logging options
@@ -344,12 +321,12 @@ void ArangoClient::parse (ProgramOptions& options,
   // set temp path
   if (options.has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
-  } 
+  }
 
   // check if have a password
-  _hasPassword = options.has("server.password") ||
-                 _disableAuthentication ||
-                 options.has("jslint");
+  _hasPassword = options.has("server.password")
+              || _disableAuthentication
+              || options.has("jslint");
 
   // set colors
   if (options.has("colors")) {
@@ -744,10 +721,6 @@ double ArangoClient::connectTimeout () const {
 double ArangoClient::requestTimeout () const {
   return _requestTimeout;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

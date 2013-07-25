@@ -67,12 +67,12 @@
     },
     
     install: function (name, mount, version) {      
-      return foxxmanager.installApp(name, mount, version);
+      return foxxmanager.mount(name, mount, version);
     },
     
     // Define the functionality to uninstall an installed foxx
     uninstall: function (key) {
-      return foxxmanager.uninstallApp(key);
+      return foxxmanager.unmount(key);
     },
     
     // Define the functionality to deactivate an installed foxx.

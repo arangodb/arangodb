@@ -46,39 +46,6 @@ var foxxManager = require("org/arangodb/foxx-manager");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a FOXX application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/install",
-  context : "admin",
-  prefix : false,
-
-  callback : function (req, res) {
-    'use strict';
-
-    var result;
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
-    }
-
-    var appId = body.appId;
-    var mount = body.mount;
-    var options = body.options || {};
-
-    try {
-      result = foxxManager.installApp(appId, mount, options);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a FOXX dev application
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -141,42 +108,11 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief uninstalls a FOXX application
+/// @brief fetches a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/uninstall",
-  context : "admin",
-  prefix : false,
-
-  callback : function (req, res) {
-    'use strict';
-
-    var result;
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
-    }
-
-    var key = body.key;
-
-    try {
-      result = foxxManager.uninstallApp(key);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a FOXX application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/load",
+  url : "_admin/foxx/fetch",
   context : "admin",
   prefix : false,
 
@@ -238,6 +174,68 @@ actions.defineHttp({
       foxxManager.scanAppDirectory();
    
       actions.resultOk(req, res, actions.HTTP_OK, { path: path });
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mounts a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/mount",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var appId = body.appId;
+    var mount = body.mount;
+    var options = body.options || {};
+
+    try {
+      var result = foxxManager.mount(appId, mount, options);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unmounts a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/unmount",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var key = body.key;
+
+    try {
+      var result = foxxManager.unmount(key);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
       actions.resultException(req, res, err);

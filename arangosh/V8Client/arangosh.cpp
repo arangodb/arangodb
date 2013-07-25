@@ -75,11 +75,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,6 +129,12 @@ static string StartupPath = "";
 static vector<string> ExecuteScripts;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief javascript string to execute
+////////////////////////////////////////////////////////////////////////////////
+
+static string ExecuteString;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief javascript files to syntax check
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -151,18 +152,9 @@ static vector<string> UnitTests;
 
 static vector<string> JsLint;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              JavaScript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
@@ -222,18 +214,9 @@ static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
   return v8::Undefined();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   import function
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a CSV file
@@ -363,11 +346,6 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -405,11 +383,6 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -427,12 +400,13 @@ static V8ClientConnection* CreateConnection () {
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ParseProgramOptions (int argc, char* argv[]) {
+static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
   ProgramOptionsDescription javascript("JAVASCRIPT options");
 
   javascript
     ("javascript.execute", &ExecuteScripts, "execute Javascript code from file")
+    ("javascript.execute-string", &ExecuteString, "execute Javascript code from string")
     ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by semi-colons")
     ("javascript.package-path", &StartupPackages, "one or more directories separated by semi-colons")
@@ -445,6 +419,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
     (javascript, false)
   ;
+
+  vector<string> arguments;
+
+  description.arguments(&arguments);
 
   // fill in used options
   BaseClient.setupGeneral(description);
@@ -473,9 +451,12 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   }
 
   // disable excessive output in non-interactive mode
-  if (! ExecuteScripts.empty() || ! CheckScripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
+  if (! ExecuteScripts.empty() || ! ExecuteString.empty() || ! CheckScripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
     BaseClient.shutup();
   }
+
+  // return the positional arguments
+  return arguments;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,7 +551,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   v8::HandleScope scope;
 
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
-  
+
   if (connection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
@@ -580,7 +561,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   }
 
   string definition = TRI_ObjectToString(argv[0]);
-  
+
   string username;
   if (argv.Length() < 2) {
     username = BaseClient.username();
@@ -607,7 +588,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   else {
     password = TRI_ObjectToString(argv[2]);
   }
-  
+
   delete connection;
 
   const string oldDefinition = BaseClient.endpointString();
@@ -615,15 +596,15 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   const string oldPassword   = BaseClient.password();
 
   BaseClient.setEndpointString(definition);
-  BaseClient.setUsername(username); 
-  BaseClient.setPassword(password); 
-  
+  BaseClient.setUsername(username);
+  BaseClient.setPassword(password);
+
   // re-connect using new options
   BaseClient.createEndpoint();
   if (BaseClient.endpointServer() == 0) {
     BaseClient.setEndpointString(oldDefinition);
-    BaseClient.setUsername(oldUsername); 
-    BaseClient.setPassword(oldPassword); 
+    BaseClient.setUsername(oldUsername);
+    BaseClient.setPassword(oldPassword);
     BaseClient.createEndpoint();
 
     string errorMessage = "error in '" + definition + "'";
@@ -635,7 +616,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
          << "' version " << newConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
- 
+
     argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(newConnection));
 
     v8::Handle<v8::Value> db = v8::Context::GetCurrent()->Global()->Get(TRI_V8_SYMBOL("db"));
@@ -644,13 +625,13 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
       if (dbObj->Has(TRI_V8_STRING("_flushCache")) && dbObj->Get(TRI_V8_STRING("_flushCache"))->IsFunction()) {
         v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(dbObj->Get(TRI_V8_STRING("_flushCache")));
-      
+
         v8::Handle<v8::Value>* args = 0;
         func->Call(dbObj, 0, args);
       }
     }
-    
-    // ok 
+
+    // ok
     return scope.Close(v8::True());
   }
   else {
@@ -658,8 +639,8 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
     // rollback
     BaseClient.setEndpointString(oldDefinition);
-    BaseClient.setUsername(oldUsername); 
-    BaseClient.setPassword(oldPassword); 
+    BaseClient.setUsername(oldUsername);
+    BaseClient.setPassword(oldPassword);
     BaseClient.createEndpoint();
 
     ClientConnection = CreateConnection();
@@ -669,9 +650,9 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     if (newConnection->getErrorMessage() != "") {
       errorMsg = newConnection->getErrorMessage();
     }
-    
+
     delete newConnection;
-    
+
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, errorMsg.c_str());
   }
 }
@@ -1024,20 +1005,20 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-  
+
   const string infile = TRI_ObjectToString(argv[1]);
 
   if (! TRI_ExistsFile(infile.c_str())) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_FILE_NOT_FOUND);
   }
-  
+
   size_t bodySize;
   char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
 
   if (body == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "could not read file");
   }
-    
+
   v8::TryCatch tryCatch;
 
   // check header fields
@@ -1045,7 +1026,7 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
 
   v8::Handle<v8::Value> result = connection->postData(*url, body, bodySize, headerFields);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, body);
-  
+
   if (tryCatch.HasCaught()) {
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
@@ -1211,20 +1192,27 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   string badPrompt;
 
 #ifdef __APPLE__
+
+  // ........................................................................................
   // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
   // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
   // we will therefore disable colorful prompts for MacOS.
+  // ........................................................................................
+
   goodPrompt = badPrompt = string("arangosh> ");
 
 #elif _WIN32
+
   // ........................................................................................
   // Windows console is not coloured by escape sequences. So the method given below will not
   // work. For now we simply ignore the colours until we move the windows version into
   // a GUI Window.
   // ........................................................................................
-  goodPrompt = string("arangosh> ");
-  badPrompt = string("arangosh> ");
+
+  goodPrompt = badPrompt = string("arangosh> ");
+
 #else
+
   if (BaseClient.colors()) {
     goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) +
                  string("arangosh>") +
@@ -1239,6 +1227,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   else {
     goodPrompt = badPrompt = string("arangosh> ");
   }
+
 #endif
 
   cout << endl;
@@ -1393,6 +1382,35 @@ static bool RunScripts (v8::Handle<v8::Context> context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the Javascript string
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RunString (v8::Handle<v8::Context> context,
+                       const string& script) {
+  v8::HandleScope scope;
+
+  v8::TryCatch tryCatch;
+  bool ok = true;
+
+  TRI_ExecuteJavaScriptString(context,
+                              v8::String::New(script.c_str()),
+                              v8::String::New("(command-line)"),
+                              false);
+
+  if (tryCatch.HasCaught()) {
+    string exception(TRI_StringifyV8Exception(&tryCatch));
+
+    cerr << exception << endl;
+    BaseClient.log("%s\n", exception.c_str());
+    ok = false;
+  }
+
+  BaseClient.flushLog();
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the jslint tests
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1428,19 +1446,9 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -1535,7 +1543,7 @@ int main (int argc, char* argv[]) {
   // parse the program options
   // .............................................................................
 
-  ParseProgramOptions(argc, argv);
+  vector<string> positionals = ParseProgramOptions(argc, argv);
 
   // .............................................................................
   // set-up client connection
@@ -1550,14 +1558,12 @@ int main (int argc, char* argv[]) {
   }
 
   if (useServer) {
-
     BaseClient.createEndpoint();
 
     if (BaseClient.endpointServer() == 0) {
       cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
     }
-
 
     ClientConnection = CreateConnection();
   }
@@ -1635,15 +1641,15 @@ int main (int argc, char* argv[]) {
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
 
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
-    connection_inst->SetInternalFieldCount(2);    
-    
+    connection_inst->SetInternalFieldCount(2);
+
     TRI_AddGlobalVariableVocbase(context, "ArangoConnection", connection_proto->NewInstance());
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, connection_inst);
 
     // add the client connection to the context:
     TRI_AddGlobalVariableVocbase(context, "SYS_ARANGO", wrapV8ClientConnection(ClientConnection));
   }
-    
+
   TRI_AddGlobalVariableVocbase(context, "SYS_START_PAGER", v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction());
   TRI_AddGlobalVariableVocbase(context, "SYS_STOP_PAGER", v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction());
   TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_CSV_FILE", v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction());
@@ -1661,10 +1667,9 @@ int main (int argc, char* argv[]) {
 
 #ifdef _WIN32
 
-  // .............................................................................
-  // Quick hack for windows
-  // .............................................................................
-
+    // .............................................................................
+    // Quick hack for windows
+    // .............................................................................
 
     if (BaseClient.colors()) {
       int greenColour   = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
@@ -1716,10 +1721,10 @@ int main (int argc, char* argv[]) {
       printf("           ");
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
       printf("\n");
-
     }
 
 #else
+
     char const* g = TRI_SHELL_COLOR_GREEN;
     char const* r = TRI_SHELL_COLOR_RED;
     char const* z = TRI_SHELL_COLOR_RESET;
@@ -1738,6 +1743,7 @@ int main (int argc, char* argv[]) {
     printf("%s| (_| | | | (_| | | | | (_| | (_) %s\\__ \\ | | |%s\n", g, r, z);
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
+
 #endif
 
     cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) triAGENS GmbH" << endl;
@@ -1795,12 +1801,16 @@ int main (int argc, char* argv[]) {
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
 
   bool isExecuteScript = false;
+  bool isExecuteString = false;
   bool isCheckScripts = false;
   bool isUnitTests = false;
   bool isJsLint = false;
 
   if (! ExecuteScripts.empty()) {
     isExecuteScript = true;
+  }
+  else if (! ExecuteString.empty()) {
+    isExecuteString = true;
   }
   else if (! CheckScripts.empty()) {
     isCheckScripts = true;
@@ -1813,6 +1823,7 @@ int main (int argc, char* argv[]) {
   }
 
   TRI_AddGlobalVariableVocbase(context, "IS_EXECUTE_SCRIPT", v8::Boolean::New(isExecuteScript));
+  TRI_AddGlobalVariableVocbase(context, "IS_EXECUTE_STRING", v8::Boolean::New(isExecuteString));
   TRI_AddGlobalVariableVocbase(context, "IS_CHECK_SCRIPT", v8::Boolean::New(isCheckScripts));
   TRI_AddGlobalVariableVocbase(context, "IS_UNIT_TESTS", v8::Boolean::New(isUnitTests));
   TRI_AddGlobalVariableVocbase(context, "IS_JS_LINT", v8::Boolean::New(isJsLint));
@@ -1844,13 +1855,29 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  // .............................................................................
+  // create arguments
+  // .............................................................................
+
+  v8::Handle<v8::Array> p = v8::Array::New(positionals.size());
+
+  for (size_t i = 0;  i < positionals.size();  ++i) {
+    p->Set(i, v8::String::New(positionals[i].c_str()));
+  }
+  
+  TRI_AddGlobalVariableVocbase(context, "ARGUMENTS", p);
+
+  // .............................................................................
+  // start logging
+  // .............................................................................
+
   BaseClient.openLog();
 
   // .............................................................................
   // run normal shell
   // .............................................................................
 
-  if (! (isExecuteScript || isCheckScripts || isUnitTests || isJsLint)) {
+  if (! (isExecuteScript || isExecuteString || isCheckScripts || isUnitTests || isJsLint)) {
     RunShell(context, promptError);
   }
 
@@ -1862,8 +1889,12 @@ int main (int argc, char* argv[]) {
     bool ok = false;
 
     if (isExecuteScript) {
-      // we have scripts to execute or syntax check
+      // we have scripts to execute
       ok = RunScripts(context, ExecuteScripts, true);
+    }
+    else if (isExecuteString) {
+      // we have string to execute
+      ok = RunString(context, ExecuteString);
     }
     else if (isCheckScripts) {
       // we have scripts to syntax check
@@ -1901,10 +1932,6 @@ int main (int argc, char* argv[]) {
 
   return ret;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
