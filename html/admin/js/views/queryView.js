@@ -62,9 +62,19 @@ var queryView = Backbone.View.extend({
   },
 
   aqlShortcuts: function (e) {
-    if (e.ctrlKey && e.keyCode == 13) {
+    if (e.ctrlKey && e.keyCode === 13) {
       this.submitQuery();
     }
+    else if (e.metaKey && !e.ctrlKey && e.keyCode === 13) {
+      this.submitQuery();
+    }
+    else if (e.ctrlKey && e.keyCode === 90) {
+      this.undoText();
+    }
+    else if (e.ctrlKey && e.shiftKey && e.keyCode === 90) {
+      this.redeText();
+    }
+
   },
 
   queries: [
