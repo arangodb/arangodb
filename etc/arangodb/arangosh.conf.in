@@ -1,5 +1,6 @@
 [server]
 endpoint = tcp://localhost:8529
+password =
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

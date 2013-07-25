@@ -548,7 +548,7 @@ function require (path) {
       }
     }
 
-    // If one's a prefix of the other, the longer one is greater.
+    // If one's a prefix of the other, the longer one is bigger one.
     if (aComponents.length > bComponents.length) {
       return 1;
     }

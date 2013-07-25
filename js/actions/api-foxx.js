@@ -172,8 +172,17 @@ actions.defineHttp({
       fs.unzipFile(realFile, path, false, true);
 
       foxxManager.scanAppDirectory();
+
+      var found = arangodb.db._collection("_aal").firstExample({
+        type: "app",
+        path: name + "-" + version
+      });
+
+      if (found !== null) {
+        found = found.app;
+      }
    
-      actions.resultOk(req, res, actions.HTTP_OK, { path: path });
+      actions.resultOk(req, res, actions.HTTP_OK, { path: path, app: found });
     }
     catch (err) {
       actions.resultException(req, res, err);
