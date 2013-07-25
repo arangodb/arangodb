@@ -130,7 +130,7 @@ function graph_by_request (req) {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief returns true if a "if-match" or "if-none-match" errer happens
+  /// @brief returns true if a "if-match" or "if-none-match" error happens
   ////////////////////////////////////////////////////////////////////////////////
 
   function matchError (req, res, doc, errorCode) {  
@@ -282,21 +282,27 @@ function post_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph properties
 ///
-/// @RESTHEADER{GET /_api/graph/{graph-name},get graph properties}
+/// @RESTHEADER{GET /_api/graph/{graph-name},get the properties of a specific or all graphs}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{graph-name,string,required}
-/// The name of the graph
+/// @RESTURLPARAM{graph-name,string,optional}
+/// The name of the graph.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
+/// If `graph-name` is specified, then this header can be used to check 
+/// whether a specific graph has changed or not.
+///
 /// If the "If-None-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has a different revision than the
+/// etag. The document is returned if it has a different revision than the
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
+/// If `graph-name` is specified, then this header can be used to check 
+/// whether a specific graph has changed or not.
+///
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a `HTTP 412` is returned. As an alternative
@@ -304,25 +310,32 @@ function post_graph_graph (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Returns an object with an attribute `graph` containing a
-/// list of all graph properties.
+/// If `graph-name` is specified, returns an object with an attribute `graph` 
+/// containing a JSON hash with all properties of the specified graph.
+///
+/// If `graph-name` is not specified, returns a list of graph objects.
 ///
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// is returned if the graph was found
+/// is returned if the graph was found (in case `graph-name` was specified)
+/// or the list of graphs was assembled successfully (in case `graph-name` 
+/// was not specified).
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the graph was not found.
+/// is returned if the graph was not found. This response code may only be
+/// returned if `graph-name` is specified in the request.
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{304}
 /// "If-None-Match" header is given and the current graph has not a different 
-/// version
+/// version. This response code may only be returned if `graph-name` is
+/// specified in the request.
 ///
 /// @RESTRETURNCODE{412}
 /// "If-Match" header or `rev` is given and the current graph has 
-/// a different version
+/// a different version. This response code may only be returned if `graph-name`
+/// is specified in the request.
 ///
 /// @EXAMPLES
 ///
@@ -341,6 +354,26 @@ function post_graph_graph (req, res) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// get all graphs
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraphs}
+///     var Graph = require("org/arangodb/graph").Graph;
+///     new Graph("graph1", "vertices1", "edges1");
+///     new Graph("graph2", "vertices2", "edges2");
+///     var url = "/_api/graph";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges1");
+///     db._drop("vertices2");
+///     db._drop("edges1");
+///     db._drop("vertices2");
+///     db._graphs.remove("graph1");
+///     db._graphs.remove("graph2");
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_graph (req, res) {
@@ -355,7 +388,7 @@ function get_graph_graph (req, res) {
       "Etag" : g._properties._rev
     };
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties}, headers );
+    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties }, headers );
   }
   catch (err) {
     actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
@@ -798,7 +831,6 @@ function update_graph_vertex (req, res, g, isPatch) {
     actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err2);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
@@ -2176,8 +2208,9 @@ function post_graph (req, res) {
 
 function get_graph (req, res) {
   if (req.suffix.length === 0) {
-    // GET /_api/graph
-    actions.resultUnsupported(req, res);
+    // GET /_api/graph: return all graphs
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "graphs" : graph.Graph.getAll() });
   }
   else if (req.suffix.length === 1) {
     // GET /_api/graph/<key>

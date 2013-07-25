@@ -67,6 +67,10 @@ examples assume
 @copydetails JSF_Graph_prototype_drop
 
 @CLEARPAGE
+@anchor JSModuleGraphGraphGetAll
+@copydetails JSF_graph_getAll
+
+@CLEARPAGE
 @anchor JSModuleGraphGraphGeodesics
 @copydetails JSF_Graph_prototype_geodesics
 
