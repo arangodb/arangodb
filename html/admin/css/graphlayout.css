@@ -248,6 +248,10 @@ pre.gv_object_view {
   white-space: pre;
 }
 
+input.gv_radio_button {
+  display: block;
+  width: auto;
+}
 
 /*Overriding the slider UI*/
 .ui-slider {
