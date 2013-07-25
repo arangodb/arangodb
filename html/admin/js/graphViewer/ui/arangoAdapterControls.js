@@ -77,7 +77,7 @@ function ArangoAdapterControls(list, adapter) {
                   objects: graphs
                 }
               ]
-            },,{
+            },{
               type: "checkbox",
               id: "undirected"
             }], function () {
@@ -86,12 +86,11 @@ function ArangoAdapterControls(list, adapter) {
                 graph = $("#" + idprefix + "graph").attr("value"),
                 undirected = !!$("#" + idprefix + "undirected").attr("checked"),
                 selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
-              if (selected === "collections") {
+              if (selected === idprefix + "collections") {
                 adapter.changeToCollections(nodes, edges, undirected);
               } else {
                 adapter.changeToGraph(graph, undirected);
               }
-              
               if (_.isFunction(callback)) {
                 callback();
               }
