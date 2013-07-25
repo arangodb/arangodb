@@ -9,5 +9,5 @@ ArangoDB's Reference Manual (@VERSION) {#RefManual}
 @CHAPTER_REF{JSModuleGraph}
 @CHAPTER_REF{JSModuleActions}
 @CHAPTER_REF{jsUnity}
-@CHAPTER_REF{RefManualReplicationEvents}
+@CHAPTER_REF{RefManualReplication}
 @CHAPTER_REF{RefManualArangoErrors}
