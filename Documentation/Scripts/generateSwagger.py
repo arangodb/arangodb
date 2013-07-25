@@ -95,6 +95,11 @@ def Typography(txt):
     txt = FN(txt)
     txt = LIT(txt)
     txt = FA(txt)
+
+    # no way to find out the correct link for Swagger, 
+    #so replace all @ref elements with just "the manual"
+    r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
+    txt = r.sub("the manual", txt)
     return txt
 
 class InitializationError(Exception): pass
