@@ -284,3 +284,7 @@ input.gv_radio_button {
 .gv_example_toggle:hover {
   background-color:white;
 }
+
+legend.gv_inner {
+  font-size: 16px;
+}
