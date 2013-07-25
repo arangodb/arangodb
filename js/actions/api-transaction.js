@@ -78,6 +78,9 @@ var actions = require("org/arangodb/actions");
 ///   value will be used. Setting `lockTimeout` to `0` will make ArangoDB 
 ///   not time out waiting for a lock.
 ///
+/// - `replicate`: whether or not to replicate the operations from this
+///   transaction. If not specified, the default value is `true`.
+///
 /// - `params`: optional arguments passed to `action`.
 ///
 /// If the transaction is fully executed and committed on the server, 
@@ -137,11 +140,12 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 ///     var products = db._create(cn);
 ///     var url = "/_api/transaction";
-///     var body = '{ "collections": { "write" : "products" }, ';
-///         body += '"action" : "function () { ';
-///         body += 'var db = require(\\"internal\\").db;';
-///         body += 'db.products.save({});';
-///         body += 'return db.products.count(); }" }';
+///     var body = { 
+///       collections: { 
+///         write : "products" 
+///       }, 
+///       action: "function () { var db = require('internal').db; db.products.save({}); return db.products.count(); }"
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -160,15 +164,14 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn2);
 ///     var products = db._create(cn2);
 ///     products.save({ "a": 1});
-///     materials.save({"b": 1});
+///     materials.save({ "b": 1});
 ///     var url = "/_api/transaction";
-///     var body = '{ "collections": { "write" : ["products", ';
-///         body += '"materials" ] }, ';
-///         body += '"action" : "function () { ';
-///         body += 'var db = require(\\"internal\\").db;';
-///         body += 'db.products.save({});';
-///         body += 'db.materials.save({});';
-///         body += 'return \\"worked!\\"; }" }';
+///     var body = { 
+///       collections: { 
+///         write : [ "products", "materials" ] 
+///       },
+///       action: "function () { var db = require('internal').db; db.products.save({}); db.materials.save({}); return 'worked!'; }"
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -185,11 +188,12 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 ///     var products = db._create(cn);
 ///     var url = "/_api/transaction";
-///     var body = '{ "collections": { "write" : "products" }, ';
-///         body += '"action" : "function () { ';
-///         body += 'var db = require(\\"internal\\").db;';
-///         body += 'db.products.save({_key: \\"abc\\"});';
-///         body += 'db.products.save({_key: \\"abc\\"});';
+///     var body = { 
+///       collections: { 
+///         write : "products" 
+///       },
+///       action : "function () { var db = require('internal').db; db.products.save({ _key: 'abc'}); db.products.save({ _key: 'abc'}); }"
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 400);
@@ -198,22 +202,45 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Aborting a transaction by throwing an exception:
+/// Aborting a transaction by explicitly throwing an exception:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbort}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var products = db._create(cn, { waitForSync: true });
-///     products.save({ "a": 1});
+///     products.save({ "a": 1 });
 ///     var url = "/_api/transaction";
-///     var body = '{ "collections": { "read" : "products" }, ';
-///         body += '"action" : "function () { throw \\"doh!\\"; }" }';
+///     var body = { 
+///       collections: {
+///         read : "products" 
+///       }, 
+///       action : "function () { throw 'doh!'; }"
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 500);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Referring to a non-existing collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestTransactionNonExisting}
+///     var cn = "products";
+///     db._drop(cn);
+///     var url = "/_api/transaction";
+///     var body = { 
+///       collections: {
+///         read : "products" 
+///       }, 
+///       action : "function () { return true; }"
+///     };
+///
+///     var response = logCurlRequest('POST', url, body);
+///     assert(response.code === 404);
+///
+///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
