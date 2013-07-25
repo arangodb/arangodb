@@ -12,10 +12,12 @@ window.graphView = Backbone.View.extend({
     $.ajax({
       cache: false,
       type: 'GET',
-      url: "_api/graph",
+      url: "/_api/graph",
       contentType: "application/json",
       success: function(data) {
-        this.graphs = _.pluck(data, "_key");
+        console.log(data);
+        self.graphs = _.pluck(data.graphs, "_key");
+        self.render();
       }
     });
   },
