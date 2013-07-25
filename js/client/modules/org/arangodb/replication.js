@@ -56,7 +56,7 @@ logger.start = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/log-start", "");
+  var requestResult = db._connection.PUT("_api/replication/logger-start", "");
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -71,7 +71,7 @@ logger.stop = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/log-stop", "");
+  var requestResult = db._connection.PUT("_api/replication/logger-stop", "");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -86,7 +86,7 @@ logger.state = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/log-state");
+  var requestResult = db._connection.GET("_api/replication/logger-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -102,7 +102,7 @@ applier.start = function (forceFullSynchronisation) {
   var db = internal.db;
   var append = (forceFullSynchronisation ? "?fullSync=true" : "");
 
-  var requestResult = db._connection.PUT("_api/replication/apply-start" + append, "");
+  var requestResult = db._connection.PUT("_api/replication/applier-start" + append, "");
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -117,7 +117,7 @@ applier.stop = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/apply-stop", "");
+  var requestResult = db._connection.PUT("_api/replication/applier-stop", "");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -132,7 +132,7 @@ applier.state = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/apply-state");
+  var requestResult = db._connection.GET("_api/replication/applier-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -147,7 +147,7 @@ applier.forget = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.DELETE("_api/replication/apply-state");
+  var requestResult = db._connection.DELETE("_api/replication/applier-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -164,10 +164,10 @@ applier.properties = function (config) {
 
   var requestResult;
   if (config === undefined) {
-    requestResult = db._connection.GET("_api/replication/apply-config");
+    requestResult = db._connection.GET("_api/replication/applier-config");
   }
   else {
-    requestResult = db._connection.PUT("_api/replication/apply-config",
+    requestResult = db._connection.PUT("_api/replication/applier-config",
       JSON.stringify(config));
   }
 

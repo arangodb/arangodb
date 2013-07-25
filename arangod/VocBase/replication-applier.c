@@ -57,11 +57,12 @@
 ////////////////////////////////////////////////////////////////////////////////
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set flag to terminate the apply start
+/// @brief set flag to terminate the applier thread
 ////////////////////////////////////////////////////////////////////////////////
 
 static void SetTerminateFlag (TRI_replication_applier_t* applier,
                               bool value) {
+
   TRI_LockCondition(&applier->_runStateChangeCondition);
   applier->_terminateThread = value;
   TRI_UnlockCondition(&applier->_runStateChangeCondition);
@@ -82,7 +83,7 @@ static bool CheckTerminateFlag (TRI_replication_applier_t* applier) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify an apply phase name
+/// @brief stringify an applier phase name
 ////////////////////////////////////////////////////////////////////////////////
 
 static const char* StringifyPhase (TRI_replication_apply_phase_e phase) {
@@ -682,8 +683,8 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase)
   TRI_InitSpin(&applier->_threadLock);
   TRI_InitCondition(&applier->_runStateChangeCondition);
 
-  applier->_vocbase         = vocbase;
-  applier->_databaseName    = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+  applier->_vocbase      = vocbase;
+  applier->_databaseName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
   
   SetTerminateFlag(applier, false); 
 
