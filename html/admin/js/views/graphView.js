@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, forin: true */
-/*global Backbone, $, window, EJS, GraphViewerUI */
+/*global Backbone, $, _, window, EJS, GraphViewerUI */
 
 window.graphView = Backbone.View.extend({
   el: '#content',
@@ -15,7 +15,6 @@ window.graphView = Backbone.View.extend({
       url: "/_api/graph",
       contentType: "application/json",
       success: function(data) {
-        console.log(data);
         self.graphs = _.pluck(data.graphs, "_key");
         self.render();
       }

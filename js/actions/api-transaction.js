@@ -144,7 +144,10 @@ var actions = require("org/arangodb/actions");
 ///       collections: { 
 ///         write : "products" 
 ///       }, 
-///       action: "function () { var db = require('internal').db; db.products.save({}); return db.products.count(); }"
+///       action: "function () { " +
+///               "var db = require('internal').db; " + 
+///               "db.products.save({}); " + 
+///               "return db.products.count(); }"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -170,7 +173,11 @@ var actions = require("org/arangodb/actions");
 ///       collections: { 
 ///         write : [ "products", "materials" ] 
 ///       },
-///       action: "function () { var db = require('internal').db; db.products.save({}); db.materials.save({}); return 'worked!'; }"
+///       action: "function () { " + 
+///               "var db = require('internal').db; " + 
+///               "db.products.save({}); " +
+///               "db.materials.save({}); " + 
+///               "return 'worked!'; }"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -192,7 +199,10 @@ var actions = require("org/arangodb/actions");
 ///       collections: { 
 ///         write : "products" 
 ///       },
-///       action : "function () { var db = require('internal').db; db.products.save({ _key: 'abc'}); db.products.save({ _key: 'abc'}); }"
+///       action : "function () { " + 
+///                "var db = require('internal').db; " +
+///                "db.products.save({ _key: 'abc'}); " +
+///                "db.products.save({ _key: 'abc'}); }"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
