@@ -77,6 +77,23 @@ describe ArangoDB do
         doc.parsed_response['empty'].should eq(0)
       end
       
+      it "using different documents, type=auto" do
+        cmd = api + "?collection=#{@cn}&createCollection=true&type=auto"
+        body =  "[ \n"
+        body += "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] },\n"
+        body += "{ \"firstName\" : \"Jane\", \"lastName\" : \"Doe\", \"age\" : 35, \"gender\" : \"female\", \"livesIn\" : \"Manila\" },\n"
+        body += "{ \"sample\" : \"garbage\" },\n"
+        body += "{ }\n"
+        body += "]\n"
+        doc = ArangoDB.log_post("#{prefix}-array-different", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(4)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+      end
+      
       it "using whitespace" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=array"
         body =  " [\n\n      { \"name\" : \"John\", \"age\" : 29 },      \n     \n \n \r\n \n { \"rubbish\" : \"data goes in here\" }\n\n ]"
@@ -163,6 +180,21 @@ describe ArangoDB do
 
       it "using different documents" do
         cmd = api + "?collection=#{@cn}&createCollection=true&type=documents"
+        body =  "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] }\n"
+        body += "{ \"firstName\" : \"Jane\", \"lastName\" : \"Doe\", \"age\" : 35, \"gender\" : \"female\", \"livesIn\" : \"Manila\" }\n"
+        body += "{ \"sample\" : \"garbage\" }\n"
+        body += "{ }"
+        doc = ArangoDB.log_post("#{prefix}-self-contained-different", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(4)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+      end
+      
+      it "using different documents, type=auto" do
+        cmd = api + "?collection=#{@cn}&createCollection=true&type=auto"
         body =  "{ \"name\" : \"John\", \"age\" : 29, \"gender\" : \"male\", \"likes\" : [ \"socket\", \"bind\", \"accept\" ] }\n"
         body += "{ \"firstName\" : \"Jane\", \"lastName\" : \"Doe\", \"age\" : 35, \"gender\" : \"female\", \"livesIn\" : \"Manila\" }\n"
         body += "{ \"sample\" : \"garbage\" }\n"
