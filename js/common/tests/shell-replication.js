@@ -111,6 +111,11 @@ function ReplicationLoggerSuite () {
       // start again  
       actual = replication.logger.start();
       assertTrue(actual);
+      
+      var entry = getLastLogEntry();
+      assertEqual(1001, entry.type);
+      entry = JSON.parse(entry.data);
+      assertMatch(/^\d+$/, entry.lastTick);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +140,11 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertFalse(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      
+      var entry = getLastLogEntry();
+      assertEqual(1000, entry.type);
+      entry = JSON.parse(entry.data);
+      assertMatch(/^\d+$/, entry.lastTick);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

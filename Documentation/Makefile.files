@@ -136,6 +136,7 @@ WIKI = \
 	NewFeatures13 \
 	RefManual \
 	RefManualArangoErrors \
+	RefManualReplication \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \
