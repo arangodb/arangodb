@@ -537,21 +537,13 @@ exports.scanAppDirectory = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a FOXX application
+/// @brief mounts a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.installApp = function (appId, mount, options) {
+exports.mount = function (appId, mount, options) {
   'use strict';
 
-  var aal;
-  var app;
-  var desc;
-  var doc;
-  var prefix;
-  var routes;
-  var version;
-
-  aal = getStorage();
+  var aal = getStorage();
 
   // .............................................................................
   // locate the application
@@ -561,7 +553,7 @@ exports.installApp = function (appId, mount, options) {
     appId = "app:" + appId + ":latest";
   }
 
-  app = module.createApp(appId);
+  var app = module.createApp(appId);
 
   if (app === null) {
     throw new Error("cannot find application '" + appId + "'");
@@ -571,8 +563,8 @@ exports.installApp = function (appId, mount, options) {
   // compute the routing information
   // .............................................................................
 
-  prefix = options && options.collectionPrefix;
-  routes = routingAalApp(app, mount, prefix, false);
+  var prefix = options && options.collectionPrefix;
+  var routes = routingAalApp(app, mount, prefix, false);
 
   if (routes === null) {
     throw new Error("cannot compute the routing table for fox application '" 
@@ -582,6 +574,9 @@ exports.installApp = function (appId, mount, options) {
   // .............................................................................
   // install the application
   // .............................................................................
+
+  var doc;
+  var desc;
 
   try {
     doc = installAalApp(app, mount, prefix, false);
@@ -609,21 +604,14 @@ exports.installApp = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief uninstalls a FOXX application
+/// @brief unmounts a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.uninstallApp = function (key) {
+exports.unmount = function (key) {
   'use strict';
 
-  var aal;
-  var app;
-  var appDoc;
-  var context;
-  var doc;
-  var routing;
-
-  aal = getStorage();
-  doc = aal.firstExample({ type: "mount", _key: key });
+  var aal = getStorage();
+  var doc = aal.firstExample({ type: "mount", _key: key });
 
   if (doc === null) {
     doc = aal.firstExample({ type: "mount", mount: key });
@@ -637,23 +625,20 @@ exports.uninstallApp = function (key) {
 
   try {
     if (appId.substr(0,4) === "app:") {
-      appDoc = aal.firstExample({ app: appId, type: "app" });
+      var appDoc = aal.firstExample({ app: appId, type: "app" });
 
       if (appDoc === null) {
         throw new Error("cannot find app '" + appId + "' in _aal collection");
       }
     }
 
-    app = module.createApp(appId);
+    var app = module.createApp(appId);
     teardownApp(app, doc.mount, doc.collectionPrefix);
   }
   catch (err) {
     console.error("teardown not possible for application '%s': %s", appId, String(err));
   }
 
-  routing = arangodb.db._collection("_routing");
-
-  routing.removeByExample({ foxxMount: doc._key });
   aal.remove(doc);
 
   internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");

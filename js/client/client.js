@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, nonpropdel: true, white: true, plusplus: true, evil: true */
-/*global require, IS_EXECUTE_SCRIPT, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
+/*global require, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -95,12 +95,6 @@ var db = require("org/arangodb").db;
 var arango = require("org/arangodb").arango;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global 'aal'
-////////////////////////////////////////////////////////////////////////////////
-
-var aal = require("org/arangodb/aal");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'Buffer'
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,7 +123,7 @@ var Buffer = require("buffer").Buffer;
 
   try {
     // these variables don't exist in the browser context
-    special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+    special = IS_EXECUTE_SCRIPT || IS_EXECUTE_STRING || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
   }
   catch (err2) {
     special = false;
@@ -153,7 +147,7 @@ var Buffer = require("buffer").Buffer;
 
   try {
     // these variables are not defined in the browser context
-    __special__ = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+    __special__ = IS_EXECUTE_SCRIPT || IS_EXECUTE_STRING || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
   }
   catch (err) {
     __special__ = true;
@@ -177,6 +171,7 @@ var Buffer = require("buffer").Buffer;
 
   try {
     delete IS_EXECUTE_SCRIPT;
+    delete IS_EXECUTE_STRING;
     delete IS_CHECK_SCRIPT;
     delete IS_UNIT_TESTS;
     delete IS_JS_LINT;
