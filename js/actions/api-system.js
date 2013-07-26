@@ -93,6 +93,7 @@ function routing (req, res) {
     }
 
     var func = action.route.callback.controller;
+
     if (func === null || typeof func !== 'function') {
       func = actions.errorFunction(action.route,
                                    'Invalid callback definition found for route ' 

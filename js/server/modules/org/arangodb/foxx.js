@@ -871,10 +871,23 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     response = _.extend(response, responseFunctions);
     next();
     if (trace) {
-      console.log("%s, outgoing response of type %s, body length: %d",
-                  options.app.mount,
-                  response.contentType,
-                  parseInt(response.body.length, 10));
+      if (response.hasOwnProperty("body")) {
+        console.log("%s, outgoing response of type %s, body length: %d",
+                    options.app.mount,
+                    response.contentType,
+                    parseInt(response.body.length, 10));
+      }
+      else if (response.hasOwnProperty("bodyFromFile")) {
+        console.log("%s, outgoing response of type %s, body file: %s",
+                    options.app.mount,
+                    response.contentType,
+                    response.bodyFromFile);
+      }
+      else {
+        console.log("%s, outgoing response of type %s, no body",
+                    options.app.mount,
+                    response.contentType);
+      }
     }
   };
 
