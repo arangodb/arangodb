@@ -1933,7 +1933,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         case 'f':
         case 'i': {
           if (len <= p) {
-            string msg = string("not enough arguments for ") + *ptr;
+            string msg = string("not enough arguments for ") + *ptr + " in format '" + *format + "'";
             TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
@@ -1941,7 +1941,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
           double f = TRI_ObjectToDouble(argv[p], e);
 
           if (e) {
-            string msg = StringUtils::itoa(p) + ".th argument must be a number";
+            string msg = StringUtils::itoa(p) + ".th argument must be a number in format '" + *format + "'";
             TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
@@ -1964,14 +1964,14 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         case 'o':
         case 's': {
           if (len <= p) {
-            string msg = string("not enough arguments for ") + *ptr;
+            string msg = string("not enough arguments for ") + *ptr + " in format '" + *format + "'";
             TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
           TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[p]);
 
           if (*text == 0) {
-            string msg = StringUtils::itoa(p) + ".th argument must be a string";
+            string msg = StringUtils::itoa(p) + ".th argument must be a string in format '" + *format + "'";
             TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
@@ -1983,7 +1983,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         }
 
         default: {
-          string msg = "found illegal format directive '" + string(1, *ptr) + "'";
+          string msg = "found illegal format directive '" + string(1, *ptr) + "' in format '" + *format + "'";
           TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
         }
       }
@@ -1997,7 +1997,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
     TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[i]);
 
     if (*text == 0) {
-      string msg = StringUtils::itoa(i) + ".th argument must be a string";
+      string msg = StringUtils::itoa(i) + ".th argument must be a string in format '" + *format + "'";
       TRI_V8_TYPE_ERROR(scope, msg.c_str());
     }
 
