@@ -66,7 +66,7 @@ actions.defineHttp({
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -97,7 +97,7 @@ actions.defineHttp({
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -180,7 +180,7 @@ actions.defineHttp({
       actions.resultOk(req, res, actions.HTTP_OK, { path: path, app: found });
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -212,7 +212,7 @@ actions.defineHttp({
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -242,7 +242,7 @@ actions.defineHttp({
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });
@@ -275,7 +275,7 @@ actions.defineHttp({
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
-      actions.resultException(req, res, err);
+      actions.resultException(req, res, err, undefined, false);
     }
   }
 });

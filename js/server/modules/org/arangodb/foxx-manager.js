@@ -94,7 +94,7 @@ function buildAssetContent (app, assets, basePath) {
       match = reAll.exec(asset);
 
       if (match !== null) {
-        throw new Error("not implemented");
+        throw new Error("Not implemented");
       }
       else {
         files.push(fs.join(basePath, asset));
@@ -111,7 +111,7 @@ function buildAssetContent (app, assets, basePath) {
       content += c + "\n";
     }
     catch (err) {
-      console.error("cannot read asset '%s'", files[i]);
+      console.error("Cannot read asset '%s'", files[i]);
     }
   }
 
@@ -128,7 +128,7 @@ function installAssets (app, routes) {
   var desc = app._manifest;
 
   if (! desc) {
-    throw new Error("invalid application manifest");
+    throw new Error("Invalid application manifest");
   }
 
   var normalized;
@@ -193,7 +193,7 @@ function executeAppScript (app, name, mount, prefix) {
   var desc = app._manifest;
   
   if (! desc) {
-    throw new Error("invalid application manifest, app " + internal.inspect(app));
+    throw new Error("Invalid application manifest, app " + internal.inspect(app));
   }
 
   var root;
@@ -207,7 +207,7 @@ function executeAppScript (app, name, mount, prefix) {
     devel = true;
   }
   else {
-    throw new Error("cannot extract root path for app '" + app._id + "', unknown type");
+    throw new Error("Cannot extract root path for app '" + app._id + "', unknown type");
   }
 
   if (desc.hasOwnProperty(name)) {
@@ -317,7 +317,7 @@ function installAalApp (app, mount, prefix) {
   var find = aal.firstExample({ type: "mount", mount: mount, active: true });
 
   if (find !== null) {
-    throw new Error("cannot use mount path '" + mount + "', already used by '" 
+    throw new Error("Cannot use mount path '" + mount + "', already used by '" 
                     + find.app + "' (" + find._key + ")");
   }
 
@@ -367,7 +367,7 @@ function routingAalApp (app, mount, prefix, dev) {
     }
 
     if (mount[0] !== "/") {
-      throw new Error("mount point must be absolute");
+      throw new Error("Mount point must be absolute");
     }
 
     // compute the collection prefix
@@ -495,7 +495,9 @@ function routingAalApp (app, mount, prefix, dev) {
     return routes;
   }
   catch (err) {
-    console.error("cannot compute foxx application routes: %s - %s", String(err), String(err.stack));
+    console.error("Cannot compute foxx application routes: %s - %s", 
+                  String(err), 
+                  String(err.stack));
   }
 
   return null;
@@ -553,14 +555,14 @@ exports.scanAppDirectory = function () {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.error("cannot read thumbnail: %s", String(err2.stack || err2));
+            console.error("Cannot read thumbnail: %s", String(err2.stack || err2));
           }
         }
 
         upsertAalAppEntry(mf, thumbnail, files[j]);
       }
       catch (err) {
-        console.error("cannot read app manifest '%s': %s", m, String(err.stack || err));
+        console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
@@ -586,7 +588,7 @@ exports.mount = function (appId, mount, options) {
   var app = module.createApp(appId);
 
   if (app === null) {
-    throw new Error("cannot find application '" + appId + "'");
+    throw new Error("Cannot find application '" + appId + "'");
   }
 
   // .............................................................................
@@ -597,7 +599,7 @@ exports.mount = function (appId, mount, options) {
   var routes = routingAalApp(app, mount, prefix, false);
 
   if (routes === null) {
-    throw new Error("cannot compute the routing table for fox application '" 
+    throw new Error("Cannot compute the routing table for fox application '" 
                     + app._id + "', check the log file for errors!");
   }
 
@@ -648,7 +650,7 @@ exports.unmount = function (key) {
   }
 
   if (doc === null) {
-    throw new Error("key '" + key + "' is neither a mount id nor a mount point");
+    throw new Error("Key '" + key + "' is neither a mount point nor a MountId");
   }
 
   aal.remove(doc);
@@ -670,7 +672,7 @@ exports.teardown = function (appId, mount, collectionPrefix) {
     teardownApp(app, mount, collectionPrefix);
   }
   catch (err) {
-    console.error("teardown not possible for application '%s': %s", appId, String(err));
+    console.error("Teardown not possible for application '%s': %s", appId, String(err));
   }
 };
 
@@ -693,17 +695,17 @@ exports.devSetup = function (filename) {
       var app = module.createApp(appId);
 
       if (app === null) {
-        throw new Error("cannot find application '" + appId + "'");
+        throw new Error("Cannot find application '" + appId + "'");
       }
 
       setupApp(app, mount, prefix);
     }
     catch (err) {
-      throw new Error("cannot read app manifest '" + m + "': " + String(err.stack || err));
+      throw new Error("Cannot read app manifest '" + m + "': " + String(err.stack || err));
     }
   }
   else {
-    throw new Error("cannot find manifest file '" + m + "'");
+    throw new Error("Cannot find manifest file '" + m + "'");
   }
 };
 
@@ -726,17 +728,17 @@ exports.devTeardown = function (filename) {
       var app = module.createApp(appId);
 
       if (app === null) {
-        throw new Error("cannot find application '" + appId + "'");
+        throw new Error("Cannot find application '" + appId + "'");
       }
 
       teardownApp(app, mount, prefix);
     }
     catch (err) {
-      throw new Error("cannot read app manifest '" + m + "': " + String(err.stack || err));
+      throw new Error("Cannot read app manifest '" + m + "': " + String(err.stack || err));
     }
   }
   else {
-    throw new Error("cannot find manifest file '" + m + "'");
+    throw new Error("Cannot find manifest file '" + m + "'");
   }
 };
 
@@ -761,22 +763,22 @@ exports.appRoutes = function () {
       var app = module.createApp(appId);
 
       if (app === null) {
-        throw new Error("cannot find application '" + appId + "'");
+        throw new Error("Cannot find application '" + appId + "'");
       }
 
       var r = routingAalApp(app, mount, prefix, false);
 
       if (r === null) {
-        throw new Error("cannot compute the routing table for fox application '" 
+        throw new Error("Cannot compute the routing table for fox application '" 
                         + app._id + "', check the log file for errors!");
       }
 
       routes.push(r);
 
-      console.log("mounted foxx app '%s' on '%s'", appId, mount);
+      console.log("Mounted foxx app '%s' on '%s'", appId, mount);
     }
     catch (err) {
-      console.error("cannot mount foxx app '%s': %s", appId, String(err.stack || err));
+      console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
     }
   }
 
@@ -808,22 +810,22 @@ exports.developmentRoutes = function () {
         var app = module.createApp(appId);
 
         if (app === null) {
-          throw new Error("cannot find application '" + appId + "'");
+          throw new Error("Cannot find application '" + appId + "'");
         }
 
         var r = routingAalApp(app, mount, prefix, true);
 
         if (r === null) {
-          throw new Error("cannot compute the routing table for fox application '" 
+          throw new Error("Cannot compute the routing table for foxx application '" 
                           + app._id + "', check the log file for errors!");
         }
 
         routes.push(r);
 
-        console.log("mounted dev app '%s' on '%s'", appId);
+        console.log("Mounted dev app '%s' on '%s'", appId);
       }
       catch (err) {
-        console.error("cannot read app manifest '%s': %s", m, String(err.stack || err));
+        console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
