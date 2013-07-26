@@ -25,6 +25,8 @@ OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"
 password to use when connecting. Leave empty for a password prompt ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+turn off autpassword to use when connecting. Leave empty for a password prompt ENDOPTION
 EXAMPLES
 EXAMPLE COMMAND 
 starts COMMAND with the default user and server endpoint ENDEXAMPLE
