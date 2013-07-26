@@ -1830,7 +1830,7 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
   v8::HandleScope scope;
 
   // extract the arguments
-  if (argv.Length() != 1) {
+  if (argv.Length() < 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "removeDirectoryRecursive(<path>)");
   }
 
@@ -1844,23 +1844,34 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
     TRI_V8_EXCEPTION_PARAMETER(scope, "<path> must be a valid directory name");
   }
 
-  char* tempPath = TRI_GetUserTempPath();
+  bool force = false;
+
+  if (argv.Length() > 1) {
+    force = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  if (! force) {
+    // check if we're inside the temp directory. force will override this check
+    char* tempPath = TRI_GetUserTempPath();
   
-  if (tempPath == NULL || strlen(tempPath) < 6) {
-    // some security measure so we don't accidently delete all our files
+    if (tempPath == 0 || strlen(tempPath) < 6) {
+      // some security measure so we don't accidently delete all our files
+      if (tempPath != 0) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
+      }
+
+      TRI_V8_EXCEPTION_PARAMETER(scope, "temporary directory name is too short. will not remove directory");
+    }
+
+    const string path(*name);
+    if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
+
+      TRI_V8_EXCEPTION_PARAMETER(scope, "directory to be removed is outside of temporary path");
+    }
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
-
-    TRI_V8_EXCEPTION_PARAMETER(scope, "temporary directory name is too short. will not remove directory");
   }
-
-  const string path(*name);
-  if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
-
-    TRI_V8_EXCEPTION_PARAMETER(scope, "directory to be removed is outside of temporary path");
-  }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
 
   int res = TRI_RemoveDirectory(*name);
 

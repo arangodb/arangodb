@@ -109,6 +109,12 @@ exports.checkRequestResult = function (requestResult) {
 
     throw new ArangoError(requestResult);
   }
+
+  var copy = requestResult._shallowCopy;
+
+  delete copy.error;
+
+  return copy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
