@@ -136,12 +136,6 @@ exports.guessContentType = function (filename) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect
-////////////////////////////////////////////////////////////////////////////////
-
-exports.inspect = internal.inspect;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizeURL
 ///
 /// If @FA{path} starts with "." or "..", then it is a relative path.
@@ -220,6 +214,12 @@ exports.normalizeURL = function (path) {
 
   return r + n.join('/');
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect
+////////////////////////////////////////////////////////////////////////////////
+
+exports.inspect = internal.inspect;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output
@@ -456,6 +456,68 @@ exports.stringPadding = function (str, len, pad, dir) {
   }
 
   return str;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an error in case a download failed
+////////////////////////////////////////////////////////////////////////////////
+
+exports.throwDownloadError = function (msg) {
+  'use strict';
+
+  throw new exports.ArangoError({
+    errorNum: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code,
+    errorMessage: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg)
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an error in case of missing file
+////////////////////////////////////////////////////////////////////////////////
+
+exports.throwFileNoteFound = function (msg) {
+  'use strict';
+
+  throw new exports.ArangoError({
+    errorNum: exports.errors.ERROR_FILE_NOT_FOUND.code,
+    errorMessage: exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg)
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an error in case of a bad parameter
+////////////////////////////////////////////////////////////////////////////////
+
+exports.throwBadParameter = function (msg) {
+  'use strict';
+
+  throw new exports.ArangoError({
+    errorNum: exports.errors.ERROR_BAD_PARAMETER.code,
+    errorMessage: exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg)
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks parameter, throws an error if missing
+////////////////////////////////////////////////////////////////////////////////
+
+exports.checkParameter = function (usage, descs, vars) {
+  'use strict';
+
+  var i;
+
+  for (i = 0;  i < descs.length;  ++i) {
+    var desc = descs[i];
+
+    if (typeof vars[i] === "undefined") {
+      exports.throwBadParameter(desc[0] + " missing, usage: " + usage);
+    }
+
+    if (typeof vars[i] !== desc[1]) {
+      exports.throwBadParameter(desc[0] + " should be a '" + desc[1] + "', "
+                              + "not '" + (typeof vars[i]) + "'");
+    }
+  }
 };
 
 // -----------------------------------------------------------------------------
