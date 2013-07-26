@@ -68,14 +68,35 @@ function FoxxManagerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test available
 ////////////////////////////////////////////////////////////////////////////////
-/*
-    testFetch : function () {
-      fm.update();
-      fm.purge("itzpapalotl");
 
+    testFetch : function () {
+      try {
+        fm.purge("itzpapalotl");
+      }
+      catch (err) {
+      }
+
+      fm.update();
       fm.fetch("github", "jsteemann/itzpapalotl");
+
+      var result = fm.fetchedJson(), i;
+
+      for (i = 0; i < result.length; ++i) {
+        var entry = result[i];
+
+        if (entry.name === 'itzpapalotl') {
+          assertEqual("jsteemann", entry.author);
+          assertEqual("itzpapalotl", entry.name);
+          assertTrue(entry.hasOwnProperty("description"));
+          assertTrue(entry.hasOwnProperty("version"));
+          assertTrue(entry.hasOwnProperty("path"));
+        }
+        return;
+       }
+
+      fail();
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test search
 ////////////////////////////////////////////////////////////////////////////////

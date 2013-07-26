@@ -927,19 +927,19 @@ exports.listJson = function (showPrefix) {
     var version = doc.app.replace(/^.+:(\d+(\.\d+)*)$/g, "$1"); 
 
     var res = {
-      MountID: doc._key,
-      Mount: doc.mount,
-      AppID: doc.app,
-      Name: doc.name,
-      Description: doc.description,
-      Author: doc.author,
-      System: doc.isSystem ? "yes" : "no",
-      Active: doc.active ? "yes" : "no",
-      Version: version
+      mountId: doc._key,
+      mount: doc.mount,
+      appId: doc.app,
+      name: doc.name,
+      description: doc.description,
+      author: doc.author,
+      system: doc.isSystem ? "yes" : "no",
+      active: doc.active ? "yes" : "no",
+      version: version
     };
 
     if (showPrefix) {
-      res.CollectionPrefix = doc.collectionPrefix;
+      res.collectionPrefix = doc.collectionPrefix;
     }
 
     result.push(res);
@@ -956,18 +956,29 @@ exports.list = function (showPrefix) {
   'use strict';
 
   var list = exports.listJson(showPrefix);
-  var columns = [ "Name", "Author", "Description", "AppID", "Version", "Mount" ];
+  var columns = [ "name", "author", "description", "appId", "version", "mount" ];
 
   if (showPrefix) {
-    columns.push("CollectionPrefix");
+    columns.push("collectionPrefix");
   }
-  columns.push("Active");
-  columns.push("System");
+  columns.push("active");
+  columns.push("system");
 
   arangodb.printTable(list, columns, { 
     prettyStrings: true, 
     totalString: "%s application(s) found",
-    emptyString: "no applications found"
+    emptyString: "no applications found",
+    rename: {
+      mount: "Mount",
+      appId: "AppID",
+      name: "Name",
+      description: "Description",
+      author: "Author",
+      system: "System",
+      active: "Active",
+      version: "Version",
+      collectionPrefix: "CollectionPrefix"
+    }
   });
 };
 
@@ -990,12 +1001,12 @@ exports.fetchedJson = function () {
     }
 
     var res = {
-      AppID: doc.app,
-      Name: doc.name,
-      Description: doc.description || "",
-      Author: doc.author || "",
-      Version: doc.version,
-      Path: doc.path
+      appId: doc.app,
+      name: doc.name,
+      description: doc.description || "",
+      author: doc.author || "",
+      version: doc.version,
+      path: doc.path
     };
 
     result.push(res);
@@ -1015,11 +1026,19 @@ exports.fetched = function () {
 
   arangodb.printTable(
     list,
-    ["Name", "Author", "Description", "AppID", "Version", "Path"],
+    ["name", "author", "description", "appId", "version", "path"],
     {
       prettyStrings: true, 
       totalString: "%s application(s) found",
-      emptyString: "no applications found"
+      emptyString: "no applications found",
+      rename: {
+        appId: "AppID",
+        name: "Name",
+        description: "Description",
+        author: "Author",
+        version: "Version",
+        path: "Path"
+      }
     }
   );
 };
