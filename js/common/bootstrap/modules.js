@@ -202,15 +202,16 @@ function require (path) {
 /// @brief ArangoApp constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ArangoApp (id, name, version, manifest, root, path) {
+  function ArangoApp (id, manifest, root, path, options) {
     'use strict';
-
+    
     this._id = id;
-    this._name = name;
-    this._version = version;
     this._manifest = manifest;
+    this._name = manifest.name;
+    this._version = manifest.version;
     this._root = root;
     this._path = path;
+    this._options = options;
   }
 
 // -----------------------------------------------------------------------------
@@ -331,7 +332,7 @@ function require (path) {
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  function appDescription (appId) {
+  function appDescription (appId, options) {
     'use strict';
 
     var mp;
@@ -404,7 +405,8 @@ function require (path) {
       id: mp.appId,
       root: mp.root,
       path: mp.path,
-      manifest: manifest
+      manifest: manifest,
+      options: options
     };
   }
 
@@ -648,10 +650,10 @@ function require (path) {
 /// @brief createApp
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (appId) {
+  Module.prototype.createApp = function (appId, options) {
     'use strict';
 
-    var description = appDescription(appId);
+    var description = appDescription(appId, options);
 
     if (description === null) {
       return description;
@@ -659,11 +661,10 @@ function require (path) {
 
     return new ArangoApp(
       description.id,
-      description.manifest.name,
-      description.manifest.version,
       description.manifest,
       description.root,
-      description.path
+      description.path,
+      options
     );
   };
 

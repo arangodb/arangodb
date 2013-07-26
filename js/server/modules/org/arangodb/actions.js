@@ -1965,6 +1965,20 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to stringify a request
+////////////////////////////////////////////////////////////////////////////////
+
+function stringifyRequestAddress (req) {
+  var out = req.requestType + " " +
+            req.protocol + "://" +
+            req.server.address + ":" +
+            req.server.port +
+            req.url;
+
+  return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1987,6 +2001,7 @@ exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.routingCache             = function() { return RoutingCache[arangodb.db._name()]; };
 exports.addCookie                = addCookie;
+exports.stringifyRequestAddress  = stringifyRequestAddress;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;
