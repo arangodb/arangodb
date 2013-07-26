@@ -31,7 +31,6 @@
 
 var internal = require("internal");
 
-var console = require("console");
 var fs = require("fs");
 
 var arangodb = require("org/arangodb");
@@ -285,7 +284,7 @@ function repackZipFile (source) {
       fs.remove(source.filename);
     }
     catch (err1) {
-      console.warn("cannot remove temporary file '%s'", source.filename);
+      arangodb.printf("cannot remove temporary file '%s'\n", source.filename);
     }
   } 
 
@@ -313,7 +312,7 @@ function repackZipFile (source) {
     fs.removeDirectoryRecursive(path);
   }
   catch (err2) {
-    console.warn("cannot remove temporary directory '%s'", path);
+    arangodb.printf("cannot remove temporary directory '%s'\n", path);
   }
 }
 
@@ -392,7 +391,7 @@ function processSource (src) {
       fs.remove(src.filename);
     }
     catch (err2) {
-      console.warn("cannot remove temporary file '%s'", src.filename);
+      arangodb.printf("cannot remove temporary file '%s'\n", src.filename);
     }
   } 
 
@@ -654,6 +653,7 @@ exports.run = function (args) {
     else {
       arangodb.printf("%s\n", err.message);
     }
+
     return 1;
   }
 };
