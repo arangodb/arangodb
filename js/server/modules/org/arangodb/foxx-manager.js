@@ -427,6 +427,9 @@ function routingAalApp (app, mount, prefix, dev) {
           collectionPrefix: prefix,                 // collection prefix
           appModule: app.createAppModule(),         // app module
 
+          isDevelopment: devel,
+          isProduction: ! devel,
+
           routingInfo: {},
           foxxes: []
         };
