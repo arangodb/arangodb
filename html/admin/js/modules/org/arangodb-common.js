@@ -247,6 +247,12 @@ exports.print = internal.print;
 exports.printf = internal.printf;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sprintf
+////////////////////////////////////////////////////////////////////////////////
+
+exports.sprintf = internal.sprintf;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief printObject
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,10 +266,8 @@ exports.printTable = function  (list, columns, options) {
   'use strict';
 
   options = options || { };
-
-  if (! Array.isArray(list) || list.length === 0) {
-    // not an array or empty
-    return;
+  if (options.totalString === undefined) {
+    options.totalString = "%s document(s)\n";
   }
 
   var pad = '...';
@@ -296,7 +300,7 @@ exports.printTable = function  (list, columns, options) {
       }
 
       // header
-      var name = col + "1";
+      var name = col;
 
       // rename header?
       if (options.hasOwnProperty("rename")) {
@@ -308,7 +312,7 @@ exports.printTable = function  (list, columns, options) {
       descriptions.push({
         id: col,
         fixedLength: fixedLength,
-        length: fixedLength || col.length
+        length: fixedLength || name.length
       });
 
       matrix[0][j++] = name;
@@ -321,7 +325,13 @@ exports.printTable = function  (list, columns, options) {
     descriptions.forEach(function (col) {
 
       if (row.hasOwnProperty(col.id)) {
-        var value = JSON.stringify(row[col.id]);
+        var value;
+        if (options.prettyStrings && typeof row[col.id] === 'string') {
+          value = row[col.id];
+        }
+        else {
+          value = JSON.stringify(row[col.id]) || "";
+        }
 
         matrix[i + 1].push(value);
 
@@ -380,11 +390,24 @@ exports.printTable = function  (list, columns, options) {
     });
 
     result += divider();
-    result += list.length + ' document(s)\n';
+
+    if (! options.hideTotal) {
+      result += internal.sprintf(options.totalString, String(list.length));
+    }
     return result;
   };
+  
+  if (! Array.isArray(list)) {
+    // not an array 
+    return;
+  }
 
-  exports.print(compose());
+  if (list.length === 0) {
+    exports.print(options.emptyString || "no document(s)"); 
+  }
+  else {
+    exports.print(compose());
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

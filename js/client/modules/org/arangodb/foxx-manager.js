@@ -152,7 +152,7 @@ function validateAppName (name) {
 
   throw new ArangoError({
     errorNum: errors.ERROR_APPLICATION_INVALID_NAME.code,
-    errorMessage: errors.ERROR_APPLICATION_INVALID_NAME.message + ': ' + String(name)
+    errorMessage: errors.ERROR_APPLICATION_INVALID_NAME.message
   });
 }
 
@@ -446,7 +446,7 @@ function updateFishbowlFromZip (filename) {
         desc = JSON.parse(fs.read(app));
       }
       catch (err1) {
-        console.error("cannot parse description for app '" + f + "': %s", String(err1));
+        arangodb.printf("cannot parse description for app '" + f + "': %s\n", String(err1));
         continue;
       }
 
@@ -465,7 +465,7 @@ function updateFishbowlFromZip (filename) {
         }
       }
       catch (err2) {
-        console.error("cannot save description for app '" + f + "': %s", String(err2));
+        arangodb.printf("cannot save description for app '" + f + "': %s\n", String(err2));
         continue;
       }
     }
@@ -565,9 +565,9 @@ exports.run = function (args) {
   'use strict';
 
   if (typeof args === 'undefined' || args.length === 0) {
-    console.error("expecting a command, please try: ");
+    arangodb.print("expecting a command, please try:\n");
     cmdUsage();
-    return;
+    return 0;
   }
 
   var type = args[0];
@@ -626,20 +626,20 @@ exports.run = function (args) {
       exports.help();
     }
     else {
-      console.error("unknown command '%s', please try: ", type);
+      arangodb.printf("unknown command '%s', please try:\n", type);
       cmdUsage();
-      return;
     }
+
+    return 0;
   }
   catch (err) {
     if (err instanceof ArangoError) {
-      console.error("%s", err.errorMessage);
+      arangodb.printf("%s\n", err.errorMessage);
     }
     else {
-      console.error("%s", err.message);
+      arangodb.printf("%s\n", err.message);
     }
-
-    return;
+    return 1;
   }
 };
 
@@ -660,7 +660,11 @@ exports.fetch = function (type, location, version) {
     throwBadParameter("location missing" + usage);
   }
 
-  var source = { type: type, location: location, version: version };
+  var source = { 
+    type: type, 
+    location: location, 
+    version: version 
+  };
   var filename = processSource(source);
 
   if (typeof source.name === "undefined") {
@@ -852,23 +856,18 @@ exports.listJson = function (showPrefix) {
 
   while (cursor.hasNext()) {
     var doc = cursor.next();
-    var res;
+
+    var res = {
+      MountID: doc._key,
+      AppID: doc.app,
+      Name: doc.name,
+      Description: doc.description,
+      Author: doc.author,
+      Active: doc.active ? "yes" : "no"
+    };
 
     if (showPrefix) {
-      res = {
-        MountID: doc._key,
-        AppID: doc.app,
-        CollectionPrefix: doc.collectionPrefix,
-        Active: doc.active ? "yes" : "no"
-      };
-    }
-    else {
-      res = {
-        MountID: doc._key,
-        AppID: doc.app,
-        Mount: doc.mount,
-        Active: doc.active ? "yes" : "no"
-      };
+      res.CollectionPrefix = doc.collectionPrefix;
     }
 
     result.push(res);
@@ -884,14 +883,13 @@ exports.listJson = function (showPrefix) {
 exports.list = function (showPrefix) {
   'use strict';
 
-  var list = exports.listJson(showPrefix), columns;
-  
+  var list = exports.listJson(showPrefix);
+  var columns = ["Name", "Description", "Author", "MountID", "AppID"];
+
   if (showPrefix) {
-    columns = ["MountID", "AppID", "CollectionPrefix", "Active"];
+    columns.push("CollectionPrefix");
   }
-  else {
-    columns = ["MountID", "AppID", "Mount", "Active"];
-  }
+  columns.push("Active");
 
   arangodb.printTable(list, columns, { 
     prettyStrings: true, 
@@ -939,7 +937,7 @@ exports.fetched = function () {
 
   arangodb.printTable(
     list,
-    ["AppID", "Name", "Description", "Version", "Path"],
+    ["Name", "Description", "Author", "AppID", "Version", "Path"],
     {
       prettyStrings: true, 
       totalString: "%s application(s) found",
@@ -961,10 +959,20 @@ exports.availableJson = function () {
 
   while (cursor.hasNext()) {
     var doc = cursor.next();
+
+    var maxVersion = "-";
+    var versions = Object.keys(doc.versions);
+    versions.sort(module.compareVersions);
+    if (versions.length > 0) {
+      versions.reverse();
+      maxVersion = versions[0];
+    }
+
     var res = {
       name: doc.name,
       description: doc.description || "",
-      author: doc.author
+      author: doc.author,
+      maxVersion: maxVersion
     };
 
     result.push(res);
@@ -984,7 +992,7 @@ exports.available = function () {
 
   arangodb.printTable(
     list.sort(compareApps),
-    [ "name", "author", "description" ],
+    [ "name", "author", "description", "maxVersion" ],
     {
       prettyStrings: true, 
       totalString: "%s application(s) found",
@@ -992,7 +1000,8 @@ exports.available = function () {
       rename: {
         "name" : "Name",
         "author" : "Author",
-        "description" : "Description"
+        "description" : "Description",
+        "maxVersion" : "Latest Version"
       }
     }
   );

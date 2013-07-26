@@ -1392,10 +1392,10 @@ static bool RunString (v8::Handle<v8::Context> context,
   v8::TryCatch tryCatch;
   bool ok = true;
 
-  TRI_ExecuteJavaScriptString(context,
-                              v8::String::New(script.c_str()),
-                              v8::String::New("(command-line)"),
-                              false);
+  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context,
+                                                             v8::String::New(script.c_str(), script.size()),
+                                                             v8::String::New("(command-line)"),
+                                                             false);
 
   if (tryCatch.HasCaught()) {
     string exception(TRI_StringifyV8Exception(&tryCatch));
@@ -1403,6 +1403,16 @@ static bool RunString (v8::Handle<v8::Context> context,
     cerr << exception << endl;
     BaseClient.log("%s\n", exception.c_str());
     ok = false;
+  }
+  else {
+    // check return value of script
+    if (result->IsNumber()) {
+      int64_t intResult = TRI_ObjectToInt64(result);
+
+      if (intResult != 0) {
+        ok = false;
+      }
+    }
   }
 
   BaseClient.flushLog();
