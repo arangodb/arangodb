@@ -131,6 +131,7 @@ exports.HELP = exports.createHelpHeadline("Help") +
   'Predefined objects:                                                 ' + "\n" +
   '  arango:                                ArangoConnection           ' + "\n" +
   '  db:                                    ArangoDatabase             ' + "\n" +
+  '  fm:                                    FoxxManager                ' + "\n" +
   'Example:                                                            ' + "\n" +
   ' > db._collections();                    list all collections       ' + "\n" +
   ' > db.<coll_name>.all().toArray();       list all documents         ' + "\n" +
