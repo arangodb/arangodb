@@ -719,7 +719,7 @@ exports.mount = function (appId, mount, options) {
 /// @brief unmounts a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.unmount = exports.uninstall = function (key) {
+exports.unmount = function (key) {
   'use strict';
 
   var usage = ", usage: unmount(<mount>)";
@@ -736,6 +736,8 @@ exports.unmount = exports.uninstall = function (key) {
 
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
   arangosh.checkRequestResult(res);
+
+  return { appdId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -775,7 +777,7 @@ exports.install = function (name, mount, options) {
         keys.push(key);
       }
     }
-    
+
     keys = keys.sort(module.compareVersions);
     version = keys[keys.length - 1];
     source = available.versions[version];
@@ -816,6 +818,31 @@ exports.install = function (name, mount, options) {
   }
 
   return exports.mount(appId, mount, options);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uninstalls a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.uninstall = function (key) {
+  'use strict';
+
+  var usage = ", usage: uninstall(<mount>)";
+
+  if (typeof key === "undefined") {
+    throwBadParameter("mount point or mount key missing" + usage);
+  }
+
+  var req = {
+    key: key
+  };
+
+  validateAppName(key);
+
+  var doc = exports.unmount(key);
+
+  var res = arango.POST("/_admin/foxx/teardown", JSON.stringify(doc));
+  arangosh.checkRequestResult(res);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
