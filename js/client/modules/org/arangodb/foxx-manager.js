@@ -865,7 +865,7 @@ exports.install = function (name, mount, options) {
   }
 
   var res = exports.mount(appId, mount, options);
-  exports.setup(appId, mount);
+  exports.setup(mount);
 
   return res;
 };
