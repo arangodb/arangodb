@@ -643,7 +643,6 @@ exports.run = function (args) {
       exports.update();
     }
     else if (type === 'help') {
-      cmdUsage();
       exports.help();
     }
     else {
