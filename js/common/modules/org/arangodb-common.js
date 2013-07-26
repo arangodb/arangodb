@@ -255,12 +255,12 @@ exports.printObject = internal.printObject;
 /// @brief 2D ASCII table printing
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.printTable = function  (list, columns, framed) {
+exports.printTable = function  (list, columns, options) {
   'use strict';
 
-  if (! Array.isArray(list) || list.length === 0) {
-    // not an array or empty
-    return;
+  options = options || { };
+  if (options.totalString === undefined) {
+    options.totalString = "%s document(s)\n";
   }
 
   var pad = '...';
@@ -292,14 +292,23 @@ exports.printTable = function  (list, columns, framed) {
         fixedLength = columns[col] >= pad.length ? columns[col] : pad.length;
       }
 
+      // header
+      var name = col;
+
+      // rename header?
+      if (options.hasOwnProperty("rename")) {
+        if (options.rename.hasOwnProperty(col)) {
+          name = options.rename[col];
+        }
+      }
+
       descriptions.push({
         id: col,
-        name: col,
         fixedLength: fixedLength,
         length: fixedLength || col.length
       });
 
-      matrix[0][j++] = col;
+      matrix[0][j++] = name;
     }
   }
 
@@ -309,7 +318,13 @@ exports.printTable = function  (list, columns, framed) {
     descriptions.forEach(function (col) {
 
       if (row.hasOwnProperty(col.id)) {
-        var value = JSON.stringify(row[col.id]);
+        var value;
+        if (options.prettyStrings && typeof row[col.id] === 'string') {
+          value = row[col.id];
+        }
+        else {
+          value = JSON.stringify(row[col.id]);
+        }
 
         matrix[i + 1].push(value);
 
@@ -330,7 +345,7 @@ exports.printTable = function  (list, columns, framed) {
       parts.push(exports.stringPadding('', desc.length, '-', 'r'));
     });
 
-    if (framed) {
+    if (options.framed) {
       return '+-' + parts.join('-+-') + '-+\n';
     }
 
@@ -340,7 +355,7 @@ exports.printTable = function  (list, columns, framed) {
   var compose = function () {
     var result = '';
 
-    if (framed) {
+    if (options.framed) {
       result += divider();
     }
     matrix.forEach(function (row, i) {
@@ -355,7 +370,7 @@ exports.printTable = function  (list, columns, framed) {
         parts.push(exports.stringPadding(value, len, ' ', 'r'));
       });
 
-      if (framed) {
+      if (options.framed) {
         result += '| ' + parts.join(' | ') + ' |\n';
       }
       else {
@@ -368,11 +383,24 @@ exports.printTable = function  (list, columns, framed) {
     });
 
     result += divider();
-    result += list.length + ' document(s)\n';
+
+    if (! options.hideTotal) {
+      result += internal.sprintf(options.totalString, String(list.length));
+    }
     return result;
   };
+  
+  if (! Array.isArray(list)) {
+    // not an array 
+    return;
+  }
 
-  exports.print(compose());
+  if (list.length === 0) {
+    exports.print(options.emptyString || "no document(s)"); 
+  }
+  else {
+    exports.print(compose());
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
