@@ -594,18 +594,6 @@ exports.mount = function (appId, mount, options) {
   }
 
   // .............................................................................
-  // compute the routing information
-  // .............................................................................
-
-  var prefix = options && options.collectionPrefix;
-  var routes = routingAalApp(app, mount, prefix, false);
-
-  if (routes === null) {
-    throw new Error("Cannot compute the routing table for foxx application '" 
-                    + app._id + "', check the log file for errors!");
-  }
-
-  // .............................................................................
   // install the application
   // .............................................................................
 
@@ -627,6 +615,10 @@ exports.mount = function (appId, mount, options) {
 
     throw err;
   }
+
+  // .............................................................................
+  // reload
+  // .............................................................................
 
   if (   typeof options === "undefined" 
       || typeof options.reload === "undefined" 
