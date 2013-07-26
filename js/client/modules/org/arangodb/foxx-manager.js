@@ -221,7 +221,7 @@ function processDirectory (source) {
   }
 
   if (files.length === 0) {
-    throwFileNoteFound("directory '" + String(location) + "' is empty");
+    throwFileNoteFound("Directory '" + String(location) + "' is empty");
   }
 
   var tempFile = fs.getTempFile("downloads", false); 
@@ -263,7 +263,7 @@ function repackZipFile (source) {
   }
 
   if (found === "undefined") {
-    throwFileNoteFound("cannot find manifest file '" + filename + "'");
+    throwFileNoteFound("Cannot find manifest file '" + filename + "'");
   }
 
   var mp;
@@ -284,7 +284,7 @@ function repackZipFile (source) {
       fs.remove(source.filename);
     }
     catch (err1) {
-      arangodb.printf("cannot remove temporary file '%s'\n", source.filename);
+      arangodb.printf("Cannot remove temporary file '%s'\n", source.filename);
     }
   } 
 
@@ -312,7 +312,7 @@ function repackZipFile (source) {
     fs.removeDirectoryRecursive(path);
   }
   catch (err2) {
-    arangodb.printf("cannot remove temporary directory '%s'\n", path);
+    arangodb.printf("Cannot remove temporary directory '%s'\n", path);
   }
 }
 
@@ -326,7 +326,7 @@ function processZip (source) {
   var location = source.location;
 
   if (! fs.exists(location) || ! fs.isFile(location)) {
-    throwFileNoteFound("cannot find zip file '" + String(location) + "'");
+    throwFileNoteFound("Cannot find zip file '" + String(location) + "'");
   }
 
   source.filename = source.location;
@@ -353,11 +353,11 @@ function processGithubRepository (source) {
       source.removeFile = true;
     }
     else {
-      throwDownloadError("could not download from repository '" + url + "'");
+      throwDownloadError("Could not download from repository '" + url + "'");
     }
   }
   catch (err) {
-    throwDownloadError("could not download from repository '" + url + "': " + String(err));
+    throwDownloadError("Could not download from repository '" + url + "': " + String(err));
   }
 
   repackZipFile(source);
@@ -380,7 +380,7 @@ function processSource (src) {
     processGithubRepository(src);
   }
   else {
-    throwBadParameter("unknown application type '" + src.type + "'");
+    throwBadParameter("Unknown application type '" + src.type + "'");
   }
 
   // upload file to the server 
@@ -391,7 +391,7 @@ function processSource (src) {
       fs.remove(src.filename);
     }
     catch (err2) {
-      arangodb.printf("cannot remove temporary file '%s'\n", src.filename);
+      arangodb.printf("Cannot remove temporary file '%s'\n", src.filename);
     }
   } 
 
@@ -424,7 +424,7 @@ function updateFishbowlFromZip (filename) {
     var root = fs.join(tempPath, "foxx-apps-master/applications");
 
     if (! fs.exists(root)) {
-      throw new Error("applications diectory is missing in foxx-apps, giving up");
+      throw new Error("Applications diectory is missing in foxx-apps, giving up");
     }
 
     var m = fs.listTree(root);
@@ -445,7 +445,7 @@ function updateFishbowlFromZip (filename) {
         desc = JSON.parse(fs.read(app));
       }
       catch (err1) {
-        arangodb.printf("cannot parse description for app '" + f + "': %s\n", String(err1));
+        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
         continue;
       }
 
@@ -478,6 +478,9 @@ function updateFishbowlFromZip (filename) {
           collection: fishbowl.name()
         }
       });
+
+      arangodb.printf("Updated local repository information with %d application(s)\n", 
+                      toSave.length);
     }
   }
   catch (err) {
@@ -510,7 +513,7 @@ function updateFishbowl () {
     var result = internal.download(url, "", { method: "get", followRedirects: true, timeout: 30 }, filename);
 
     if (result.code < 200 || result.code > 299) {
-      throwDownloadError("github download from '" + url + "' failed with error code " + result.code);
+      throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
     }
 
     updateFishbowlFromZip(filename);
@@ -522,7 +525,11 @@ function updateFishbowl () {
       fs.remove(filename);
     }
 
-    fs.removeDirectoryRecursive(path);
+    try {
+      fs.removeDirectoryRecursive(path);
+    } 
+    catch (err2) {
+    }
 
     throw err;
   }
@@ -579,7 +586,7 @@ exports.run = function (args) {
   'use strict';
 
   if (typeof args === 'undefined' || args.length === 0) {
-    arangodb.print("expecting a command, please try:\n");
+    arangodb.print("Expecting a command, please try:\n");
     cmdUsage();
     return 0;
   }
@@ -640,7 +647,7 @@ exports.run = function (args) {
       exports.help();
     }
     else {
-      arangodb.printf("unknown command '%s', please try:\n", type);
+      arangodb.printf("Unknown command '%s', please try:\n", type);
       cmdUsage();
     }
 
@@ -668,11 +675,11 @@ exports.fetch = function (type, location, version) {
   var usage = ", usage: fetch(<type>, <location>, [<version>])";
 
   if (typeof type === "undefined") {
-    throwBadParameter("type missing" + usage);
+    throwBadParameter("Type missing" + usage);
   }
 
   if (typeof location === "undefined") {
-    throwBadParameter("location missing" + usage);
+    throwBadParameter("Location missing" + usage);
   }
 
   var source = { 
@@ -683,11 +690,11 @@ exports.fetch = function (type, location, version) {
   var filename = processSource(source);
 
   if (typeof source.name === "undefined") {
-    throwBadParameter("name missing for '" + JSON.stringify(source) + "'");
+    throwBadParameter("Name missing for '" + JSON.stringify(source) + "'");
   }
 
   if (typeof source.version === "undefined") {
-    throwBadParameter("version missing for '" + JSON.stringify(source) + "'");
+    throwBadParameter("Version missing for '" + JSON.stringify(source) + "'");
   }
 
   var req = {
@@ -712,11 +719,11 @@ exports.mount = function (appId, mount, options) {
   var usage = ", usage: mount(<appId>, <mount>, [<options>])";
 
   if (typeof appId === "undefined") {
-    throwBadParameter("appId missing" + usage);
+    throwBadParameter("AppId missing" + usage);
   }
 
   if (typeof mount === "undefined") {
-    throwBadParameter("mount missing" + usage);
+    throwBadParameter("Mount missing" + usage);
   }
 
   var req = {
@@ -744,7 +751,7 @@ exports.unmount = function (key) {
   var usage = ", usage: unmount(<mount>)";
 
   if (typeof key === "undefined") {
-    throwBadParameter("mount point or mount key missing" + usage);
+    throwBadParameter("Mount point or MountID missing" + usage);
   }
 
   validateAppName(key);
@@ -755,6 +762,10 @@ exports.unmount = function (key) {
 
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
   arangosh.checkRequestResult(res);
+  
+  arangodb.printf("Application %s unmounted successfully from mount point %s\n", 
+                  res.appId, 
+                  res.mount);
 
   return { appId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
 };
@@ -769,11 +780,11 @@ exports.install = function (name, mount, options) {
   var usage = ", usage: install(<name>, <mount>, [<options>])";
 
   if (typeof name === "undefined") {
-    throwBadParameter("name missing" + usage);
+    throwBadParameter("Name missing" + usage);
   }
 
   if (typeof mount === "undefined") {
-    throwBadParameter("mount missing" + usage);
+    throwBadParameter("Mount missing" + usage);
   }
 
   validateMount(mount);
@@ -837,7 +848,7 @@ exports.install = function (name, mount, options) {
   // .............................................................................
 
   if (appId === null) {
-    throw new Error("cannot extract application id");
+    throw new Error("Cannot extract application id");
   }
 
   return exports.mount(appId, mount, options);
@@ -853,7 +864,7 @@ exports.uninstall = function (key) {
   var usage = ", usage: uninstall(<mount>)";
 
   if (typeof key === "undefined") {
-    throwBadParameter("mount point or mount key missing" + usage);
+    throwBadParameter("Mount point or MountID missing" + usage);
   }
 
   var req = {
@@ -863,9 +874,10 @@ exports.uninstall = function (key) {
   validateAppName(key);
 
   var doc = exports.unmount(key);
-
   var res = arango.POST("/_admin/foxx/teardown", JSON.stringify(doc));
   arangosh.checkRequestResult(res);
+
+  arangodb.printf("Application uninstalled successfully\n");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -884,6 +896,7 @@ exports.listJson = function (showPrefix) {
 
     var res = {
       MountID: doc._key,
+      Mount: doc.mount,
       AppID: doc.app,
       Name: doc.name,
       Description: doc.description,
@@ -909,7 +922,7 @@ exports.list = function (showPrefix) {
   'use strict';
 
   var list = exports.listJson(showPrefix);
-  var columns = ["Name", "Description", "Author", "MountID", "AppID"];
+  var columns = ["Name", "Description", "Author", "Mount", "MountID", "AppID"];
 
   if (showPrefix) {
     columns.push("CollectionPrefix");
@@ -1054,7 +1067,7 @@ exports.info = function (name) {
     desc = fishbowl.document(name);
   }
   catch (err) {
-    arangodb.print("No '" + name + "' available, please try 'search'");
+    arangodb.print("No application '" + name + "' available, please try 'search'");
     return;
   }
 
