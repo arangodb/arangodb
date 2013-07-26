@@ -820,7 +820,7 @@ exports.developmentRoutes = function () {
 
         routes.push(r);
 
-        console.log("Mounted dev app '%s' on '%s'", appId);
+        console.log("Mounted dev app '%s' on '%s'", appId, mount);
       }
       catch (err) {
         console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));

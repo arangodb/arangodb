@@ -925,7 +925,7 @@ exports.list = function (showPrefix) {
   'use strict';
 
   var list = exports.listJson(showPrefix);
-  var columns = [ "Name", "Description", "Author", "AppID", "Version", "Mount" ];
+  var columns = [ "Name", "Author", "Description", "AppID", "Version", "Mount" ];
 
   if (showPrefix) {
     columns.push("CollectionPrefix");
@@ -984,7 +984,7 @@ exports.fetched = function () {
 
   arangodb.printTable(
     list,
-    ["Name", "Description", "Author", "AppID", "Version", "Path"],
+    ["Name", "Author", "Description", "AppID", "Version", "Path"],
     {
       prettyStrings: true, 
       totalString: "%s application(s) found",
@@ -1080,17 +1080,17 @@ exports.info = function (name) {
     return;
   }
 
-  arangodb.printf("Name: %s\n", desc.name);
+  arangodb.printf("Name:        %s\n", desc.name);
 
   if (desc.hasOwnProperty('author')) {
-    arangodb.printf("Author: %s\n", desc.author);
+    arangodb.printf("Author:      %s\n", desc.author);
   }
   
   var isSystem = desc.hasOwnProperty('isSystem') && desc.isSystem;
-  arangodb.printf("System: %s\n", JSON.stringify(isSystem));
+  arangodb.printf("System:      %s\n", JSON.stringify(isSystem));
 
   if (desc.hasOwnProperty('description')) {
-    arangodb.printf("\nDescription:\n%s\n\n", desc.description);
+    arangodb.printf("Description: %s\n\n", desc.description);
   }
   
   var header = false;
