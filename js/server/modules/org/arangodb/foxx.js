@@ -103,6 +103,10 @@ Application = function (context, options) {
   'use strict';
   var urlPrefix, templateCollection, myMiddleware;
 
+  if (typeof context === "undefined") {
+    throw new Error("parameter <context> is missing");
+  }
+
   options = options || {};
 
   templateCollection = options.templateCollection;
