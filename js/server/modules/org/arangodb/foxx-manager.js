@@ -690,7 +690,7 @@ exports.mount = function (appId, mount, options) {
     executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
   }
 
-  return { appId: app._id, mountId: doc._key };
+  return { appId: app._id, mountId: doc._key, mount: mount };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -754,7 +754,7 @@ exports.teardown = function (mount) {
 /// @brief unmounts a FOXX application
 ///
 /// Input:
-/// * key: mount key o mount point
+/// * key: mount key or mount point
 ///
 /// Output:
 /// * appId: the application identifier
@@ -781,6 +781,55 @@ exports.unmount = function (mount) {
   executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
   return { appId: doc.app, mount: doc.mount, collectionPrefix: doc.collectionPrefix };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief purges a FOXX application
+///
+/// Input:
+/// * name: application name
+///
+/// Output:
+/// * appId: the application identifier
+/// * mount: the mount path starting with "/"
+/// * collectionPrefix: the collection prefix
+////////////////////////////////////////////////////////////////////////////////
+
+exports.purge = function (name) {
+  'use strict';
+
+  var doc = getStorage().firstExample({ type: "app", name: name });
+
+  if (doc === null) {
+    throw new Error("Cannot find application '" + name + "'");
+  }
+
+  if (doc.isSystem) {
+    throw new Error("Cannot purge system application");
+  }
+
+  var purged = [ ];
+
+  var cursor = getStorage().byExample({ type: "mount", name: name });
+
+  while (cursor.hasNext()) {
+    var mount = cursor.next();
+
+    exports.teardown(mount.mount);
+    exports.unmount(mount.mount);
+
+    purged.push(mount.mount);
+  }
+
+  // remove the app
+  getStorage().remove(doc);
+
+  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+
+  var path = fs.join(module.appPath(), doc.path);
+  fs.removeDirectoryRecursive(path, true);
+
+  return { appId: doc.app, name: name, purged: purged };
 };
 
 ////////////////////////////////////////////////////////////////////////////////

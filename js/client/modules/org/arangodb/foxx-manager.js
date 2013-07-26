@@ -587,14 +587,14 @@ exports.run = function (args) {
       exports.teardown(args[1]);
     }
     else if (type === 'unmount') {
-      res = exports.unmount(args[1]);
+      exports.unmount(args[1]);
     }
     else if (type === 'install') {
       if (3 < args.length) {
-        exports.install(args[1], args[2], JSON.parse(args[3]));
+        res = exports.install(args[1], args[2], JSON.parse(args[3]));
       }
       else {
-        exports.install(args[1], args[2]);
+        res = exports.install(args[1], args[2]);
       }
 
       printf("Application %s installed successfully at mount point %s\n", 
@@ -607,6 +607,13 @@ exports.run = function (args) {
       printf("Application %s unmounted successfully from mount point %s\n", 
              res.appId, 
              res.mount);
+    }
+    else if (type === 'purge') {
+      res = exports.purge(args[1]);
+
+      printf("Application %s and %d mounts purged successfully\n", 
+             res.name,
+             res.purged.length); 
     }
     else if (type === 'list') {
       if (1 < args.length && args[1] === "prefix") {
@@ -885,6 +892,22 @@ exports.uninstall = function (mount) {
   exports.teardown(mount);
 
   return exports.unmount(mount);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief purges a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.purge = function (key) {
+  'use strict';
+
+  var req = {
+    name: key
+  };
+
+  var res = arango.POST("/_admin/foxx/purge", JSON.stringify(req));
+
+  return arangosh.checkRequestResult(res);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1225,6 +1248,7 @@ exports.help = function () {
     "teardown"     : "teardown execute the teardown script (app must be still be mounted)",
     "unmount"      : "unmounts a mounted foxx application",
     "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",
+    "purge"        : "physically removes a foxx application and all mounts",
     "list"         : "lists all installed foxx applications",
     "fetched"      : "lists all fetched foxx applications that were fetched into the local repository", 
     "available"    : "lists all foxx applications available in the local repository",

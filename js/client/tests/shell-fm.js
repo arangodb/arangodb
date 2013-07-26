@@ -42,6 +42,41 @@ function FoxxManagerSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdate : function () {
+      fm.update();
+
+      var result = fm.availableJson();
+      var i, n;
+
+      n = result.length;
+      assertTrue(n > 0);
+
+      // validate the results structure
+      for (i = 0; i < n; ++i) {
+        var entry = result[i];
+
+        assertTrue(entry.hasOwnProperty("description"));
+        assertTrue(entry.hasOwnProperty("name"));
+        assertTrue(entry.hasOwnProperty("author"));
+        assertTrue(entry.hasOwnProperty("latestVersion"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test available
+////////////////////////////////////////////////////////////////////////////////
+/*
+    testFetch : function () {
+      fm.update();
+      fm.purge("itzpapalotl");
+
+      fm.fetch("github", "jsteemann/itzpapalotl");
+    },
+*/
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test search
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +134,9 @@ function FoxxManagerSuite () {
 /// @brief test install
 ////////////////////////////////////////////////////////////////////////////////
 
-    testInstall : function () {
+    testInstallSingle : function () {
+      fm.update();
+
       try {
         fm.uninstall("/itz");
       }
@@ -107,15 +144,84 @@ function FoxxManagerSuite () {
       }
 
       fm.install("itzpapalotl", "/itz");
-  
-      var endpoint = arango.getEndpoint();
-      endpoint = endpoint.replace(/^tcp:/g, 'http:').replace(/^ssl:/g, 'https:');
-      
-      var url = endpoint + '/itz';
+ 
+      var url = '/itz/random';
+      var fetched = arango.GET(url);
 
-      require("internal").print(arango.GET(url));
+      assertTrue(fetched.hasOwnProperty("name"));
 
       fm.uninstall("/itz");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test install
+////////////////////////////////////////////////////////////////////////////////
+
+    testInstallMulti : function () {
+      fm.update();
+
+      try {
+        fm.uninstall("/itz1");
+        fm.uninstall("/itz2");
+      }
+      catch (err) {
+      }
+
+      fm.install("itzpapalotl", "/itz1");
+      fm.install("itzpapalotl", "/itz2");
+ 
+      var url, fetched;
+
+      url  = '/itz1/random';
+      fetched = arango.GET(url);
+      assertTrue(fetched.hasOwnProperty("name"));
+      
+      url  = '/itz2/random';
+      fetched = arango.GET(url);
+
+      assertTrue(fetched.hasOwnProperty("name"));
+
+      fm.uninstall("/itz1");
+      fm.uninstall("/itz2");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uninstall
+////////////////////////////////////////////////////////////////////////////////
+
+    testUninstallInstalled : function () {
+      fm.update();
+
+      try {
+        fm.uninstall("/itz");
+      }
+      catch (err) {
+      }
+
+      fm.install("itzpapalotl", "/itz");
+      fm.uninstall("/itz");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uninstall
+////////////////////////////////////////////////////////////////////////////////
+
+    testUninstallUninstalled : function () {
+      fm.update();
+
+      try {
+        fm.uninstall("/itz");
+      }
+      catch (err) {
+      }
+
+      try {
+        // already uninstalled
+        fm.uninstall("/itz");
+        fail();
+      }
+      catch (err) {
+      }
     }
 
   };

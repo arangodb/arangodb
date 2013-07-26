@@ -241,6 +241,25 @@ actions.defineHttp({
   })
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief purgesp a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/purge",
+  context : "admin",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var name = body.name;
+
+      return foxxManager.purge(name);
+    }
+  })
+});
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
