@@ -756,7 +756,7 @@ exports.unmount = function (key) {
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return { appdId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
+  return { appId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
