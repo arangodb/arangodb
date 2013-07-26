@@ -59,8 +59,7 @@ app.put("/foxxes/install", function (req, res) {
     mount = content.mount,
     version = content.version;
   res.json(foxxes.install(name, mount, version));
-}).nickname("foxxinstall")
-  .summary("Installs a new foxx")
+}).summary("Installs a new foxx")
   .notes("This function is used to install a new foxx.");
   
 // .............................................................................
@@ -74,8 +73,7 @@ app.del("/foxxes/:key", function (req, res) {
   dataType: "string",
   required: true,
   allowMultiple: false
-}).nickname("foxxes")
-  .summary("Uninstall a Foxx.")
+}).summary("Uninstall a Foxx.")
   .notes("This function is used to uninstall a foxx.");
   
 // .............................................................................
@@ -96,8 +94,7 @@ app.put("/foxxes/:key", function (req, res) {
   dataType: "string",
   required: true,
   allowMultiple: false
-}).nickname("foxxes")
-  .summary("Update a foxx.")
+}).summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
 // .............................................................................
@@ -112,8 +109,7 @@ app.get("/foxxes/thumbnail/:app", function (req, res) {
   dataType: "string",
   required: true,
   allowMultiple: false
-}).nickname("thumbnails")
-  .summary("Get the thumbnail of a foxx.")
+}).summary("Get the thumbnail of a foxx.")
   .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
   
 // .............................................................................
@@ -122,8 +118,7 @@ app.get("/foxxes/thumbnail/:app", function (req, res) {
   
 app.get('/foxxes', function (req, res) {
   res.json(foxxes.viewAll());
-}).nickname("foxxes")
-  .summary("List of all foxxes.")
+}).summary("List of all foxxes.")
   .notes("This function simply returns the list of all running foxxes");
   
 // .............................................................................
@@ -132,8 +127,7 @@ app.get('/foxxes', function (req, res) {
   
 app.get('/docus', function (req, res) {
   res.json(docus.list("http://" + req.headers.host + req.path + "/"));
-}).nickname("swaggers")
-  .summary("List documentation of all foxxes.")
+}).summary("List documentation of all foxxes.")
   .notes("This function simply returns the list of all running"
        + " foxxes and supplies the paths for the swagger documentation");
   
@@ -146,8 +140,7 @@ app.get("/docu/:key",function (req, res) {
     key = req.params("key"),
     path = "http://" + req.headers.host + subPath + "/" + key + "/";
   res.json(docus.listOne(path, key));
-}).nickname("swaggers")
-  .summary("List documentation of all foxxes.")
+}).summary("List documentation of all foxxes.")
   .notes("This function simply returns one specific"
        + " foxx and supplies the paths for the swagger documentation");
   
@@ -166,8 +159,7 @@ app.get('/docu/:key/*', function(req, res) {
   dataType: "string",
   required: true,
   allowMultiple: false
-}).nickname("swaggersapp")
-  .summary("List the API for one foxx")
+}).summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
        + " runnning under the given mount point");
 
