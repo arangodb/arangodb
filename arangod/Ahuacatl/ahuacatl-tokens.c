@@ -595,7 +595,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[62] =
 
 #define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
   TRI_aql_parser_t* parser = (TRI_aql_parser_t*) (yyextra)->_parser;     \
-  int length = parser->_length;                                          \
+  size_t length = parser->_length;                                       \
   if (length > maxBytesToRead) {                                         \
     length = maxBytesToRead;                                             \
   }                                                                      \
