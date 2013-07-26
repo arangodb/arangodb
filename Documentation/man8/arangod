@@ -30,6 +30,8 @@ OPTION "--log.level <string>"
 set the log level (possible values: "fatal", "error", "warning", "info", "debug", "trace") ENDOPTION
 OPTION "--server.endpoint <string>"
 listen endpoint for client requests, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt when connecting to the server ENDOPTION
 OPTION "--database.directory <string>"
 path to the database directory ENDOPTION
 EXAMPLES
