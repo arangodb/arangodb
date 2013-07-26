@@ -28,12 +28,13 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var arangodb = require("org/arangodb");
 
 var console = require("console");
 var fs = require("fs");
 
-var arangodb = require("org/arangodb");
+var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
+var checkParameter = arangodb.checkParameter;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -53,6 +54,43 @@ function getStorage () {
 
 function prefixFromMount (mount) {
   return mount.substr(1).replace(/\//g, "_");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds mount document from mount path or identifier
+////////////////////////////////////////////////////////////////////////////////
+
+function mountFromId (mount) {
+  var aal = getStorage();
+  var doc = aal.firstExample({ type: "mount", _id: mount });
+
+  if (doc === null) {
+    doc = aal.firstExample({ type: "mount", _key: mount });
+  }
+
+  if (doc === null) {
+    doc = aal.firstExample({ type: "mount", mount: mount });
+  }
+
+  if (doc === null) {
+    throw new Error("Cannot find mount identifier or path '" + mount + "'");
+  }
+
+  return doc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates app object from application identifier
+////////////////////////////////////////////////////////////////////////////////
+
+function appFromAppId (appId) {
+  var app = module.createApp(appId, {});
+
+  if (app === null) {
+    throw new Error("Cannot find application '" + appId + "'");
+  }
+
+  return app;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +231,7 @@ function executeAppScript (app, name, mount, prefix) {
   var desc = app._manifest;
   
   if (! desc) {
-    throw new Error("Invalid application manifest, app " + internal.inspect(app));
+    throw new Error("Invalid application manifest, app " + arangodb.inspect(app));
   }
 
   var root;
@@ -304,10 +342,10 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs an app
+/// @brief mounts an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAalApp (app, mount, options) {
+function mountAalApp (app, mount, options) {
   'use strict';
 
   var aal = getStorage();
@@ -519,7 +557,7 @@ function routingAalApp (app, mount, options, dev) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scans available FOXX applications
+/// @brief scans fetched FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.scanAppDirectory = function () {
@@ -581,10 +619,27 @@ exports.scanAppDirectory = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mounts a FOXX application
+///
+/// Input:
+/// * appId: the application identifier
+/// * mount: the mount path starting with a "/"
+/// * options:
+///     collectionPrefix: overwrites the default prefix
+///     reload: reload the routing info (default: true)
+///
+/// Output:
+/// * appId: the application identifier (must be mounted)
+/// * mountId: the mount identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.mount = function (appId, mount, options) {
   'use strict';
+
+  checkParameter(
+    "mount(<appId>, <mount>, [<options>])",
+    [ [ "Application identifier", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appId, mount ] );
 
   var aal = getStorage();
 
@@ -607,16 +662,15 @@ exports.mount = function (appId, mount, options) {
   // .............................................................................
 
   var doc;
-  var desc;
 
   options = options || { };
 
   try {
-    doc = installAalApp(app, mount, options);
+    doc = mountAalApp(app, mount, options);
   }
   catch (err) {
     if (doc !== undefined) {
-      desc = aal.document(doc._key)._shallowCopy;
+      var desc = aal.document(doc._key)._shallowCopy;
 
       desc.error = String(err);
       desc.active = false;
@@ -633,62 +687,120 @@ exports.mount = function (appId, mount, options) {
 
   if (   typeof options.reload === "undefined" 
       || options.reload === true) {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
   }
 
   return { appId: app._id, mountId: doc._key };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unmounts a FOXX application
+/// @brief sets up a FOXX application
+///
+/// Input:
+/// * mount: the mount identifier or path
+///
+/// Output:
+/// -
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.unmount = function (key) {
+exports.setup = function (mount) {
   'use strict';
 
-  var aal = getStorage();
-  var doc = aal.firstExample({ type: "mount", _key: key });
+  checkParameter(
+    "setup(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
 
-  if (doc === null) {
-    doc = aal.firstExample({ type: "mount", mount: key });
-  }
+  var doc = mountFromId(mount);
+  var app = appFromAppId(doc.id);
 
-  if (doc === null) {
-    throw new Error("Key '" + key + "' is neither a mount point nor a MountId");
+  setupApp(app, mount, doc.collectionPrefix);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a FOXX application
+///
+/// Input:
+/// * mount: the mount path starting with a "/"
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+exports.teardown = function (mount) {
+  'use strict';
+
+  checkParameter(
+    "teardown(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
+
+  var appId;
+
+  try {
+    var doc = mountFromId(mount);
+
+    appId = doc.app;
+    var app = appFromAppId(appId);
+
+    teardownApp(app, mount, doc.collectionPrefix);
   }
+  catch (err) {
+    console.error("Teardown not possible for mount '%s': %s", mount, String(err));
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unmounts a FOXX application
+///
+/// Input:
+/// * key: mount key o mount point
+///
+/// Output:
+/// * appId: the application identifier
+/// * mount: the mount path starting with "/"
+/// * collectionPrefix: the collection prefix
+////////////////////////////////////////////////////////////////////////////////
+
+exports.unmount = function (mount) {
+  'use strict';
+
+  checkParameter(
+    "unmount(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
+
+  var doc = mountFromId(mount);
 
   if (doc.isSystem) {
     throw new Error("Cannot unmount system application");
   }
 
-  aal.remove(doc);
+  getStorage().remove(doc);
 
-  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+  executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
   return { appId: doc.app, mount: doc.mount, collectionPrefix: doc.collectionPrefix };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a FOXX application
-////////////////////////////////////////////////////////////////////////////////
-
-exports.teardown = function (appId, mount, collectionPrefix) {
-  'use strict';
-
-  try {
-    var app = module.createApp(appId, { });
-    teardownApp(app, mount, collectionPrefix);
-  }
-  catch (err) {
-    console.error("Teardown not possible for application '%s': %s", appId, String(err));
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a development app
+///
+/// Input:
+/// * filename: the directory name of the development app
+///
+/// Output:
+/// -
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.devSetup = function (filename) {
+  'use strict';
+
+  checkParameter(
+    "devSetup(<mount>)",
+    [ [ "Application folder", "string" ] ],
+    [ filename ] );
+
   var root = module.devAppPath();
   var m = fs.join(root, filename, "manifest.json");
   
@@ -700,7 +812,7 @@ exports.devSetup = function (filename) {
       var mount = "/dev/" + filename;
       var prefix = prefixFromMount(mount);
 
-      var app = module.createApp(appId, { });
+      var app = module.createApp(appId, {});
 
       if (app === null) {
         throw new Error("Cannot find application '" + appId + "'");
@@ -719,9 +831,22 @@ exports.devSetup = function (filename) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tears down up a development app
+///
+/// Input:
+/// * filename: the directory name of the development app
+///
+/// Output:
+/// -
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.devTeardown = function (filename) {
+  'use strict';
+
+  checkParameter(
+    "devTeardown(<mount>)",
+    [ [ "Application folder", "string" ] ],
+    [ filename ] );
+
   var root = module.devAppPath();
   var m = fs.join(root, filename, "manifest.json");
   
@@ -733,7 +858,7 @@ exports.devTeardown = function (filename) {
       var mount = "/dev/" + filename;
       var prefix = prefixFromMount(mount);
 
-      var app = module.createApp(appId, { });
+      var app = module.createApp(appId, {});
 
       if (app === null) {
         throw new Error("Cannot find application '" + appId + "'");
@@ -755,6 +880,8 @@ exports.devTeardown = function (filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.appRoutes = function () {
+  'use strict';
+
   var aal = getStorage();
   var find = aal.byExample({ type: "mount", active: true });
 
@@ -769,7 +896,7 @@ exports.appRoutes = function () {
     options.collectionPrefix = doc.collectionPrefix || undefined;
 
     try {
-      var app = module.createApp(appId, options || { });
+      var app = module.createApp(appId, options || {});
 
       if (app === null) {
         throw new Error("Cannot find application '" + appId + "'");
@@ -799,6 +926,8 @@ exports.appRoutes = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.developmentRoutes = function () {
+  'use strict';
+
   var routes = [];
 
   var root = module.devAppPath();

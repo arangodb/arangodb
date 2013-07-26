@@ -43,11 +43,6 @@ var moduleExists = function(name) { return module.exists; };
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief routing cache
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -59,18 +54,9 @@ var RoutingCache = {};
 
 var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function that's returned for non-implemented actions
@@ -875,18 +861,9 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result of a query as documents
@@ -909,21 +886,8 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ///
 /// @FA{options.context}
 ///
-/// The context to which this actions belongs. Possible values are "admin",
-/// "monitoring", "api", and "user". All contexts apart from "user" are reserved
-/// for system actions and are database independent. All actions except "user"
-/// and "api" are executed in a different worker queue than the normal queue for
-/// clients. The "api" actions are used by the client api to communicate with
-/// the ArangoDB server.  Both the "api" and "user" actions are using the same
-/// worker queue.
-///
-/// It is possible to specify a list of contexts, in case an actions belongs to
-/// more than one context.
-///
-/// Note that the url for "user" actions is automatically prefixed
-/// with @LIT{_action}. This applies to all specified contexts. For example, if
-/// the context contains "admin" and "user" and the url is @LIT{hello}, then the
-/// action is accessible under @LIT{/_action/hello} - even for the admin context.
+/// The context to which this actions belongs. Possible values are "admin"
+/// and "user".
 ///
 /// @FA{options.callback}(@FA{request}, @FA{response})
 ///
@@ -959,36 +923,13 @@ function defineHttp (options) {
   'use strict';
 
   var url = options.url;
-  var contexts = options.context;
+  var context = options.context;
   var callback = options.callback;
   var parameters = options.parameters;
   var prefix = true;
-  var userContext = false;
-  var i;
 
-  if (! contexts) {
-    contexts = "user";
-  }
-
-  if (typeof contexts === "string") {
-    if (contexts === "user") {
-      userContext = true;
-    }
-
-    contexts = [ contexts ];
-  }
-  else {
-    for (i = 0;  i < contexts.length && ! userContext;  ++i) {
-      var context = contexts[i];
-
-      if (context === "user") {
-        userContext = true;
-      }
-    }
-  }
-
-  if (userContext) {
-    url = "_action/" + url;
+  if (typeof context === "undefined") {
+    context = "user";
   }
 
   if (typeof callback !== "function") {
@@ -1000,17 +941,18 @@ function defineHttp (options) {
     prefix = options.prefix;
   }
 
-  var parameter = { parameters : parameters, prefix : prefix };
+  var parameter = {
+    parameters : parameters,
+    prefix : prefix
+  };
 
-  if (0 < contexts.length) {
-    console.debug("defining action '%s' in contexts '%s'", url, contexts);
+  console.debug("defining action '%s' in context '%s'", url, context);
 
-    try {
-      internal.defineAction(url, callback, parameter, contexts);
-    }
-    catch (err) {
-      console.error("action '%s' encountered error: %s", url, err);
-    }
+  try {
+    internal.defineAction(url, callback, parameter, [context]);
+  }
+  catch (err) {
+    console.error("action '%s' encountered error: %s", url, err);
   }
 }
 
@@ -1398,18 +1340,9 @@ function firstRouting (type, parts) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           standard HTTP responses
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convenience function to return an HTTP 400 error for a bad parameter
@@ -1599,18 +1532,9 @@ function resultTemporaryRedirect (req, res, destination, headers) {
   res.headers.location = destination;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      ArangoDB specific responses
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result set from a cursor
@@ -1796,18 +1720,33 @@ function resultException (req, res, err, headers, verbose) {
   resultError(req, res, code, num, msg, headers);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  specific actions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
+/// @brief creates a simple post callback
 ////////////////////////////////////////////////////////////////////////////////
+
+function easyPostCallback (opts) {
+  'use strict';
+
+  return function (req, res) {
+    var body = getJsonBody(req, res);
+
+    if (opts.body === true && body === undefined) {
+      return;
+    }
+
+    try {
+      var result = opts.callback(body);
+      resultOk(req, res, exports.HTTP_OK, result);
+    }
+    catch (err) {
+      resultException(req, res, err, undefined, false);
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief echos a request
@@ -1978,18 +1917,9 @@ function stringifyRequestAddress (req) {
   return out;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 // public functions
 exports.defineHttp               = defineHttp;
@@ -2021,6 +1951,7 @@ exports.indexNotFound            = indexNotFound;
 exports.resultException          = resultException;
 
 // standard actions
+exports.easyPostCallback         = easyPostCallback;
 exports.echoRequest              = echoRequest;
 exports.logRequest               = logRequest;
 exports.redirectRequest          = redirectRequest;
@@ -2075,10 +2006,6 @@ exports.HTTP_SERVER_ERROR        = 500;
 exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
