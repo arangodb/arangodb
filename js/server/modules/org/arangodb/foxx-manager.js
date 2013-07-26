@@ -712,7 +712,7 @@ exports.setup = function (mount) {
     [ mount ] );
 
   var doc = mountFromId(mount);
-  var app = appFromAppId(doc.id);
+  var app = appFromAppId(doc.app);
 
   setupApp(app, mount, doc.collectionPrefix);
 };

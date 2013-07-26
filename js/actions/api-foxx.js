@@ -160,7 +160,7 @@ actions.defineHttp({
     callback: function (body) {
       var mount = body.mount;
 
-      return foxxManager.teardown(mount);
+      return foxxManager.setup(mount);
     }
   })
 });
