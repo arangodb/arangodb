@@ -256,8 +256,10 @@ exports.printObject = internal.printObject;
 /// @brief 2D ASCII table printing
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.printTable = function  (list, columns, framed) {
+exports.printTable = function  (list, columns, options) {
   'use strict';
+
+  options = options || { };
 
   if (! Array.isArray(list) || list.length === 0) {
     // not an array or empty
@@ -293,14 +295,23 @@ exports.printTable = function  (list, columns, framed) {
         fixedLength = columns[col] >= pad.length ? columns[col] : pad.length;
       }
 
+      // header
+      var name = col + "1";
+
+      // rename header?
+      if (options.hasOwnProperty("rename")) {
+        if (options.rename.hasOwnProperty(col)) {
+          name = options.rename[col];
+        }
+      }
+
       descriptions.push({
         id: col,
-        name: col,
         fixedLength: fixedLength,
         length: fixedLength || col.length
       });
 
-      matrix[0][j++] = col;
+      matrix[0][j++] = name;
     }
   }
 
@@ -331,7 +342,7 @@ exports.printTable = function  (list, columns, framed) {
       parts.push(exports.stringPadding('', desc.length, '-', 'r'));
     });
 
-    if (framed) {
+    if (options.framed) {
       return '+-' + parts.join('-+-') + '-+\n';
     }
 
@@ -341,7 +352,7 @@ exports.printTable = function  (list, columns, framed) {
   var compose = function () {
     var result = '';
 
-    if (framed) {
+    if (options.framed) {
       result += divider();
     }
     matrix.forEach(function (row, i) {
@@ -356,7 +367,7 @@ exports.printTable = function  (list, columns, framed) {
         parts.push(exports.stringPadding(value, len, ' ', 'r'));
       });
 
-      if (framed) {
+      if (options.framed) {
         result += '| ' + parts.join(' | ') + ' |\n';
       }
       else {
