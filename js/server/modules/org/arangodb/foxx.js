@@ -662,7 +662,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     var responseFunctions,
       requestFunctions,
       _ = require("underscore");
-      
+
     requestFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////

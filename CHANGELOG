@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* defineHttp now only expects a single context
+
 * added collection detail dialog (web interface)
 
   Shows collection properties, figures (datafiles, journals, attributes, etc.)

@@ -36,71 +36,11 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var foxxManager = require("org/arangodb/foxx-manager");
 
+var easyPostCallback = actions.easyPostCallback;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a FOXX dev application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/dev-setup",
-  context : "admin",
-  prefix : false,
-
-  callback : function (req, res) {
-    'use strict';
-
-    var result;
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
-    }
-
-    var name = body.name;
-
-    try {
-      result = foxxManager.devSetup(name);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a FOXX dev application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/dev-teardown",
-  context : "admin",
-  prefix : false,
-
-  callback : function (req, res) {
-    'use strict';
-
-    var result;
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
-    }
-
-    var name = body.name;
-
-    try {
-      result = foxxManager.devTeardown(name);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches a FOXX application
@@ -194,57 +134,35 @@ actions.defineHttp({
   context : "admin",
   prefix : false,
 
-  callback : function (req, res) {
-    'use strict';
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var appId = body.appId;
+      var mount = body.mount;
+      var options = body.options || {};
 
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
+      return foxxManager.mount(appId, mount, options);
     }
-
-    var appId = body.appId;
-    var mount = body.mount;
-    var options = body.options || {};
-
-    try {
-      var result = foxxManager.mount(appId, mount, options);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
+  })
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unmounts a FOXX application
+/// @brief sets up a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/unmount",
+  url : "_admin/foxx/setup",
   context : "admin",
   prefix : false,
 
-  callback : function (req, res) {
-    'use strict';
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
 
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
+      return foxxManager.teardown(mount);
     }
-
-    var key = body.key;
-
-    try {
-      var result = foxxManager.unmount(key);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
+  })
 });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,28 +174,71 @@ actions.defineHttp({
   context : "admin",
   prefix : false,
 
-  callback : function (req, res) {
-    'use strict';
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
 
-    var result;
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
+      return foxxManager.teardown(mount);
     }
+  })
+});
 
-    var appId = body.appId;
-    var mount = body.mount;
-    var collectionPrefix = body.collectionPrefix;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unmounts a FOXX application
+////////////////////////////////////////////////////////////////////////////////
 
-    try {
-      result = foxxManager.teardown(appId, mount, collectionPrefix);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+actions.defineHttp({
+  url : "_admin/foxx/unmount",
+  context : "admin",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+
+      return foxxManager.unmount(mount);
     }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up a FOXX dev application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/dev-setup",
+  context : "admin",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var name = body.name;
+
+      return foxxManager.devSetup(name);
     }
-  }
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a FOXX dev application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/dev-teardown",
+  context : "admin",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var name = body.name;
+
+      return foxxManager.devTeardown(name);
+    }
+  })
 });
 
 // -----------------------------------------------------------------------------
