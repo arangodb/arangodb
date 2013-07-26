@@ -10,7 +10,7 @@
 
 bin_SCRIPTS += \
 	bin/arango-dfdb \
-	bin/arango-password 
+	bin/foxx-manager
 
 CLEANUP += $(bin_SCRIPTS)
 
@@ -27,15 +27,14 @@ bin/arango-dfdb: utils/arango-dfdb.in
 	chmod 755 $@
 
 ################################################################################
-### @brief arango password: this create a file with a warning message only
-### as arango-password is deprecated        
+### @brief foxx manager
 ################################################################################
 
-.PHONY: bin/arango-password
-
-bin/arango-password: 
-	@echo "echo \"arango-password is not part of this ArangoDB release.\"; exit 1" > $@
-	@chmod 755 $@
+bin/foxx-manager: utils/foxx-manager.in
+	sed \
+		-e 's%@BINDIR@%${TRI_BINDIR}%g' \
+		$< > $@
+	chmod 755 $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

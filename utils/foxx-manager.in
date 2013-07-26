@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Placeholders starting with @ will be replaced by make
+
+ARANGOSH="@BINDIR@/arangosh"
+RCFILE=""
+
+if [ "$1" == "--relative" ] ;  then
+  shift
+  ARANGOSH="./bin/arangosh"
+  RCFILE="-c etc/relative/arangosh.conf"
+fi
+
+$ARANGOSH \
+    $RCFILE \
+    --javascript.execute-string 'require("org/arangodb/foxx-manager").run(ARGUMENTS);' \
+    $*

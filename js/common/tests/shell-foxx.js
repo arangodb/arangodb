@@ -9,7 +9,7 @@ var jsunity = require("jsunity"),
 function CreateFoxxApplicationSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new FoxxApplication(),
+      var app = new FoxxApplication({prefix: "", foxxes: []}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -17,7 +17,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new FoxxApplication({urlPrefix: "/wiese"}),
+      var app = new FoxxApplication({prefix: "", foxxes: []}, {urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -28,7 +28,7 @@ function CreateFoxxApplicationSpec () {
       var app, routingInfo, templateCollection;
 
       db._drop("wiese");
-      app = new FoxxApplication({templateCollection: "wiese"});
+      app = new FoxxApplication({prefix: "", foxxes: []}, {templateCollection: "wiese"});
       routingInfo = app.routingInfo;
       templateCollection = db._collection("wiese");
 
@@ -42,7 +42,7 @@ function CreateFoxxApplicationSpec () {
 
       db._drop("wiese");
       db._create("wiese");
-      app = new FoxxApplication({templateCollection: "wiese"});
+      app = new FoxxApplication({prefix: "", foxxes: []}, {templateCollection: "wiese"});
       routingInfo = app.routingInfo;
       templateCollection = db._collection("wiese");
 
@@ -52,25 +52,12 @@ function CreateFoxxApplicationSpec () {
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new FoxxApplication(),
+      var app = new FoxxApplication({prefix: "", foxxes: []}),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
       assertEqual(routingInfo.middleware.length, 1);
       assertEqual(hopefully_base.url.match, "/*");
-    },
-
-    testAdditionOfRepositoryInRoutingInfo: function () {
-      var app = new FoxxApplication(),
-        routingInfo = app.routingInfo;
-
-      app.registerRepository("todos", {
-        model: "models/todo",
-        repository: "repositories/todos"
-      });
-
-      assertEqual(routingInfo.repositories.todos.model, "models/todo");
-      assertEqual(routingInfo.repositories.todos.repository, "repositories/todos");
     }
   };
 }
@@ -80,7 +67,7 @@ function SetRoutesFoxxApplicationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication();
+      app = new FoxxApplication({prefix: "", foxxes: []});
     },
 
     testSettingRoutes: function () {
@@ -196,34 +183,6 @@ function SetRoutesFoxxApplicationSpec () {
       }
       assertEqual(error, "URL has to be a String");
       assertEqual(routes.length, 0);
-    },
-
-    testSettingHandlers: function () {
-      var myFunc = function a (b, c) { return b + c;},
-        myFuncString = "function a(b, c) { return b + c;}",
-        routes = app.routingInfo.routes,
-        action;
-
-      app.get('/simple/route', myFunc);
-
-      action = routes[0].action;
-      assertEqual(routes.length, 1);
-      assertEqual(action.callback, myFuncString);
-    },
-
-    testStartAddsRequiresAndContext: function () {
-      var myFunc = function () {},
-        routingInfo = app.routingInfo,
-        context = {};
-
-      app.requires = {
-        a: 1
-      };
-      app.get('/simple/route', myFunc);
-      app.start(context);
-
-      assertEqual(context.requires.a, 1);
-      assertEqual(context.routingInfo, routingInfo);
     }
   };
 }
@@ -233,7 +192,7 @@ function DocumentationAndConstraintsSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication(),
+      app = new FoxxApplication({prefix: "", foxxes: []}),
         routes = app.routingInfo.routes;
     },
 
@@ -349,26 +308,12 @@ function DocumentationAndConstraintsSpec () {
     testDefineMetaData: function () {
       app.get('/foxx', function () {
         //nothing
-      }).nickname("a").summary("b").notes("c");
+      }).summary("b").notes("c");
 
       assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.nickname, "a");
+      assertEqual(routes[0].docs.nickname, "get_foxx");
       assertEqual(routes[0].docs.summary, "b");
       assertEqual(routes[0].docs.notes, "c");
-    },
-
-    testNicknameFormat: function () {
-      var error;
-
-      try {
-        app.get('/foxx', function () {
-          //nothing
-        }).nickname("a b");
-      } catch(e) {
-        error = e;
-      }
-
-      assertEqual(error.substr(0,31), "Nickname may only contain [a-z]".substr(0,31));
     },
 
     testSummaryRestrictedTo60Characters: function () {
@@ -403,7 +348,7 @@ function AddMiddlewareFoxxApplicationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication();
+      app = new FoxxApplication({prefix: "", foxxes: []});
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -660,7 +605,7 @@ function ViewHelperSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication();
+      app = new FoxxApplication({prefix: "", foxxes: []});
       Middleware = require('org/arangodb/foxx').BaseMiddleware;
       request = {};
       response = {};
@@ -879,7 +824,7 @@ function ModelSpec () {
       assertFalse(instance.has("c"));
     },
 
-    testToJson: function () {
+    testSerialization: function () {
       var raw = {
         a: 1,
         b: 2
@@ -887,7 +832,8 @@ function ModelSpec () {
 
       instance = new FoxxModel(raw);
 
-      assertEqual(instance.toJSON(), raw);
+      assertEqual(instance.forDB(), raw);
+      assertEqual(instance.forClient(), raw);
     }
   };
 }

@@ -4,76 +4,79 @@ Foxx {#UserManualFoxx}
 @NAVIGATE_UserManualFoxx
 @EMBEDTOC{UserManualFoxxTOC}
 
-Foxx: Build APIs and simple web applications in ArangoDB
-========================================================
+Foxx: Build APIs and simple web applications in ArangoDB{#UserManualFoxxIntro}
+==============================================================================
 
-Foxx is an easy way to create APIs and simple web applications from within **ArangoDB**. It is inspired by Sinatra,
-the classy Ruby web framework. If FoxxApplication is Sinatra,
-[ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html) are the corresponding `Rack`.
-They provide all the HTTP goodness.
+Foxx is an easy way to create APIs and simple web applications from within
+**ArangoDB**. It is inspired by Sinatra, the classy Ruby web framework. If
+FoxxApplication is Sinatra,
+[ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html)
+are the corresponding `Rack`. They provide all the HTTP goodness.
 
 So let's get started, shall we?
 
-An application build with Foxx is written in JavaScript and deployed to ArangoDB directly. ArangoDB serves this
-application, you do not need a separate application server.
+An application build with Foxx is written in JavaScript and deployed to ArangoDB
+directly. ArangoDB serves this application, you do not need a separate
+application server.
 
-So given you want to build an application that sends a plain-text response "Worked!" for all requests to `/my/wiese`.
-How would you achieve that with Foxx?
+So given you want to build an application that sends a plain-text response
+"Worked!" for all requests to `/my/wiese`.  How would you achieve that with
+Foxx?
 
-First, create a directory `apps` somewhere in your filesystem. Let's assume from now on that the absolute path for
-this directory is `/home/user/apps`.
+First, create a directory `apps` somewhere in your filesystem. Let's assume from
+now on that the absolute path for this directory is `/home/user/apps`.
 
-After that, create a sub-directory `my_app` in the `apps` directory and save the following content in a file named `app.js` there:
+After that, create a sub-directory `my_app` in the `apps` directory and save the
+following content in a file named `app.js` there:
 
     var Foxx = require("org/arangodb/foxx");
-
-    var app = new Foxx.Application();
-
+    var app = new Foxx.Application(applicationContext);
+    
     app.get("/wiese", function(req, res) {
       res.set("Content-Type", "text/plain");
       res.body = "Worked!"
     });
 
-    app.start(applicationContext);
+Beside the app.js we need a manifest file. In order to achieve that, we create a
+file called `manifest.json` in our `my_app` directory with the following
+content:
 
-Beside the app.js we need a manifest file. In order to achieve that, we create a file called `manifest.json` in our
-`my_app` directory with the following content:
+    {
+      "name": "my_app",
+      "version": "0.0.1",
+      "apps": {
+        "/": "app.js"
+      }
+    }
 
-   {
-     "name": "my_app",
-     "version": "0.0.1",
-     "apps": {
-       "/": "app.js"
-     }
-   }
+You **must** specify a name and a version number for your application, otherwise
+it won't be loaded into ArangoDB.
 
-You **must** specify a name and a version number for your application, otherwise it won't be loaded into ArangoDB.
-
-You should now have the following files and directories with your application (starting at `/home/user` in our example):
+You should now have the following files and directories with your application
+(starting at `/home/user` in our example):
 
     apps/
-         my_app/
-                manifest.json
-                app.js
+      my_app/
+        manifest.json
+        app.js
 
-This is your application. Now we need to mount it to the path `/my`.
+This is your application.
 
 Now your application is done. Start ArangoDB as follows:
 
     $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
-Replace `/home/user/apps` with the apps path that you initially created. This is the path that you created the `my_app`
-directory in. Replace `/tmp/fancy_db` with the directory your database is located in.
+This will start the ArangoDB server in a development mode using the directory
+'/home/user/apps' as workspace. Produktion application are installed using the
+Foxx manager and should not be changed. In development mode the server
+automatically monitors the workspace and detects any change made to the files.
 
-To include your app in the list of apps running on your ArangoDB instance, start the ArangoDB shell and add your
-new application:
+Replace `/home/user/apps` with the apps path that you initially created. This is
+the path that you created the `my_app` directory in. Replace `/tmp/fancy_db`
+with the directory your database is located in.
 
-    $ arangosh
-    arangosh> aal = require('org/arangodb/aal');
-    arangosh> aal.installDevApp('my_app', '/my');
-
-Now point your browser to `http://localhost:8529/my/wiese` and you should see "Worked!". After this short overview,
-let's get into the details.
+Now point your browser to `http://localhost:8529/dev/my_app/wiese` and you
+should see "Worked!". After this short overview, let's get into the details.
 
 ## Fishbowl - Foxx's app repository
 
@@ -194,9 +197,6 @@ properties of the request.
 #### Describing a queryParam
 @copydetails JSF_foxx_RequestContext_queryParam
 
-#### Documenting the nickname of a route
-@copydetails JSF_foxx_RequestContext_nickname
-
 #### Documenting the summary of a route
 @copydetails JSF_foxx_RequestContext_summary
 
@@ -302,8 +302,11 @@ A Foxx Model can be initialized with an object of attributes and their values.
 
 The attributes property is the internal hash containing the model's state.
 
-#### Foxx.Model#toJSON
-@copydetails JSF_foxx_model_toJSON
+#### Foxx.Model#forDB
+@copydetails JSF_foxx_model_forDB
+
+#### Foxx.Model#forClient
+@copydetails JSF_foxx_model_forClient
 
 ## Foxx.Repository
 
