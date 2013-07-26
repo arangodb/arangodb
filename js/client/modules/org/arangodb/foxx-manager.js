@@ -1090,6 +1090,8 @@ exports.update = updateFishbowl;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.help = function () {
+  'use strict';
+
   var commands = {
     "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
     "mount"        : "mounts a foxx application to a local URL",
@@ -1107,7 +1109,9 @@ exports.help = function () {
     "help"         : "shows this help"
   };
 
-  arangodb.print("The following commands are available:");
+  arangodb.print("\nThe following commands are available:");
+
+  var c;
   for (c in commands) {
     if (commands.hasOwnProperty(c)) {
       var name = c + "                        ";
