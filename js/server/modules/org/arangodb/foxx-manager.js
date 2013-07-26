@@ -601,7 +601,7 @@ exports.mount = function (appId, mount, options) {
   var routes = routingAalApp(app, mount, prefix, false);
 
   if (routes === null) {
-    throw new Error("Cannot compute the routing table for fox application '" 
+    throw new Error("Cannot compute the routing table for foxx application '" 
                     + app._id + "', check the log file for errors!");
   }
 
@@ -775,7 +775,7 @@ exports.appRoutes = function () {
       var r = routingAalApp(app, mount, prefix, false);
 
       if (r === null) {
-        throw new Error("Cannot compute the routing table for fox application '" 
+        throw new Error("Cannot compute the routing table for foxx application '" 
                         + app._id + "', check the log file for errors!");
       }
 
