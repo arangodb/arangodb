@@ -973,10 +973,13 @@ TRI_program_options_t * TRI_CreateProgramOptions (TRI_PO_section_t * desc) {
   po_visit_functions_t optionBuilders;
   struct option nullOpt;
 
-  po = (TRI_program_options_t*) (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_program_options_t), false));
+  po = (TRI_program_options_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_program_options_t), false);
 
-  // TODO: not safe since po could be 0
-
+  if (po == NULL) {
+    // this should never happen in CORE_MEM_ZONE
+    return NULL;
+  }
+  
   TRI_InitVector(&po->_longopts, TRI_CORE_MEM_ZONE, sizeof(struct option));
   TRI_InitVector(&po->_items, TRI_CORE_MEM_ZONE, sizeof(TRI_PO_item_t));
 
