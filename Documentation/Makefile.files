@@ -27,7 +27,8 @@ dist_man_MANS += \
 	Documentation/man/man1/arangosh.1 \
         Documentation/man/man8/rcarangod.8 \
         Documentation/man/man8/arangod.8 \
-        Documentation/man/man8/arango-dfdb.8 
+        Documentation/man/man8/arango-dfdb.8 \
+        Documentation/man/man8/foxx-manager.8 
 
 ################################################################################
 ### @brief JavaScript files
@@ -172,6 +173,8 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
 	@test -d Doxygen/js/server/modules/org/arangodb/graph || mkdir -p Doxygen/js/server/modules/org/arangodb/graph
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
+	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
+	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
 	@test -d Doxygen/wiki || mkdir -p Doxygen/wiki
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
