@@ -416,7 +416,7 @@ function updateFishbowlFromZip (filename) {
 
   var i;
   var tempPath = fs.getTempPath();
-  var fishbowl = getFishbowlStorage();
+  var toSave = [ ];
 
   try {
     fs.makeDirectoryRecursive(tempPath);
@@ -456,18 +456,29 @@ function updateFishbowlFromZip (filename) {
         desc.name = match[1];
       }
 
-      try {
-        try {
-          fishbowl.save(desc);
+      toSave.push(desc);
+    }
+
+    if (toSave.length > 0) {
+      var fishbowl = getFishbowlStorage();
+
+      internal._executeTransaction({
+        collections: {
+          write: fishbowl.name()
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.collection);
+          c.truncate();
+
+          params.apps.forEach(function(app) {
+            c.save(app);
+          });
+        },
+        params: {
+          apps: toSave,
+          collection: fishbowl.name()
         }
-        catch (err3) {
-          fishbowl.replace(desc._key, desc);
-        }
-      }
-      catch (err2) {
-        arangodb.printf("cannot save description for app '" + f + "': %s\n", String(err2));
-        continue;
-      }
+      });
     }
   }
   catch (err) {
