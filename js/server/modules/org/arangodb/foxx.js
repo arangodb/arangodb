@@ -395,7 +395,7 @@ _.extend(Application.prototype, {
     this.routingInfo.middleware.push({
       url: {match: path},
       action: {
-        callback: "function (req, res, opts, next) { " + String(func) + "(req, res); next(); })"
+        callback: "function (req, res, opts, next) { " + String(func) + "(req, res); next(); }"
       }
     });
   },
@@ -428,7 +428,7 @@ _.extend(Application.prototype, {
     this.routingInfo.middleware.push({
       url: {match: path},
       action: {
-        callback: "function (req, res, opts, next) { next(); " + String(func) + "(req, res); })"
+        callback: "function (req, res, opts, next) { next(); " + String(func) + "(req, res); }"
       }
     });
   },
@@ -662,7 +662,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     var responseFunctions,
       requestFunctions,
       _ = require("underscore");
-
+      
     requestFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
