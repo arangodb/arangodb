@@ -36,7 +36,6 @@
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
 #include "SkipLists/skiplistIndex.h"
-#include "Utilities/ResourceHolder.h"
 #include "Utils/Barrier.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/EmbeddableTransaction.h"
