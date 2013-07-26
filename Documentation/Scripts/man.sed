@@ -19,5 +19,5 @@ s/\<ENDEXAMPLE\>/\n\.EE\n/g
 i\
 
 a\
-	    Copyright 2012, triAGENS GmbH, Cologne, Germany
+	    Copyright triAGENS GmbH, Cologne, Germany
 }
