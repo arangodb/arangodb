@@ -282,7 +282,8 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
       version: manifest.version,
       path: path,
       manifest: manifest,
-      thumbnail: thumbnail
+      thumbnail: thumbnail,
+      isSystem: manifest.isSystem || false
     });
   }
   else {
@@ -343,7 +344,8 @@ function installAalApp (app, mount, prefix) {
     author: app._manifest.author,
     mount: mount,
     active: true,
-    collectionPrefix: prefix
+    collectionPrefix: prefix,
+    isSystem: app._manifest.isSystem || false
   };
 
   return aal.save(desc);
@@ -651,6 +653,10 @@ exports.unmount = function (key) {
 
   if (doc === null) {
     throw new Error("Key '" + key + "' is neither a mount point nor a MountId");
+  }
+
+  if (doc.isSystem) {
+    throw new Error("Cannot unmount system application");
   }
 
   aal.remove(doc);
