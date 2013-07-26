@@ -189,9 +189,11 @@ _.extend(Application.prototype, {
     } else {
       cname = prefix + "_" + name;
     }
-
     var collection = db._collection(cname);
-
+    if (!collection) {
+      throw new Error("collection with name '" + cname + "' does not exist.");
+    }
+    
     return new Repo(prefix, collection, model);
   },
 

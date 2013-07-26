@@ -265,26 +265,36 @@ function teardownApp (app, mount, prefix) {
 
 function upsertAalAppEntry (manifest, thumbnail, path) {
   var aal = getStorage();
-  var doc = aal.firstExample({ name: manifest.name, version: manifest.version });
+  var doc = aal.firstExample({ 
+    type: "app", 
+    name: manifest.name, 
+    version: manifest.version 
+  });
 
   if (doc === null) {
+    // no previous entry: save
     aal.save({
       type: "app",
       app: "app:" + manifest.name + ":" + manifest.version,
       name: manifest.name,
+      author: manifest.author,
       description: manifest.description,
       version: manifest.version,
       path: path,
+      manifest: manifest,
       thumbnail: thumbnail
     });
   }
   else {
-    if (   doc.path !== path
-        || doc.thumbnail !== thumbnail
-        || doc.description !== manifest.description) {
-      doc.path = path;
-      doc.thumbnail = thumbnail;
+    // check if something was changed
+    if (JSON.stringify(manifest) !== JSON.stringifiy(doc.manifest) ||
+        path !== doc.path ||
+        thumbnail !== doc.thumbnail) {
+
       doc.description = manifest.description;
+      doc.path = path;
+      doc.manifest = manifest;
+      doc.thumbnail = thumbnail;
 
       aal.replace(doc, doc);
     }
@@ -328,7 +338,9 @@ function installAalApp (app, mount, prefix) {
   var desc = {
     type: "mount",
     app: app._id,
-    description: app.description,
+    name: app._name,
+    description: app._manifest.description,
+    author: app._manifest.author,
     mount: mount,
     active: true,
     collectionPrefix: prefix
@@ -377,7 +389,6 @@ function routingAalApp (app, mount, prefix, dev) {
       context: {},
 
       foxx: true,
-      development: dev,
 
       appContext: {
         name: app._name,                        // app name
@@ -501,7 +512,6 @@ function routingAalApp (app, mount, prefix, dev) {
 exports.scanAppDirectory = function () {
   'use strict';
 
-  var i;
   var j;
 
   var path = module.appPath();
@@ -524,7 +534,17 @@ exports.scanAppDirectory = function () {
     if (fs.exists(m)) {
       try {
         var thumbnail;
+        
+        thumbnail = undefined;
         var mf = JSON.parse(fs.read(m));
+
+        // add some default attributes
+        if (! mf.hasOwnProperty("author")) {
+          mf.author = "";
+        }
+        if (! mf.hasOwnProperty("description")) {
+          mf.description = "";
+        }
 
         if (mf.hasOwnProperty('thumbnail') && mf.thumbnail !== null && mf.thumbnail !== '') {
           var p = fs.join(path, files[j], mf.thumbnail);
