@@ -28,7 +28,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
+exports.Swagger = function () {
   "use strict";
   
   // Define the Repository
@@ -42,42 +42,41 @@
   
   // Define the functionality to receive the documentation.
   // And transform it into swagger format.
-  exports.Repository = Foxx.Repository.extend({
-    
-    // Get the overview of all installed foxxes.
-    list: function(basePath) {
-      var result = {},
-      apis = [],
-      res = _aal.byExample({"type": "mount"});
-      result.swaggerVersion = "1.1";
-      result.basePath = basePath;
-      result.apis = apis;
-      while (res.hasNext()) {
-        var m = res.next().mount;
-        if (m === "/aardvark") {
-        
-        } else {
-          apis.push({
-            path: m
-          });
-        }
+  
+  // Get the overview of all installed foxxes.
+  this.list = function(basePath) {
+    var result = {},
+    apis = [],
+    res = _aal.byExample({"type": "mount"});
+    result.swaggerVersion = "1.1";
+    result.basePath = basePath;
+    result.apis = apis;
+    while (res.hasNext()) {
+      var m = res.next().mount;
+      if (m === "/aardvark") {
+      
+      } else {
+        apis.push({
+          path: m
+        });
       }
-      return result;
-    },
-    
-    listOne: function(basePath, key) {
-      var result = {},
-      res = _aal.document(key);
-      result.swaggerVersion = "1.1";
-      result.basePath = basePath;
-      result.apis = [
-        {path: res.mount}
-      ];
-      return result;
-    },
-    
-    // Get details of one specific installed foxx. 
-    show: function(appname) {
+    }
+    return result;
+  },
+  
+  this.listOne = function(basePath, key) {
+    var result = {},
+    res = _aal.document(key);
+    result.swaggerVersion = "1.1";
+    result.basePath = basePath;
+    result.apis = [
+      {path: res.mount}
+    ];
+    return result;
+  },
+  
+  // Get details of one specific installed foxx. 
+  this.show = function(appname) {
       var result = {},
       apis = [],
       pathes,
@@ -118,6 +117,5 @@
         }
       }
       return result;
-    }  
-  });  
-}());
+    }
+};

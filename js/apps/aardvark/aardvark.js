@@ -35,19 +35,8 @@ var FoxxApplication = require("org/arangodb/foxx").Application,
   app = new FoxxApplication(applicationContext),
   underscore = require("underscore");
   
-var foxxes = app.createRepository(
-  "foxxes",
-  {
-    repository: "repositories/foxxes"
-  }
-);
-  
-var docus = app.createRepository(
-  "docus",
-  {
-    repository: "repositories/swagger"
-  }
-);
+var foxxes = new (require("lib/foxxes").Foxxes)();
+var docus = new (require("lib/swagger").Swagger)();
   
 // .............................................................................
 // install
