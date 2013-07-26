@@ -621,6 +621,10 @@ exports.run = function (args) {
     else if (type === 'update') {
       exports.update();
     }
+    else if (type === 'help') {
+      cmdUsage();
+      exports.help();
+    }
     else {
       console.error("unknown command '%s', please try: ", type);
       cmdUsage();
@@ -1080,6 +1084,39 @@ exports.search = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.update = updateFishbowl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outputs the help
+////////////////////////////////////////////////////////////////////////////////
+
+exports.help = function () {
+  var commands = {
+    "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
+    "mount"        : "mounts a foxx application to a local URL",
+    "install"      : "fetches a foxx application from the central foxx-apps repository and mounts it to a local URL",
+    "unmount"      : "unmounts a mounted foxx application",
+    "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",
+    "list"         : "lists all installed foxx applications",
+    "fetched"      : "lists all fetched foxx applications that were fetched into the local repository", 
+    "fetchedRaw"   : "same as 'fetched' but returns results as JSON",
+    "available"    : "lists all foxx applications available in the central foxx-apps repository",
+    "availableRaw" : "same as 'available' but returns results as JSON",
+    "info"         : "displays information about a foxx application",
+    "search"       : "searches the central foxx-apps repository",
+    "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
+    "help"         : "shows this help"
+  };
+
+  arangodb.print("The following commands are available:");
+  for (c in commands) {
+    if (commands.hasOwnProperty(c)) {
+      var name = c + "                        ";
+      arangodb.printf(" %s %s\n", name.substr(0, 20), commands[c]);
+    }
+  }
+  // additional newline
+  arangodb.print();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a FOXX dev application
