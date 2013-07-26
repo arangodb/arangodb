@@ -1,5 +1,8 @@
 <%
-var ds = [], es = [];
+var ds = [], es = [],
+sortF = function(e) {
+  return e.toLowerCase();
+};
 col.each(function(m) {
   switch (m.get("type")) {
     case "document":
@@ -10,7 +13,9 @@ col.each(function(m) {
       break;
   }
 });
-console.log(ds, es);
+ds = _.sortBy(ds, sortF);
+es = _.sortBy(es, sortF);
+gs = _.sortBy(gs, sortF);
 %>
 <div class="thumbnails" id="background">
   <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">

@@ -48,15 +48,15 @@ window.graphView = Backbone.View.extend({
 
   createViewer: function() {
     var ecol,
-    ncol,
-    aaconfig,
-    undirected,
-    randomStart,
-    groupByList,
-    groupByAttribute,
-    label,
-    config,
-    ui;
+      ncol,
+      aaconfig,
+      undirected,
+      randomStart,
+      groupByList,
+      groupByAttribute,
+      label,
+      config,
+      ui;
 
     ecol = $("#edgeCollection").val();
     ncol = $("#nodeCollection").val();
