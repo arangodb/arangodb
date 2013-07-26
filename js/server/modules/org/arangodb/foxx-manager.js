@@ -750,7 +750,7 @@ exports.appRoutes = function () {
 
       routes.push(r);
 
-      console.log("mounted foxx app '%s' on '%s'", appId);
+      console.log("mounted foxx app '%s' on '%s'", appId, mount);
     }
     catch (err) {
       console.error("cannot mount foxx app '%s': %s", appId, String(err.stack || err));
