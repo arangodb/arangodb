@@ -41,11 +41,6 @@ var foxxManager = require("org/arangodb/foxx-manager");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a FOXX dev application
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -253,8 +248,37 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief tears down a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/teardown",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var result;
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var appId = body.appId;
+    var mount = body.mount;
+    var collectionPrefix = body.collectionPrefix;
+
+    try {
+      result = foxxManager.teardown(appId, mount, collectionPrefix);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

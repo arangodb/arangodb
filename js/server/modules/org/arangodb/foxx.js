@@ -125,6 +125,8 @@ Application = function (context, options) {
     }
   }
 
+  this.isDevelopment = context.isDevelopment;
+  this.isProduction = context.isProduction;
   this.helperCollection = {};
   this.routingInfo.urlPrefix = urlPrefix;
 
