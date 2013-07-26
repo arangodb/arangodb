@@ -140,8 +140,22 @@ Application = function (context, options) {
 
   this.routingInfo.middleware = [
     {
-      url: {match: "/*"},
-      action: {callback: myMiddleware.stringRepresentation}
+      url: { match: "/*" },
+      action: {
+        callback: myMiddleware.stringRepresentation,
+        options: {
+          isDevelopment: context.isDevelopment,
+          isProduction: context.isProduction,
+          app: {
+            appId: context.appId,
+            name: context.name,
+            version: context.version,
+            mount: context.mount,
+            prefix: context.prefix,
+            options: context.options
+          }
+        }
+      }
     }
   ];
 
@@ -661,7 +675,9 @@ BaseMiddleware = function (templateCollection, helperCollection) {
   var middleware = function (request, response, options, next) {
     var responseFunctions,
       requestFunctions,
-      _ = require("underscore");
+      _ = require("underscore"),
+      console = require("console"),
+      actions = require("org/arangodb/actions");
 
     requestFunctions = {
 
@@ -838,9 +854,22 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       }
     };
 
+    if (options.isDevelopment || options.app.options.trace) {
+      console.log("%s, incoming request from %s: %s",
+                  options.app.mount,
+                  request.client.address,
+                  actions.stringifyRequestAddress(request));
+    }
+
     request = _.extend(request, requestFunctions);
     response = _.extend(response, responseFunctions);
     next();
+    if (options.isDevelopment || options.app.options.trace) {
+      console.log("%s, outgoing response of type %s, body length: %d",
+                  options.app.mount,
+                  response.contentType,
+                  parseInt(response.body.length, 10));
+    }
   };
 
   return {

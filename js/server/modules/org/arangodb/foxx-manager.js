@@ -84,7 +84,7 @@ function mountFromId (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function appFromAppId (appId) {
-  var app = module.createApp(appId);
+  var app = module.createApp(appId, {});
 
   if (app === null) {
     throw new Error("Cannot find application '" + appId + "'");
@@ -257,7 +257,8 @@ function executeAppScript (app, name, mount, prefix) {
       collectionPrefix: prefix,
       appModule: app.createAppModule(),
       isDevelopment: devel,
-      isProduction: ! devel
+      isProduction: ! devel,
+      options: app._options
     };
 
     var cp = appContext.collectionPrefix;
@@ -344,7 +345,7 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
 /// @brief mounts an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function mountAalApp (app, mount, prefix) {
+function mountAalApp (app, mount, options) {
   'use strict';
 
   var aal = getStorage();
@@ -363,6 +364,8 @@ function mountAalApp (app, mount, prefix) {
   // .............................................................................
   // check the prefix
   // .............................................................................
+
+  var prefix = options.collectionPrefix;
 
   if (prefix === undefined) {
     prefix = prefixFromMount(mount);
@@ -383,7 +386,8 @@ function mountAalApp (app, mount, prefix) {
     mount: mount,
     active: true,
     collectionPrefix: prefix,
-    isSystem: app._manifest.isSystem || false
+    isSystem: app._manifest.isSystem || false,
+    options: options
   };
 
   return aal.save(desc);
@@ -393,11 +397,11 @@ function mountAalApp (app, mount, prefix) {
 /// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function routingAalApp (app, mount, prefix, dev) {
+function routingAalApp (app, mount, options, dev) {
   'use strict';
 
   try {
-    var i;
+    var i, prefix;
 
     if (mount === "") {
       mount = "/";
@@ -411,8 +415,11 @@ function routingAalApp (app, mount, prefix, dev) {
     }
 
     // compute the collection prefix
-    if (prefix === undefined) {
+    if (options.prefix === undefined) {
       prefix = prefixFromMount(mount);
+    }
+    else {
+      prefix = options.prefix;
     }
 
     var defaultDocument = "index.html";
@@ -435,6 +442,7 @@ function routingAalApp (app, mount, prefix, dev) {
         version: app._version,                  // app version
         appId: app._id,                         // app identifier
         mount: mount,                           // global mount
+        options: options,                       // options
         collectionPrefix: prefix                // collection prefix
       }
     };
@@ -477,6 +485,7 @@ function routingAalApp (app, mount, prefix, dev) {
           prefix: arangodb.normalizeURL("/" + i),   // app mount
           collectionPrefix: prefix,                 // collection prefix
           appModule: app.createAppModule(),         // app module
+          options: options,
 
           isDevelopment: devel,
           isProduction: ! devel,
@@ -642,7 +651,7 @@ exports.mount = function (appId, mount, options) {
     appId = "app:" + appId + ":latest";
   }
 
-  var app = module.createApp(appId);
+  var app = module.createApp(appId, options || { });
 
   if (app === null) {
     throw new Error("Cannot find application '" + appId + "'");
@@ -654,10 +663,9 @@ exports.mount = function (appId, mount, options) {
 
   var doc;
 
-  try {
-    var prefix = options && options.collectionPrefix;
+  options = options || { };
 
-    doc = mountAalApp(app, mount, prefix, false);
+    doc = mountAalApp(app, mount, options);
   }
   catch (err) {
     if (doc !== undefined) {
@@ -676,8 +684,7 @@ exports.mount = function (appId, mount, options) {
   // reload
   // .............................................................................
 
-  if (   typeof options === "undefined" 
-      || typeof options.reload === "undefined" 
+  if (   typeof options.reload === "undefined" 
       || options.reload === true) {
     executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
   }
@@ -804,7 +811,7 @@ exports.devSetup = function (filename) {
       var mount = "/dev/" + filename;
       var prefix = prefixFromMount(mount);
 
-      var app = module.createApp(appId);
+      var app = module.createApp(appId, {});
 
       if (app === null) {
         throw new Error("Cannot find application '" + appId + "'");
@@ -850,7 +857,7 @@ exports.devTeardown = function (filename) {
       var mount = "/dev/" + filename;
       var prefix = prefixFromMount(mount);
 
-      var app = module.createApp(appId);
+      var app = module.createApp(appId, {});
 
       if (app === null) {
         throw new Error("Cannot find application '" + appId + "'");
@@ -884,16 +891,17 @@ exports.appRoutes = function () {
 
     var appId = doc.app;
     var mount = doc.mount;
-    var prefix = doc.collectionPrefix;
+    var options = doc.options || { };
+    options.collectionPrefix = doc.collectionPrefix || undefined;
 
     try {
-      var app = module.createApp(appId);
+      var app = module.createApp(appId, options || {});
 
       if (app === null) {
         throw new Error("Cannot find application '" + appId + "'");
       }
 
-      var r = routingAalApp(app, mount, prefix, false);
+      var r = routingAalApp(app, mount, options, false);
 
       if (r === null) {
         throw new Error("Cannot compute the routing table for foxx application '" 
@@ -934,15 +942,17 @@ exports.developmentRoutes = function () {
 
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];
-        var prefix = prefixFromMount(mount);
+        var options = {
+          prefix : prefixFromMount(mount) || undefined
+        };
 
-        var app = module.createApp(appId);
+        var app = module.createApp(appId, options);
 
         if (app === null) {
           throw new Error("Cannot find application '" + appId + "'");
         }
 
-        var r = routingAalApp(app, mount, prefix, true);
+        var r = routingAalApp(app, mount, options, true);
 
         if (r === null) {
           throw new Error("Cannot compute the routing table for foxx application '" 
