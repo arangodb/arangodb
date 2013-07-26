@@ -893,6 +893,8 @@ exports.listJson = function (showPrefix) {
   while (cursor.hasNext()) {
     var doc = cursor.next();
 
+    var version = doc.app.replace(/^.+:(\d+(\.\d+)*)$/g, "$1"); 
+
     var res = {
       MountID: doc._key,
       Mount: doc.mount,
@@ -900,7 +902,9 @@ exports.listJson = function (showPrefix) {
       Name: doc.name,
       Description: doc.description,
       Author: doc.author,
-      Active: doc.active ? "yes" : "no"
+      System: doc.isSystem ? "yes" : "no",
+      Active: doc.active ? "yes" : "no",
+      Version: version
     };
 
     if (showPrefix) {
@@ -921,12 +925,13 @@ exports.list = function (showPrefix) {
   'use strict';
 
   var list = exports.listJson(showPrefix);
-  var columns = ["Name", "Description", "Author", "Mount", "MountID", "AppID"];
+  var columns = [ "Name", "Description", "Author", "AppID", "Version", "Mount" ];
 
   if (showPrefix) {
     columns.push("CollectionPrefix");
   }
   columns.push("Active");
+  columns.push("System");
 
   arangodb.printTable(list, columns, { 
     prettyStrings: true, 
@@ -949,10 +954,15 @@ exports.fetchedJson = function () {
   while (cursor.hasNext()) {
     var doc = cursor.next();
 
+    if (doc.isSystem) {
+      continue;
+    }
+
     var res = {
       AppID: doc.app,
       Name: doc.name,
       Description: doc.description || "",
+      Author: doc.author || "",
       Version: doc.version,
       Path: doc.path
     };
@@ -1008,8 +1018,8 @@ exports.availableJson = function () {
     var res = {
       name: doc.name,
       description: doc.description || "",
-      author: doc.author,
-      maxVersion: maxVersion
+      author: doc.author || "",
+      latestVersion: maxVersion
     };
 
     result.push(res);
@@ -1029,7 +1039,7 @@ exports.available = function () {
 
   arangodb.printTable(
     list.sort(compareApps),
-    [ "name", "author", "description", "maxVersion" ],
+    [ "name", "author", "description", "latestVersion" ],
     {
       prettyStrings: true, 
       totalString: "%s application(s) found",
@@ -1038,7 +1048,7 @@ exports.available = function () {
         "name" : "Name",
         "author" : "Author",
         "description" : "Description",
-        "maxVersion" : "Latest Version"
+        "latestVersion" : "Latest Version" 
       }
     }
   );
@@ -1075,11 +1085,14 @@ exports.info = function (name) {
   if (desc.hasOwnProperty('author')) {
     arangodb.printf("Author: %s\n", desc.author);
   }
+  
+  var isSystem = desc.hasOwnProperty('isSystem') && desc.isSystem;
+  arangodb.printf("System: %s\n", JSON.stringify(isSystem));
 
   if (desc.hasOwnProperty('description')) {
     arangodb.printf("\nDescription:\n%s\n\n", desc.description);
   }
-
+  
   var header = false;
   var i;
 
