@@ -876,14 +876,12 @@ BaseMiddleware = function (templateCollection, helperCollection) {
                     options.app.mount,
                     response.contentType,
                     parseInt(response.body.length, 10));
-      }
-      else if (response.hasOwnProperty("bodyFromFile")) {
+      } else if (response.hasOwnProperty("bodyFromFile")) {
         console.log("%s, outgoing response of type %s, body file: %s",
                     options.app.mount,
                     response.contentType,
                     response.bodyFromFile);
-      }
-      else {
+      } else {
         console.log("%s, outgoing response of type %s, no body",
                     options.app.mount,
                     response.contentType);
