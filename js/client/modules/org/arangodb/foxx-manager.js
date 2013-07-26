@@ -1130,10 +1130,10 @@ exports.info = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief searchs for an available FOXX applications
+/// @brief returns the search result for FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.search = function (name) {
+exports.searchJson = function (name) {
   'use strict';
 
   var fishbowl = getFishbowlStorage();
@@ -1174,6 +1174,18 @@ exports.search = function (name) {
       docs.push(docs2[i]);
     }
   }
+
+  return docs;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searchs for an available FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.search = function (name) {
+  'use strict';
+
+  var docs = exports.searchJson(name);
 
   arangodb.printTable(
     docs.sort(compareApps),

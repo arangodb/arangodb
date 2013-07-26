@@ -14,4 +14,4 @@ fi
 $ARANGOSH \
     $RCFILE \
     --javascript.execute-string 'require("org/arangodb/foxx-manager").run(ARGUMENTS);' \
-    $*
+    "$@"

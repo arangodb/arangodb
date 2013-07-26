@@ -1,0 +1,27 @@
+COMMAND SECTION "DATE" "" "ArangoDB"
+NAME
+COMMAND - a Foxx application manager for ArangoDB
+SYNOPSIS
+COMMAND options 
+DESCRIPTION
+The COMMAND binary can be used to manage Foxx applications in the
+ArangoDB database server. Foxx applications can be installed and
+uninstalled.
+More specific instructions are displayed when the program is invoked.
+OPTIONS
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt when connecting to the server ENDOPTION
+EXAMPLES
+EXAMPLE COMMAND search "foobar"
+searches the central repository for an application "foobar"ENDEXAMPLE
+EXAMPLE COMMAND update
+updates the local repository with applications from the central repositoryENDEXAMPLE
+EXAMPLE COMMAND list
+list all installed Foxx applicationsENDEXAMPLE
+EXAMPLE COMMAND install "hello-foxx" "/hello"
+installs the "hello-foxx" application under the mount point "/hello"ENDEXAMPLE
+EXAMPLE COMMAND uninstall "/hello"
+uninstalls the application that is mounted under "/hello"ENDEXAMPLE
+EXAMPLE COMMAND help
+shows the help pageENDEXAMPLE
+AUTHOR
