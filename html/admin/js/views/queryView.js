@@ -144,6 +144,8 @@ var queryView = Backbone.View.extend({
     inputEditor.setTheme("ace/theme/merbivore_soft");
 
     this.renderSelectboxes();
+    this.deselect(outputEditor);
+    this.deselect(inputEditor);
     $('#queryDiv').show();
 
     return this;
@@ -427,7 +429,6 @@ var queryView = Backbone.View.extend({
     var self = this;
     var inputEditor = ace.edit("aqlEditor");
     var data = {query: inputEditor.getValue()};
-
     var outputEditor = ace.edit("queryOutput");
 
     $.ajax({
@@ -442,6 +443,7 @@ var queryView = Backbone.View.extend({
           localStorage.setItem("queryContent", inputEditor.getValue());
           localStorage.setItem("queryOutput", outputEditor.getValue());
         }
+        self.deselect(outputEditor);
       },
       error: function(data) {
         try {

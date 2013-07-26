@@ -71,6 +71,7 @@ TRI_DATABASEDIR =
 TRI_LOGDIR = /tmp
 TRI_PKGDATADIR = .
 TRI_SBINDIR = ${abs_builddir}/bin
+TRI_BINDIR = ${abs_builddir}/bin
 
 else
 
@@ -78,6 +79,7 @@ TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
 TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
 TRI_PKGDATADIR = ${pkgdatadir}
 TRI_SBINDIR = ${sbindir}
+TRI_BINDIR = ${bindir}
 
 endif
 

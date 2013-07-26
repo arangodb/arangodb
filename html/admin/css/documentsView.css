@@ -398,3 +398,13 @@ table.dataTable thead th {
   margin-left: 10px !important;
   margin-right: 10px !important;
 }
+
+.readOnlyClass a {
+  color: black !important;
+}
+
+.readOnlyClass a:hover {
+  color: black !important;
+  opacity: 0.8 !important;
+}
+

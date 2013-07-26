@@ -548,7 +548,7 @@ function require (path) {
       }
     }
 
-    // If one's a prefix of the other, the longer one is greater.
+    // If one's a prefix of the other, the longer one is bigger one.
     if (aComponents.length > bComponents.length) {
       return 1;
     }
@@ -815,10 +815,10 @@ function require (path) {
       return module.exports;
     }
 
-    throw "cannot locate module '" + unormalizedPath + "'"
+    throw new Error("cannot locate module '" + unormalizedPath + "'"
       + " for package '" + this._package.id + "'"
       + " using module path '" + modulesPath + "'"
-      + " and package path '" + this._package._paths + "'";
+      + " and package path '" + this._package._paths + "'");
   };
 
 ////////////////////////////////////////////////////////////////////////////////

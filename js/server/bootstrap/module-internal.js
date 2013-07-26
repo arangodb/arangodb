@@ -169,7 +169,7 @@
       var found = aal.firstExample({ type: "mount", mount: "/_admin/aardvark" });
 
       if (found === null) {
-        fm.installApp("aardvark", "/_admin/aardvark", {reload: false});
+        fm.mount("aardvark", "/_admin/aardvark", {reload: false});
       }
     }
   };

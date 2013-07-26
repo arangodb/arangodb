@@ -599,12 +599,12 @@ describe ArangoDB do
         cmd = api + "/dump?collection=UnitTestsReplication"
         doc = ArangoDB.log_get("#{prefix}-dump-empty", cmd, :body => "")
 
-        doc.code.should eq(200)
+        doc.code.should eq(204)
 
         doc.headers["x-arango-replication-checkmore"].should eq("false")
         doc.headers["x-arango-replication-lastincluded"].should eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
-        doc.response.body.should eq("")
+        doc.response.body.should eq(nil)
       end
       
       it "checks the dump for a non-empty collection" do
