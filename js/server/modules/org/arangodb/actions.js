@@ -1841,12 +1841,7 @@ function pathHandler (req, res, options, next) {
   if (options.hasOwnProperty('root')) {
     var root = options.root;
 
-    if (root.substr(0, 4) === "app:") {
-      filename = fs.join(module.appPath(), filename);
-    }
-    else if (root.substr(0, 4) === "dev:") {
-      filename = fs.join(module.devAppPath(), filename);
-    }
+    filename = fs.join(root, filename);
   }
 
   if (fs.exists(filename)) {
