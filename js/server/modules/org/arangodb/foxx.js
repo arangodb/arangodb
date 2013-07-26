@@ -116,9 +116,7 @@ Application = function (context, options) {
   if (urlPrefix === "") {
     urlPrefix = context.prefix;
   } else {
-    if (context.prefix === "") {
-      urlPrefix = urlPrefix;
-    } else {
+    if (context.prefix !== "") {
       urlPrefix = context.prefix + "/" + urlPrefix;
     }
   }
