@@ -1024,14 +1024,14 @@ exports.info = function (name) {
     return;
   }
 
-  internal.printf("Name: %s\n", desc.name);
+  arangodb.printf("Name: %s\n", desc.name);
 
   if (desc.hasOwnProperty('author')) {
-    internal.printf("Author: %s\n", desc.author);
+    arangodb.printf("Author: %s\n", desc.author);
   }
 
   if (desc.hasOwnProperty('description')) {
-    internal.printf("\nDescription:\n%s\n\n", desc.description);
+    arangodb.printf("\nDescription:\n%s\n\n", desc.description);
   }
 
   var header = false;
@@ -1048,19 +1048,19 @@ exports.info = function (name) {
 
       if (v.type === "github") {
         if (v.hasOwnProperty("tag")) {
-          internal.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.tag);
+          arangodb.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.tag);
         }
         else if (v.hasOwnProperty("branch")) {
-          internal.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.branch);
+          arangodb.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.branch);
         }
         else {
-          internal.printf('%s: fetch "github" "%s"\n', i, v.location);
+          arangodb.printf('%s: fetch "github" "%s"\n', i, v.location);
         }
       }
     }
   }
 
-  internal.printf("\n");
+  arangodb.printf("\n");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1140,15 +1140,15 @@ exports.help = function () {
 
   var commands = {
     "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
-    "mount"        : "mounts a foxx application to a local URL",
+    "mount"        : "mounts a fetched foxx application to a local URL",
     "install"      : "fetches a foxx application from the central foxx-apps repository and mounts it to a local URL",
     "unmount"      : "unmounts a mounted foxx application",
     "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",
     "list"         : "lists all installed foxx applications",
     "fetched"      : "lists all fetched foxx applications that were fetched into the local repository", 
-    "available"    : "lists all foxx applications available in the central foxx-apps repository",
+    "available"    : "lists all foxx applications available in the local repository",
     "info"         : "displays information about a foxx application",
-    "search"       : "searches the central foxx-apps repository",
+    "search"       : "searches the local foxx-apps repository",
     "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
     "help"         : "shows this help"
   };
