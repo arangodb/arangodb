@@ -728,11 +728,11 @@ exports.unmount = function (key) {
     throwBadParameter("mount point or mount key missing" + usage);
   }
 
+  validateAppName(key);
+  
   var req = {
     key: key
   };
-
-  validateAppName(key);
 
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
   arangosh.checkRequestResult(res);
@@ -805,6 +805,10 @@ exports.install = function (name, mount, options) {
   // fetched latest version
   // .............................................................................
 
+  if (source === null) {
+    throw new Error("Unknown foxx application '%s', use search", name);
+  }
+
   if (source !== "fetched") {
     appId = exports.fetch(source.type, source.location, source.tag).app;
   }
@@ -846,10 +850,10 @@ exports.uninstall = function (key) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lists all installed FOXX applications
+/// @brief returns all installed FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.listRaw = function (showPrefix) {
+exports.listJson = function (showPrefix) {
   'use strict';
 
   var aal = getStorage();
@@ -890,25 +894,27 @@ exports.listRaw = function (showPrefix) {
 exports.list = function (showPrefix) {
   'use strict';
 
-  var list = exports.listRaw(showPrefix);
-
+  var list = exports.listJson(showPrefix), columns;
+  
   if (showPrefix) {
-    arangodb.printTable(
-      list,
-      ["MountID", "AppID", "CollectionPrefix", "Active"]);
+    columns = ["MountID", "AppID", "CollectionPrefix", "Active"];
   }
   else {
-    arangodb.printTable(
-      list,
-      ["MountID", "AppID", "Mount", "Active"]);
+    columns = ["MountID", "AppID", "Mount", "Active"];
   }
+
+  arangodb.printTable(list, columns, { 
+    prettyStrings: true, 
+    totalString: "%s application(s) found",
+    emptyString: "no applications found"
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lists all fetched FOXX applications
+/// @brief returns all fetched FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.fetchedRaw = function () {
+exports.fetchedJson = function () {
   'use strict';
 
   var aal = getStorage();
@@ -939,18 +945,24 @@ exports.fetchedRaw = function () {
 exports.fetched = function () {
   'use strict';
 
-  var list = exports.fetchedRaw();
+  var list = exports.fetchedJson();
 
   arangodb.printTable(
     list,
-    ["AppID", "Name", "Description", "Version", "Path"]);
+    ["AppID", "Name", "Description", "Version", "Path"],
+    {
+      prettyStrings: true, 
+      totalString: "%s application(s) found",
+      emptyString: "no applications found"
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lists all available FOXX applications
+/// @brief returns all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.availableRaw = function () {
+exports.availableJson = function () {
   'use strict';
 
   var fishbowl = getFishbowlStorage();
@@ -978,16 +990,22 @@ exports.availableRaw = function () {
 exports.available = function () {
   'use strict';
 
-  var list = exports.availableRaw();
+  var list = exports.availableJson();
 
-  if (list.length === 0) {
-    arangodb.print("Repository is empty, please use 'update'");
-  }
-  else {
-    arangodb.printTable(
-      list.sort(compareApps),
-      [ "name", "author", "description" ]);
-  }
+  arangodb.printTable(
+    list.sort(compareApps),
+    [ "name", "author", "description" ],
+    {
+      prettyStrings: true, 
+      totalString: "%s application(s) found",
+      emptyString: "no applications found, please use 'update'",
+      rename: {
+        "name" : "Name",
+        "author" : "Author",
+        "description" : "Description"
+      }
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1016,14 +1034,14 @@ exports.info = function (name) {
     return;
   }
 
-  internal.printf("Name: %s\n", desc.name);
+  arangodb.printf("Name: %s\n", desc.name);
 
   if (desc.hasOwnProperty('author')) {
-    internal.printf("Author: %s\n", desc.author);
+    arangodb.printf("Author: %s\n", desc.author);
   }
 
   if (desc.hasOwnProperty('description')) {
-    internal.printf("\nDescription:\n%s\n\n", desc.description);
+    arangodb.printf("\nDescription:\n%s\n\n", desc.description);
   }
 
   var header = false;
@@ -1040,19 +1058,19 @@ exports.info = function (name) {
 
       if (v.type === "github") {
         if (v.hasOwnProperty("tag")) {
-          internal.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.tag);
+          arangodb.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.tag);
         }
         else if (v.hasOwnProperty("branch")) {
-          internal.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.branch);
+          arangodb.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.branch);
         }
         else {
-          internal.printf('%s: fetch "github" "%s"\n', i, v.location);
+          arangodb.printf('%s: fetch "github" "%s"\n', i, v.location);
         }
       }
     }
   }
 
-  internal.printf("\n");
+  arangodb.printf("\n");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1103,7 +1121,18 @@ exports.search = function (name) {
 
   arangodb.printTable(
     docs.sort(compareApps),
-    [ "name", "author", "description" ]);
+    [ "name", "author", "description" ],
+    {
+      prettyStrings: true, 
+      totalString: "%s application(s) found",
+      emptyString: "no applications found",
+      rename: {
+        name : "Name",
+        author : "Author",
+        description : "Description"
+      }
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1121,17 +1150,15 @@ exports.help = function () {
 
   var commands = {
     "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
-    "mount"        : "mounts a foxx application to a local URL",
+    "mount"        : "mounts a fetched foxx application to a local URL",
     "install"      : "fetches a foxx application from the central foxx-apps repository and mounts it to a local URL",
     "unmount"      : "unmounts a mounted foxx application",
     "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",
     "list"         : "lists all installed foxx applications",
     "fetched"      : "lists all fetched foxx applications that were fetched into the local repository", 
-    "fetchedRaw"   : "same as 'fetched' but returns results as JSON",
-    "available"    : "lists all foxx applications available in the central foxx-apps repository",
-    "availableRaw" : "same as 'available' but returns results as JSON",
+    "available"    : "lists all foxx applications available in the local repository",
     "info"         : "displays information about a foxx application",
-    "search"       : "searches the central foxx-apps repository",
+    "search"       : "searches the local foxx-apps repository",
     "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
     "help"         : "shows this help"
   };
