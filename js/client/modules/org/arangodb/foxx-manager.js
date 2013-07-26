@@ -1220,7 +1220,8 @@ exports.help = function () {
     "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
     "mount"        : "mounts a fetched foxx application to a local URL",
     "setup"        : "setup executes the setup script (app must already be mounted)",
-    "install"      : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL and sets it up",
+    "install"      : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL "
+                   + "and sets it up",
     "teardown"     : "teardown execute the teardown script (app must be still be mounted)",
     "unmount"      : "unmounts a mounted foxx application",
     "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",

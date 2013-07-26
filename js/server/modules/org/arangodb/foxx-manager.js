@@ -665,6 +665,7 @@ exports.mount = function (appId, mount, options) {
 
   options = options || { };
 
+  try {
     doc = mountAalApp(app, mount, options);
   }
   catch (err) {
