@@ -305,7 +305,7 @@ exports.printTable = function  (list, columns, options) {
       descriptions.push({
         id: col,
         fixedLength: fixedLength,
-        length: fixedLength || col.length
+        length: fixedLength || name.length
       });
 
       matrix[0][j++] = name;
@@ -323,7 +323,7 @@ exports.printTable = function  (list, columns, options) {
           value = row[col.id];
         }
         else {
-          value = JSON.stringify(row[col.id]);
+          value = JSON.stringify(row[col.id]) || "";
         }
 
         matrix[i + 1].push(value);
