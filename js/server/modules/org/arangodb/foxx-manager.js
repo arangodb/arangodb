@@ -211,7 +211,7 @@ function installAssets (app, routes) {
           action: {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
-              root: app._id,
+              root: app._root,
               path: fs.join(app._path, directory)
             }
           }
@@ -397,7 +397,7 @@ function mountAalApp (app, mount, options) {
 /// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function routingAalApp (app, mount, options, dev) {
+function routingAalApp (app, mount, options) {
   'use strict';
 
   try {
@@ -902,7 +902,7 @@ exports.appRoutes = function () {
         throw new Error("Cannot find application '" + appId + "'");
       }
 
-      var r = routingAalApp(app, mount, options, false);
+      var r = routingAalApp(app, mount, options);
 
       if (r === null) {
         throw new Error("Cannot compute the routing table for foxx application '" 
@@ -953,7 +953,9 @@ exports.developmentRoutes = function () {
           throw new Error("Cannot find application '" + appId + "'");
         }
 
-        var r = routingAalApp(app, mount, options, true);
+        setupApp(app, mount, options.prefix);
+
+        var r = routingAalApp(app, mount, options);
 
         if (r === null) {
           throw new Error("Cannot compute the routing table for foxx application '" 
