@@ -29,8 +29,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-
 var fs = require("fs");
 
 var arangodb = require("org/arangodb");
@@ -38,8 +36,14 @@ var arangosh = require("org/arangodb/arangosh");
 
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
-var arango = internal.arango;
 var db = arangodb.db;
+var throwDownloadError = arangodb.throwDownloadError;
+var throwFileNoteFound = arangodb.throwFileNoteFound;
+var throwBadParameter = arangodb.throwBadParameter;
+var checkParameter = arangodb.checkParameter;
+
+var arango = require("internal").arango;
+var download = require("internal").download;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -56,7 +60,7 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the aal collection
+/// @brief returns the fishbowl collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function getFishbowlStorage () {
@@ -97,45 +101,6 @@ function buildGithubFishbowlUrl (name) {
   'use strict';
 
   return "https://raw.github.com/" + getFishbowlUrl() + "/master/applications/" + name + ".json";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief thrown an error in case a download failed
-////////////////////////////////////////////////////////////////////////////////
-
-function throwDownloadError (msg) {
-  'use strict';
-
-  throw new ArangoError({
-    errorNum: errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code,
-    errorMessage: errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg)
-  });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief thrown an error in case of missing file
-////////////////////////////////////////////////////////////////////////////////
-
-function throwFileNoteFound (msg) {
-  'use strict';
-
-  throw new ArangoError({
-    errorNum: errors.ERROR_FILE_NOT_FOUND.code,
-    errorMessage: errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg)
-  });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief thrown an error in case of a bad parameter
-////////////////////////////////////////////////////////////////////////////////
-
-function throwBadParameter (msg) {
-  'use strict';
-
-  throw new ArangoError({
-    errorNum: errors.ERROR_BAD_PARAMETER.code,
-    errorMessage: errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg)
-  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +311,11 @@ function processGithubRepository (source) {
   var tempFile = fs.getTempFile("downloads", false); 
 
   try {
-    var result = internal.download(url, "", { method: "get", followRedirects: true, timeout: 30 }, tempFile);
+    var result = download(url, "", {
+      method: "get",
+      followRedirects: true,
+      timeout: 30
+    }, tempFile);
 
     if (result.code >= 200 && result.code <= 299) {
       source.filename = tempFile;
@@ -384,7 +353,7 @@ function processSource (src) {
   }
 
   // upload file to the server 
-  var response = internal.arango.SEND_FILE("/_api/upload", src.filename);
+  var response = arango.SEND_FILE("/_api/upload", src.filename);
 
   if (src.removeFile && src.filename !== '') {
     try {
@@ -510,7 +479,11 @@ function updateFishbowl () {
   var path = fs.getTempFile("zip", false); 
 
   try {
-    var result = internal.download(url, "", { method: "get", followRedirects: true, timeout: 30 }, filename);
+    var result = download(url, "", {
+      method: "get",
+      followRedirects: true,
+      timeout: 30
+    }, filename);
 
     if (result.code < 200 || result.code > 299) {
       throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
@@ -592,6 +565,8 @@ exports.run = function (args) {
   }
 
   var type = args[0];
+  var printf = arangodb.printf;
+  var res;
 
   try {
     if (type === 'fetch') {
@@ -605,6 +580,15 @@ exports.run = function (args) {
         exports.mount(args[1], args[2]);
       }
     }
+    else if (type === 'setup') {
+      exports.setup(args[1]);
+    }
+    else if (type === 'teardown') {
+      exports.teardown(args[1]);
+    }
+    else if (type === 'unmount') {
+      res = exports.unmount(args[1]);
+    }
     else if (type === 'install') {
       if (3 < args.length) {
         exports.install(args[1], args[2], JSON.parse(args[3]));
@@ -612,12 +596,17 @@ exports.run = function (args) {
       else {
         exports.install(args[1], args[2]);
       }
-    }
-    else if (type === 'unmount') {
-      exports.unmount(args[1]);
+
+      printf("Application %s installed successfully at mount point %s\n", 
+             res.appId, 
+             res.mount);
     }
     else if (type === 'uninstall') {
-      exports.uninstall(args[1]);
+      res = exports.uninstall(args[1]);
+
+      printf("Application %s unmounted successfully from mount point %s\n", 
+             res.appId, 
+             res.mount);
     }
     else if (type === 'list') {
       if (1 < args.length && args[1] === "prefix") {
@@ -671,21 +660,18 @@ exports.run = function (args) {
 exports.fetch = function (type, location, version) {
   'use strict';
 
-  var usage = ", usage: fetch(<type>, <location>, [<version>])";
-
-  if (typeof type === "undefined") {
-    throwBadParameter("Type missing" + usage);
-  }
-
-  if (typeof location === "undefined") {
-    throwBadParameter("Location missing" + usage);
-  }
+  checkParameter(
+    "fetch(<type>, <location>, [<version>])",
+    [ [ "Location type", "string" ],
+      [ "Location", "string" ] ],
+    [ type, location ] );
 
   var source = { 
     type: type, 
     location: location, 
     version: version 
   };
+
   var filename = processSource(source);
 
   if (typeof source.name === "undefined") {
@@ -703,9 +689,8 @@ exports.fetch = function (type, location, version) {
   };
 
   var res = arango.POST("/_admin/foxx/fetch", JSON.stringify(req));
-  arangosh.checkRequestResult(res);
 
-  return { path: res.path, app: res.app };
+  return arangosh.checkRequestResult(res);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -715,15 +700,11 @@ exports.fetch = function (type, location, version) {
 exports.mount = function (appId, mount, options) {
   'use strict';
 
-  var usage = ", usage: mount(<appId>, <mount>, [<options>])";
-
-  if (typeof appId === "undefined") {
-    throwBadParameter("AppId missing" + usage);
-  }
-
-  if (typeof mount === "undefined") {
-    throwBadParameter("Mount missing" + usage);
-  }
+  checkParameter(
+    "mount(<appId>, <mount>, [<options>])",
+    [ [ "Application identifier", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appId, mount ] );
 
   var req = {
     appId: appId,
@@ -735,38 +716,75 @@ exports.mount = function (appId, mount, options) {
   validateMount(mount);
 
   var res = arango.POST("/_admin/foxx/mount", JSON.stringify(req));
-  arangosh.checkRequestResult(res);
 
-  return { appId: res.appId, mountId: res.mountId };
+  return arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.setup = function (mount) {
+  'use strict';
+
+  checkParameter(
+    "setup(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
+
+  var req = {
+    mount: mount
+  };
+  
+  validateMount(mount);
+
+  var res = arango.POST("/_admin/foxx/setup", JSON.stringify(req));
+  arangosh.checkRequestResult(res);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.teardown = function (mount) {
+  'use strict';
+
+  checkParameter(
+    "teardown(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
+
+  var req = {
+    mount: mount
+  };
+  
+  validateMount(mount);
+
+  var res = arango.POST("/_admin/foxx/teardown", JSON.stringify(req));
+  arangosh.checkRequestResult(res);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unmounts a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.unmount = function (key) {
+exports.unmount = function (mount) {
   'use strict';
 
-  var usage = ", usage: unmount(<mount>)";
+  checkParameter(
+    "unmount(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
 
-  if (typeof key === "undefined") {
-    throwBadParameter("Mount point or MountID missing" + usage);
-  }
-
-  validateAppName(key);
+  validateAppName(mount);
   
   var req = {
-    key: key
+    mount: mount
   };
 
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
-  arangosh.checkRequestResult(res);
-  
-  arangodb.printf("Application %s unmounted successfully from mount point %s\n", 
-                  res.appId, 
-                  res.mount);
 
-  return { appId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
+  return arangosh.checkRequestResult(res);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -776,15 +794,11 @@ exports.unmount = function (key) {
 exports.install = function (name, mount, options) {
   'use strict';
 
-  var usage = ", usage: install(<name>, <mount>, [<options>])";
-
-  if (typeof name === "undefined") {
-    throwBadParameter("Name missing" + usage);
-  }
-
-  if (typeof mount === "undefined") {
-    throwBadParameter("Mount missing" + usage);
-  }
+  checkParameter(
+    "install(<name>, <mount>, [<options>])",
+    [ [ "Name", "string" ],
+      [ "Mount path", "string" ]],
+    [ name, mount ] );
 
   validateMount(mount);
 
@@ -850,33 +864,27 @@ exports.install = function (name, mount, options) {
     throw new Error("Cannot extract application id");
   }
 
-  return exports.mount(appId, mount, options);
+  var res = exports.mount(appId, mount, options);
+  exports.setup(appId, mount);
+
+  return res;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uninstalls a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.uninstall = function (key) {
+exports.uninstall = function (mount) {
   'use strict';
 
-  var usage = ", usage: uninstall(<mount>)";
+  checkParameter(
+    "teardown(<mount>)",
+    [ [ "Mount identifier", "string" ] ],
+    [ mount ] );
 
-  if (typeof key === "undefined") {
-    throwBadParameter("Mount point or MountID missing" + usage);
-  }
+  exports.teardown(mount);
 
-  var req = {
-    key: key
-  };
-
-  validateAppName(key);
-
-  var doc = exports.unmount(key);
-  var res = arango.POST("/_admin/foxx/teardown", JSON.stringify(doc));
-  arangosh.checkRequestResult(res);
-
-  arangodb.printf("Application uninstalled successfully\n");
+  return exports.unmount(mount);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1199,7 +1207,9 @@ exports.help = function () {
   var commands = {
     "fetch"        : "fetches a foxx application from the central foxx-apps repository into the local repository",
     "mount"        : "mounts a fetched foxx application to a local URL",
-    "install"      : "fetches a foxx application from the central foxx-apps repository and mounts it to a local URL",
+    "setup"        : "setup executes the setup script (app must already be mounted)",
+    "install"      : "fetches a foxx application from the central foxx-apps repository, mounts it to a local URL and sets it up",
+    "teardown"     : "teardown execute the teardown script (app must be still be mounted)",
     "unmount"      : "unmounts a mounted foxx application",
     "uninstall"    : "unmounts a mounted foxx application and calls its teardown method",
     "list"         : "lists all installed foxx applications",
