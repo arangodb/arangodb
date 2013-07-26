@@ -217,7 +217,9 @@ function executeAppScript (app, name, mount, prefix) {
       appId: app._id,
       mount: mount,
       collectionPrefix: prefix,
-      appModule: app.createAppModule()
+      appModule: app.createAppModule(),
+      isDevelopment: devel,
+      isProduction: ! devel
     };
 
     var cp = appContext.collectionPrefix;
@@ -229,20 +231,15 @@ function executeAppScript (app, name, mount, prefix) {
 
     var context = {};
 
-    context.applicationContext = {
-      collectionName: function (name) {
-        return cname + name;
-      },
-
-      path: function (name) {
-        return fs.join(root, app._path, name);
-      },
-
-      isDevelopment: devel,
-      isProduction: ! devel
+    appContext.collectionName = function (name) {
+      return cname + name;
     };
 
-    app.loadAppScript(appContext.appModule, desc[name], appContext, context);
+    appContext.path = function (name) {
+      return fs.join(root, app._path, name);
+    };
+
+    app.loadAppScript(appContext.appModule, desc[name], appContext);
   }
 }
 
