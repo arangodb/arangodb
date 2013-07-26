@@ -197,12 +197,14 @@ function executeAppScript (app, name, mount, prefix) {
   }
 
   var root;
+  var devel = false;
 
   if (app._id.substr(0,4) === "app:") {
     root = module.appPath();
   }
   else if (app._id.substr(0,4) === "dev:") {
     root = module.devAppPath();
+    devel = true;
   }
   else {
     throw new Error("cannot extract root path for app '" + app._id + "', unknown type");
@@ -227,14 +229,17 @@ function executeAppScript (app, name, mount, prefix) {
 
     var context = {};
 
-    context.app = {
+    context.applicationContext = {
       collectionName: function (name) {
         return cname + name;
       },
 
       path: function (name) {
         return fs.join(root, app._path, name);
-      }
+      },
+
+      isDevelopment: devel,
+      isProduction: ! devel
     };
 
     app.loadAppScript(appContext.appModule, desc[name], appContext, context);
@@ -409,6 +414,11 @@ function routingAalApp (app, mount, prefix, dev) {
     for (i in apps) {
       if (apps.hasOwnProperty(i)) {
         var file = apps[i];
+        var devel = false;
+
+        if (app._id.substr(0,4) === "dev:") {
+          devel = true;
+        }
 
         // set up a context for the application start function
         var context = {
@@ -621,27 +631,27 @@ exports.unmount = function (key) {
     throw new Error("key '" + key + "' is neither a mount id nor a mount point");
   }
 
-  var appId = doc.app;
+  aal.remove(doc);
+
+  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+
+  return { appId: doc.app, mount: doc.mount, collectionPrefix: doc.collectionPrefix };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.teardown = function (appId, mount, collectionPrefix) {
+  'use strict';
 
   try {
-    if (appId.substr(0,4) === "app:") {
-      var appDoc = aal.firstExample({ app: appId, type: "app" });
-
-      if (appDoc === null) {
-        throw new Error("cannot find app '" + appId + "' in _aal collection");
-      }
-    }
-
     var app = module.createApp(appId);
-    teardownApp(app, doc.mount, doc.collectionPrefix);
+    teardownApp(app, mount, collectionPrefix);
   }
   catch (err) {
     console.error("teardown not possible for application '%s': %s", appId, String(err));
   }
-
-  aal.remove(doc);
-
-  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -743,10 +753,10 @@ exports.appRoutes = function () {
 
       routes.push(r);
 
-      console.log("installed foxx app %s", appId);
+      console.log("mounted foxx app '%s' on '%s'", appId);
     }
     catch (err) {
-      console.error("cannot install foxx app '%s': %s", appId, String(err.stack || err));
+      console.error("cannot mount foxx app '%s': %s", appId, String(err.stack || err));
     }
   }
 
@@ -790,7 +800,7 @@ exports.developmentRoutes = function () {
 
         routes.push(r);
 
-        console.log("installed dev app %s", appId);
+        console.log("mounted dev app '%s' on '%s'", appId);
       }
       catch (err) {
         console.error("cannot read app manifest '%s': %s", m, String(err.stack || err));
