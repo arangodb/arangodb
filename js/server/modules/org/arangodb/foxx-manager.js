@@ -601,6 +601,8 @@ exports.mount = function (appId, mount, options) {
   var desc;
 
   try {
+    var prefix = options && options.collectionPrefix;
+
     doc = installAalApp(app, mount, prefix, false);
   }
   catch (err) {
