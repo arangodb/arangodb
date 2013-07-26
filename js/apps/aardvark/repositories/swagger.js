@@ -87,18 +87,20 @@
       api,
       ops,
       foxxApp = _aal.firstExample({"mount": appname}),
-      app;
+      app,
+      list;
       if (!foxxApp.development) {
-        app = _routing.firstExample({"foxxMount": foxxApp._key});
+        list = foxx_manager.appRoutes();
       } else {
-        _.each(foxx_manager.developmentRoutes(), function(r) {
-          var ac = r.appContext;
-          if (ac.appId === foxxApp.app && ac.mount === foxxApp.mount) {
-            app = r;
-            return;
-          }
-        });
+        list = foxx_manager.developmentRoutes();
       }
+      _.each(list, function(r) {
+        var ac = r.appContext;
+        if (ac.appId === foxxApp.app && ac.mount === foxxApp.mount) {
+          app = r;
+          return;
+        }
+      });
       result.swaggerVersion = "1.1";
       result.basePath = app.urlPrefix;
       result.apis = apis;
