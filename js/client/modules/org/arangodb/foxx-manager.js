@@ -31,7 +31,6 @@
 
 var internal = require("internal");
 
-var console = require("console");
 var fs = require("fs");
 
 var arangodb = require("org/arangodb");
@@ -285,7 +284,7 @@ function repackZipFile (source) {
       fs.remove(source.filename);
     }
     catch (err1) {
-      console.warn("cannot remove temporary file '%s'", source.filename);
+      arangodb.printf("cannot remove temporary file '%s'\n", source.filename);
     }
   } 
 
@@ -313,7 +312,7 @@ function repackZipFile (source) {
     fs.removeDirectoryRecursive(path);
   }
   catch (err2) {
-    console.warn("cannot remove temporary directory '%s'", path);
+    arangodb.printf("cannot remove temporary directory '%s'\n", path);
   }
 }
 
@@ -392,7 +391,7 @@ function processSource (src) {
       fs.remove(src.filename);
     }
     catch (err2) {
-      console.warn("cannot remove temporary file '%s'", src.filename);
+      arangodb.printf("cannot remove temporary file '%s'\n", src.filename);
     }
   } 
 
@@ -416,7 +415,7 @@ function updateFishbowlFromZip (filename) {
 
   var i;
   var tempPath = fs.getTempPath();
-  var fishbowl = getFishbowlStorage();
+  var toSave = [ ];
 
   try {
     fs.makeDirectoryRecursive(tempPath);
@@ -456,23 +455,38 @@ function updateFishbowlFromZip (filename) {
         desc.name = match[1];
       }
 
-      try {
-        try {
-          fishbowl.save(desc);
+      toSave.push(desc);
+    }
+
+    if (toSave.length > 0) {
+      var fishbowl = getFishbowlStorage();
+
+      db._executeTransaction({
+        collections: {
+          write: fishbowl.name()
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.collection);
+          c.truncate();
+
+          params.apps.forEach(function(app) {
+            c.save(app);
+          });
+        },
+        params: {
+          apps: toSave,
+          collection: fishbowl.name()
         }
-        catch (err3) {
-          fishbowl.replace(desc._key, desc);
-        }
-      }
-      catch (err2) {
-        arangodb.printf("cannot save description for app '" + f + "': %s\n", String(err2));
-        continue;
-      }
+      });
     }
   }
   catch (err) {
     if (tempPath !== undefined && tempPath !== "") {
-      fs.removeDirectoryRecursive(tempPath);
+      try {
+        fs.removeDirectoryRecursive(tempPath);
+      }
+      catch (err2) {
+      }
     }
 
     throw err;
@@ -639,6 +653,7 @@ exports.run = function (args) {
     else {
       arangodb.printf("%s\n", err.message);
     }
+
     return 1;
   }
 };
@@ -741,7 +756,7 @@ exports.unmount = function (key) {
   var res = arango.POST("/_admin/foxx/unmount", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return { appdId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
+  return { appId: res.appId, mount: res.mount, collectionPrefix: res.collectionPrefix };
 };
 
 ////////////////////////////////////////////////////////////////////////////////

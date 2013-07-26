@@ -438,6 +438,9 @@ function routingAalApp (app, mount, prefix, dev) {
           collectionPrefix: prefix,                 // collection prefix
           appModule: app.createAppModule(),         // app module
 
+          isDevelopment: devel,
+          isProduction: ! devel,
+
           routingInfo: {},
           foxxes: []
         };
@@ -530,15 +533,18 @@ exports.scanAppDirectory = function () {
 
     if (fs.exists(m)) {
       try {
-        var thumbnail = undefined;
+        var thumbnail;
+        
+        thumbnail = undefined;
         var mf = JSON.parse(fs.read(m));
 
         // add some default attributes
-        [ "author", "description" ].forEach(function (a) {
-          if (! mf.hasOwnProperty(a)) {
-            mf[a] = "";
-          }
-        });
+        if (! mf.hasOwnProperty("author")) {
+          mf.author = "";
+        }
+        if (! mf.hasOwnProperty("description")) {
+          mf.description = "";
+        }
 
         if (mf.hasOwnProperty('thumbnail') && mf.thumbnail !== null && mf.thumbnail !== '') {
           var p = fs.join(path, files[j], mf.thumbnail);
@@ -767,7 +773,7 @@ exports.appRoutes = function () {
 
       routes.push(r);
 
-      console.log("mounted foxx app '%s' on '%s'", appId);
+      console.log("mounted foxx app '%s' on '%s'", appId, mount);
     }
     catch (err) {
       console.error("cannot mount foxx app '%s': %s", appId, String(err.stack || err));

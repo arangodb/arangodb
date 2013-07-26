@@ -193,7 +193,6 @@ _.extend(Application.prototype, {
     if (!collection) {
       throw new Error("collection with name '" + cname + "' does not exist.");
     }
-    
     return new Repo(prefix, collection, model);
   },
 
