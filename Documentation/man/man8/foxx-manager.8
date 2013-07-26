@@ -1,0 +1,41 @@
+.TH foxx-manager 8 "Fr 26. Jul 22:41:49 CEST 2013" "" "ArangoDB"
+.SH NAME
+foxx-manager - a Foxx application manager for ArangoDB
+.SH SYNOPSIS
+foxx-manager options 
+.SH DESCRIPTION
+The foxx-manager binary can be used to manage Foxx applications in the
+ArangoDB database server. Foxx applications can be installed and
+uninstalled.
+More specific instructions are displayed when the program is invoked.
+.SH OPTIONS
+.IP "--server.disable-authentication <boolean>"
+disable the password prompt when connecting to the server 
+.SH EXAMPLES
+.EX
+shell> foxx-manager search "foobar"
+searches the central repository for an application "foobar"
+.EE
+
+.EX
+shell> foxx-manager update
+updates the local repository with applications from the central repositoryENDEXAMPLE
+.EX
+shell> foxx-manager list
+list all installed Foxx applicationsENDEXAMPLE
+.EX
+shell> foxx-manager install "hello-foxx" "/hello"
+installs the "hello-foxx" application under the mount point "/hello"
+.EE
+
+.EX
+shell> foxx-manager uninstall "/hello"
+uninstalls the application that is mounted under "/hello"
+.EE
+
+.EX
+shell> foxx-manager help
+shows the help pageENDEXAMPLE
+
+.SH AUTHOR
+	    Copyright triAGENS GmbH, Cologne, Germany

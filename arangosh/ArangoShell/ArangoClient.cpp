@@ -324,9 +324,10 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   // check if have a password
-  _hasPassword = options.has("server.password")
+  _hasPassword = (options.has("server.password") && ! _password.empty())
               || _disableAuthentication
-              || options.has("jslint");
+              || options.has("jslint") 
+              || options.has("javascript.unit-tests");
 
   // set colors
   if (options.has("colors")) {
