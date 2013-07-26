@@ -1,5 +1,10 @@
 {
   "name": "aardvark",
+
+  "description": "Foxx application manager for the ArangoDB web interface",
+
+  "author": "Michael Hackstein",
+
   "version": "1.0",
 
   "apps": {
