@@ -462,7 +462,7 @@ function updateFishbowlFromZip (filename) {
     if (toSave.length > 0) {
       var fishbowl = getFishbowlStorage();
 
-      internal._executeTransaction({
+      db._executeTransaction({
         collections: {
           write: fishbowl.name()
         },
@@ -483,7 +483,11 @@ function updateFishbowlFromZip (filename) {
   }
   catch (err) {
     if (tempPath !== undefined && tempPath !== "") {
-      fs.removeDirectoryRecursive(tempPath);
+      try {
+        fs.removeDirectoryRecursive(tempPath);
+      }
+      catch (err2) {
+      }
     }
 
     throw err;
