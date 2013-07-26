@@ -1094,30 +1094,29 @@ exports.info = function (name) {
   }
   
   var header = false;
-  var i;
+  var versions = Object.keys(desc.versions);
+  versions.sort(module.compareVersions);
 
-  for (i in desc.versions) {
-    if (desc.versions.hasOwnProperty(i)) {
-      var v = desc.versions[i];
-    
-      if (! header) {
-        arangodb.print("Versions:");
-        header = true;
+  versions.forEach(function (v) {
+    var version = desc.versions[v];
+      
+    if (! header) {
+      arangodb.print("Versions:");
+      header = true;
+    }
+
+    if (version.type === "github") {
+      if (version.hasOwnProperty("tag")) {
+        arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.tag);
       }
-
-      if (v.type === "github") {
-        if (v.hasOwnProperty("tag")) {
-          arangodb.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.tag);
-        }
-        else if (v.hasOwnProperty("branch")) {
-          arangodb.printf('%s: fetch github "%s" "%s"\n', i, v.location, v.branch);
-        }
-        else {
-          arangodb.printf('%s: fetch "github" "%s"\n', i, v.location);
-        }
+      else if (v.hasOwnProperty("branch")) {
+        arangodb.printf('%s: fetch github "%s" "%s"\n', v, version.location, version.branch);
+      }
+      else {
+        arangodb.printf('%s: fetch "github" "%s"\n', v, version.location);
       }
     }
-  }
+  });
 
   arangodb.printf("\n");
 };
