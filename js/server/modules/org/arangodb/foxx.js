@@ -854,7 +854,13 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       }
     };
 
-    if (options.isDevelopment || options.app.options.trace) {
+    var trace = options.isDevelopment;
+    if (!trace && options.hasOwnProperty("app") && options.app.hasOwnProperty("options")) {
+      trace = options.app.options.trace;
+    }
+
+
+    if (trace) {
       console.log("%s, incoming request from %s: %s",
                   options.app.mount,
                   request.client.address,
@@ -864,7 +870,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     request = _.extend(request, requestFunctions);
     response = _.extend(response, responseFunctions);
     next();
-    if (options.isDevelopment || options.app.options.trace) {
+    if (trace) {
       console.log("%s, outgoing response of type %s, body length: %d",
                   options.app.mount,
                   response.contentType,
