@@ -530,6 +530,14 @@ function require (path) {
       return 0;
     }
 
+    // error handling
+    if (typeof a !== "string") {
+      return -1;
+    }
+    if (typeof b !== "string") {
+      return 1;
+    }
+
     var aComponents = a.split(".");
     var bComponents = b.split(".");
     var len = Math.min(aComponents.length, bComponents.length);
