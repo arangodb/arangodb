@@ -241,7 +241,7 @@ ALIASES += \
 
 # examples
 ALIASES += \
-  "EXAMPLES=@htmlonly<H3>Examples</H3>@endhtmlonly" \
+  "EXAMPLES=@htmlonly<p><b>Examples</b></p>@endhtmlonly" \
   "EXAMPLE_ARANGOSH_OUTPUT{1}=@verbinclude \1.generated@if IGNORE" \
   "END_EXAMPLE_ARANGOSH_OUTPUT=@endif" \
   "EXAMPLE_ARANGOSH_RUN{1}=@verbinclude \1.generated@if IGNORE" \
@@ -260,7 +260,7 @@ ALIASES += \
 # table of content
 ALIASES += \
   "BOOK_REF{1}=@ref \1" \
-  "CHAPTER_REF{1}=@if LATEX - @ref \1\n@else@copydetails \1TOC@endif"
+  "CHAPTER_REF{1}=- @ref \1\n"
 
 # other aliases
 ALIASES += \

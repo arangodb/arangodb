@@ -8,14 +8,16 @@ Foxx: Build APIs and simple web applications in ArangoDB{#UserManualFoxxIntro}
 ==============================================================================
 
 Foxx is an easy way to create APIs and simple web applications from within
-**ArangoDB**. It is inspired by Sinatra, the classy Ruby web framework. If
-FoxxApplication is Sinatra,
-[ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html)
-are the corresponding `Rack`. They provide all the HTTP goodness.
+ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If
+FoxxApplication is Sinatra, @ref UserManualActions are the corresponding
+`Rack`. They provide all the HTTP goodness.
 
 So let's get started, shall we?
 
-An application build with Foxx is written in JavaScript and deployed to ArangoDB
+Creating the application files
+------------------------------
+
+An application built with Foxx is written in JavaScript and deployed to ArangoDB
 directly. ArangoDB serves this application, you do not need a separate
 application server.
 
@@ -32,7 +34,7 @@ following content in a file named `app.js` there:
     var Foxx = require("org/arangodb/foxx");
     var app = new Foxx.Application(applicationContext);
     
-    app.get("/wiese", function(req, res) {
+    app.get("/meadow", function(req, res) {
       res.set("Content-Type", "text/plain");
       res.body = "Worked!"
     });
@@ -44,6 +46,7 @@ content:
     {
       "name": "my_app",
       "version": "0.0.1",
+      "author": "my and myself",
       "apps": {
         "/": "app.js"
       }
@@ -62,7 +65,10 @@ You should now have the following files and directories with your application
 
 This is your application.
 
-Now your application is done. Start ArangoDB as follows:
+Testing the application
+-----------------------
+
+Now your application is ready to be tested. Start ArangoDB as follows:
 
     $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
@@ -75,110 +81,41 @@ Replace `/home/user/apps` with the apps path that you initially created. This is
 the path that you created the `my_app` directory in. Replace `/tmp/fancy_db`
 with the directory your database is located in.
 
-Now point your browser to `http://localhost:8529/dev/my_app/wiese` and you
+Now point your browser to `http://localhost:8529/dev/my_app/meadow` and you
 should see "Worked!". After this short overview, let's get into the details.
 
-## Fishbowl - Foxx's app repository
 
-Foxx comes with a repository of apps other people created. This repository is called "fishbowl". You can access the
-repository through arangosh:
+Handling Requests{#UserManualFoxxHandlingRequests}
+==================================================
 
-    $ arangosh
-    arangosh> aal = require('org/arangodb/aal');
-    arangosh> aal.updateFishbowl();
-	arangosh> aal.listFishbowl();
+If you do not redefine it, all requests that go to the root of your application
+will be redirected to `index.html`.
 
-This updates the list of available apps and displays the list. Let's assume you want to install the demo todo app called
-"aye_aye". First get a list of all available versions of "aye_aye":
 
-	arangosh> aal.details("aye_aye");
+Details on Foxx.Application{#UserManualFoxxDetails}
+===================================================
 
-The following command can be copied from the results of the previous details command. To download version 1.0.8 of
-"aye_aye" from github repository run:
-
-	arangosh> aal.load("github", "mchacki/aye_aye", "v1.0.8");
-
-The response contains the full path to the directory where "aye_aye" was saved.
-The last step is to mount "aye_aye" to a route of your choice, e.g.
-
-	arangosh> aal.installApp("aye_aye","/todos");
-
-You can now use aye_aye in your browser at `http://localhost:8529/todos`.
-
-## Details on Foxx.Application
-
-#### new Foxx.Application
 @copydetails JSF_foxx_application_initializer
 
-#### Foxx.Application#start
-@copydetails JSF_foxx_application_start
+@CLEARPAGE
+@copydetails JSF_foxx_application_createRepository
 
-#### Foxx.Application#requires
-
-Using the base paths defined in the manifest file, you can require modules that you need in this FoxxApplication.
-So for example:
-
-    app.requires = {
-      "sheepskin": "wolf"
-    };
-
-This will require the file `wolf.js` in the libs folder you have defined and make the module available via the variable
-`sheepskin` in your FoxxApplication definitions:
-
-    app.get("/bark", function (req, res) {
-      sheepskin.bark();
-    });
-
-*Please note that you cannot use the normal require syntax in a `FoxxApplication`, because it's a special DSL and not a
-normal JavaScript file.*
-
-#### Foxx.Application#registerRepository
-
-A repository is a module that gets data from the database or saves data to it. A model is a representation of data which
-will be used by the repository. Use this method to register a repository and a corresponding model. They can then be
-used in your handlers via `repository.name` where name is the registered name.
-
-    Foxx = require("org/arangodb/foxx");
-
-    app = new Foxx.Application({});
-
-    app.registerRepository("todos", {
-      model: "models/todos",
-      repository: "repositories/todos"
-    });
-
-If you do not give a repository, it will default to the `Foxx.Repository`. If you need more than the methods provided by
-it, you must give the path (relative to your lib directory) to your repository module there. Then you can extend the
-Foxx.Repository prototype and add your own methods.
-
-If you do not give a model, it will default to the `Foxx.Model`. If you need more than the methods provided by it, you
-must give the path (relative to your lib directory) to your model module there. Then you can extend the Foxx.Model
-prototype and add your own methods.
-
-If you don't need either of those, you don't need to give an empty object. You can then just call:
-
-    app.registerRepository("todos");
-
-### Handling Requests
-
-If you do not redefine it, all requests that go to the root of your application will be redirected to `index.html`.
-
-#### Foxx.Application#head
-@copydetails JSF_foxx_application_head
-
-#### Foxx.Application#get
+@CLEARPAGE
 @copydetails JSF_foxx_application_get
 
-#### Foxx.Application#post
+@CLEARPAGE
+@copydetails JSF_foxx_application_head
+
+@CLEARPAGE
 @copydetails JSF_foxx_application_post
 
-#### Foxx.Application#put
+@CLEARPAGE
 @copydetails JSF_foxx_application_put
 
-#### Foxx.Application#patch
+@CLEARPAGE
 @copydetails JSF_foxx_application_patch
 
-#### Foxx.Application#delete
+@CLEARPAGE
 @copydetails JSF_foxx_application_delete
 
 ### Documenting and Constraining the Routes

@@ -372,8 +372,6 @@ function mountAalApp (app, mount, options) {
     prefix = prefixFromMount(mount);
   }
 
-  setupApp(app, mount, prefix);
-
   // .............................................................................
   // create a new (unique) entry in aal
   // .............................................................................

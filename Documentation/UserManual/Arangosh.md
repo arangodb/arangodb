@@ -1,13 +1,13 @@
-The Arango Shell {#UserManualArangosh}
-======================================
+The ArangoDB Shell {#UserManualArangosh}
+========================================
 
 @NAVIGATE_UserManualArangosh
 @EMBEDTOC{UserManualArangoshTOC}
 
-Arango Shell Output {#UserManualArangoshOutput}
-===============================================
+ArangoDB Shell Output {#UserManualArangoshOutput}
+=================================================
 
-In general the Arango Shells prints its as output to standard output channel
+In general the ArangoDB shell prints its as output to standard output channel
 using the JSON stringifier.
 
     arangosh> db.five.all().toArray();

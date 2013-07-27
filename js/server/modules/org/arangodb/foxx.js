@@ -83,17 +83,20 @@ internal.createUrlObject = function (url, constraint, method) {
 /// @fn JSF_foxx_application_initializer
 /// @brief Create a new Application
 ///
-/// This creates a new Application. It takes two optional arguments as displayed
-/// above:
+/// @FUN{new Foxx.Application(@FA{applicationContext}, @FA{options})}
+///
+/// This creates a new Application. The first argument is the application
+/// context avail in the variable `applicationContext`. The second one is an
+/// options array with the following attributes:
 /// 
-/// * **The URL Prefix:** All routes you define within will be prefixed with it
-/// * **The Template Collection:** More information in the template section
+/// * `urlPrefix`: All routes you define within will be prefixed with it.
+/// * `templateCollection`: More information in the template section.
 ///
 /// @EXAMPLES
 ///
 /// @code
 ///     app = new Application(applicationContext, {
-///       urlPrefix: "/wiese",
+///       urlPrefix: "/meadow",
 ///       templateCollection: "my_templates"
 ///     });
 /// @endcode
@@ -165,6 +168,37 @@ _.extend(Application.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_application_createRepository
 /// @brief Create a repository
+/// 
+/// @FUN{app.createRepository(@FA{name}, @FA{options})}
+/// 
+/// A repository is a module that gets data from the database or saves data to
+/// it. A model is a representation of data which will be used by the
+/// repository. Use this method to create a repository and a corresponding
+/// model.
+/// 
+/// @code
+/// Foxx = require("org/arangodb/foxx");
+/// 
+/// app = new Foxx.Application(applicationContext);
+/// 
+/// var todos = app.createRepository("todos", {
+///   model: "models/todos",
+///   repository: "repositories/todos"
+/// });
+/// @endcode
+///
+//// If you do not give a repository, it will default to the
+/// `Foxx.Repository`. If you need more than the methods provided by it, you
+/// must give the path (relative to your lib directory) to your repository
+/// module there. Then you can extend the Foxx.Repository prototype and add your
+/// own methods.
+/// 
+/// If you don't need either of those, you don't need to give an empty
+/// object. You can then just call:
+/// 
+/// @code
+/// var todos = app.createRepository("todos");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   createRepository: function (name, opts) {
@@ -214,16 +248,8 @@ _.extend(Application.prototype, {
 /// probably wont call it directly, but it is used in the other request methods:
 ///
 /// When defining a route you can also define a so called 'parameterized' route
-/// like `/gaense/:stable`. In this case you can later get the value the user
-/// provided for `stable` via the `params` function (see the Request object).
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.handleRequest("get", "/gaense", function (req, res) {
-///       //handle the request
-///     });
-/// @endcode
+/// like `/goose/:barn`. In this case you can later get the value the user
+/// provided for `barn` via the `params` function (see the Request object).
 ////////////////////////////////////////////////////////////////////////////////
 
   handleRequest: function (method, route, callback) {
@@ -248,10 +274,11 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_head
 /// @brief Handle a `head` request
 ///
-/// This handles requests from the HTTP verb `head`.  As with all other requests
-/// you can give an option as the third argument, or leave it blank. You have to
-/// give a function as the last argument however. It will get a request and
-/// response object as its arguments
+/// @FUN{app.head(@FA{path}, @FA{callback})}
+///
+/// This handles requests from the HTTP verb `head`.  You have to give a
+/// function as @FA{callback}. It will get a request and response object as its
+/// arguments
 ////////////////////////////////////////////////////////////////////////////////
 
   head: function (route, callback) {
@@ -263,13 +290,19 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_get
 /// @brief Manage a `get` request
 ///
-/// This handles requests from the HTTP verb `get`.  See above for the arguments
-/// you can give. An example:
+/// @FUN{app.get(@FA{path}, @FA{callback})}
+///
+/// This handles requests from the HTTP verb `get`.
+///
+/// When defining a route you can also define a so called 'parameterized'
+/// @FA{path} like `/goose/:barn`. In this case you can later get the value
+/// the user provided for `barn` via the `params` function (see the Request
+/// object).
 ///
 /// @EXAMPLES
 ///
 /// @code
-///     app.get('/gaense/stall', function (req, res) {
+///     app.get('/goose/barn', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 /// @endcode
@@ -284,13 +317,15 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_post
 /// @brief Tackle a `post` request
 ///
+/// @FUN{app.post(@FA{path}, @FA{callback})}
+///
 /// This handles requests from the HTTP verb `post`.  See above for the
-/// arguments you can give. An example:
+/// arguments you can give.
 ///
 /// @EXAMPLES
 ///
 /// @code
-///     app.post('/gaense/stall', function (req, res) {
+///     app.post('/goose/barn', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 /// @endcode
@@ -305,13 +340,15 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_put
 /// @brief Sort out a `put` request
 ///
+/// @FUN{app.post(@FA{path}, @FA{callback})}
+///
 /// This handles requests from the HTTP verb `put`.  See above for the arguments
-/// you can give. An example:
+/// you can give.
 ///
 /// @EXAMPLES
 ///
 /// @code
-///     app.put('/gaense/stall', function (req, res) {
+///     app.put('/goose/barn', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 /// @endcode
@@ -326,13 +363,15 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_patch
 /// @brief Take charge of a `patch` request
 ///
+/// @FUN{app.patch(@FA{path}, @FA{callback})}
+///
 /// This handles requests from the HTTP verb `patch`.  See above for the
-/// arguments you can give. An example:
+/// arguments you can give.
 ///
 /// @EXAMPLES
 ///
 /// @code
-///     app.patch('/gaense/stall', function (req, res) {
+///     app.patch('/goose/barn', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 /// @endcode
@@ -347,21 +386,23 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_delete
 /// @brief Respond to a `delete` request
 ///
+/// @FUN{app.patch(@FA{path}, @FA{callback})}
+///
 /// This handles requests from the HTTP verb `delete`.  See above for the
 /// arguments you can give.
 /// 
-/// **A word of warning:** Do not forget that `delete` is a reserved word in
-/// JavaScript and therefore needs to be called as app['delete']. There is also
-/// an alias `del` for this very reason.
+/// @warning Do not forget that `delete` is a reserved word in JavaScript and
+/// therefore needs to be called as app['delete']. There is also an alias `del`
+/// for this very reason.
 ///
 /// @EXAMPLES
 ///
 /// @code
-///     app['delete']('/gaense/stall', function (req, res) {
+///     app['delete']('/goose/barn', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 ///
-///     app.del('/gaense/stall', function (req, res) {
+///     app.del('/goose/barn', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 /// @endcode

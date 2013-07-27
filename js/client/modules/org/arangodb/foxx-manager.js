@@ -856,7 +856,7 @@ exports.install = function (name, mount, options) {
   // .............................................................................
 
   if (source === null) {
-    throw new Error("Unknown foxx application '%s', use search", name);
+    throw new Error("Unknown foxx application '" + name + "', use search");
   }
 
   if (source !== "fetched") {
