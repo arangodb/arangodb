@@ -353,58 +353,62 @@ function AddMiddlewareFoxxApplicationSpec () {
 
     testAddABeforeMiddlewareForAllRoutes: function () {
       var myFunc = function (req, res) { a = (req > res); },
-        middleware = app.routingInfo.middleware;
+        middleware = app.routingInfo.middleware,
+        callback;
 
       app.before(myFunc);
 
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/*');
-      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
-      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
-      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) <
-        middleware[1].action.callback.indexOf("next()"));
+      callback = String(middleware[1].action.callback);
+      assertTrue(callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(callback.indexOf("next()" > 0));
+      assertTrue(callback.indexOf(String(myFunc)) < callback.indexOf("next()"));
     },
 
     testAddABeforeMiddlewareForCertainRoutes: function () {
       var myFunc = function (req, res) { a = (req > res); },
-        middleware = app.routingInfo.middleware;
+        middleware = app.routingInfo.middleware,
+        callback;
 
       app.before('/fancy/path', myFunc);
 
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/fancy/path');
-      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
-      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
-      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) <
-        middleware[1].action.callback.indexOf("next()"));
+      callback = String(middleware[1].action.callback);
+      assertTrue(callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(callback.indexOf("next()" > 0));
+      assertTrue(callback.indexOf(String(myFunc)) < callback.indexOf("next()"));
     },
 
     testAddAnAfterMiddlewareForAllRoutes: function () {
       var myFunc = function (req, res) { a = (req > res); },
-        middleware = app.routingInfo.middleware;
+        middleware = app.routingInfo.middleware,
+        callback;
 
       app.after(myFunc);
 
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/*');
-      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
-      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
-      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) >
-        middleware[1].action.callback.indexOf("next()"));
+      callback = String(middleware[1].action.callback);
+      assertTrue(callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(callback.indexOf("next()" > 0));
+      assertTrue(callback.indexOf("func(req") > callback.indexOf("next()"));
     },
 
     testAddAnAfterMiddlewareForCertainRoutes: function () {
       var myFunc = function (req, res) { a = (req > res); },
-        middleware = app.routingInfo.middleware;
+        middleware = app.routingInfo.middleware,
+        callback;
 
       app.after('/fancy/path', myFunc);
 
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/fancy/path');
-      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
-      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
-      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) >
-        middleware[1].action.callback.indexOf("next()"));
+      callback = String(middleware[1].action.callback);
+      assertTrue(callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(callback.indexOf("next()" > 0));
+      assertTrue(callback.indexOf("func(req") > callback.indexOf("next()"));
     },
 
     testAddTheFormatMiddlewareUsingTheShortform: function () {
