@@ -1428,6 +1428,159 @@ function transactionOperationsSuite () {
       TRANSACTION(obj);
       assertEqual(1, c1.count());
       assertEqual([ "foo" ], sortedKeys(c1));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with byExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExample : function () {
+      c1 = db._create(cn1);
+      c1.ensureUniqueConstraint("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.byExample({ name: "test99" }).toArray();
+          assertEqual(r.length, 1);
+          assertEqual("test99", r[0].name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample1 : function () {
+      c1 = db._create(cn1);
+      c1.ensureUniqueConstraint("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample2 : function () {
+      c1 = db._create(cn1);
+      c1.ensureHashIndex("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample3 : function () {
+      c1 = db._create(cn1);
+      c1.ensureUniqueSkiplist("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample4 : function () {
+      c1 = db._create(cn1);
+      c1.ensureSkiplist("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with fulltext operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFulltext : function () {
+      c1 = db._create(cn1);
+      var idx = c1.ensureFulltextIndex("text");
+
+      c1.save({ text: "steam", other: 1 });
+      c1.save({ text: "steamboot", other: 2 });
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.FULLTEXT(idx, "prefix:steam");
+          assertEqual(2, r.documents.length);
+          
+          r = c1.FULLTEXT(idx, "steam");
+          assertEqual(1, r.documents.length);
+        }
+      };
+
+      TRANSACTION(obj);
     }
 
   };

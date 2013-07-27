@@ -581,38 +581,30 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (create) {
     PREVENT_EMBEDDED_TRANSACTION(scope);
   }
-
-  // .............................................................................
-  // Check that we have a valid collection
-  // .............................................................................
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
-
-  // .............................................................................
-  // Ensure that there is at least one string parameter sent to this method
-  // .............................................................................
-
+  
   if (argv.Length() == 0) {
-    ReleaseCollection(collection);
     string msg = cmd + "(<path>, ...)";
     TRI_V8_EXCEPTION_USAGE(scope, msg.c_str());
   }
+
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_vocbase_t* vocbase = col->_vocbase;
+  
+  CollectionNameResolver resolver(vocbase);
+  ReadTransactionType trx(vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot ensure index");
+  }
+
+  TRI_primary_collection_t* primary = trx.primaryCollection();
 
   // .............................................................................
   // Create a list of paths, these will be used to create a list of shapes
@@ -624,7 +616,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
 
-  int res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
+  res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
@@ -634,7 +626,6 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorPointer(&attributes);
 
-    ReleaseCollection(collection);
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
   }
   
@@ -645,7 +636,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   bool created;
   TRI_index_t* idx;
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-
+      
   if (type == TRI_IDX_TYPE_HASH_INDEX) {
     if (create) {
       idx = TRI_EnsureHashIndexDocumentCollection(document, &attributes, unique, &created);
@@ -655,7 +646,9 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
       }
     }
     else {
+      trx.lockRead();
       idx = TRI_LookupHashIndexDocumentCollection(document, &attributes, unique);
+      trx.unlockRead();
     }
   }
   else if (type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
@@ -667,7 +660,9 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
       }
     }
     else {
+      trx.lockRead();
       idx = TRI_LookupSkiplistIndexDocumentCollection(document, &attributes, unique);
+      trx.unlockRead();
     }
   }
   else {
@@ -675,7 +670,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     res = TRI_ERROR_INTERNAL;
     idx = 0;
   }
-
+      
   // .............................................................................
   // remove the memory allocated to the list of attributes used for the hash index
   // .............................................................................
@@ -684,11 +679,12 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   TRI_DestroyVectorPointer(&attributes);
 
   if (idx == 0) {
-    ReleaseCollection(collection);
     if (create) {
+      trx.abort();
       TRI_V8_EXCEPTION_MESSAGE(scope, res, "index could not be created");
     }
     else {
+      trx.finish(TRI_ERROR_NO_ERROR);
       return scope.Close(v8::Null());
     }
   }
@@ -700,7 +696,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   TRI_json_t* json = idx->json(idx, primary);
 
   if (json == 0) {
-    ReleaseCollection(collection);
+    trx.finish(TRI_ERROR_OUT_OF_MEMORY);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -713,7 +709,8 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     }
   }
 
-  ReleaseCollection(collection);
+  trx.finish(TRI_ERROR_NO_ERROR);
+
   return scope.Close(index);
 }
 
@@ -729,7 +726,9 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     TRI_V8_EXCEPTION_USAGE(scope, "ensureFulltextIndex(<attribute>, <minLength>)");
   }
   
-  PREVENT_EMBEDDED_TRANSACTION(scope);  
+  if (create) {
+    PREVENT_EMBEDDED_TRANSACTION(scope);  
+  }
 
   string attributeName = TRI_ObjectToString(argv[0]);
 
@@ -746,33 +745,29 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     minWordLength = (int) TRI_ObjectToInt64(argv[1]);
   }
 
-  // .............................................................................
-  // Check that we have a valid collection
-  // .............................................................................
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+  
+  TRI_vocbase_t* vocbase = col->_vocbase;
+  
+  CollectionNameResolver resolver(vocbase);
+  ReadTransactionType trx(vocbase, resolver, col->_cid);
+  
+  int res = trx.begin();
 
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot ensure index");
   }
 
-  // .............................................................................
-  // Check collection type
-  // .............................................................................
-
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
-  }
+  TRI_primary_collection_t* primary = trx.primaryCollection();
 
   // .............................................................................
   // Actually create the index here
   // .............................................................................
 
-  int res = TRI_ERROR_NO_ERROR;
   bool created;
   TRI_index_t* idx;
 
@@ -786,16 +781,18 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     }
   }
   else {
+    trx.lockRead();
     idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, minWordLength);
+    trx.unlockRead();
   }
 
   if (idx == 0) {
-    ReleaseCollection(collection);
-
     if (create) {
+      trx.abort();
       TRI_V8_EXCEPTION_MESSAGE(scope, res, "index could not be created");
     }
     else {
+      trx.finish(TRI_ERROR_NO_ERROR);
       return scope.Close(v8::Null());
     }
   }
@@ -807,7 +804,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   TRI_json_t* json = idx->json(idx, primary);
 
   if (json == 0) {
-    ReleaseCollection(collection);
+    trx.finish(TRI_ERROR_OUT_OF_MEMORY);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -819,8 +816,9 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
       index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
     }
   }
-
-  ReleaseCollection(collection);
+  
+  trx.finish(TRI_ERROR_NO_ERROR);
+  
   return scope.Close(index);
 }
 
@@ -893,7 +891,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");;
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
@@ -1014,7 +1012,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");;
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Handle<v8::Value> result;
@@ -6617,7 +6615,6 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
   if (vocbase == 0) {
@@ -7899,7 +7896,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
     if (col == 0) {
       // collection not found
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                               "collection of <document-handle> is unknown"));;
+                                               "collection of <document-handle> is unknown"));
     }
 
     collection = col;
