@@ -403,6 +403,7 @@ _.extend(Application.prototype, {
     }
 
     this.routingInfo.middleware.push({
+      priority: 1,
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) { func(req, res, opts); next(); }
@@ -436,6 +437,7 @@ _.extend(Application.prototype, {
     }
 
     this.routingInfo.middleware.push({
+      priority: 2,
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
