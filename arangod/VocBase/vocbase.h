@@ -353,7 +353,7 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t  _collectionsById;    // collections by id
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_read_write_lock_t      _objectLock;         // object lock needed when replication is assessing the state of the vocbase
+  TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
 #endif
 
   TRI_associative_pointer_t  _authInfo;
