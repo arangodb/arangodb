@@ -258,7 +258,8 @@ function executeAppScript (app, name, mount, prefix) {
       appModule: app.createAppModule(),
       isDevelopment: devel,
       isProduction: ! devel,
-      options: app._options
+      options: app._options,
+      basePath: fs.join(root, app._path)
     };
 
     var cp = appContext.collectionPrefix;
@@ -472,9 +473,14 @@ function routingAalApp (app, mount, options) {
       if (apps.hasOwnProperty(i)) {
         var file = apps[i];
         var devel = false;
+        var root;
 
         if (app._id.substr(0,4) === "dev:") {
           devel = true;
+          root = module.devAppPath();
+        }
+        else {
+          root = module.appPath();
         }
 
         // set up a context for the application start function
@@ -487,6 +493,7 @@ function routingAalApp (app, mount, options) {
           collectionPrefix: prefix,                 // collection prefix
           appModule: app.createAppModule(),         // app module
           options: options,
+          basePath: fs.join(root, app._path),
 
           isDevelopment: devel,
           isProduction: ! devel,

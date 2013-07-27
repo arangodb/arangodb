@@ -1557,7 +1557,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
 
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_InitReadWriteLock(&vocbase->_objectLock);
+  TRI_InitReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
@@ -1804,7 +1804,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // destroy locks
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_DestroyReadWriteLock(&vocbase->_objectLock);
+  TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
 #endif
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
   TRI_DestroyReadWriteLock(&vocbase->_lock);
@@ -1898,7 +1898,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_WriteLockReadWriteLock(&vocbase->_objectLock);
+  TRI_WriteLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
   // copy collection pointers into vector so we can work with the copy without
@@ -1965,7 +1965,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
   }
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_WriteUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_WriteUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
    
   TRI_DestroyVectorPointer(&collections);
@@ -2116,7 +2116,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   }
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -2131,7 +2131,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     LOG_DEBUG("collection named '%s' already exists", name);
@@ -2150,7 +2150,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     return NULL;
@@ -2176,7 +2176,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     return NULL;
@@ -2194,7 +2194,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
 #ifdef TRI_ENABLE_REPLICATION
@@ -2284,7 +2284,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   }
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
   // mark collection as deleted
@@ -2300,7 +2300,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     return TRI_ERROR_NO_ERROR;
@@ -2320,7 +2320,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-      TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+      TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
       return TRI_set_errno(res);
     }
@@ -2345,7 +2345,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
         TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-        TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+        TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
         return TRI_set_errno(res);
       }
@@ -2360,7 +2360,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     DropCollectionCallback(0, collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     return TRI_ERROR_NO_ERROR;
@@ -2379,7 +2379,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-      TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+      TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
       return res;
@@ -2391,7 +2391,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     // added callback for dropping
@@ -2416,7 +2416,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     LOG_WARNING("internal error in TRI_DropCollectionVocBase");
@@ -2534,13 +2534,13 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_CopyString(info._name, newName, sizeof(info._name));
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     TRI_FreeCollectionInfoOptions(&info);
@@ -2561,13 +2561,13 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 
 #ifdef TRI_ENABLE_REPLICATION
-    TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2598,7 +2598,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   // .............................................................................
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadLockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
@@ -2608,7 +2608,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadUnlockReadWriteLock(&vocbase->_objectLock);
+  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 #endif
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);

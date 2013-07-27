@@ -211,6 +211,7 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
   '                                                                    ' + "\n" +
   'Administration Functions:                                           ' + "\n" +
   '  _help();                         this help                        ' + "\n" +
+  '  _flushCache();                   flush and refill collection cache' + "\n" +
   '                                                                    ' + "\n" +
   'Collection Functions:                                               ' + "\n" +
   '  _collections()                   list all collections             ' + "\n" +
@@ -225,9 +226,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase help") +
   '  _update(<id>, <data>,            update document                  ' + "\n" +
   '          <overwrite>, <keepNull>)                                  ' + "\n" +
   '  _remove(<id>)                    delete document                  ' + "\n" +
+  '  _exists(<id>)                    checks whether a document exists ' + "\n" +
   '  _truncate()                      delete all documents             ' + "\n" +
   '                                                                    ' + "\n" +
-  'Query Functions:                                                    ' + "\n" +
+  'Query / Transaction Functions:                                      ' + "\n" +
+  '  _executeTransaction(<trx>);      execute transaction              ' + "\n" +
   '  _query(<query>);                 execute AQL query                ' + "\n" +
   '  _createStatement(<data>);        create and return AQL query      ';
 
@@ -616,7 +619,7 @@ ArangoDatabase.prototype._exists = function (id) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
