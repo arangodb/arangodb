@@ -861,8 +861,8 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
         prefix: prefix,
         depth: depth,
         urlParameters: urlParameters,
-        callback: routes.routes.callback,
-        route: routes.routes.route 
+        callback: sorted[i].callback,
+        route: sorted[i].route 
       };
     }
 
