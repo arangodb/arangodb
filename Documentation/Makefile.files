@@ -87,8 +87,8 @@ WIKI = \
 	DbaManualEmergencyConsole \
 	ExtendingAql \
 	FirstStepsArangoDB \
-	Graphs \
 	Glossary \
+	Graphs \
 	HandlingCollections \
 	HandlingDocuments \
 	HandlingEdges \
@@ -112,7 +112,7 @@ WIKI = \
 	ImpManual \
 	ImpManualBasics \
 	ImplementorManual \
-        ImplementorManualArangoErrors \
+	ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
@@ -149,8 +149,9 @@ WIKI = \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
-	UserManualWebInterface \
 	UserManualFoxx \
+	UserManualFoxxManager \
+	UserManualWebInterface \
 	jsUnity
 
 ## -----------------------------------------------------------------------------

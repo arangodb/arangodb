@@ -40,10 +40,6 @@
     margin: 0 0 20px;
     text-align: left;
 }
-#content div.arangodb h3 {
-    margin-top: 20px;
-    margin-bottom: 14px;
-}
 
 #content div.arangodb div.headertitle {
   border-bottom: 1px solid #EFECE9;
@@ -60,6 +56,12 @@
   font-size: 26px;
   margin-bottom: 14px;
   padding: 14px 0 3px;
+}
+
+#content div.arangodb h3 {
+    margin-top: 20px;
+    margin-bottom: 14px;
+  border-bottom: 1px solid #EFECE9;
 }
 
 /* ************************************************************************** */
@@ -80,7 +82,7 @@
 #content div.arangodb div.toc {
   border-width: thin;
   border-style: solid;
-  background-color: #F8F8F8;
+  background-color: #E7F3C5;
   margin-bottom: 14px;
 }
 
@@ -103,7 +105,12 @@
 /* ************************************************************************** */
 
 #content div.arangodb div.functionsignature {
+  font-size: 14px;
+  font-weight: bold;
   font-family: monospace,fixed;
+  border: 2px dotted;
+  background-color: #F8F8F8;
+  padding: 10px;
   margin-top: 14px;
   margin-bottom: 14px;
 }
@@ -213,12 +220,11 @@
 
 #content div.arangodb pre {
   background-color: #FBFCFD !important;
-  border: 1px solid #C4CFE5 !important;
+  border: 0px;
   font-family: monospace,fixed;
-  font-size: 105%;
   font-size: 15px;
   line-height: 21px;
-  margin: 4px 8px 24px 2px;
+  margin: 4px 8px 24px 36px;
   overflow: auto;
   padding: 4px 6px;
   word-wrap: break-word;
@@ -226,15 +232,15 @@
 
 #content div.arangodb div.fragment {
   background-color: #FBFCFD !important;
-  border: 1px solid #C4CFE5 !important;
+  border: 0px;
   font-family: monospace,fixed;
-  font-size: 105%;
   font-size: 15px;
-  line-height: 21px;
-  margin: 4px 8px 24px 2px;
+  line-height: 11px;
+  margin: 4px 8px 24px 36px;
   overflow: auto;
   padding: 4px 6px;
   word-wrap: break-word;
+  white-space: pre;
 }
 
 #content div.arangodb code {

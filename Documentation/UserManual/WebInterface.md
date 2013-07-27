@@ -1,5 +1,5 @@
-ArangoDB's Web-Interface {#UserManualWebInterface}
-==================================================
+The ArangoDB Web-Interface {#UserManualWebInterface}
+====================================================
 
 @NAVIGATE_UserManualWebInterface
 @EMBEDTOC{UserManualWebInterfaceTOC}
