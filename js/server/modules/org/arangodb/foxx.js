@@ -405,7 +405,7 @@ _.extend(Application.prototype, {
     this.routingInfo.middleware.push({
       url: {match: path},
       action: {
-        callback: "(function (req, res, opts, next) { (" + String(func) + "(req, res, opts)); next(); })"
+        callback: function (req, res, opts, next) { func(req, res, opts); next(); }
       }
     });
   },
@@ -438,7 +438,7 @@ _.extend(Application.prototype, {
     this.routingInfo.middleware.push({
       url: {match: path},
       action: {
-        callback: "(function (req, res, opts, next) { next(); (" + String(func) + "(req, res, opts)); })"
+        callback: function (req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
   },

@@ -259,7 +259,7 @@ function executeAppScript (app, name, mount, prefix) {
       isDevelopment: devel,
       isProduction: ! devel,
       options: app._options,
-      basePath: root
+      basePath: fs.join(root, app._path)
     };
 
     var cp = appContext.collectionPrefix;
@@ -492,7 +492,7 @@ function routingAalApp (app, mount, options) {
           collectionPrefix: prefix,                 // collection prefix
           appModule: app.createAppModule(),         // app module
           options: options,
-          basePath: root,
+          basePath: fs.join(root, app._path),
 
           isDevelopment: devel,
           isProduction: ! devel,
