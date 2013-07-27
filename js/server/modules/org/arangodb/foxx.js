@@ -125,8 +125,6 @@ Application = function (context, options) {
     }
   }
 
-  this.isDevelopment = context.isDevelopment;
-  this.isProduction = context.isProduction;
   this.helperCollection = {};
   this.routingInfo.urlPrefix = urlPrefix;
 
@@ -144,16 +142,14 @@ Application = function (context, options) {
       action: {
         callback: myMiddleware.stringRepresentation,
         options: {
+          name: context.name,
+          version: context.version,
+          appId: context.appId,
+          mount: context.mount,
           isDevelopment: context.isDevelopment,
           isProduction: context.isProduction,
-          app: {
-            appId: context.appId,
-            name: context.name,
-            version: context.version,
-            mount: context.mount,
-            prefix: context.prefix,
-            options: context.options
-          }
+          prefix: context.prefix,
+          options: context.options
         }
       }
     }
@@ -409,7 +405,7 @@ _.extend(Application.prototype, {
     this.routingInfo.middleware.push({
       url: {match: path},
       action: {
-        callback: "function (req, res, opts, next) { " + String(func) + "(req, res); next(); }"
+        callback: function (req, res, opts, next) { func(req, res, opts); next(); }
       }
     });
   },
@@ -442,7 +438,7 @@ _.extend(Application.prototype, {
     this.routingInfo.middleware.push({
       url: {match: path},
       action: {
-        callback: "function (req, res, opts, next) { next(); " + String(func) + "(req, res); }"
+        callback: function (req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
   },
@@ -855,35 +851,34 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     };
 
     var trace = options.isDevelopment;
-    if (!trace && options.hasOwnProperty("app") && options.app.hasOwnProperty("options")) {
-      trace = options.app.options.trace;
+    if (!trace && options.hasOwnProperty("options")) {
+      trace = options.options.trace;
     }
-
 
     if (trace) {
       console.log("%s, incoming request from %s: %s",
-                  options.app.mount,
+                  options.mount,
                   request.client.address,
                   actions.stringifyRequestAddress(request));
     }
 
-    request = _.extend(request, requestFunctions);
-    response = _.extend(response, responseFunctions);
+    _.extend(request, requestFunctions);
+    _.extend(response, responseFunctions);
     next();
     if (trace) {
       if (response.hasOwnProperty("body")) {
         console.log("%s, outgoing response of type %s, body length: %d",
-                    options.app.mount,
+                    options.mount,
                     response.contentType,
                     parseInt(response.body.length, 10));
       } else if (response.hasOwnProperty("bodyFromFile")) {
         console.log("%s, outgoing response of type %s, body file: %s",
-                    options.app.mount,
+                    options.mount,
                     response.contentType,
                     response.bodyFromFile);
       } else {
         console.log("%s, outgoing response of type %s, no body",
-                    options.app.mount,
+                    options.mount,
                     response.contentType);
       }
     }

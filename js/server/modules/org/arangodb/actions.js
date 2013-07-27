@@ -642,6 +642,10 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
     part = '';
   }
 
+  // .............................................................................
+  // exact match
+  // .............................................................................
+
   if (typeof part === "string") {
     if (! subwhere.hasOwnProperty('exact')) {
       subwhere.exact = {};
@@ -657,21 +661,22 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
       defineRoutePart(route, subpart, parts, pos + 1, constraint, callback);
     }
     else {
-      if (subpart.hasOwnProperty('route')) {
-        p1 = subpart.route.priority || 0;
-        p2 = route.priority || 0;
+      if (! subpart.hasOwnProperty('routes')) {
+        subpart.routes = [];
+      }
 
-        if (p1 <= p2) {
-          subpart.route = route;
-          subpart.callback = callback;
-        }
-      }
-      else {
-        subpart.route = route;
-        subpart.callback = callback;
-      }
+      subpart.routes.push({
+        priority: route.priority || 0,
+        route: route,
+        callback: callback
+      });
     }
   }
+
+  // .............................................................................
+  // parameter match
+  // .............................................................................
+
   else if (part.hasOwnProperty('parameters')) {
     if (! subwhere.hasOwnProperty('parameters')) {
       subwhere.parameters = [];
@@ -693,7 +698,7 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
     if (ok) {
       for (i = 0;  i < part.parameters.length;  ++i) {
         p = part.parameters[i];
-        subsub = { parameter: p, match: {}};
+        subsub = { parameter: p, match: {} };
         subwhere.parameters.push(subsub); 
 
         if (constraint.hasOwnProperty(p)) {
@@ -706,15 +711,27 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
           defineRoutePart(route, subsub.match, parts, pos + 1, constraint, callback);
         }
         else {
-          subsub.match.route = route;
-          subsub.match.callback = callback;
+          if (! subsub.match.hasOwnProperty('routes')) {
+            subsub.match.routes = [];
+          }
+
+          subsub.match.routes.push({
+            priority: route.priority || 0,
+            route: route,
+            callback: callback
+          });
         }
       }
     }
   }
+
+  // .............................................................................
+  // prefix match
+  // .............................................................................
+
   else if (part.hasOwnProperty('prefix')) {
     if (! subwhere.hasOwnProperty('prefix')) {
-      subwhere.prefix = {};
+      subwhere.prefix = [];
     }
 
     var subprefix = subwhere.prefix;
@@ -723,19 +740,11 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
       console.error("cannot define prefix match within url, ignoring route");
     }
     else {
-      if (subprefix.hasOwnProperty('route')) {
-        p1 = subprefix.route.priority || 0;
-        p2 = route.priority || 0;
-
-        if (p1 <= p2) {
-          subprefix.route = route;
-          subprefix.callback = callback;
-        }
-      }
-      else {
-        subprefix.route = route;
-        subprefix.callback = callback;
-      }
+      subprefix.push({
+        priority: route.priority || 0,
+        route: route,
+        callback: callback
+      });
     }
   }
 }
@@ -776,7 +785,10 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   var match;
   var result = [];
 
-  // start with exact matches
+  // .............................................................................
+  // descend down to the next exact matches
+  // .............................................................................
+
   if (routes.hasOwnProperty('exact')) {
     for (k in routes.exact) {
       if (routes.exact.hasOwnProperty(k)) {
@@ -792,7 +804,10 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     }
   }
 
-  // next are parameter matches
+  // .............................................................................
+  // descend down the parameter matches
+  // .............................................................................
+
   if (routes.hasOwnProperty('parameters')) {
     for (i = 0;  i < routes.parameters.length;  ++i) {
       parameter = routes.parameters[i];
@@ -830,32 +845,41 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     }
   }
 
-  // next use the current callback
-  if (routes.hasOwnProperty('callback')) {
-    result = result.concat([{
+  // .............................................................................
+  // we have done the depth first descend, now add the current callback(s)
+  // .............................................................................
+
+  if (routes.hasOwnProperty('routes')) {
+    var sorted = routes.routes.sort(function(a,b) {
+      return b.priority - a.priority;
+    });
+
+    for (i = 0;  i < sorted.length;  ++i) {
+      sorted[i] = {
         path: path, 
         regexp: new RegExp("^" + path + "$"),
         prefix: prefix,
         depth: depth,
         urlParameters: urlParameters,
-        callback: routes.callback,
-        route: routes.route 
-    }]);
+        callback: sorted[i].callback,
+        route: sorted[i].route 
+      };
+    }
+
+    result = result.concat(sorted);
   }
 
-  // finally use a prefix match
+  // .............................................................................
+  // finally append the prefix matches
+  // .............................................................................
+
   if (routes.hasOwnProperty('prefix')) {
-    if (! routes.prefix.hasOwnProperty('callback')) {
-      console.error("prefix match must specify a callback");
-    }
-    else {
-      cur = path + "(/[^/]+)*";
-      result = result.concat(flattenRouting(routes.prefix,
-                             cur,
-                             urlParameters._shallowCopy,
-                             depth + 1,
-                             true));
-    }
+    cur = path + "(/[^/]+)*";
+    result = result.concat(flattenRouting(routes.prefix,
+                                          cur,
+                                          urlParameters._shallowCopy,
+                                          depth + 1,
+                                          true));
   }
 
   return result;
