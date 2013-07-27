@@ -5050,6 +5050,7 @@ static int HashIndexFromJson (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
+/// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* document,
@@ -5074,19 +5075,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
     return NULL;
   }
 
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5279,6 +5268,7 @@ static int SkiplistIndexFromJson (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index (unique or non-unique)
+/// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
@@ -5303,19 +5293,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
     return NULL;
   }
 
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5591,6 +5569,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index (unique or non-unique)
+/// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
@@ -5598,23 +5577,8 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
                                                         const bool indexSubstrings,
                                                         int minWordLength) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
-
-  primary = &document->base;
-
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
 
   return idx;
 }

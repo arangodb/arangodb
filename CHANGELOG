@@ -1,6 +1,9 @@
 v1.4
 ----
 
+* fixed a server crash when using byExample / firstExample inside a transaction
+  and the collection contained a usable hash/skiplist index for the example
+
 * defineHttp now only expects a single context
 
 * added collection detail dialog (web interface)
