@@ -255,7 +255,10 @@ var helpArangoCollection = arangosh.createHelpHeadline("ArangoCollection help") 
   '          <overwrite>)                                              ' + "\n" +
   '  update(<id>, <data>,            partially update document         ' + "\n" +
   '         <overwrite>, <keepNull>)                                   ' + "\n" +
-  '  delete(<id>)                    delete document                   ' + "\n" +
+  '  remove(<id>)                    delete document                   ' + "\n" +
+  '  exists(<id>)                    checks whether a document exists  ' + "\n" +
+  '  first()                         get first inserted/update document' + "\n" +
+  '  last()                          get last inserted/update document ' + "\n" +
   '                                                                    ' + "\n" +
   'Attributes:                                                         ' + "\n" +
   '  _database                       database object                   ' + "\n" +
@@ -918,7 +921,7 @@ ArangoCollection.prototype.exists = function (id) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
