@@ -711,11 +711,13 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
           defineRoutePart(route, subsub.match, parts, pos + 1, constraint, callback);
         }
         else {
-          if (! subsub.match.hasOwnProperty('routes')) {
-            subsub.match.routes = [];
+          var match = subsub.match;
+
+          if (! match.hasOwnProperty('routes')) {
+            match.routes = [];
           }
 
-          subsub.match.routes.push({
+          match.routes.push({
             priority: route.priority || 0,
             route: route,
             callback: callback
@@ -731,16 +733,20 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
 
   else if (part.hasOwnProperty('prefix')) {
     if (! subwhere.hasOwnProperty('prefix')) {
-      subwhere.prefix = [];
+      subwhere.prefix = {};
     }
-
-    var subprefix = subwhere.prefix;
 
     if (pos + 1 < parts.length) {
       console.error("cannot define prefix match within url, ignoring route");
     }
     else {
-      subprefix.push({
+      var subprefix = subwhere.prefix;
+
+      if (! subprefix.hasOwnProperty('routes')) {
+        subprefix.routes = [];
+      }
+
+      subprefix.routes.push({
         priority: route.priority || 0,
         route: route,
         callback: callback
