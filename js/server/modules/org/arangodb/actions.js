@@ -874,17 +874,12 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   // .............................................................................
 
   if (routes.hasOwnProperty('prefix')) {
-    if (! routes.prefix.hasOwnProperty('callback')) {
-      console.error("prefix match must specify a callback");
-    }
-    else {
-      cur = path + "(/[^/]+)*";
-      result = result.concat(flattenRouting(routes.prefix,
-                             cur,
-                             urlParameters._shallowCopy,
-                             depth + 1,
-                             true));
-    }
+    cur = path + "(/[^/]+)*";
+    result = result.concat(flattenRouting(routes.prefix,
+                                          cur,
+                                          urlParameters._shallowCopy,
+                                          depth + 1,
+                                          true));
   }
 
   return result;
