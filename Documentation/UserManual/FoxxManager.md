@@ -21,7 +21,7 @@ central github repository
 where you can register your applications. This repository also contains the hello
 world application for Foxx.
 
-Applications are managed using the Foxx manager `foxx-mananger`. It is similar
+Applications are managed using the Foxx manager `foxx-manager`. It is similar
 to tools like `brew` or `aptitude`.
 
 First Steps with the Foxx Manager{#UserManualFoxxManagerFirstSteps}
