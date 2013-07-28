@@ -1208,6 +1208,14 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
                                    IsEqualKeyClient,
                                    NULL);
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    // out of memory
+    FreeBuffers(logger);
+    TRI_Free(TRI_CORE_MEM_ZONE, logger);
+
+    return NULL;
+  }
+
   TRI_InitReadWriteLock(&logger->_statusLock);
   TRI_InitReadWriteLock(&logger->_clientsLock);
   TRI_InitSpin(&logger->_idLock);
