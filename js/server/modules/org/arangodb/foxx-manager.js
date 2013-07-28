@@ -49,6 +49,27 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extend a context with some helper functions
+////////////////////////////////////////////////////////////////////////////////
+
+function extendContext (context, app, root) {
+  var cp = context.collectionPrefix;
+  var cname = "";
+
+  if (cp !== "") {
+    cname = cp + "_";
+  }
+
+  context.collectionName = function (name) {
+    return cname + name;
+  };
+
+  context.path = function (name) {
+    return fs.join(root, app._path, name);
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief converts the mount point into the default prefix
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -262,22 +283,7 @@ function executeAppScript (app, name, mount, prefix) {
       basePath: fs.join(root, app._path)
     };
 
-    var cp = appContext.collectionPrefix;
-    var cname = "";
-
-    if (cp !== "") {
-      cname = cp + "_";
-    }
-
-    var context = {};
-
-    appContext.collectionName = function (name) {
-      return cname + name;
-    };
-
-    appContext.path = function (name) {
-      return fs.join(root, app._path, name);
-    };
+    extendContext(appContext, app, root);
 
     app.loadAppScript(appContext.appModule, desc[name], appContext);
   }
@@ -498,6 +504,8 @@ function routingAalApp (app, mount, options) {
           routingInfo: {},
           foxxes: []
         };
+
+        extendContext(context, app, root);
 
         app.loadAppScript(context.appModule, file, context);
 
