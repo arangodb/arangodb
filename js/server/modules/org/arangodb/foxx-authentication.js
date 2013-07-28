@@ -142,11 +142,18 @@ function encodePassword (password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function FoxxUsers (applicationContext) {
+function FoxxUsers (applicationContext, options) {
   'use strict';
 
-  this._collectionName = applicationContext.collectionName("users");
+  this._options = options || { };
   this._collection = null;
+  
+  if (this._options.hasOwnProperty("collectionName")) {
+    this._collectionName = this._options.collectionName;
+  }
+  else {
+    this._collectionName = applicationContext.collectionName("users");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
