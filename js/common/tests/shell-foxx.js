@@ -153,7 +153,7 @@ function SetRoutesFoxxApplicationSpec () {
       } catch(e) {
         error = e;
       }
-      assertEqual(error, "URL has to be a String");
+      assertEqual(error, "Error: URL has to be a String");
       assertEqual(routes.length, 0);
     },
 
@@ -167,7 +167,7 @@ function SetRoutesFoxxApplicationSpec () {
       } catch(e) {
         error = e;
       }
-      assertEqual(error, "URL has to be a String");
+      assertEqual(error, "Error: URL has to be a String");
       assertEqual(routes.length, 0);
     },
 
@@ -181,7 +181,7 @@ function SetRoutesFoxxApplicationSpec () {
       } catch(e) {
         error = e;
       }
-      assertEqual(error, "URL has to be a String");
+      assertEqual(error, "Error: URL has to be a String");
       assertEqual(routes.length, 0);
     }
   };
@@ -327,7 +327,7 @@ function DocumentationAndConstraintsSpec () {
         error = e;
       }
 
-      assertEqual(error, "Summary can't be longer than 60 characters");
+      assertEqual(error, "Error: Summary can't be longer than 60 characters");
     },
 
     testDefineErrorResponse: function () {
@@ -509,7 +509,7 @@ function BaseMiddlewareWithoutTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "No template collection has been provided when creating a new FoxxApplication");
+      assertEqual(error, "Error: No template collection has been provided when creating a new FoxxApplication");
     },
 
     testMiddlewareCallsTheAction: function () {
@@ -581,7 +581,7 @@ function BaseMiddlewareWithTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "Unknown template language 'pirateEngine'");
+      assertEqual(error, "Error: Unknown template language 'pirateEngine'");
     },
 
     testRenderingATemplateWithAnNotExistingTemplate: function () {
@@ -599,7 +599,7 @@ function BaseMiddlewareWithTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "Template 'simple/path' does not exist");
+      assertEqual(error, "Error: Template 'simple/path' does not exist");
     }
   };
 }
