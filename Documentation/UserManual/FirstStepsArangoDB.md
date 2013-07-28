@@ -10,8 +10,8 @@ What is ArangoDB? {#FirstStepsArangoDBIntro}
 ArangoDB is a universal open-source database with a flexible data
 model for documents, graphs, and key-values. You can easily build high
 performance applications using a convenient 
-@ref Aql "sql-like query language" or @ref FoxxManager "JavaScript" 
-and Ruby extensions.
+@ref Aql "SQL-like query language" or @ref UserManualFoxxManager 
+"JavaScript" and Ruby extensions.
 
 The database server _arangod_ stores all documents and serves them
 using a REST interface. There are driver for all major language like
