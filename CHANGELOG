@@ -1,6 +1,9 @@
 v1.4
 ----
 
+* removed action deployment tool, this now handled with Foxx and its manager or
+  by kaerus node utility
+
 * fixed a server crash when using byExample / firstExample inside a transaction
   and the collection contained a usable hash/skiplist index for the example
 
