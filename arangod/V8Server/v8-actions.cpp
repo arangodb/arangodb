@@ -304,11 +304,11 @@ static void addCookie (TRI_v8_global_t* v8g, HttpResponse* response, v8::Handle<
     v8::Handle<v8::Value> v = data->Get(v8g->LifeTimeKey);
     lifeTimeSeconds = TRI_ObjectToInt64(v);
   }  
-  if (data->Has(v8g->PathKey)) {
+  if (data->Has(v8g->PathKey) && ! data->Get(v8g->PathKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(v8g->PathKey);
     path = TRI_ObjectToString(v);    
   }
-  if (data->Has(v8g->DomainKey)) {
+  if (data->Has(v8g->DomainKey) && ! data->Get(v8g->DomainKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(v8g->DomainKey);
     domain = TRI_ObjectToString(v);    
   }

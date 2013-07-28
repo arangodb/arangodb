@@ -436,19 +436,22 @@ _.extend(Application.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  before: function (path, func) {
+  before: function (path, func, honorResult) {
     'use strict';
     if (_.isUndefined(func)) {
       func = path;
       path = "/*";
     }
-
+    var f;
+    if (honorResult) {
+      f = function (req, res, opts, next) { if (func(req, res, opts)) { next(); } };
+    } else {
+      f = function (req, res, opts, next) { func(req, res, opts); next(); };
+    }
     this.routingInfo.middleware.push({
       priority: 1,
       url: {match: path},
-      action: {
-        callback: function (req, res, opts, next) { func(req, res, opts); next(); }
-      }
+      action: {callback: f}
     });
   },
 
