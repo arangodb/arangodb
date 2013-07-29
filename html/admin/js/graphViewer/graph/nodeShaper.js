@@ -168,7 +168,7 @@ function NodeShaper(parent, flags, idfunc) {
         });
       addShape(normal);
       community.each(function(c) {
-        c.shape(d3.select(this), addShape, addQue, start, colourMapper);
+        c.shapeNodes(d3.select(this), addShape, addQue, start, colourMapper);
       });
       if (visibleLabels) {
         addLabel(normal);

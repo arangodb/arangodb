@@ -48,6 +48,7 @@ function EdgeShaper(parent, flags, idfunc) {
   
   var self = this,
     edges = [],
+    communityNodes = {},
     toplevelSVG,
     visibleLabels = true,
     followEdge = {},
@@ -114,11 +115,13 @@ function EdgeShaper(parent, flags, idfunc) {
       s = e.source;
       t = e.target;
       if (s._isCommunity) {
+        communityNodes[s._id] = s;
         sp = s.getSourcePosition(e);
       } else {
         sp = s.position;
       }
       if (t._isCommunity) {
+        communityNodes[t._id] = t;
         tp = t.getTargetPosition(e);
       } else {
         tp = t.position;
@@ -130,7 +133,7 @@ function EdgeShaper(parent, flags, idfunc) {
     },
     
     addPosition = function (line, g) {
-     
+      communityNodes = {};
       g.attr("transform", function(d) {
         var p = calculateNodePositions(d);
         return "translate("
@@ -141,14 +144,6 @@ function EdgeShaper(parent, flags, idfunc) {
           + ")";
       });
       line.attr("x2", function(d) {
-        /*
-        if (!d.source.position.x || !d.source.position.y) {
-          console.log(d.source);
-        }
-        if (!d.target.position.x || !d.target.position.y) {
-          console.log(d.target);
-        }
-        */
         var p = calculateNodePositions(d);
         return getDistance(p.s, p.t);
       });
@@ -182,7 +177,10 @@ function EdgeShaper(parent, flags, idfunc) {
       // Remove all elements that are still included.
       g.selectAll("* > *").remove();
       line = g.append("line");
-      addQue(line, g);     
+      addQue(line, g);
+      _.each(communityNodes, function(c) {
+        c.shapeInnerEdges(d3.select(this), addQue);
+      }); 
     },
     
     updateEdges = function () {
@@ -190,6 +188,9 @@ function EdgeShaper(parent, flags, idfunc) {
         line = g.select("line");
       addPosition(line, g);
       addUpdate(g);
+      _.each(communityNodes, function(c) {
+        c.updateInnerEdges(d3.select(this), addPosition, addUpdate);
+      });
     },
     
     parseShapeFlag = function (shape) {
