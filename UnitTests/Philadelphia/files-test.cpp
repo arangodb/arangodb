@@ -195,6 +195,11 @@ BOOST_AUTO_TEST_CASE (tst_slurp) {
   char* result;
 
   path = TRI_GetTempPath();
+
+  if (! TRI_IsDirectory(path)) {
+    TRI_CreateDirectory(path);
+  }
+
   filename = TRI_Concatenate2File(path, "files-unittest.tmp");
 
   // remove file if it exists
