@@ -76,18 +76,21 @@ function CommunityNode(parent, initial) {
       return def;
     },
   
-    getSourcePosition = function(e) {    
+    compPosi = function(p) {
+      var d = self.position,
+        x = p.x * d.z + d.x,
+        y = p.y * d.z + d.y,
+        z = p.z * d.z;
+      return {
+        x: x,
+        y: y,
+        z: z
+      };
+    },
+  
+    getSourcePosition = function(e) {
       if (self._expanded) {
-        var p = self.position,
-          diff = e._source.position,
-          x = p.x + diff.x,
-          y = p.y + diff.y,
-          z = p.z + diff.z;
-        return {
-          x: x,
-          y: y,
-          z: z
-        };
+        return compPosi(e._source.position);
       }
       return self.position;
     },
@@ -95,16 +98,7 @@ function CommunityNode(parent, initial) {
   
     getTargetPosition = function(e) {
       if (self._expanded) {
-        var p = self.position,
-          diff = e._target.position,
-          x = p.x + p.z * diff.x,
-          y = p.y + p.z * diff.y,
-          z = p.z + diff.z;
-        return {
-          x: x,
-          y: y,
-          z: z
-        };
+        return compPosi(e._target.position);
       }
       return self.position;
     },
@@ -174,6 +168,14 @@ function CommunityNode(parent, initial) {
       nodes[n._id] = n;
       updateNodeArray();
       self._size++;
+    },
+    
+    insertInitialNodes = function(ns) {
+      _.each(ns, function(n) {
+        nodes[n._id] = n;
+        self._size++;
+      });
+      updateNodeArray();
     },
     
     removeNode = function(n) {
@@ -406,14 +408,21 @@ function CommunityNode(parent, initial) {
     },
     
     addDistortion = function(distFunc) {
-      _.each(nodeArray, function(n) {
-        //n.position = distFunc(n);
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
+      if (self._expanded) {
+        var oldFocus = distFunc.focus();
+        var newFocus = [
+          oldFocus[0] - self.position.x, 
+          oldFocus[1] - self.position.y
+        ];
+        distFunc.focus(newFocus);
+        _.each(nodeArray, function(n) {
+          n.position = distFunc(n);
+          n.position.x /= self.position.z;
+          n.position.y /= self.position.z;
+          n.position.z /= self.position.z;
+        });
+        distFunc.focus(oldFocus);
+      }
     },
     
     shapeAll = function(g, shapeFunc, shapeQue, start, colourMapper) {
@@ -496,9 +505,7 @@ function CommunityNode(parent, initial) {
   // no need for a regex on the _id any more.
   this._isCommunity = true;
   
-  _.each(initial, function(n) {
-    insertNode(n);
-  });
+  insertInitialNodes(initial);
   
   ////////////////////////////////////
   // Public functions               //
