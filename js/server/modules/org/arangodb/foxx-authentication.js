@@ -895,7 +895,7 @@ FoxxCookieAuthentication.prototype.getAuthenticationData = function (req) {
 
 FoxxCookieAuthentication.prototype.beginSession = function (req, res, token, identifier, data) {
   'use strict';
-  
+ 
   this.setCookie(res, token);
 };
 
@@ -907,6 +907,17 @@ FoxxCookieAuthentication.prototype.endSession = function (req, res) {
   'use strict';
 
   this.setCookie(res, "");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update authentication data
+////////////////////////////////////////////////////////////////////////////////
+
+FoxxCookieAuthentication.prototype.updateSession = function (req, res, session) {
+  'use strict';
+
+  // update the cookie (expire date)
+  this.setCookie(res, session._key);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -995,7 +1006,7 @@ FoxxAuthentication.prototype.authenticate = function (req) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate authentication data
+/// @brief begin a session
 ////////////////////////////////////////////////////////////////////////////////
 
 FoxxAuthentication.prototype.beginSession = function (req, res, identifier, data) {
@@ -1007,7 +1018,8 @@ FoxxAuthentication.prototype.beginSession = function (req, res, identifier, data
   for (i = 0; i < n; ++i) {
     var authenticator = this._authenticators[i];
 
-    if (authenticator.isResponsible(req)) {
+    if (authenticator.isResponsible(req) &&
+        authenticator.beginSession) {
       authenticator.beginSession(req, res, session._key, identifier, data);
     }
   }
@@ -1016,7 +1028,7 @@ FoxxAuthentication.prototype.beginSession = function (req, res, identifier, data
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete authentication data
+/// @brief terminate a session
 ////////////////////////////////////////////////////////////////////////////////
 
 FoxxAuthentication.prototype.endSession = function (req, res, token) {
@@ -1027,12 +1039,34 @@ FoxxAuthentication.prototype.endSession = function (req, res, token) {
   for (i = 0; i < n; ++i) {
     var authenticator = this._authenticators[i];
 
-    if (authenticator.isResponsible(req)) {
+    if (authenticator.isResponsible(req) &&
+        authenticator.endSession) {
       authenticator.endSession(req, res);
     }
   }
 
   this._sessions.terminate(token);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a session
+////////////////////////////////////////////////////////////////////////////////
+
+FoxxAuthentication.prototype.updateSession = function (req, res, session) {
+  'use strict';
+
+  var i, n = this._authenticators.length;
+
+  for (i = 0; i < n; ++i) {
+    var authenticator = this._authenticators[i];
+
+    if (authenticator.isResponsible(req) &&
+        authenticator.updateSession) {
+      authenticator.updateSession(req, res, session);
+    }
+  }
+
+  session.update();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
