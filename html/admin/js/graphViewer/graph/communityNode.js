@@ -170,6 +170,14 @@ function CommunityNode(parent, initial) {
       self._size++;
     },
     
+    insertInitialNodes = function(ns) {
+      _.each(ns, function(n) {
+        nodes[n._id] = n;
+        self._size++;
+      });
+      updateNodeArray();
+    },
+    
     removeNode = function(n) {
       var id = n._id || n;
       delete nodes[id];
@@ -497,9 +505,7 @@ function CommunityNode(parent, initial) {
   // no need for a regex on the _id any more.
   this._isCommunity = true;
   
-  _.each(initial, function(n) {
-    insertNode(n);
-  });
+  insertInitialNodes(initial);
   
   ////////////////////////////////////
   // Public functions               //
