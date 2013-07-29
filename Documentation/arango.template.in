@@ -778,10 +778,6 @@ RECURSIVE              = YES
 
 EXCLUDE                = @srcdir@/arangod/Ahuacatl/ahuacatl-tokens.c \
                          @srcdir@/lib/JsonParser/json-parser.c \
-                         @srcdir@/lib/JsonParserX/JsonParserX.cpp \
-                         @srcdir@/lib/JsonParserX/JsonParserX.h \
-                         @srcdir@/lib/JsonParserX/JsonScannerX.cpp \
-                         @srcdir@/lib/JsonParserX/JsonScannerX.h \
                          @srcdir@/lib/V8/v8-json.cpp \
                          @srcdir@/lib/V8/v8-json.h
 
