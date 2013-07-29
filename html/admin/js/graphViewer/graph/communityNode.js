@@ -76,18 +76,21 @@ function CommunityNode(parent, initial) {
       return def;
     },
   
+    compPosi = function(p) {
+      var d = self.position,
+        x = p.x * d.z + d.x,
+        y = p.y * d.z + d.y,
+        z = p.z * d.z;
+      return {
+        x: x,
+        y: y,
+        z: z
+      };
+    },
+  
     getSourcePosition = function(e) {
       if (self._expanded) {
-        var d = self.position,
-          p = e._source.position,
-          x = p.x * d.z + d.x,
-          y = p.y * d.z + d.y,
-          z = p.z * d.z;
-        return {
-          x: x,
-          y: y,
-          z: z
-        };
+        return compPosi(e._source.position);
       }
       return self.position;
     },
@@ -95,16 +98,7 @@ function CommunityNode(parent, initial) {
   
     getTargetPosition = function(e) {
       if (self._expanded) {
-        var d = self.position,
-          p = e._target.position,
-          x = p.x * d.z + d.x,
-          y = p.y * d.z + d.y,
-          z = p.z * d.z;
-        return {
-          x: x,
-          y: y,
-          z: z
-        };
+        return compPosi(e._target.position);
       }
       return self.position;
     },
