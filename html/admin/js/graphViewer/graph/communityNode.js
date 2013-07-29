@@ -64,14 +64,14 @@ function CommunityNode(parent, initial) {
   
     getDistance = function(def) {
       if (self._expanded) {
-        return 2 * def;
+        return 2 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
   
     getCharge = function(def) {
       if (self._expanded) {
-        return 8 * def;
+        return 4 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
