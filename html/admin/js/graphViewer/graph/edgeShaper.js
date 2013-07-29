@@ -244,8 +244,9 @@ function EdgeShaper(parent, flags, idfunc) {
       addUpdate = function (edges) {
         edges.select("text")
           .attr("transform", function(d) {
+            var p = calculateNodePositions(d);
             return "translate("
-              + getDistance(d.source.position, d.target.position) / 2
+              + getDistance(p.s, p.t) / 2
               + ", -3)";
           });
       };
