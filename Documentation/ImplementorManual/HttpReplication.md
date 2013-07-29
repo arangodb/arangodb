@@ -49,5 +49,5 @@ This is an introduction to ArangoDB's Http replication interface.
 @copydetails triagens::arango::RestReplicationHandler::handleCommandApplierStop
 
 @CLEARPAGE
-@anchor HttpReplicationApplierState
-@copydetails triagens::arango::RestReplicationHandler::handleCommandApplierState
+@anchor HttpReplicationApplierGetState
+@copydetails triagens::arango::RestReplicationHandler::handleCommandApplierGetState

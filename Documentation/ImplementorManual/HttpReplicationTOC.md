@@ -13,4 +13,4 @@ TOC {#HttpReplicationTOC}
     - @ref HttpReplicationApplierSetConfig "PUT /_api/replication/applier-config"
     - @ref HttpReplicationApplierStart "PUT /_api/replication/applier-start"
     - @ref HttpReplicationApplierStop "PUT /_api/replication/applier-stop"
-    - @ref HttpReplicationApplierState "GET /_api/replication/applier-state"
+    - @ref HttpReplicationApplierGetState "GET /_api/replication/applier-state"
