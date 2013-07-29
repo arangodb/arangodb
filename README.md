@@ -6,7 +6,7 @@ ArangoDB
 Master: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=master)](http://travis-ci.org/triAGENS/ArangoDB)
 Devel: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=devel)](http://travis-ci.org/triAGENS/ArangoDB)
 
-ArangoDB is a universal open-source database with flexible data model for documents, graphs, and key-values. Build high performance application using a convenient sql-like query language or JavaScript/Ruby extensions. 
+ArangoDB is a universal open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript/Ruby extensions. 
 
 Key features include:
 
