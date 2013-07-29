@@ -48,7 +48,7 @@ DEBUG = False
 r1 = re.compile(r'//')
 r2 = re.compile(r'^\s*function\s*([a-zA-Z0-9_]*)\s*\((.*)\)\s*{')
 r3 = re.compile(r'^\s*$')
-r4 = re.compile(r'^\s*([a-zA-Z0-9\._]*)\s*=\s*function\s*\((.*)\)\s*{')
+r4 = re.compile(r'^\s*([a-zA-Z0-9\._]*)\s*[=:]\s*function\s*\((.*)\)\s*{')
 r5 = re.compile(r'^\s*actions\.defineHttp\(')
 r6 = re.compile(r'^/// @fn ([a-zA-Z0-9_]*)\s*')
 
@@ -77,6 +77,7 @@ for line in f:
         if not comment and not other:
             if fn:
                 print "void %s ();\n" % fn
+                fn = None
             else:
                 print "void dummy_%d ();\n" % count
             
