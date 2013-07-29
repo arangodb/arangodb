@@ -406,14 +406,28 @@ function CommunityNode(parent, initial) {
     },
     
     addDistortion = function(distFunc) {
-      _.each(nodeArray, function(n) {
-        //n.position = distFunc(n);
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
+      if (self._expanded) {
+        var oldFocus = distFunc.focus();
+        var newFocus = [
+          oldFocus[0] - self.position.x, 
+          oldFocus[1] - self.position.y
+        ];
+        distFunc.focus(newFocus);
+        _.each(nodeArray, function(n) {
+          n.position = distFunc(n);
+          n.position.x /= self.position.z;
+          n.position.y /= self.position.z;
+          n.position.z /= self.position.z;
+          /*
+          n.position = {
+            x: n.x,
+            y: n.y,
+            z: 1
+          };
+          */
+        });
+        distFunc.focus(oldFocus);
+      }
     },
     
     shapeAll = function(g, shapeFunc, shapeQue, start, colourMapper) {
