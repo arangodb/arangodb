@@ -125,7 +125,7 @@ the system share directory. Even if you are an administrator of ArangoDB you
 might not have write permissions to this location. On the other hand, in order
 to deploy some extension for ArangoDB, you might need to install additional
 JavaScript modules. This would require you to become root and copy the files
-into the share directory. In order to easy the deployment of extensions,
+into the share directory. In order to ease the deployment of extensions,
 ArangoDB uses a second mechanism to look up JavaScript modules.
 
 JavaScript modules can either be stored in the filesystem as regular file or in
