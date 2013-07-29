@@ -64,14 +64,14 @@ function CommunityNode(parent, initial) {
   
     getDistance = function(def) {
       if (self._expanded) {
-        return 2 * def;
+        return 2 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
   
     getCharge = function(def) {
       if (self._expanded) {
-        return 8 * def;
+        return 4 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
@@ -425,6 +425,42 @@ function CommunityNode(parent, initial) {
         return;
       }
       addCollapsedShape(g, shapeFunc, start, colourMapper);
+    },
+    
+    updateEdges = function(g, addPosition, addUpdate) {
+      if (self._expanded) {
+        var interior = g.selectAll(".link"),
+          line = interior.select("line");
+        addPosition(line, interior);
+        addUpdate(interior);
+      }
+    },
+    
+    shapeEdges = function(g, addQue) {
+      var idFunction = function(d) {
+        return d._id;
+      };
+      if (self._expanded) {
+        var line,
+          interior = g
+            .selectAll(".link")
+            .data(intEdgeArray, idFunction);
+        // Append the group and class to all new    
+        interior.enter()
+          .append("g")
+          .attr("class", "link") // link is CSS class that might be edited
+          .attr("id", idFunction);
+        // Remove all old
+        interior.exit().remove();
+        // Remove all elements that are still included.
+        interior.selectAll("* > *").remove();
+        line = interior.append("line");
+        addQue(line, interior);
+      }
+    },
+    
+    collapseNode = function(n) {
+      removeOutboundEdgesFromNode(n)
     };
   
   ////////////////////////////////////
@@ -484,13 +520,20 @@ function CommunityNode(parent, initial) {
   this.removeOutboundEdge = removeOutboundEdge;
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
   
+  
+  this.collapseNode = collapseNode;
+  
   this.dissolve = dissolve;
   this.getDissolveInfo = getDissolveInfo;
   
   this.collapse = collapse;
   this.expand = expand;
   
-  this.shape = shapeAll;
+  this.shapeNodes = shapeAll;
+  this.shapeInnerEdges = shapeEdges;
+  this.updateInnerEdges = updateEdges;
+  
+  
   this.addDistortion = addDistortion;
 
   this.getSourcePosition = getSourcePosition;
