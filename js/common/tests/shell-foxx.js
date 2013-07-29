@@ -153,7 +153,7 @@ function SetRoutesFoxxApplicationSpec () {
       } catch(e) {
         error = e;
       }
-      assertEqual(error, "URL has to be a String");
+      assertEqual(error, new Error("URL has to be a String"));
       assertEqual(routes.length, 0);
     },
 
@@ -167,7 +167,7 @@ function SetRoutesFoxxApplicationSpec () {
       } catch(e) {
         error = e;
       }
-      assertEqual(error, "URL has to be a String");
+      assertEqual(error, new Error("URL has to be a String"));
       assertEqual(routes.length, 0);
     },
 
@@ -181,7 +181,7 @@ function SetRoutesFoxxApplicationSpec () {
       } catch(e) {
         error = e;
       }
-      assertEqual(error, "URL has to be a String");
+      assertEqual(error, new Error("URL has to be a String"));
       assertEqual(routes.length, 0);
     }
   };
@@ -327,7 +327,7 @@ function DocumentationAndConstraintsSpec () {
         error = e;
       }
 
-      assertEqual(error, "Summary can't be longer than 60 characters");
+      assertEqual(error, new Error("Summary can't be longer than 60 characters"));
     },
 
     testDefineErrorResponse: function () {
@@ -509,7 +509,7 @@ function BaseMiddlewareWithoutTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "No template collection has been provided when creating a new FoxxApplication");
+      assertEqual(error, new Error("No template collection has been provided when creating a new FoxxApplication"));
     },
 
     testMiddlewareCallsTheAction: function () {
@@ -581,7 +581,7 @@ function BaseMiddlewareWithTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "Unknown template language 'pirateEngine'");
+      assertEqual(error, new Error("Unknown template language 'pirateEngine'"));
     },
 
     testRenderingATemplateWithAnNotExistingTemplate: function () {
@@ -599,7 +599,7 @@ function BaseMiddlewareWithTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "Template 'simple/path' does not exist");
+      assertEqual(error, new Error("Template 'simple/path' does not exist"));
     }
   };
 }
@@ -676,7 +676,7 @@ function FormatMiddlewareSpec () {
       request = { path: "test/1.html", headers: {} };
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
-      assertEqual(response.body, "Format 'html' is not allowed.");
+      assertEqual("<" + response.body + ">", "<Error: Format 'html' is not allowed.>");
       assertFalse(nextCalled);
     },
 
@@ -687,7 +687,7 @@ function FormatMiddlewareSpec () {
       middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
-      assertEqual(response.body, "Contradiction between Accept Header and URL.");
+      assertEqual("<" + response.body + ">", "<Error: Contradiction between Accept Header and URL.>");
       assertFalse(nextCalled);
     },
 
@@ -698,7 +698,7 @@ function FormatMiddlewareSpec () {
       middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
-      assertEqual(response.body, "Format 'undefined' is not allowed.");
+      assertEqual("<" + response.body + ">", "<Error: Format 'undefined' is not allowed.>");
       assertFalse(nextCalled);
     },
 
