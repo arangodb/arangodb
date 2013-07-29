@@ -54,6 +54,10 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   }
   
   var self = this,
+    adapter,
+    nodeShaper,
+    edgeShaper,
+    layouter,
     graphContainer,
     nodeContainer,
     edgeContainer,
@@ -69,7 +73,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       config.links = edges;
       config.width = width;
       config.height = height;
-      self.layouter = new ForceLayouter(config);
+      layouter = new ForceLayouter(config);
       return;
     }
     switch (config.type.toLowerCase()) {
@@ -78,7 +82,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         config.links = edges;
         config.width = width;
         config.height = height;
-        self.layouter = new ForceLayouter(config);
+        layouter = new ForceLayouter(config);
         break;
       default:
         throw "Sorry unknown layout type.";
@@ -86,13 +90,13 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   },
   
   nodeLimitCallBack = function(limit) {
-    self.adapter.setNodeLimit(limit, self.start);
+    adapter.setNodeLimit(limit, self.start);
   }, 
   
   parseZoomConfig = function(config) {
     if (config) {
       self.zoomManager = new ZoomManager(width, height, svg,
-        graphContainer, self.nodeShaper, self.edgeShaper,
+        graphContainer, nodeShaper, edgeShaper,
         {}, nodeLimitCallBack);
     }
   },
@@ -104,10 +108,10 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       zConf = config.zoom || false;
     parseLayouterConfig(config.layouter);
     edgeContainer = graphContainer.append("g");
-    self.edgeShaper = new EdgeShaper(edgeContainer, esConf);
+    edgeShaper = new EdgeShaper(edgeContainer, esConf);
     nodeContainer = graphContainer.append("g");
-    self.nodeShaper = new NodeShaper(nodeContainer, nsConf, idFunc);
-    self.layouter.setCombinedUpdateFunction(self.nodeShaper, self.edgeShaper);
+    nodeShaper = new NodeShaper(nodeContainer, nsConf, idFunc);
+    layouter.setCombinedUpdateFunction(nodeShaper, edgeShaper);
     parseZoomConfig(zConf);
   };
   
@@ -115,17 +119,17 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     case "arango":
       adapterConfig.width = width;
       adapterConfig.height = height;
-      self.adapter = new ArangoAdapter(
+      adapter = new ArangoAdapter(
         nodes,
         edges,
         adapterConfig
       );
-      self.adapter.setChildLimit(10);
+      adapter.setChildLimit(10);
       break;
     case "foxx":
       adapterConfig.width = width;
       adapterConfig.height = height;
-      self.adapter = new FoxxAdapter(
+      adapter = new FoxxAdapter(
         nodes,
         edges,
         adapterConfig.route,
@@ -133,7 +137,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       );
       break;
     case "json":
-      self.adapter = new JSONAdapter(
+      adapter = new JSONAdapter(
         adapterConfig.path,
         nodes,
         edges,
@@ -144,7 +148,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     case "preview":
       adapterConfig.width = width;
       adapterConfig.height = height;
-      self.adapter = new PreviewAdapter(
+      adapter = new PreviewAdapter(
         nodes,
         edges,
         adapterConfig
@@ -159,16 +163,16 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   parseConfig(config || {});
     
   self.start = function() {
-    self.layouter.stop();
-    self.nodeShaper.drawNodes(nodes);
-    self.edgeShaper.drawEdges(edges);
-    self.layouter.start();
+    layouter.stop();
+    nodeShaper.drawNodes(nodes);
+    edgeShaper.drawEdges(edges);
+    layouter.start();
   };
   
   self.loadGraph = function(nodeId, callback) {
 //    loadNode
 //  loadInitialNode
-    self.adapter.loadInitialNode(nodeId, function (node) {
+    adapter.loadInitialNode(nodeId, function (node) {
       if (node.errorCode) {
         callback(node);
         return;
@@ -183,7 +187,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   self.loadGraphWithAttributeValue = function(attribute, value, callback) {
 //    loadNodeFromTreeByAttributeValue
-    self.adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
+    adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
         callback(node);
         return;
@@ -201,19 +205,23 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       edges: edges,
       nodes: nodes,
       startCallback: self.start,
-      adapter: self.adapter,
-      reshapeNodes: self.nodeShaper.reshapeNodes
+      adapter: adapter,
+      reshapeNodes: nodeShaper.reshapeNodes
     },
     drag: {
-      layouter: self.layouter
+      layouter: layouter
     },
     nodeEditor: {
       nodes: nodes,
-      adapter: self.adapter
+      adapter: adapter
     },
     edgeEditor: {
       edges: edges,
-      adapter: self.adapter
+      adapter: adapter
     }  
-  };  
+  };
+  self.adapter = adapter;
+  self.nodeShaper = nodeShaper;
+  self.edgeShaper = edgeShaper;
+  self.layouter = layouter;
 }
