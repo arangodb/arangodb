@@ -7,18 +7,11 @@ Replication Events{#RefManualReplication}
 The replication logger in ArangoDB will log all events into the `_replication`
 system collection. It will only log events when the logger is enabled.
 
-Continuous Replication Log{#RefManualReplicationContinuous}
-===========================================================
-
-Replication log events are made available to replication clients via the API at
-`/_api/replication/logger-follow`. This API can be called by clients to fetch
-replication log events repeatedly.
-
 The following sections describe in detail the structure of the log events
 returned by this API.
 
 Replication Event Types{#RefManualReplicationEventTypes}
---------------------------------------------------------
+========================================================
 
 The following replication event types will be logged by ArangoDB 1.4:
 
@@ -53,7 +46,7 @@ value is a sequence number and is used by the replication applier to determine
 whether a replication event was already processed.
 
 Examples{#RefManualReplicationExamples}
----------------------------------------
+=======================================
 
 - 1000: the replication logger was stopped:
 
@@ -440,9 +433,3 @@ event that is neither a ocument/edge operation nor a `transaction commit` event)
 should abort the ongoing transaction and discard all buffered operations. It can then
 consider the current transaction as failed.
 
-Collections{#RefManualReplicationCollections}
----------------------------------------------
-
-The replication logger will only log events that affect user-defined collections. Any
-events for system collections (collections with names that start with an underscore) are
-not logged by the replication logger, and thus cannot be fetched from the continuous log.

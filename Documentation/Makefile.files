@@ -152,6 +152,7 @@ WIKI = \
 	UserManualArangosh \
 	UserManualFoxx \
 	UserManualFoxxManager \
+	UserManualReplication \
 	UserManualWebInterface \
 	jsUnity
 

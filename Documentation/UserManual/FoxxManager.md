@@ -64,9 +64,9 @@ There is currently one application installed. It is called "aardvark" and it is
 a system application. You can safely ignore system applications.
 
 We are now going to install the hello world application. It is called
-"hello-world" - no suprise there.
+"hello-foxx" - no suprise there.
 
-    unix> foxx-manager install hallo-world /example
+    unix> foxx-manager install hello-foxx /example
     Application app:hello-foxx:1.2.2 installed successfully at mount point /example
 
 The second parameter `/example` is the mount path of the application. You should now
@@ -87,7 +87,7 @@ command.
 
 You can install the application again under different mount path. 
 
-    unix> foxx-manager install hallo-world /hello
+    unix> foxx-manager install hello-foxx /hello
     Application app:hello-foxx:1.2.2 installed successfully at mount point /hello
 
 You now have to separated instances of the same application. They are completely
