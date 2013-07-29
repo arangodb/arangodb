@@ -28,5 +28,3 @@ TOC {#UserManualActionsTOC}
     - @ref UserManualActionsAdvancedBundles
     - @ref UserManualActionsAdvancedMiddleware
   - @ref UserManualActionsApplicationDeployment
-    - @ref UserManualActionsDeployingStaticPages
-    - @ref UserManualActionsDeployingModules
