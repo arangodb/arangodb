@@ -1996,15 +1996,7 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
     // get a new id
     trx->_id = TRI_NewTickVocBase();
 
-    // update hints
-    if (trx->_collections._length == 1) {
-      hints |= (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_COLLECTION;
-    }
-
-    if (trx->_type == TRI_TRANSACTION_READ) {
-      hints |= (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_READ_ONLY;
-    }
-
+    // set hints
     trx->_hints = hints;
   }
   else {
