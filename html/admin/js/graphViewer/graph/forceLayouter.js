@@ -52,17 +52,22 @@ function ForceLayouter(config) {
     gravity = config.gravity || 0.01, // 0.08
     charge = config.charge || -1000, // -240
     */
-    defaultCharge = config.charge ||  -600,
-    defaultDistance = config.distance || 160,
+    defaultCharge = config.charge || -600,
+    defaultDistance = config.distance || 80,
     gravity = config.gravity || 0.08,
     distance = function(d) {
+      var res = 0;
       if (d.source._isCommunity) {
-        return d.source.getDistance(defaultDistance);
+        res += d.source.getDistance(defaultDistance);
+      } else {
+        res += defaultDistance;
       }
       if (d.target._isCommunity) {
-        return d.target.getDistance(defaultDistance);
+        res += d.target.getDistance(defaultDistance);
+      } else {
+        res += defaultDistance;
       }
-      return defaultDistance;
+      return res;
     },
     charge = function(d) {
       if (d._isCommunity) {
