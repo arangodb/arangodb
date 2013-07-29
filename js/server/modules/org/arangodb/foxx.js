@@ -66,7 +66,7 @@ internal.createUrlObject = function (url, constraint, method) {
   var urlObject = {};
 
   if (!_.isString(url)) {
-    throw "URL has to be a String";
+    throw new Error("URL has to be a String");
   }
 
   urlObject.match = url;
@@ -83,10 +83,10 @@ internal.createUrlObject = function (url, constraint, method) {
 /// @fn JSF_foxx_application_initializer
 /// @brief Create a new Application
 ///
-/// @FUN{new Foxx.Application(@FA{applicationContext}, @FA{options})}
+/// @FUN{new FoxxApplication(@FA{applicationContext}, @FA{options})}
 ///
 /// This creates a new Application. The first argument is the application
-/// context avail in the variable `applicationContext`. The second one is an
+/// context available in the variable `applicationContext`. The second one is an
 /// options array with the following attributes:
 /// 
 /// * `urlPrefix`: All routes you define within will be prefixed with it.
@@ -169,7 +169,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_createRepository
 /// @brief Create a repository
 /// 
-/// @FUN{app.createRepository(@FA{name}, @FA{options})}
+/// @FUN{FoxxApplication::createRepository(@FA{name}, @FA{options})}
 /// 
 /// A repository is a module that gets data from the database or saves data to
 /// it. A model is a representation of data which will be used by the
@@ -274,7 +274,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_head
 /// @brief Handle a `head` request
 ///
-/// @FUN{app.head(@FA{path}, @FA{callback})}
+/// @FUN{FoxxApplication::head(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `head`.  You have to give a
 /// function as @FA{callback}. It will get a request and response object as its
@@ -290,7 +290,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_get
 /// @brief Manage a `get` request
 ///
-/// @FUN{app.get(@FA{path}, @FA{callback})}
+/// @FUN{FoxxApplication::get(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `get`.
 ///
@@ -317,7 +317,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_post
 /// @brief Tackle a `post` request
 ///
-/// @FUN{app.post(@FA{path}, @FA{callback})}
+/// @FUN{FoxxApplication::post(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `post`.  See above for the
 /// arguments you can give.
@@ -340,7 +340,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_put
 /// @brief Sort out a `put` request
 ///
-/// @FUN{app.post(@FA{path}, @FA{callback})}
+/// @FUN{FoxxApplication::put(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `put`.  See above for the arguments
 /// you can give.
@@ -363,7 +363,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_patch
 /// @brief Take charge of a `patch` request
 ///
-/// @FUN{app.patch(@FA{path}, @FA{callback})}
+/// @FUN{FoxxApplication::patch(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `patch`.  See above for the
 /// arguments you can give.
@@ -386,7 +386,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_delete
 /// @brief Respond to a `delete` request
 ///
-/// @FUN{app.patch(@FA{path}, @FA{callback})}
+/// @FUN{FoxxApplication::delete(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `delete`.  See above for the
 /// arguments you can give.
@@ -422,10 +422,12 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_before
 /// @brief Before
 ///
-/// The before function takes a path on which it should watch and a function
-/// that it should execute before the routing takes place. If you do omit the
-/// path, the function will be executed before each request, no matter the path.
-/// Your function gets a Request and a Response object.  An example:
+/// @FUN{FoxxApplication::before(@FA{path}, @FA{callback})}
+///
+/// The before function takes a @FA{path} on which it should watch and a
+/// function that it should execute before the routing takes place. If you do
+/// omit the path, the function will be executed before each request, no matter
+/// the path.  Your function gets a Request and a Response object.
 ///
 /// @EXAMPLES
 ///
@@ -436,18 +438,23 @@ _.extend(Application.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  before: function (path, func) {
+  before: function (path, func, options) {
     'use strict';
     if (_.isUndefined(func)) {
       func = path;
       path = "/*";
     }
-
+    options = options || { };
     this.routingInfo.middleware.push({
-      priority: 1,
+      priority: options.priority || 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) { func(req, res, opts); next(); }
+        callback: function (req, res, opts, next) {
+          var result = func(req, res, opts);
+          if (result || !options.honorResult) {
+            next();
+          }
+        }
       }
     });
   },
@@ -456,10 +463,10 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_after
 /// @brief After
 ///
+/// @FUN{FoxxApplication::after(@FA{path}, @FA{callback})}
+///
 /// This works pretty similar to the before function.  But it acts after the
 /// execution of the handlers (Big surprise, I suppose).
-///
-/// An example:
 ///
 /// @EXAMPLES
 ///
@@ -490,6 +497,8 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_helper
 /// @brief The ViewHelper concept
 ///
+/// @FUN{FoxxApplication::helper(@FA{name}, @FA{callback})}
+///
 /// If you want to use a function inside your templates, the ViewHelpers will
 /// come to rescue you. Define them on your app like in the example.
 ///
@@ -512,6 +521,8 @@ _.extend(Application.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_application_accepts
 /// @brief Shortform for using the FormatMiddleware
+///
+/// @FUN{FoxxApplication::helper(@FA{allowedFormats}, @FA{defaultFormat})}
 ///
 /// Shortform for using the FormatMiddleware
 /// 
@@ -566,28 +577,9 @@ _.extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_pathParam
-/// @brief Describe a Path Parameter
+/// @brief Describe a path parameter
 ///
-/// Describe a Path Paramter:
-/// 
-/// If you defined a route "/foxx/:id", you can constrain which format the id
-/// can have by giving a type. We currently support the following types:
-///
-/// * int
-/// * string
-///
-/// You can also provide a description of this parameter.
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.get("/foxx/:id", function {
-///       // Do something
-///     }).pathParam("id", {
-///       description: "Id of the Foxx",
-///       dataType: "int"
-///     });
-/// @endcode
+/// meow
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
@@ -613,11 +605,13 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_queryParam
 /// @brief Describe a Query Parameter
 ///
-/// Describe a Query Parameter:
+/// @FUN{FoxxApplication::queryParam(@FA{id}, @FA{options})}
+///
+/// Describe a query parameter:
 /// 
 /// If you defined a route "/foxx", you can constrain which format a query
-/// parameter (`/foxx?a=12`) can have by giving it a type.
-/// We currently support the following types:
+/// parameter (`/foxx?a=12`) can have by giving it a type.  We currently support
+/// the following types:
 ///
 /// * int
 /// * string
@@ -657,14 +651,16 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
-/// Set the summary for this route in the documentation
-/// Can't be longer than 60 characters
+/// @FUN{FoxxApplication::summary(@FA{description})}
+///
+/// Set the summary for this route in the documentation Can't be longer than 60
+/// characters
 ////////////////////////////////////////////////////////////////////////////////
 
   summary: function (summary) {
     'use strict';
     if (summary.length > 60) {
-      throw "Summary can't be longer than 60 characters";
+      throw new Error("Summary can't be longer than 60 characters");
     }
     this.route.docs.summary = summary;
     return this;
@@ -673,6 +669,8 @@ _.extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_notes
 /// @brief Set the notes for this route in the documentation
+///
+/// @FUN{FoxxApplication::notes(@FA{description})}
 ///
 /// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,8 +685,10 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_errorResponse
 /// @brief Document an error response
 ///
-/// Document the error response for a given error code with a reason for the
-/// occurrence.
+/// @FUN{FoxxApplication::errorResponse(@FA{code}, @FA{description})}
+///
+/// Document the error response for a given error @FA{code} with a reason for
+/// the occurrence.
 ////////////////////////////////////////////////////////////////////////////////
 
   errorResponse: function (code, reason) {
@@ -724,6 +724,8 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// @fn JSF_foxx_BaseMiddleware_request_body
 /// @brief The superfluous `body` function
 ///
+/// @FUN{request.body()}
+///
 /// Get the body of the request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -735,14 +737,15 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// @fn JSF_foxx_BaseMiddleware_request_params
 /// @brief The jinxed `params` function
 ///
+/// @FUN{request.params(@FA{key})}
+///
 /// Get the parameters of the request. This process is two-fold:
 ///
-/// 1. If you have defined an URL like `/test/:id` and the user
-/// requested `/test/1`, the call `params("id")` will return `1`.
-/// 2. If you have defined an URL like `/test` and the user gives a
-/// query component, the query parameters will also be returned.
-/// So for example if the user requested `/test?a=2`, the call
-/// `params("a")` will return `2`.
+/// - If you have defined an URL like `/test/:id` and the user requested
+///   `/test/1`, the call `params("id")` will return `1`.
+/// - If you have defined an URL like `/test` and the user gives a query
+///   component, the query parameters will also be returned.  So for example if
+///   the user requested `/test?a=2`, the call `params("a")` will return `2`.
 ////////////////////////////////////////////////////////////////////////////////
 
       params: function (key) {
@@ -759,7 +762,9 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// @fn JSF_foxx_BaseMiddleware_response_status
 /// @brief The straightforward `status` function
 ///
-/// Set the status code of your response, for example:
+/// @FUN{response.status(@FA{code})}
+///
+/// Set the status @FA{code} of your response, for example:
 ///
 /// @EXAMPLES
 ///
@@ -775,6 +780,8 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_BaseMiddleware_response_set
 /// @brief The radical `set` function
+///
+/// @FUN{response.set(@FA{key}, @FA{value})}
 ///
 /// Set a header attribute, for example:
 ///
@@ -816,8 +823,10 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// @fn JSF_foxx_BaseMiddleware_response_json
 /// @brief The magical `json` function
 ///
-/// Set the content type to JSON and the body to the
-/// JSON encoded object you provided.
+/// @FUN{response.json(@FA{object})}
+///
+/// Set the content type to JSON and the body to the JSON encoded @FA{object}
+/// you provided.
 ///
 /// @EXAMPLES
 ///
@@ -833,36 +842,39 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_BaseMiddleware_response_render
-/// @brief The mysterious `render` function
+/// @brief The magical `json` function
 ///
-/// If you initialize your Application with a `templateCollection`,
-/// you're in luck now.
+/// @FUN{response.render(@FA{templatePath}, @FA{data})}
+///
+/// If you initialize your Application with a `templateCollection`, you're in
+/// luck now.
+/// 
 /// It expects documents in the following form in this collection:
 ///
-///     {
-///       path: "high/way",
-///       content: "hello <%= username %>",
-///       contentType: "text/plain",
-///       templateLanguage: "underscore"
-///     }
+/// @code
+/// {
+///   path: "high/way",
+///   content: "hello <%= username %>",
+///   contentType: "text/plain",
+///   templateLanguage: "underscore"
+/// }
+/// @endcode
 ///
 /// The `content` is the string that will be rendered by the template
-/// processor. The `contentType` is the type of content that results
-/// from this call. And with the `templateLanguage` you can choose
-/// your template processor. There is only one choice now: `underscore`.
+/// processor. The `contentType` is the type of content that results from this
+/// call. And with the `templateLanguage` you can choose your template
+/// processor. There is only one choice now: `underscore`.
 ///
-/// If you call render, Application will look
-/// into the this collection and search by the path attribute.
-/// It will then render the template with the given data:
-///
+/// If you call render, Application will look into the this collection and
+/// search by the path attribute.  It will then render the template with the
+/// given data:
 ///
 /// Which would set the body of the response to `hello Application` with the
-/// template defined above. It will also set the `contentType` to
-/// `text/plain` in this case.
+/// template defined above. It will also set the `contentType` to `text/plain`
+/// in this case.
 ///
-/// In addition to the attributes you provided, you also have access to
-/// all your view helpers. How to define them? Read above in the
-/// ViewHelper section.
+/// In addition to the attributes you provided, you also have access to all your
+/// view helpers. How to define them? Read above in the ViewHelper section.
 ///
 /// @EXAMPLES
 ///
@@ -875,23 +887,28 @@ BaseMiddleware = function (templateCollection, helperCollection) {
         var template;
 
         if (_.isUndefined(templateCollection)) {
-          throw "No template collection has been provided when creating a new FoxxApplication";
+          throw new Error("No template collection has been provided when creating a new FoxxApplication");
         }
 
         template = templateCollection.firstExample({path: templatePath });
 
         if (_.isNull(template)) {
-          throw "Template '" + templatePath + "' does not exist";
+          throw new Error("Template '" + templatePath + "' does not exist");
         }
 
         if (template.templateLanguage !== "underscore") {
-          throw "Unknown template language '" + template.templateLanguage + "'";
+          throw new Error("Unknown template language '" + template.templateLanguage + "'");
         }
 
         this.body = _.template(template.content, _.extend(data, helperCollection));
         this.contentType = template.contentType;
       }
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_BaseMiddleware_response_trace
+/// @brief trace
+////////////////////////////////////////////////////////////////////////////////
 
     var trace = options.isDevelopment;
     if (!trace && options.hasOwnProperty("options")) {
@@ -907,7 +924,9 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 
     _.extend(request, requestFunctions);
     _.extend(response, responseFunctions);
+
     next();
+
     if (trace) {
       if (response.hasOwnProperty("body")) {
         console.log("%s, outgoing response of type %s, body length: %d",
@@ -990,11 +1009,11 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
       }
 
       if (parsed.format !== mimeToUrlFormat(parsed.contentType)) {
-        throw "Contradiction between Accept Header and URL.";
+        throw new Error("Contradiction between Accept Header and URL.");
       }
 
       if (allowedFormats.indexOf(parsed.format) < 0) {
-        throw "Format '" + parsed.format + "' is not allowed.";
+        throw new Error("Format '" + parsed.format + "' is not allowed.");
       }
 
       return parsed;
@@ -1030,8 +1049,9 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// @fn JSF_foxx_model_initializer
 /// @brief Create a new instance of Model
 ///
-/// If you initialize a model, you can give it initial data
-/// as an object.
+/// @FUN{new FoxxModel(@FA{data})}
+///
+/// If you initialize a model, you can give it initial @FA{data} as an object.
 ///
 /// @EXAMPLES
 ///
@@ -1054,7 +1074,10 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_get
 /// @brief Get the value of an attribute
 ///
+/// @FUN{FoxxModel::get(@FA{name})}
+///
 /// Get the value of an attribute
+/// 
 /// @EXAMPLES
 ///
 /// @code
@@ -1074,7 +1097,10 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_set
 /// @brief Set the value of an attribute
 ///
+/// @FUN{FoxxModel::set(@FA{name}, @FA{value})}
+///
 /// Set the value of an attribute
+/// 
 /// @EXAMPLES
 ///
 /// @code
@@ -1094,7 +1120,10 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_has
 /// @brief Returns true if attribute is set to a non-null or non-undefined value
 ///
+/// @FUN{FoxxModel::has(@FA{name})}
+///
 /// Returns true if the attribute is set to a non-null or non-undefined value.
+///
 /// @EXAMPLES
 ///
 /// @code
@@ -1116,6 +1145,8 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_forDB
 /// @brief Return a copy of the model which can be saved into ArangoDB
 ///
+/// @FUN{FoxxModel::forDB()}
+///
 /// Return a copy of the model which can be saved into ArangoDB
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1126,6 +1157,8 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_forClient
 /// @brief Return a copy of the model which can be returned to the client
+///
+/// @FUN{FoxxModel::forClient()}
 ///
 /// Return a copy of the model which you can send to the client.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1139,6 +1172,8 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_extend
 /// @brief Extend the Model prototype to add or overwrite methods.
 ///
+/// @FUN{FoxxModel::extent(@FA{prototype})}
+///
 /// Extend the Model prototype to add or overwrite methods.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1151,6 +1186,8 @@ Model.extend = backbone_helpers.extend;
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_initializer
 /// @brief Create a new instance of Repository
+///
+/// @FUN{new FoxxRepository(@FA{prefix}, @FA{collection}, @FA{model})}
 ///
 /// Create a new instance of Repository
 /// 
