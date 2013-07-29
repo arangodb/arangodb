@@ -438,22 +438,24 @@ _.extend(Application.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  before: function (path, func, honorResult) {
+  before: function (path, func, options) {
     'use strict';
     if (_.isUndefined(func)) {
       func = path;
       path = "/*";
     }
-    var f;
-    if (honorResult) {
-      f = function (req, res, opts, next) { if (func(req, res, opts)) { next(); } };
-    } else {
-      f = function (req, res, opts, next) { func(req, res, opts); next(); };
-    }
+    options = options || { };
     this.routingInfo.middleware.push({
-      priority: 1,
+      priority: options.priority || 1,
       url: {match: path},
-      action: {callback: f}
+      action: {
+        callback: function (req, res, opts, next) {
+          var result = func(req, res, opts);
+          if (result || !options.honorResult) {
+            next();
+          }
+        }
+      }
     });
   },
 
@@ -575,30 +577,9 @@ _.extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_pathParam
-/// @brief Describe a Path Parameter
+/// @brief Describe a path parameter
 ///
-/// @FUN{FoxxApplication::pathParam(@FA{id}, @FA{options})}
-///
-/// Describe a path paramter:
-/// 
-/// If you defined a route "/foxx/:id", you can constrain which format the id
-/// can have by giving a type. We currently support the following types:
-///
-/// * int
-/// * string
-///
-/// You can also provide a description of this parameter.
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.get("/foxx/:id", function {
-///       // Do something
-///     }).pathParam("id", {
-///       description: "Id of the Foxx",
-///       dataType: "int"
-///     });
-/// @endcode
+/// meow
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
