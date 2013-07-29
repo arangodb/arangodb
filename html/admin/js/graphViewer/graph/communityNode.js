@@ -76,13 +76,13 @@ function CommunityNode(parent, initial) {
       return def;
     },
   
-    getSourcePosition = function(e) {    
+    getSourcePosition = function(e) {
       if (self._expanded) {
-        var p = self.position,
-          diff = e._source.position,
-          x = p.x + diff.x,
-          y = p.y + diff.y,
-          z = p.z + diff.z;
+        var d = self.position,
+          p = e._source.position,
+          x = p.x * d.z + d.x,
+          y = p.y * d.z + d.y,
+          z = p.z * d.z;
         return {
           x: x,
           y: y,
@@ -95,11 +95,11 @@ function CommunityNode(parent, initial) {
   
     getTargetPosition = function(e) {
       if (self._expanded) {
-        var p = self.position,
-          diff = e._target.position,
-          x = p.x + p.z * diff.x,
-          y = p.y + p.z * diff.y,
-          z = p.z + diff.z;
+        var d = self.position,
+          p = e._target.position,
+          x = p.x * d.z + d.x,
+          y = p.y * d.z + d.y,
+          z = p.z * d.z;
         return {
           x: x,
           y: y,
@@ -418,13 +418,6 @@ function CommunityNode(parent, initial) {
           n.position.x /= self.position.z;
           n.position.y /= self.position.z;
           n.position.z /= self.position.z;
-          /*
-          n.position = {
-            x: n.x,
-            y: n.y,
-            z: 1
-          };
-          */
         });
         distFunc.focus(oldFocus);
       }
