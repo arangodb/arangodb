@@ -94,6 +94,29 @@ logger.state = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief configures the replication logger
+////////////////////////////////////////////////////////////////////////////////
+  
+logger.properties = function (config) {
+  'use strict';
+
+  var db = internal.db;
+
+  var requestResult;
+  if (config === undefined) {
+    requestResult = db._connection.GET("_api/replication/logger-config");
+  }
+  else {
+    requestResult = db._connection.PUT("_api/replication/logger-config",
+      JSON.stringify(config));
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
   

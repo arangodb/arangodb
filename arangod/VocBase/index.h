@@ -344,19 +344,23 @@ void TRI_FreeIndex (TRI_index_t* const);
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (struct TRI_primary_collection_s* collection, TRI_index_t* idx);
+bool TRI_RemoveIndexFile (struct TRI_primary_collection_s*, 
+                          TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (struct TRI_primary_collection_s*, TRI_index_t*);
+int TRI_SaveIndex (struct TRI_primary_collection_s*, 
+                   TRI_index_t*,
+                   TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*, TRI_idx_iid_t);
+TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*, 
+                              TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a basic index description as JSON
@@ -364,25 +368,28 @@ TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*, TRI_idx_iid_t);
 /// specialised index 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*, TRI_index_t*);
+TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*, 
+                           TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a result set returned by a hash index query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyIndexResult (TRI_index_result_t* result);
+void TRI_DestroyIndexResult (TRI_index_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a path vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src);
+void TRI_CopyPathVector (TRI_vector_t*, 
+                         TRI_vector_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies all pointers from a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyFieldsVector (TRI_vector_string_t* dst, TRI_vector_pointer_t* src);
+void TRI_CopyFieldsVector (TRI_vector_string_t*, 
+                           TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a path vector into a field list
@@ -391,8 +398,8 @@ void TRI_CopyFieldsVector (TRI_vector_string_t* dst, TRI_vector_pointer_t* src);
 /// belong to the shaper.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const** TRI_FieldListByPathList (TRI_shaper_t* shaper, 
-                                      TRI_vector_t* paths);
+char const** TRI_FieldListByPathList (TRI_shaper_t*, 
+                                      TRI_vector_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -473,7 +480,8 @@ void TRI_FreeEdgeIndex (TRI_index_t*);
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, size_t);
+PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, 
+                                               size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a priority queue index
@@ -513,7 +521,8 @@ void TRI_FreePriorityQueueIndex (TRI_index_t*);
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_index_operator_t*);
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, 
+                                                  TRI_index_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skiplist index
@@ -553,7 +562,8 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query);
+struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, 
+                                                 const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a fulltext index
@@ -568,13 +578,13 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyFulltextIndex (TRI_index_t* idx);
+void TRI_DestroyFulltextIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeFulltextIndex (TRI_index_t* idx);
+void TRI_FreeFulltextIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -597,7 +607,9 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx);
 /// @brief returns an iterator for a lookup query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, TRI_index_operator_t*, bool (*filter) (TRI_index_iterator_t*) );
+TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, 
+                                               TRI_index_operator_t*, 
+                                               bool (*filter) (TRI_index_iterator_t*) );
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,13 +628,13 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s*,
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBitarrayIndex (TRI_index_t* idx);
+void TRI_DestroyBitarrayIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBitarrayIndex (TRI_index_t* idx);
+void TRI_FreeBitarrayIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

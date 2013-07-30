@@ -35,6 +35,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/replication-logger.h"
+#include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
 
 #define LOG_TRX(trx, level, format, ...) \
@@ -846,7 +847,7 @@ static int WriteOperationsSingle (TRI_transaction_t* const trx) {
     }
 #ifdef TRI_ENABLE_REPLICATION
     else if (trx->_replicate) {
-      TRI_LogTransactionReplication(trx->_context->_vocbase, trx);
+      TRI_LogTransactionReplication(trx->_context->_vocbase, trx, trx->_generatingServer);
     }
 #endif    
 
@@ -965,7 +966,7 @@ static int WriteOperationsMulti (TRI_transaction_t* const trx,
       
 #ifdef TRI_ENABLE_REPLICATION
         if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
-          TRI_LogTransactionReplication(trx->_context->_vocbase, trx);
+          TRI_LogTransactionReplication(trx->_context->_vocbase, trx, trx->_generatingServer);
         }
 #endif        
       }
@@ -1555,6 +1556,7 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
+                                          TRI_server_id_t generatingServer,
                                           bool replicate,
                                           double timeout,
                                           bool waitForSync) {
@@ -1567,25 +1569,26 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
     return NULL;
   }
 
-  trx->_context       = context;
+  trx->_context           = context;
+  trx->_generatingServer  = generatingServer;
 
   // note: the real transaction id will be acquired on transaction start
-  trx->_id            = 0; 
+  trx->_id                = 0; 
   
-  trx->_status        = TRI_TRANSACTION_CREATED;
-  trx->_type          = TRI_TRANSACTION_READ;
-  trx->_hints         = 0;
-  trx->_nestingLevel  = 0;
-  trx->_timeout       = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
-  trx->_hasOperations = false;
-  trx->_replicate     = replicate;
-  trx->_waitForSync   = waitForSync;
+  trx->_status            = TRI_TRANSACTION_CREATED;
+  trx->_type              = TRI_TRANSACTION_READ;
+  trx->_hints             = 0;
+  trx->_nestingLevel      = 0;
+  trx->_timeout           = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
+  trx->_hasOperations     = false;
+  trx->_replicate         = replicate;
+  trx->_waitForSync       = waitForSync;
 
   if (timeout > 0.0) {
-    trx->_timeout     = (uint64_t) (timeout * 1000000.0);
+    trx->_timeout         = (uint64_t) (timeout * 1000000.0);
   }
   else if (timeout == 0.0) {
-    trx->_timeout     = (uint64_t) 0;
+    trx->_timeout         = (uint64_t) 0;
   }
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
@@ -1927,7 +1930,8 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                  (TRI_document_collection_t*) primary, 
                                  type, 
                                  marker, 
-                                 oldData);
+                                 oldData,
+                                 trx->_generatingServer);
     }
 #endif    
   }
@@ -2130,7 +2134,11 @@ int TRI_ExecuteSingleOperationTransaction (TRI_vocbase_t* vocbase,
   cid = collection->_cid;
 
   // write the data using a one-operation transaction  
-  trx = TRI_CreateTransaction(vocbase->_transactionContext, replicate, 0.0, false);
+  trx = TRI_CreateTransaction(vocbase->_transactionContext, 
+                              TRI_GetServerId(), 
+                              replicate, 
+                              0.0, 
+                              false);
 
   if (trx == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;

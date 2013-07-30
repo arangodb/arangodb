@@ -51,7 +51,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_CreateFetcherReplication (TRI_vocbase_t* vocbase,
-                                    TRI_replication_apply_configuration_t const* configuration,
+                                    TRI_replication_applier_configuration_t const* configuration,
                                     bool forceFullSynchronisation) {
   ReplicationFetcher* f = new ReplicationFetcher(vocbase, configuration, forceFullSynchronisation);
 

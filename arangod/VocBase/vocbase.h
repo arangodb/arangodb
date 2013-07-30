@@ -338,6 +338,7 @@ typedef struct TRI_vocbase_s {
   bool                      _forceSyncProperties; // force syncing of shape data to disk
 #ifdef TRI_ENABLE_REPLICATION
   bool                      _replicationEnableLogger;
+  bool                      _replicationLogRemoteChanges;
 #endif
   bool                       _isSystem;
   bool                       _requireAuthentication;  
@@ -452,6 +453,7 @@ typedef struct TRI_vocbase_defaults_s {
   bool                  authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
   bool                  replicationEnableLogger;
+  bool                  replicationLogRemoteChanges;
 #endif  
 }
 TRI_vocbase_defaults_t;
@@ -593,7 +595,8 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*,
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t*,
                                                             char const*,
-                                                            const TRI_col_type_t);
+                                                            const TRI_col_type_t,
+                                                            TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
@@ -601,7 +604,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t*,
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
                                                 struct TRI_col_info_s*,
-                                                TRI_voc_cid_t cid);
+                                                TRI_voc_cid_t cid,
+                                                TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a (document) collection
@@ -615,14 +619,17 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase (TRI_vocbase_t*, 
-                               TRI_vocbase_col_t*);
+                               TRI_vocbase_col_t*,
+                               TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RenameCollectionVocBase (TRI_vocbase_t*, 
-                                 TRI_vocbase_col_t*, char const*);
+                                 TRI_vocbase_col_t*, 
+                                 char const*,
+                                 TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage, loading or manifesting it

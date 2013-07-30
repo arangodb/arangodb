@@ -262,6 +262,7 @@ static void CopyDefaults (TRI_vocbase_defaults_t const* src,
   dst->authenticateSystemOnly       = src->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
   dst->replicationEnableLogger      = src->replicationEnableLogger;
+  dst->replicationLogRemoteChanges  = src->replicationLogRemoteChanges;
 #endif
 }  
 
@@ -282,6 +283,7 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
   vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
   vocbase->_replicationEnableLogger      = defaults->replicationEnableLogger;
+  vocbase->_replicationLogRemoteChanges  = defaults->replicationLogRemoteChanges;
 #endif
 }
 
@@ -302,6 +304,7 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
   defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
   defaults->replicationEnableLogger     = vocbase->_replicationEnableLogger;
+  defaults->replicationLogRemoteChanges = vocbase->_replicationLogRemoteChanges;
 #endif
 }
 
@@ -460,7 +463,8 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, 
-                                  TRI_vocbase_col_t* collection) {
+                                  TRI_vocbase_col_t* collection,
+                                  TRI_server_id_t generatingServer) {
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
@@ -471,7 +475,10 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
 #ifdef TRI_ENABLE_REPLICATION
-  TRI_LogDropCollectionReplication(vocbase, collection->_cid, collection->_name);
+  TRI_LogDropCollectionReplication(vocbase, 
+                                   collection->_cid, 
+                                   collection->_name, 
+                                   generatingServer);
 #endif
 
   return true;
@@ -1672,7 +1679,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
 
 
 #ifdef TRI_ENABLE_REPLICATION
-  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
+  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase, defaults);
 
   if (vocbase->_replicationLogger == NULL) {
     LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
@@ -2045,7 +2052,8 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocbase,
                                                             char const* name,
-                                                            const TRI_col_type_t type) {
+                                                            const TRI_col_type_t type,
+                                                            TRI_server_id_t generatingServer) {
   TRI_vocbase_col_t* found;
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -2066,7 +2074,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
                            (TRI_col_type_e) type, 
                            (TRI_voc_size_t) vocbase->_defaultMaximalSize, 
                            NULL);
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, generatingServer);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return collection;
@@ -2084,7 +2092,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_col_info_t* parameter,
-                                                TRI_voc_cid_t cid) {
+                                                TRI_voc_cid_t cid,
+                                                TRI_server_id_t generatingServer) {
   TRI_vocbase_col_t* collection;
   TRI_collection_t* col;
   TRI_primary_collection_t* primary = NULL;
@@ -2185,7 +2194,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = primary;
-  TRI_CopyString(collection->_path, primary->base._directory, sizeof(collection->_path));
+  TRI_CopyString(collection->_path, 
+                 primary->base._directory, 
+                 sizeof(collection->_path));
   
   // grab a read-lock on the collection so no one else can unload it
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -2200,7 +2211,11 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 #ifdef TRI_ENABLE_REPLICATION
   // replicate and finally unlock the collection
   json = TRI_CreateJsonCollectionInfo(&col->_info);
-  TRI_LogCreateCollectionReplication(vocbase, col->_info._cid, col->_info._name, json);
+  TRI_LogCreateCollectionReplication(vocbase, 
+                                     col->_info._cid, 
+                                     col->_info._name, 
+                                     json,
+                                     generatingServer);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 #endif
 
@@ -2276,7 +2291,8 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, 
-                               TRI_vocbase_col_t* collection) {
+                               TRI_vocbase_col_t* collection,
+                               TRI_server_id_t generatingServer) {
   int res;
   
   if (! collection->_canDrop) {
@@ -2295,7 +2311,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
-    UnregisterCollection(vocbase, collection);
+    UnregisterCollection(vocbase, collection, generatingServer);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2353,7 +2369,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
 
-    UnregisterCollection(vocbase, collection);
+    UnregisterCollection(vocbase, collection, generatingServer);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2386,7 +2402,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    UnregisterCollection(vocbase, collection);
+    UnregisterCollection(vocbase, collection, generatingServer);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2431,7 +2447,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, 
                                  TRI_vocbase_col_t* collection, 
-                                 char const* newName) {
+                                 char const* newName,
+                                 TRI_server_id_t generatingServer) {
   TRI_col_info_t info;
   void const* found;
   char* oldName;
@@ -2449,6 +2466,10 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   oldName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, collection->_name);
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  if (oldName == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   if (TRI_EqualString(oldName, newName)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
@@ -2559,7 +2580,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   // collection is loaded
   // .............................................................................
 
-  else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+  else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || 
+           collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
 #ifdef TRI_ENABLE_REPLICATION
     TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 #endif
@@ -2615,7 +2637,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
 #ifdef TRI_ENABLE_REPLICATION
   // stay inside the outer lock to protect against unloading
-  TRI_LogRenameCollectionReplication(vocbase, collection->_cid, newName);
+  TRI_LogRenameCollectionReplication(vocbase, collection->_cid, newName, generatingServer);
 #endif
   
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
