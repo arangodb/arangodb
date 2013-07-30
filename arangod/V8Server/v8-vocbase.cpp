@@ -45,6 +45,7 @@
 #include "BasicsC/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "Replication/InitialSyncer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
@@ -69,6 +70,7 @@
 #include "VocBase/key-generator.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
+#include "VocBase/server-id.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 #include "RestServer/VocbaseManager.h"
@@ -639,7 +641,11 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
       
   if (type == TRI_IDX_TYPE_HASH_INDEX) {
     if (create) {
-      idx = TRI_EnsureHashIndexDocumentCollection(document, &attributes, unique, &created);
+      idx = TRI_EnsureHashIndexDocumentCollection(document, 
+                                                  &attributes, 
+                                                  unique, 
+                                                  &created, 
+                                                  TRI_GetServerId());
 
       if (idx == 0) {
         res = TRI_errno();
@@ -653,7 +659,11 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   }
   else if (type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (create) {
-      idx = TRI_EnsureSkiplistIndexDocumentCollection(document, &attributes, unique, &created);
+      idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
+                                                      &attributes, 
+                                                      unique, 
+                                                      &created, 
+                                                      TRI_GetServerId());
 
       if (idx == 0) {
         res = TRI_errno();
@@ -774,7 +784,12 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (create) {
-    idx = TRI_EnsureFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, minWordLength, &created);
+    idx = TRI_EnsureFulltextIndexDocumentCollection(document, 
+                                                    attributeName.c_str(), 
+                                                    indexSubstrings, 
+                                                    minWordLength, 
+                                                    &created, 
+                                                    TRI_GetServerId());
 
     if (idx == 0) {
       res = TRI_errno();
@@ -782,7 +797,10 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   }
   else {
     trx.lockRead();
-    idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, minWordLength);
+    idx = TRI_LookupFulltextIndexDocumentCollection(document, 
+                                                    attributeName.c_str(), 
+                                                    indexSubstrings, 
+                                                    minWordLength);
     trx.unlockRead();
   }
 
@@ -1640,7 +1658,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
   }
 
-  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
+  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, 
+                                                                    &parameter, 
+                                                                    0, 
+                                                                    TRI_GetServerId());
 
   TRI_FreeCollectionInfoOptions(&parameter);
 
@@ -1702,7 +1723,13 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       ignoreNull = TRI_ObjectToBoolean(argv[1]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, unique, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, 
+                                                *loc, 
+                                                false, 
+                                                unique, 
+                                                ignoreNull, 
+                                                &created, 
+                                                TRI_GetServerId());
   }
 
   // .............................................................................
@@ -1721,7 +1748,13 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), unique, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, 
+                                                *loc, 
+                                                TRI_ObjectToBoolean(argv[1]), 
+                                                unique, 
+                                                ignoreNull, 
+                                                &created, 
+                                                TRI_GetServerId());
   }
 
   // .............................................................................
@@ -1746,7 +1779,13 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, unique, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex2DocumentCollection(document, 
+                                                *lat, 
+                                                *lon, 
+                                                unique, 
+                                                ignoreNull, 
+                                                &created, 
+                                                TRI_GetServerId());
   }
 
   // .............................................................................
@@ -3036,8 +3075,6 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 /// @brief start the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -3060,13 +3097,9 @@ static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& arg
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3090,13 +3123,9 @@ static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3123,13 +3152,154 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   return scope.Close(result);
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication logger manually
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0 || vocbase->_replicationLogger == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+  
+  if (argv.Length() == 0) {
+    // no argument: return the current configuration
+    
+    TRI_replication_logger_configuration_t config;
+    
+    TRI_ReadLockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
+    TRI_CopyConfigurationReplicationLogger(&vocbase->_replicationLogger->_configuration, &config);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
+  
+    TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
+    
+    if (json == 0) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
+    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  
+    return scope.Close(result);
+  }
+
+  else {
+    // set the configuration
+
+    if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+      TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_CONFIGURE(<configuration>)");
+    }
+
+    TRI_replication_logger_configuration_t config;
+
+    // fill with previous configuration
+    TRI_ReadLockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
+    TRI_CopyConfigurationReplicationLogger(&vocbase->_replicationLogger->_configuration, &config);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
+
+    // treat the argument as an object from now on
+    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+
+    if (object->Has(TRI_V8_SYMBOL("logRemoteChanges"))) {
+      if (object->Get(TRI_V8_SYMBOL("logRemoteChanges"))->IsBoolean()) {
+        config._logRemoteChanges = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("logRemoteChanges")));
+      }
+    }
+
+    int res = TRI_ConfigureReplicationLogger(vocbase->_replicationLogger, &config);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    
+    TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
+
+    if (json == 0) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
+    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  
+    return scope.Close(result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sync data from a remote master
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNCHRONISE(<config>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+    
+  // treat the argument as an object from now on
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+
+  string endpoint;
+  if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
+    endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+  }
+
+  string username;
+  if (object->Has(TRI_V8_SYMBOL("username"))) {
+    username = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("username")));
+  }
+  
+  string password;
+  if (object->Has(TRI_V8_SYMBOL("password"))) {
+    password = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("password")));
+  }
+  
+  bool verbose = true;
+  if (object->Has(TRI_V8_SYMBOL("verbose"))) {
+    verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("verbose")));
+  }
+
+  if (endpoint.empty()) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<endpoint> must be a valid endpoint")
+  }
+
+  TRI_replication_applier_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+
+  string errorMsg = "";
+  InitialSyncer syncer(vocbase, &config, verbose);
+  TRI_DestroyConfigurationReplicationApplier(&config);
+
+  int res = TRI_ERROR_NO_ERROR;
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  try {
+    res = syncer.run(errorMsg);
+
+    result->Set(v8::String::New("lastLogTick"), V8TickId(syncer.getLastLogTick()));
+    result->Set(v8::String::New("collectionsSynced"), v8::Number::New(syncer.getNumCollections()));
+  }
+  catch (...) {
+  }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot sync from remote endpoint: " + errorMsg);
+  }
+
+  return scope.Close(result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3140,11 +3310,10 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
   
-  
   if (argv.Length() == 0) {
     // no argument: return the current configuration
     
-    TRI_replication_apply_configuration_t config;
+    TRI_replication_applier_configuration_t config;
     TRI_InitConfigurationReplicationApplier(&config);
     
     TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
@@ -3153,6 +3322,10 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
   
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
     TRI_DestroyConfigurationReplicationApplier(&config);
+    
+    if (json == 0) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
 
     v8::Handle<v8::Value> result = TRI_ObjectJson(json);
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -3167,9 +3340,14 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
       TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
     }
 
-    TRI_replication_apply_configuration_t config;
-
+    TRI_replication_applier_configuration_t config;
     TRI_InitConfigurationReplicationApplier(&config);
+
+    // fill with previous configuration
+    TRI_ReadLockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
+    TRI_CopyConfigurationReplicationApplier(&vocbase->_replicationApplier->_configuration, &config);
+    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationApplier->_statusLock);
+
 
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
@@ -3182,6 +3360,9 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
       }
     }
 
+    if (config._endpoint != 0) {
+      TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
+    }
     config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
 
     if (object->Has(TRI_V8_SYMBOL("requestTimeout"))) {
@@ -3222,23 +3403,28 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
     int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
 
-    TRI_DestroyConfigurationReplicationApplier(&config);
-
     if (res != TRI_ERROR_NO_ERROR) {
+      TRI_DestroyConfigurationReplicationApplier(&config);
       TRI_V8_EXCEPTION(scope, res);
     }
 
-    return scope.Close(v8::True());
+    TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
+    TRI_DestroyConfigurationReplicationApplier(&config);
+    
+    if (json == 0) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
+    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+    return scope.Close(result);
   }
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3250,15 +3436,20 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
   }
   
   if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<fullSync>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<from>)");
   }
 
-  bool fullSync = false;
-  if (argv.Length() > 0) {
-    fullSync = TRI_ObjectToBoolean(argv[0]);
+  TRI_voc_tick_t initialTick = 0;
+  bool useTick = false;
+
+  if (argv.Length() == 1) {
+    initialTick = TRI_ObjectToUInt64(argv[0], true); 
+    useTick = true;
   }
 
-  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, fullSync);
+  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier,
+                                        initialTick,
+                                        useTick);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication applier");
@@ -3267,13 +3458,9 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3297,13 +3484,9 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3330,13 +3513,9 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
   return scope.Close(result);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier and "forget" all state
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3359,8 +3538,6 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
 
   return scope.Close(v8::True());
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -4345,7 +4522,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
-  res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
+  res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetServerId());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
@@ -4422,7 +4599,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // inside a write transaction
   // .............................................................................
 
-  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid);
+  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, TRI_GetServerId());
 
   // .............................................................................
   // outside a write transaction
@@ -4512,7 +4689,11 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
                                TRI_CAP_CONSTRAINT_MIN_SIZE_STR);
   }
 
-  idx = TRI_EnsureCapConstraintDocumentCollection(document, count, size, &created);
+  idx = TRI_EnsureCapConstraintDocumentCollection(document, 
+                                                  count, 
+                                                  size, 
+                                                  &created, 
+                                                  TRI_GetServerId());
 
   if (idx == 0) {
     ReleaseCollection(collection);
@@ -4699,11 +4880,18 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   if (ok) {
     char* errorStr = 0;
-    bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(document, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
+    bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(document, 
+                                                              &attributes, 
+                                                              &values, 
+                                                              supportUndef, 
+                                                              &indexCreated, 
+                                                              &errorCode, 
+                                                              &errorStr,
+                                                              TRI_GetServerId());
 
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
-         errorString = "index could not be created from Simple Collection";
+         errorString = "index could not be created from document collection";
       }
       else {
          errorString = string(errorStr);
@@ -5111,7 +5299,11 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Actually create the index here. Note that priority queue is never unique.
   // .............................................................................
 
-  idx = TRI_EnsurePriorityQueueIndexDocumentCollection(document, &attributes, false, &created);
+  idx = TRI_EnsurePriorityQueueIndexDocumentCollection(document, 
+                                                       &attributes, 
+                                                       false, 
+                                                       &created, 
+                                                       TRI_GetServerId());
 
   // .............................................................................
   // Remove the memory allocated to the list of attributes used for the hash index
@@ -5642,11 +5834,13 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         TRI_V8_EXCEPTION(scope, res);
       }
 
-#ifdef TRI_ENABLE_REPLICATION
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
-      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, base->_info._cid, base->_info._name, json); 
+      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, 
+                                                   base->_info._cid, 
+                                                   base->_info._name, 
+                                                   json, 
+                                                   TRI_GetServerId()); 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-#endif
     }
   }
 
@@ -5787,7 +5981,10 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
-  int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
+  int res = TRI_RenameCollectionVocBase(collection->_vocbase, 
+                                        collection, 
+                                        name.c_str(), 
+                                        TRI_GetServerId());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot rename collection");
@@ -7335,9 +7532,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
-#ifdef TRI_ENABLE_REPLICATION
   v8::Local<v8::String> keyReplicationEnableLogger = v8::String::New("replicationEnableLogger");
-#endif
 
   // get database defaults from system vocbase
   TRI_vocbase_defaults_t defaults;
@@ -7379,11 +7574,9 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
 
-#ifdef TRI_ENABLE_REPLICATION    
     if (options->Has(keyReplicationEnableLogger)) {
       defaults.replicationEnableLogger = options->Get(keyReplicationEnableLogger)->BooleanValue();
     }
-#endif
   }
 
   // load vocbase with defaults
@@ -8302,16 +8495,16 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor);
   TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
   
-#ifdef TRI_ENABLE_REPLICATION
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication);
-#endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);

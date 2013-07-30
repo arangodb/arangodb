@@ -37,11 +37,9 @@
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/server-id.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-
-
-#ifdef TRI_ENABLE_REPLICATION
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                REPLICATION LOGGER
@@ -780,11 +778,11 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStateReplicationLogger (TRI_replication_logger_t* logger,
-                                      TRI_replication_log_state_t* dst) {
+                                      TRI_replication_logger_state_t* dst) {
   assert(logger->_state._active);
 
   TRI_LockSpin(&logger->_idLock);
-  memcpy(dst, &logger->_state, sizeof(TRI_replication_log_state_t));
+  memcpy(dst, &logger->_state, sizeof(TRI_replication_logger_state_t));
   TRI_UnlockSpin(&logger->_idLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -828,7 +826,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
     
     parameter._isSystem = true;
 
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, TRI_GetServerId());
     TRI_FreeCollectionInfoOptions(&parameter);
     
     if (collection != NULL) {
@@ -844,7 +842,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
   cid = collection->_cid;
 
-  trx = TRI_CreateTransaction(vocbase->_transactionContext, false, 0.0, false);
+  trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_GetServerId(), false, 0.0, false);
 
   if (trx == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -950,7 +948,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStateInactive (TRI_vocbase_t* vocbase,
-                             TRI_replication_log_state_t* dst) {
+                             TRI_replication_logger_state_t* dst) {
   TRI_vocbase_col_t* col;
   TRI_primary_collection_t* primary;
  
@@ -1165,6 +1163,37 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lock the logger and check for inclusion of an event
+/// if this function returns true, it has acquired a read-lock that the caller
+/// must unlock!
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CheckAndLock (TRI_replication_logger_t* logger,
+                          TRI_server_id_t generatingServer) {
+  // acquire read-lock
+  TRI_ReadLockReadWriteLock(&logger->_statusLock);
+
+  if (! logger->_state._active) {
+    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
+
+    return false;
+  }
+
+  if (generatingServer != 0 &&
+      generatingServer != logger->_localServerId &&
+      ! logger->_configuration._logRemoteChanges) {
+    // read-unlock the read-lock
+    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
+
+    return false;
+  }
+
+  // we'll keep the lock!!
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1181,7 +1210,8 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 /// @brief create a replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
+TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase,
+                                                       TRI_vocbase_defaults_t* defaults) {
   TRI_replication_logger_t* logger;
   int res;
 
@@ -1221,12 +1251,16 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   TRI_InitSpin(&logger->_idLock);
   TRI_InitSpin(&logger->_bufferLock);
 
-  logger->_vocbase             = vocbase;
-  logger->_trx                 = NULL;
-  logger->_trxCollection       = NULL;
-  logger->_state._lastLogTick  = 0;
-  logger->_state._active       = false;
-  logger->_databaseName        = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+  logger->_vocbase                         = vocbase;
+  logger->_trx                             = NULL;
+  logger->_trxCollection                   = NULL;
+
+  logger->_state._lastLogTick              = 0;
+  logger->_state._active                   = false;
+  logger->_configuration._logRemoteChanges = defaults->replicationLogRemoteChanges;
+
+  logger->_localServerId                   = TRI_GetServerId();
+  logger->_databaseName                    = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
 
   assert(logger->_databaseName != NULL);
 
@@ -1273,6 +1307,53 @@ void TRI_FreeReplicationLogger (TRI_replication_logger_t* logger) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a JSON representation of the replication logger configuration
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_JsonConfigurationReplicationLogger (TRI_replication_logger_configuration_t const* config) {
+  TRI_json_t* json;
+
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (json == NULL) {
+    return NULL;
+  }
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "logRemoteChanges",
+                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_logRemoteChanges));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configure the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ConfigureReplicationLogger (TRI_replication_logger_t* logger,
+                                    TRI_replication_logger_configuration_t const* config) {
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+
+  TRI_WriteLockReadWriteLock(&logger->_statusLock);
+  logger->_configuration._logRemoteChanges = config->_logRemoteChanges;
+  TRI_WriteUnlockReadWriteLock(&logger->_statusLock);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy a logger configuration
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CopyConfigurationReplicationLogger (TRI_replication_logger_configuration_t const* src,
+                                             TRI_replication_logger_configuration_t* dst) {
+  memcpy(dst, src, sizeof(TRI_replication_logger_configuration_t));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of clients as a JSON array
@@ -1403,7 +1484,7 @@ int TRI_StopReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
-                                TRI_replication_log_state_t* state) {
+                                TRI_replication_logger_state_t* state) {
   int res;
 
   res = TRI_ERROR_NO_ERROR;
@@ -1428,7 +1509,7 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
 /// @brief get a JSON representation of a logger state
 ////////////////////////////////////////////////////////////////////////////////
   
-TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_log_state_t const* state) {
+TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_logger_state_t const* state) {
   TRI_json_t* json; 
   char* lastString;
   char timeString[24];
@@ -1452,7 +1533,7 @@ TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_log_state_t const* s
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonReplicationLogger (TRI_replication_logger_t* logger) {
-  TRI_replication_log_state_t state;
+  TRI_replication_logger_state_t state;
   TRI_json_t* json;
   TRI_json_t* server;
   TRI_json_t* clients;
@@ -1513,7 +1594,8 @@ TRI_json_t* TRI_JsonReplicationLogger (TRI_replication_logger_t* logger) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
-                                   TRI_transaction_t const* trx) {
+                                   TRI_transaction_t const* trx,
+                                   TRI_server_id_t generatingServer) {
   TRI_replication_logger_t* logger;
   int res;
    
@@ -1523,22 +1605,23 @@ int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
   res = TRI_ERROR_NO_ERROR;
 
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
+  
+  if (! CheckAndLock(logger, generatingServer)) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
-  if (logger->_state._active) {
-    if (HasRelevantOperations(trx)) {
-      TRI_primary_collection_t* primary;
+  if (HasRelevantOperations(trx)) {
+    TRI_primary_collection_t* primary;
 
-      primary = logger->_trxCollection->_collection->_collection;
+    primary = logger->_trxCollection->_collection->_collection;
 
-      assert(primary != NULL);
+    assert(primary != NULL);
 
-      // set a lock around all individual operations
-      // so a transaction is logged as an uninterrupted sequence
-      primary->beginWrite(primary);
-      res = HandleTransaction(logger, trx);
-      primary->endWrite(primary);
-    }
+    // set a lock around all individual operations
+    // so a transaction is logged as an uninterrupted sequence
+    primary->beginWrite(primary);
+    res = HandleTransaction(logger, trx);
+    primary->endWrite(primary);
   }
 
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
@@ -1553,7 +1636,8 @@ int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
 int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
                                         TRI_voc_cid_t cid,
                                         char const* name,
-                                        TRI_json_t const* json) {
+                                        TRI_json_t const* json,
+                                        TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1563,11 +1647,8 @@ int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
   }
 
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
-
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1592,7 +1673,8 @@ int TRI_LogCreateCollectionReplication (TRI_vocbase_t* vocbase,
 
 int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
                                       TRI_voc_cid_t cid,
-                                      char const* name) {
+                                      char const* name,
+                                      TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1602,11 +1684,8 @@ int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
   }
   
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1631,7 +1710,8 @@ int TRI_LogDropCollectionReplication (TRI_vocbase_t* vocbase,
 
 int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
                                         TRI_voc_cid_t cid,
-                                        char const* name) {
+                                        char const* name,
+                                        TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1641,11 +1721,8 @@ int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
   }
   
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1671,7 +1748,8 @@ int TRI_LogRenameCollectionReplication (TRI_vocbase_t* vocbase,
 int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
                                                   TRI_voc_cid_t cid,
                                                   char const* name,
-                                                  TRI_json_t const* json) {
+                                                  TRI_json_t const* json,
+                                                  TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1681,11 +1759,8 @@ int TRI_LogChangePropertiesCollectionReplication (TRI_vocbase_t* vocbase,
   }
   
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
 
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1712,7 +1787,8 @@ int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
                                    TRI_voc_cid_t cid,
                                    char const* name,
                                    TRI_idx_iid_t iid,
-                                   TRI_json_t const* json) {
+                                   TRI_json_t const* json,
+                                   TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1722,11 +1798,8 @@ int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
   }
   
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
-
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1752,7 +1825,8 @@ int TRI_LogCreateIndexReplication (TRI_vocbase_t* vocbase,
 int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
                                  TRI_voc_cid_t cid,
                                  char const* name,
-                                 TRI_idx_iid_t iid) {
+                                 TRI_idx_iid_t iid,
+                                 TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   int res;
@@ -1762,11 +1836,8 @@ int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
   }
   
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
-
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -1793,7 +1864,8 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
                                 TRI_document_collection_t* document,
                                 TRI_voc_document_operation_e docType,
                                 TRI_df_marker_t const* marker,
-                                TRI_doc_mptr_t const* oldHeader) {
+                                TRI_doc_mptr_t const* oldHeader,
+                                TRI_server_id_t generatingServer) {
   TRI_string_buffer_t* buffer;
   TRI_replication_logger_t* logger;
   TRI_replication_operation_e type;
@@ -1804,16 +1876,12 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
   }
 
   logger = vocbase->_replicationLogger;
-  TRI_ReadLockReadWriteLock(&logger->_statusLock);
-
-  if (! logger->_state._active) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
+  type = TranslateDocumentOperation(docType, document);
+  
+  if (! CheckAndLock(logger, generatingServer)) {
     return TRI_ERROR_NO_ERROR;
   }
   
-  type = TranslateDocumentOperation(docType, document);
-
   if (type == REPLICATION_INVALID) {
     TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
 
@@ -1843,8 +1911,6 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

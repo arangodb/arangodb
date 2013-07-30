@@ -68,10 +68,10 @@ function ReplicationSuite () {
   };
 
 
-  var compare = function (master, slave) {
+  var compare = function (masterFunc, slaveFunc) {
     var state = { };
 
-    master(state);  
+    masterFunc(state);  
 
     var masterState = replication.logger.state();
     assertTrue(masterState.state.running);
@@ -84,8 +84,21 @@ function ReplicationSuite () {
     connectToSlave();
     replication.applier.stop();
 
-    replication.applier.properties({ endpoint: masterEndpoint, username: "root", password: "" });
-    replication.applier.start(true);
+    var syncResult = replication.sync({ 
+      endpoint: masterEndpoint, 
+      username: "root", 
+      password: "", 
+      verbose: true 
+    });
+
+    assertTrue(syncResult.hasOwnProperty('lastLogTick'));
+
+    replication.applier.properties({ 
+      endpoint: masterEndpoint, 
+      username: "root", 
+      password: ""
+    });
+    replication.applier.start(syncResult.lastLogTick);
 
     console.log("waiting for slave to catch up");
 
@@ -104,7 +117,7 @@ function ReplicationSuite () {
       sleep(1);
     }
 
-    slave(state);
+    slaveFunc(state);
   };
 
   return {

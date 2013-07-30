@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for single collection transactions
+/// @brief replication syncer base class
 ///
 /// @file
 ///
@@ -22,245 +22,248 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H
-#define TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
+#ifndef TRIAGENS_REPLICATION_SYNCER_H
+#define TRIAGENS_REPLICATION_SYNCER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
-#include "BasicsC/voc-errors.h"
-#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "Utils/Transaction.h"
-
-#include "VocBase/barrier.h"
-#include "VocBase/primary-collection.h"
+#include "VocBase/replication-applier.h"
+#include "VocBase/replication-master.h"
 #include "VocBase/server-id.h"
 #include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/update-policy.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+  
+struct TRI_json_s;
+struct TRI_replication_applier_configuration_s;
+struct TRI_transaction_collection_s;
+struct TRI_vocbase_s;
+struct TRI_vocbase_col_s;
 
 namespace triagens {
+
+  namespace httpclient {
+    class GeneralClientConnection;
+    class SimpleHttpClient;
+    class SimpleHttpResult;
+  }
+  
+  namespace rest {
+    class Endpoint;
+  }
+
   namespace arango {
 
-    template<typename T>
-    class SingleCollectionTransaction : public Transaction<T> {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            Syncer
+// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 class SingleCollectionTransaction
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Replication
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+    class Syncer {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction, using a collection object
-///
-/// A single collection transaction operates on a single collection (you guessed
-/// it)
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const triagens::arango::CollectionNameResolver& resolver,
-                                     const TRI_voc_cid_t cid,
-                                     const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, TRI_GetServerId(), resolver, true),
-          _cid(cid),
-          _accessType(accessType) {
-
-          // add the (sole) collection
-          this->addCollection(cid, _accessType);
-        }
+        Syncer (struct TRI_vocbase_s*,
+                struct TRI_replication_applier_configuration_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
-
-        virtual ~SingleCollectionTransaction () {
-        }
-
+        
+        virtual ~Syncer ();
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying transaction collection
+/// @brief get chunk size for a transfer
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_transaction_collection_t* trxCollection () {
-          TRI_ASSERT_MAINTAINER(_cid > 0);
-
-          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
-
-          TRI_ASSERT_MAINTAINER(trxCollection != 0);
-          return trxCollection;
-        }
+        uint64_t getChunkSize () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying primary collection
+/// @brief extract the collection id from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_primary_collection_t* primaryCollection () {
-          TRI_transaction_collection_t* trxCollection = this->trxCollection();
-
-          TRI_ASSERT_MAINTAINER(trxCollection != 0);
-          TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
-          TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
-          
-          return trxCollection->_collection->_collection;
-        }
+        TRI_voc_cid_t getCid (struct TRI_json_s const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying collection's id
+/// @brief creates a transaction hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_voc_cid_t cid () const {
-          return _cid;
-        }
+        TRI_transaction_hint_t getHint (const size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explicitly lock the underlying collection for read access
+/// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lockRead () {
-          return this->lock(this->trxCollection(), TRI_TRANSACTION_READ);
-        }
+        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+                                       TRI_replication_operation_e,
+                                       const TRI_voc_key_t,
+                                       const TRI_voc_rid_t,
+                                       struct TRI_json_s const*,
+                                       std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explicitly unlock the underlying collection after read access
+/// @brief creates a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
-
-        int unlockRead () {
-          return this->unlock(this->trxCollection(), TRI_TRANSACTION_READ);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explicitly lock the underlying collection for write access
-////////////////////////////////////////////////////////////////////////////////
-
-        int lockWrite () {
-          return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
-        }
+    
+        int createCollection (struct TRI_json_s const*,
+                              struct TRI_vocbase_col_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read any (random) document within a transaction
+/// @brief drops a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
-
-        inline int readRandom (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
-          return this->readAny(this->trxCollection(), mptr, barrier);
-        }
+    
+        int dropCollection (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document within a transaction
+/// @brief creates an index, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
-
-        inline int read (TRI_doc_mptr_t* mptr, const string& key) {
-          return this->readSingle(this->trxCollection(), mptr, key);
-        }
+    
+        int createIndex (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read all document ids within a transaction
+/// @brief drops an index, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
-
-        int read (vector<string>& ids) {
-          return this->readAll(this->trxCollection(), ids, true);
-        }
+    
+        int dropIndex (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document within a transaction
+/// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readPositional (vector<TRI_doc_mptr_t const*>& documents,
-                            int64_t offset,
-                            int64_t count) {
-          return this->readOrdered(this->trxCollection(), documents, offset, count);
-        }
+        int getMasterState (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents within a transaction, using skip and limit
+/// @brief handle the state response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t>& docs,
-                  TRI_barrier_t** barrier,
-                  TRI_voc_ssize_t skip,
-                  TRI_voc_size_t limit,
-                  uint32_t* total) {
-
-          return this->readSlice(this->trxCollection(), docs, barrier, skip, limit, total);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents within a transaction, using skip and limit and an
-/// internal offset into the primary index. this can be used for incremental
-/// access to the documents
-////////////////////////////////////////////////////////////////////////////////
-
-        int readOffset (vector<TRI_doc_mptr_t>& docs,
-                  TRI_barrier_t** barrier,
-                  TRI_voc_size_t& internalSkip,
-                  TRI_voc_size_t batchSize,
-                  TRI_voc_ssize_t skip,
-                  uint32_t* total) {
-
-          return this->readIncremental(this->trxCollection(), docs, barrier, internalSkip, batchSize, skip, total);
-        }
+        int handleStateResponse (struct TRI_json_s const*, 
+                                 std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection id
+/// @brief vocbase base pointer
 ////////////////////////////////////////////////////////////////////////////////
-
-        TRI_voc_cid_t _cid;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection access type
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_type_e _accessType;
+       
+        struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief configuration
 ////////////////////////////////////////////////////////////////////////////////
 
+        TRI_replication_applier_configuration_t _configuration;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief information about the master state
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_replication_master_info_t _masterInfo;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the update policy object (will be the same for all actions)
+////////////////////////////////////////////////////////////////////////////////
+  
+        TRI_doc_update_policy_t _policy;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the endpoint (master) we're connected to
+////////////////////////////////////////////////////////////////////////////////
+
+        rest::Endpoint* _endpoint;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the connection to the master
+////////////////////////////////////////////////////////////////////////////////
+
+        httpclient::GeneralClientConnection* _connection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the http client we're using
+////////////////////////////////////////////////////////////////////////////////
+        
+        httpclient::SimpleHttpClient* _client;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local server id
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _localServerIdString;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local server id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_server_id_t _localServerId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base url of the replication API
+////////////////////////////////////////////////////////////////////////////////
+
+        static const std::string BaseUrl;
     };
 
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

@@ -77,13 +77,31 @@ logger.state = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the configuration of the replication logger
+////////////////////////////////////////////////////////////////////////////////
+ 
+logger.properties = function (config) {
+  'use strict';
+
+  if (config === undefined) {
+    return internal.configureReplicationLogger();
+  }
+  
+  return internal.configureReplicationLogger(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (forceFullSynchronisation) {
+applier.start = function (initialTick) {
   'use strict';
 
-  return internal.startReplicationApplier(forceFullSynchronisation || false);
+  if (initialTick === undefined) {
+    return internal.startReplicationApplier();
+  }
+
+  return internal.startReplicationApplier(initialTick);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +153,29 @@ applier.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   other functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a one-time synchronisation with a remote endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+var sync = function (config) {
+  'use strict';
+
+  return internal.synchroniseReplication(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
@@ -145,6 +186,7 @@ applier.properties = function (config) {
   
 exports.logger  = logger; 
 exports.applier = applier; 
+exports.sync    = sync; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
