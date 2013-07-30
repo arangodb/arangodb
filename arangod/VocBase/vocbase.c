@@ -1689,14 +1689,12 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   }
  
   if (vocbase->_replicationApplier->_configuration._autoStart) {
-    int res2;
+    res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
 
-    res2 = TRI_StartReplicationApplier(vocbase->_replicationApplier);
-
-    if (res2 != TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("unable to start replication applier for database '%s': %s", 
                   name, 
-                  TRI_errno_string(res2));
+                  TRI_errno_string(res));
     }
   }
     

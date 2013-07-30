@@ -3435,11 +3435,21 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
   
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START()");
+  if (argv.Length() > 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<from>)");
   }
 
-  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier);
+  TRI_voc_tick_t initialTick = 0;
+  bool useTick = false;
+
+  if (argv.Length() == 1) {
+    initialTick = TRI_ObjectToUInt64(argv[0], true); 
+    useTick = true;
+  }
+
+  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier,
+                                        initialTick,
+                                        useTick);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication applier");
