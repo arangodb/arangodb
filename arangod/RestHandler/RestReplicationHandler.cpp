@@ -1353,7 +1353,67 @@ void RestReplicationHandler::handleCommandDump () {
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
 }
 
-// TODO
+////////////////////////////////////////////////////////////////////////////////
+/// @brief synchronises data from a remote endpoint
+///
+/// @RESTHEADER{PUT /_api/replication/sync,synchronises data from a remote endpoint}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTBODYPARAM{configuration,json,required}
+/// A JSON representation of the configuration.
+///
+/// @RESTDESCRIPTION
+/// Starts a full data synchronisation from a remote endpoint into the local
+/// ArangoDB database.
+///
+/// The body of the request must be JSON hash with the configuration. The
+/// following attributes are allowed for the configuration:
+///
+/// - `endpoint`: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+///
+/// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
+///
+/// - `password`: the password to use when connecting to the endpoint.
+///
+/// - `restrictType`: an optional string value for collection filtering. When
+///    specified, the allowed values are `include` or `exclude`.
+///
+/// - `restrictCollections`: an optional list of collections for use with 
+///   `restrictType`. If `restrictType` is `include`, only the specified collections
+///    will be sychronised. If `restrictType` is `exclude`, all but the specified
+///    collections will be synchronised.
+///
+/// In case of success, the body of the response is a JSON hash with the following
+/// attributes: 
+///
+/// - `collections`: a list of collections that were transferred from the endpoint 
+///
+/// - `lastLogTick`: the last log tick on the endpoint at the time the transfer
+///   was started. Use this value as the `from` value when starting the continuous 
+///   synchronisation later.
+///
+/// WARNING: calling this method will sychronise data from the collections found
+/// on the remote endpoint to the local ArangoDB database. All data in the local
+/// collections will be purged and replaced with data from the endpoint. 
+///
+/// Use with caution!
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the configuration is incomplete or malformed.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred during sychronisation.
+////////////////////////////////////////////////////////////////////////////////
+
 void RestReplicationHandler::handleCommandSync () {
   TRI_json_t* json = parseJsonBody();
 
@@ -1365,28 +1425,63 @@ void RestReplicationHandler::handleCommandSync () {
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
   const string username = JsonHelper::getStringValue(json, "username", "");
   const string password = JsonHelper::getStringValue(json, "password", "");
+  
 
+  if (endpoint.empty()) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
+    return;
+  }
+
+  map<string, bool> restrictCollections;
+  TRI_json_t* restriction = JsonHelper::getArrayElement(json, "restrictCollections");
+
+  if (restriction != 0 && restriction->_type == TRI_JSON_LIST) {
+    size_t i;
+    const size_t n = restriction->_value._objects._length;
+
+    for (i = 0; i < n; ++i) {
+      TRI_json_t const* cname = (TRI_json_t const*) TRI_AtVector(&restriction->_value._objects, i);
+
+      if (JsonHelper::isString(cname)) {
+        restrictCollections.insert(pair<string, bool>(string(cname->_value._string.data, cname->_value._string.length - 1), true)); 
+      }
+    }
+  }
+
+  string restrictType = JsonHelper::getStringValue(json, "restrictType", "");
+  
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  if ((restrictType.empty() && restrictCollections.size() > 0) ||
+      (! restrictType.empty() && restrictCollections.size() == 0) ||
+      (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
+    return;
+  }
+  
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
 
-  string errorMsg = "";
-  InitialSyncer syncer(_vocbase, &config, false);
+  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, false);
   TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;
+  string errorMsg = "";
 
   try {
     res = syncer.run(errorMsg);
   }
   catch (...) {
+    errorMsg = "caught an exception";
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::SERVER_ERROR, res, errorMsg);
     return;
   }
   
@@ -1394,9 +1489,37 @@ void RestReplicationHandler::handleCommandSync () {
     
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
 
+  TRI_json_t* jsonCollections = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+
+  if (jsonCollections != 0) {
+    map<TRI_voc_cid_t, string>::const_iterator it;
+    const map<TRI_voc_cid_t, string>& c = syncer.getProcessedCollections();
+
+    for (it = c.begin(); it != c.end(); ++it) {
+      const string cidString = StringUtils::itoa((*it).first);
+
+      TRI_json_t* ci = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+
+      if (ci != 0) {
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                             ci, 
+                             "id",
+                             TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, cidString.c_str(), cidString.size()));
+
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                             ci,
+                             "name",
+                             TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, (*it).second.c_str(), (*it).second.size()));
+      
+        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, jsonCollections, ci);
+      }
+    }
+  
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", jsonCollections);
+  }
+
   char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "numCollections", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) syncer.getNumCollections()));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);

@@ -225,8 +225,8 @@ var sync = function (config) {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/sync",
-      JSON.stringify(config));
+  var body = JSON.stringify(config || { });
+  var requestResult = db._connection.PUT("_api/replication/sync", body);
 
   arangosh.checkRequestResult(requestResult);
 

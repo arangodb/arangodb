@@ -967,22 +967,24 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetDirectoryCollection (char const* path,
-                                  const TRI_col_info_t* const parameter) {
+                                  char const* name,
+                                  TRI_col_type_e type,
+                                  TRI_voc_cid_t cid) {
   char* filename;
 
   assert(path);
-  assert(parameter);
+  assert(name);
 
   // shape collections use just the name, e.g. path/SHAPES
-  if (parameter->_type == TRI_COL_TYPE_SHAPE) {
-    filename = TRI_Concatenate2File(path, parameter->_name);
+  if (type == TRI_COL_TYPE_SHAPE) {
+    filename = TRI_Concatenate2File(path, name);
   }
   // other collections use the collection identifier
-  else if (TRI_IS_DOCUMENT_COLLECTION(parameter->_type)) {
+  else if (TRI_IS_DOCUMENT_COLLECTION(type)) {
     char* tmp1;
     char* tmp2;
 
-    tmp1 = TRI_StringUInt64(parameter->_cid);
+    tmp1 = TRI_StringUInt64(cid);
 
     if (tmp1 == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1049,7 +1051,10 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
 
-  filename = TRI_GetDirectoryCollection(path, parameter);
+  filename = TRI_GetDirectoryCollection(path, 
+                                        parameter->_name, 
+                                        parameter->_type, 
+                                        parameter->_cid);
 
   if (filename == NULL) {
     LOG_ERROR("cannot create collection '%s'", TRI_last_error());
@@ -1335,6 +1340,7 @@ int TRI_LoadCollectionInfo (char const* path,
 
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+
   if (filename == NULL) {
     LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
 
