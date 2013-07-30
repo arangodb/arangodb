@@ -45,6 +45,7 @@
 #include "BasicsC/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "Replication/InitialSyncer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
@@ -3074,8 +3075,6 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 /// @brief start the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -3098,13 +3097,9 @@ static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& arg
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3128,13 +3123,9 @@ static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3161,13 +3152,9 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   return scope.Close(result);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication logger manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3241,13 +3228,78 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
   }
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sync data from a remote master
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNCHRONISE(<config>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+    
+  // treat the argument as an object from now on
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+
+  string endpoint;
+  if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
+    endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+  }
+
+  string username;
+  if (object->Has(TRI_V8_SYMBOL("username"))) {
+    username = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("username")));
+  }
+  
+  string password;
+  if (object->Has(TRI_V8_SYMBOL("password"))) {
+    password = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("password")));
+  }
+  
+  bool verbose = true;
+  if (object->Has(TRI_V8_SYMBOL("verbose"))) {
+    verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("verbose")));
+  }
+
+  if (endpoint.empty()) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<endpoint> must be a valid endpoint")
+  }
+
+  TRI_replication_applier_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+
+  string errorMsg = "";
+  InitialSyncer syncer(vocbase, &config, verbose);
+  TRI_DestroyConfigurationReplicationApplier(&config);
+
+  int res = TRI_ERROR_NO_ERROR;
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  try {
+    res = syncer.run(errorMsg);
+
+    result->Set(v8::String::New("lastLogTick"), V8TickId(syncer.getLastLogTick()));
+    result->Set(v8::String::New("collectionsSynced"), v8::Number::New(syncer.getNumCollections()));
+  }
+  catch (...) {
+  }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot sync from remote endpoint: " + errorMsg);
+  }
+
+  return scope.Close(result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3370,13 +3422,9 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
   }
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3387,16 +3435,11 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
   }
   
-  if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<fullSync>)");
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START()");
   }
 
-  bool fullSync = false;
-  if (argv.Length() > 0) {
-    fullSync = TRI_ObjectToBoolean(argv[0]);
-  }
-
-  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, fullSync);
+  int res = TRI_StartReplicationApplier(vocbase->_replicationApplier);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication applier");
@@ -3405,13 +3448,9 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3435,13 +3474,9 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
   return scope.Close(v8::True());
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3468,13 +3503,9 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
   return scope.Close(result);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier and "forget" all state
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -3497,8 +3528,6 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
 
   return scope.Close(v8::True());
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -5795,7 +5824,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         TRI_V8_EXCEPTION(scope, res);
       }
 
-#ifdef TRI_ENABLE_REPLICATION
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
       TRI_LogChangePropertiesCollectionReplication(base->_vocbase, 
                                                    base->_info._cid, 
@@ -5803,7 +5831,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
                                                    json, 
                                                    TRI_GetServerId()); 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-#endif
     }
   }
 
@@ -7495,9 +7522,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
-#ifdef TRI_ENABLE_REPLICATION
   v8::Local<v8::String> keyReplicationEnableLogger = v8::String::New("replicationEnableLogger");
-#endif
 
   // get database defaults from system vocbase
   TRI_vocbase_defaults_t defaults;
@@ -7539,11 +7564,9 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
 
-#ifdef TRI_ENABLE_REPLICATION    
     if (options->Has(keyReplicationEnableLogger)) {
       defaults.replicationEnableLogger = options->Get(keyReplicationEnableLogger)->BooleanValue();
     }
-#endif
   }
 
   // load vocbase with defaults
@@ -8462,17 +8485,16 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor);
   TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
   
-#ifdef TRI_ENABLE_REPLICATION
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication);
-#endif  
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);

@@ -251,7 +251,6 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
     return TRI_errno();
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   // it is safe to use _name as we hold a read-lock on the collection status
   TRI_LogCreateIndexReplication(vocbase, 
                                 collection->base._info._cid, 
@@ -259,7 +258,6 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
                                 idx->_iid, 
                                 json,
                                 generatingServer);
-#endif
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 

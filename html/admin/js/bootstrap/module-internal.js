@@ -3,7 +3,8 @@
 /*global require, module, Module, ArangoError,
   REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE,
   REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
-  REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, 
+  REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE,
+  REPLICATION_SYNCHRONISE, 
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
@@ -319,6 +320,15 @@
   if (typeof REPLICATION_APPLIER_FORGET !== "undefined") {
     exports.forgetStateReplicationApplier = REPLICATION_APPLIER_FORGET;
     delete REPLICATION_APPLIER_FORGET;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sychroniseReplication
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_SYNCHRONISE !== "undefined") {
+    exports.synchroniseReplication = REPLICATION_SYNCHRONISE;
+    delete REPLICATION_SYNCHRONISE;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

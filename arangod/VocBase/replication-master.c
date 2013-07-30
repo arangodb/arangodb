@@ -30,9 +30,6 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 
-
-#ifdef TRI_ENABLE_REPLICATION
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           REPLICATION MASTER INFO
 // -----------------------------------------------------------------------------
@@ -88,8 +85,6 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

@@ -135,12 +135,10 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
                             RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
 
-#ifdef TRI_ENABLE_REPLICATION
   // add replication handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
                             RestHandlerCreator<RestReplicationHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
-#endif  
 
   // add upload handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -204,10 +202,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _multipleDatabases(false),
     _removeOnCompacted(true),
     _removeOnDrop(true),
-#ifdef TRI_ENABLE_REPLICATION    
     _replicationEnableLogger(false),
     _replicationLogRemoteChanges(false),
-#endif    
     _vocbase(0) {
 
   // locate path to binary
@@ -365,12 +361,10 @@ void ArangoServer::buildApplicationServer () {
   // replication options
   // .............................................................................
 
-#ifdef TRI_ENABLE_REPLICATION 
   additional[ApplicationServer::OPTIONS_REPLICATION + ":help-replication"]
     ("replication.enable-logger", &_replicationEnableLogger, "enable replication logger")
     ("replication.log-remote-changes", &_replicationLogRemoteChanges, "log remote changes")
   ;
-#endif  
 
   // .............................................................................
   // database options
@@ -1176,12 +1170,10 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->requireAuthentication);
   defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
           systemDefaults->authenticateSystemOnly);
-#ifdef TRI_ENABLE_REPLICATION
   defaults.replicationEnableLogger = doc.getBooleanValue("replicationEnableLogger", 
           systemDefaults->replicationEnableLogger);
   defaults.replicationLogRemoteChanges = doc.getBooleanValue("replicationLogRemoteChanges", 
           systemDefaults->replicationLogRemoteChanges);
-#endif
   
   // open/load database
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), dbName.c_str(), &defaults);
@@ -1401,10 +1393,8 @@ void ArangoServer::openDatabases () {
   defaults.forceSyncProperties           = _forceSyncProperties;
   defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
-#ifdef TRI_ENABLE_REPLICATION  
   defaults.replicationEnableLogger       = _replicationEnableLogger;
   defaults.replicationLogRemoteChanges   = _replicationLogRemoteChanges;
-#endif  
   
   // store these settings as initial system defaults
   TRI_SetSystemDefaultsVocBase(&defaults);

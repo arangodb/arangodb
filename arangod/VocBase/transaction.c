@@ -845,11 +845,9 @@ static int WriteOperationsSingle (TRI_transaction_t* const trx) {
       // something went wrong. now write the "abort" marker
       WriteAbortMarkers(trx, i + 1);
     }
-#ifdef TRI_ENABLE_REPLICATION
     else if (trx->_replicate) {
       TRI_LogTransactionReplication(trx->_context->_vocbase, trx, trx->_generatingServer);
     }
-#endif    
 
     return res;
   }
@@ -964,11 +962,9 @@ static int WriteOperationsMulti (TRI_transaction_t* const trx,
                                                     false);
           
       
-#ifdef TRI_ENABLE_REPLICATION
         if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
           TRI_LogTransactionReplication(trx->_context->_vocbase, trx, trx->_generatingServer);
         }
-#endif        
       }
     }
     else {
@@ -1923,8 +1919,6 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                                doSync);
     *directOperation = true;
 
-    
-#ifdef TRI_ENABLE_REPLICATION
     if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
       TRI_LogDocumentReplication(trx->_context->_vocbase, 
                                  (TRI_document_collection_t*) primary, 
@@ -1933,7 +1927,6 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                  oldData,
                                  trx->_generatingServer);
     }
-#endif    
   }
   else {
     trx->_hasOperations = true;

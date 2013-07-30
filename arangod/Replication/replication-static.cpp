@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-static.h"
-#include "Replication/ReplicationFetcher.h"
+#include "Replication/ContinuousSyncer.h"
 
 #include "VocBase/vocbase.h"
 
@@ -51,9 +51,9 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_CreateFetcherReplication (TRI_vocbase_t* vocbase,
-                                    TRI_replication_applier_configuration_t const* configuration,
-                                    bool forceFullSynchronisation) {
-  ReplicationFetcher* f = new ReplicationFetcher(vocbase, configuration, forceFullSynchronisation);
+                                    TRI_replication_applier_configuration_t const* configuration) {
+
+  ContinuousSyncer* f = new ContinuousSyncer(vocbase, configuration);
 
   return (void*) f;
 }
@@ -63,7 +63,7 @@ void* TRI_CreateFetcherReplication (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DeleteFetcherReplication (void* ptr) {
-  ReplicationFetcher* f = static_cast<ReplicationFetcher*>(ptr);
+  ContinuousSyncer* f = static_cast<ContinuousSyncer*>(ptr);
 
   delete f;
 }
@@ -73,7 +73,7 @@ void TRI_DeleteFetcherReplication (void* ptr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RunFetcherReplication (void* ptr) {
-  ReplicationFetcher* f = static_cast<ReplicationFetcher*>(ptr);
+  ContinuousSyncer* f = static_cast<ContinuousSyncer*>(ptr);
 
   return f->run();
 }

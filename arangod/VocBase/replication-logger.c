@@ -41,9 +41,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-
-#ifdef TRI_ENABLE_REPLICATION
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                REPLICATION LOGGER
 // -----------------------------------------------------------------------------
@@ -1914,8 +1911,6 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

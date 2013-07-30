@@ -62,21 +62,6 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply phases
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  PHASE_NONE,
-  PHASE_INIT,
-  PHASE_VALIDATE,
-  PHASE_DROP,
-  PHASE_CREATE,
-  PHASE_DUMP,
-  PHASE_FOLLOW
-}
-TRI_replication_applier_phase_e;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief struct containing a replication apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +98,6 @@ typedef struct TRI_replication_applier_state_s {
   TRI_voc_tick_t                           _lastAppliedContinuousTick;
   TRI_voc_tick_t                           _lastAvailableContinuousTick;
   bool                                     _active;
-  TRI_replication_applier_phase_e          _phase;
   char*                                    _progressMsg;
   char                                     _progressTime[24];
   TRI_voc_tick_t                           _lastAppliedInitialTick;
@@ -200,8 +184,7 @@ struct TRI_json_s* TRI_JsonConfigurationReplicationApplier (TRI_replication_appl
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartReplicationApplier (TRI_replication_applier_t*,
-                                 bool);
+int TRI_StartReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier
@@ -237,13 +220,6 @@ struct TRI_json_s* TRI_JsonReplicationApplier (TRI_replication_applier_t*);
 int TRI_SetErrorReplicationApplier (TRI_replication_applier_t*,
                                     int,
                                     char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the current phase
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetPhaseReplicationApplier (TRI_replication_applier_t*,
-                                     TRI_replication_applier_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the progress with or without a lock
