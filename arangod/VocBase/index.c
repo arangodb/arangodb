@@ -212,7 +212,8 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveIndex (TRI_primary_collection_t* collection, 
-                   TRI_index_t* idx) {
+                   TRI_index_t* idx,
+                   TRI_server_id_t generatingServer) {
   TRI_json_t* json;
   TRI_vocbase_t* vocbase;
   char* filename;
@@ -250,14 +251,13 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
     return TRI_errno();
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   // it is safe to use _name as we hold a read-lock on the collection status
   TRI_LogCreateIndexReplication(vocbase, 
                                 collection->base._info._cid, 
                                 collection->base._info._name, 
                                 idx->_iid, 
-                                json);
-#endif
+                                json,
+                                generatingServer);
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 

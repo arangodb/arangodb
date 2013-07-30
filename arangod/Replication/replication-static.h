@@ -30,6 +30,8 @@
 
 #include "BasicsC/common.h"
 
+#include "VocBase/voc-types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,7 +40,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
   
-struct TRI_replication_apply_configuration_s;
+struct TRI_replication_applier_configuration_s;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -54,21 +56,22 @@ struct TRI_vocbase_s;
 /// @brief static create method
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_CreateFetcherReplication (struct TRI_vocbase_s*,
-                                    struct TRI_replication_apply_configuration_s const*,
-                                    bool);
+void* TRI_CreateContinuousSyncerReplication (struct TRI_vocbase_s*,
+                                             struct TRI_replication_applier_configuration_s const*,
+                                             TRI_voc_tick_t initialTick,
+                                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static free method
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DeleteFetcherReplication (void*);
+void TRI_DeleteContinuousSyncerReplication (void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static run method
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RunFetcherReplication (void*); 
+int TRI_RunContinuousSyncerReplication (void*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

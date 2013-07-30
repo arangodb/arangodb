@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-static.h"
-#include "Replication/ReplicationFetcher.h"
+#include "Replication/ContinuousSyncer.h"
 
 #include "VocBase/vocbase.h"
 
@@ -50,32 +50,37 @@ extern "C" {
 /// @brief static create method
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_CreateFetcherReplication (TRI_vocbase_t* vocbase,
-                                    TRI_replication_apply_configuration_t const* configuration,
-                                    bool forceFullSynchronisation) {
-  ReplicationFetcher* f = new ReplicationFetcher(vocbase, configuration, forceFullSynchronisation);
+void* TRI_CreateContinuousSyncerReplication (TRI_vocbase_t* vocbase,
+                                             TRI_replication_applier_configuration_t const* configuration,
+                                             TRI_voc_tick_t initialTick,
+                                             bool useTick) {
 
-  return (void*) f;
+  ContinuousSyncer* s = new ContinuousSyncer(vocbase, 
+                                             configuration, 
+                                             initialTick,
+                                             useTick);
+
+  return (void*) s;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static free method
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DeleteFetcherReplication (void* ptr) {
-  ReplicationFetcher* f = static_cast<ReplicationFetcher*>(ptr);
+void TRI_DeleteContinuousSyncerReplication (void* ptr) {
+  ContinuousSyncer* s = static_cast<ContinuousSyncer*>(ptr);
 
-  delete f;
+  delete s;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static run method
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RunFetcherReplication (void* ptr) {
-  ReplicationFetcher* f = static_cast<ReplicationFetcher*>(ptr);
+int TRI_RunContinuousSyncerReplication (void* ptr) {
+  ContinuousSyncer* s = static_cast<ContinuousSyncer*>(ptr);
 
-  return f->run();
+  return s->run();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

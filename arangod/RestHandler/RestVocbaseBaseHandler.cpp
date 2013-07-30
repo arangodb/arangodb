@@ -199,7 +199,10 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
     return true;
   }
 
-  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name.c_str(), type);
+  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
+                                                                          name.c_str(), 
+                                                                          type,
+                                                                          TRI_GetServerId());
 
   if (collection == 0) {
     generateTransactionError(name, TRI_errno());

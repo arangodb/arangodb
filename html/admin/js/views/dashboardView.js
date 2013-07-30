@@ -139,7 +139,6 @@ var dashboardView = Backbone.View.extend({
 
     //apply table
     var lastAppliedTick;
-    var phase = "-";
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
@@ -157,10 +156,6 @@ var dashboardView = Backbone.View.extend({
 
     if (this.replApplyState.state.endpoint !== undefined) {
       endpoint = this.replApplyState.state.endpoint;
-    }
-
-    if (this.replApplyState.state.currentPhase) {
-      phase = this.replApplyState.state.currentPhase.label;
     }
 
     time = this.replApplyState.state.time;
@@ -184,7 +179,6 @@ var dashboardView = Backbone.View.extend({
     $('#applyRunningVal').html(runningApply);
     $('#applyEndpointVal').text(endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
-    $('#applyCurrentPhaseLabelVal').text(phase);
     $('#applyTimeVal').text(time);
     $('#applyProgressVal').text(progress);
     $('#applyLastErrorVal').text(lastError);
