@@ -100,7 +100,6 @@ typedef struct TRI_replication_applier_state_s {
   bool                                     _active;
   char*                                    _progressMsg;
   char                                     _progressTime[24];
-  TRI_voc_tick_t                           _lastAppliedInitialTick;
   TRI_server_id_t                          _serverId;
   TRI_replication_applier_error_t          _lastError;
 }
@@ -184,7 +183,9 @@ struct TRI_json_s* TRI_JsonConfigurationReplicationApplier (TRI_replication_appl
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartReplicationApplier (TRI_replication_applier_t*);
+int TRI_StartReplicationApplier (TRI_replication_applier_t*,
+                                 TRI_voc_tick_t,
+                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier

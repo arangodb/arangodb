@@ -59,10 +59,14 @@ using namespace triagens::httpclient;
 ////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
-                                    TRI_replication_applier_configuration_t const* configuration) :
+                                    TRI_replication_applier_configuration_t const* configuration,
+                                    TRI_voc_tick_t initialTick,
+                                    bool useTick) :
   Syncer(vocbase, configuration),
   _applier(vocbase->_replicationApplier),
-  _transactionState() {
+  _transactionState(),
+  _initialTick(initialTick),
+  _useTick(useTick) {
   
   _transactionState._trx         = 0;
   _transactionState._externalTid = 0;
@@ -806,17 +810,18 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   // get start tick
   // ---------------------------------------
+  TRI_voc_tick_t fromTick = _initialTick;
 
-  // use tick from initial dump
-  TRI_ReadLockReadWriteLock(&_applier->_statusLock);
+  if (! _useTick) {
+    // use tick from initial dump
+    TRI_ReadLockReadWriteLock(&_applier->_statusLock);
 
-  TRI_voc_tick_t fromTick = _applier->_state._lastAppliedInitialTick;
-
-  // if we already transferred some data, we'll use the last applied tick
-  if (_applier->_state._lastAppliedContinuousTick > fromTick) {
-    fromTick = _applier->_state._lastAppliedContinuousTick;
+    // if we already transferred some data, we'll use the last applied tick
+    if (_applier->_state._lastAppliedContinuousTick > fromTick) {
+      fromTick = _applier->_state._lastAppliedContinuousTick;
+    }
+    TRI_ReadUnlockReadWriteLock(&_applier->_statusLock);
   }
-  TRI_ReadUnlockReadWriteLock(&_applier->_statusLock);
 
   LOGGER_TRACE("starting continuous replication with tick " << fromTick);
 

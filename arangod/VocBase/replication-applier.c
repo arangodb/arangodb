@@ -313,7 +313,6 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
   char* serverId;
   char* lastProcessedContinuousTick;
   char* lastAppliedContinuousTick;
-  char* lastAppliedInitialTick;
 
   json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 4);
 
@@ -323,7 +322,6 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
 
   lastProcessedContinuousTick = TRI_StringUInt64(state->_lastProcessedContinuousTick);
   lastAppliedContinuousTick   = TRI_StringUInt64(state->_lastAppliedContinuousTick);
-  lastAppliedInitialTick      = TRI_StringUInt64(state->_lastAppliedInitialTick);
   serverId                    = TRI_StringUInt64(state->_serverId);
  
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
@@ -340,11 +338,6 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
                        json, 
                        "lastAppliedContinuousTick", 
                        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastAppliedContinuousTick));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
-                       json, 
-                       "lastAppliedInitialTick", 
-                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastAppliedInitialTick));
 
   return json;
 }
@@ -391,8 +384,8 @@ static int SetError (TRI_replication_applier_t* applier,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplyThread (void* data) {
-  TRI_RunFetcherReplication(data); 
-  TRI_DeleteFetcherReplication(data);
+  TRI_RunContinuousSyncerReplication(data); 
+  TRI_DeleteContinuousSyncerReplication(data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +393,9 @@ void ApplyThread (void* data) {
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StartApplier (TRI_replication_applier_t* applier) {
+static int StartApplier (TRI_replication_applier_t* applier,
+                         TRI_voc_tick_t initialTick,
+                         bool useTick) {
   TRI_replication_applier_state_t* state;
   void* fetcher;
 
@@ -414,7 +409,10 @@ static int StartApplier (TRI_replication_applier_t* applier) {
     return SetError(applier, TRI_ERROR_REPLICATION_INVALID_CONFIGURATION, "no endpoint configured");
   }
   
-  fetcher = (void*) TRI_CreateFetcherReplication(applier->_vocbase, &applier->_configuration);
+  fetcher = (void*) TRI_CreateContinuousSyncerReplication(applier->_vocbase, 
+                                                          &applier->_configuration,
+                                                          initialTick,
+                                                          useTick);
 
   if (fetcher == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -426,7 +424,7 @@ static int StartApplier (TRI_replication_applier_t* applier) {
   TRI_InitThread(&applier->_thread);
 
   if (! TRI_StartThread(&applier->_thread, "[applier]", ApplyThread, fetcher)) {
-    TRI_DeleteFetcherReplication(fetcher);
+    TRI_DeleteContinuousSyncerReplication(fetcher);
 
     return TRI_ERROR_INTERNAL;
   }
@@ -523,16 +521,6 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastAvailableContinuousTick", last);
-  
-  // lastAppliedInitialTick 
-  if (state->_lastAppliedInitialTick > 0) {
-    lastString = TRI_StringUInt64(state->_lastAppliedInitialTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString);
-  }
-  else {
-    last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
-  }
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastAppliedInitialTick", last);
   
   // progress
   progress = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
@@ -707,7 +695,9 @@ TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_con
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartReplicationApplier (TRI_replication_applier_t* applier) {
+int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
+                                 TRI_voc_tick_t initialTick,
+                                 bool useTick) {
   int res;
   
   res = TRI_ERROR_NO_ERROR;
@@ -720,7 +710,7 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier) {
   TRI_WriteLockReadWriteLock(&applier->_statusLock);
 
   if (! applier->_state._active) {
-    res = StartApplier(applier);
+    res = StartApplier(applier, initialTick, useTick);
   }
   
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
@@ -812,7 +802,6 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
   state->_lastAppliedContinuousTick   = applier->_state._lastAppliedContinuousTick;
   state->_lastProcessedContinuousTick = applier->_state._lastProcessedContinuousTick;
   state->_lastAvailableContinuousTick = applier->_state._lastAvailableContinuousTick;
-  state->_lastAppliedInitialTick      = applier->_state._lastAppliedInitialTick;
   state->_serverId                    = applier->_state._serverId;
   state->_lastError._code             = applier->_state._lastError._code;
   memcpy(&state->_lastError._time, &applier->_state._lastError._time, sizeof(state->_lastError._time));
@@ -1088,7 +1077,6 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   if (res == TRI_ERROR_NO_ERROR) {
     // read the ticks
     res |= ReadTick(json, "lastAppliedContinuousTick", &state->_lastAppliedContinuousTick); 
-    res |= ReadTick(json, "lastAppliedInitialTick", &state->_lastAppliedInitialTick); 
 
     // set processed = applied
     state->_lastProcessedContinuousTick = state->_lastAppliedContinuousTick;

@@ -33,6 +33,7 @@
 #include "BasicsC/files.h"
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
@@ -164,6 +165,12 @@ Handler::status_e RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandDump(); 
+    }
+    else if (command == "sync") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandSync(); 
     }
     else if (command == "applier-config") {
       if (type == HttpRequest::HTTP_REQUEST_GET) {
@@ -1346,6 +1353,55 @@ void RestReplicationHandler::handleCommandDump () {
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
 }
 
+// TODO
+void RestReplicationHandler::handleCommandSync () {
+  TRI_json_t* json = parseJsonBody();
+
+  if (json == 0) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  
+  const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
+  const string username = JsonHelper::getStringValue(json, "username", "");
+  const string password = JsonHelper::getStringValue(json, "password", "");
+
+  TRI_replication_applier_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+
+  string errorMsg = "";
+  InitialSyncer syncer(_vocbase, &config, false);
+  TRI_DestroyConfigurationReplicationApplier(&config);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    res = syncer.run(errorMsg);
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+  
+  TRI_json_t result;
+    
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+
+  char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "numCollections", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) syncer.getNumCollections()));
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the configuration of the replication applier
 ///
@@ -1568,6 +1624,12 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///
 /// @RESTHEADER{PUT /_api/replication/applier-start,starts the replication applier}
 ///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{from,string,optional}
+/// The remote `lastLogTick` value from which to start applying. If not specified,
+/// the last saved tick from the previous applier run is used.
+///
 /// @RESTDESCRIPTION
 /// Starts the replication applier. This will return immediately if the
 /// replication applier is already running.
@@ -1621,7 +1683,18 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 void RestReplicationHandler::handleCommandApplierStart () {
   assert(_vocbase->_replicationApplier != 0);
   
-  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier);
+  bool found;
+  const char* value = _request->value("from", found);
+
+  TRI_voc_tick_t initialTick = 0;
+  if (found) {
+    // url parameter "from" specified
+    initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
+  }
+  
+  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, 
+                                        initialTick,
+                                        found);
     
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||

@@ -120,11 +120,15 @@ logger.properties = function (config) {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
   
-applier.start = function (forceFullSynchronisation) {
+applier.start = function (initialTick) {
   'use strict';
 
   var db = internal.db;
-  var append = (forceFullSynchronisation ? "?fullSync=true" : "");
+  var append = "";
+
+  if (initialTick !== undefined) {
+    append = "?from=" + encodeURIComponent(initialTick);
+  }
 
   var requestResult = db._connection.PUT("_api/replication/applier-start" + append, "");
   arangosh.checkRequestResult(requestResult);

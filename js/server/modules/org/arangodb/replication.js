@@ -94,10 +94,14 @@ logger.properties = function (config) {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (forceFullSynchronisation) {
+applier.start = function (initialTick) {
   'use strict';
 
-  return internal.startReplicationApplier(forceFullSynchronisation || false);
+  if (initialTick === undefined) {
+    return internal.startReplicationApplier();
+  }
+
+  return internal.startReplicationApplier(initialTick);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

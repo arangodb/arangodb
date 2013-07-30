@@ -227,35 +227,26 @@ function ReplicationLoggerSuite () {
     testPropertiesLogger : function () {
       var properties;
       
-require("internal").print(1);
       properties = replication.logger.properties();
       assertTrue(typeof properties === 'object');
-require("internal").print(2);
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-require("internal").print(3);
 
       assertFalse(properties.logRemoteChanges);
 
       properties = replication.logger.properties({
         logRemoteChanges: true
       });
-require("internal").print(properties);
 
       assertTrue(typeof properties === 'object');
-require("internal").print(5);
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-require("internal").print(6);
       assertTrue(properties.logRemoteChanges);
-require("internal").print(7);
       
       properties = replication.logger.properties({
         logRemoteChanges: false
       });
 
       assertTrue(typeof properties === 'object');
-require("internal").print(8);
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-require("internal").print(9);
       assertFalse(properties.logRemoteChanges);
     },
 
@@ -2354,16 +2345,12 @@ function ReplicationApplierSuite () {
       
       state = replication.applier.state();
       assertFalse(state.state.running);
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
       
       // stop again
       replication.applier.stop();
             
       state = replication.applier.state();
       assertFalse(state.state.running);
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2452,10 +2439,6 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.state.time);
 
-      // phase
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
-      
       assertEqual(state.server.version, db._version()); 
       assertNotEqual("", state.server.serverId); 
       assertMatch(/^\d+$/, state.server.serverId);
