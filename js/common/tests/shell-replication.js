@@ -221,6 +221,36 @@ function ReplicationLoggerSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test logger properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testPropertiesLogger : function () {
+      var properties;
+      
+      properties = replication.logger.properties();
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+
+      assertFalse(properties.logRemoteChanges);
+
+      properties = replication.logger.properties({
+        logRemoteChanges: true
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.logRemoteChanges);
+      
+      properties = replication.logger.properties({
+        logRemoteChanges: false
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertFalse(properties.logRemoteChanges);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2315,16 +2345,12 @@ function ReplicationApplierSuite () {
       
       state = replication.applier.state();
       assertFalse(state.state.running);
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
       
       // stop again
       replication.applier.stop();
             
       state = replication.applier.state();
       assertFalse(state.state.running);
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2413,10 +2439,6 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.state.time);
 
-      // phase
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
-      
       assertEqual(state.server.version, db._version()); 
       assertNotEqual("", state.server.serverId); 
       assertMatch(/^\d+$/, state.server.serverId);
