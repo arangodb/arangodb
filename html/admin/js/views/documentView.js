@@ -160,7 +160,7 @@ var documentView = Backbone.View.extend({
           key,
           '',
           self.value2html(value, true),
-          JSON.stringify(value),
+          JSON.stringify(value, null, 4),
           "",
           ""
         ]);
@@ -171,7 +171,7 @@ var documentView = Backbone.View.extend({
             key,
             '<i class="icon-edit" id="editFirstRow"></i>',
             self.value2html(value),
-            JSON.stringify(value),
+            JSON.stringify(value, null, 4),
             '<i class="icon-edit" id="editSecondRow"></i>',
             '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
             'width="16" height="16"></button>'
