@@ -6,6 +6,8 @@ mr-*.h
 *.a
 *~
 *.pyc
+*.sdf
+
 
 *.orig
 *.rej
