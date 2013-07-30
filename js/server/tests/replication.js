@@ -98,6 +98,8 @@ function ReplicationSuite () {
       username: "root", 
       password: ""
     });
+
+
     replication.applier.start(syncResult.lastLogTick);
 
     console.log("waiting for slave to catch up");
@@ -109,8 +111,9 @@ function ReplicationSuite () {
         break;
       }
 
-      if (slaveState.state.lastAppliedContinuousTick === lastTick || 
-          slaveState.state.lastAppliedInitialTick >= lastTick) {
+      if (slaveState.state.lastAppliedContinuousTick === syncResult.lastLogTick || 
+          slaveState.state.lastProcessedContinuousTick === syncResult.lastLogTick ||
+          slaveState.state.lastAvailableContinuousTick === syncResult.lastLogTick) { 
         break;
       }
 

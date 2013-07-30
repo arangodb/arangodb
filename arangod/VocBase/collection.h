@@ -336,7 +336,9 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetDirectoryCollection (char const*,
-                                  const TRI_col_info_t* const);
+                                  char const*,
+                                  TRI_col_type_e,
+                                  TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection

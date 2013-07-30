@@ -61,10 +61,14 @@ using namespace triagens::rest;
 
 InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
                               TRI_replication_applier_configuration_t const* configuration,
+                              map<string, bool> const& restrictCollections,
+                              string const& restrictType,
                               bool verbose) :
   Syncer(vocbase, configuration),
   _progress("not started"),
-  _numCollections(0),
+  _restrictCollections(restrictCollections),
+  _restrictType(restrictType),
+  _processedCollections(),
   _verbose(verbose) {
 }
 
@@ -161,22 +165,6 @@ int InitialSyncer::run (string& errorMsg) {
   delete response;
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the last log tick of the master at start
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t InitialSyncer::getLastLogTick () const {
-  return _masterInfo._state._lastLogTick;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of collections synced
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t InitialSyncer::getNumCollections () const {
-  return _numCollections;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,7 +430,7 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
- 
+
   if (TRI_ExcludeCollectionReplication(masterName.c_str())) { 
     // we're not interested in this collection
     return TRI_ERROR_NO_ERROR;
@@ -452,7 +440,7 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
-
+  
   TRI_json_t const* masterId = JsonHelper::getArrayElement(parameters, "cid");
 
   if (! JsonHelper::isString(masterId)) {
@@ -464,11 +452,26 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
   TRI_voc_cid_t cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
   const string collectionMsg = "collection '" + masterName + "', id " + StringUtils::itoa(cid); 
  
+ 
+  if (! _restrictType.empty()) {
+    map<string, bool>::const_iterator it = _restrictCollections.find(masterName);
+
+    bool found = (it != _restrictCollections.end());
+
+    if (_restrictType == "include" && ! found) {
+      // collection should not be included
+      return TRI_ERROR_NO_ERROR;
+    }
+    else if (_restrictType == "exclude" && found) {
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is invalid)
-    _numCollections++;
+    _processedCollections.insert(std::pair<TRI_voc_cid_t, string>(cid, masterName));
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -668,12 +671,6 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
   // STEP 3: re-create empty collections locally
   // ----------------------------------------------------------------------------------
 
-  if (n > 0) {
-    // we'll sleep for a while to allow the collections to be dropped (asynchronously)
-    // TODO: find a safer mechanism for waiting until we can beginning creating collections
-    sleep(5);
-  }
-  
   res = iterateCollections(collections, errorMsg, PHASE_CREATE);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -686,10 +683,6 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
   
   res = iterateCollections(collections, errorMsg, PHASE_DUMP);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "could not save replication state information";
-  }
-  
   return res;
 }
 

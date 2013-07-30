@@ -3258,6 +3258,26 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   if (object->Has(TRI_V8_SYMBOL("password"))) {
     password = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("password")));
   }
+
+  map<string, bool> restrictCollections;
+  if (object->Has(TRI_V8_SYMBOL("restrictCollections")) && object->Get(TRI_V8_SYMBOL("restrictCollections"))->IsArray()) {
+    v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("restrictCollections")));
+
+    const uint32_t n = a->Length();
+
+    for (uint32_t i = 0; i < n; ++i) {
+      v8::Handle<v8::Value> cname = a->Get(i);
+
+      if (cname->IsString()) {
+        restrictCollections.insert(pair<string, bool>(TRI_ObjectToString(cname), true));
+      }
+    }
+  }
+  
+  string restrictType;
+  if (object->Has(TRI_V8_SYMBOL("restrictType"))) {
+    restrictType = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("restrictType")));
+  }
   
   bool verbose = true;
   if (object->Has(TRI_V8_SYMBOL("verbose"))) {
@@ -3267,6 +3287,12 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   if (endpoint.empty()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<endpoint> must be a valid endpoint")
   }
+  
+  if ((restrictType.empty() && restrictCollections.size() > 0) ||
+      (! restrictType.empty() && restrictCollections.size() == 0) ||
+      (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <restrictCollections> or <restrictType>");
+  }
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
@@ -3275,7 +3301,7 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
 
   string errorMsg = "";
-  InitialSyncer syncer(vocbase, &config, verbose);
+  InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
   TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;
@@ -3285,7 +3311,23 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
     res = syncer.run(errorMsg);
 
     result->Set(v8::String::New("lastLogTick"), V8TickId(syncer.getLastLogTick()));
-    result->Set(v8::String::New("collectionsSynced"), v8::Number::New(syncer.getNumCollections()));
+
+    map<TRI_voc_cid_t, string>::const_iterator it;
+    map<TRI_voc_cid_t, string> const& c = syncer.getProcessedCollections();
+
+    uint32_t j = 0;
+    v8::Handle<v8::Array> collections = v8::Array::New();
+    for (it = c.begin(); it != c.end(); ++it) {
+      const string cidString = StringUtils::itoa((*it).first);
+
+      v8::Handle<v8::Object> ci = v8::Object::New();
+      ci->Set(TRI_V8_SYMBOL("id"), v8::String::New(cidString.c_str(), cidString.size()));
+      ci->Set(TRI_V8_SYMBOL("name"), v8::String::New((*it).second.c_str(), (*it).second.size()));
+
+      collections->Set(j++, ci);
+    }
+
+    result->Set(v8::String::New("collections"), collections);
   }
   catch (...) {
   }

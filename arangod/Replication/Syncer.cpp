@@ -27,6 +27,7 @@
 
 #include "Syncer.h"
 
+#include "BasicsC/files.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
 #include "Basics/JsonHelper.h"
@@ -372,6 +373,28 @@ int Syncer::createCollection (TRI_json_t const* json,
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
   params._waitForSync = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_defaultWaitForSync);
   params._isVolatile =  JsonHelper::getBooleanValue(json, "isVolatile", false); 
+  
+  // wait for "old" collection to be dropped
+  char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
+                                             name.c_str(),
+                                             type, 
+                                             cid);
+
+  if (dirName != 0) {
+    char* parameterName = TRI_Concatenate2File(dirName, TRI_COL_PARAMETER_FILE);
+
+    if (parameterName != 0) {
+      int iterations = 0;
+
+      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 120) {
+        sleep(1);
+      }
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
+  }
 
   col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, _masterInfo._serverId);
   TRI_FreeCollectionInfoOptions(&params);
