@@ -18,7 +18,7 @@ The HTTP replication interface serves four main purposes:
 Replication Dump Commands {#HttpReplicationDumpCommands}
 --------------------------------------------------------
 
-The `inventory` method provides can be used to query an ArangoDB server's current
+The `inventory` method can be used to query an ArangoDB server's current
 set of collections plus their indexes. Clients can use this method to get an 
 overview of which collections are present on the server. They can use this information
 to either start a full or a partial synchronisation of data, e.g. to initiate a backup
@@ -28,7 +28,7 @@ or the incremental data synchronisation.
 @copydetails triagens::arango::RestReplicationHandler::handleCommandInventory
 
 The `dump` method can be used to fetch data from a specific collection. As the
-results of the dump command can be huge, it may not return all data from a collection
+results of the dump command can be huge, `dump` may not return all data from a collection
 at once. Instead, the dump command may be called repeatedly by replication clients
 until there is no more data to fetch. The dump command will not only return the
 current documents in the collection, but also document updates and deletions. 
@@ -39,6 +39,23 @@ parts of the dump results in the same order as they are served to them.
 @anchor HttpReplicationDump
 @copydetails triagens::arango::RestReplicationHandler::handleCommandDump
 
+The `sync` method can be used by replication clients to connect an ArangoDB server 
+to a remote endpoint, fetch the remote list of collections and indexes, and collection
+data. 
+It will thus create a local backup of the state of data at the remote ArangoDB server.
+
+`sync` will first fetch the list of collections and indexes from the remote endpoint.
+It does so by calling the `inventory` API of the remote server. It will then purge
+data on the local ArangoDB instance, and after start will transfer collection data 
+from the remote server to the local ArangoDB instance. It will extract data from the
+remote server by calling the remote's `dump` API until all data are fetched.
+
+As mentioned, `sync` will remove data from the local instance, and thus must be handled
+with caution.
+
+@anchor HttpReplicationSync
+@copydetails triagens::arango::RestReplicationHandler::handleCommandSync
+
 
 Replication Logger Commands {#HttpReplicationLoggerCommands}
 ------------------------------------------------------------
@@ -46,6 +63,14 @@ Replication Logger Commands {#HttpReplicationLoggerCommands}
 The logger commands allow starting, starting, and fetching the current state of 
 the replication logger. 
 
+@anchor HttpReplicationLoggerGetConfig
+@copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerGetConfig
+
+@CLEARPAGE
+@anchor HttpReplicationLoggerSetConfig
+@copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerSetConfig
+
+@CLEARPAGE
 @anchor HttpReplicationLoggerStart
 @copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerStart
 
