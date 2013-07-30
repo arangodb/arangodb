@@ -39,8 +39,6 @@
 #include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
 
-#ifdef TRI_ENABLE_REPLICATION
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -1623,18 +1621,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 void RestReplicationHandler::handleCommandApplierStart () {
   assert(_vocbase->_replicationApplier != 0);
   
-  bool found;
-  const char* value = _request->value("fullSync", found);
-
-  bool fullSync;
-  if (found) {
-    fullSync = StringUtils::boolean(value);
-  }
-  else {
-    fullSync = false;
-  }
-
-  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, fullSync);
+  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier);
     
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||
@@ -1842,8 +1829,6 @@ void RestReplicationHandler::handleCommandApplierDeleteState () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

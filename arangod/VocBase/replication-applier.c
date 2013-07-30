@@ -40,9 +40,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-
-#ifdef TRI_ENABLE_REPLICATION
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               REPLICATION APPLIER
 // -----------------------------------------------------------------------------
@@ -80,32 +77,6 @@ static bool CheckTerminateFlag (TRI_replication_applier_t* applier) {
   TRI_UnlockSpin(&applier->_threadLock);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify an applier phase name
-////////////////////////////////////////////////////////////////////////////////
-
-static const char* StringifyPhase (TRI_replication_applier_phase_e phase) {
-  switch (phase) {
-    case PHASE_NONE:
-      return "not running";
-    case PHASE_INIT:
-      return "initialising";
-    case PHASE_VALIDATE:
-      return "initial dump - validating";
-    case PHASE_DROP:
-      return "initial dump - dropping collections";
-    case PHASE_CREATE:
-      return "initial dump - creating collections";
-    case PHASE_DUMP:
-      return "initial dump - dumping data";
-    case PHASE_FOLLOW:
-      return "continuous dump";
-  }
-
-  assert(false);
-  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -429,8 +400,7 @@ void ApplyThread (void* data) {
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StartApplier (TRI_replication_applier_t* applier,
-                         bool fullSync) {
+static int StartApplier (TRI_replication_applier_t* applier) {
   TRI_replication_applier_state_t* state;
   void* fetcher;
 
@@ -444,27 +414,7 @@ static int StartApplier (TRI_replication_applier_t* applier,
     return SetError(applier, TRI_ERROR_REPLICATION_INVALID_CONFIGURATION, "no endpoint configured");
   }
   
-  if (fullSync) {
-    state->_lastProcessedContinuousTick = 0;
-    state->_lastAppliedContinuousTick   = 0;
-    state->_lastAvailableContinuousTick = 0;
-    state->_lastAppliedInitialTick      = 0;
-    state->_lastError._code             = 0;
-    state->_lastError._time[0]          = '\0';
-
-    if (state->_lastError._msg != NULL) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
-    }
-    state->_lastError._msg              = NULL;
-
-    if (state->_progressMsg != NULL) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, state->_progressMsg);
-    }
-    state->_progressMsg                 = NULL;
-    state->_progressTime[0]             = '\0';
-  }
-
-  fetcher = (void*) TRI_CreateFetcherReplication(applier->_vocbase, &applier->_configuration, fullSync);
+  fetcher = (void*) TRI_CreateFetcherReplication(applier->_vocbase, &applier->_configuration);
 
   if (fetcher == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -480,8 +430,6 @@ static int StartApplier (TRI_replication_applier_t* applier,
 
     return TRI_ERROR_INTERNAL;
   }
-
-  applier->_state._phase = PHASE_INIT;
 
   LOG_INFO("started replication applier for database '%s'",
            applier->_databaseName);
@@ -507,8 +455,6 @@ static int StopApplier (TRI_replication_applier_t* applier,
   state->_active = false;
 
   SetTerminateFlag(applier, true);
-
-  state->_phase = PHASE_NONE;
 
   TRI_SetProgressReplicationApplier(applier, "applier stopped", false);
  
@@ -538,7 +484,6 @@ static int StopApplier (TRI_replication_applier_t* applier,
 static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   TRI_json_t* json;
   TRI_json_t* last;
-  TRI_json_t* phase;
   TRI_json_t* progress;
   TRI_json_t* error;
   char* lastString;
@@ -589,13 +534,6 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastAppliedInitialTick", last);
   
-  
-  // currentPhase
-  phase = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, phase, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_phase));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, phase, "label", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, StringifyPhase(state->_phase)));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "currentPhase", phase);
-
   // progress
   progress = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, progress, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime));
@@ -769,13 +707,12 @@ TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_con
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
-                                 bool fullSync) {
+int TRI_StartReplicationApplier (TRI_replication_applier_t* applier) {
   int res;
   
   res = TRI_ERROR_NO_ERROR;
 
-  LOG_TRACE("requesting replication applier start. fullSync: %d", (int) fullSync);
+  LOG_TRACE("requesting replication applier start");
 
   // wait until previous applier thread is shut down
   while (! TRI_WaitReplicationApplier(applier, 10 * 1000));
@@ -783,7 +720,7 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
   TRI_WriteLockReadWriteLock(&applier->_statusLock);
 
   if (! applier->_state._active) {
-    res = StartApplier(applier, fullSync);
+    res = StartApplier(applier);
   }
   
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
@@ -877,7 +814,6 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
   state->_lastAvailableContinuousTick = applier->_state._lastAvailableContinuousTick;
   state->_lastAppliedInitialTick      = applier->_state._lastAppliedInitialTick;
   state->_serverId                    = applier->_state._serverId;
-  state->_phase                       = applier->_state._phase;
   state->_lastError._code             = applier->_state._lastError._code;
   memcpy(&state->_lastError._time, &applier->_state._lastError._time, sizeof(state->_lastError._time));
 
@@ -976,19 +912,6 @@ int TRI_SetErrorReplicationApplier (TRI_replication_applier_t* applier,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the current phase
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetPhaseReplicationApplier (TRI_replication_applier_t* applier,
-                                     TRI_replication_applier_phase_e phase) {
-  TRI_WriteLockReadWriteLock(&applier->_statusLock);
-
-  applier->_state._phase = phase;
-
-  TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the progress with or without a lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1029,7 +952,6 @@ void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t* state) {
   memset(state, 0, sizeof(TRI_replication_applier_state_t));
 
   state->_active             = false;
-  state->_phase              = PHASE_NONE;
 
   state->_lastError._code    = TRI_ERROR_NO_ERROR;
   state->_lastError._msg     = NULL;
@@ -1337,8 +1259,6 @@ int TRI_ForgetReplicationApplier (TRI_replication_applier_t* applier) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

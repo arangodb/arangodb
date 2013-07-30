@@ -240,23 +240,13 @@ struct TRI_json_s* TRI_JsonReplicationLogger (TRI_replication_logger_t*);
 /// @brief replicate a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 int TRI_LogTransactionReplication (struct TRI_vocbase_s*,
                                    struct TRI_transaction_s const*,
                                    TRI_server_id_t);
 
-#else
-
-#define TRI_LogTransactionReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a "create collection" operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogCreateCollectionReplication (struct TRI_vocbase_s*,
                                         TRI_voc_cid_t,
@@ -264,51 +254,27 @@ int TRI_LogCreateCollectionReplication (struct TRI_vocbase_s*,
                                         struct TRI_json_s const*,
                                         TRI_server_id_t);
 
-#else
-
-#define TRI_LogCreateCollectionReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a "drop collection" operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogDropCollectionReplication (struct TRI_vocbase_s*,
                                       TRI_voc_cid_t,
                                       char const*,
                                       TRI_server_id_t);
 
-#else
-
-#define TRI_LogDropCollectionReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a "rename collection" operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogRenameCollectionReplication (struct TRI_vocbase_s*,
                                         TRI_voc_cid_t,
                                         char const*,
                                         TRI_server_id_t);
 
-#else
-
-#define TRI_LogRenameCollectionReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a "change collection properties" operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
                                                   TRI_voc_cid_t,
@@ -316,17 +282,9 @@ int TRI_LogChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
                                                   struct TRI_json_s const*,
                                                   TRI_server_id_t);
 
-#else
-
-#define TRI_LogChangePropertiesCollectionReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a "create index" operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogCreateIndexReplication (struct TRI_vocbase_s*,
                                    TRI_voc_cid_t,
@@ -335,17 +293,9 @@ int TRI_LogCreateIndexReplication (struct TRI_vocbase_s*,
                                    struct TRI_json_s const*,
                                    TRI_server_id_t);
 
-#else
-
-#define TRI_LogCreateIndexReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a "drop index" operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogDropIndexReplication (struct TRI_vocbase_s*,
                                  TRI_voc_cid_t,
@@ -353,17 +303,9 @@ int TRI_LogDropIndexReplication (struct TRI_vocbase_s*,
                                  TRI_idx_iid_t iid,
                                  TRI_server_id_t);
 
-#else
-
-#define TRI_LogDropIndexReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a document operation
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_LogDocumentReplication (struct TRI_vocbase_s*,
                                 struct TRI_document_collection_s*,
@@ -371,12 +313,6 @@ int TRI_LogDocumentReplication (struct TRI_vocbase_s*,
                                 struct TRI_df_marker_s const*,
                                 struct TRI_doc_mptr_s const*,
                                 TRI_server_id_t);
-
-#else
-
-#define TRI_LogDocumentReplication(...)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @} 

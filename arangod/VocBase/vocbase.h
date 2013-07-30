@@ -48,13 +48,10 @@ extern "C" {
 struct TRI_primary_collection_s;
 struct TRI_col_info_s;
 struct TRI_json_s;
-struct TRI_shadow_store_s;
-struct TRI_transaction_context_s;
-
-#ifdef TRI_ENABLE_REPLICATION
 struct TRI_replication_applier_s;
 struct TRI_replication_logger_s;
-#endif
+struct TRI_shadow_store_s;
+struct TRI_transaction_context_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -328,18 +325,14 @@ typedef struct TRI_vocbase_s {
   char*                     _path;                // path to the data directory
 
   TRI_voc_size_t            _defaultMaximalSize;
-#ifdef TRI_ENABLE_REPLICATION
   int64_t                   _replicationLogSize;  
-#endif  
   bool                      _removeOnDrop;        // wipe collection from disk after dropping
   bool                      _removeOnCompacted;   // wipe datafile from disk after compaction
   bool                      _defaultWaitForSync;
   bool                      _forceSyncShapes;     // force syncing of shape data to disk
   bool                      _forceSyncProperties; // force syncing of shape data to disk
-#ifdef TRI_ENABLE_REPLICATION
   bool                      _replicationEnableLogger;
   bool                      _replicationLogRemoteChanges;
-#endif
   bool                       _isSystem;
   bool                       _requireAuthentication;  
   bool                       _authenticateSystemOnly;
@@ -353,9 +346,7 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t  _collectionsByName;  // collections by name
   TRI_associative_pointer_t  _collectionsById;    // collections by id
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
-#endif
 
   TRI_associative_pointer_t  _authInfo;
   TRI_read_write_lock_t      _authInfoLock;
@@ -364,10 +355,8 @@ typedef struct TRI_vocbase_s {
 
   struct TRI_transaction_context_s* _transactionContext;
 
-#ifdef TRI_ENABLE_REPLICATION
   struct TRI_replication_logger_s*  _replicationLogger;
   struct TRI_replication_applier_s* _replicationApplier;
-#endif
 
   // state of the database
   // 0 = inactive
@@ -451,10 +440,8 @@ typedef struct TRI_vocbase_defaults_s {
   bool                  forceSyncProperties;
   bool                  requireAuthentication;
   bool                  authenticateSystemOnly;
-#ifdef TRI_ENABLE_REPLICATION  
   bool                  replicationEnableLogger;
   bool                  replicationLogRemoteChanges;
-#endif  
 }
 TRI_vocbase_defaults_t;
 

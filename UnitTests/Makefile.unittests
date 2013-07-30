@@ -35,7 +35,6 @@ unittests-brief: \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
-	unittests-replication \
 	unittests-arangob \
 	unittests-import \
 	unittests-upgrade \
@@ -306,13 +305,6 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
 
-
-if ENABLE_REPLICATION
-SHELL_COMMON += \
-               @top_srcdir@/js/common/tests/shell-replication.js
-
-endif
-
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
@@ -570,9 +562,22 @@ unittests-import:
 
 .PHONY: unittests-replication unittests-replication-data unittests-replication-logger
 	
-if ENABLE_REPLICATION
+unittests-replication: unittests-replication-common unittests-replication-data unittests-replication-logger
 
-unittests-replication: unittests-replication-data unittests-replication-logger
+unittests-replication-common:
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION COMMON TESTS                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 unittests-replication-data:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
@@ -611,24 +616,6 @@ unittests-replication-logger:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
-
-else
-
-unittests-replication:
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION TESTS                                                          >>"
-	@echo "================================================================================"
-	@echo
-	@echo "to enable replication tests, configure with --enable-replication"
-	@echo
-
-
-unittests-replication-data:
-
-unittests-replication-logger:
-
-endif
 
 ################################################################################
 ### @brief UPGRADE TESTS

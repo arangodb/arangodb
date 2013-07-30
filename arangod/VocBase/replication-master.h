@@ -81,45 +81,21 @@ TRI_replication_master_info_t;
 /// @brief initialise a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 void TRI_InitMasterInfoReplication (TRI_replication_master_info_t*,
                                     const char*);
-
-#else
-
-#define TRI_InitMasterInfoReplication(...)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t*);
-
-#else
-
-#define TRI_DestroyMasterInfoReplication(...)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log information about the master state
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-      
 void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const*,
                                    const char*);
-
-#else
-
-#define TRI_LogMasterInfoReplication(...)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

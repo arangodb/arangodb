@@ -55,8 +55,7 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_CreateFetcherReplication (struct TRI_vocbase_s*,
-                                    struct TRI_replication_applier_configuration_s const*,
-                                    bool);
+                                    struct TRI_replication_applier_configuration_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static free method

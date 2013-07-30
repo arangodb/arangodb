@@ -40,9 +40,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-
-#ifdef TRI_ENABLE_REPLICATION
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
 // -----------------------------------------------------------------------------
@@ -1035,8 +1032,6 @@ void TRI_InitDumpReplication (TRI_replication_dump_t* dump) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

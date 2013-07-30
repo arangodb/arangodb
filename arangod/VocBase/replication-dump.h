@@ -92,25 +92,15 @@ TRI_replication_dump_t;
 /// @brief dump data from a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
                                    struct TRI_vocbase_col_s*,
                                    TRI_voc_tick_t,
                                    TRI_voc_tick_t,
                                    uint64_t);
 
-#else
-
-#define TRI_DumpCollectionReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
 
 int TRI_DumpLogReplication (struct TRI_vocbase_s*, 
                             TRI_replication_dump_t*,
@@ -118,25 +108,11 @@ int TRI_DumpLogReplication (struct TRI_vocbase_s*,
                             TRI_voc_tick_t,
                             uint64_t);
 
-#else
-
-#define TRI_DumpLogReplication(...)
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a replication dump container
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
-
 void TRI_InitDumpReplication (TRI_replication_dump_t*);
-
-#else
-
-#define TRI_InitDumpReplication(...)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
