@@ -103,6 +103,12 @@
     <Filter Include="Utils Source">
       <UniqueIdentifier>{d51f8945-ed7a-4b2b-9ddf-8cfd624e27d2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Replication Header">
+      <UniqueIdentifier>{d627df86-e017-4f54-8b50-3c7ebb284b42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Replication Source">
+      <UniqueIdentifier>{5be3d20f-b901-44ab-b05c-c6f5ec4f2152}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -359,6 +365,36 @@
     </ClCompile>
     <ClCompile Include="..\..\arangod\Utils\DocumentHelper.cpp">
       <Filter>Utils Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\replication-applier.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\replication-common.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\replication-dump.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\replication-logger.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\replication-master.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestReplicationHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\Replication\ContinuousSyncer.cpp">
+      <Filter>Replication Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\Replication\InitialSyncer.cpp">
+      <Filter>Replication Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\Replication\replication-static.cpp">
+      <Filter>Replication Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\Replication\Syncer.cpp">
+      <Filter>Replication Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -652,6 +688,36 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\RestServer\VocbaseManager.h">
       <Filter>RestServer Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\replication-applier.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\replication-common.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\replication-dump.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\replication-logger.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\replication-master.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\RestHandler\RestReplicationHandler.h">
+      <Filter>RestHandler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Replication\ContinuousSyncer.h">
+      <Filter>Replication Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Replication\InitialSyncer.h">
+      <Filter>Replication Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Replication\replication-static.h">
+      <Filter>Replication Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Replication\Syncer.h">
+      <Filter>Replication Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
