@@ -56,11 +56,11 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_master_info_s {
-  char*                          _endpoint;
-  TRI_server_id_t                _serverId;
-  int                            _majorVersion;
-  int                            _minorVersion;
-  TRI_replication_log_state_t    _state;
+  char*                            _endpoint;
+  TRI_server_id_t                  _serverId;
+  int                              _majorVersion;
+  int                              _minorVersion;
+  TRI_replication_logger_state_t   _state;
 }
 TRI_replication_master_info_t;
 

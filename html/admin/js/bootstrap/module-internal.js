@@ -1,9 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError,
-  REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE, 
-  REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, 
-  REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, 
+  REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE,
+  REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
+  REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, 
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
@@ -265,6 +265,15 @@
   if (typeof REPLICATION_LOGGER_STATE !== "undefined") {
     exports.getStateReplicationLogger = REPLICATION_LOGGER_STATE;
     delete REPLICATION_LOGGER_STATE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configureReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_LOGGER_CONFIGURE !== "undefined") {
+    exports.configureReplicationLogger = REPLICATION_LOGGER_CONFIGURE;
+    delete REPLICATION_LOGGER_CONFIGURE;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

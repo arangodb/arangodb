@@ -212,7 +212,8 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveIndex (TRI_primary_collection_t* collection, 
-                   TRI_index_t* idx) {
+                   TRI_index_t* idx,
+                   TRI_server_id_t generatingServer) {
   TRI_json_t* json;
   TRI_vocbase_t* vocbase;
   char* filename;
@@ -256,7 +257,8 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection,
                                 collection->base._info._cid, 
                                 collection->base._info._name, 
                                 idx->_iid, 
-                                json);
+                                json,
+                                generatingServer);
 #endif
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

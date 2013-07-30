@@ -4061,7 +4061,8 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
-                                      TRI_idx_iid_t iid) {
+                                      TRI_idx_iid_t iid,
+                                      TRI_server_id_t generatingServer) {
   TRI_index_t* found;
 #ifdef TRI_ENABLE_REPLICATION
   TRI_vocbase_t* vocbase;
@@ -4136,7 +4137,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
     TRI_LogDropIndexReplication(vocbase,
                                 primary->base._info._cid, 
                                 primary->base._info._name, 
-                                iid);
+                                iid,
+                                generatingServer);
 #endif
 
     return removeResult;
@@ -4393,7 +4395,8 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
                                                         size_t count,
                                                         int64_t size,
-                                                        bool* created) {
+                                                        bool* created,
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -4421,7 +4424,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -4814,7 +4817,8 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     bool geoJson,
                                                     bool unique,
                                                     bool ignoreNull,
-                                                    bool* created) {
+                                                    bool* created,
+                                                    TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -4842,7 +4846,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -4866,7 +4870,8 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     char const* longitude,
                                                     bool unique,
                                                     bool ignoreNull,
-                                                    bool* created) {
+                                                    bool* created,
+                                                    TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -4894,7 +4899,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5091,7 +5096,8 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique,
-                                                    bool* created) {
+                                                    bool* created,
+                                                    TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -5120,7 +5126,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5309,7 +5315,8 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique,
-                                                        bool* created) {
+                                                        bool* created, 
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -5337,7 +5344,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5591,7 +5598,8 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
                                                         const char* attributeName,
                                                         const bool indexSubstrings,
                                                         int minWordLength,
-                                                        bool* created) {
+                                                        bool* created,
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -5619,7 +5627,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5859,7 +5867,8 @@ TRI_index_t* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document_collec
 TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collection_t* document,
                                                             TRI_vector_pointer_t const* attributes,
                                                             bool unique,
-                                                            bool* created) {
+                                                            bool* created,
+                                                            TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -5888,7 +5897,7 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -6154,7 +6163,8 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
                                                         bool supportUndef,
                                                         bool* created,
                                                         int* errorCode,
-                                                        char** errorStr) {
+                                                        char** errorStr,
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -6190,7 +6200,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       // ...........................................................................
       // If index could not be saved, report the error and return NULL

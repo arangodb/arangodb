@@ -35,6 +35,7 @@
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server-id.h"
+#include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 
 // -----------------------------------------------------------------------------
@@ -43,7 +44,7 @@
   
 struct TRI_json_s;
 struct TRI_replication_applier_s;
-struct TRI_replication_apply_configuration_s;
+struct TRI_replication_applier_configuration_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_s;
 struct TRI_vocbase_col_s;
@@ -84,7 +85,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ReplicationFetcher (struct TRI_vocbase_s*,
-                            struct TRI_replication_apply_configuration_s const*,
+                            struct TRI_replication_applier_configuration_s const*,
                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,10 +139,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save the current apply state
+/// @brief save the current applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int saveApplyState ();
+        int saveApplierState ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get chunk size for a transfer
@@ -159,7 +160,7 @@ namespace triagens {
 /// @brief set the applier phase
 ////////////////////////////////////////////////////////////////////////////////
   
-        void setPhase (TRI_replication_apply_phase_e);
+        void setPhase (TRI_replication_applier_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON
@@ -172,6 +173,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void abortOngoingTransaction ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a transaction hint
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_hint_t getHint (const size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a transaction for a single operation
@@ -268,7 +275,7 @@ namespace triagens {
                       uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get local replication apply state
+/// @brief get local replication applier state
 ////////////////////////////////////////////////////////////////////////////////
 
         int getLocalState (std::string&);  
@@ -307,7 +314,7 @@ namespace triagens {
         int handleCollectionInitial (struct TRI_json_s const*,
                                      struct TRI_json_s const*, 
                                      std::string&, 
-                                     TRI_replication_apply_phase_e);
+                                     TRI_replication_applier_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the state response of the master
@@ -328,7 +335,7 @@ namespace triagens {
   
         int iterateCollections (struct TRI_json_s const*,
                                 std::string&,
-                                TRI_replication_apply_phase_e);
+                                TRI_replication_applier_phase_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the continuous synchronisation
@@ -361,16 +368,16 @@ namespace triagens {
         struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer to the apply state
+/// @brief pointer to the applier state
 ////////////////////////////////////////////////////////////////////////////////
         
         struct TRI_replication_applier_s* _applier;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply configuration;
+/// @brief applier configuration;
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_replication_apply_configuration_t _configuration;
+        TRI_replication_applier_configuration_t _configuration;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief information about the master state
@@ -379,7 +386,7 @@ namespace triagens {
         TRI_replication_master_info_t _masterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief information about the local apply state
+/// @brief information about the local applier state
 ////////////////////////////////////////////////////////////////////////////////
   
         struct {
@@ -423,6 +430,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _localServerIdString;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local server id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_server_id_t _localServerId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base url of the replication API

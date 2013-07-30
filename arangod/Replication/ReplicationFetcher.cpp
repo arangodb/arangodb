@@ -42,6 +42,7 @@
 #include "VocBase/server-id.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -82,7 +83,7 @@ const string ReplicationFetcher::BaseUrl = "/_api/replication";
 ////////////////////////////////////////////////////////////////////////////////
 
 ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
-                                        TRI_replication_apply_configuration_t const* configuration,
+                                        TRI_replication_applier_configuration_t const* configuration,
                                         bool forceFullSynchronisation) :
   _vocbase(vocbase),
   _applier(vocbase->_replicationApplier),
@@ -95,8 +96,9 @@ ReplicationFetcher::ReplicationFetcher (TRI_vocbase_t* vocbase,
   _connection(0),
   _client(0) {
     
-  // get our own server-id as a string
-  _localServerIdString = StringUtils::itoa(TRI_GetServerId());
+  // get our own server-id 
+  _localServerId       = TRI_GetServerId();
+  _localServerIdString = StringUtils::itoa(_localServerId);
  
   // init the update policy
   TRI_InitUpdatePolicy(&_policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
@@ -271,17 +273,17 @@ int ReplicationFetcher::sortCollections (const void* l, const void* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save the current apply state
+/// @brief save the current applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-int ReplicationFetcher::saveApplyState () {
-  LOGGER_TRACE("saving replication apply state. "
+int ReplicationFetcher::saveApplierState () {
+  LOGGER_TRACE("saving replication applier state. "
                "last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick);
 
   int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
         
   if (res != TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING("unable to save replication apply state: " << TRI_errno_string(res));
+    LOGGER_WARNING("unable to save replication applier state: " << TRI_errno_string(res));
   }
 
   return res;
@@ -309,7 +311,7 @@ void ReplicationFetcher::setProgress (char const* msg) {
 /// @brief set the applier phase
 ////////////////////////////////////////////////////////////////////////////////
   
-void ReplicationFetcher::setPhase (TRI_replication_apply_phase_e phase) {
+void ReplicationFetcher::setPhase (TRI_replication_applier_phase_e phase) {
   TRI_SetPhaseReplicationApplier(_applier, phase);
 }
 
@@ -349,12 +351,28 @@ void ReplicationFetcher::abortOngoingTransaction () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a transaction hint
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_hint_t ReplicationFetcher::getHint (const size_t numOperations) const {
+  if (numOperations <= 1) {
+    return (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION;
+  }
+
+  return (TRI_transaction_hint_t) 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a transaction for a single operation
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* ReplicationFetcher::createSingleOperationTransaction (TRI_voc_cid_t cid,
                                                                          int* result) {
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+                                                 _masterInfo._serverId,
+                                                 false, 
+                                                 0.0, 
+                                                 false);
 
   if (trx == 0) {
     *result = TRI_ERROR_OUT_OF_MEMORY;
@@ -371,7 +389,7 @@ TRI_transaction_t* ReplicationFetcher::createSingleOperationTransaction (TRI_voc
     return 0;
   }
   
-  res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION, TRI_TRANSACTION_TOP_LEVEL);
+  res = TRI_BeginTransaction(trx, getHint(1), TRI_TRANSACTION_TOP_LEVEL);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeTransaction(trx);
@@ -536,7 +554,11 @@ int ReplicationFetcher::startTransaction (TRI_json_t const* json) {
   }
   
   LOGGER_TRACE("starting replication transaction " << tid); 
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
+  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+                                                 _masterInfo._serverId,
+                                                 false, 
+                                                 0.0, 
+                                                 false);
 
   if (trx == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -579,12 +601,7 @@ int ReplicationFetcher::startTransaction (TRI_json_t const* json) {
     }
   }
     
-  TRI_transaction_hint_t hint = 0; 
-  if (totalOperations == 1) {
-    hint = (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION;
-  }
-
-  res = TRI_BeginTransaction(trx, hint, TRI_TRANSACTION_TOP_LEVEL);
+  res = TRI_BeginTransaction(trx, getHint(totalOperations), TRI_TRANSACTION_TOP_LEVEL);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeTransaction(trx);
@@ -694,7 +711,7 @@ int ReplicationFetcher::createCollection (TRI_json_t const* json,
   const string progress = "creating collection '" + name + "', id " + StringUtils::itoa(cid);
   setProgress(progress.c_str());
 
-  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid);
+  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, _masterInfo._serverId);
   TRI_FreeCollectionInfoOptions(&params);
 
   if (col == NULL) {
@@ -726,7 +743,7 @@ int ReplicationFetcher::dropCollection (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return TRI_DropCollectionVocBase(_vocbase, col);
+  return TRI_DropCollectionVocBase(_vocbase, col, _masterInfo._serverId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -753,7 +770,7 @@ int ReplicationFetcher::renameCollection (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return TRI_RenameCollectionVocBase(_vocbase, col, name.c_str());
+  return TRI_RenameCollectionVocBase(_vocbase, col, name.c_str(), _masterInfo._serverId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -787,7 +804,7 @@ int ReplicationFetcher::createIndex (TRI_json_t const* json) {
   int res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, indexJson, &idx);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_SaveIndex(primary, idx);
+    res = TRI_SaveIndex(primary, idx, _masterInfo._serverId);
   }
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -824,7 +841,7 @@ int ReplicationFetcher::dropIndex (TRI_json_t const* json) {
   
   TRI_document_collection_t* document = (TRI_document_collection_t*) col->_collection;
 
-  bool result = TRI_DropIndexDocumentCollection(document, iid);
+  bool result = TRI_DropIndexDocumentCollection(document, iid, _masterInfo._serverId);
 
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
@@ -1582,7 +1599,7 @@ int ReplicationFetcher::handleCollectionDump (TRI_transaction_collection_t* trxC
 int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
                                                  TRI_json_t const* indexes,
                                                  string& errorMsg,
-                                                 TRI_replication_apply_phase_e phase) {
+                                                 TRI_replication_applier_phase_e phase) {
 
   setPhase(phase);
   
@@ -1638,7 +1655,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
       const string progress = "dropping " + collectionMsg;
       setProgress(progress.c_str());
 
-      int res = TRI_DropCollectionVocBase(_vocbase, col);
+      int res = TRI_DropCollectionVocBase(_vocbase, col, _masterInfo._serverId);
  
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
@@ -1679,7 +1696,11 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
     const string progress = "syncing data for " + collectionMsg;
     setProgress(progress.c_str());
   
-    TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, false, 0.0, false);
+    TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+                                                   _masterInfo._serverId,
+                                                   false, 
+                                                   0.0, 
+                                                   false);
 
     if (trx == 0) {
       errorMsg = "unable to start transaction";
@@ -1696,7 +1717,7 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
       return res;
     }
     
-    res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION, TRI_TRANSACTION_TOP_LEVEL);
+    res = TRI_BeginTransaction(trx, getHint(1), TRI_TRANSACTION_TOP_LEVEL);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_FreeTransaction(trx);
@@ -1739,7 +1760,9 @@ int ReplicationFetcher::handleCollectionInitial (TRI_json_t const* parameters,
           else {
             assert(idx != 0);
 
-            res = TRI_SaveIndex((TRI_primary_collection_t*) trxCollection->_collection->_collection, idx);
+            res = TRI_SaveIndex((TRI_primary_collection_t*) trxCollection->_collection->_collection, 
+                                idx,
+                                _masterInfo._serverId);
 
             if (res != TRI_ERROR_NO_ERROR) {
               errorMsg = "could not save index: " + string(TRI_errno_string(res));
@@ -1956,7 +1979,7 @@ int ReplicationFetcher::handleInventoryResponse (TRI_json_t const* json,
   
 int ReplicationFetcher::iterateCollections (TRI_json_t const* collections,
                                             string& errorMsg,
-                                            TRI_replication_apply_phase_e phase) {
+                                            TRI_replication_applier_phase_e phase) {
   const size_t n = collections->_value._objects._length;
 
   for (size_t i = 0; i < n; ++i) {
@@ -2121,7 +2144,7 @@ int ReplicationFetcher::followMasterLog (string& errorMsg,
 
     TRI_WriteLockReadWriteLock(&_applier->_statusLock);
     if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
-      saveApplyState();
+      saveApplierState();
     }
     TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
   }

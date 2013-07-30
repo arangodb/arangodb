@@ -206,6 +206,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnDrop(true),
 #ifdef TRI_ENABLE_REPLICATION    
     _replicationEnableLogger(false),
+    _replicationLogRemoteChanges(false),
 #endif    
     _vocbase(0) {
 
@@ -367,6 +368,7 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_ENABLE_REPLICATION 
   additional[ApplicationServer::OPTIONS_REPLICATION + ":help-replication"]
     ("replication.enable-logger", &_replicationEnableLogger, "enable replication logger")
+    ("replication.log-remote-changes", &_replicationLogRemoteChanges, "log remote changes")
   ;
 #endif  
 
@@ -1177,6 +1179,8 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
 #ifdef TRI_ENABLE_REPLICATION
   defaults.replicationEnableLogger = doc.getBooleanValue("replicationEnableLogger", 
           systemDefaults->replicationEnableLogger);
+  defaults.replicationLogRemoteChanges = doc.getBooleanValue("replicationLogRemoteChanges", 
+          systemDefaults->replicationLogRemoteChanges);
 #endif
   
   // open/load database
@@ -1399,6 +1403,7 @@ void ArangoServer::openDatabases () {
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
 #ifdef TRI_ENABLE_REPLICATION  
   defaults.replicationEnableLogger       = _replicationEnableLogger;
+  defaults.replicationLogRemoteChanges   = _replicationLogRemoteChanges;
 #endif  
   
   // store these settings as initial system defaults

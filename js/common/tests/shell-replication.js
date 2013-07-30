@@ -221,6 +221,45 @@ function ReplicationLoggerSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test logger properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testPropertiesLogger : function () {
+      var properties;
+      
+require("internal").print(1);
+      properties = replication.logger.properties();
+      assertTrue(typeof properties === 'object');
+require("internal").print(2);
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+require("internal").print(3);
+
+      assertFalse(properties.logRemoteChanges);
+
+      properties = replication.logger.properties({
+        logRemoteChanges: true
+      });
+require("internal").print(properties);
+
+      assertTrue(typeof properties === 'object');
+require("internal").print(5);
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+require("internal").print(6);
+      assertTrue(properties.logRemoteChanges);
+require("internal").print(7);
+      
+      properties = replication.logger.properties({
+        logRemoteChanges: false
+      });
+
+      assertTrue(typeof properties === 'object');
+require("internal").print(8);
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+require("internal").print(9);
+      assertFalse(properties.logRemoteChanges);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 

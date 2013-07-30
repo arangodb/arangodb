@@ -38,7 +38,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
   
-struct TRI_replication_apply_configuration_s;
+struct TRI_replication_applier_configuration_s;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_CreateFetcherReplication (struct TRI_vocbase_s*,
-                                    struct TRI_replication_apply_configuration_s const*,
+                                    struct TRI_replication_applier_configuration_s const*,
                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
