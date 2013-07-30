@@ -273,7 +273,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 
       if (TRI_EqualString(attributeName, "type")) {
         if (JsonHelper::isNumber(value)) {
-          type = (TRI_replication_operation_e) value->_value._number;
+          type = (TRI_replication_operation_e) (int) value->_value._number;
         }
       }
 
