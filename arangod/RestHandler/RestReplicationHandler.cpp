@@ -33,13 +33,12 @@
 #include "BasicsC/files.h"
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
-
-#ifdef TRI_ENABLE_REPLICATION
 
 using namespace std;
 using namespace triagens::basics;
@@ -138,6 +137,17 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandLoggerState();
     }
+    else if (command == "logger-config") {
+      if (type == HttpRequest::HTTP_REQUEST_GET) {
+        handleCommandLoggerGetConfig();
+      }
+      else {
+        if (type != HttpRequest::HTTP_REQUEST_PUT) {
+          goto BAD_CALL;
+        }
+        handleCommandLoggerSetConfig();
+      }
+    }
     else if (command == "logger-follow") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -155,6 +165,12 @@ Handler::status_e RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandDump(); 
+    }
+    else if (command == "sync") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      handleCommandSync(); 
     }
     else if (command == "applier-config") {
       if (type == HttpRequest::HTTP_REQUEST_GET) {
@@ -518,6 +534,154 @@ void RestReplicationHandler::handleCommandLoggerState () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the configuration of the replication logger
+///
+/// @RESTHEADER{GET /_api/replication/logger-config,returns the configuration of the replication logger}
+///
+/// @RESTDESCRIPTION
+/// Returns the configuration of the replication logger.
+///
+/// The body of the response is a JSON hash with the configuration. The
+/// following attributes may be present in the configuration:
+///
+/// - `logRemoteChanges`: whether or not externally created changes should be
+///    logged by the local logger
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerGetConfig}
+///     var url = "/_api/replication/logger-config";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandLoggerGetConfig () {
+  assert(_vocbase->_replicationLogger != 0);
+    
+  TRI_replication_logger_configuration_t config;
+    
+  TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
+  TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
+  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
+  
+  TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
+    
+  if (json == 0) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+    
+  generateResult(json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the configuration of the replication logger
+///
+/// @RESTHEADER{PUT /_api/replication/logger-config,adjusts the configuration of the replication logger}
+///
+/// @RESTBODYPARAM{configuration,json,required}
+/// A JSON representation of the configuration.
+///
+/// @RESTDESCRIPTION
+/// Sets the configuration of the replication logger. 
+///
+/// The body of the request must be JSON hash with the configuration. The
+/// following attributes are allowed for the configuration:
+///
+/// - `logRemoteChanges`: whether or not externally created changes should be
+///    logged by the local logger
+///
+/// In case of success, the body of the response is a JSON hash with the updated
+/// configuration.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the configuration is incomplete or malformed.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerSetConfig}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///
+///     var url = "/_api/replication/logger-config";
+///     var body = { 
+///       logRemoteChanges: true
+///     };
+///
+///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandLoggerSetConfig () {
+  assert(_vocbase->_replicationLogger != 0);
+  
+  TRI_replication_logger_configuration_t config;
+  // copy previous config
+  TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
+  TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
+  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
+  
+  TRI_json_t* json = parseJsonBody();
+
+  if (json == 0) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  TRI_json_t const* value;
+
+  value = JsonHelper::getArrayElement(json, "logRemoteChanges");
+  if (JsonHelper::isBoolean(value)) {
+    config._logRemoteChanges = value->_value._boolean;
+  }
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  int res = TRI_ConfigureReplicationLogger(_vocbase->_replicationLogger, &config);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION) {
+      generateError(HttpResponse::BAD, res);
+    }
+    else {
+      generateError(HttpResponse::SERVER_ERROR, res);
+    }
+    return;
+  }
+ 
+  handleCommandLoggerGetConfig();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns ranged data from the replication log
 ///
 /// @RESTHEADER{GET /_api/replication/logger-follow,returns recent log entries from the replication log}
@@ -752,7 +916,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
   int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
   
-  TRI_replication_log_state_t state;
+  TRI_replication_logger_state_t state;
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
@@ -932,7 +1096,7 @@ void RestReplicationHandler::handleCommandInventory () {
     return;
   }
 
-  TRI_replication_log_state_t state;
+  TRI_replication_logger_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
 
@@ -1189,6 +1353,55 @@ void RestReplicationHandler::handleCommandDump () {
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump._buffer);
 }
 
+// TODO
+void RestReplicationHandler::handleCommandSync () {
+  TRI_json_t* json = parseJsonBody();
+
+  if (json == 0) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  
+  const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
+  const string username = JsonHelper::getStringValue(json, "username", "");
+  const string password = JsonHelper::getStringValue(json, "password", "");
+
+  TRI_replication_applier_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+
+  string errorMsg = "";
+  InitialSyncer syncer(_vocbase, &config, false);
+  TRI_DestroyConfigurationReplicationApplier(&config);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    res = syncer.run(errorMsg);
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+  
+  TRI_json_t result;
+    
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+
+  char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "numCollections", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) syncer.getNumCollections()));
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the configuration of the replication applier
 ///
@@ -1241,7 +1454,7 @@ void RestReplicationHandler::handleCommandDump () {
 void RestReplicationHandler::handleCommandApplierGetConfig () {
   assert(_vocbase->_replicationApplier != 0);
     
-  TRI_replication_apply_configuration_t config;
+  TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
     
   TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
@@ -1347,7 +1560,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 void RestReplicationHandler::handleCommandApplierSetConfig () {
   assert(_vocbase->_replicationApplier != 0);
   
-  TRI_replication_apply_configuration_t config;
+  TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   
   TRI_json_t* json = parseJsonBody();
@@ -1356,10 +1569,17 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
+  
+  TRI_ReadLockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
+  TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
+  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationApplier->_statusLock);
 
   TRI_json_t const* value;
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
 
+  if (config._endpoint != 0) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
+  }
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   
   value = JsonHelper::getArrayElement(json, "username");
@@ -1403,6 +1623,12 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 /// @brief start the replication applier
 ///
 /// @RESTHEADER{PUT /_api/replication/applier-start,starts the replication applier}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{from,string,optional}
+/// The remote `lastLogTick` value from which to start applying. If not specified,
+/// the last saved tick from the previous applier run is used.
 ///
 /// @RESTDESCRIPTION
 /// Starts the replication applier. This will return immediately if the
@@ -1458,17 +1684,17 @@ void RestReplicationHandler::handleCommandApplierStart () {
   assert(_vocbase->_replicationApplier != 0);
   
   bool found;
-  const char* value = _request->value("fullSync", found);
+  const char* value = _request->value("from", found);
 
-  bool fullSync;
+  TRI_voc_tick_t initialTick = 0;
   if (found) {
-    fullSync = StringUtils::boolean(value);
+    // url parameter "from" specified
+    initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
-  else {
-    fullSync = false;
-  }
-
-  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, fullSync);
+  
+  int res = TRI_StartReplicationApplier(_vocbase->_replicationApplier, 
+                                        initialTick,
+                                        found);
     
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||
@@ -1676,8 +1902,6 @@ void RestReplicationHandler::handleCommandApplierDeleteState () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

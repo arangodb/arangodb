@@ -32,9 +32,6 @@
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
-
-#ifdef TRI_ENABLE_REPLICATION
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
 // -----------------------------------------------------------------------------
@@ -79,8 +76,6 @@ bool TRI_ExcludeCollectionReplication (const char* name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

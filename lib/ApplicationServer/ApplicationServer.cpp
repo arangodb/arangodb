@@ -87,9 +87,7 @@ string const ApplicationServer::OPTIONS_LOGGER = "Logging Options";
 /// @brief Replication Options
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_REPLICATION
 string const ApplicationServer::OPTIONS_REPLICATION = "Replication Options";
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Server Options
