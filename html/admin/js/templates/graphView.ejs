@@ -21,58 +21,58 @@ gs = _.sortBy(gs, sortF);
   <form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
     <fieldset>
       <legend>Configuration</legend>
-      
-      <label class="radio">
-        <input type="radio" name="loadtype" id="collections" checked>
-        Define specific collections
-      </label>
-      <div id="collection_config">
-        <div class="control-group">
-          <label for="nodeCollection" class="control-label">Node-Collection</label>
-          <div class="controls">
-            <select id="nodeCollection" name="nodeCollection">
-            <%_.each(ds, function(d) {%>
-              <option value="<%= d %>"><%= d %></option>
-            <%}); %>
-            </select>
-          </div>
-        </div>
-      
-        <div class="control-group">
-          <label for="edgeCollection" class="control-label">Edge-Collection</label>
-          <div class="controls">
-            <select id="edgeCollection" name="edgeCollection">
-            <%_.each(es, function(e) {%>
-              <option value="<%= e %>"><%= e %></option>
-            <%}); %>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <label class="radio">
-        <input type="radio" name="loadtype" id="graphs">
-        Use a graph
-      </label>
-      <div id="graph_config" style="display:none">
-        <div class="control-group">
-          <label for="graph" class="control-label">Graph-Name</label>
-          <div class="controls">
-            <select id="graph" name="graph">
-            <%_.each(gs, function(g) {%>
-              <option value="<%= g %>"><%= g %></option>
-            <%}); %>
-            </select>
-          </div>
-        </div>
-      </div>
 
       <div class="control-group">
-        <label for="undirected" class="control-label">Undirected Graph</label>
-        <div class="controls">
-          <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
+        
+        <fieldset id="datasoure">
+          <legend class="gv_inner">Datasource:</legend>
+        
+          <div class="controls">
+            <label class="radio">
+              <input type="radio" name="loadtype" id="collections" checked>
+              Define specific collections
+            </label>
+          </div>
+        
+          <div id="collection_config">
+            <label for="nodeCollection" class="control-label">Node-Collection</label>
+            <div class="controls">
+              <select id="nodeCollection" name="nodeCollection">
+              <%_.each(ds, function(d) {%>
+                <option value="<%= d %>"><%= d %></option>
+              <%}); %>
+              </select>
+            </div>
+            <label for="edgeCollection" class="control-label">Edge-Collection</label>
+            <div class="controls">
+              <select id="edgeCollection" name="edgeCollection">
+              <%_.each(es, function(e) {%>
+                <option value="<%= e %>"><%= e %></option>
+              <%}); %>
+              </select>
+            </div>
+          </div>
+
+          <div class="controls">
+            <label class="radio">
+              <input type="radio" name="loadtype" id="graphs">
+              Use a graph
+            </label>
+          </div>
+        
+          <div id="graph_config" style="display:none">
+            <label for="graph" class="control-label">Graph-Name</label>
+            <div class="controls">
+              <select id="graph" name="graph">
+              <%_.each(gs, function(g) {%>
+                <option value="<%= g %>"><%= g %></option>
+              <%}); %>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
+
+      </fieldset>
             
       <div class="accordion" id="advancedGraphOptions">
 
@@ -85,6 +85,13 @@ gs = _.sortBy(gs, sortF);
 
           <div id="advancedOptions" class="accordion-body collapse out">
             <div class="accordion-inner">
+              
+              <div class="control-group">
+                <label for="undirected" class="control-label">Treat as Undirected</label>
+                <div class="controls">
+                  <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
+                </div>
+              </div>
               
               <div class="control-group">
                 <label for="randomStart" class="control-label">Start with Random Node</label>
