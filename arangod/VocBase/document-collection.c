@@ -3615,7 +3615,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
 static bool DropIndex (TRI_document_collection_t* document, 
                        TRI_idx_iid_t iid,
                        TRI_server_id_t generatingServer,
-                       bool extraActions) {
+                       bool full) {
   TRI_index_t* found;
   TRI_vocbase_t* vocbase;
   TRI_primary_collection_t* primary;
@@ -3672,7 +3672,7 @@ static bool DropIndex (TRI_document_collection_t* document,
   // outside write-lock
   // .............................................................................
 
-  if (found != NULL && extraActions) {
+  if (found != NULL && full) {
     bool removeResult;
 
     removeResult = TRI_RemoveIndexFile(primary, found);
