@@ -637,7 +637,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
 
   if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
-    errorMsg = "master's id is the same as the local server's id";
+    errorMsg = "master's id is the same as the applier server's id";
 
     return TRI_ERROR_REPLICATION_LOOP;
   }
