@@ -208,8 +208,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveIndexCapConstraint (TRI_index_t* idx,
-                                      TRI_primary_collection_t* collection) {
-  collection->_capConstraint = NULL;
+                                      TRI_primary_collection_t* primary) {
+  primary->_capConstraint = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,6 +288,11 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   TRI_index_t* idx;
 
   cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+
+  if (cap == NULL) {
+    return NULL;
+  }
+
   idx = &cap->base;
 
   idx->typeName = TypeNameCapConstraint;

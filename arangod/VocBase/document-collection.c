@@ -3609,6 +3609,89 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+////////////////////////////////////////////////////////////////////////////////
+
+static bool DropIndex (TRI_document_collection_t* document, 
+                       TRI_idx_iid_t iid,
+                       TRI_server_id_t generatingServer,
+                       bool extraActions) {
+  TRI_index_t* found;
+  TRI_vocbase_t* vocbase;
+  TRI_primary_collection_t* primary;
+  size_t i, n;
+
+  if (iid == 0) {
+    // invalid index id or primary index
+    return true;
+  }
+
+  found = NULL;
+  primary = &document->base;
+  
+  vocbase = primary->base._vocbase;
+  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
+
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  n = document->_allIndexes._length;
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = document->_allIndexes._buffer[i];
+
+    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+      // cannot remove these index types
+      continue;
+    }
+
+    if (idx->_iid == iid) {
+      found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
+
+      if (found != NULL && found->removeIndex != NULL) {
+        // notify the index about its removal
+        found->removeIndex(found, primary);
+      }
+
+      break;
+    }
+  }
+
+  RebuildIndexInfo(document);
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  if (found != NULL && extraActions) {
+    bool removeResult;
+
+    removeResult = TRI_RemoveIndexFile(primary, found);
+    TRI_FreeIndex(found);
+
+    // it is safe to use _name as we hold a read-lock on the collection status
+    TRI_LogDropIndexReplication(vocbase,
+                                primary->base._info._cid, 
+                                primary->base._info._name, 
+                                iid,
+                                generatingServer);
+
+    return removeResult;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4057,85 +4140,23 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an index
+/// @brief drops an index, including index file removal and replication
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
                                       TRI_idx_iid_t iid,
                                       TRI_server_id_t generatingServer) {
-  TRI_index_t* found;
-  TRI_vocbase_t* vocbase;
-  TRI_primary_collection_t* primary;
-  size_t i, n;
+  return DropIndex(document, iid, generatingServer, true);
+}
 
-  if (iid == 0) {
-    // invalid index id or primary index
-    return true;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index, without index file removal and replication
+////////////////////////////////////////////////////////////////////////////////
 
-  found = NULL;
-  primary = &document->base;
-  
-  vocbase = primary->base._vocbase;
-  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
-
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  n = document->_allIndexes._length;
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-
-    idx = document->_allIndexes._buffer[i];
-
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      // cannot remove these index types
-      continue;
-    }
-
-    if (idx->_iid == iid) {
-      found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
-
-      if (found != NULL && found->removeIndex != NULL) {
-        // notify the index about its removal
-        found->removeIndex(found, primary);
-      }
-
-      break;
-    }
-  }
-
-  RebuildIndexInfo(document);
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
-  if (found != NULL) {
-    bool removeResult;
-
-    removeResult = TRI_RemoveIndexFile(primary, found);
-    TRI_FreeIndex(found);
-
-    // it is safe to use _name as we hold a read-lock on the collection status
-    TRI_LogDropIndexReplication(vocbase,
-                                primary->base._info._cid, 
-                                primary->base._info._name, 
-                                iid,
-                                generatingServer);
-
-    return removeResult;
-  }
-
-  return false;
+bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t* document, 
+                                       TRI_idx_iid_t iid,
+                                       TRI_server_id_t generatingServer) {
+  return DropIndex(document, iid, generatingServer, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

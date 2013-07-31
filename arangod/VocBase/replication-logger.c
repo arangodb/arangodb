@@ -271,9 +271,9 @@ static void FreeCap (TRI_replication_logger_t* logger) {
     primary = logger->_trxCollection->_collection->_collection;
     assert(primary != NULL);
 
-    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-    TRI_FreeIndex(logger->_cap);
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    TRI_DropIndex2DocumentCollection((TRI_document_collection_t*) primary,
+                                     logger->_cap->_iid,
+                                     TRI_GetServerId());
 
     logger->_cap = NULL;
     logger->_configuration._maxEvents = 0;
@@ -289,6 +289,7 @@ static void FreeCap (TRI_replication_logger_t* logger) {
 static bool CreateCap (TRI_replication_logger_t* logger) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
+  bool created;
 
   primary = logger->_trxCollection->_collection->_collection;
   assert(primary != NULL);
@@ -299,13 +300,13 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
   LOG_INFO("creating cap constraint for replication logger. maxEvents: %llu, maxEventsSize: %llu",
            (unsigned long long) logger->_configuration._maxEvents,
            (unsigned long long) logger->_configuration._maxEventsSize);
-    
-  idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) logger->_trxCollection->_collection->_collection,
+  
+  idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) primary,
                                                   (size_t) logger->_configuration._maxEvents,
                                                   (int64_t) logger->_configuration._maxEventsSize, 
-                                                  NULL,
+                                                  &created,
                                                   TRI_GetServerId());
-    
+
   if (idx == NULL) {
     LOG_WARNING("creating cap constraint for '%s' failed", TRI_COL_NAME_REPLICATION);
     return false;
@@ -1423,6 +1424,15 @@ int TRI_ConfigureReplicationLogger (TRI_replication_logger_t* logger,
   int res;
 
   res = TRI_ERROR_NO_ERROR;
+
+  if (config->_maxEvents == 0 && config->_maxEventsSize == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION;
+  }
+
+  if (config->_maxEvents < TRI_REPLICATION_LOGGER_EVENTS_MIN ||
+      config->_maxEventsSize < TRI_REPLICATION_LOGGER_SIZE_MIN) {
+    return TRI_ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION;
+  }
 
   TRI_WriteLockReadWriteLock(&logger->_statusLock);
   oldMaxEvents     = logger->_configuration._maxEvents;
