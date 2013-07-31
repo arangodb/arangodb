@@ -214,7 +214,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
-    return TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+    return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
 
   res = TRI_ERROR_NO_ERROR;
@@ -236,7 +236,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   value = TRI_LookupArrayJson(json, "endpoint");
 
   if (! TRI_IsStringJson(value)) {
-    res = TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+    res = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
   else {
     config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
@@ -406,7 +406,7 @@ static int StartApplier (TRI_replication_applier_t* applier,
   }
 
   if (applier->_configuration._endpoint == NULL) {
-    return SetError(applier, TRI_ERROR_REPLICATION_INVALID_CONFIGURATION, "no endpoint configured");
+    return SetError(applier, TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
   }
   
   fetcher = (void*) TRI_CreateContinuousSyncerReplication(applier->_vocbase, 
@@ -773,7 +773,7 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
 
   if (config->_endpoint == NULL || strlen(config->_endpoint) == 0) {
     // no endpoint
-    return TRI_ERROR_REPLICATION_INVALID_CONFIGURATION;
+    return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
 
   TRI_WriteLockReadWriteLock(&applier->_statusLock);

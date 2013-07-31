@@ -693,7 +693,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   int res = TRI_ConfigureReplicationLogger(_vocbase->_replicationLogger, &config);
   
   if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION) {
+    if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION) {
       generateError(HttpResponse::BAD, res);
     }
     else {
@@ -1771,7 +1771,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_DestroyConfigurationReplicationApplier(&config);
     
   if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||
+    if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
         res == TRI_ERROR_REPLICATION_RUNNING) {
       generateError(HttpResponse::BAD, res);
     }
@@ -1864,7 +1864,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
                                         found);
     
   if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_REPLICATION_INVALID_CONFIGURATION ||
+    if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
         res == TRI_ERROR_REPLICATION_RUNNING) {
       generateError(HttpResponse::BAD, res);
     }

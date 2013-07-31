@@ -374,12 +374,20 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t*);
 TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an index
+/// @brief drops an index, including index file removal and replication
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*, 
                                       TRI_idx_iid_t,
                                       TRI_server_id_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index, without index file removal and replication
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t*, 
+                                       TRI_idx_iid_t,
+                                       TRI_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
