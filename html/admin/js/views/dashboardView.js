@@ -98,10 +98,10 @@ var dashboardView = Backbone.View.extend({
   },
 
   putReplicationStatus: function () {
-    var time;
-    var clientString = '-';
+    var loggerRunning  = this.replLogState.state.running;
+    var applierRunning = this.replApplyState.state.running;
 
-    if (this.replApplyState.state.running === true) {
+    if (applierRunning || this.replApplyState.state.lastError != '') {
       $('#detailReplication').height(290);
       $('.checkApplyRunningStatus').show();
     }
@@ -109,19 +109,15 @@ var dashboardView = Backbone.View.extend({
       $('.checkApplyRunningStatus').hide();
     }
 
-    time = this.replLogState.state.time;
+    var time = this.replLogState.state.time;
 
-    var runningLog;
-    if (this.replLogState.state.running === true) {
-      runningLog = '<div class="trueClass">true</div>';
-    }
-    else {
-      runningLog = '<div class="falseClass">false</div>';
-    }
+    var cls = loggerRunning ? 'true' : 'false';
+    var runningLog = '<div class="' + cls + 'Class">' + cls + '</div>';
 
+    var clientString = '-';
     if (this.replLogState.state.clients) {
       $.each(this.replLogState.state.clients, function(k,v) {
-        clientString = clientString + "Server: "+v.serverId+" | Time: "+v.time+"\n";
+        clientString = clientString + "Server: " + v.serverId + " | Time: " + v.time + "\n";
       });
     }
 
@@ -138,20 +134,15 @@ var dashboardView = Backbone.View.extend({
 
 
     //apply table
-    var lastAppliedTick;
+    var lastAppliedTick = "-";
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
+    var numRequests = "-";
+    var numFailed = "-";
 
-    if (this.replApplyState.state.lastAppliedContinuousTick === null) {
-      lastAppliedTick = this.replApplyState.state.lastAppliedInitialTick;
-    }
-    else {
+    if (this.replApplyState.state.lastAppliedContinuousTick !== null) {
       lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
-    }
-
-    if (lastAppliedTick === null) {
-      lastAppliedTick = "-";
     }
 
     if (this.replApplyState.state.endpoint !== undefined) {
@@ -167,22 +158,21 @@ var dashboardView = Backbone.View.extend({
     if (this.replApplyState.state.lastError) {
       lastError = this.replApplyState.state.lastError.errorMessage;
     }
-    var runningApply;
-    if (this.replApplyState.state.running === true) {
-      runningApply = '<div class="trueClass">true</div>';
-    }
-    else {
-      runningApply = '<div class="falseClass">false</div>';
-    }
 
+    cls = applierRunning ? 'true' : 'false';
+    var runningApply = '<div class="' + cls + 'Class">' + cls + '</div>';
+
+    numRequests = this.replApplyState.state.totalRequests || 0;
+    numFailed = this.replApplyState.state.totalFailedConnects || 0;
 
     $('#applyRunningVal').html(runningApply);
     $('#applyEndpointVal').text(endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
     $('#applyTimeVal').text(time);
     $('#applyProgressVal').text(progress);
+    $('#applyTotalRequestsVal').text(numRequests);
+    $('#applyTotalFailedVal').text(numFailed);
     $('#applyLastErrorVal').text(lastError);
-
   },
 
   render: function() {
