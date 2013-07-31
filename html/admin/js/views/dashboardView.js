@@ -135,14 +135,20 @@ var dashboardView = Backbone.View.extend({
 
     //apply table
     var lastAppliedTick = "-";
+    var lastAvailableTick = "-";
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
+    var numEvents = "-";
     var numRequests = "-";
     var numFailed = "-";
 
     if (this.replApplyState.state.lastAppliedContinuousTick !== null) {
       lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
+    }
+
+    if (this.replApplyState.state.lastAvailableContinuousTick !== null) {
+      lastAvailableTick = this.replApplyState.state.lastAvailableContinuousTick;
     }
 
     if (this.replApplyState.state.endpoint !== undefined) {
@@ -162,14 +168,17 @@ var dashboardView = Backbone.View.extend({
     cls = applierRunning ? 'true' : 'false';
     var runningApply = '<div class="' + cls + 'Class">' + cls + '</div>';
 
+    numEvents = this.replApplyState.state.totalEvents || 0;
     numRequests = this.replApplyState.state.totalRequests || 0;
     numFailed = this.replApplyState.state.totalFailedConnects || 0;
 
     $('#applyRunningVal').html(runningApply);
     $('#applyEndpointVal').text(endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
+    $('#applyLastAvailableTickVal').text(lastAvailableTick);
     $('#applyTimeVal').text(time);
     $('#applyProgressVal').text(progress);
+    $('#applyTotalEventsVal').text(numEvents);
     $('#applyTotalRequestsVal').text(numRequests);
     $('#applyTotalFailedVal').text(numFailed);
     $('#applyLastErrorVal').text(lastError);

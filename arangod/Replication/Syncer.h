@@ -119,7 +119,11 @@ namespace triagens {
 /// @brief get chunk size for a transfer
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint64_t getChunkSize () const;
+        inline uint64_t getChunkSize (uint64_t mb) const {
+          static const uint64_t chunkSize = mb * 1024 * 1024; 
+
+          return chunkSize;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON

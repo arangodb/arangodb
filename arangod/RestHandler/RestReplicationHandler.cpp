@@ -1972,6 +1972,8 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///   - `totalFailedConnects`: the total number of failed connection attempts the
 ///     applier has made.
 ///
+///   - `totalEvents`: the total number of log events the applier has processed.
+///
 ///   - `progress`: a JSON hash with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///

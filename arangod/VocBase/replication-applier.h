@@ -105,6 +105,7 @@ typedef struct TRI_replication_applier_state_s {
   uint64_t                                 _failedConnects;
   uint64_t                                 _totalRequests;
   uint64_t                                 _totalFailedConnects;
+  uint64_t                                 _totalEvents;
 }
 TRI_replication_applier_state_t;
 

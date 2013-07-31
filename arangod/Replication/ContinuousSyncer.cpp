@@ -262,7 +262,7 @@ int ContinuousSyncer::getLocalState (string& errorMsg) {
 
 void ContinuousSyncer::abortOngoingTransaction () {
   if (_transactionState._trx != 0) {
-    LOGGER_DEBUG("aborting replication transaction " << _transactionState._externalTid); 
+    LOGGER_TRACE("aborting replication transaction " << _transactionState._externalTid); 
 
     TRI_FreeTransaction(_transactionState._trx);
     _transactionState._trx = 0;
@@ -780,13 +780,36 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   uint64_t inactiveCycles = 0;
   int res                 = TRI_ERROR_INTERNAL;
 
+  // get start tick
+  // ---------------------------------------
+  TRI_voc_tick_t fromTick = 0;
+    
+  TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+
+  if (_useTick) {
+    // use user-defined tick
+    fromTick = _initialTick;
+    _applier->_state._lastAppliedContinuousTick = 0;
+    _applier->_state._lastProcessedContinuousTick = 0;
+    saveApplierState();
+  }
+  else {
+    // if we already transferred some data, we'll use the last applied tick
+    if (_applier->_state._lastAppliedContinuousTick > fromTick) {
+      fromTick = _applier->_state._lastAppliedContinuousTick;
+    }
+  }
+
+  TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
+
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (1) {
-    bool worked       = false;
+    bool worked;
     bool masterActive = false;
 
-    res = followMasterLog(errorMsg, _configuration._ignoreErrors, worked, masterActive);
+    // fromTick is passed by reference!
+    res = followMasterLog(errorMsg, fromTick, _configuration._ignoreErrors, worked, masterActive);
     
     uint64_t sleepTime;
   
@@ -850,7 +873,9 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       }
     }
 
-    LOGGER_TRACE("master active: " << (int) masterActive << ", worked: " << (int) worked << ", sleepTime: " << sleepTime); 
+    LOGGER_TRACE("master active: " << (int) masterActive << ", " << 
+                 "worked: " << (int) worked << ", " << 
+                 "sleepTime: " << sleepTime); 
 
     // this will make the applier thread sleep if there is nothing to do, 
     // but will also check for cancellation
@@ -866,47 +891,28 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 /// @brief run the continuous synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::followMasterLog (string& errorMsg, 
+int ContinuousSyncer::followMasterLog (string& errorMsg,
+                                       TRI_voc_tick_t& fromTick, 
                                        uint64_t& ignoreCount,
                                        bool& worked,
                                        bool& masterActive) {
   const string baseUrl = BaseUrl + 
-                         "/logger-follow?chunkSize=" + StringUtils::itoa(getChunkSize()); 
+                         "/logger-follow?chunkSize=" + StringUtils::itoa(getChunkSize(4)); 
 
   map<string, string> headers;
-
-  // get start tick
-  // ---------------------------------------
-  TRI_voc_tick_t fromTick = _initialTick;
-    
-  TRI_WriteLockReadWriteLock(&_applier->_statusLock);
-
-  if (_useTick) {
-    // use user-defined tick
-    _applier->_state._lastAppliedContinuousTick = 0;
-    _applier->_state._lastProcessedContinuousTick = 0;
-    saveApplierState();
-  }
-  else {
-    // if we already transferred some data, we'll use the last applied tick
-    if (_applier->_state._lastAppliedContinuousTick > fromTick) {
-      fromTick = _applier->_state._lastAppliedContinuousTick;
-    }
-  }
-
-  TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
-
-  LOGGER_TRACE("starting continuous replication with tick " << fromTick);
+  worked = false;
 
   const string tickString = StringUtils::itoa(fromTick); 
   const string url = baseUrl + 
                      "&from=" + tickString +
                      "&serverId=" + _localServerIdString;
+  
+  LOGGER_TRACE("running continuous replication request with tick " << fromTick << ", url " << url);
 
   // send request
   const string progress = "fetching master log from offset " + tickString;
   setProgress(progress.c_str());
-
+  
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                 url,
                                                 0, 
@@ -957,6 +963,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
       if (tick > fromTick) {
         fromTick = tick;
+        worked = true;
       }
       else {
         // we got the same tick again, this indicates we're at the end
@@ -993,6 +1000,8 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
       worked = true;
 
       TRI_WriteLockReadWriteLock(&_applier->_statusLock);
+      _applier->_state._totalEvents += processedMarkers;
+
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
         saveApplierState();
       }
@@ -1008,13 +1017,10 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   masterActive = active;
 
-  if (! worked && 
-      (! checkMore || fromTick == 0)) {
-    // nothing to do.
-    worked = false;
-  }
-  else {
-    worked = true;
+  if (! worked) { 
+    if (checkMore) {
+      worked = true;
+    }
   }
   
   return TRI_ERROR_NO_ERROR;
