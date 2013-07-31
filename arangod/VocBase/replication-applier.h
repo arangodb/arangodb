@@ -72,7 +72,7 @@ typedef struct TRI_replication_applier_configuration_s {
   double        _requestTimeout;
   double        _connectTimeout;
   uint64_t      _ignoreErrors;
-  int           _maxConnectRetries;
+  uint64_t      _maxConnectRetries;
   bool          _autoStart;
   bool          _adaptivePolling;
 }
@@ -102,6 +102,9 @@ typedef struct TRI_replication_applier_state_s {
   char                                     _progressTime[24];
   TRI_server_id_t                          _serverId;
   TRI_replication_applier_error_t          _lastError;
+  uint64_t                                 _failedConnects;
+  uint64_t                                 _totalRequests;
+  uint64_t                                 _totalFailedConnects;
 }
 TRI_replication_applier_state_t;
 

@@ -520,35 +520,42 @@ function get_api_collections (req, res) {
 /// and additional statistical information about the collection.  Note that this
 /// will always load the collection into memory.
 ///
-/// - `count`: The number of documents inside the collection.
+/// - `count`: The number of documents currently present in the collection.
 ///
-/// - `figures.alive.count`: The number of living documents.
+/// - `figures.alive.count`: The number of currently active documents.
 ///
 /// - `figures.alive.size`: The total size in bytes used by all
-///   living documents.
+///   active documents.
 ///
-/// - `figures.dead.count`: The number of dead documents.
+/// - `figures.dead.count`: The number of dead documents. This includes document
+///   versions that have been deleted or replaced by a newer version.
 ///
-/// - `figures.dead.size`: The total size in bytes used by all
-///   dead documents.
+/// - `figures.dead.size`: The total size in bytes used by all dead documents.
 ///
-/// - `figures.dead.deletion`: The total number of deletion markers.
+/// - `figures.dead.deletion`: The total number of deletion markers in the 
+///   collection.
 ///
-/// - `figures.datafiles.count`: The number of active datafiles.
-/// - `figures.datafiles.fileSize`: The total filesize of datafiles.
+/// - `figures.datafiles.count`: The number of current datafiles.
+/// - `figures.datafiles.fileSize`: The total filesize of all datafiles.
 ///
 /// - `figures.journals.count`: The number of journal files.
-/// - `figures.journals.fileSize`: The total filesize of journal files.
+/// - `figures.journals.fileSize`: The total filesize of all journal files.
 ///
-/// - `figures.shapes.count`: The total number of shapes used in the 
+/// - `figures.shapes.count`: The total number of shapes in the 
 ///   collection (this includes shapes that are not in use anymore) 
 ///
-/// - `figures.attributes.count`: The total number of attributes used 
-///   in the collection (this includes attributes that are not in use anymore) 
+/// - `figures.attributes.count`: The total number of attributes in the 
+///   collection (this includes attributes that are not in use anymore) 
 ///
 /// - `journalSize`: The maximal size of the journal in bytes.
 ///
-/// Note: the filesizes of shapes and compactor files are not reported.
+/// Note: the filesizes of shapes and compactor files are not reported. 
+///
+/// That means that the figures reported do not reflect the actual disk
+/// usage of the collection with 100% accuracy. The actual disk usage of
+/// a collection is normally higher than the sum of the reported `fileSize` 
+/// values. Still the sum of the `fileSize` values can still be used as 
+/// a lower bound approximation of the disk usage.
 ///
 /// @RESTRETURNCODES
 ///

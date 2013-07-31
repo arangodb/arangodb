@@ -1542,7 +1542,12 @@ void RestReplicationHandler::handleCommandSync () {
 ///
 /// - `password`: the password to use when connecting to the endpoint.
 ///
-/// - `connectTimeout`: the timeout (in seconds) when connecting to the endpoint.
+/// - `maxConnectRetries`: the maximum number of connection attempts the applier 
+///   will make in a row. If the applier cannot establish a connection to the 
+///   endpoint in this number of attempts, it will stop itself.
+///
+/// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
+///   endpoint. This value is used for each connection attempt.
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
 ///
@@ -1620,7 +1625,12 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - `password`: the password to use when connecting to the endpoint.
 ///
-/// - `connectTimeout`: the timeout (in seconds) when connecting to the endpoint.
+/// - `maxConnectRetries`: the maximum number of connection attempts the applier 
+///   will make in a row. If the applier cannot establish a connection to the 
+///   endpoint in this number of attempts, it will stop itself.
+///
+/// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
+///   endpoint. This value is used for each connection attempt.
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
 ///
@@ -1700,25 +1710,33 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_json_t const* value;
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
 
-  if (config._endpoint != 0) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
+  if (! endpoint.empty()) {
+    if (config._endpoint != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
+    }
+    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   }
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   
   value = JsonHelper::getArrayElement(json, "username");
   if (JsonHelper::isString(value)) {
+    if (config._username != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
+    }
     config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
   value = JsonHelper::getArrayElement(json, "password");
   if (JsonHelper::isString(value)) {
+    if (config._password != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
+    }
     config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
   config._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", config._requestTimeout);
   config._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries = JsonHelper::getIntValue(json, "maxConnectRetries", config._maxConnectRetries);
+  config._maxConnectRetries = JsonHelper::getUInt64Value(json, "maxConnectRetries", config._maxConnectRetries);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
@@ -1751,7 +1769,9 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///
 /// @RESTQUERYPARAM{from,string,optional}
 /// The remote `lastLogTick` value from which to start applying. If not specified,
-/// the last saved tick from the previous applier run is used.
+/// the last saved tick from the previous applier run is used. If there is no
+/// previous applier state saved, the applier will start at the beginning of the
+/// logger server's log.
 ///
 /// @RESTDESCRIPTION
 /// Starts the replication applier. This will return immediately if the
@@ -1922,12 +1942,20 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 ///   - `time`: the time on the applier server.
 ///
+///   - `totalRequests`: the total number of requests the applier has made to the
+///     endpoint.
+///
+///   - `totalFailedConnects`: the total number of failed connection attempts the
+///     applier has made.
+///
 ///   - `progress`: a JSON hash with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - `message`: a textual description of the progress
 ///
 ///     - `time`: the date and time the progress was logged
+///
+///     - `failedConnects`: the current number of failed connection attempts
 ///
 ///   - `lastError`: a JSON hash with details about the last error that happened on
 ///     the applier. It contains the following sub-attributes if there was an error:

@@ -3394,18 +3394,38 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
 
-    string endpoint = "";
-
     if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
       if (object->Get(TRI_V8_SYMBOL("endpoint"))->IsString()) {
-        endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+        string endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+    
+        if (config._endpoint != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
+        }
+        config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
       }
     }
-
-    if (config._endpoint != 0) {
-      TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
+    
+    if (object->Has(TRI_V8_SYMBOL("username"))) {
+      if (object->Get(TRI_V8_SYMBOL("username"))->IsString()) {
+        string username = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("username")));
+    
+        if (config._username != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, config._username);
+        }
+        config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+      }
     }
-    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+    
+    if (object->Has(TRI_V8_SYMBOL("password"))) {
+      if (object->Get(TRI_V8_SYMBOL("password"))->IsString()) {
+        string password = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("password")));
+    
+        if (config._password != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, config._password);
+        }
+        config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+      }
+    }
 
     if (object->Has(TRI_V8_SYMBOL("requestTimeout"))) {
       if (object->Get(TRI_V8_SYMBOL("requestTimeout"))->IsNumber()) {
@@ -3427,7 +3447,7 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
     if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
       if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
-        config._maxConnectRetries = (int) TRI_ObjectToInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")));
+        config._maxConnectRetries = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")), false);
       }
     }
 
