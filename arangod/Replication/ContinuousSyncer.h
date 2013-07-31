@@ -203,6 +203,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int followMasterLog (std::string&,
+                             TRI_voc_tick_t&,
                              uint64_t&,
                              bool&,
                              bool&);

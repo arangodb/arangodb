@@ -534,8 +534,9 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "progress", progress); 
   
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalRequests", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalRequests));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalEvents));
 
   // lastError
   error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -815,6 +816,7 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
   state->_failedConnects              = applier->_state._failedConnects;
   state->_totalRequests               = applier->_state._totalRequests;
   state->_totalFailedConnects         = applier->_state._totalFailedConnects;
+  state->_totalEvents                 = applier->_state._totalEvents;
   memcpy(&state->_lastError._time, &applier->_state._lastError._time, sizeof(state->_lastError._time));
 
   if (applier->_state._progressMsg != NULL) {

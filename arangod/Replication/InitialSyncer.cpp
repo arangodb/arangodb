@@ -314,7 +314,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
 
   const string baseUrl = BaseUrl + 
                          "/dump?collection=" + cid +
-                         "&chunkSize=" + StringUtils::itoa(getChunkSize());
+                         "&chunkSize=" + StringUtils::itoa(getChunkSize(8));
 
   map<string, string> headers;
 
