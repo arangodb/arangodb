@@ -5,12 +5,12 @@ content-type: application/json; charset=utf-8
 
 { 
   "system" : { 
-    "minorPageFaults" : 15576, 
-    "majorPageFaults" : 76, 
-    "userTime" : 0.54, 
-    "systemTime" : 0.09, 
+    "minorPageFaults" : 16034, 
+    "majorPageFaults" : 139, 
+    "userTime" : 0.57, 
+    "systemTime" : 0.08, 
     "numberOfThreads" : 15, 
-    "residentSize" : 17354, 
+    "residentSize" : 16907, 
     "virtualSize" : 3533684736 
   }, 
   "client" : { 
@@ -26,33 +26,33 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "totalTime" : { 
-      "sum" : 0.42813897132873535, 
+      "sum" : 0.5171322822570801, 
       "count" : 12, 
       "counts" : [ 
         6, 
         0, 
-        6, 
-        0, 
+        3, 
+        3, 
         0, 
         0, 
         0 
       ] 
     }, 
     "requestTime" : { 
-      "sum" : 0.4258251190185547, 
+      "sum" : 0.5153264999389648, 
       "count" : 12, 
       "counts" : [ 
         6, 
-        1, 
-        5, 
         0, 
+        3, 
+        3, 
         0, 
         0, 
         0 
       ] 
     }, 
     "queueTime" : { 
-      "sum" : 0.0006296634674072266, 
+      "sum" : 0.00048232078552246094, 
       "count" : 11, 
       "counts" : [ 
         11, 

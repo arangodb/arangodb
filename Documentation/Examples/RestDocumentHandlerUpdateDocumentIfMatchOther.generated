@@ -1,4 +1,4 @@
-unix> curl -X PUT --header 'If-Match:"39376612"' --data @- --dump - http://localhost:8529/_api/document/products/38917860
+unix> curl -X PUT --header 'If-Match:"39385120"' --data @- --dump - http://localhost:8529/_api/document/products/39057440
 {"other":"content"}
 
 HTTP/1.1 412 Precondition Failed
@@ -9,8 +9,8 @@ content-type: application/json; charset=utf-8
   "code" : 412, 
   "errorNum" : 1200, 
   "errorMessage" : "precondition failed", 
-  "_id" : "products/38917860", 
-  "_rev" : "38917860", 
-  "_key" : "38917860" 
+  "_id" : "products/39057440", 
+  "_rev" : "39057440", 
+  "_key" : "39057440" 
 }
 
