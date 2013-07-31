@@ -322,11 +322,15 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
   int batch = 1;
 
   while (1) {
-    const string url = baseUrl + 
-                       "&from=" + StringUtils::itoa(fromTick) + 
-                       "&to=" + StringUtils::itoa(maxTick) +
-                       "&serverId=" + _localServerIdString;
+    string url = baseUrl + 
+                 "&from=" + StringUtils::itoa(fromTick);
 
+    if (maxTick > 0) {
+      url += "&to=" + StringUtils::itoa(maxTick);
+    }
+
+    url += "&serverId=" + _localServerIdString;
+    
     // send request
     const string progress = "fetching master collection dump for collection '" + collectionName + 
                             "', id " + cid + ", batch " + StringUtils::itoa(batch);
