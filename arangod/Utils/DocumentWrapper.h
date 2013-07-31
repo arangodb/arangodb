@@ -116,10 +116,10 @@ namespace triagens {
 /// @brief returns then value of a numeric attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-        double getNumericValue (string const& name, double defaultValue) {
-          return JsonHelper::getNumberValue(_json, name.c_str(), defaultValue);
+        template<typename T> T getNumericValue (string const& name, T defaultValue) {
+          return JsonHelper::getNumericValue<T>(_json, name.c_str(), defaultValue);
         }
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns then value of a string attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
