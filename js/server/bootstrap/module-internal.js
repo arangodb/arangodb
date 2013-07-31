@@ -196,7 +196,7 @@
 
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
     internal.executeGlobalContextFunction = function() {
-      console.error("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION not available");
+      // nothing to do. we're probably in --console mode
     };
   }
   else {
