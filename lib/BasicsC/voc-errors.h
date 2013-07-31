@@ -191,16 +191,16 @@ extern "C" {
 /// - 1406: @LIT{unexpected marker}
 ///   Will be raised when an unexpected marker is found in the replication
 ///   stream.
-/// - 1407: @LIT{invalid apply state}
-///   Will be raised when an invalid apply state file is found.
+/// - 1407: @LIT{invalid applier state}
+///   Will be raised when an invalid applier state file is found.
 /// - 1408: @LIT{invalid transaction}
 ///   Will be raised when an unexpected transaction id is found.
-/// - 1409: @LIT{invalid replication apply configuration}
-///   Will be raised when the configuration for the replication application is
+/// - 1409: @LIT{invalid replication applier configuration}
+///   Will be raised when the configuration for the replication applier is
 ///   invalid.
-/// - 1410: @LIT{cannot change apply configuration while running}
+/// - 1410: @LIT{cannot change applier configuration while running}
 ///   Will be raised when there is an attempt to change the configuration for
-///   the replication application while it is running.
+///   the replication applier while it is running.
 /// - 1411: @LIT{replication stopped}
 ///   Special error code used to indicate the replication was stopped.
 /// - 1500: @LIT{query killed}
@@ -1280,9 +1280,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1407: ERROR_REPLICATION_INVALID_APPLY_STATE
 ///
-/// invalid apply state
+/// invalid applier state
 ///
-/// Will be raised when an invalid apply state file is found.
+/// Will be raised when an invalid applier state file is found.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_INVALID_APPLY_STATE                         (1407)
@@ -1300,9 +1300,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1409: ERROR_REPLICATION_INVALID_CONFIGURATION
 ///
-/// invalid replication apply configuration
+/// invalid replication applier configuration
 ///
-/// Will be raised when the configuration for the replication application is
+/// Will be raised when the configuration for the replication applier is
 /// invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1311,10 +1311,10 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1410: ERROR_REPLICATION_RUNNING
 ///
-/// cannot change apply configuration while running
+/// cannot change applier configuration while running
 ///
 /// Will be raised when there is an attempt to change the configuration for the
-/// replication application while it is running.
+/// replication applier while it is running.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_RUNNING                                     (1410)

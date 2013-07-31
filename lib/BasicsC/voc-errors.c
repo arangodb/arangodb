@@ -91,10 +91,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_REPLICATION_MASTER_CHANGE, "master change");
   REG_ERROR(ERROR_REPLICATION_LOOP, "loop detected");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
-  REG_ERROR(ERROR_REPLICATION_INVALID_APPLY_STATE, "invalid apply state");
+  REG_ERROR(ERROR_REPLICATION_INVALID_APPLY_STATE, "invalid applier state");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_TRANSACTION, "invalid transaction");
-  REG_ERROR(ERROR_REPLICATION_INVALID_CONFIGURATION, "invalid replication apply configuration");
-  REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change apply configuration while running");
+  REG_ERROR(ERROR_REPLICATION_INVALID_CONFIGURATION, "invalid replication applier configuration");
+  REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change applier configuration while running");
   REG_ERROR(ERROR_REPLICATION_STOPPED, "replication stopped");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");

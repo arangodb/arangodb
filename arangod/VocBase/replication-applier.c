@@ -276,7 +276,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   value = TRI_LookupArrayJson(json, "maxConnectRetries");
 
   if (TRI_IsNumberJson(value)) {
-    config->_maxConnectRetries = (int) value->_value._number;
+    config->_maxConnectRetries = (uint64_t) value->_value._number;
   }
 
   value = TRI_LookupArrayJson(json, "autoStart");
@@ -529,7 +529,13 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   if (state->_progressMsg != NULL) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, progress, "message", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg));
   }
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, progress, "failedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_failedConnects));
+
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "progress", progress); 
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalRequests", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalRequests));
 
   // lastError
   error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -702,7 +708,9 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
   
   res = TRI_ERROR_NO_ERROR;
 
-  LOG_TRACE("requesting replication applier start");
+  LOG_TRACE("requesting replication applier start. initialTick: %llu, useTick: %d",
+            (unsigned long long) initialTick,
+            (int) useTick);
 
   // wait until previous applier thread is shut down
   while (! TRI_WaitReplicationApplier(applier, 10 * 1000));
@@ -804,6 +812,9 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
   state->_lastAvailableContinuousTick = applier->_state._lastAvailableContinuousTick;
   state->_serverId                    = applier->_state._serverId;
   state->_lastError._code             = applier->_state._lastError._code;
+  state->_failedConnects              = applier->_state._failedConnects;
+  state->_totalRequests               = applier->_state._totalRequests;
+  state->_totalFailedConnects         = applier->_state._totalFailedConnects;
   memcpy(&state->_lastError._time, &applier->_state._lastError._time, sizeof(state->_lastError._time));
 
   if (applier->_state._progressMsg != NULL) {
