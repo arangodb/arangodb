@@ -1542,7 +1542,12 @@ void RestReplicationHandler::handleCommandSync () {
 ///
 /// - `password`: the password to use when connecting to the endpoint.
 ///
-/// - `connectTimeout`: the timeout (in seconds) when connecting to the endpoint.
+/// - `maxConnectRetries`: the maximum number of connection attempts the applier 
+///   will make in a row. If the applier cannot establish a connection to the 
+///   endpoint in this number of attempts, it will stop itself.
+///
+/// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
+///   endpoint. This value is used for each connection attempt.
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
 ///
@@ -1620,7 +1625,12 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - `password`: the password to use when connecting to the endpoint.
 ///
-/// - `connectTimeout`: the timeout (in seconds) when connecting to the endpoint.
+/// - `maxConnectRetries`: the maximum number of connection attempts the applier 
+///   will make in a row. If the applier cannot establish a connection to the 
+///   endpoint in this number of attempts, it will stop itself.
+///
+/// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
+///   endpoint. This value is used for each connection attempt.
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
 ///
@@ -1759,7 +1769,9 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///
 /// @RESTQUERYPARAM{from,string,optional}
 /// The remote `lastLogTick` value from which to start applying. If not specified,
-/// the last saved tick from the previous applier run is used.
+/// the last saved tick from the previous applier run is used. If there is no
+/// previous applier state saved, the applier will start at the beginning of the
+/// logger server's log.
 ///
 /// @RESTDESCRIPTION
 /// Starts the replication applier. This will return immediately if the
@@ -1930,12 +1942,20 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 ///   - `time`: the time on the applier server.
 ///
+///   - `totalRequests`: the total number of requests the applier has made to the
+///     endpoint.
+///
+///   - `totalFailedConnects`: the total number of failed connection attempts the
+///     applier has made.
+///
 ///   - `progress`: a JSON hash with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - `message`: a textual description of the progress
 ///
 ///     - `time`: the date and time the progress was logged
+///
+///     - `failedConnects`: the current number of failed connection attempts
 ///
 ///   - `lastError`: a JSON hash with details about the last error that happened on
 ///     the applier. It contains the following sub-attributes if there was an error:
