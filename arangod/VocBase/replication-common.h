@@ -78,7 +78,7 @@ extern "C" {
 /// @brief minimum number of log events to keep (lower bound for logger config)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_REPLICATION_LOGGER_EVENTS_MIN   16384
+#define TRI_REPLICATION_LOGGER_EVENTS_MIN   4096
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum cumulated size of log events to keep (lower bound for logger 
