@@ -494,7 +494,7 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    uint64_t numOperations = (uint64_t) JsonHelper::getNumberValue(collection, "operations", 0.0);
+    uint64_t numOperations = JsonHelper::getNumericValue<uint64_t>(collection, "operations", 0);
 
     if (numOperations > 0) {
       res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
@@ -608,7 +608,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   }
 
   // fetch marker "type"
-  int typeValue = (int) JsonHelper::getIntValue(json, "type", 0);
+  int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
  
   // fetch "tick"
   const string tick = JsonHelper::getStringValue(json, "tick", "");

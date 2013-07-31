@@ -253,6 +253,8 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
                           TRI_vocbase_defaults_t* dst) {
   dst->defaultMaximalSize           = src->defaultMaximalSize;
+  dst->replicationMaxEvents         = src->replicationMaxEvents;
+  dst->replicationMaxEventsSize     = src->replicationMaxEventsSize;
   dst->removeOnDrop                 = src->removeOnDrop;
   dst->removeOnCompacted            = src->removeOnCompacted;
   dst->defaultWaitForSync           = src->defaultWaitForSync;
@@ -272,6 +274,8 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
                            TRI_vocbase_defaults_t const* defaults) {
 
   vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
+  vocbase->_replicationMaxEvents         = defaults->replicationMaxEvents;
+  vocbase->_replicationMaxEventsSize     = defaults->replicationMaxEventsSize;
   vocbase->_removeOnDrop                 = defaults->removeOnDrop;
   vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
   vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
@@ -291,6 +295,8 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
                          TRI_vocbase_defaults_t* defaults) {
 
   defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
+  defaults->replicationMaxEvents        = vocbase->_replicationMaxEvents;
+  defaults->replicationMaxEventsSize    = vocbase->_replicationMaxEventsSize;
   defaults->removeOnDrop                = vocbase->_removeOnDrop;
   defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
   defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
