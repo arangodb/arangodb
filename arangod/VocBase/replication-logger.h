@@ -50,6 +50,7 @@ extern "C" {
 struct TRI_df_marker_s;
 struct TRI_document_collection_s;
 struct TRI_doc_mptr_s;
+struct TRI_index_s;
 struct TRI_json_s;
 struct TRI_transaction_s;
 struct TRI_transaction_collection_s;
@@ -75,6 +76,8 @@ struct TRI_vocbase_defaults_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_logger_configuration_s {
+  uint64_t                               _maxEvents;
+  uint64_t                               _maxEventsSize;
   bool                                   _logRemoteChanges;
 }
 TRI_replication_logger_configuration_t;
@@ -104,6 +107,7 @@ typedef struct TRI_replication_logger_s {
   struct TRI_vocbase_s*                  _vocbase;
   struct TRI_transaction_s*              _trx;
   struct TRI_transaction_collection_s*   _trxCollection;
+  struct TRI_index_s*                    _cap; // cap constraint
 
   TRI_replication_logger_state_t         _state;
   TRI_replication_logger_configuration_t _configuration;

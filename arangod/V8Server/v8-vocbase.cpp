@@ -3208,6 +3208,14 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
         config._logRemoteChanges = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("logRemoteChanges")));
       }
     }
+    
+    if (object->Has(TRI_V8_SYMBOL("maxEvents"))) {
+      config._maxEvents = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxEvents")), true);
+    }
+    
+    if (object->Has(TRI_V8_SYMBOL("maxEventsSize"))) {
+      config._maxEventsSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxEventsSize")), true);
+    }
 
     int res = TRI_ConfigureReplicationLogger(vocbase->_replicationLogger, &config);
 

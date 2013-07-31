@@ -260,6 +260,63 @@ static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free the logger's cap constraint
+/// the function must called under the statusLock
+////////////////////////////////////////////////////////////////////////////////
+    
+static void FreeCap (TRI_replication_logger_t* logger) {
+  if (logger->_cap != NULL) {
+    TRI_primary_collection_t* primary;
+
+    primary = logger->_trxCollection->_collection->_collection;
+    assert(primary != NULL);
+
+    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    TRI_FreeIndex(logger->_cap);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+    logger->_cap = NULL;
+    logger->_configuration._maxEvents = 0;
+    logger->_configuration._maxEventsSize = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a cap constraint for the logger
+/// the function must called under the statusLock
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CreateCap (TRI_replication_logger_t* logger) {
+  TRI_index_t* idx;
+  TRI_primary_collection_t* primary;
+
+  primary = logger->_trxCollection->_collection->_collection;
+  assert(primary != NULL);
+
+  assert(logger->_configuration._maxEvents > 0 ||
+         logger->_configuration._maxEventsSize > 0);
+
+  LOG_INFO("creating cap constraint for replication logger. maxEvents: %llu, maxEventsSize: %llu",
+           (unsigned long long) logger->_configuration._maxEvents,
+           (unsigned long long) logger->_configuration._maxEventsSize);
+    
+  idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) logger->_trxCollection->_collection->_collection,
+                                                  (size_t) logger->_configuration._maxEvents,
+                                                  (int64_t) logger->_configuration._maxEventsSize, 
+                                                  NULL,
+                                                  TRI_GetServerId());
+    
+  if (idx == NULL) {
+    LOG_WARNING("creating cap constraint for '%s' failed", TRI_COL_NAME_REPLICATION);
+    return false;
+  }
+    
+  logger->_cap = idx;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a buffer to write an event in
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -872,10 +929,20 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   logger->_trx = trx;
 
   assert(logger->_trxCollection != NULL);
+  assert(logger->_trxCollection->_collection != NULL);
+  assert(logger->_trxCollection->_collection->_collection != NULL);
   assert(logger->_state._active == false);
 
+  assert(logger->_cap == NULL);
+  // create cap constraint? 
+  if (logger->_configuration._maxEvents > 0 || 
+      logger->_configuration._maxEventsSize > 0) { 
+
+    CreateCap(logger);
+  }
+
   logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._tick; 
-  logger->_state._active = true;
+  logger->_state._active      = true;
   
   LOG_INFO("started replication logger for database '%s', last tick: %llu", 
            logger->_databaseName,
@@ -937,6 +1004,9 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   logger->_trxCollection      = NULL;
   logger->_state._lastLogTick = 0;
   logger->_state._active      = false;
+
+  // destroy cap constraint
+  FreeCap(logger);
 
   return res;
 }
@@ -1254,10 +1324,13 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase,
   logger->_vocbase                         = vocbase;
   logger->_trx                             = NULL;
   logger->_trxCollection                   = NULL;
+  logger->_cap                             = NULL;
 
   logger->_state._lastLogTick              = 0;
   logger->_state._active                   = false;
   logger->_configuration._logRemoteChanges = defaults->replicationLogRemoteChanges;
+  logger->_configuration._maxEvents        = (uint64_t) defaults->replicationMaxEvents;
+  logger->_configuration._maxEventsSize    = (uint64_t) defaults->replicationMaxEventsSize;
 
   logger->_localServerId                   = TRI_GetServerId();
   logger->_databaseName                    = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
@@ -1315,7 +1388,7 @@ void TRI_FreeReplicationLogger (TRI_replication_logger_t* logger) {
 TRI_json_t* TRI_JsonConfigurationReplicationLogger (TRI_replication_logger_configuration_t const* config) {
   TRI_json_t* json;
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
 
   if (json == NULL) {
     return NULL;
@@ -1325,6 +1398,16 @@ TRI_json_t* TRI_JsonConfigurationReplicationLogger (TRI_replication_logger_confi
                        json,
                        "logRemoteChanges",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_logRemoteChanges));
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "maxEvents",
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_maxEvents));
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "maxEventsSize",
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_maxEventsSize));
 
   return json;
 }
@@ -1335,11 +1418,33 @@ TRI_json_t* TRI_JsonConfigurationReplicationLogger (TRI_replication_logger_confi
 
 int TRI_ConfigureReplicationLogger (TRI_replication_logger_t* logger,
                                     TRI_replication_logger_configuration_t const* config) {
+  uint64_t oldMaxEvents;
+  uint64_t oldMaxEventsSize;
   int res;
 
   res = TRI_ERROR_NO_ERROR;
 
   TRI_WriteLockReadWriteLock(&logger->_statusLock);
+  oldMaxEvents     = logger->_configuration._maxEvents;
+  oldMaxEventsSize = logger->_configuration._maxEventsSize;
+
+  if (config->_maxEvents != oldMaxEvents ||
+      config->_maxEventsSize != oldMaxEventsSize) {
+    // configuration change. free existing cap
+    if (logger->_state._active) {
+      FreeCap(logger);
+    }
+
+    // set new limits and re-create cap
+    logger->_configuration._maxEvents     = config->_maxEvents;
+    logger->_configuration._maxEventsSize = config->_maxEventsSize;
+
+    assert(logger->_cap == NULL);
+    if (logger->_state._active) {
+      CreateCap(logger);
+    }
+  }
+
   logger->_configuration._logRemoteChanges = config->_logRemoteChanges;
   TRI_WriteUnlockReadWriteLock(&logger->_statusLock);
 

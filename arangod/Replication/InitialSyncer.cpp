@@ -177,8 +177,8 @@ int InitialSyncer::sortCollections (const void* l, const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
-  int leftType  = (int) JsonHelper::getIntValue(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
-  int rightType = (int) JsonHelper::getIntValue(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
 
   if (leftType != rightType) {

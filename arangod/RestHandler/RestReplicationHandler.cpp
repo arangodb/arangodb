@@ -547,6 +547,12 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// - `logRemoteChanges`: whether or not externally created changes should be
 ///    logged by the local logger
 ///
+/// - `maxEvents`: the maximum number of log events kept by the replication 
+///    logger before deleting oldest events
+///
+/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the 
+///    replication logger before deleting oldest events
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -606,6 +612,12 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 /// - `logRemoteChanges`: whether or not externally created changes should be
 ///    logged by the local logger
 ///
+/// - `maxEvents`: the maximum number of log events kept by the replication 
+///    logger before deleting oldest events
+///
+/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the 
+///    replication logger before deleting oldest events
+///
 /// In case of success, the body of the response is a JSON hash with the updated
 /// configuration.
 ///
@@ -631,7 +643,8 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 ///     var url = "/_api/replication/logger-config";
 ///     var body = { 
-///       logRemoteChanges: true
+///       logRemoteChanges: true,
+///       maxEvents: 1048576
 ///     };
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
@@ -645,6 +658,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   assert(_vocbase->_replicationLogger != 0);
   
   TRI_replication_logger_configuration_t config;
+
   // copy previous config
   TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
   TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
@@ -662,6 +676,16 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   value = JsonHelper::getArrayElement(json, "logRemoteChanges");
   if (JsonHelper::isBoolean(value)) {
     config._logRemoteChanges = value->_value._boolean;
+  }
+  
+  value = JsonHelper::getArrayElement(json, "maxEvents");
+  if (JsonHelper::isNumber(value)) {
+    config._maxEvents = (uint64_t) value->_value._number;
+  }
+  
+  value = JsonHelper::getArrayElement(json, "maxEventsSize");
+  if (JsonHelper::isNumber(value)) {
+    config._maxEventsSize = (uint64_t) value->_value._number;
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1733,10 +1757,10 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
-  config._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", config._requestTimeout);
-  config._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", config._connectTimeout);
-  config._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries = JsonHelper::getUInt64Value(json, "maxConnectRetries", config._maxConnectRetries);
+  config._requestTimeout    = JsonHelper::getNumericValue<double>(json, "requestTimeout", config._requestTimeout);
+  config._connectTimeout    = JsonHelper::getNumericValue<double>(json, "connectTimeout", config._connectTimeout);
+  config._ignoreErrors      = JsonHelper::getNumericValue<uint64_t>(json, "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries = JsonHelper::getNumericValue<uint64_t>(json, "maxConnectRetries", config._maxConnectRetries);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
