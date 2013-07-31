@@ -345,7 +345,7 @@ int Syncer::createCollection (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getIntValue(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
+  const TRI_col_type_e type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
 
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -367,7 +367,7 @@ int Syncer::createCollection (TRI_json_t const* json,
                          &params, 
                          name.c_str(),
                          type,
-                         (TRI_voc_size_t) JsonHelper::getNumberValue(json, "maximalSize", (double) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+                         (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
                          keyOptions);
 
   params._doCompact =   JsonHelper::getBooleanValue(json, "doCompact", true); 
