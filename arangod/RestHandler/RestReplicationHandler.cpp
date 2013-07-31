@@ -1700,25 +1700,33 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_json_t const* value;
   const string endpoint = JsonHelper::getStringValue(json, "endpoint", "");
 
-  if (config._endpoint != 0) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
+  if (! endpoint.empty()) {
+    if (config._endpoint != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
+    }
+    config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   }
-  config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   
   value = JsonHelper::getArrayElement(json, "username");
   if (JsonHelper::isString(value)) {
+    if (config._username != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
+    }
     config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
   value = JsonHelper::getArrayElement(json, "password");
   if (JsonHelper::isString(value)) {
+    if (config._password != 0) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
+    }
     config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
   config._requestTimeout    = JsonHelper::getDoubleValue(json, "requestTimeout", config._requestTimeout);
   config._connectTimeout    = JsonHelper::getDoubleValue(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getUInt64Value(json, "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries = JsonHelper::getIntValue(json, "maxConnectRetries", config._maxConnectRetries);
+  config._maxConnectRetries = JsonHelper::getUInt64Value(json, "maxConnectRetries", config._maxConnectRetries);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
