@@ -5,7 +5,7 @@ img.searchSubmit {
   opacity: 0.2;
   position: absolute;
   width: 14px;
-  content:url("../img/enter_icon.png");
+  background-image:url("../img/enter_icon.png");
 }
 
 .searchSubmit:hover {
@@ -22,6 +22,7 @@ img.searchSubmit {
   height: 40px;
   padding: 0px;
   background-color: rgb(51, 51, 51);
+  background-size: 40px 40px;
 }
 
 .btn-icon {
@@ -96,73 +97,76 @@ button.graphViewer-icon-button > img {
   width: 290px;
 }
 
-img.gv-icon-small {
+button.gv-icon-small {
+  background-size: 16px 16px;
   width:16px;
   height:16px;
 }
 
-img.gv-icon-small.delete {
-  content:url("../img/icon_delete.png");
+button.gv-icon-small.delete {
+  background-image:url("../img/icon_delete.png");
 }
 
-img.gv-icon-small.add {
-  content:url("../img/plus_icon.png");
+button.gv-icon-small.add {
+  background-image:url("../img/plus_icon.png");
 }
 
 
-img.gv-icon-btn {
+button.gv-icon-btn {
   width:36px;
   height:36px;
+  background-size: 36px 36px;
+  
 }
 
-img.gv-icon-btn.edit{
-  content:url("../img/gv_edit.png");
+button.gv-icon-btn.edit{
+  background-image:url("../img/gv_edit.png");
 }
-img.gv-icon-btn.edit.active{
-  content:url("../img/gv_edit_reverse.png");
-}
-
-img.gv-icon-btn.view{
-  content:url("../img/gv_view.png");
-}
-img.gv-icon-btn.view.active{
-  content:url("../img/gv_view_reverse.png");
+button.gv-icon-btn.edit.active{
+  background-image:url("../img/gv_edit_reverse.png");
 }
 
-img.gv-icon-btn.add{
-  content:url("../img/gv_add.png");
+button.gv-icon-btn.view{
+  background-image:url("../img/gv_view.png");
+}
+button.gv-icon-btn.view.active{
+  background-image:url("../img/gv_view_reverse.png");
 }
 
-img.gv-icon-btn.add.active{
-  content:url("../img/gv_add_reverse.png");
+button.gv-icon-btn.add{
+  background-image:url("../img/gv_add.png");
 }
 
-img.gv-icon-btn.expand{
-  content:url("../img/gv_expand.png");
-}
-img.gv-icon-btn.expand.active{
-  content:url("../img/gv_expand_reverse.png");
+button.gv-icon-btn.add.active{
+  background-image:url("../img/gv_add_reverse.png");
 }
 
-img.gv-icon-btn.drag{
-  content:url("../img/gv_drag.png");
+button.gv-icon-btn.expand{
+  background-image:url("../img/gv_expand.png");
 }
-img.gv-icon-btn.drag.active{
-  content:url("../img/gv_drag_reverse.png");
-}
-
-img.gv-icon-btn.connect{
-  content:url("../img/gv_connect.png");
-}
-img.gv-icon-btn.connect.active{
-  content:url("../img/gv_connect_reverse.png");
+button.gv-icon-btn.expand.active{
+  background-image:url("../img/gv_expand_reverse.png");
 }
 
-img.gv-icon-btn.trash{
-  content:url("../img/gv_trash.png");
+button.gv-icon-btn.drag{
+  background-image:url("../img/gv_drag.png");
 }
-img.gv-icon-btn.trash.active{
-  content:url("../img/gv_trash_reverse.png");
+button.gv-icon-btn.drag.active{
+  background-image:url("../img/gv_drag_reverse.png");
+}
+
+button.gv-icon-btn.connect{
+  background-image:url("../img/gv_connect.png");
+}
+button.gv-icon-btn.connect.active{
+  background-image:url("../img/gv_connect_reverse.png");
+}
+
+button.gv-icon-btn.trash{
+  background-image:url("../img/gv_trash.png");
+}
+button.gv-icon-btn.trash.active{
+  background-image:url("../img/gv_trash_reverse.png");
 }
 div.gv_zoom_widget {
   position: relative;
@@ -190,6 +194,11 @@ div.gv_zoom_buttons_bg {
   background-size: contain;
 }
 
+
+button.btn-zoom:hover {
+background:inherit;
+}
+
 button.btn-zoom {
   width: 16px;
   height: 16px;
@@ -200,7 +209,7 @@ button.btn-zoom {
 }
 
 button.btn-zoom-top {
-  left: 12px;
+  left: 13px;
   top: 0px;
 }
 
@@ -210,7 +219,7 @@ button.btn-zoom-left {
 }
 
 button.btn-zoom-bottom {
-  left: 12px;
+  left: 13px;
   top: 24px;
 }
 
@@ -219,28 +228,29 @@ button.btn-zoom-right {
   top: 12px;
 }
 
-img.gv-zoom-btn {
+button.gv-zoom-btn {
   width: 14px;
   height: 14px;
+  background-size: 14px 14px;
   vertical-align: baseline;
 }
 
-img.gv-zoom-btn.pan-right{
-  content:url("../img/gv_arrow_right.png");
+button.gv-zoom-btn.pan-right{
+  background-image:url("../img/gv_arrow_right.png");
 }
-img.gv-zoom-btn.pan-left{
-  content:url("../img/gv_arrow_left.png");
+button.gv-zoom-btn.pan-left{
+  background-image:url("../img/gv_arrow_left.png");
 }
-img.gv-zoom-btn.pan-top{
-  content:url("../img/gv_arrow_top.png");
+button.gv-zoom-btn.pan-top{
+  background-image:url("../img/gv_arrow_top.png");
 }
-img.gv-zoom-btn.pan-bottom{
-  content:url("../img/gv_arrow_bottom.png");
+button.gv-zoom-btn.pan-bottom{
+  background-image:url("../img/gv_arrow_bottom.png");
 }
 
 
 img.gv-throbber {
-  content:url("../img/swagger/throbber.gif");
+  background-image:url("../img/swagger/throbber.gif");
 }
 
 pre.gv_object_view {
