@@ -3354,6 +3354,17 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the server's id
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ServerIdReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  const string serverId = StringUtils::itoa(TRI_GetServerId());
+  return scope.Close(v8::String::New(serverId.c_str(), serverId.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8579,6 +8590,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
