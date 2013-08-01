@@ -562,7 +562,7 @@ unittests-import:
 
 .PHONY: unittests-replication unittests-replication-common unittests-replication-http unittests-replication-data unittests-replication-logger
 	
-unittests-replication: unittests-replication-common unittests-replication-data unittests-replication-http unittests-replication-logger
+unittests-replication: unittests-replication-common unittests-replication-http unittests-replication-data unittests-replication-logger
 
 unittests-replication-common:
 	@echo
@@ -630,8 +630,8 @@ unittests-replication-logger:
 
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --replication.enable-logger true $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
+	echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo

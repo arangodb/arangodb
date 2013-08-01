@@ -47,6 +47,7 @@ using namespace triagens::arango;
 
   
 const uint64_t RestReplicationHandler::minChunkSize = 512 * 1024;
+const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -279,7 +280,7 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::insertClient () {
+void RestReplicationHandler::insertClient (TRI_voc_tick_t lastFoundTick) {
   bool found;
   char const* value;
 
@@ -289,7 +290,7 @@ void RestReplicationHandler::insertClient () {
     TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
 
     if (serverId > 0) {
-      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, _request->fullUrl().c_str());
+      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastFoundTick);
     }
   }
 }
@@ -306,12 +307,13 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
   const char* value = _request->value("chunkSize", found);
 
   if (found) {
-    // url parameter "chunkSize" specified
-    chunkSize = (uint64_t) StringUtils::uint64(value);
-  }
-  else {
-    // not specified, use default
-    chunkSize = minChunkSize;
+    // url parameter "chunkSize" was specified
+    chunkSize = StringUtils::uint64(value);
+
+    // don't allow overly big allocations
+    if (chunkSize > maxChunkSize) {
+      chunkSize = maxChunkSize;
+    }
   }
 
   return chunkSize;
@@ -472,7 +474,11 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 /// - `clients`: a list of all replication clients that ever connected to
 ///   the logger since it was started. This list can be used to determine 
 ///   approximately how much data the individual clients have already fetched 
-///   from the logger server.
+///   from the logger server. Each entry in the list contains a `time` value
+///   indicating the server time the client last fetched data from the
+///   replication logger. The `lastFoundTick` value of each client indicates
+///   the latest tick value sent to the client upon a client request to the
+///   replication logger.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1021,7 +1027,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       TRI_StealStringBuffer(dump._buffer);
     }
     
-    insertClient();
+    insertClient(dump._lastFoundTick);
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -1177,8 +1183,6 @@ void RestReplicationHandler::handleCommandInventory () {
   
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
-    
-  insertClient();
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -1403,8 +1407,6 @@ void RestReplicationHandler::handleCommandDump () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
-    
-    insertClient();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
