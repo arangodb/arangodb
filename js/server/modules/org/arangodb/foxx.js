@@ -653,7 +653,7 @@ _.extend(RequestContext.prototype, {
 ///
 /// @FUN{FoxxApplication::summary(@FA{description})}
 ///
-/// Set the summary for this route in the documentation Can't be longer than 60
+/// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
 ////////////////////////////////////////////////////////////////////////////////
 
