@@ -1600,7 +1600,7 @@ void RestReplicationHandler::handleCommandSync () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the server's id
 ///
-/// @RESTHEADER{GET /_api/replication/server-id,returns the server's id}
+/// @RESTHEADER{GET /_api/replication/server-id,returns the servers id}
 ///
 /// @RESTDESCRIPTION
 /// Returns the server's id. The id is also returned by other replication API
