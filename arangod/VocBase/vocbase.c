@@ -1719,8 +1719,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
 
   TRI_DestroyVectorPointer(&collections);
-
-
+ 
+  // stop replication
+  TRI_StopReplicationApplier(vocbase->_replicationApplier, false); 
+  TRI_StopReplicationLogger(vocbase->_replicationLogger); 
+  
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
@@ -1729,6 +1732,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_JoinThread(&vocbase->_indexGC);
 #endif  
   
+  
   // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
@@ -1736,13 +1740,14 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // this will signal the cleanup thread to do one last iteration
   vocbase->_state = 3;
   TRI_JoinThread(&vocbase->_cleanup);
-  
+
+  // free replication  
+  TRI_FreeReplicationApplier(vocbase->_replicationApplier);
+  vocbase->_replicationApplier = NULL;
   
   TRI_FreeReplicationLogger(vocbase->_replicationLogger);
   vocbase->_replicationLogger = NULL;
-  
-  TRI_FreeReplicationApplier(vocbase->_replicationApplier);
-  vocbase->_replicationApplier = NULL;
+
 
 
   // free dead collections (already dropped but pointers still around)
