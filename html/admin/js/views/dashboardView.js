@@ -26,7 +26,7 @@ var dashboardView = Backbone.View.extend({
     var self = this;
 
     this.initUnits();
-    this.addCustomCharts();
+    //this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
