@@ -560,9 +560,9 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-data unittests-replication-logger
+.PHONY: unittests-replication unittests-replication-common unittests-replication-http unittests-replication-data unittests-replication-logger
 	
-unittests-replication: unittests-replication-common unittests-replication-data unittests-replication-logger
+unittests-replication: unittests-replication-common unittests-replication-data unittests-replication-http unittests-replication-logger
 
 unittests-replication-common:
 	@echo
@@ -575,6 +575,25 @@ unittests-replication-common:
 	@mkdir "$(VOCDIR)"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+unittests-replication-http:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION SERVER TESTS                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests-replication || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
 	@echo
