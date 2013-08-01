@@ -115,3 +115,9 @@ configuration of an ArangoDB server's replication applier.
 @CLEARPAGE
 @anchor HttpReplicationApplierGetState
 @copydetails triagens::arango::RestReplicationHandler::handleCommandApplierGetState
+
+Other Replication Commands {#HttpReplicationOtherCommands}
+----------------------------------------------------------
+
+@anchor HttpReplicationServerId
+@copydetails triagens::arango::RestReplicationHandler::handleCommandServerId
