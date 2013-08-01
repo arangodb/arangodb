@@ -79,6 +79,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
+#include "VocBase/replication-common.h"
 
 #include "RestServer/VocbaseManager.h"
 
@@ -204,7 +205,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _removeOnDrop(true),
     _replicationEnableLogger(false),
     _replicationLogRemoteChanges(false),
-    _replicationMaxEvents(1048576),
+    _replicationMaxEvents(TRI_REPLICATION_LOGGER_EVENTS_DEFAULT),
     _replicationMaxEventsSize(0),
     _vocbase(0) {
 
