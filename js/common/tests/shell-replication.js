@@ -2293,7 +2293,7 @@ function ReplicationApplierSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_CONFIGURATION.code, err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2373,7 +2373,7 @@ function ReplicationApplierSuite () {
         replication.applier.properties({ });
       }
       catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_CONFIGURATION.code, err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
       
       replication.applier.properties({

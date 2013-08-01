@@ -265,8 +265,13 @@ static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_
 ////////////////////////////////////////////////////////////////////////////////
     
 static void FreeCap (TRI_replication_logger_t* logger) {
+  assert(logger != NULL);
+
   if (logger->_cap != NULL) {
     TRI_primary_collection_t* primary;
+  
+    assert(logger->_trxCollection != NULL);
+    assert(logger->_trxCollection->_collection != NULL);
 
     primary = logger->_trxCollection->_collection->_collection;
     assert(primary != NULL);
@@ -276,8 +281,6 @@ static void FreeCap (TRI_replication_logger_t* logger) {
                                      TRI_GetServerId());
 
     logger->_cap = NULL;
-    logger->_configuration._maxEvents = 0;
-    logger->_configuration._maxEventsSize = 0;
   }
 }
 
@@ -1008,22 +1011,22 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   }
 
   res = LogEvent(logger, 0, true, REPLICATION_STOP, buffer); 
+  
+  // destroy cap constraint
+  FreeCap(logger);
 
   TRI_CommitTransaction(logger->_trx, 0);
+  
   TRI_FreeTransaction(logger->_trx);
   
   LOG_INFO("stopped replication logger for database '%s', last tick: %llu", 
            logger->_databaseName,
            (unsigned long long) lastTick);
 
-
   logger->_trx                = NULL;
   logger->_trxCollection      = NULL;
   logger->_state._lastLogTick = 0;
   logger->_state._active      = false;
-
-  // destroy cap constraint
-  FreeCap(logger);
 
   return res;
 }
