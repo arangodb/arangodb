@@ -1,7 +1,9 @@
 <ul class="thumbnails2">
   <div id="dashboardHeader">
     <div class="pull-left">
-      <h4 class="dashboardH4">Dashboard</h4>
+      <h4 class="headerH4">Dashboard</h4>
+      <h6 id="statSwitch" class="dashSwitch activeSwitch headerH6 btn btn-small btn-inverse">Statistics</h6>
+      <h6 id="replSwitch" class="dashSwitch headerH6 btn btn-small btn-inverse">Replication</h6>
     </div>
 
 
@@ -33,7 +35,7 @@
 </ul>
 
 <ul class="thumbnails">
-  <li id="detailReplication" class="statSingleClient" style="margin-bottom: 13px !important">
+  <li id="detailReplication" class="statSingleClient" style="margin-bottom: 13px !important; display:none;">
     <div class="boxHeader">
       <h6 class="dashboardH6">Replication</h6>
     </div>
@@ -120,7 +122,7 @@
     </div>
   </li>
 
-  <li class="nocssli">
+  <li class="nocssli" style="display:none">
     <h4 class="">Detail Chart</h4>
   </li>
 
