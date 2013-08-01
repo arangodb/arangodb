@@ -209,8 +209,20 @@ var dashboardView = Backbone.View.extend({
         '<i class="group-close icon-minus icon-white"></i>' +
         '<h4 class="statsHeader">' + this.name + '</h4>' +
         '</ul>');
-      $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
-      $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+
+      //group
+      //$('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
+      //$('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+
+      //TEST
+      $('#menuGroups').append(
+        '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
+        '<ul id="' + this.group + 'Divider" class="dropdown-menu"></ul>'
+      );
+      //TEST
+
+
+      //group entries
       if (self.options.description.models[0].attributes.groups.length === counter) {
         $('#'+this.group+'Divider').addClass('dbNotVisible');
       }
@@ -594,7 +606,7 @@ var dashboardView = Backbone.View.extend({
       '</li>'
     );
 
-    $('#' + figure.group + 'Divider').before(
+    $('#' + figure.group + 'Divider').append(
       '<li><a><label class="checkbox checkboxLabel">'+
       '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
       '<label class="css-label"/>' +
