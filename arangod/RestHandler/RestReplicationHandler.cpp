@@ -49,7 +49,7 @@ using namespace triagens::arango;
 // --SECTION--                                       initialise static variables
 // -----------------------------------------------------------------------------
   
-const uint64_t RestReplicationHandler::minChunkSize = 64 * 1024;
+const uint64_t RestReplicationHandler::defaultChunkSize = 16 * 1024;
 
 const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
@@ -306,12 +306,12 @@ void RestReplicationHandler::insertClient (TRI_voc_tick_t lastFoundTick) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the minimum chunk size
+/// @brief determine the chunk size
 ////////////////////////////////////////////////////////////////////////////////
   
 uint64_t RestReplicationHandler::determineChunkSize () const {
   // determine chunk size
-  uint64_t chunkSize = minChunkSize;
+  uint64_t chunkSize = defaultChunkSize;
 
   bool found;
   const char* value = _request->value("chunkSize", found);
@@ -983,7 +983,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   // initialise the dump container
   TRI_replication_dump_t dump; 
   TRI_InitDumpReplication(&dump);
-  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
+  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) defaultChunkSize);
 
   if (dump._buffer == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -1378,7 +1378,7 @@ void RestReplicationHandler::handleCommandDump () {
   // initialise the dump container
   TRI_replication_dump_t dump; 
   TRI_InitDumpReplication(&dump);
-  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
+  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) defaultChunkSize);
 
   if (dump._buffer == 0) {
     TRI_ReleaseCollectionVocBase(_vocbase, col);
