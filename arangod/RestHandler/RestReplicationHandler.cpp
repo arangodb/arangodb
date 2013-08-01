@@ -177,6 +177,12 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandSync(); 
     }
+    else if (command == "server-id") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandServerId();
+    }
     else if (command == "applier-config") {
       if (type == HttpRequest::HTTP_REQUEST_GET) {
         handleCommandApplierGetConfig();
@@ -1586,6 +1592,55 @@ void RestReplicationHandler::handleCommandSync () {
 
   char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server's id
+///
+/// @RESTHEADER{GET /_api/replication/server-id,returns the server's id}
+///
+/// @RESTDESCRIPTION
+/// Returns the server's id. The id is also returned by other replication API
+/// methods, and this method is an easy means of determining a server's id.
+///
+/// The body of the response is a JSON hash with the attribute `serverId`. The
+/// server id is returned as a string.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationServerId}
+///     var url = "/_api/replication/server-id";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandServerId () {
+  TRI_json_t result;
+
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+
+  const string serverId = StringUtils::itoa(TRI_GetServerId());
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       &result, 
+                       "serverId", 
+                       TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);

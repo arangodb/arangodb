@@ -11,6 +11,23 @@ describe ArangoDB do
   context "dealing with the replication interface:" do
 
 ################################################################################
+## general
+################################################################################
+
+    context "dealing with general functions" do
+      
+      it "fetches the server id" do
+        # fetch id
+        cmd = api + "/server-id"
+        doc = ArangoDB.log_get("#{prefix}-server-id", cmd)
+
+        doc.code.should eq(200)
+        doc.parsed_response['serverId'].should match(/^\d+$/)
+      end
+
+    end
+
+################################################################################
 ## logger
 ################################################################################
 
