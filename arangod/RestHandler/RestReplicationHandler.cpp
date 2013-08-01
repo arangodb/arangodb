@@ -1603,7 +1603,7 @@ void RestReplicationHandler::handleCommandSync () {
 /// @RESTHEADER{GET /_api/replication/server-id,returns the servers id}
 ///
 /// @RESTDESCRIPTION
-/// Returns the server's id. The id is also returned by other replication API
+/// Returns the servers id. The id is also returned by other replication API
 /// methods, and this method is an easy means of determining a server's id.
 ///
 /// The body of the response is a JSON hash with the attribute `serverId`. The
