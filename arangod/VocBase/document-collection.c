@@ -3672,20 +3672,23 @@ static bool DropIndex (TRI_document_collection_t* document,
   // outside write-lock
   // .............................................................................
 
-  if (found != NULL && full) {
-    bool removeResult;
+  if (found != NULL) {
+    bool result = true;
 
-    removeResult = TRI_RemoveIndexFile(primary, found);
+    if (full) {
+      result = TRI_RemoveIndexFile(primary, found);
+
+      // it is safe to use _name as we hold a read-lock on the collection status
+      TRI_LogDropIndexReplication(vocbase,
+                                  primary->base._info._cid, 
+                                  primary->base._info._name, 
+                                  iid,
+                                  generatingServer);
+    }
+      
     TRI_FreeIndex(found);
 
-    // it is safe to use _name as we hold a read-lock on the collection status
-    TRI_LogDropIndexReplication(vocbase,
-                                primary->base._info._cid, 
-                                primary->base._info._name, 
-                                iid,
-                                generatingServer);
-
-    return removeResult;
+    return result;
   }
 
   return false;

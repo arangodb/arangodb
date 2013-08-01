@@ -38,6 +38,7 @@
 #include "skiplistExIndex.h"
 #include "VocBase/index-garbage-collector.h"
 
+#ifdef TRI_SKIPLIST_EX
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -1522,10 +1523,11 @@ static int SkiplistExIndex_freeMethodCall(void* theIndex, void* data) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor
