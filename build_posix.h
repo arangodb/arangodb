@@ -1,1 +1,1 @@
-#define TRIAGENS_VERSION "1.4.devel"
+#define TRIAGENS_VERSION "1.4.0-alpha1"
