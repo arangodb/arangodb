@@ -107,7 +107,7 @@ static int ReadTick (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
-  return TRI_Concatenate2File(vocbase->_path, "REPLICATION-CONFIG");
+  return TRI_Concatenate2File(vocbase->_path, "REPLICATION-APPLIER-CONFIG");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +301,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* GetStateFilename (TRI_vocbase_t* vocbase) {
-  return TRI_Concatenate2File(vocbase->_path, "REPLICATION-STATE");
+  return TRI_Concatenate2File(vocbase->_path, "REPLICATION-APPLIER-STATE");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1048,6 +1048,10 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   
   TRI_InitStateReplicationApplier(state);
   filename = GetStateFilename(vocbase);
+
+  if (filename == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   LOG_TRACE("looking for replication state file '%s'", filename);
 

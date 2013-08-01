@@ -229,7 +229,13 @@ function ReplicationLoggerSuite () {
       
       properties = replication.logger.properties();
       assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      var autoStart = properties.autoStart;
+      var maxEvents = properties.maxEvents;
+      var maxEventsSize = properties.maxEventsSize;
 
       assertFalse(properties.logRemoteChanges);
 
@@ -238,16 +244,183 @@ function ReplicationLoggerSuite () {
       });
 
       assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
       assertTrue(properties.logRemoteChanges);
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(autoStart, properties.autoStart);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
       
       properties = replication.logger.properties({
         logRemoteChanges: false
       });
 
       assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(autoStart, properties.autoStart);
       assertFalse(properties.logRemoteChanges);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        autoStart: true
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(true, properties.autoStart);
+      assertFalse(properties.logRemoteChanges);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        autoStart: false
+      });
+      
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(false, properties.autoStart);
+      assertFalse(properties.logRemoteChanges);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test event sizes
+////////////////////////////////////////////////////////////////////////////////
+
+    testEventSizesLogger : function () {
+      var properties;
+      
+      properties = replication.logger.properties();
+      assertTrue(typeof properties === 'object');
+      var maxEvents = properties.maxEvents;
+      var maxEventsSize = properties.maxEventsSize;
+
+      properties = replication.logger.properties({
+        maxEvents: 8192
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(8192, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEventsSize: 16777216
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(8192, properties.maxEvents);
+      assertEqual(16777216, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEvents: 16384,
+        maxEventsSize: 1048576
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(16384, properties.maxEvents);
+      assertEqual(1048576, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEvents: 0,
+        maxEventsSize: 1048580
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(0, properties.maxEvents);
+      assertEqual(1048580, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEvents: 16384,
+        maxEventsSize: 0
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(16384, properties.maxEvents);
+      assertEqual(0, properties.maxEventsSize);
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 10,
+          maxEventsSize: 0
+        });
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err1.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 0,
+          maxEventsSize: 10
+        });
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err2.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 10,
+          maxEventsSize: 10
+        });
+      }
+      catch (err3) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err3.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 16384,
+          maxEventsSize: 10
+        });
+      }
+      catch (err4) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err4.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 10,
+          maxEventsSize: 1048576
+        });
+      }
+      catch (err5) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err5.errorNum);
+      }
+      
+      properties = replication.logger.properties({
+        maxEvents: 0,
+        maxEventsSize: 0
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(0, properties.maxEvents);
+      assertEqual(0, properties.maxEventsSize);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

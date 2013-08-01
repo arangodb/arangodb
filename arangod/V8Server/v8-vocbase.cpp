@@ -3202,6 +3202,12 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
 
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+    
+    if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
+      if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
+        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
+      }
+    }
 
     if (object->Has(TRI_V8_SYMBOL("logRemoteChanges"))) {
       if (object->Get(TRI_V8_SYMBOL("logRemoteChanges"))->IsBoolean()) {
@@ -7606,7 +7612,6 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
-  v8::Local<v8::String> keyReplicationEnableLogger = v8::String::New("replicationEnableLogger");
 
   // get database defaults from system vocbase
   TRI_vocbase_defaults_t defaults;
@@ -7646,10 +7651,6 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     
     if (options->Has(keyAuthenticateSystemOnly)) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
-    }
-
-    if (options->Has(keyReplicationEnableLogger)) {
-      defaults.replicationEnableLogger = options->Get(keyReplicationEnableLogger)->BooleanValue();
     }
   }
 
