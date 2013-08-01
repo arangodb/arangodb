@@ -253,8 +253,6 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static void CopyDefaults (TRI_vocbase_defaults_t const* src, 
                           TRI_vocbase_defaults_t* dst) {
   dst->defaultMaximalSize           = src->defaultMaximalSize;
-  dst->replicationMaxEvents         = src->replicationMaxEvents;
-  dst->replicationMaxEventsSize     = src->replicationMaxEventsSize;
   dst->removeOnDrop                 = src->removeOnDrop;
   dst->removeOnCompacted            = src->removeOnCompacted;
   dst->defaultWaitForSync           = src->defaultWaitForSync;
@@ -262,8 +260,6 @@ static void CopyDefaults (TRI_vocbase_defaults_t const* src,
   dst->forceSyncProperties          = src->forceSyncProperties;
   dst->requireAuthentication        = src->requireAuthentication;    
   dst->authenticateSystemOnly       = src->authenticateSystemOnly;
-  dst->replicationEnableLogger      = src->replicationEnableLogger;
-  dst->replicationLogRemoteChanges  = src->replicationLogRemoteChanges;
 }  
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,8 +270,6 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
                            TRI_vocbase_defaults_t const* defaults) {
 
   vocbase->_defaultMaximalSize           = defaults->defaultMaximalSize;
-  vocbase->_replicationMaxEvents         = defaults->replicationMaxEvents;
-  vocbase->_replicationMaxEventsSize     = defaults->replicationMaxEventsSize;
   vocbase->_removeOnDrop                 = defaults->removeOnDrop;
   vocbase->_removeOnCompacted            = defaults->removeOnCompacted;
   vocbase->_defaultWaitForSync           = defaults->defaultWaitForSync;
@@ -283,8 +277,6 @@ static void ApplyDefaults (TRI_vocbase_t* vocbase,
   vocbase->_forceSyncProperties          = defaults->forceSyncProperties;
   vocbase->_requireAuthentication        = defaults->requireAuthentication;    
   vocbase->_authenticateSystemOnly       = defaults->authenticateSystemOnly;
-  vocbase->_replicationEnableLogger      = defaults->replicationEnableLogger;
-  vocbase->_replicationLogRemoteChanges  = defaults->replicationLogRemoteChanges;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,8 +287,6 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
                          TRI_vocbase_defaults_t* defaults) {
 
   defaults->defaultMaximalSize          = vocbase->_defaultMaximalSize;
-  defaults->replicationMaxEvents        = vocbase->_replicationMaxEvents;
-  defaults->replicationMaxEventsSize    = vocbase->_replicationMaxEventsSize;
   defaults->removeOnDrop                = vocbase->_removeOnDrop;
   defaults->removeOnCompacted           = vocbase->_removeOnCompacted;
   defaults->defaultWaitForSync          = vocbase->_defaultWaitForSync;
@@ -304,8 +294,6 @@ static void GetDefaults (TRI_vocbase_t const* vocbase,
   defaults->forceSyncProperties         = vocbase->_forceSyncProperties;
   defaults->requireAuthentication       = vocbase->_requireAuthentication;    
   defaults->authenticateSystemOnly      = vocbase->_authenticateSystemOnly;
-  defaults->replicationEnableLogger     = vocbase->_replicationEnableLogger;
-  defaults->replicationLogRemoteChanges = vocbase->_replicationLogRemoteChanges;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1675,13 +1663,13 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_StartThread(&(vocbase->_indexGC), "[index_garbage_collector]", TRI_IndexGCVocBase, vocbase);
 #endif
 
-  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase, defaults);
+  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
 
   if (vocbase->_replicationLogger == NULL) {
     LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
   }
 
-  if (defaults->replicationEnableLogger) {
+  if (vocbase->_replicationLogger->_configuration._autoStart) {
     res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
 
     if (res != TRI_ERROR_NO_ERROR) {

@@ -79,7 +79,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
-#include "VocBase/replication-common.h"
 
 #include "RestServer/VocbaseManager.h"
 
@@ -203,10 +202,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _multipleDatabases(false),
     _removeOnCompacted(true),
     _removeOnDrop(true),
-    _replicationEnableLogger(false),
-    _replicationLogRemoteChanges(false),
-    _replicationMaxEvents(TRI_REPLICATION_LOGGER_EVENTS_DEFAULT),
-    _replicationMaxEventsSize(0),
     _vocbase(0) {
 
   // locate path to binary
@@ -360,17 +355,6 @@ void ArangoServer::buildApplicationServer () {
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
   
-  // .............................................................................
-  // replication options
-  // .............................................................................
-
-  additional[ApplicationServer::OPTIONS_REPLICATION + ":help-replication"]
-    ("replication.enable-logger", &_replicationEnableLogger, "enable replication logger")
-    ("replication.log-remote-changes", &_replicationLogRemoteChanges, "log remote changes")
-    ("replication.max-log-events", &_replicationMaxEvents, "max log events to keep (0 = unlimited)")
-    ("replication.max-log-events-size", &_replicationMaxEventsSize, "max cumulated size of log events to keep (0 = unlimited)")
-  ;
-
   // .............................................................................
   // database options
   // .............................................................................
@@ -1175,14 +1159,6 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->requireAuthentication);
   defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
           systemDefaults->authenticateSystemOnly);
-  defaults.replicationEnableLogger = doc.getBooleanValue("replicationEnableLogger", 
-          systemDefaults->replicationEnableLogger);
-  defaults.replicationLogRemoteChanges = doc.getBooleanValue("replicationLogRemoteChanges", 
-          systemDefaults->replicationLogRemoteChanges);
-  defaults.replicationMaxEvents = doc.getNumericValue<uint64_t>("replicationMaxEvents",
-          systemDefaults->replicationMaxEvents);
-  defaults.replicationMaxEventsSize = doc.getNumericValue<uint64_t>("replicationMaxEventsSize",
-          systemDefaults->replicationMaxEventsSize);
   
   // open/load database
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), dbName.c_str(), &defaults);
@@ -1395,8 +1371,6 @@ void ArangoServer::openDatabases () {
 
   // override with command-line options 
   defaults.defaultMaximalSize            = _defaultMaximalSize;
-  defaults.replicationMaxEvents          = _replicationMaxEvents;
-  defaults.replicationMaxEventsSize      = _replicationMaxEventsSize;
   defaults.removeOnDrop                  = _removeOnDrop;
   defaults.removeOnCompacted             = _removeOnCompacted;
   defaults.defaultWaitForSync            = _defaultWaitForSync;
@@ -1404,8 +1378,6 @@ void ArangoServer::openDatabases () {
   defaults.forceSyncProperties           = _forceSyncProperties;
   defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
-  defaults.replicationEnableLogger       = _replicationEnableLogger;
-  defaults.replicationLogRemoteChanges   = _replicationLogRemoteChanges;
   
   // store these settings as initial system defaults
   TRI_SetSystemDefaultsVocBase(&defaults);

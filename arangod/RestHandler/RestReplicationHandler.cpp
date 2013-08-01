@@ -544,14 +544,19 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// The body of the response is a JSON hash with the configuration. The
 /// following attributes may be present in the configuration:
 ///
+/// - `autoStart`: whether or not to automatically start the replication logger
+///    on server startup
+///
 /// - `logRemoteChanges`: whether or not externally created changes should be
 ///    logged by the local logger
 ///
 /// - `maxEvents`: the maximum number of log events kept by the replication 
-///    logger before deleting oldest events
+///    logger before deleting oldest events. A value of `0` means that the
+///    number of events is not restricted.
 ///
 /// - `maxEventsSize`: the maximum cumulated size of log event data kept by the 
-///    replication logger before deleting oldest events
+///    replication logger before deleting oldest events. A value of `0` means
+///    that the cumulated size of events is not restricted.
 ///
 /// @RESTRETURNCODES
 ///
@@ -609,14 +614,23 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 /// The body of the request must be JSON hash with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
+/// - `autoStart`: whether or not to automatically start the replication logger
+///    on server startup
+///
 /// - `logRemoteChanges`: whether or not externally created changes should be
 ///    logged by the local logger
 ///
 /// - `maxEvents`: the maximum number of log events kept by the replication 
-///    logger before deleting oldest events
+///    logger before deleting oldest events. Use a value of `0` to not restrict
+///    the number of events.
 ///
 /// - `maxEventsSize`: the maximum cumulated size of log event data kept by the 
-///    replication logger before deleting oldest events
+///    replication logger before deleting oldest events. Use a value of `0` to 
+///    not restrict the size.
+///
+/// Note that when setting both `maxEvents` and `maxEventsSize`, reaching 
+/// either limitation will trigger a deletion of the "oldest" log events from
+/// the replication log.
 ///
 /// In case of success, the body of the response is a JSON hash with the updated
 /// configuration.
@@ -637,7 +651,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerSetConfig}
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerSetConfig1}
 ///     var re = require("org/arangodb/replication");
 ///     re.applier.stop();
 ///
@@ -645,6 +659,23 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///     var body = { 
 ///       logRemoteChanges: true,
 ///       maxEvents: 1048576
+///     };
+///
+///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerSetConfig2}
+///     var re = require("org/arangodb/replication");
+///     re.applier.stop();
+///
+///     var url = "/_api/replication/logger-config";
+///     var body = { 
+///       logRemoteChanges: false,
+///       maxEvents: 16384,
+///       maxEventsSize: 16777216
 ///     };
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
@@ -672,6 +703,11 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
   }
 
   TRI_json_t const* value;
+  
+  value = JsonHelper::getArrayElement(json, "autoStart");
+  if (JsonHelper::isBoolean(value)) {
+    config._autoStart = value->_value._boolean;
+  }
 
   value = JsonHelper::getArrayElement(json, "logRemoteChanges");
   if (JsonHelper::isBoolean(value)) {

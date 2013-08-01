@@ -56,7 +56,6 @@ struct TRI_transaction_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_s;
 struct TRI_vocbase_col_s;
-struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                REPLICATION LOGGER
@@ -79,6 +78,7 @@ typedef struct TRI_replication_logger_configuration_s {
   uint64_t                               _maxEvents;
   uint64_t                               _maxEventsSize;
   bool                                   _logRemoteChanges;
+  bool                                   _autoStart;
 }
 TRI_replication_logger_configuration_t;
 
@@ -134,8 +134,7 @@ TRI_replication_logger_t;
 /// @brief create a replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_logger_t* TRI_CreateReplicationLogger (struct TRI_vocbase_s*,
-                                                       struct TRI_vocbase_defaults_s*);
+TRI_replication_logger_t* TRI_CreateReplicationLogger (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a replication logger
