@@ -417,10 +417,22 @@ static int StartApplier (TRI_replication_applier_t* applier,
   if (fetcher == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+ 
+  // reset error 
+  if (state->_lastError._msg != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
+    state->_lastError._msg = NULL;
+  }
 
+  state->_lastError._code = TRI_ERROR_NO_ERROR;
+  
+  TRI_GetTimeStampReplication(state->_lastError._time, sizeof(state->_lastError._time) - 1);
+
+  
   SetTerminateFlag(applier, false); 
   state->_active = true;
-
+  
   TRI_InitThread(&applier->_thread);
 
   if (! TRI_StartThread(&applier->_thread, "[applier]", ApplyThread, fetcher)) {
@@ -461,7 +473,6 @@ static int StopApplier (TRI_replication_applier_t* applier,
       TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
       state->_lastError._msg = NULL;
     }
-
 
     state->_lastError._code = TRI_ERROR_NO_ERROR;
   
@@ -541,16 +552,19 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   // lastError
   error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  if (state->_lastError._code > 0) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
+  if (error != NULL) {
+    if (state->_lastError._code > 0) {
+      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
  
-    if (state->_lastError._msg != NULL) {
-      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+      if (state->_lastError._msg != NULL) {
+        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+      }
     }
-  }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
+  
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
+  }
   
   TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
