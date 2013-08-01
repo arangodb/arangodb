@@ -301,9 +301,9 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
   assert(logger->_configuration._maxEvents > 0 ||
          logger->_configuration._maxEventsSize > 0);
 
-  LOG_INFO("creating cap constraint for replication logger. maxEvents: %llu, maxEventsSize: %llu",
-           (unsigned long long) logger->_configuration._maxEvents,
-           (unsigned long long) logger->_configuration._maxEventsSize);
+  LOG_TRACE("creating cap constraint for replication logger. maxEvents: %llu, maxEventsSize: %llu",
+            (unsigned long long) logger->_configuration._maxEvents,
+            (unsigned long long) logger->_configuration._maxEventsSize);
   
   // need to convert to (possibly) lower types
   if (logger->_configuration._maxEvents > (uint64_t) SIZE_MAX) {
