@@ -80,7 +80,9 @@ typedef enum {
   TRI_IDX_TYPE_FULLTEXT_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
   TRI_IDX_TYPE_SKIPLIST_INDEX,
+#ifdef TRI_SKIPLIST_EX
   TRI_IDX_TYPE_SKIPLIST_EX_INDEX,
+#endif
   TRI_IDX_TYPE_BITARRAY_INDEX,
   TRI_IDX_TYPE_CAP_CONSTRAINT
 }
@@ -225,6 +227,7 @@ TRI_skiplist_index_t;
 /// @brief skiplistEx index supports transactions
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_SKIPLIST_EX
 typedef struct TRI_skiplistEx_index_s {
   TRI_index_t base;
 
@@ -232,6 +235,7 @@ typedef struct TRI_skiplistEx_index_s {
   TRI_vector_t _paths;                // a list of shape pid which identifies the fields of the index
 }
 TRI_skiplistEx_index_t;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext index

@@ -1670,9 +1670,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
+#ifdef TRI_SKIPLIST_EX
   TRI_InitThread(&(vocbase->_indexGC));
-  TRI_StartThread(&(vocbase->_indexGC), "[indeX_garbage_collector]", TRI_IndexGCVocBase, vocbase);
-
+  TRI_StartThread(&(vocbase->_indexGC), "[index_garbage_collector]", TRI_IndexGCVocBase, vocbase);
+#endif
 
   vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase, defaults);
 
@@ -1732,17 +1733,13 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&collections);
 
 
-  TRI_FreeReplicationLogger(vocbase->_replicationLogger);
-  vocbase->_replicationLogger = NULL;
-  
-  TRI_FreeReplicationApplier(vocbase->_replicationApplier);
-  vocbase->_replicationApplier = NULL;
-
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
+#ifdef TRI_SKIPLIST_EX
   // wait for the index garbage collector to finish what ever it is doing
   TRI_JoinThread(&vocbase->_indexGC);
+#endif  
   
   // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
@@ -1751,6 +1748,14 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // this will signal the cleanup thread to do one last iteration
   vocbase->_state = 3;
   TRI_JoinThread(&vocbase->_cleanup);
+  
+  
+  TRI_FreeReplicationLogger(vocbase->_replicationLogger);
+  vocbase->_replicationLogger = NULL;
+  
+  TRI_FreeReplicationApplier(vocbase->_replicationApplier);
+  vocbase->_replicationApplier = NULL;
+
 
   // free dead collections (already dropped but pointers still around)
   for (i = 0;  i < vocbase->_deadCollections._length;  ++i) {

@@ -5424,9 +5424,11 @@ static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments co
   return EnsurePathIndex("ensureUniqueSkiplist", argv, true, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
+#ifdef TRI_SKIPLIST_EX
 static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistExVocbaseCol (v8::Arguments const& argv) {
   return EnsurePathIndex("ensureUniqueSkiplistEx", argv, true, true, TRI_IDX_TYPE_SKIPLIST_EX_INDEX);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a skiplist index
@@ -5456,9 +5458,11 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
   return EnsurePathIndex("ensureSkiplist", argv, false, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
+#ifdef TRI_SKIPLIST_EX
 static v8::Handle<v8::Value> JS_EnsureSkiplistExVocbaseCol (v8::Arguments const& argv) {
   return EnsurePathIndex("ensureSkiplistEx", argv, false, true, TRI_IDX_TYPE_SKIPLIST_EX_INDEX);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a multi skiplist index
@@ -8492,10 +8496,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
+#ifdef TRI_SKIPLIST_EX
   TRI_AddMethodVocbase(rt, "ensureSkiplistEx", JS_EnsureSkiplistExVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
+#ifdef TRI_SKIPLIST_EX
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplistEx", JS_EnsureUniqueSkiplistExVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "exists", JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
