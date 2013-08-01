@@ -45,8 +45,12 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                       initialise static variables
+// -----------------------------------------------------------------------------
   
-const uint64_t RestReplicationHandler::minChunkSize = 512 * 1024;
+const uint64_t RestReplicationHandler::minChunkSize = 64 * 1024;
+
 const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
 // -----------------------------------------------------------------------------
