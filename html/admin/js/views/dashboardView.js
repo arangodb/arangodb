@@ -102,7 +102,7 @@ var dashboardView = Backbone.View.extend({
     var loggerRunning  = this.replLogState.state.running;
     var applierRunning = this.replApplyState.state.running;
 
-    if (applierRunning || this.replApplyState.state.lastError != '') {
+    if (applierRunning || this.replApplyState.state.lastError !== '') {
       $('#detailReplication').height(290);
       $('.checkApplyRunningStatus').show();
     }
