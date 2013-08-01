@@ -136,6 +136,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
     
+      replication.logger.properties({ maxEvents: 1048576 });
       replication.logger.start();
     },
 
@@ -146,6 +147,7 @@ function ReplicationSuite () {
     tearDown : function () {
       connectToMaster();
       replication.logger.stop();
+      replication.logger.properties({ maxEvents: 1048576 });
       
       db._drop(cn);
       db._drop(cn2);
@@ -154,6 +156,62 @@ function ReplicationSuite () {
       replication.applier.stop();
       db._drop(cn);
       db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test exceeding cap
+////////////////////////////////////////////////////////////////////////////////
+
+    testCapped : function () {
+      connectToMaster();
+      // set a low cap which we'll exceed easily
+      replication.logger.properties({ maxEvents: 4096 });
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 50000; ++i) {
+            c.save({ "value" : i });
+          }
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(50000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test not exceeding cap
+////////////////////////////////////////////////////////////////////////////////
+
+    testUncapped : function () {
+      connectToMaster();
+      // set a low cap which we'll exceed easily
+      replication.logger.properties({ maxEvents: 0, maxEventsSize: 0 });
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 50000; ++i) {
+            c.save({ "value" : i });
+          }
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(50000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        }
+      );
     },
 
 ////////////////////////////////////////////////////////////////////////////////

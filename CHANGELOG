@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* added replication
+
 * removed action deployment tool, this now handled with Foxx and its manager or
   by kaerus node utility
 

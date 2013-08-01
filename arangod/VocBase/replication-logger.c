@@ -64,7 +64,7 @@
 
 typedef struct logger_client_s {
   TRI_server_id_t _serverId;
-  char*           _url;
+  TRI_voc_tick_t  _lastFoundTick;
   char            _stamp[24];
 }
 logger_client_t;
@@ -122,10 +122,6 @@ static bool IsEqualKeyClient (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeClient (logger_client_t* client) {
-  if (client->_url != NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, client->_url);
-  }
-
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, client);
 }
 
@@ -1605,16 +1601,20 @@ TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) 
       TRI_json_t* element = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
       if (element != NULL) {
-        char* serverId = TRI_StringUInt64(client->_serverId);
+        char* value;
+        
+        value = TRI_StringUInt64(client->_serverId);
 
-        if (serverId != NULL) {
-          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
+        if (value != NULL) {
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, value));
+        }
+        
+        value = TRI_StringUInt64(client->_lastFoundTick);
+
+        if (value != NULL) {
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "lastFoundTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, value));
         }
 
-        if (client->_url != NULL) {
-          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "url", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, client->_url));
-        }
-          
         TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, client->_stamp));
 
         TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, element);
@@ -1633,7 +1633,7 @@ TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) 
 
 void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
                                         TRI_server_id_t serverId,
-                                        char const* url) {
+                                        TRI_voc_tick_t lastFoundTick) {
 
   logger_client_t* client;
   void* found;
@@ -1646,14 +1646,8 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
 
   TRI_GetTimeStampReplication(client->_stamp, sizeof(client->_stamp) - 1);
 
-  client->_serverId = serverId;
-  client->_url = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, url);
-
-  if (client->_url == NULL) {
-    // OOM
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, client);
-    return;
-  }
+  client->_serverId      = serverId;
+  client->_lastFoundTick = lastFoundTick;
 
   TRI_WriteLockReadWriteLock(&logger->_clientsLock);
 

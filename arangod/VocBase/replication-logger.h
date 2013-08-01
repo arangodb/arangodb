@@ -193,7 +193,7 @@ struct TRI_json_s* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t*);
 
 void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t*,
                                         TRI_server_id_t,
-                                        char const*);
+                                        TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger

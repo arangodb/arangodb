@@ -81,6 +81,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      replication.logger.properties({ maxEvents: 1048576 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +90,7 @@ function ReplicationLoggerSuite () {
 
     tearDown : function () {
       replication.logger.stop();
+      replication.logger.properties({ maxEvents: 1048576 });
       db._drop(cn);
       db._drop(cn2);
     },
@@ -421,6 +423,60 @@ function ReplicationLoggerSuite () {
       assertTrue(properties.hasOwnProperty('maxEventsSize'));
       assertEqual(0, properties.maxEvents);
       assertEqual(0, properties.maxEventsSize);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test capped logging
+////////////////////////////////////////////////////////////////////////////////
+
+    testCappedLogger : function () {
+      var state, tick;
+      
+      state = replication.logger.state().state;
+      assertFalse(state.running);
+      tick = state.lastLogTick;
+      assertTrue(typeof tick === 'string');
+
+      replication.logger.properties({ maxEvents: 5000 });
+      replication.logger.start();
+
+      // do something that will cause logging
+      var c = db._create(cn);
+
+      for (var i = 0; i < 50000; ++i) {
+        c.save({ value: i });
+      }
+
+      assertEqual(5000, db._collection('_replication').count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uncapped logging
+////////////////////////////////////////////////////////////////////////////////
+
+    testUncappedLogger : function () {
+      var state, tick;
+      
+      state = replication.logger.state().state;
+      assertFalse(state.running);
+      tick = state.lastLogTick;
+      assertTrue(typeof tick === 'string');
+
+      // manually flush all entries in the collection
+      db._collection('_replication').truncate();
+
+      replication.logger.properties({ maxEvents: 0, maxEventsSize: 0 });
+      replication.logger.start();
+
+      // do something that will cause logging
+      var c = db._create(cn);
+
+      for (var i = 0; i < 50000; ++i) {
+        c.save({ value: i });
+      }
+
+      // 50000 + transaction start + transaction commit
+      assertEqual(50000 + 2, db._collection('_replication').count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
