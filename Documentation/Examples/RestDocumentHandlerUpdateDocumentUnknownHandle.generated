@@ -1,4 +1,4 @@
-unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/37550112
+unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/37503399
 {}
 
 HTTP/1.1 404 Not Found
@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "document /_api/document/products/37550112 not found", 
+  "errorMessage" : "document /_api/document/products/37503399 not found", 
   "code" : 404, 
   "errorNum" : 1202 
 }

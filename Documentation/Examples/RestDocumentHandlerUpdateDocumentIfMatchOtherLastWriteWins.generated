@@ -1,15 +1,15 @@
-unix> curl -X PUT --header 'If-Match:"41089056"' --data @- --dump - http://localhost:8529/_api/document/products/40761376?policy=last
+unix> curl -X PUT --header 'If-Match:"41042343"' --data @- --dump - http://localhost:8529/_api/document/products/40714663?policy=last
 {}
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "41285664"
-location: /_api/document/products/40761376
+etag: "41238951"
+location: /_api/document/products/40714663
 
 { 
   "error" : false, 
-  "_id" : "products/40761376", 
-  "_rev" : "41285664", 
-  "_key" : "40761376" 
+  "_id" : "products/40714663", 
+  "_rev" : "41238951", 
+  "_key" : "40714663" 
 }
 

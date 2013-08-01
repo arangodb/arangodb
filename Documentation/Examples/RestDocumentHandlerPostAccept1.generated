@@ -3,13 +3,13 @@ unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collec
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "26474528"
-location: /_api/document/products/26474528
+etag: "26427815"
+location: /_api/document/products/26427815
 
 { 
   "error" : false, 
-  "_id" : "products/26474528", 
-  "_rev" : "26474528", 
-  "_key" : "26474528" 
+  "_id" : "products/26427815", 
+  "_rev" : "26427815", 
+  "_key" : "26427815" 
 }
 

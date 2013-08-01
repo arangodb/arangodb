@@ -5,13 +5,13 @@ content-type: application/json; charset=utf-8
 
 { 
   "system" : { 
-    "minorPageFaults" : 16034, 
-    "majorPageFaults" : 139, 
-    "userTime" : 0.57, 
-    "systemTime" : 0.08, 
+    "minorPageFaults" : 22832, 
+    "majorPageFaults" : 2465, 
+    "userTime" : 1.875972, 
+    "systemTime" : 0.638803, 
     "numberOfThreads" : 15, 
-    "residentSize" : 16907, 
-    "virtualSize" : 3533684736 
+    "residentSize" : 83468288, 
+    "virtualSize" : 5003804672 
   }, 
   "client" : { 
     "httpConnections" : 1, 
@@ -26,33 +26,33 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "totalTime" : { 
-      "sum" : 0.5171322822570801, 
+      "sum" : 0.7203128337860107, 
       "count" : 12, 
       "counts" : [ 
         6, 
-        0, 
-        3, 
-        3, 
-        0, 
+        2, 
+        1, 
+        2, 
+        1, 
         0, 
         0 
       ] 
     }, 
     "requestTime" : { 
-      "sum" : 0.5153264999389648, 
+      "sum" : 0.7163872718811035, 
       "count" : 12, 
       "counts" : [ 
         6, 
-        0, 
-        3, 
-        3, 
-        0, 
+        2, 
+        1, 
+        2, 
+        1, 
         0, 
         0 
       ] 
     }, 
     "queueTime" : { 
-      "sum" : 0.00048232078552246094, 
+      "sum" : 0.0005307197570800781, 
       "count" : 11, 
       "counts" : [ 
         11, 
@@ -65,7 +65,7 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "bytesSent" : { 
-      "sum" : 4162, 
+      "sum" : 4160, 
       "count" : 12, 
       "counts" : [ 
         3, 

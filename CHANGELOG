@@ -1,4 +1,4 @@
-v1.3.3 (XXXX-XX-XX)
+v1.3.3 (2013-XX-XX)
 -------------------
 
 * fixed HTTP basic authentication with password containing the special characters

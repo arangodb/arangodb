@@ -1,38 +1,38 @@
-unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44038176
+unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44122535
 {"hello":"world"}
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "44496928"
-location: /_api/document/products/44038176
+etag: "44450215"
+location: /_api/document/products/44122535
 
 { 
   "error" : false, 
-  "_id" : "products/44038176", 
-  "_rev" : "44496928", 
-  "_key" : "44038176" 
+  "_id" : "products/44122535", 
+  "_rev" : "44450215", 
+  "_key" : "44122535" 
 }
 
-unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44038176
+unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44122535
 {"numbers":{"one":1,"two":2,"three":3,"empty":null}}
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "45021216"
-location: /_api/document/products/44038176
+etag: "44974503"
+location: /_api/document/products/44122535
 
 { 
   "error" : false, 
-  "_id" : "products/44038176", 
-  "_rev" : "45021216", 
-  "_key" : "44038176" 
+  "_id" : "products/44122535", 
+  "_rev" : "44974503", 
+  "_key" : "44122535" 
 }
 
-unix> curl --dump - http://localhost:8529/_api/document/products/44038176
+unix> curl --dump - http://localhost:8529/_api/document/products/44122535
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "45021216"
+etag: "44974503"
 
 { 
   "one" : "world", 
@@ -43,31 +43,31 @@ etag: "45021216"
     "two" : 2, 
     "three" : 3 
   }, 
-  "_id" : "products/44038176", 
-  "_rev" : "45021216", 
-  "_key" : "44038176" 
+  "_id" : "products/44122535", 
+  "_rev" : "44974503", 
+  "_key" : "44122535" 
 }
 
-unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44038176?keepNull=false
+unix> curl -X PATCH --data @- --dump - http://localhost:8529/_api/document/products/44122535?keepNull=false
 {"hello":null,"numbers":{"four":4}}
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "45414432"
-location: /_api/document/products/44038176
+etag: "45367719"
+location: /_api/document/products/44122535
 
 { 
   "error" : false, 
-  "_id" : "products/44038176", 
-  "_rev" : "45414432", 
-  "_key" : "44038176" 
+  "_id" : "products/44122535", 
+  "_rev" : "45367719", 
+  "_key" : "44122535" 
 }
 
-unix> curl --dump - http://localhost:8529/_api/document/products/44038176
+unix> curl --dump - http://localhost:8529/_api/document/products/44122535
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "45414432"
+etag: "45367719"
 
 { 
   "one" : "world", 
@@ -78,8 +78,8 @@ etag: "45414432"
     "three" : 3, 
     "four" : 4 
   }, 
-  "_id" : "products/44038176", 
-  "_rev" : "45414432", 
-  "_key" : "44038176" 
+  "_id" : "products/44122535", 
+  "_rev" : "45367719", 
+  "_key" : "44122535" 
 }
 
