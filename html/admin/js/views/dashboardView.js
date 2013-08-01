@@ -76,7 +76,8 @@ var dashboardView = Backbone.View.extend({
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",
     "click .group-close"           : "hideGroup",
-    "click .group-open"            : "showGroup"
+    "click .group-open"            : "showGroup",
+    "click .dashSwitch"            : "showCategory"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -348,6 +349,24 @@ var dashboardView = Backbone.View.extend({
     $(a.target).removeClass('icon-minus group-close');
     $(a.target).addClass('icon-plus group-open');
     $(group).addClass("groupHidden");
+  },
+
+  showCategory: function (e) {
+    var id = e.target.id;
+    if (id === 'replSwitch') {
+      $('#statSwitch').removeClass('activeSwitch');
+      $('#'+id).addClass('activeSwitch');
+      $('#detailGraph').hide();
+      $('.statGroups').hide();
+      $('#detailReplication').show();
+    }
+    else if (id === 'statSwitch') {
+      $('#'+id).addClass('activeSwitch');
+      $('#replSwitch').removeClass('activeSwitch');
+      $('#detailReplication').hide();
+      $('#detailGraph').show();
+      $('.statGroups').show();
+    }
   },
 
   showGroup: function (a) {
