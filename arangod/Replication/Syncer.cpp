@@ -648,7 +648,8 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   }
 
   if (major != 1 ||
-      (major == 1 && minor != 4)) {
+      (major == 1 && minor < 4)) {
+    // we can connect to 1.4 and higher only
     errorMsg = "incompatible master version: " + versionString;
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
