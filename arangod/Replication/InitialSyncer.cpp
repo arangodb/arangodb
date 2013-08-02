@@ -77,6 +77,8 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
     c = (uint64_t) 8 * 1024 * 1024; // 8 mb
   }
 
+  assert(c > 0);
+
   _chunkSize = StringUtils::itoa(c);
 }
 

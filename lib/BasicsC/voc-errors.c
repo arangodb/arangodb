@@ -31,6 +31,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_TYPE_ERROR, "type error");
   REG_ERROR(ERROR_LOCK_TIMEOUT, "lock timeout");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
+  REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
