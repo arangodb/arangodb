@@ -65,11 +65,21 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
   Syncer(vocbase, configuration),
   _applier(vocbase->_replicationApplier),
   _transactionState(),
+  _chunkSize(),
   _initialTick(initialTick),
   _useTick(useTick) {
   
   _transactionState._trx         = 0;
   _transactionState._externalTid = 0;
+
+  uint64_t c = configuration->_chunkSize;
+  if (c == 0) {
+    c = (uint64_t) 256 * 1024; // 256 kb
+  }
+  
+  assert(c > 0);
+
+  _chunkSize = StringUtils::itoa(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +144,7 @@ int ContinuousSyncer::run () {
         }
 
         // somebody stopped the applier
-        res = TRI_ERROR_REPLICATION_STOPPED;
+        res = TRI_ERROR_REPLICATION_APPLIER_STOPPED;
       }
     }
 
@@ -539,15 +549,15 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   const TRI_voc_tid_t tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
 
   if (_transactionState._trx == 0) {
-    // invalid state, no transaction was started. TODO: fix error number
-    return TRI_ERROR_INTERNAL; 
+    // invalid state, no transaction was started. 
+    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION; 
   }
 
   if (_transactionState._externalTid != tid) {
-    // unexpected transaction id. TODO: fix error number
+    // unexpected transaction id. 
     abortOngoingTransaction();
 
-    return TRI_ERROR_INTERNAL; 
+    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION; 
   }
   
   LOGGER_TRACE("committing replication transaction " << tid); 
@@ -657,7 +667,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   else if (type == COLLECTION_DROP) {
     updateTick = true;
 
-    return dropCollection(json);
+    return dropCollection(json, false);
   }
   
   else if (type == COLLECTION_RENAME) {
@@ -802,6 +812,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 
   TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
 
+  if (fromTick == 0) {
+    return TRI_ERROR_REPLICATION_NO_START_TICK; 
+  }
+
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (1) {
@@ -880,7 +894,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     // this will make the applier thread sleep if there is nothing to do, 
     // but will also check for cancellation
     if (! TRI_WaitReplicationApplier(_applier, sleepTime)) {
-      return TRI_ERROR_REPLICATION_STOPPED;
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
   }
 
@@ -897,7 +911,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                                        bool& worked,
                                        bool& masterActive) {
   const string baseUrl = BaseUrl + 
-                         "/logger-follow?chunkSize=" + StringUtils::itoa(getChunkSize(4)); 
+                         "/logger-follow?chunkSize=" + _chunkSize;
 
   map<string, string> headers;
   worked = false;

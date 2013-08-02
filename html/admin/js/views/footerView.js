@@ -5,7 +5,7 @@ var footerView = Backbone.View.extend({
   el: '.footer',
   initialize: function () {
     var self = this;
-    self.system = {};
+    self.system = { };
     $.ajax({
       type: "GET",
       cache: false,
@@ -24,7 +24,11 @@ var footerView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
-    $('.footer-right p').html(this.system.name+' : '+this.system.version);
+
+    // only fill in version if we have a version number...
+    if (this.system.hasOwnProperty('name')) {
+      $('.footer-right p').html(this.system.name + ' : ' + this.system.version);
+    }
     return this;
   }
 

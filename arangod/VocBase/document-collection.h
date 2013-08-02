@@ -720,11 +720,12 @@ int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
                                           TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection tick
+/// @brief set the collection revision
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetTickDocumentCollection (TRI_document_collection_t*,
-                                    TRI_voc_tick_t);
+void TRI_SetRevisionDocumentCollection (TRI_document_collection_t*,
+                                        TRI_voc_rid_t, 
+                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection

@@ -36,6 +36,7 @@
   #include <BasicsC/win-utils.h>
 #endif
   
+#ifdef TRI_SKIPLIST_EX
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SKIPLIST_EX
@@ -4115,6 +4116,7 @@ static int UnJoinOldNodeCas (TRI_skiplistEx_node_t* oldNode) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+#endif
 
 // Local Variables:
 // mode: outline-minor

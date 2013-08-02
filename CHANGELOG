@@ -1,6 +1,11 @@
 v1.4.0-alpha1 (2013-08-01)
 --------------------------
 
+* added replication. check online manual for details.
+
+* added server startup options `--server.disable-replication-logger` and 
+  `--server.disable-replication-applier`
+
 * removed action deployment tool, this now handled with Foxx and its manager or
   by kaerus node utility
 
