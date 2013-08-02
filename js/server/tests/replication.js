@@ -60,7 +60,8 @@ function ReplicationSuite () {
   };
 
   var collectionChecksum = function (name) {
-    return db._collection(name).checksum(true).checksum;
+    var c = db._collection(name).checksum(true);
+    return c.checksum + "-" + c.revision;
   };
   
   var collectionCount = function (name) {
@@ -479,6 +480,45 @@ function ReplicationSuite () {
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(900, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test big transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionBig : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          db._executeTransaction({
+            collections: { 
+              write: cn
+            },
+            action: function (params) {
+              var c = require("internal").db._collection(params.cn), i;
+
+              for (i = 0; i < 50000; ++i) {
+                c.save({ "_key" : "test" + i, value : i });
+                c.update("test" + i, { value : i + 1 });
+
+                if (i % 5 == 0) {
+                  c.remove("test" + i);
+                }
+              }
+            },
+            params: { "cn" : cn }, 
+          });
+          
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(10000, state.count);
         },
         function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));

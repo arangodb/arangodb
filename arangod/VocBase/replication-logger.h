@@ -88,6 +88,7 @@ TRI_replication_logger_configuration_t;
 
 typedef struct TRI_replication_logger_state_s {
   TRI_voc_tick_t                         _lastLogTick;
+  uint64_t                               _totalEvents;
   bool                                   _active;
 }
 TRI_replication_logger_state_t;

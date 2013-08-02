@@ -290,7 +290,7 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::insertClient (TRI_voc_tick_t lastFoundTick) {
+void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
   bool found;
   char const* value;
 
@@ -300,7 +300,7 @@ void RestReplicationHandler::insertClient (TRI_voc_tick_t lastFoundTick) {
     TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
 
     if (serverId > 0) {
-      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastFoundTick);
+      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
     }
   }
 }
@@ -473,6 +473,9 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///   - `lastLogTick`: the tick value of the latest tick the logger has logged. 
 ///     This value can be used for incremental fetching of log data.
 ///
+///   - `totalEvents`: total number of events logged since the server was started.
+///     The value is not reset between multiple stops and re-starts of the logger.
+///
 ///   - `time`: the current date and time on the logger server
 ///
 /// - `server`: a JSON hash with the following sub-attributes:
@@ -486,7 +489,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///   approximately how much data the individual clients have already fetched 
 ///   from the logger server. Each entry in the list contains a `time` value
 ///   indicating the server time the client last fetched data from the
-///   replication logger. The `lastFoundTick` value of each client indicates
+///   replication logger. The `lastServedTick` value of each client indicates
 ///   the latest tick value sent to the client upon a client request to the
 ///   replication logger.
 ///

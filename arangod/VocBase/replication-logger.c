@@ -64,7 +64,7 @@
 
 typedef struct logger_client_s {
   TRI_server_id_t _serverId;
-  TRI_voc_tick_t  _lastFoundTick;
+  TRI_voc_tick_t  _lastServedTick;
   char            _stamp[24];
 }
 logger_client_t;
@@ -514,7 +514,10 @@ static int LogEvent (TRI_replication_logger_t* logger,
   
   // update the last tick that we've logged
   TRI_LockSpin(&logger->_idLock);
+
   logger->_state._lastLogTick = ((TRI_df_marker_t*) mptr._data)->_tick;
+  logger->_state._totalEvents++;
+
   TRI_UnlockSpin(&logger->_idLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -962,7 +965,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
     CreateCap(logger);
   }
 
-  logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._revision; 
+  logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._revision;
   logger->_state._active      = true;
   
   LOG_INFO("started replication logger for database '%s', last tick: %llu", 
@@ -1038,10 +1041,13 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 /// note: must hold the lock when calling this
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GetStateInactive (TRI_vocbase_t* vocbase,
+static int GetStateInactive (TRI_replication_logger_t* logger,
                              TRI_replication_logger_state_t* dst) {
+  TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t* col;
   TRI_primary_collection_t* primary;
+
+  vocbase = logger->_vocbase;
  
   col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
 
@@ -1053,10 +1059,14 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
 
   primary = (TRI_primary_collection_t*) col->_collection;
 
-  dst->_active       = false;
   dst->_lastLogTick  = primary->base._info._revision;
+  dst->_active       = false;
 
   TRI_ReleaseCollectionVocBase(vocbase, col);
+  
+  TRI_LockSpin(&logger->_idLock);
+  dst->_totalEvents  = logger->_state._totalEvents;
+  TRI_UnlockSpin(&logger->_idLock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1356,6 +1366,7 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   logger->_cap                             = NULL;
 
   logger->_state._lastLogTick              = 0;
+  logger->_state._totalEvents              = 0;
   logger->_state._active                   = false;
   logger->_configuration._logRemoteChanges = false;
   logger->_configuration._maxEvents        = (uint64_t) TRI_REPLICATION_LOGGER_EVENTS_DEFAULT;
@@ -1590,6 +1601,10 @@ TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) 
 
   json = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
+  if (json == NULL) {
+    return NULL;
+  }
+
   TRI_ReadLockReadWriteLock(&logger->_clientsLock);
 
   n = logger->_clients._nrAlloc;
@@ -1609,10 +1624,10 @@ TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) 
           TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, value));
         }
         
-        value = TRI_StringUInt64(client->_lastFoundTick);
+        value = TRI_StringUInt64(client->_lastServedTick);
 
         if (value != NULL) {
-          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "lastFoundTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, value));
+          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "lastServedTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, value));
         }
 
         TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, element, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, client->_stamp));
@@ -1633,7 +1648,7 @@ TRI_json_t* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t* logger) 
 
 void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
                                         TRI_server_id_t serverId,
-                                        TRI_voc_tick_t lastFoundTick) {
+                                        TRI_voc_tick_t lastServedTick) {
 
   logger_client_t* client;
   void* found;
@@ -1646,8 +1661,8 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
 
   TRI_GetTimeStampReplication(client->_stamp, sizeof(client->_stamp) - 1);
 
-  client->_serverId      = serverId;
-  client->_lastFoundTick = lastFoundTick;
+  client->_serverId       = serverId;
+  client->_lastServedTick = lastServedTick;
 
   TRI_WriteLockReadWriteLock(&logger->_clientsLock);
 
@@ -1720,7 +1735,7 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
   }
   else {
     // read first/last directly from collection
-    res = GetStateInactive(logger->_vocbase, state);
+    res = GetStateInactive(logger, state);
   }
 
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
@@ -1734,16 +1749,22 @@ int TRI_StateReplicationLogger (TRI_replication_logger_t* logger,
   
 TRI_json_t* TRI_JsonStateReplicationLogger (TRI_replication_logger_state_t const* state) {
   TRI_json_t* json; 
-  char* lastString;
+  char* value;
   char timeString[24];
 
   json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 3);
 
+  if (json == NULL) {
+    return NULL;
+  }
+
   // add replication state
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
   
-  lastString = TRI_StringUInt64(state->_lastLogTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString));
+  value = TRI_StringUInt64(state->_lastLogTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, value));
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalEvents));
 
   TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));

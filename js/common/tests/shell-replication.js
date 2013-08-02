@@ -110,6 +110,8 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 1);
     
       // start again  
       actual = replication.logger.start();
@@ -135,6 +137,8 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 1);
     
       // stop
       actual = replication.logger.stop();
@@ -143,6 +147,8 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertFalse(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 2);
       
       var entry = getLastLogEntry();
       assertEqual(1000, entry.type);
@@ -166,8 +172,11 @@ function ReplicationLoggerSuite () {
       
       state = replication.logger.state().state;
       assertFalse(state.running);
-      assertTrue(tick, state.lastLogTick);
+
+      assertEqual(tick, state.lastLogTick);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
       
       server = replication.logger.state().server;
       assertEqual(server.version, db._version()); 
@@ -189,6 +198,8 @@ function ReplicationLoggerSuite () {
       assertFalse(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
 
       // do something that will cause logging (if it was enabled...)
       var c = db._create(cn);
@@ -196,6 +207,8 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       assertFalse(state.running);
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
       assertEqual(tick, state.lastLogTick);
     },
 
@@ -210,6 +223,8 @@ function ReplicationLoggerSuite () {
       assertFalse(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
 
       replication.logger.start();
 
@@ -219,8 +234,51 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       assertTrue(state.running);
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 3);
       assertNotEqual(tick, state.lastLogTick);
       assertEqual(1, compareTicks(state.lastLogTick, tick));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test logging, total events
+////////////////////////////////////////////////////////////////////////////////
+
+    testEventsLogger : function () {
+      var state, tick;
+      
+      replication.logger.start();
+      state = replication.logger.state().state;
+      assertTrue(state.totalEvents >= 1);
+      var value = state.totalEvents;
+
+      replication.logger.stop();
+      
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      assertTrue(state.totalEvents >= 0);
+      value = state.totalEvents;
+
+      replication.logger.start();
+      
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      value = state.totalEvents;
+
+      // do something that will cause logging
+      var c = db._create(cn);
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      value = state.totalEvents;
+
+      c.save({ "test" : 1 });
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      value = state.totalEvents;
+      
+      replication.logger.stop();
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
