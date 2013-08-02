@@ -31,6 +31,22 @@ var arangodb = require("org/arangodb");
 var helper = require("org/arangodb/aql-helper");
 var db = arangodb.db;
 
+
+var compareStringIds = function (l, r) {
+  if (l.length != r.length) {
+    return l.length - r.length < 0 ? -1 : 1;
+  }
+
+  // length is equal
+  for (i = 0; i < l.length; ++i) {
+    if (l[i] != r[i]) {
+      return l[i] < r[i] ? -1 : 1;
+    }
+  }
+
+  return 0;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -1955,14 +1971,31 @@ function transactionRollbackSuite () {
           write: [ cn1 ]
         },
         action : function () {
+          var _r = r;
+
           c1.save({ _key: "tom" });
-          assertTrue(c1.revision() > r);
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
 
           c1.save({ _key: "tim" });
-          assertTrue(c1.revision() > r);
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
 
           c1.save({ _key: "tam" });
-          assertTrue(c1.revision() > r);
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
+          
+          c1.remove("tam");
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
+          
+          c1.update("tom", { "bom" : true });
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
+          
+          c1.remove("tom");
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          //_r = c1.revision();
         
           throw "rollback";
         }

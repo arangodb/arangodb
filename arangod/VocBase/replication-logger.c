@@ -962,7 +962,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
     CreateCap(logger);
   }
 
-  logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._tick; 
+  logger->_state._lastLogTick = ((TRI_collection_t*) collection->_collection)->_info._revision; 
   logger->_state._active      = true;
   
   LOG_INFO("started replication logger for database '%s', last tick: %llu", 
@@ -1054,7 +1054,7 @@ static int GetStateInactive (TRI_vocbase_t* vocbase,
   primary = (TRI_primary_collection_t*) col->_collection;
 
   dst->_active       = false;
-  dst->_lastLogTick  = primary->base._info._tick;
+  dst->_lastLogTick  = primary->base._info._revision;
 
   TRI_ReleaseCollectionVocBase(vocbase, col);
 
