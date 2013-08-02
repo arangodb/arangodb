@@ -155,11 +155,12 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                        "connectTimeout", 
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, config->_connectTimeout));
 
+/* TODO: decide about the fate of this...
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
                        json, 
                        "ignoreErrors", 
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_ignoreErrors));
-
+*/
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
                        json, 
                        "maxConnectRetries", 
