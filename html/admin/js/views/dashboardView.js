@@ -26,7 +26,7 @@ var dashboardView = Backbone.View.extend({
     var self = this;
 
     this.initUnits();
-    this.addCustomCharts();
+    //this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
@@ -76,7 +76,8 @@ var dashboardView = Backbone.View.extend({
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",
     "click .group-close"           : "hideGroup",
-    "click .group-open"            : "showGroup"
+    "click .group-open"            : "showGroup",
+    "click .dashSwitch"            : "showCategory"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -101,7 +102,7 @@ var dashboardView = Backbone.View.extend({
     var loggerRunning  = this.replLogState.state.running;
     var applierRunning = this.replApplyState.state.running;
 
-    if (applierRunning || this.replApplyState.state.lastError != '') {
+    if (applierRunning || this.replApplyState.state.lastError !== '') {
       $('#detailReplication').height(290);
       $('.checkApplyRunningStatus').show();
     }
@@ -126,8 +127,11 @@ var dashboardView = Backbone.View.extend({
       lastLog = '-';
     }
 
+    var numEvents = this.replLogState.state.totalEvents || 0;
+
     //log table
     $('#logRunningVal').html(runningLog);
+    $('#logTotalEventsVal').text(numEvents);
     $('#logTimeVal').text(time);
     $('#logLastTickVal').text(lastLog);
     $('#logClientsVal').text(clientString);
@@ -139,7 +143,6 @@ var dashboardView = Backbone.View.extend({
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
-    var numEvents = "-";
     var numRequests = "-";
     var numFailed = "-";
 
@@ -208,8 +211,20 @@ var dashboardView = Backbone.View.extend({
         '<i class="group-close icon-minus icon-white"></i>' +
         '<h4 class="statsHeader">' + this.name + '</h4>' +
         '</ul>');
-      $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
-      $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+
+      //group
+      //$('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
+      //$('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+
+      //TEST
+      $('#menuGroups').append(
+        '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
+        '<ul id="' + this.group + 'Divider" class="dropdown-menu"></ul>'
+      );
+      //TEST
+
+
+      //group entries
       if (self.options.description.models[0].attributes.groups.length === counter) {
         $('#'+this.group+'Divider').addClass('dbNotVisible');
       }
@@ -348,6 +363,24 @@ var dashboardView = Backbone.View.extend({
     $(a.target).removeClass('icon-minus group-close');
     $(a.target).addClass('icon-plus group-open');
     $(group).addClass("groupHidden");
+  },
+
+  showCategory: function (e) {
+    var id = e.target.id;
+    if (id === 'replSwitch') {
+      $('#statSwitch').removeClass('activeSwitch');
+      $('#'+id).addClass('activeSwitch');
+      $('#detailGraph').hide();
+      $('.statGroups').hide();
+      $('#detailReplication').show();
+    }
+    else if (id === 'statSwitch') {
+      $('#'+id).addClass('activeSwitch');
+      $('#replSwitch').removeClass('activeSwitch');
+      $('#detailReplication').hide();
+      $('#detailGraph').show();
+      $('.statGroups').show();
+    }
   },
 
   showGroup: function (a) {
@@ -575,7 +608,7 @@ var dashboardView = Backbone.View.extend({
       '</li>'
     );
 
-    $('#' + figure.group + 'Divider').before(
+    $('#' + figure.group + 'Divider').append(
       '<li><a><label class="checkbox checkboxLabel">'+
       '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
       '<label class="css-label"/>' +

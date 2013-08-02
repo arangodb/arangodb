@@ -3202,6 +3202,12 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
 
     // treat the argument as an object from now on
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+    
+    if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
+      if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
+        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
+      }
+    }
 
     if (object->Has(TRI_V8_SYMBOL("logRemoteChanges"))) {
       if (object->Get(TRI_V8_SYMBOL("logRemoteChanges"))->IsBoolean()) {
@@ -3307,6 +3313,12 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+    
+  if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
+    if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
+      config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);
+    }
+  }
 
   string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
@@ -3345,6 +3357,17 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the server's id
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ServerIdReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  const string serverId = StringUtils::itoa(TRI_GetServerId());
+  return scope.Close(v8::String::New(serverId.c_str(), serverId.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3456,6 +3479,12 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
     if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
       if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
         config._maxConnectRetries = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")), false);
+      }
+    }
+    
+    if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
+      if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
+        config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);
       }
     }
 
@@ -5424,9 +5453,11 @@ static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments co
   return EnsurePathIndex("ensureUniqueSkiplist", argv, true, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
+#ifdef TRI_SKIPLIST_EX
 static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistExVocbaseCol (v8::Arguments const& argv) {
   return EnsurePathIndex("ensureUniqueSkiplistEx", argv, true, true, TRI_IDX_TYPE_SKIPLIST_EX_INDEX);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a skiplist index
@@ -5456,9 +5487,11 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
   return EnsurePathIndex("ensureSkiplist", argv, false, true, TRI_IDX_TYPE_SKIPLIST_INDEX);
 }
 
+#ifdef TRI_SKIPLIST_EX
 static v8::Handle<v8::Value> JS_EnsureSkiplistExVocbaseCol (v8::Arguments const& argv) {
   return EnsurePathIndex("ensureSkiplistEx", argv, false, true, TRI_IDX_TYPE_SKIPLIST_EX_INDEX);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a multi skiplist index
@@ -6551,12 +6584,12 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_tick_t tick = primary->base._info._tick;
+  TRI_voc_rid_t rid = primary->base._info._revision;
 
   trx.finish(res);
   // READ-LOCK end
 
-  return scope.Close(V8RevisionId(tick));
+  return scope.Close(V8RevisionId(rid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7602,7 +7635,6 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
-  v8::Local<v8::String> keyReplicationEnableLogger = v8::String::New("replicationEnableLogger");
 
   // get database defaults from system vocbase
   TRI_vocbase_defaults_t defaults;
@@ -7643,17 +7675,13 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     if (options->Has(keyAuthenticateSystemOnly)) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
-
-    if (options->Has(keyReplicationEnableLogger)) {
-      defaults.replicationEnableLogger = options->Get(keyReplicationEnableLogger)->BooleanValue();
-    }
   }
 
   // load vocbase with defaults
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(), name.c_str(), &defaults);
 
-  if (!userVocbase) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database with that path");
+  if (! userVocbase) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database from path '" + path + "'");
   }
 
   bool vocbaseOk = VocbaseManager::manager.runVersionCheck(userVocbase, v8::Context::GetCurrent());
@@ -8492,10 +8520,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
+#ifdef TRI_SKIPLIST_EX
   TRI_AddMethodVocbase(rt, "ensureSkiplistEx", JS_EnsureSkiplistExVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
+#ifdef TRI_SKIPLIST_EX
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplistEx", JS_EnsureUniqueSkiplistExVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "exists", JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
@@ -8570,6 +8602,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);

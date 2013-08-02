@@ -325,15 +325,11 @@ typedef struct TRI_vocbase_s {
   char*                      _path;                // path to the data directory
 
   TRI_voc_size_t             _defaultMaximalSize;
-  uint64_t                   _replicationMaxEvents;
-  uint64_t                   _replicationMaxEventsSize;
   bool                       _removeOnDrop;        // wipe collection from disk after dropping
   bool                       _removeOnCompacted;   // wipe datafile from disk after compaction
   bool                       _defaultWaitForSync;
   bool                       _forceSyncShapes;     // force syncing of shape data to disk
   bool                       _forceSyncProperties; // force syncing of shape data to disk
-  bool                       _replicationEnableLogger;
-  bool                       _replicationLogRemoteChanges;
   bool                       _isSystem;
   bool                       _requireAuthentication;  
   bool                       _authenticateSystemOnly;
@@ -370,9 +366,10 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t               _compactor;
   TRI_thread_t               _cleanup;
   
+#ifdef TRI_SKIPLIST_EX
   // the index garbage collection  
   TRI_thread_t               _indexGC;
-  
+#endif  
   
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
@@ -434,8 +431,6 @@ TRI_vocbase_col_t;
 
 typedef struct TRI_vocbase_defaults_s {
   TRI_voc_size_t        defaultMaximalSize;
-  uint64_t              replicationMaxEvents;
-  uint64_t              replicationMaxEventsSize;
   bool                  removeOnDrop;
   bool                  removeOnCompacted;
   bool                  defaultWaitForSync;
@@ -443,8 +438,6 @@ typedef struct TRI_vocbase_defaults_s {
   bool                  forceSyncProperties;
   bool                  requireAuthentication;
   bool                  authenticateSystemOnly;
-  bool                  replicationEnableLogger;
-  bool                  replicationLogRemoteChanges;
 }
 TRI_vocbase_defaults_t;
 
@@ -506,6 +499,13 @@ bool TRI_msync (int,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to deactivate replication features at startup
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetupReplicationVocBase (bool,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an exiting database, loads all collections

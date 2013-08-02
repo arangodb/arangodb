@@ -49,6 +49,8 @@
 extern "C" {
 #endif
 
+#ifdef TRI_SKIPLIST_EX
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      skiplistExIndex public types
 // -----------------------------------------------------------------------------
@@ -194,6 +196,7 @@ int MultiSkiplistExIndex_remove (SkiplistExIndex*, SkiplistExIndexElement*, uint
 
 bool MultiSkiplistExIndex_update (SkiplistExIndex*, SkiplistExIndexElement*, SkiplistExIndexElement*, uint64_t);
 
+#endif
 
 #ifdef __cplusplus
 }

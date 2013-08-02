@@ -73,6 +73,7 @@ typedef struct TRI_replication_applier_configuration_s {
   double        _connectTimeout;
   uint64_t      _ignoreErrors;
   uint64_t      _maxConnectRetries;
+  uint64_t      _chunkSize;
   bool          _autoStart;
   bool          _adaptivePolling;
 }
