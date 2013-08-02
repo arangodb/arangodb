@@ -2323,7 +2323,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   trx.lockRead();
   // get last tick
-  const string tick = StringUtils::itoa(primary->base._info._tick);
+  const string rid = StringUtils::itoa(primary->base._info._revision);
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
@@ -2344,7 +2344,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8::String::New("checksum"), v8::Number::New(helper._checksum));
-  result->Set(v8::String::New("revision"), v8::String::New(tick.c_str(), tick.size()));
+  result->Set(v8::String::New("revision"), v8::String::New(rid.c_str(), rid.size()));
 
   return scope.Close(result);
 }

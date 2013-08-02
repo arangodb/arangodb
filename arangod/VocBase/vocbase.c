@@ -2308,7 +2308,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     if (tmpFile != NULL) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);
-        LOG_WARNING("removing dangling temporary file '%s'", tmpFile);
+        LOG_DEBUG("removing dangling temporary file '%s'", tmpFile);
       }
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmpFile);
     }

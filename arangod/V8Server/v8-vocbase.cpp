@@ -6572,12 +6572,12 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_tick_t tick = primary->base._info._tick;
+  TRI_voc_rid_t rid = primary->base._info._revision;
 
   trx.finish(res);
   // READ-LOCK end
 
-  return scope.Close(V8RevisionId(tick));
+  return scope.Close(V8RevisionId(rid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
