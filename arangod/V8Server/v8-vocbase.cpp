@@ -7680,8 +7680,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   // load vocbase with defaults
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(), name.c_str(), &defaults);
 
-  if (!userVocbase) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database with that path");
+  if (! userVocbase) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database from path '" + path + "'");
   }
 
   bool vocbaseOk = VocbaseManager::manager.runVersionCheck(userVocbase, v8::Context::GetCurrent());
