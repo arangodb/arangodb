@@ -65,11 +65,19 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
   Syncer(vocbase, configuration),
   _applier(vocbase->_replicationApplier),
   _transactionState(),
+  _chunkSize(),
   _initialTick(initialTick),
   _useTick(useTick) {
   
   _transactionState._trx         = 0;
   _transactionState._externalTid = 0;
+
+  uint64_t c = configuration->_chunkSize;
+  if (c == 0) {
+    c = (uint64_t) 256 * 1024; // 256 kb
+  }
+
+  _chunkSize = StringUtils::itoa(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -897,7 +905,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                                        bool& worked,
                                        bool& masterActive) {
   const string baseUrl = BaseUrl + 
-                         "/logger-follow?chunkSize=" + StringUtils::itoa(getChunkSize(4)); 
+                         "/logger-follow?chunkSize=" + _chunkSize;
 
   map<string, string> headers;
   worked = false;

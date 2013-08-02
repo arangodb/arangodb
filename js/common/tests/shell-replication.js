@@ -2735,6 +2735,7 @@ function ReplicationApplierSuite () {
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(10, properties.maxConnectRetries);
+      assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
       assertUndefined(properties.endpoint); 
@@ -2756,6 +2757,7 @@ function ReplicationApplierSuite () {
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(10, properties.maxConnectRetries);
+      assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
 
@@ -2765,7 +2767,8 @@ function ReplicationApplierSuite () {
         adaptivePolling: false,
         requestTimeout: 5,
         connectTimeout: 9,
-        maxConnectRetries: 4
+        maxConnectRetries: 4,
+        chunkSize: 65536
       });
       
       properties = replication.applier.properties();
@@ -2773,6 +2776,7 @@ function ReplicationApplierSuite () {
       assertEqual(5, properties.requestTimeout);
       assertEqual(9, properties.connectTimeout);
       assertEqual(4, properties.maxConnectRetries);
+      assertEqual(65536, properties.chunkSize);
       assertTrue(properties.autoStart);
       assertFalse(properties.adaptivePolling);
     },

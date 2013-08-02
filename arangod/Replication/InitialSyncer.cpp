@@ -69,7 +69,15 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
   _restrictCollections(restrictCollections),
   _restrictType(restrictType),
   _processedCollections(),
+  _chunkSize(),
   _verbose(verbose) {
+  
+  uint64_t c = configuration->_chunkSize;
+  if (c == 0) {
+    c = (uint64_t) 8 * 1024 * 1024; // 8 mb
+  }
+
+  _chunkSize = StringUtils::itoa(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,7 +322,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
 
   const string baseUrl = BaseUrl + 
                          "/dump?collection=" + cid +
-                         "&chunkSize=" + StringUtils::itoa(getChunkSize(8));
+                         "&chunkSize=" + _chunkSize;
 
   map<string, string> headers;
 

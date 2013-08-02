@@ -1675,6 +1675,9 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
 ///
+/// - `chunkSize`: the requested maximum size for log transfer packets that
+///   is used when the endpoint is contacted.
+///
 /// - `autoStart`: whether or not to auto-start the replication applier on
 ///   (next and following) server starts
 ///
@@ -1757,6 +1760,9 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///   endpoint. This value is used for each connection attempt.
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
+///
+/// - `chunkSize`: the requested maximum size for log transfer packets that
+///   is used when the endpoint is contacted.
 ///
 /// - `autoStart`: whether or not to auto-start the replication applier on
 ///   (next and following) server starts
@@ -1861,6 +1867,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._connectTimeout    = JsonHelper::getNumericValue<double>(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getNumericValue<uint64_t>(json, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = JsonHelper::getNumericValue<uint64_t>(json, "maxConnectRetries", config._maxConnectRetries);
+  config._chunkSize         = JsonHelper::getNumericValue<uint64_t>(json, "chunkSize", config._chunkSize);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
