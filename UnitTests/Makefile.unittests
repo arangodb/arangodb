@@ -580,18 +580,20 @@ unittests-replication-server:
 	@echo
 
 unittests-replication-client:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
 	@echo
 	@echo "================================================================================"
 	@echo "<< REPLICATION CLIENT TESTS                                                   >>"
 	@echo "================================================================================"
 	@echo
 
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
-
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
 	@echo
@@ -608,10 +610,8 @@ unittests-replication-http:
 	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests-replication || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
-
 	while test -f $(PIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
 	@rm -rf "$(VOCDIR)"
 	@echo
 
@@ -631,11 +631,9 @@ unittests-replication-data:
 
 	kill `cat $(PIDFILE)`
 	kill `cat $(SLAVEPIDFILE)`
-
 	while test -f $(PIDFILE); do sleep 1; done
 	while test -f $(SLAVEPIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
 	@rm -rf "$(VOCDIR)"
 	@rm -rf "$(SLAVEDIR)"
 	@echo
@@ -651,7 +649,6 @@ unittests-replication-logger:
 	@mkdir "$(VOCDIR)"
 	@echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
-
 	@rm -rf "$(VOCDIR)"
 	@echo
 
