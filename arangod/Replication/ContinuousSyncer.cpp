@@ -549,15 +549,15 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   const TRI_voc_tid_t tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
 
   if (_transactionState._trx == 0) {
-    // invalid state, no transaction was started. TODO: fix error number
-    return TRI_ERROR_INTERNAL; 
+    // invalid state, no transaction was started. 
+    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION; 
   }
 
   if (_transactionState._externalTid != tid) {
-    // unexpected transaction id. TODO: fix error number
+    // unexpected transaction id. 
     abortOngoingTransaction();
 
-    return TRI_ERROR_INTERNAL; 
+    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION; 
   }
   
   LOGGER_TRACE("committing replication transaction " << tid); 
@@ -667,7 +667,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   else if (type == COLLECTION_DROP) {
     updateTick = true;
 
-    return dropCollection(json);
+    return dropCollection(json, false);
   }
   
   else if (type == COLLECTION_RENAME) {

@@ -149,7 +149,8 @@ namespace triagens {
 /// @brief drops a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
     
-        int dropCollection (struct TRI_json_s const*);
+        int dropCollection (struct TRI_json_s const*,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index, based on the JSON provided
