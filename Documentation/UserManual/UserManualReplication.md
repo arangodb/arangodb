@@ -550,6 +550,13 @@ limitations may be removed in later versions of ArangoDB:
 - replication is only supported between ArangoDB 1.4 masters and 1.4 slaves. It is
   currently not possible to replicate from/to other ArangoDB versions.
 - a replication applier cannot apply data from itself.
+- when doing the initial synchronisation from a master to a slave using the `sync`
+  method, collections are not prevented from being dropped in-between. That means that
+  when a client fetches the data for collections C1, C2, and C3 (in this order), it 
+  will start with collection C1. Any other client may come along and drop collection
+  C3 in the meantime. When the client reaches collection C3, it will not find this
+  collection anymore, and the initial sync will fail. This will be fixed until the
+  1.4 stable release.
 
 Replication Overhead {#UserManualReplicationOverhead}
 =====================================================
