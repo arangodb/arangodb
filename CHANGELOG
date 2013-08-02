@@ -1,6 +1,10 @@
 v1.4
 ----
 
+
+v1.4.0-alpha1 (2013-08-02)
+--------------------------
+
 * added replication. check online manual for details.
 
 * added server startup options `--server.disable-replication-logger` and 
