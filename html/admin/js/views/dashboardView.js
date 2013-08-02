@@ -127,8 +127,11 @@ var dashboardView = Backbone.View.extend({
       lastLog = '-';
     }
 
+    var numEvents = this.replLogState.state.totalEvents || 0;
+
     //log table
     $('#logRunningVal').html(runningLog);
+    $('#logTotalEventsVal').text(numEvents);
     $('#logTimeVal').text(time);
     $('#logLastTickVal').text(lastLog);
     $('#logClientsVal').text(clientString);
@@ -140,7 +143,6 @@ var dashboardView = Backbone.View.extend({
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
-    var numEvents = "-";
     var numRequests = "-";
     var numFailed = "-";
 
