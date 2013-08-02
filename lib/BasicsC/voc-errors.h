@@ -177,25 +177,28 @@ extern "C" {
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
-///   Will be raised when the replica does not receive any or an incomplete
-///   response from the master.
+///   Will be raised when the replication applier does not receive any or an
+///   incomplete response from the master.
 /// - 1401: @LIT{invalid response}
-///   Will be raised when the replica receives an invalid response from the
-///   master.
+///   Will be raised when the replication applier receives an invalid response
+///   from the master.
 /// - 1402: @LIT{master error}
-///   Will be raised when the replica receives a server error from the master.
+///   Will be raised when the replication applier receives a server error from
+///   the master.
 /// - 1403: @LIT{master incompatible}
-///   Will be raised when the master the replica connects to has an
-///   incompatible version.
+///   Will be raised when the replication applier connects to a master that has
+///   an incompatible version.
 /// - 1404: @LIT{master change}
-///   Will be raised when the master the replica connects is changed.
+///   Will be raised when the replication applier connects to a different
+///   master than before.
 /// - 1405: @LIT{loop detected}
-///   Will be raised when the replica connects to itself for replication.
+///   Will be raised when the replication applier is asked to connect to itself
+///   for replication.
 /// - 1406: @LIT{unexpected marker}
-///   Will be raised when an unexpected marker is found in the replication
+///   Will be raised when an unexpected marker is found in the replication log
 ///   stream.
 /// - 1407: @LIT{invalid applier state}
-///   Will be raised when an invalid applier state file is found.
+///   Will be raised when an invalid replication applier state file is found.
 /// - 1408: @LIT{invalid transaction}
 ///   Will be raised when an unexpected transaction id is found.
 /// - 1409: @LIT{invalid replication logger configuration}
@@ -208,7 +211,11 @@ extern "C" {
 ///   Will be raised when there is an attempt to change the configuration for
 ///   the replication applier while it is running.
 /// - 1412: @LIT{replication stopped}
-///   Special error code used to indicate the replication was stopped.
+///   Special error code used to indicate the replication applier was stopped
+///   by a user.
+/// - 1413: @LIT{no start tick}
+///   Will be raised when the replication error is started without a known
+///   start tick value.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1226,8 +1233,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// no response
 ///
-/// Will be raised when the replica does not receive any or an incomplete
-/// response from the master.
+/// Will be raised when the replication applier does not receive any or an
+/// incomplete response from the master.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_NO_RESPONSE                                 (1400)
@@ -1237,8 +1244,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid response
 ///
-/// Will be raised when the replica receives an invalid response from the
-/// master.
+/// Will be raised when the replication applier receives an invalid response
+/// from the master.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_INVALID_RESPONSE                            (1401)
@@ -1248,7 +1255,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// master error
 ///
-/// Will be raised when the replica receives a server error from the master.
+/// Will be raised when the replication applier receives a server error from
+/// the master.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_MASTER_ERROR                                (1402)
@@ -1258,8 +1266,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// master incompatible
 ///
-/// Will be raised when the master the replica connects to has an incompatible
-/// version.
+/// Will be raised when the replication applier connects to a master that has
+/// an incompatible version.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         (1403)
@@ -1269,7 +1277,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// master change
 ///
-/// Will be raised when the master the replica connects is changed.
+/// Will be raised when the replication applier connects to a different master
+/// than before.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_MASTER_CHANGE                               (1404)
@@ -1279,7 +1288,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// loop detected
 ///
-/// Will be raised when the replica connects to itself for replication.
+/// Will be raised when the replication applier is asked to connect to itself
+/// for replication.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_LOOP                                        (1405)
@@ -1289,20 +1299,21 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// unexpected marker
 ///
-/// Will be raised when an unexpected marker is found in the replication stream.
+/// Will be raised when an unexpected marker is found in the replication log
+/// stream.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_UNEXPECTED_MARKER                           (1406)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1407: ERROR_REPLICATION_INVALID_APPLY_STATE
+/// @brief 1407: ERROR_REPLICATION_INVALID_APPLIER_STATE
 ///
 /// invalid applier state
 ///
-/// Will be raised when an invalid applier state file is found.
+/// Will be raised when an invalid replication applier state file is found.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_INVALID_APPLY_STATE                         (1407)
+#define TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE                       (1407)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1408: ERROR_REPLICATION_UNEXPECTED_TRANSACTION
@@ -1347,14 +1358,26 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_REPLICATION_RUNNING                                     (1411)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1412: ERROR_REPLICATION_STOPPED
+/// @brief 1412: ERROR_REPLICATION_APPLIER_STOPPED
 ///
 /// replication stopped
 ///
-/// Special error code used to indicate the replication was stopped.
+/// Special error code used to indicate the replication applier was stopped by
+/// a user.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_REPLICATION_STOPPED                                     (1412)
+#define TRI_ERROR_REPLICATION_APPLIER_STOPPED                             (1412)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1413: ERROR_REPLICATION_NO_START_TICK
+///
+/// no start tick
+///
+/// Will be raised when the replication error is started without a known start
+/// tick value.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

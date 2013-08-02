@@ -8,9 +8,12 @@ Replication {#HttpReplicationIntro}
 ===================================
 
 This is an introduction to ArangoDB's HTTP replication interface.
+The replication architecture and components are described in more details in 
+@ref UserManualReplication.
 
 The HTTP replication interface serves four main purposes:
-- fetch initial data from a server (e.g. for an initial synchronisation of data, or backups)
+- fetch initial data from a server (e.g. for a backup, or for the initial synchronisation 
+  of data before starting the continuous replication applier)
 - administer the replication logger (starting, stopping, querying state)
 - fetch the changelog from a server (used for incremental synchronisation of changes)
 - administer the replication applier (starting, stopping, configuring, querying state)

@@ -94,7 +94,7 @@ static int ReadTick (TRI_json_t const* json,
   tick = TRI_LookupArrayJson(json, attributeName);
 
   if (! TRI_IsStringJson(tick)) {
-    return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
+    return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
 
   *dst = (TRI_voc_tick_t) TRI_UInt64String2(tick->_value._string.data, tick->_value._string.length -1);
@@ -372,7 +372,7 @@ static int SetError (TRI_replication_applier_t* applier,
 
   // log error message
   if (errorCode != TRI_ERROR_REPLICATION_NO_RESPONSE &&
-      errorCode != TRI_ERROR_REPLICATION_STOPPED) {
+      errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
     LOG_WARNING("replication error: %s", realMsg);
   }
 
@@ -1100,7 +1100,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
-    return TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
+    return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
 
   res = TRI_ERROR_NO_ERROR;
@@ -1109,7 +1109,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   serverId = TRI_LookupArrayJson(json, "serverId");
 
   if (! TRI_IsStringJson(serverId)) {
-    res = TRI_ERROR_REPLICATION_INVALID_APPLY_STATE;
+    res = TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
   else {
     state->_serverId = TRI_UInt64String2(serverId->_value._string.data, 
@@ -1143,7 +1143,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_password          = NULL;
   config->_requestTimeout    = 300.0;
   config->_connectTimeout    = 10.0;
-  config->_maxConnectRetries = 10;
+  config->_maxConnectRetries = 100;
   config->_autoStart         = false;
   config->_chunkSize         = 0;
   config->_adaptivePolling   = true;

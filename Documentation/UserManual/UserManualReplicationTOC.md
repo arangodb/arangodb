@@ -7,6 +7,5 @@ TOC {#UserManualReplicationTOC}
     - @ref UserManualReplicationLogger
     - @ref UserManualReplicationApplier
   - @ref UserManualReplicationSetup
-    - @ref UserManualReplicationSetupLogger
-    - @ref UserManualReplicationSetupApplier
+  - @ref UserManualReplicationLimitations
   - @ref UserManualReplicationOverhead
