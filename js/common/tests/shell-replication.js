@@ -2734,7 +2734,7 @@ function ReplicationApplierSuite () {
 
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
-      assertEqual(10, properties.maxConnectRetries);
+      assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
@@ -2756,7 +2756,7 @@ function ReplicationApplierSuite () {
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
-      assertEqual(10, properties.maxConnectRetries);
+      assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);

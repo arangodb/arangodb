@@ -144,7 +144,7 @@ int ContinuousSyncer::run () {
         }
 
         // somebody stopped the applier
-        res = TRI_ERROR_REPLICATION_STOPPED;
+        res = TRI_ERROR_REPLICATION_APPLIER_STOPPED;
       }
     }
 
@@ -812,6 +812,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 
   TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
 
+  if (fromTick == 0) {
+    return TRI_ERROR_REPLICATION_NO_START_TICK; 
+  }
+
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (1) {
@@ -890,7 +894,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     // this will make the applier thread sleep if there is nothing to do, 
     // but will also check for cancellation
     if (! TRI_WaitReplicationApplier(_applier, sleepTime)) {
-      return TRI_ERROR_REPLICATION_STOPPED;
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
   }
 
