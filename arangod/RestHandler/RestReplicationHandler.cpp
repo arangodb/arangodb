@@ -1809,6 +1809,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///       endpoint: "tcp://127.0.0.1:8529",
 ///       username: "replicationApplier",
 ///       password: "applier1234@foxx",
+///       chunkSize: 4194304,
 ///       autoStart: false,
 ///       adaptivePolling: true
 ///     };

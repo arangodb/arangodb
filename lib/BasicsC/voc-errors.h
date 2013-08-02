@@ -51,6 +51,9 @@ extern "C" {
 ///   Will be raised when there's a timeout waiting for a lock.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
+/// - 401: @LIT{unauthorized}
+///   Will be raised when authorisation is required but the user is not
+///   authorised.
 /// - 403: @LIT{forbidden}
 ///   Will be raised when the operation is forbidden.
 /// - 404: @LIT{not found}
@@ -663,6 +666,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_BAD_PARAMETER                                      (400)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 401: ERROR_HTTP_UNAUTHORIZED
+///
+/// unauthorized
+///
+/// Will be raised when authorisation is required but the user is not
+/// authorised.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_UNAUTHORIZED                                       (401)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 403: ERROR_HTTP_FORBIDDEN

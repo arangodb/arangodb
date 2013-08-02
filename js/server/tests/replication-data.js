@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
+var errors = arangodb.errors;
 var db = arangodb.db;
 
 var replication = require("org/arangodb/replication");
@@ -51,8 +52,12 @@ function ReplicationSuite () {
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
+  // these must match the values in the Makefile!
+  var replicatorUser = "replicator-user";
+  var replicatorPassword = "replicator-password";
+
   var connectToMaster = function () {
-    arango.reconnect(masterEndpoint, "root", "");
+    arango.reconnect(masterEndpoint, replicatorUser, replicatorPassword);
   };
   
   var connectToSlave = function () {
@@ -69,7 +74,7 @@ function ReplicationSuite () {
   };
 
 
-  var compare = function (masterFunc, slaveFunc) {
+  var compare = function (masterFunc, slaveFunc, applierConfiguration) {
     var state = { };
 
     masterFunc(state);  
@@ -87,23 +92,30 @@ function ReplicationSuite () {
 
     var syncResult = replication.sync({ 
       endpoint: masterEndpoint, 
-      username: "root", 
-      password: "", 
+      username: replicatorUser,
+      password: replicatorPassword,
       verbose: true 
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
+  
+    if (typeof applierConfiguration === 'object') {
+      console.log("using special applier configuration: " + JSON.stringify(applierConfiguration));
+    }
 
-    replication.applier.properties({ 
-      endpoint: masterEndpoint, 
-      username: "root", 
-      password: ""
-    });
+    applierConfiguration = applierConfiguration || { };
+    applierConfiguration.endpoint = masterEndpoint;
+    applierConfiguration.username = replicatorUser;
+    applierConfiguration.password = replicatorPassword;
 
+    if (! applierConfiguration.hasOwnProperty('chunkSize')) {
+      applierConfiguration.chunkSize = 16384;
+    }
 
+    replication.applier.properties(applierConfiguration);
     replication.applier.start(syncResult.lastLogTick);
 
-    console.log("waiting for slave to catch up");
+    // console.log("waiting for slave to catch up");
 
     while (1) {
       var slaveState = replication.applier.state();
@@ -158,7 +170,65 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
     },
-/*
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid credentials
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCredentials1 : function () {
+      var configuration = {
+        endpoint: masterEndpoint,
+        username: replicatorUser,
+        password: replicatorPassword + "xx" // invalid
+      };
+
+      try {
+        replication.applier.properties();
+      }
+      catch (err) {
+        require("internal").print(err);
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid credentials
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCredentials2 : function () {
+      var configuration = {
+        endpoint: masterEndpoint,
+        username: replicatorUser + "xx", // invalid
+        password: replicatorPassword
+      };
+
+      try {
+        replication.applier.properties();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid credentials
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCredentials3 : function () {
+      var configuration = {
+        endpoint: masterEndpoint,
+        username: "root",
+        password: "abc"
+      };
+
+      try {
+        replication.applier.properties();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test exceeding cap
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,6 +359,33 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocuments4 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 50000; ++i) {
+            c.save({ "_key" : "test" + i, "foo" : "bar", "baz" : "bat" });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(50000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        },
+        {
+          chunkSize: 512
         }
       );
     },
@@ -487,7 +584,7 @@ function ReplicationSuite () {
         }
       );
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test big transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,6 +620,9 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+        },
+        {
+          chunkSize: 2048
         }
       );
     },

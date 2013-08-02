@@ -35,6 +35,7 @@
     "ERROR_TYPE_ERROR"             : { "code" : 17, "message" : "type error" }, 
     "ERROR_LOCK_TIMEOUT"           : { "code" : 18, "message" : "lock timeout" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
+    "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 
     "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" }, 
     "ERROR_HTTP_METHOD_NOT_ALLOWED" : { "code" : 405, "message" : "method not supported" }, 

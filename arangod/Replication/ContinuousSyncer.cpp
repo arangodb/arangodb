@@ -76,6 +76,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
   if (c == 0) {
     c = (uint64_t) 256 * 1024; // 256 kb
   }
+  
+  assert(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
 }
