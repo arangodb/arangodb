@@ -167,6 +167,11 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
   
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
                        json, 
+                       "chunkSize", 
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_chunkSize));
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       json, 
                        "autoStart",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_autoStart));
   
@@ -277,6 +282,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
 
   if (TRI_IsNumberJson(value)) {
     config->_maxConnectRetries = (uint64_t) value->_value._number;
+  }
+  
+  value = TRI_LookupArrayJson(json, "chunkSize");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_chunkSize = (uint64_t) value->_value._number;
   }
 
   value = TRI_LookupArrayJson(json, "autoStart");
@@ -1134,6 +1145,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_connectTimeout    = 10.0;
   config->_maxConnectRetries = 10;
   config->_autoStart         = false;
+  config->_chunkSize         = 0;
   config->_adaptivePolling   = true;
 }
 
@@ -1189,6 +1201,7 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   dst->_connectTimeout    = src->_connectTimeout;
   dst->_ignoreErrors      = src->_ignoreErrors;
   dst->_maxConnectRetries = src->_maxConnectRetries;
+  dst->_chunkSize         = src->_chunkSize;
   dst->_autoStart         = src->_autoStart;
   dst->_adaptivePolling   = src->_adaptivePolling;
 }

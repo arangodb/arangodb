@@ -158,7 +158,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
     },
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test exceeding cap
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,7 +487,7 @@ function ReplicationSuite () {
         }
       );
     },
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test big transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,7 +518,7 @@ function ReplicationSuite () {
           
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(10000, state.count);
+          assertEqual(40000, state.count);
         },
         function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));

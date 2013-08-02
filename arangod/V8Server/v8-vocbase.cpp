@@ -3313,6 +3313,12 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+    
+  if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
+    if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
+      config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);
+    }
+  }
 
   string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
@@ -3473,6 +3479,12 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
     if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
       if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
         config._maxConnectRetries = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")), false);
+      }
+    }
+    
+    if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
+      if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
+        config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);
       }
     }
 
