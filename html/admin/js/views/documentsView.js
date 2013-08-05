@@ -238,7 +238,7 @@ var documentsView = Backbone.View.extend({
     // adds a line to the filter widget
     
     var num = ++this.filterId;
-    $('#filterHeader').append(' <div class="queryline">'+
+    $('#filterHeader').append(' <div class="queryline querylineAdd"> & &#160;'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
        '<select name="operator" id="operator' + num + '">'+
        '    <option value="==">==</option>'+

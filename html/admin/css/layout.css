@@ -248,3 +248,7 @@ table .sorting {
 .form-actions {
   margin-top: -10px !important;
 }
+
+input,select,option {
+  border-radius: 0 !important;
+}
