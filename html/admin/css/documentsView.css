@@ -409,6 +409,11 @@ table.dataTable thead th {
   margin-left: 5px !important;
 }
 
-#documentsToolbar .glyphicon {
-  padding-top: 15px !important;
+#documentsToolbar li a {
+  padding-top: 5px;
+  padding-bottom: -3px;
 }
+
+#documentsToolbar span {
+  font-size: 13px !important;
+} 
