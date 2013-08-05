@@ -27,6 +27,7 @@ var documentsView = Backbone.View.extend({
     "click #collectionPrev"      : "prevCollection",
     "click #collectionNext"      : "nextCollection",
     "click #filterCollection"    : "filterCollection",
+    "click #importCollection"    : "importCollection",
     "click #filterSend"          : "sendFilter",
     "click #addFilterItem"       : "addFilterItem",
     "click .removeFilterItem"    : "removeFilterItem",
@@ -193,6 +194,7 @@ var documentsView = Backbone.View.extend({
 
   filterCollection : function () {
     $('#filterHeader').slideToggle("slow");
+    $('#importHeader').hide();
 
     var i;
     for (i in this.filters) {
@@ -201,6 +203,11 @@ var documentsView = Backbone.View.extend({
         return;
       }
     }
+  },
+
+  importCollection: function () {
+    $('#importHeader').slideToggle("slow");
+    $('#filterHeader').hide();
   },
 
   sendFilter : function () {
