@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
+/*jslint indent: 2, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,12 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var Application = require("org/arangodb/foxx/application").Application,
-  FormatMiddleware = require("org/arangodb/foxx/format_middleware").FormatMiddleware,
   Model = require("org/arangodb/foxx/model").Model,
   Repository = require("org/arangodb/foxx/repository").Repository;
 
 exports.Application = Application;
-exports.FormatMiddleware = FormatMiddleware;
 exports.Model = Model;
 exports.Repository = Repository;
 

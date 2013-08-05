@@ -1,3 +1,4 @@
+/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +32,6 @@ var Application,
   RequestContext,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  FormatMiddleware = require("org/arangodb/foxx/format_middleware").FormatMiddleware,
   _ = require("underscore"),
   internal = {};
 
@@ -186,8 +186,14 @@ _.extend(Application.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   createRepository: function (name, opts) {
-    var model;
-    var Repo;
+    'use strict';
+    var model,
+      Repo,
+      prefix,
+      cname,
+      collection,
+      Model = require("org/arangodb/foxx/model").Model,
+      Repository = require("org/arangodb/foxx/repository").Repository;
 
     if (opts && opts.hasOwnProperty('model')) {
       model = this.applicationContext.appModule.require(opts.model).Model;
@@ -209,15 +215,16 @@ _.extend(Application.prototype, {
       Repo = Repository;
     }
 
-    var prefix = this.applicationContext.collectionPrefix;
-    var cname;
+    prefix = this.applicationContext.collectionPrefix;
 
     if (prefix === "") {
       cname = name;
     } else {
       cname = prefix + "_" + name;
     }
-    var collection = db._collection(cname);
+
+    collection = db._collection(cname);
+
     if (!collection) {
       throw new Error("collection with name '" + cname + "' does not exist.");
     }
@@ -473,35 +480,6 @@ _.extend(Application.prototype, {
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
-      }
-    });
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_accepts
-/// @brief Shortform for using the FormatMiddleware
-///
-/// @FUN{FoxxApplication::helper(@FA{allowedFormats}, @FA{defaultFormat})}
-///
-/// Shortform for using the FormatMiddleware
-/// 
-/// More information about the FormatMiddleware in the corresponding section.
-/// This is a shortcut to add the middleware to your application:
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.accepts(["json"], "json");
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-  accepts: function (allowedFormats, defaultFormat) {
-    'use strict';
-
-    this.routingInfo.middleware.push({
-      url:    { match: "/*" },
-      action: {
-        callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
       }
     });
   }
