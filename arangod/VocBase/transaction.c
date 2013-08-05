@@ -496,6 +496,7 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
                                    size_t totalSize) {
   TRI_transaction_operation_t trxOperation;
   TRI_document_collection_t* document;
+  TRI_voc_rid_t rid;
   int res;
   
   TRI_DEBUG_INTENTIONAL_FAIL_IF("AddCollectionOperation-OOM") {
@@ -530,16 +531,24 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
   }
   
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+  rid = 0;
 
-  if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    rid = ((TRI_doc_document_key_marker_t*) marker)->_rid;
+  }
+  else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     document->_headers->moveBack(document->_headers, newHeader, oldData);
+    rid = ((TRI_doc_document_key_marker_t*) marker)->_rid;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     document->_headers->unlink(document->_headers, oldHeader);
+    rid = ((TRI_doc_deletion_key_marker_t*) marker)->_rid;
   }
 
-  // update collection tick
-  TRI_SetTickDocumentCollection(document, marker->_tick);
+  // update collection revision
+  if (rid > 0) {
+    TRI_SetRevisionDocumentCollection(document, rid, false);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1053,7 +1062,7 @@ static int RollbackCollectionOperations (TRI_transaction_collection_t* trxCollec
     
   }
 
-  TRI_SetTickDocumentCollection(document, trxCollection->_originalTick);
+  TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision, true);
   
   return res;
 }
@@ -1207,7 +1216,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_globalInstance   = globalInstance;
 #endif
   trxCollection->_operations       = NULL;
-  trxCollection->_originalTick     = 0;
+  trxCollection->_originalRevision = 0;
   trxCollection->_locked           = false;
   trxCollection->_compactionLocked = false;
   trxCollection->_waitForSync      = false;
@@ -1899,8 +1908,8 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
   trx = trxCollection->_transaction;
   primary = trxCollection->_collection->_collection;
 
-  if (trxCollection->_originalTick == 0) {
-    trxCollection->_originalTick = primary->base._info._tick;
+  if (trxCollection->_originalRevision == 0) {
+    trxCollection->_originalRevision = primary->base._info._revision;
   }
  
   if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {

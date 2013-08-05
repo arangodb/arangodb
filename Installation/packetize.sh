@@ -51,7 +51,7 @@ systemddir=/lib/systemd/system
 install_message="
 
 ArangoDB (https://www.arangodb.org)
-  A universal open-source database with a flexible data model for documents, 
+  A multi-purpose open-source database with a flexible data models for documents, 
   graphs, and key-values.
 
 First Steps with ArangoDB:

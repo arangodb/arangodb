@@ -105,6 +105,14 @@ Command-Line Options for arangod {#CommandLineArangod}
 @copydetails triagens::arango::ArangoServer::_authenticateSystemOnly
 
 @CLEARPAGE
+@anchor CommandLineArangoDisableReplicationLogger
+@copydetails triagens::arango::ArangoServer::_disableReplicationLogger
+
+@CLEARPAGE
+@anchor CommandLineArangoDisableReplicationApplier
+@copydetails triagens::arango::ArangoServer::_disableReplicationApplier
+
+@CLEARPAGE
 @anchor CommandLineArangoKeepAliveTimeout
 @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 
@@ -131,6 +139,10 @@ Command-Line Options for arangod {#CommandLineArangod}
 @CLEARPAGE
 @anchor CommandLineArangoSslCipherList
 @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
+
+@CLEARPAGE
+@anchor CommandLineArangoBacklogSize
+@copydetails triagens::rest::ApplicationEndpointServer::_backlogSize
 
 @CLEARPAGE
 @anchor CommandLineArangoDisableAdminInterface

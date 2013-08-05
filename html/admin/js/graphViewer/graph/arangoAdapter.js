@@ -171,7 +171,7 @@ function ArangoAdapter(nodes, edges, config) {
           }),
           contentType: "application/json",
           success: function(data) {
-            list.push(data.document);
+            list.push(data.document || {});
             if (list.length === n) {
               callback(list);
             }
@@ -602,6 +602,4 @@ function ArangoAdapter(nodes, edges, config) {
   
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;
-  
-  self.getGraphs(function(l) {console.log(l)});
 }
