@@ -61,10 +61,10 @@
 
 .statSingleClient {
   height: 300px;
-  width: 100%;
+  width: 99.7%;
   margin-top: 10px;
-  margin-left: 9px !important;
-  margin-right: 9px;
+  margin-left: 10px !important;
+  margin-right: 11px;
   margin-bottom: 0px !important;
   border: 1px solid black;
   background-color: #F4F3F3;
@@ -282,7 +282,7 @@
 
 #detailReplicationDiv table {
   border-collapse: separate;
-  border-spacing: 0 5px;
+  border-spacing: 0 2px;
 }
 
 #detailReplicationDiv table thead {
@@ -309,17 +309,34 @@
 }
 
 #rightReplicationDiv {
-  width: 868px;
+  width: 100%;
   min-height: 150px;
-  margin-left: 10px;
   margin-bottom: 8px;
 }
 
+#leftReplicationDiv h4, #rightReplicationDiv h4 {
+  margin-left: 22px !important;
+}
+
+#leftReplicationDiv table, #rightReplicationDiv table {
+  width: 100%;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+#leftReplicationDiv table tr, #rightReplicationDiv table tr{
+  background-color: #F9F9F9 !important;
+}
+
+#leftReplicationDiv tbody, #rightReplicationDiv tbody {
+  background-color: #F9F9F9 !important;
+}
+
 #leftReplicationDiv {
-  width: 868px;
+  width: 100%;
   min-height: 150px;
-  margin-left: 10px;
   margin-bottom: 8px;
+  margin-top: -20px;
 }
 
 .alignLeft {
