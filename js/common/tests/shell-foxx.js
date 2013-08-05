@@ -165,8 +165,8 @@ function DocumentationAndConstraintsSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []}),
-        routes = app.routingInfo.routes;
+      app = new FoxxApplication({prefix: "", foxxes: []});
+      routes = app.routingInfo.routes;
     },
 
     testDefinePathParam: function () {
@@ -185,7 +185,7 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
       assertEqual(routes[0].docs.parameters[0].required, true);
     },
-    
+
     testDefinePathCaseParam: function () {
       app.get('/foxx/:idParam', function () {
         //nothing
