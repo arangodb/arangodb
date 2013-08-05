@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
+/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,6 +43,7 @@ BaseMiddleware = function () {
   var middleware = function (request, response, options, next) {
     var responseFunctions,
       requestFunctions,
+      trace,
       _ = require("underscore"),
       console = require("console"),
       actions = require("org/arangodb/actions");
@@ -175,7 +176,7 @@ BaseMiddleware = function () {
 /// @brief trace
 ////////////////////////////////////////////////////////////////////////////////
 
-    var trace = options.isDevelopment;
+    trace = options.isDevelopment;
     if (!trace && options.hasOwnProperty("options")) {
       trace = options.options.trace;
     }

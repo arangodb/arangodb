@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
+/*jslint indent: 2, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
