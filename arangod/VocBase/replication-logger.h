@@ -88,6 +88,7 @@ TRI_replication_logger_configuration_t;
 
 typedef struct TRI_replication_logger_state_s {
   TRI_voc_tick_t                         _lastLogTick;
+  uint64_t                               _totalEvents;
   bool                                   _active;
 }
 TRI_replication_logger_state_t;
@@ -193,7 +194,7 @@ struct TRI_json_s* TRI_JsonClientsReplicationLogger (TRI_replication_logger_t*);
 
 void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t*,
                                         TRI_server_id_t,
-                                        char const*);
+                                        TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication logger

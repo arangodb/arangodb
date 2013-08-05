@@ -897,7 +897,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_version       = TRI_COL_VERSION;
   parameter->_type          = type;
   parameter->_cid           = 0;
-  parameter->_tick          = 0;
+  parameter->_revision      = 0;
 
   parameter->_deleted       = false;
   parameter->_doCompact     = true;
@@ -929,7 +929,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_version       = src->_version;
   dst->_type          = src->_type;
   dst->_cid           = src->_cid;
-  dst->_tick          = src->_tick;
+  dst->_revision      = src->_revision;
 
   dst->_deleted       = src->_deleted;
   dst->_doCompact     = src->_doCompact;

@@ -200,6 +200,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _forceSyncProperties(true),
     _forceSyncShapes(true),
     _multipleDatabases(false),
+    _disableReplicationLogger(false),
+    _disableReplicationApplier(false),
     _removeOnCompacted(true),
     _removeOnDrop(true),
     _vocbase(0) {
@@ -389,6 +391,8 @@ void ArangoServer::buildApplicationServer () {
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
     ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
+    ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
+    ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
 
 
@@ -504,6 +508,8 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   LOGGER_INFO("using default language '" << languageName << "'");
+
+  TRI_SetupReplicationVocBase(_disableReplicationLogger, _disableReplicationApplier);
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
@@ -1385,7 +1391,7 @@ void ArangoServer::openDatabases () {
   // open/load the first database
   _vocbase = TRI_OpenVocBase(_databasePath.c_str(), TRI_VOC_SYSTEM_DATABASE, &defaults);
 
-  if (_vocbase == NULL) {
+  if (_vocbase == 0) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }

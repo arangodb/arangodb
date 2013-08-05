@@ -404,7 +404,8 @@ int Syncer::createCollection (TRI_json_t const* json,
 /// @brief drops a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
     
-int Syncer::dropCollection (TRI_json_t const* json) {
+int Syncer::dropCollection (TRI_json_t const* json,
+                            bool reportError) {
   const TRI_voc_cid_t cid = getCid(json);
 
   if (cid == 0) {
@@ -414,8 +415,11 @@ int Syncer::dropCollection (TRI_json_t const* json) {
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
   if (col == 0) {
-    // TODO: should we care?
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    if (reportError) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+
+    return TRI_ERROR_NO_ERROR;
   }
 
   return TRI_DropCollectionVocBase(_vocbase, col, _masterInfo._serverId);
@@ -644,7 +648,8 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   }
 
   if (major != 1 ||
-      (major == 1 && minor != 4)) {
+      (major == 1 && minor < 4)) {
+    // we can connect to 1.4 and higher only
     errorMsg = "incompatible master version: " + versionString;
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;

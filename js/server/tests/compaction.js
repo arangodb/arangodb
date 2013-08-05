@@ -64,7 +64,7 @@ function CompactionSuite () {
       }
       
       c1.unload();
-      internal.wait(5);
+      internal.wait(7);
 
       var fig = c1.figures();
       assertEqual(n, c1.count());
@@ -103,8 +103,8 @@ function CompactionSuite () {
       waited = 0;
 
       while (waited < maxWait) {
-        internal.wait(5);
-        waited += 5;
+        internal.wait(2);
+        waited += 2;
       
         fig = c1.figures();
         if (fig["dead"]["deletion"] == 0 && fig["dead"]["count"] == 0) {

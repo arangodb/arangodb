@@ -103,7 +103,7 @@ var dashboardView = Backbone.View.extend({
     var loggerRunning  = this.replLogState.state.running;
     var applierRunning = this.replApplyState.state.running;
 
-    if (applierRunning || this.replApplyState.state.lastError != '') {
+    if (applierRunning || this.replApplyState.state.lastError !== '') {
       $('#detailReplication').height(290);
       $('.checkApplyRunningStatus').show();
     }
@@ -128,8 +128,11 @@ var dashboardView = Backbone.View.extend({
       lastLog = '-';
     }
 
+    var numEvents = this.replLogState.state.totalEvents || 0;
+
     //log table
     $('#logRunningVal').html(runningLog);
+    $('#logTotalEventsVal').text(numEvents);
     $('#logTimeVal').text(time);
     $('#logLastTickVal').text(lastLog);
     $('#logClientsVal').text(clientString);
@@ -141,7 +144,6 @@ var dashboardView = Backbone.View.extend({
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
-    var numEvents = "-";
     var numRequests = "-";
     var numFailed = "-";
 

@@ -45,8 +45,13 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                       initialise static variables
+// -----------------------------------------------------------------------------
   
-const uint64_t RestReplicationHandler::minChunkSize = 512 * 1024;
+const uint64_t RestReplicationHandler::defaultChunkSize = 16 * 1024;
+
+const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -172,6 +177,12 @@ Handler::status_e RestReplicationHandler::execute() {
       }
       handleCommandSync(); 
     }
+    else if (command == "server-id") {
+      if (type != HttpRequest::HTTP_REQUEST_GET) {
+        goto BAD_CALL;
+      }
+      handleCommandServerId();
+    }
     else if (command == "applier-config") {
       if (type == HttpRequest::HTTP_REQUEST_GET) {
         handleCommandApplierGetConfig();
@@ -279,7 +290,7 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::insertClient () {
+void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
   bool found;
   char const* value;
 
@@ -289,29 +300,30 @@ void RestReplicationHandler::insertClient () {
     TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
 
     if (serverId > 0) {
-      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, _request->fullUrl().c_str());
+      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the minimum chunk size
+/// @brief determine the chunk size
 ////////////////////////////////////////////////////////////////////////////////
   
 uint64_t RestReplicationHandler::determineChunkSize () const {
   // determine chunk size
-  uint64_t chunkSize = minChunkSize;
+  uint64_t chunkSize = defaultChunkSize;
 
   bool found;
   const char* value = _request->value("chunkSize", found);
 
   if (found) {
-    // url parameter "chunkSize" specified
-    chunkSize = (uint64_t) StringUtils::uint64(value);
-  }
-  else {
-    // not specified, use default
-    chunkSize = minChunkSize;
+    // url parameter "chunkSize" was specified
+    chunkSize = StringUtils::uint64(value);
+
+    // don't allow overly big allocations
+    if (chunkSize > maxChunkSize) {
+      chunkSize = maxChunkSize;
+    }
   }
 
   return chunkSize;
@@ -461,6 +473,9 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///   - `lastLogTick`: the tick value of the latest tick the logger has logged. 
 ///     This value can be used for incremental fetching of log data.
 ///
+///   - `totalEvents`: total number of events logged since the server was started.
+///     The value is not reset between multiple stops and re-starts of the logger.
+///
 ///   - `time`: the current date and time on the logger server
 ///
 /// - `server`: a JSON hash with the following sub-attributes:
@@ -472,7 +487,11 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 /// - `clients`: a list of all replication clients that ever connected to
 ///   the logger since it was started. This list can be used to determine 
 ///   approximately how much data the individual clients have already fetched 
-///   from the logger server.
+///   from the logger server. Each entry in the list contains a `time` value
+///   indicating the server time the client last fetched data from the
+///   replication logger. The `lastServedTick` value of each client indicates
+///   the latest tick value sent to the client upon a client request to the
+///   replication logger.
 ///
 /// @RESTRETURNCODES
 ///
@@ -967,7 +986,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   // initialise the dump container
   TRI_replication_dump_t dump; 
   TRI_InitDumpReplication(&dump);
-  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
+  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) defaultChunkSize);
 
   if (dump._buffer == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -1021,7 +1040,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       TRI_StealStringBuffer(dump._buffer);
     }
     
-    insertClient();
+    insertClient(dump._lastFoundTick);
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -1177,8 +1196,6 @@ void RestReplicationHandler::handleCommandInventory () {
   
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
-    
-  insertClient();
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -1364,7 +1381,7 @@ void RestReplicationHandler::handleCommandDump () {
   // initialise the dump container
   TRI_replication_dump_t dump; 
   TRI_InitDumpReplication(&dump);
-  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) minChunkSize);
+  dump._buffer = TRI_CreateSizedStringBuffer(TRI_CORE_MEM_ZONE, (size_t) defaultChunkSize);
 
   if (dump._buffer == 0) {
     TRI_ReleaseCollectionVocBase(_vocbase, col);
@@ -1403,8 +1420,6 @@ void RestReplicationHandler::handleCommandDump () {
     _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
-    
-    insertClient();
   }
   else {
     generateError(HttpResponse::SERVER_ERROR, res);
@@ -1586,6 +1601,55 @@ void RestReplicationHandler::handleCommandSync () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server's id
+///
+/// @RESTHEADER{GET /_api/replication/server-id,returns the servers id}
+///
+/// @RESTDESCRIPTION
+/// Returns the servers id. The id is also returned by other replication API
+/// methods, and this method is an easy means of determining a server's id.
+///
+/// The body of the response is a JSON hash with the attribute `serverId`. The
+/// server id is returned as a string.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred while assembling the response.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestReplicationServerId}
+///     var url = "/_api/replication/server-id";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandServerId () {
+  TRI_json_t result;
+
+  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+
+  const string serverId = StringUtils::itoa(TRI_GetServerId());
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, 
+                       &result, 
+                       "serverId", 
+                       TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the configuration of the replication applier
 ///
 /// @RESTHEADER{GET /_api/replication/applier-config,returns the configuration of the replication applier}
@@ -1610,6 +1674,9 @@ void RestReplicationHandler::handleCommandSync () {
 ///   endpoint. This value is used for each connection attempt.
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
+///
+/// - `chunkSize`: the requested maximum size for log transfer packets that
+///   is used when the endpoint is contacted.
 ///
 /// - `autoStart`: whether or not to auto-start the replication applier on
 ///   (next and following) server starts
@@ -1694,6 +1761,9 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
 ///
+/// - `chunkSize`: the requested maximum size for log transfer packets that
+///   is used when the endpoint is contacted.
+///
 /// - `autoStart`: whether or not to auto-start the replication applier on
 ///   (next and following) server starts
 ///
@@ -1739,6 +1809,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///       endpoint: "tcp://127.0.0.1:8529",
 ///       username: "replicationApplier",
 ///       password: "applier1234@foxx",
+///       chunkSize: 4194304,
 ///       autoStart: false,
 ///       adaptivePolling: true
 ///     };
@@ -1797,6 +1868,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._connectTimeout    = JsonHelper::getNumericValue<double>(json, "connectTimeout", config._connectTimeout);
   config._ignoreErrors      = JsonHelper::getNumericValue<uint64_t>(json, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = JsonHelper::getNumericValue<uint64_t>(json, "maxConnectRetries", config._maxConnectRetries);
+  config._chunkSize         = JsonHelper::getNumericValue<uint64_t>(json, "chunkSize", config._chunkSize);
   config._autoStart         = JsonHelper::getBooleanValue(json, "autoStart", config._autoStart);
   config._adaptivePolling   = JsonHelper::getBooleanValue(json, "adaptivePolling", config._adaptivePolling);
 
