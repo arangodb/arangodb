@@ -440,9 +440,9 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"","bSortable": false, "sWidth":"470px"},
-        { "sClass":"", "bSortable": false, "sWidth":"100px"},
-        { "bSortable": false, "sClass": "", "sWidth":"20px"}
+        { "sClass":"docsFirstCol","bSortable": false},
+        { "sClass":"docsSecCol", "bSortable": false},
+        { "bSortable": false, "sClass": "docsThirdCol"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });

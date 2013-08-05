@@ -41,8 +41,12 @@
   z-index: 900;
 }
 
+#addDocumentLine {
+  color: black;
+}
+
 #addDocumentLine:hover,
-#sourceView:hover{
+#sourceView:hover {
   cursor: pointer;
 }
 
@@ -53,21 +57,12 @@
 }
 
 #documentTableID { 
-    border-collapse:separate;
-    border-spacing:0 2px;
+  border-collapse:separate;
+  border-spacing:0 2px;
 	padding:20px;
 	margin-bottom: 5px;
-    background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
-    background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: linear-gradient(top, #ffffff, #f5f5f5);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
 	border:1px solid #c1bdba;
-    -webkit-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-    -moz-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-    box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+  background-color: #FFFFFF;
 }
 
 #documentTableID thead {
@@ -97,22 +92,9 @@
 }
 
 #documentTableID.dataTable thead tr {
-    background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
-    background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: linear-gradient(top, #f3efec, #ebe7e3);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
-    -webkit-box-shadow: 0 1px 2px  rgba(0, 0, 0, 0.4);
-    -moz-box-shadow: 0 1px 2px  rgba(0, 0, 0, 0.4);
-    box-shadow: 0 1px 2px  rgba(0, 0, 0, 0.4);
-	border:1px solid #c1bdba;
+  background-color: #F1F0EE;
 }
 
-/*#documentTableID.dataTable td {
-	padding: 13px 10px;
-}*/
 #documentTableID .odd,
 #documentTableID .even {
     -webkit-box-shadow: none;
@@ -121,13 +103,9 @@
 }
 
 #documentTableID .odd {
-/*    background-image: -moz-linear-gradient(top, #F1F0EE, #F1F0EE);
-	background-image: linear-gradient(top, #F1F0EE, #F1F0EE);*/
 	background:#FFFFFF;
 }
 #documentTableID .even {
-/*    background-image: -moz-linear-gradient(top, #F1F0EE, #F1F0EE);
-	background-image: linear-gradient(top, #F1F0EE, #F1F0EE);*/
 	background:#F1F0EE;
 }
 
@@ -139,46 +117,19 @@
     background:#F1F0EE;/* #fdf6df*/
 }
 
-
-/*#documentTableID tr.odd:hover {
-  	cursor: pointer;
-    background: #fdfaec;
-}
-
-#documentTableID tr.even:hover {
-  	cursor: pointer;
-    background: #fdf6df;
-}
-
-#documentTableID tr.odd:hover td.sorting_1,
-#documentTableID tr.even:hover td.sorting_1 {
-  	cursor: pointer;
-    background: #fff1ca;
-}*/
-
 #tableDiv .nav-tabs > .active > a, #tableDiv .nav-tabs > .active > a:hover {
 	border:none;
 }
 
 #tableDiv .nav-tabs,
-#sourceDiv .nav-tabs,
-#logContent .nav-tabs {
+#sourceDiv .nav-tabs {
 	margin-bottom:-1px; border-bottom:#FFFFFF solid 1px;
 }
 
 #tableDiv .nav-tabs > li > a,
 #tableDiv .nav-tabs > li:hover > a,
 #sourceDiv .nav-tabs > li > a,
-#sourceDiv .nav-tabs > li:hover > a ,
-#logContent .nav-tabs > li > a,
-#logContent .nav-tabs > li:hover > a {
-    background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3);
-    background-image: -ms-linear-gradient(top, #F3EFEC, #EBE7E3);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#F3EFEC), to(#EBE7E3));
-    background-image: -webkit-linear-gradient(top, #F3EFEC, #EBE7E3);
-    background-image: -o-linear-gradient(top, #F3EFEC, #EBE7E3);
-    background-image: linear-gradient(top, #bedc6a, #80a127#F3EFEC, #EBE7E3);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#F3EFEC', endColorstr='#EBE7E3', GradientType=0);
+#sourceDiv .nav-tabs > li:hover > a {
     border-top: 1px solid #F3EFEC;
     border-left: 1px solid #F3EFEC;
     border-right: 1px solid #F3EFEC;
@@ -188,9 +139,7 @@
 #tableDiv .nav-tabs > li.active > a,
 #tableDiv .nav-tabs > li:hover.active > a,
 #sourceDiv .nav-tabs > li.active > a,
-#sourceDiv .nav-tabs > li:hover.active > a ,
-#logContent .nav-tabs > li.active > a,
-#logContent .nav-tabs > li:hover.active > a {
+#sourceDiv .nav-tabs > li:hover.active > a  {
 	background: #FFF;
     border: 1px solid #FFF;
 }
@@ -213,4 +162,9 @@
   max-width: 580px;
   min-width: 580px;
   resize: vertical;
+}
+
+#tableDiv .nav-tabs li {
+  background-color: #F2EEEB !important;
+  margin-left: 2px;
 }

@@ -8,9 +8,10 @@
 }
 
 #shell_workspace {
-  width: 900px;
+  width: auto;
   margin-top: 30px;
   margin-left: 20px;
+  margin-right: 20px !important;
   margin-bottom: -20px;
   height: 400px;
   background-color: black;
@@ -37,8 +38,6 @@
   cursor: col-resize !important;
 }
 
-/* REPL SHELL */
-/* REPL SHELL */
 /* REPL SHELL */
 #replShell {
   float:left;

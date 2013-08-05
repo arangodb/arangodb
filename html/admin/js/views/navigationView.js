@@ -3,7 +3,12 @@
 
 var navigationView = Backbone.View.extend({
   el: '.header',
-  init: function () {
+  initialize: function () {
+    var self = this;
+    $(window).resize(function() {
+      self.handleResize();
+    });
+    self.handleResize();
   },
 
   template: new EJS({url: 'js/templates/navigationView.ejs'}),
@@ -12,6 +17,23 @@ var navigationView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     return this;
   },
+
+  handleResize: function () {
+    //padding thumbnails 30px
+    //padding row 40px
+    var containerWidth = $(window).width() - 70;
+    //var spanWidth = $('.span3').outerWidth(true);
+    var spanWidth = 292;
+    var divider = containerWidth / spanWidth;
+    var roundDiv = parseInt(divider, 10);
+
+    var newWidth = roundDiv*spanWidth+30;
+    var marginWidth = ((containerWidth+30) - newWidth)/2;
+    $('#content').width(newWidth);
+    $('#content').css('margin-left', marginWidth);
+    $('#content').css('margin-right', marginWidth);
+  },
+
   selectMenuItem: function (menuItem) {
     $('.nav li').removeClass('active');
     if (menuItem) {
