@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,29 +85,25 @@ internal.createUrlObject = function (url, constraint, method) {
 /// options array with the following attributes:
 /// 
 /// * `urlPrefix`: All routes you define within will be prefixed with it.
-/// * `templateCollection`: More information in the template section.
 ///
 /// @EXAMPLES
 ///
 /// @code
 ///     app = new Application(applicationContext, {
-///       urlPrefix: "/meadow",
-///       templateCollection: "my_templates"
+///       urlPrefix: "/meadow"
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 Application = function (context, options) {
   'use strict';
-  var urlPrefix, templateCollection, myMiddleware;
+  var urlPrefix, baseMiddleware;
 
   if (typeof context === "undefined") {
     throw new Error("parameter <context> is missing");
   }
 
   options = options || {};
-
-  templateCollection = options.templateCollection;
 
   this.routingInfo = {
     routes: []
@@ -124,22 +119,15 @@ Application = function (context, options) {
     }
   }
 
-  this.helperCollection = {};
   this.routingInfo.urlPrefix = urlPrefix;
 
-  if (_.isString(templateCollection)) {
-    this.templateCollection = db._collection(templateCollection) ||
-      db._create(templateCollection);
-    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
-  } else {
-    myMiddleware = new BaseMiddleware();
-  }
+  baseMiddleware = new BaseMiddleware();
 
   this.routingInfo.middleware = [
     {
       url: { match: "/*" },
       action: {
-        callback: myMiddleware.stringRepresentation,
+        callback: baseMiddleware.stringRepresentation,
         options: {
           name: context.name,
           version: context.version,
@@ -487,31 +475,6 @@ _.extend(Application.prototype, {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_helper
-/// @brief The ViewHelper concept
-///
-/// @FUN{FoxxApplication::helper(@FA{name}, @FA{callback})}
-///
-/// If you want to use a function inside your templates, the ViewHelpers will
-/// come to rescue you. Define them on your app like in the example.
-///
-/// Then you can just call this function in your template's JavaScript blocks.
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.helper("link_to", function (identifier) {
-///       return urlRepository[identifier];
-///     });
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-  helper: function (name, func) {
-    'use strict';
-    this.helperCollection[name] = func;
   },
 
 ////////////////////////////////////////////////////////////////////////////////

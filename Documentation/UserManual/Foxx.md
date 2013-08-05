@@ -148,9 +148,6 @@ You can use the following two functions to do something before or respectively a
 More functionality
 ------------------
 
-@copydetails JSF_foxx_application_helper
-
-@CLEARPAGE
 @copydetails JSF_foxx_application_accepts
 
 @CLEARPAGE
@@ -199,9 +196,6 @@ You provide your response body as a String here.
 
 @CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_response_json
-
-@CLEARPAGE
-@copydetails JSF_foxx_BaseMiddleware_response_render
 
 @CLEARPAGE
 
@@ -475,3 +469,27 @@ or the shortcut:
     app.accepts(['json']);
 
 In both forms you can give a default format as a second parameter, if no format could be determined. If you give no `defaultFormat` this case will be handled as an error.
+
+Optional Functionality: TemplateMiddleware
+----------------------------------------
+
+To use this plugin, please require it first:
+
+  TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
+
+The `TemplateMiddleware` can be used to give a Foxx.Application the capability of using templates. Currently you can only use Underscore Templates.  It expects documents in the following form in this collection:
+
+    {
+      path: "high/way",
+      content: "hello <%= username %>",
+      contentType: "text/plain",
+      templateLanguage: "underscore"
+    }
+
+The `content` is the string that will be rendered by the template processor. The `contentType` is the type of content that results from this call. And with the `templateLanguage` you can choose your template processor. There is only one choice now: `underscore`.  Which would set the body of the response to `hello Application` with the template defined above. It will also set the `contentType` to `text/plain` in this case.  In addition to the attributes you provided, you also have access to all your view helpers.
+
+@copydetails JSF_foxx_TemplateMiddleware_initializer
+@CLEARPAGE
+
+@copydetails JSF_foxx_TemplateMiddleware_response_render
+@CLEARPAGE
