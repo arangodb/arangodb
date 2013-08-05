@@ -316,6 +316,8 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/common/tests/shell-foxx.js \
                @top_srcdir@/js/common/tests/shell-foxx-repository.js \
                @top_srcdir@/js/common/tests/shell-foxx-model.js \
+               @top_srcdir@/js/common/tests/shell-foxx-base-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
