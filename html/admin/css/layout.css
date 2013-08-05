@@ -244,3 +244,7 @@ table .sorting {
 .marginRight10 {
   padding-right: 33px !important;
 }
+
+.form-actions {
+  margin-top: -10px !important;
+}

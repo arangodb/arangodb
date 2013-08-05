@@ -131,7 +131,7 @@ table.dataTable thead th {
 #documentsTableID .even,
 #logContent .odd,
 #logContent .even {
-	margin-bottom: 5px;
+	margin-bottom: 2px;
     border:1px solid #c1bdba;
     background-color: #F9F9F9;
 }

@@ -23,6 +23,7 @@ var dashboardView = Backbone.View.extend({
   detailGraph: "userTime",
 
   initialize: function () {
+    this.loadGraphState();
     this.arangoReplication = new window.ArangoReplication();
     var self = this;
 
@@ -254,6 +255,7 @@ var dashboardView = Backbone.View.extend({
       self.renderCharts();
     }
 
+    this.loadGraphState();
     return this;
   },
 
@@ -396,6 +398,7 @@ var dashboardView = Backbone.View.extend({
     var figure = $(a.target).attr("value");
     $('#'+figure+'Checkbox').prop('checked', false);
     $('#'+figure).hide();
+    this.saveGraphState();
   },
 
   renderDetailChart: function (a) {
@@ -609,18 +612,17 @@ var dashboardView = Backbone.View.extend({
         self.graphState[identifier] = false;
       }
     });
-    console.log("after");
-    console.log(this.graphState);
+    localStorage.setItem("dbGraphState", this.graphState);
   },
 
   loadGraphState: function () {
+    localStorage.getItem("dbGraphState");
     console.log(this.graphState);
     $.each(this.graphState, function(k,v) {
       if (v === true) {
         $("#"+k).show();
       }
       else {
-        console.log("tohide");
         $("#"+k).hide();
       }
     });
@@ -649,7 +651,6 @@ var dashboardView = Backbone.View.extend({
     $('.db-info').tooltip({
       placement: "top"
     });
-    this.saveGraphState(figure);
   }
 
 });

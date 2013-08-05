@@ -8,13 +8,14 @@ var navigationView = Backbone.View.extend({
     $(window).resize(function() {
       self.handleResize();
     });
-    self.handleResize();
+    this.handleResize();
   },
 
   template: new EJS({url: 'js/templates/navigationView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);
+    this.handleResize();
     return this;
   },
 
@@ -32,6 +33,8 @@ var navigationView = Backbone.View.extend({
     $('#content').width(newWidth);
     $('#content').css('margin-left', marginWidth);
     $('#content').css('margin-right', marginWidth);
+    $('.arango-logo').css('margin-left', marginWidth -20);
+    console.log(marginWidth);
   },
 
   selectMenuItem: function (menuItem) {
