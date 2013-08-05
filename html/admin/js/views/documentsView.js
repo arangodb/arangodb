@@ -34,6 +34,7 @@ var documentsView = Backbone.View.extend({
     "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
+    "click #addDocumentButton"   : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
@@ -460,6 +461,7 @@ var documentsView = Backbone.View.extend({
   drawTable: function() {
     var self = this;
 
+    /*
     if (this.addDocumentSwitch === true) {
       $(self.table).dataTable().fnAddData(
         [
@@ -468,7 +470,7 @@ var documentsView = Backbone.View.extend({
           '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
         ]
       );
-    }
+    }*/
 
     $.each(window.arangoDocumentsStore.models, function(key, value) {
 
@@ -533,7 +535,11 @@ var documentsView = Backbone.View.extend({
     this.uploadSetup();
 
     $('.modalImportTooltips').tooltip({
-            placement: "left"
+      placement: "left"
+    });
+
+    $('.glyphicon').tooltip({
+      placement: "top"
     });
 
     return this;
