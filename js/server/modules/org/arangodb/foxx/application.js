@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,10 +129,9 @@ Application = function (context, options) {
   if (_.isString(templateCollection)) {
     this.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
-  } else {
-    myMiddleware = new BaseMiddleware();
   }
+
+  myMiddleware = new BaseMiddleware();
 
   this.routingInfo.middleware = [
     {
