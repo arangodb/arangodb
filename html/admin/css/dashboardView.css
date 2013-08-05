@@ -6,7 +6,6 @@
   border: 1px solid black;
   background-color: white;
   width: 886px;
-  border-radius: 2px 2px 2px 2px;
   box-shadow: 0 0 3px #333333;
   border: 8px solid #FFFFFF;
 }
@@ -60,21 +59,15 @@
   width: 300px;
 }
 
-.dashboardH5 {
-
-}
-
-
 .statSingleClient {
   height: 300px;
-  width: 888px;
+  width: 100%;
   margin-top: 0px;
   margin-left: 9px !important;
+  margin-right: 9px;
   margin-bottom: 0px !important;
   border: 1px solid black;
-  border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
-  box-shadow: 0 0 3px #333333;
 }
 
 .statClient {
@@ -84,9 +77,7 @@
   margin-left: 9px;
   margin-bottom: 12px;
   border: 1px solid black;
-  border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
-  box-shadow: 0 0 3px #333333;
 }
 
 #detailGraphChart {
@@ -121,7 +112,7 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 300px;
-  width: 887px;
+  width: 100%;
 }
 
 .boxHeader {
@@ -129,16 +120,18 @@
 }
 
 .boxHeader h6 {
-  padding-top: 2px;
+  padding-top: 0 !important;
   color: white;
   margin-left: 5px;
+  margin-top: 0 !important;
   margin-bottom: -15px !important;
 }
 
 .statsHeader {
   margin-top: 12px;
-  margin-left: -10px;
-  width: 940px;
+  margin-left: 10px;
+  margin-right: 10px;
+  width: 100%;
   background-color: #686766;
   color: white;
   height: 36px;
@@ -299,7 +292,6 @@
 }
 
 #detailReplicationDiv table tr {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 #detailReplicationDiv table tbody tr th {
@@ -368,7 +360,6 @@
 
 #statSwitch, #replSwitch {
   margin-top: 6px;
-  border-radius: 4px 4px 4px 4px;
   background-color: #686766;
 }
 

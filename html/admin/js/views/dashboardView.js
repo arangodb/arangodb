@@ -10,6 +10,7 @@ var dashboardView = Backbone.View.extend({
   seriesData: {},
   charts: {},
   units: [],
+  graphState: {},
   updateNOW: false,
   collectionsStats: {
     "corrupted": 0,
@@ -217,7 +218,7 @@ var dashboardView = Backbone.View.extend({
       //TEST
       $('#menuGroups').append(
         '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
-        '<ul id="' + this.group + 'Divider" class="dropdown-menu"></ul>'
+        '<ul id="' + this.group + 'Divider" class="dropdown-menu graphDropdown"></ul>'
       );
       //TEST
 
@@ -308,6 +309,7 @@ var dashboardView = Backbone.View.extend({
     else if (toCheck === true) {
       $("#" + preparedId).show();
     }
+    this.saveGraphState();
   },
 
   initUnits : function () {
@@ -514,6 +516,7 @@ var dashboardView = Backbone.View.extend({
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
       .transition().duration(500);
     });
+    this.loadGraphState();
   },
 
   calculateSeries: function (flush) {
@@ -592,6 +595,35 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  saveGraphState: function () {
+    var self = this;
+    $.each(this.options.description.models[0].attributes.figures, function(k,v) {
+      var identifier = v.identifier;
+      var toCheck = $('#'+identifier+'Checkbox').is(':checked');
+      if (toCheck === true) {
+        self.graphState[identifier] = true;
+      }
+      else {
+        self.graphState[identifier] = false;
+      }
+    });
+    console.log("after");
+    console.log(this.graphState);
+  },
+
+  loadGraphState: function () {
+    console.log(this.graphState);
+    $.each(this.graphState, function(k,v) {
+      if (v === true) {
+        $("#"+k).show();
+      }
+      else {
+        console.log("tohide");
+        $("#"+k).hide();
+      }
+    });
+  },
+
   renderFigure: function (figure) {
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
@@ -608,13 +640,14 @@ var dashboardView = Backbone.View.extend({
 
     $('#' + figure.group + 'Divider').append(
       '<li><a><label class="checkbox checkboxLabel">'+
-      '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
+      '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
       placement: "top"
-    }); 
+    });
+    this.saveGraphState(figure);
   }
 
 });
