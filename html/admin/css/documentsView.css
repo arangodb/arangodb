@@ -39,7 +39,7 @@ table.dataTable td {
   margin-top: -65px !important;
 }
 
-#filterHeader {
+#filterHeader, #importHeader {
     margin-right: 0px;
     margin-left: 0px;
     margin-top: -10px;
@@ -51,7 +51,15 @@ table.dataTable td {
     top: 8px;
 }
 
-#filterHeader #sendFilter {
+#importHeader input {
+  margin-bottom: 6px;
+}
+
+#confirmDocImport {
+  margin-right: 0px;
+}
+
+#filterHeader #sendFilter{
     margin-right: 0px;
     margin-left: 0px;
     margin-top: -10px;
@@ -382,13 +390,13 @@ table.dataTable thead th {
 }
 
 /*RADIUS*/
-#documentsToolbarF a {
+#documentsToolbarF a , #documentsToolbar a{
   border-radius: 0 !important;
 }
-#documentsToolbarF ul {
+#documentsToolbarF ul, #documentsToolbar ul {
   border-radius: 0 !important;
 }
-#documentsToolbarF li {
+#documentsToolbarF li ,#documentsToolbar li{
   border-radius: 0 !important;
 }
 
@@ -399,4 +407,8 @@ table.dataTable thead th {
 .removeFilterItem i {
   margin-top: -5px !important;
   margin-left: 5px !important;
+}
+
+#documentsToolbar .glyphicon {
+  padding-top: 15px !important;
 }
