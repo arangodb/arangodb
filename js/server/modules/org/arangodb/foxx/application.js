@@ -29,50 +29,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var Application,
-  RequestContext,
+  RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  _ = require("underscore"),
-  internal = {};
+  extend = require("underscore").extend,
+  is = require("org/arangodb/is"),
+  internal = require("org/arangodb/foxx/internals");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Application
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_createUrlObject
-/// @brief create a new url object
-///
-/// This creates a new `UrlObject`.
-///
-/// ArangoDB uses a certain structure we refer to as `UrlObject`.  With the
-/// following function (which is only internal, and not exported) you can create
-/// an UrlObject with a given URL, a constraint and a method. For example:
-///
-/// @EXAMPLES
-///
-/// @code
-///     internal.createUrlObject('/lecker/gans', null, 'get');
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-internal.createUrlObject = function (url, constraint, method) {
-  'use strict';
-  var urlObject = {};
-
-  if (!_.isString(url)) {
-    throw new Error("URL has to be a String");
-  }
-
-  urlObject.match = url;
-  urlObject.methods = [method];
-
-  if (!_.isUndefined(constraint)) {
-    urlObject.constraint = constraint;
-  }
-
-  return urlObject;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_application_initializer
@@ -83,7 +49,7 @@ internal.createUrlObject = function (url, constraint, method) {
 /// This creates a new Application. The first argument is the application
 /// context available in the variable `applicationContext`. The second one is an
 /// options array with the following attributes:
-/// 
+///
 /// * `urlPrefix`: All routes you define within will be prefixed with it.
 ///
 /// @EXAMPLES
@@ -99,24 +65,21 @@ Application = function (context, options) {
   'use strict';
   var urlPrefix, baseMiddleware;
 
-  if (typeof context === "undefined") {
+  if (is.notExisty(context)) {
     throw new Error("parameter <context> is missing");
   }
-
-  options = options || {};
 
   this.routingInfo = {
     routes: []
   };
 
+  options = options || {};
   urlPrefix = options.urlPrefix || "";
 
   if (urlPrefix === "") {
     urlPrefix = context.prefix;
-  } else {
-    if (context.prefix !== "") {
-      urlPrefix = context.prefix + "/" + urlPrefix;
-    }
+  } else if (context.prefix !== "") {
+    urlPrefix = context.prefix + "/" + urlPrefix;
   }
 
   this.routingInfo.urlPrefix = urlPrefix;
@@ -147,39 +110,39 @@ Application = function (context, options) {
   this.applicationContext = context;
 };
 
-_.extend(Application.prototype, {
+extend(Application.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_application_createRepository
 /// @brief Create a repository
-/// 
+///
 /// @FUN{FoxxApplication::createRepository(@FA{name}, @FA{options})}
-/// 
+///
 /// A repository is a module that gets data from the database or saves data to
 /// it. A model is a representation of data which will be used by the
 /// repository. Use this method to create a repository and a corresponding
 /// model.
-/// 
+///
 /// @code
 /// Foxx = require("org/arangodb/foxx");
-/// 
+///
 /// app = new Foxx.Application(applicationContext);
-/// 
+///
 /// var todos = app.createRepository("todos", {
 ///   model: "models/todos",
 ///   repository: "repositories/todos"
 /// });
 /// @endcode
 ///
-//// If you do not give a repository, it will default to the
+/// If you do not give a repository, it will default to the
 /// `Foxx.Repository`. If you need more than the methods provided by it, you
 /// must give the path (relative to your lib directory) to your repository
 /// module there. Then you can extend the Foxx.Repository prototype and add your
 /// own methods.
-/// 
+///
 /// If you don't need either of those, you don't need to give an empty
 /// object. You can then just call:
-/// 
+///
 /// @code
 /// var todos = app.createRepository("todos");
 /// @endcode
@@ -245,18 +208,7 @@ _.extend(Application.prototype, {
 
   handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = {
-      url: internal.createUrlObject(route, undefined, method),
-      action: {
-        callback: callback
-      },
-      docs: {
-        parameters: [],
-        errorResponses: [],
-        httpMethod: method.toUpperCase()
-      }
-    };
-
+    var newRoute = internal.constructRoute(method, route, callback);
     this.routingInfo.routes.push(newRoute);
     return new RequestContext(newRoute);
   },
@@ -431,11 +383,13 @@ _.extend(Application.prototype, {
 
   before: function (path, func, options) {
     'use strict';
-    if (_.isUndefined(func)) {
+    if (is.notExisty(func)) {
       func = path;
       path = "/*";
     }
-    options = options || { };
+
+    options = options || {};
+
     this.routingInfo.middleware.push({
       priority: options.priority || 1,
       url: {match: path},
@@ -470,7 +424,7 @@ _.extend(Application.prototype, {
 
   after: function (path, func) {
     'use strict';
-    if (_.isUndefined(func)) {
+    if (is.notExisty(func)) {
       func = path;
       path = "/*";
     }
@@ -482,159 +436,6 @@ _.extend(Application.prototype, {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
-  }
-});
-
-internal.constructNickname = function (httpMethod, url) {
-  'use strict';
-  return (httpMethod + "_" + url)
-    .replace(/\W/g, '_')
-    .replace(/((_){2,})/g, '_')
-    .toLowerCase();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_initializer
-/// @brief Context of a Request Definition
-///
-/// Used for documenting and constraining the routes.
-////////////////////////////////////////////////////////////////////////////////
-
-RequestContext = function (route) {
-  'use strict';
-  this.route = route;
-  this.typeToRegex = {
-    "int": "/[0-9]+/",
-    "string": "/.+/"
-  };
-  this.route.docs.nickname = internal.constructNickname(route.docs.httpMethod, route.url.match);
-};
-
-_.extend(RequestContext.prototype, {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_pathParam
-/// @brief Describe a path parameter
-///
-/// meow
-////////////////////////////////////////////////////////////////////////////////
-
-  pathParam: function (paramName, attributes) {
-    'use strict';
-    var url = this.route.url,
-      docs = this.route.docs,
-      constraint = url.constraint || {};
-
-    constraint[paramName] = this.typeToRegex[attributes.dataType];
-    this.route.url = internal.createUrlObject(url.match, constraint, url.methods[0]);
-    this.route.docs.parameters.push({
-      paramType: "path",
-      name: paramName,
-      description: attributes.description,
-      dataType: attributes.dataType,
-      required: true
-    });
-
-    return this;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_queryParam
-/// @brief Describe a Query Parameter
-///
-/// @FUN{FoxxApplication::queryParam(@FA{id}, @FA{options})}
-///
-/// Describe a query parameter:
-/// 
-/// If you defined a route "/foxx", you can constrain which format a query
-/// parameter (`/foxx?a=12`) can have by giving it a type.  We currently support
-/// the following types:
-///
-/// * int
-/// * string
-///
-/// You can also provide a description of this parameter, if it is required and
-/// if you can provide the parameter multiple times.
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.get("/foxx", function {
-///       // Do something
-///     }).queryParam("id", {
-///       description: "Id of the Foxx",
-///       dataType: "int",
-///       required: true,
-///       allowMultiple: false
-///     });
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-  queryParam: function (paramName, attributes) {
-    'use strict';
-    this.route.docs.parameters.push({
-      paramType: "query",
-      name: paramName,
-      description: attributes.description,
-      dataType: attributes.dataType,
-      required: attributes.required,
-      allowMultiple: attributes.allowMultiple
-    });
-
-    return this;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_summary
-/// @brief Set the summary for this route in the documentation
-///
-/// @FUN{FoxxApplication::summary(@FA{description})}
-///
-/// Set the summary for this route in the documentation. Can't be longer than 60.
-/// characters
-////////////////////////////////////////////////////////////////////////////////
-
-  summary: function (summary) {
-    'use strict';
-    if (summary.length > 60) {
-      throw new Error("Summary can't be longer than 60 characters");
-    }
-    this.route.docs.summary = summary;
-    return this;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_notes
-/// @brief Set the notes for this route in the documentation
-///
-/// @FUN{FoxxApplication::notes(@FA{description})}
-///
-/// Set the notes for this route in the documentation
-////////////////////////////////////////////////////////////////////////////////
-
-  notes: function (notes) {
-    'use strict';
-    this.route.docs.notes = notes;
-    return this;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_errorResponse
-/// @brief Document an error response
-///
-/// @FUN{FoxxApplication::errorResponse(@FA{code}, @FA{description})}
-///
-/// Document the error response for a given error @FA{code} with a reason for
-/// the occurrence.
-////////////////////////////////////////////////////////////////////////////////
-
-  errorResponse: function (code, reason) {
-    'use strict';
-    this.route.docs.errorResponses.push({
-      code: code,
-      reason: reason
-    });
-    return this;
   }
 });
 
