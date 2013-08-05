@@ -125,7 +125,7 @@ var collectionInfoView = Backbone.View.extend({
             '</th>'+
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="Number of active datafiles.">'+
-              '<i class="icon-info-sign"></i></a>'+
+              '<span class="glyphicon glyphicon-info-sign" style="color:black"></span></a>'+
             '</th>'+
           '</tr>'+
           '<tr>'+
@@ -136,7 +136,7 @@ var collectionInfoView = Backbone.View.extend({
             '</th>'+
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="Number of journal files.">'+
-              '<i class="icon-info-sign"></i></a>'+
+              '<span class="glyphicon glyphicon-info-sign" style="color:black"></span></a>'+
             '</th>'+
           '</tr>'+
         '</table>'+
@@ -152,7 +152,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="'+cssClass+'">'+this.data.figures.shapes.count+'</th>'+
               '<th class="tooltipInfoTh '+cssClass+'">'+
           '<a class="modalInfoTooltips" title="Total number of shapes used in the collection">'+
-              '<i class="icon-info-sign"></i></a>'+
+              '<span class="glyphicon glyphicon-info-sign" style="color:black"></span></a>'+
             '</th>'+
           '</tr>'+
           '<tr>'+
@@ -161,7 +161,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="' +
               'Total number of attributes used in the collection">'+
-              '<i class="icon-info-sign"></i></a>'+
+              '<span class="glyphicon glyphicon-info-sign" style="color:black"></span></a>'+
             '</th>'+
           '</tr>'+
         '</table>'+
@@ -184,7 +184,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="' + 
               'Total number and size used by all living documents.">'+
-              '<i class="icon-info-sign"></i></a>'+
+              '<span class="glyphicon glyphicon-info-sign" style="color:black"></span></a>'+
             '</th>'+
           '</tr>'+
           '<tr>'+
@@ -197,7 +197,7 @@ var collectionInfoView = Backbone.View.extend({
             '<th class="tooltipInfoTh '+cssClass+'">'+
               '<a class="modalInfoTooltips" title="' +
               'Total number and size used by all dead documents.">'+
-              '<i class="icon-info-sign"></i></a>'+
+              '<span class="glyphicon glyphicon-info-sign" style="color:black"></span></a>'+
             '</th>'+
           '</tr>'+
         '</table>'
