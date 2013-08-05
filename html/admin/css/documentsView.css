@@ -391,3 +391,12 @@ table.dataTable thead th {
 #documentsToolbarF li {
   border-radius: 0 !important;
 }
+
+.querylineAdd {
+  margin-left: -17px !important;
+}
+
+.removeFilterItem i {
+  margin-top: -5px !important;
+  margin-left: 5px !important;
+}
