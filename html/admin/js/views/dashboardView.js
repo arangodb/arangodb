@@ -633,10 +633,10 @@ var dashboardView = Backbone.View.extend({
       '<li class="statClient" id="' + figure.identifier + '">' +
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
       '</h6>'+
-      '<i class="icon-remove icon-white db-hide" value="'+figure.identifier+'"></i>' +
-      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+
+      '<i class="icon-remove db-hide" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-info-sign db-info" value="'+figure.identifier+
       '" title="'+figure.description+'"></i>' +
-      '<i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-zoom-in db-zoom" value="'+figure.identifier+'"></i>' +
       '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
