@@ -127,11 +127,11 @@ var documentsView = Backbone.View.extend({
               }
 
               if (data.errors === 0) {
-                arangoHelper.arangoNotification("Upload successful. " + 
-                                                data.created + "document(s) imported.");
+                arangoHelper.arangoError("Upload successful. " + 
+                                                data.created + " document(s) imported.");
               }
               else if (data.errors !== 0) {
-                arangoHelper.arangoNotification("Upload failed." + 
+                arangoHelper.arangoError("Upload failed." + 
                                                 data.errors + "error(s).");
               }
               self.hideSpinner();
