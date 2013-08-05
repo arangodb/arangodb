@@ -37,7 +37,7 @@
   box-shadow: 0 0 0  !important;
 }
 
-.span3 .icon-edit, .span3 .icon-info-sign {
+.span3 .ICON {
   position: absolute;
   margin-top: 3px;
   margin-right: 5px;
@@ -45,23 +45,24 @@
   cursor: pointer;
 }
 
-.span3 .icon-edit {
+.span3 .ICON{
   right: 0px;
 }
 
-.span3 .icon-info-sign {
+.span3 .spanInfo {
   right: 20px;
 }
 
-.icon-edit:hover, .icon-info-sign:hover { 
+.span3 .ICON:hover {
   opacity: 1.0;
 }
 
-.disabled-info-view {
+.spanDisabled {
+  right: 20px !important;
   opacity: 0.2 !important;
 }
 
-.disabled-info-view:hover {
+.spanDisabled:hover {
   opacity: 0.2 !important;
   cursor: default !important;
 }

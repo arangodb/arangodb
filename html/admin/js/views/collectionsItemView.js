@@ -13,8 +13,8 @@ window.CollectionListItemView = Backbone.View.extend({
   },
   events: {
     'click .pull-left' : 'noop',
-    'click .icon-edit' : 'editProperties',
-    'click .show-info-view' : 'showProperties',
+    'click #editCollection' : 'editProperties',
+    'click .spanInfo' : 'showProperties',
     'click': 'selectCollection'
   },
   render: function () {
