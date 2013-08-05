@@ -72,7 +72,7 @@
 
 .statClient {
   float: left;
-  height: 120px;
+  height: 70px;
   width: 203px;
   margin-left: 9px;
   margin-bottom: 12px;
@@ -85,7 +85,8 @@
 }
 
 .statGroups .statChart {
-  margin-left: -45px !important;
+  margin-left: -55px !important;
+  margin-top: -50px !important;
 }
 
 .nv-axislabel {
@@ -105,7 +106,8 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 140px;
-  width: 255px;
+  /*width: 255px;*/
+  width: 272px;
 }
 
 .svgDetailClass {
@@ -116,13 +118,20 @@
 }
 
 .boxHeader {
-  background-color: #686766;
+  margin-top: 5px;
+  /*background-color: #686766;*/
+  color: black;
+  opacity: 0.25;
+}
+
+.boxHeader:hover {
+  opacity: 1.0;
 }
 
 .boxHeader h6 {
   padding-top: 0 !important;
-  color: white;
-  margin-left: 5px;
+  color: black;
+  margin-left: 10px;
   margin-top: 0 !important;
   margin-bottom: -15px !important;
 }
@@ -373,4 +382,8 @@
 
 .activeSwitch:hover {
   cursor: default !important;
+}
+
+.statClient:hover {
+  opacity: 1 !important;
 }
