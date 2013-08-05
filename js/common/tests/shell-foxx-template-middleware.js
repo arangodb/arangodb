@@ -5,7 +5,7 @@ var jsunity = require("jsunity"),
   db = arangodb.db;
 
 function TemplateMiddlewareSpec () {
-  var BaseMiddleware, request, response, options, next;
+  var TemplateMiddleware, templateMiddleware, templateCollection, request, response, options, next, error;
 
   return {
     setUp: function () {
@@ -13,45 +13,61 @@ function TemplateMiddlewareSpec () {
       response = {};
       options = {};
       next = function () {};
-      BaseMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
+      TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
+      db._drop("templateTest");
+      templateCollection = db._create("templateTest");
     },
 
-    testRenderingATemplate: function () {
-      var myCollection, middleware;
-
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      myCollection.save({
+    testRenderingATemplateWhenInitializedWithACollection: function () {
+      templateCollection.save({
         path: "simple/path",
         content: "hello <%= username %>",
         contentType: "text/plain",
         templateLanguage: "underscore"
       });
 
-      middleware = new BaseMiddleware(myCollection).functionRepresentation;
-      middleware(request, response, options, next);
+      templateMiddleware = new TemplateMiddleware(templateCollection);
+      templateMiddleware(request, response, options, next);
 
       response.render("simple/path", { username: "moonglum" });
       assertEqual(response.body, "hello moonglum");
       assertEqual(response.contentType, "text/plain");
     },
 
-    testRenderingATemplateWithAnUnknownTemplateEngine: function () {
-      var myCollection, error, middleware;
+    testRenderingATemplateWhenInitializedWithACollectionNameOfAnExistingCollection: function () {
+      templateCollection.save({
+        path: "simple/path",
+        content: "hello <%= username %>",
+        contentType: "text/plain",
+        templateLanguage: "underscore"
+      });
 
+      templateMiddleware = new TemplateMiddleware("templateTest");
+      templateMiddleware(request, response, options, next);
+
+      response.render("simple/path", { username: "moonglum" });
+      assertEqual(response.body, "hello moonglum");
+      assertEqual(response.contentType, "text/plain");
+    },
+
+    testShouldCreateCollectionIfNotFound: function () {
       db._drop("templateTest");
-      myCollection = db._create("templateTest");
+      templateMiddleware = new TemplateMiddleware("templateTest");
+      templateMiddleware(request, response, options, next);
 
-      myCollection.save({
+      assertNotNull(db._collection("templateTest"));
+    },
+
+    testRenderingATemplateWithAnUnknownTemplateEngine: function () {
+      templateCollection.save({
         path: "simple/path",
         content: "hello <%= username %>",
         contentType: "text/plain",
         templateLanguage: "pirateEngine"
       });
 
-      middleware = new BaseMiddleware(myCollection).functionRepresentation;
-      middleware(request, response, options, next);
+      templateMiddleware = new TemplateMiddleware(templateCollection);
+      templateMiddleware(request, response, options, next);
 
       try {
         response.render("simple/path", { username: "moonglum" });
@@ -63,13 +79,8 @@ function TemplateMiddlewareSpec () {
     },
 
     testRenderingATemplateWithAnNotExistingTemplate: function () {
-      var myCollection, error, middleware;
-
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      middleware = new BaseMiddleware(myCollection).functionRepresentation;
-      middleware(request, response, options, next);
+      templateMiddleware = new TemplateMiddleware(templateCollection);
+      templateMiddleware(request, response, options, next);
 
       try {
         response.render("simple/path", { username: "moonglum" });
@@ -78,6 +89,26 @@ function TemplateMiddlewareSpec () {
       }
 
       assertEqual(error, new Error("Template 'simple/path' does not exist"));
+    },
+
+    testHelpers: function () {
+      var a = false;
+
+      templateCollection.save({
+        path: "simple/path",
+        content: "hello <%= testHelper() %>",
+        contentType: "text/plain",
+        templateLanguage: "underscore"
+      });
+
+      templateMiddleware = new TemplateMiddleware(templateCollection, {
+        testHelper: function() { a = true; }
+      });
+      templateMiddleware(request, response, options, next);
+
+      assertFalse(a);
+      response.render("simple/path", {});
+      assertTrue(a);
     }
   };
 }
