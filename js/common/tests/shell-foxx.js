@@ -24,33 +24,6 @@ function CreateFoxxApplicationSpec () {
       assertEqual(routingInfo.urlPrefix, "/wiese");
     },
 
-    testCreationWithTemplateCollectionIfCollectionDoesntExist: function () {
-      var app, routingInfo, templateCollection;
-
-      db._drop("wiese");
-      app = new FoxxApplication({prefix: "", foxxes: []}, {templateCollection: "wiese"});
-      routingInfo = app.routingInfo;
-      templateCollection = db._collection("wiese");
-
-      assertEqual(routingInfo.routes.length, 0);
-      assertNotNull(templateCollection);
-      assertEqual(app.templateCollection, templateCollection);
-    },
-
-    testCreationWithTemplateCollectionIfCollectionDoesExist: function () {
-      var app, routingInfo, templateCollection;
-
-      db._drop("wiese");
-      db._create("wiese");
-      app = new FoxxApplication({prefix: "", foxxes: []}, {templateCollection: "wiese"});
-      routingInfo = app.routingInfo;
-      templateCollection = db._collection("wiese");
-
-      assertEqual(routingInfo.routes.length, 0);
-      assertNotNull(templateCollection);
-      assertEqual(app.templateCollection, templateCollection);
-    },
-
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
       var app = new FoxxApplication({prefix: "", foxxes: []}),
         routingInfo = app.routingInfo,
@@ -420,52 +393,6 @@ function AddMiddlewareFoxxApplicationSpec () {
   };
 }
 
-function ViewHelperSpec () {
-  var app, Middleware, request, response, options, next;
-
-  return {
-    setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
-      Middleware = require('org/arangodb/foxx/template_middleware').TemplateMiddleware;
-      request = {};
-      response = {};
-      options = {};
-      next = function () {};
-    },
-
-    testDefiningAViewHelper: function () {
-      var my_func = function () {};
-
-      app.helper("testHelper", my_func);
-
-      assertEqual(app.helperCollection.testHelper, my_func);
-    },
-
-    testUsingTheHelperInATemplate: function () {
-      var a = false;
-
-      db._drop("templateTest");
-      myCollection = db._create("templateTest");
-
-      myCollection.save({
-        path: "simple/path",
-        content: "hello <%= testHelper() %>",
-        contentType: "text/plain",
-        templateLanguage: "underscore"
-      });
-
-      middleware = new Middleware(myCollection, {
-        testHelper: function() { a = true; }
-      }).functionRepresentation;
-      middleware(request, response, options, next);
-
-      assertFalse(a);
-      response.render("simple/path", {});
-      assertTrue(a);
-    }
-  };
-}
-
 function FormatMiddlewareSpec () {
   var Middleware, middleware, request, response, options, next;
 
@@ -583,7 +510,6 @@ jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
-jsunity.run(ViewHelperSpec);
 jsunity.run(FormatMiddlewareSpec);
 
 return jsunity.done();

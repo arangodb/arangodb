@@ -28,59 +28,50 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var TemplateMiddleware;
+var TemplateMiddleware,
+  db = require("org/arangodb").db,
+  _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_TemplateMiddleware_initializer
 /// @brief The Template Middleware
 ///
-/// The `TemplateMiddleware` manipulates the request and response
-/// objects to give you a nicer API.
+/// Initialize with the name of a collection or a collection and optionally
+/// a set of helper functions.
+/// Then use `before` to attach the initialized middleware to your Foxx.Application
+///
+/// @EXAMPLES
+///
+/// @code
+///     templateMiddleware = new TemplateMiddleware("templates", {
+///       uppercase: function (x) { return x.toUpperCase(); }
+///     });
+///     // or without helpers:
+///     //templateMiddleware = new TemplateMiddleware("templates");
+///
+///     app.before(templateMiddleware);
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-TemplateMiddleware = function (templateCollection, helperCollection) {
+TemplateMiddleware = function (templateCollection, helper) {
   'use strict';
-  var middleware = function (request, response, options, next) {
+  var middleware = function (request, response, options) {
     var responseFunctions,
       _ = require("underscore");
 
     responseFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_response_render
-/// @brief The magical `json` function
+/// @fn JSF_foxx_TemplateMiddleware_response_render
+/// @brief Render a template as the response
 ///
 /// @FUN{response.render(@FA{templatePath}, @FA{data})}
 ///
-/// If you initialize your Application with a `templateCollection`, you're in
-/// luck now.
-///
-/// It expects documents in the following form in this collection:
-///
-/// @code
-/// {
-///   path: "high/way",
-///   content: "hello <%= username %>",
-///   contentType: "text/plain",
-///   templateLanguage: "underscore"
-/// }
-/// @endcode
-///
-/// The `content` is the string that will be rendered by the template
-/// processor. The `contentType` is the type of content that results from this
-/// call. And with the `templateLanguage` you can choose your template
-/// processor. There is only one choice now: `underscore`.
-///
+/// When the TemplateMiddleware is included, you will have access to the
+/// `render` function on the response object.
 /// If you call render, Application will look into the this collection and
 /// search by the path attribute.  It will then render the template with the
-/// given data:
-///
-/// Which would set the body of the response to `hello Application` with the
-/// template defined above. It will also set the `contentType` to `text/plain`
-/// in this case.
-///
-/// In addition to the attributes you provided, you also have access to all your
-/// view helpers. How to define them? Read above in the ViewHelper section.
+/// given data.
 ///
 /// @EXAMPLES
 ///
@@ -92,10 +83,6 @@ TemplateMiddleware = function (templateCollection, helperCollection) {
       render: function (templatePath, data) {
         var template;
 
-        if (_.isUndefined(templateCollection)) {
-          throw new Error("No template collection has been provided when creating a new FoxxApplication");
-        }
-
         template = templateCollection.firstExample({path: templatePath });
 
         if (_.isNull(template)) {
@@ -106,7 +93,7 @@ TemplateMiddleware = function (templateCollection, helperCollection) {
           throw new Error("Unknown template language '" + template.templateLanguage + "'");
         }
 
-        this.body = _.template(template.content, _.extend(data, helperCollection));
+        this.body = _.template(template.content, _.extend(data, helper));
         this.contentType = template.contentType;
       }
     };
@@ -114,10 +101,12 @@ TemplateMiddleware = function (templateCollection, helperCollection) {
     _.extend(response, responseFunctions);
   };
 
-  return {
-    stringRepresentation: String(middleware),
-    functionRepresentation: middleware
-  };
+  if (_.isString(templateCollection)) {
+    templateCollection = db._collection(templateCollection) ||
+      db._create(templateCollection);
+  }
+
+  return middleware;
 };
 
 exports.TemplateMiddleware = TemplateMiddleware;
