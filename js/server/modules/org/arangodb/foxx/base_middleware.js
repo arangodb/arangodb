@@ -38,7 +38,7 @@ var BaseMiddleware;
 /// objects to give you a nicer API.
 ////////////////////////////////////////////////////////////////////////////////
 
-BaseMiddleware = function (templateCollection, helperCollection) {
+BaseMiddleware = function () {
   'use strict';
   var middleware = function (request, response, options, next) {
     var responseFunctions,
@@ -167,70 +167,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       json: function (obj) {
         this.contentType = "application/json";
         this.body = JSON.stringify(obj);
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_response_render
-/// @brief The magical `json` function
-///
-/// @FUN{response.render(@FA{templatePath}, @FA{data})}
-///
-/// If you initialize your Application with a `templateCollection`, you're in
-/// luck now.
-/// 
-/// It expects documents in the following form in this collection:
-///
-/// @code
-/// {
-///   path: "high/way",
-///   content: "hello <%= username %>",
-///   contentType: "text/plain",
-///   templateLanguage: "underscore"
-/// }
-/// @endcode
-///
-/// The `content` is the string that will be rendered by the template
-/// processor. The `contentType` is the type of content that results from this
-/// call. And with the `templateLanguage` you can choose your template
-/// processor. There is only one choice now: `underscore`.
-///
-/// If you call render, Application will look into the this collection and
-/// search by the path attribute.  It will then render the template with the
-/// given data:
-///
-/// Which would set the body of the response to `hello Application` with the
-/// template defined above. It will also set the `contentType` to `text/plain`
-/// in this case.
-///
-/// In addition to the attributes you provided, you also have access to all your
-/// view helpers. How to define them? Read above in the ViewHelper section.
-///
-/// @EXAMPLES
-///
-/// @code
-///     response.render("high/way", {username: 'Application'})
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-      render: function (templatePath, data) {
-        var template;
-
-        if (_.isUndefined(templateCollection)) {
-          throw new Error("No template collection has been provided when creating a new FoxxApplication");
-        }
-
-        template = templateCollection.firstExample({path: templatePath });
-
-        if (_.isNull(template)) {
-          throw new Error("Template '" + templatePath + "' does not exist");
-        }
-
-        if (template.templateLanguage !== "underscore") {
-          throw new Error("Unknown template language '" + template.templateLanguage + "'");
-        }
-
-        this.body = _.template(template.content, _.extend(data, helperCollection));
-        this.contentType = template.contentType;
       }
     };
 

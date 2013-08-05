@@ -426,7 +426,7 @@ function ViewHelperSpec () {
   return {
     setUp: function () {
       app = new FoxxApplication({prefix: "", foxxes: []});
-      Middleware = require('org/arangodb/foxx/base_middleware').BaseMiddleware;
+      Middleware = require('org/arangodb/foxx/template_middleware').TemplateMiddleware;
       request = {};
       response = {};
       options = {};
