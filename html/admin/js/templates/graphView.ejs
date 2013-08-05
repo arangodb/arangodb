@@ -30,12 +30,12 @@ gs = _.sortBy(gs, sortF);
           <div class="controls">
             <label class="radio">
               <input type="radio" name="loadtype" id="collections" checked>
-              Define specific collections
+              Select existing collections
             </label>
           </div>
         
           <div id="collection_config">
-            <label for="nodeCollection" class="control-label">Node-Collection</label>
+            <label for="nodeCollection" class="control-label">Vertex collection</label>
             <div class="controls">
               <select id="nodeCollection" name="nodeCollection">
               <%_.each(ds, function(d) {%>
@@ -43,7 +43,7 @@ gs = _.sortBy(gs, sortF);
               <%}); %>
               </select>
             </div>
-            <label for="edgeCollection" class="control-label">Edge-Collection</label>
+            <label for="edgeCollection" class="control-label">Edge collection</label>
             <div class="controls">
               <select id="edgeCollection" name="edgeCollection">
               <%_.each(es, function(e) {%>
@@ -56,7 +56,7 @@ gs = _.sortBy(gs, sortF);
           <div class="controls">
             <label class="radio">
               <input type="radio" name="loadtype" id="graphs">
-              Use a graph
+              Select an existing graph
             </label>
           </div>
         
@@ -87,14 +87,14 @@ gs = _.sortBy(gs, sortF);
             <div class="accordion-inner">
               
               <div class="control-group">
-                <label for="undirected" class="control-label">Treat as Undirected</label>
+                <label for="undirected" class="control-label">Treat graph as undirected</label>
                 <div class="controls">
                   <input id="undirected" type="checkbox" name="undirected" class="input-xlarge">
                 </div>
               </div>
               
               <div class="control-group">
-                <label for="randomStart" class="control-label">Start with Random Node</label>
+                <label for="randomStart" class="control-label">Display random vertex at start</label>
                 <div class="controls">
                   <input id="randomStart" type="checkbox" name="randomStart" class="input-xlarge">
                 </div>
@@ -102,7 +102,7 @@ gs = _.sortBy(gs, sortF);
               
               
               <div class="control-group">
-                <label for="nodeLabel" class="control-label">Node-Label-Attribute</label>
+                <label for="nodeLabel" class="control-label">Vertex label attribute (e.g. "name")</label>
                 <div class="controls">
                   <input id="nodeLabel" type="text" name="nodeLabel" placeholder="Attribute" maxlength="75" class="input-xlarge">
                 </div>
@@ -110,7 +110,7 @@ gs = _.sortBy(gs, sortF);
               
               
               <fieldset id="group_by_list">
-                <legend class="gv_inner">Group New Nodes By Attributes:</legend>
+                <legend class="gv_inner">Grouping of vertices:</legend>
                 
                 <div class="control-group">
                   <label for="group_by_1" class="control-label">Attribute 1</label>
