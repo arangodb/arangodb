@@ -21,6 +21,7 @@
 }
 
 #outputToolbar {
+  margin-top: 10px;
   float: left;
   width: 99.8%;
   border-top: 1px solid #A0A0A0;
@@ -75,7 +76,6 @@
 }
 
 #queryDiv {
-  margin-top: 10px;
   background-color: rgba(0,0,0,0.05);
 }
 
