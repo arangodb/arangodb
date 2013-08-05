@@ -65,7 +65,7 @@ background-color: none !important;
 }
 
 #logTableID thead tr th, #infoTableID thead tr th, #debugTableID thead tr th, #critTableID thead tr th, #warnTableID thead tr th {
-  border-bottom: 1px solid #C1BDBA;
+  /*border-bottom: 1px solid #C1BDBA;*/
 }
 
 .nav-tabs > li > a, .nav-tabs > li > a:hover {
@@ -161,3 +161,6 @@ background-color: none !important;
   border-radius: 0 !important;
 }
 
+#logTableID tbody, #infoTableID tbody, #debugTableID tbody, #critTableID tbody, #warnTableID tbody {
+  margin-top: -2px !important;
+}
