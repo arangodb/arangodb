@@ -31,7 +31,6 @@ var Application,
   RequestContext,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  FormatMiddleware = require("org/arangodb/foxx/format_middleware").FormatMiddleware,
   _ = require("underscore"),
   internal = {};
 
@@ -473,35 +472,6 @@ _.extend(Application.prototype, {
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
-      }
-    });
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_accepts
-/// @brief Shortform for using the FormatMiddleware
-///
-/// @FUN{FoxxApplication::helper(@FA{allowedFormats}, @FA{defaultFormat})}
-///
-/// Shortform for using the FormatMiddleware
-/// 
-/// More information about the FormatMiddleware in the corresponding section.
-/// This is a shortcut to add the middleware to your application:
-///
-/// @EXAMPLES
-///
-/// @code
-///     app.accepts(["json"], "json");
-/// @endcode
-////////////////////////////////////////////////////////////////////////////////
-
-  accepts: function (allowedFormats, defaultFormat) {
-    'use strict';
-
-    this.routingInfo.middleware.push({
-      url:    { match: "/*" },
-      action: {
-        callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
       }
     });
   }

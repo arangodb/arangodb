@@ -2,7 +2,7 @@
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx application
+/// @brief Foxx Format Middleware
 ///
 /// @file
 ///
@@ -113,10 +113,7 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
     .replace("allowedFormats", JSON.stringify(allowedFormats))
     .replace("defaultFormat", JSON.stringify(defaultFormat));
 
-  return {
-    functionRepresentation: middleware,
-    stringRepresentation: stringRepresentation
-  };
+  return middleware;
 };
 
 exports.FormatMiddleware = FormatMiddleware;
