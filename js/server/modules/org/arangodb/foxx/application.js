@@ -1,3 +1,4 @@
+/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,8 +186,14 @@ _.extend(Application.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   createRepository: function (name, opts) {
-    var model;
-    var Repo;
+    'use strict';
+    var model,
+      Repo,
+      prefix,
+      cname,
+      collection,
+      Model = require("org/arangodb/foxx/model").Model,
+      Repository = require("org/arangodb/foxx/repository").Repository;
 
     if (opts && opts.hasOwnProperty('model')) {
       model = this.applicationContext.appModule.require(opts.model).Model;
@@ -208,15 +215,16 @@ _.extend(Application.prototype, {
       Repo = Repository;
     }
 
-    var prefix = this.applicationContext.collectionPrefix;
-    var cname;
+    prefix = this.applicationContext.collectionPrefix;
 
     if (prefix === "") {
       cname = name;
     } else {
       cname = prefix + "_" + name;
     }
-    var collection = db._collection(cname);
+
+    collection = db._collection(cname);
+
     if (!collection) {
       throw new Error("collection with name '" + cname + "' does not exist.");
     }

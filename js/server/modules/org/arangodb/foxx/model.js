@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
+/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,6 @@ var Model,
 
 Model = function (attributes) {
   'use strict';
-
   this.attributes = attributes || {};
 };
 
@@ -81,6 +80,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   get: function (attributeName) {
+    'use strict';
     return this.attributes[attributeName];
   },
 
@@ -104,6 +104,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   set: function (attributeName, value) {
+    'use strict';
     this.attributes[attributeName] = value;
   },
 
@@ -128,6 +129,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   has: function (attributeName) {
+    'use strict';
     return !(_.isUndefined(this.attributes[attributeName]) ||
              _.isNull(this.attributes[attributeName]));
   },
@@ -142,6 +144,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   forDB: function () {
+    'use strict';
     return this.attributes;
   },
 
@@ -155,6 +158,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   forClient: function () {
+    'use strict';
     return this.attributes;
   }
 });
