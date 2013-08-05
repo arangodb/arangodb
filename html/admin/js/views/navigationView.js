@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $*/
+/*global require, exports, Backbone, EJS, $, window*/
 
 var navigationView = Backbone.View.extend({
   el: '.header',
@@ -34,7 +34,6 @@ var navigationView = Backbone.View.extend({
     $('#content').css('margin-left', marginWidth);
     $('#content').css('margin-right', marginWidth);
     $('.arango-logo').css('margin-left', marginWidth -20);
-    console.log(marginWidth);
   },
 
   selectMenuItem: function (menuItem) {

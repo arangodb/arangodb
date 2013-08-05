@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3*/
+/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 
 var dashboardView = Backbone.View.extend({
   el: '#content',
@@ -617,7 +617,6 @@ var dashboardView = Backbone.View.extend({
 
   loadGraphState: function () {
     localStorage.getItem("dbGraphState");
-    console.log(this.graphState);
     $.each(this.graphState, function(k,v) {
       if (v === true) {
         $("#"+k).show();
