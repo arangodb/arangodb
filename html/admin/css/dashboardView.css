@@ -323,6 +323,8 @@
 
 #leftReplicationDiv table tr, #rightReplicationDiv table tr{
   background-color: #F9F9F9 !important;
+  padding-top: 3px;
+  padding-bottom: 3px;
 }
 
 #leftReplicationDiv tbody, #rightReplicationDiv tbody {
