@@ -154,3 +154,7 @@
   color: white;
   background-color: #686766 !important;
 }
+
+.ace_print-margin {
+  visibility: hidden !important;
+}
