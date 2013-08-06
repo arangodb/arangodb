@@ -204,7 +204,10 @@ var modalDialogHelper = modalDialogHelper || {};
       });
     },
     
-    insertDecissionInput = function(idPre, idPost, group, text, isDefault, interior, contentTh, table) {
+    insertModalRow,
+    
+    insertDecissionInput = function(idPre, idPost, group,
+      text, isDefault, interior, contentTh, table) {
       var input = document.createElement("input"),
         id = idPre + idPost,
         lbl = document.createElement("label");
@@ -283,56 +286,57 @@ var modalDialogHelper = modalDialogHelper || {};
       addLineButton.id = id + "_addLine";
       addLineButton.className = "graphViewer-icon-button gv-icon-small add";
       if (list.length > 0) {
-        input.value = o.objects[0];
+        input.value = list[0];
       }
       for (i = 1; i < list.length; i++) {
         addNewLine(list[i]);
       }
-    },
-    
-    insertModalRow = function(table, idprefix, o) {
-      var tr = document.createElement("tr"),
-        labelTh = document.createElement("th"),
-        contentTh = document.createElement("th");
-      table.appendChild(tr);
-      tr.appendChild(labelTh);
-      labelTh.className = "collectionTh";
-      if (o.text) {
-        labelTh.appendChild(document.createTextNode(o.text + ":"));
-      } else {
-        labelTh.className += " capitalize";
-        if (o.type && o.type === "extenadable") {
-          labelTh.appendChild(document.createTextNode(o.id + ":"));
-        } else {
-          labelTh.appendChild(document.createTextNode(o.id + ":"));
-        }
-      }
-      tr.appendChild(contentTh);
-      contentTh.className = "collectionTh";
-      switch(o.type) {
-        case "text":
-          contentTh.appendChild(createTextInput(idprefix + o.id));
-          break;
-        case "checkbox":
-          contentTh.appendChild(createCheckboxInput(idprefix + o.id));
-          break;
-        case "list":
-          contentTh.appendChild(createListInput(idprefix + o.id, o.objects));
-          break;
-        case "extendable":
-          insertExtendableInput(idprefix, o.id, o.objects, contentTh, table, tr);
-          break;
-        case "decission":
-          insertDecissionInput(idprefix, o.id, o.group, o.text, o.isDefault, o.interior, contentTh, table);
-          labelTh.innerHTML = "";
-          break;
-        default:
-          //Sorry unknown
-          table.removeChild(tr);
-          break;
-      }
-      return tr;
     };
+    
+  insertModalRow = function(table, idprefix, o) {
+    var tr = document.createElement("tr"),
+      labelTh = document.createElement("th"),
+      contentTh = document.createElement("th");
+    table.appendChild(tr);
+    tr.appendChild(labelTh);
+    labelTh.className = "collectionTh";
+    if (o.text) {
+      labelTh.appendChild(document.createTextNode(o.text + ":"));
+    } else {
+      labelTh.className += " capitalize";
+      if (o.type && o.type === "extenadable") {
+        labelTh.appendChild(document.createTextNode(o.id + ":"));
+      } else {
+        labelTh.appendChild(document.createTextNode(o.id + ":"));
+      }
+    }
+    tr.appendChild(contentTh);
+    contentTh.className = "collectionTh";
+    switch(o.type) {
+      case "text":
+        contentTh.appendChild(createTextInput(idprefix + o.id));
+        break;
+      case "checkbox":
+        contentTh.appendChild(createCheckboxInput(idprefix + o.id));
+        break;
+      case "list":
+        contentTh.appendChild(createListInput(idprefix + o.id, o.objects));
+        break;
+      case "extendable":
+        insertExtendableInput(idprefix, o.id, o.objects, contentTh, table, tr);
+        break;
+      case "decission":
+        insertDecissionInput(idprefix, o.id, o.group, o.text,
+          o.isDefault, o.interior, contentTh, table);
+        labelTh.innerHTML = "";
+        break;
+      default:
+        //Sorry unknown
+        table.removeChild(tr);
+        break;
+    }
+    return tr;
+  };
   
   modalDialogHelper.modalDivTemplate = function (title, buttonTitle, idprefix, callback) {
     // Create needed Elements

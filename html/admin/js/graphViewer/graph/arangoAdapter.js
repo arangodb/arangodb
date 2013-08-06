@@ -160,7 +160,13 @@ function ArangoAdapter(nodes, edges, config) {
   
     getNRandom = function(n, callback) {
       var list = [],
-        i = 0;
+        i = 0,
+        onSuccess = function(data) {
+          list.push(data.document || {});
+          if (list.length === n) {
+            callback(list);
+          }
+        };
       for (i = 0; i < n; i++) {
         $.ajax({
           cache: false,
@@ -170,12 +176,7 @@ function ArangoAdapter(nodes, edges, config) {
             collection: nodeCollection
           }),
           contentType: "application/json",
-          success: function(data) {
-            list.push(data.document || {});
-            if (list.length === n) {
-              callback(list);
-            }
-          }
+          success: onSuccess
         });
       }
     },
