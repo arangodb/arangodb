@@ -56,7 +56,8 @@
   background-color: transparent;
 }
 
-#documentTableID { 
+#documentTableID {
+  font-weight: 500;
   border-collapse:separate;
   border-spacing:0 2px;
 	padding:20px;
