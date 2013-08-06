@@ -286,10 +286,7 @@
 }
 
 #detailReplicationDiv table thead {
-  background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;
-  border-bottom: 1px solid #C1BDBA;
-  padding-bottom: 2px !important;
-  padding-top: 2px !important;
+  /*background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;*/
 }
 
 #detailReplicationDiv table {
