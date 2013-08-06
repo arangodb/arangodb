@@ -44,3 +44,14 @@ li.applicationList {
 .toggle-icon {
   margin: 10px;
 }
+
+.foxxList .boxHeader {
+  background-color: #686766;
+  opacity: 1;
+  margin-left: 10px;
+}
+
+.applicationList {
+  width: 100%;
+  padding-left: 10px;
+}

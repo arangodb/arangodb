@@ -176,7 +176,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           searchAttrExampleList.appendChild(entry);
           entry.onclick = function() {
             searchAttrField.value = r;
-          }
+          };
         });
       });
     },

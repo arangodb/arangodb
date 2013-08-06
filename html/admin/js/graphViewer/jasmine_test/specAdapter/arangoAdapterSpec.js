@@ -260,24 +260,24 @@
         ).toThrow("The edges have to be given.");
       });
       
-      it('should throw an error if no nodeCollection is given', function() {
+      it('should throw an error if no nodeCollection or graph is given', function() {
         expect(
           function() {
             var t = new ArangoAdapter([], [], {
               edgeCollection: ""
             });
           }
-        ).toThrow("The nodeCollection has to be given.");
+        ).toThrow("The nodeCollection or a graphname has to be given.");
       });
       
-      it('should throw an error if no edgeCollection is given', function() {
+      it('should throw an error if no edgeCollection or graph is given', function() {
         expect(
           function() {
             var t = new ArangoAdapter([], [], {
               nodeCollection: ""
             });
           }
-        ).toThrow("The edgeCollection has to be given.");
+        ).toThrow("The edgeCollection or a graphname has to be given.");
       });
     
       it('should not throw an error if everything is given', function() {

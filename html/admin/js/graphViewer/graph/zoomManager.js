@@ -129,7 +129,9 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       } else {
         g.attr("transform", transT + scaleT);
       }
-      slider.slider("option", "value", currentZoom);
+      if (slider) {
+         slider.slider("option", "value", currentZoom);
+      }
     },
     
     getScaleDelta = function(nextScale) {

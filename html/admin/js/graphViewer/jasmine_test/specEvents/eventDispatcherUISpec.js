@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper, mocks*/
+/*global helper, mocks, uiMatchers*/
 /*global EventDispatcher, EventDispatcherControls, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,35 +169,9 @@
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
       
-      
+      uiMatchers.define(this);
+
       this.addMatchers({
-        toBeTag: function(name) {
-          var item = this.actual;
-          this.message = function() {
-            return "Expected " + item.tagName.toLowerCase() + " to be " + name; 
-          };
-          return item.tagName.toLowerCase() === name;
-        },
-        
-        toBeOfClass: function(name) {
-          var item = this.actual;
-          this.message = function() {
-            return "Expected " + item.className + " to be " + name; 
-          };
-          return $(item).hasClass(name);
-        },
-        toConformToToolboxBKP: function() {
-          var box = this.actual;
-          _.each(box.children, function(btn) {
-            expect(btn).toBeTag("button");
-            expect(btn).toBeOfClass("btn btn-icon");
-            expect(btn.children.length).toEqual(1);
-            expect(btn.firstChild).toBeTag("i");
-            expect(btn.firstChild.className).toMatch(/^icon-\S+ icon-white$/);
-          });          
-          return true;
-        },
-        
         toConformToToolbox: function() {
           var box = this.actual,
             foundActive = false,
@@ -205,10 +179,9 @@
           _.each(box.children, function(btn) {
             expect(btn).toBeTag("button");
             expect(btn).toBeOfClass("btn btn-icon");
-            expect(btn.children.length).toEqual(1);
-            expect(btn.firstChild).toBeTag("img");
-            expect(btn.firstChild).toBeOfClass("gv-icon-btn");
-            if ($(btn.firstChild).hasClass("active")) {
+            expect(btn).toBeOfClass("btn-icon");
+            expect(btn).toBeOfClass("gv-icon-btn");
+            if ($(btn).hasClass("active")) {
               if (foundActive) {
                 failed = true;
               } else {
