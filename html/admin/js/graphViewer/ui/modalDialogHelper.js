@@ -296,8 +296,17 @@ var modalDialogHelper = modalDialogHelper || {};
         contentTh = document.createElement("th");
       table.appendChild(tr);
       tr.appendChild(labelTh);
-      labelTh.className = "collectionTh capitalize";
-      labelTh.appendChild(document.createTextNode(o.id + ":"));
+      labelTh.className = "collectionTh";
+      if (o.text) {
+        labelTh.appendChild(document.createTextNode(o.text + ":"));
+      } else {
+        labelTh.className += " capitalize";
+        if (o.type && o.type === "extenadable") {
+          labelTh.appendChild(document.createTextNode(o.id + ":"));
+        } else {
+          labelTh.appendChild(document.createTextNode(o.id + ":"));
+        }
+      }
       tr.appendChild(contentTh);
       contentTh.className = "collectionTh";
       switch(o.type) {
@@ -411,6 +420,14 @@ var modalDialogHelper = modalDialogHelper || {};
   
   modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
     var table =  modalDialogHelper.modalDivTemplate(title, null, idprefix, callback);
+    _.each(objects, function(o) {
+      insertModalRow(table, idprefix, o);
+    });
+    $("#" + idprefix + "modal").modal('show');
+  };
+  
+  modalDialogHelper.createModalChangeDialog = function(title, idprefix, objects, callback) {
+    var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback);
     _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });

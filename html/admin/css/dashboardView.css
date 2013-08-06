@@ -6,7 +6,6 @@
   border: 1px solid black;
   background-color: white;
   width: 886px;
-  border-radius: 2px 2px 2px 2px;
   box-shadow: 0 0 3px #333333;
   border: 8px solid #FFFFFF;
 }
@@ -60,33 +59,25 @@
   width: 300px;
 }
 
-.dashboardH5 {
-
-}
-
-
 .statSingleClient {
   height: 300px;
-  width: 888px;
-  margin-top: 0px;
-  margin-left: 9px !important;
+  width: 99.7%;
+  margin-top: 10px;
+  margin-left: 10px !important;
+  margin-right: 11px;
   margin-bottom: 0px !important;
   border: 1px solid black;
-  border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
-  box-shadow: 0 0 3px #333333;
 }
 
 .statClient {
   float: left;
-  height: 120px;
+  height: 70px;
   width: 203px;
   margin-left: 9px;
   margin-bottom: 12px;
   border: 1px solid black;
-  border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
-  box-shadow: 0 0 3px #333333;
 }
 
 #detailGraphChart {
@@ -94,7 +85,8 @@
 }
 
 .statGroups .statChart {
-  margin-left: -45px !important;
+  margin-left: -55px !important;
+  margin-top: -50px !important;
 }
 
 .nv-axislabel {
@@ -114,31 +106,41 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 140px;
-  width: 255px;
+  /*width: 255px;*/
+  width: 272px;
 }
 
 .svgDetailClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 300px;
-  width: 887px;
+  width: 100%;
 }
 
 .boxHeader {
-  background-color: #686766;
+  margin-top: 5px;
+  /*background-color: #686766;*/
+  color: black;
+  opacity: 0.25;
+}
+
+.boxHeader:hover {
+  opacity: 0.8;
 }
 
 .boxHeader h6 {
-  padding-top: 2px;
-  color: white;
-  margin-left: 5px;
+  padding-top: 0 !important;
+  color: black;
+  margin-left: 10px;
+  margin-top: 0 !important;
   margin-bottom: -15px !important;
 }
 
 .statsHeader {
   margin-top: 12px;
-  margin-left: -10px;
-  width: 940px;
+  margin-left: 10px;
+  margin-right: 10px;
+  width: 100%;
   background-color: #686766;
   color: white;
   height: 36px;
@@ -280,7 +282,7 @@
 
 #detailReplicationDiv table {
   border-collapse: separate;
-  border-spacing: 0 5px;
+  border-spacing: 0 2px;
 }
 
 #detailReplicationDiv table thead {
@@ -299,7 +301,6 @@
 }
 
 #detailReplicationDiv table tr {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 #detailReplicationDiv table tbody tr th {
@@ -308,17 +309,31 @@
 }
 
 #rightReplicationDiv {
-  width: 868px;
+  width: 100%;
   min-height: 150px;
-  margin-left: 10px;
   margin-bottom: 8px;
 }
 
+#leftReplicationDiv h4, #rightReplicationDiv h4 {
+}
+
+#leftReplicationDiv table, #rightReplicationDiv table {
+  width: 100%;
+}
+
+#leftReplicationDiv table tr, #rightReplicationDiv table tr{
+  background-color: #F9F9F9 !important;
+}
+
+#leftReplicationDiv tbody, #rightReplicationDiv tbody {
+  background-color: #F9F9F9 !important;
+}
+
 #leftReplicationDiv {
-  width: 868px;
+  width: 100%;
   min-height: 150px;
-  margin-left: 10px;
   margin-bottom: 8px;
+  margin-top: -20px;
 }
 
 .alignLeft {
@@ -352,7 +367,7 @@
 }
 
 #shortcutDiv {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 200;
 }
 
@@ -368,7 +383,6 @@
 
 #statSwitch, #replSwitch {
   margin-top: 6px;
-  border-radius: 4px 4px 4px 4px;
   background-color: #686766;
 }
 
@@ -383,3 +397,13 @@
 .activeSwitch:hover {
   cursor: default !important;
 }
+
+.statClient:hover {
+  opacity: 1 !important;
+}
+
+#detailReplication {
+  background-color: #D9D5D1 !important;
+  border: 0 !important;
+}
+

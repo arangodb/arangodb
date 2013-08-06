@@ -1,5 +1,6 @@
 #tableView {
   cursor: pointer;
+  background-color: #EEEEEE;
 }
 
 #sourceFooter {
@@ -12,7 +13,7 @@
 
 #sourceEditor {
   height: 400px;
-  width: 900px;
+  width: 100%;
   overflow:hidden;
   padding-bottom: 20px;
   border: 1px solid #A0A0A0;

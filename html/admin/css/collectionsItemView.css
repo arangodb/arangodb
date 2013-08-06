@@ -4,19 +4,9 @@
   margin-left: 8px !important;
   margin-bottom: 8px !important;
   border: 0px;
-  border-radius: 2px 2px 2px 2px;
-/*  opacity: 0.8 !important;*/
-  -moz-box-shadow:     0 0 3px #333;
-  -webkit-box-shadow:  0 0 3px #333;
-  box-shadow:          0 0 3px #333;
   position:relative;
   text-align:center;
-}
-
-.span3:hover {
-/*  -moz-box-shadow:    inset 0 0 3px #5E7B36;
-  -webkit-box-shadow: inset 0 0 3px #5E7B36;
-  box-shadow:         inset 0 0 3px #5E7B36;*/
+  box-shadow: 0 0 0 !important;
 }
 
 .span3 a {
@@ -47,7 +37,7 @@
   box-shadow: 0 0 0  !important;
 }
 
-.span3 .icon-edit, .span3 .icon-info-sign {
+.span3 .ICON {
   position: absolute;
   margin-top: 3px;
   margin-right: 5px;
@@ -55,23 +45,24 @@
   cursor: pointer;
 }
 
-.span3 .icon-edit {
+.span3 .ICON{
   right: 0px;
 }
 
-.span3 .icon-info-sign {
+.span3 .spanInfo {
   right: 20px;
 }
 
-.icon-edit:hover, .icon-info-sign:hover { 
+.span3 .ICON:hover {
   opacity: 1.0;
 }
 
-.disabled-info-view {
+.spanDisabled {
+  right: 20px !important;
   opacity: 0.2 !important;
 }
 
-.disabled-info-view:hover {
+.spanDisabled:hover {
   opacity: 0.2 !important;
   cursor: default !important;
 }
