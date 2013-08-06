@@ -1,7 +1,8 @@
 .ui-resizable-s {
   bottom: 0;
   height: 10px;
-  background-color: #686766 !important;
+  background-color: #F0F0F0 !important;
+  border: 1px solid #A0A0A0;
   cursor: ns-resize;
 }
 
@@ -9,29 +10,24 @@
   display:none;
 }
 
-#editorLabel {
-  margin-top: 20px;
-  padding-left: 45px;
-  float: left;
-}
-
 #editorToolbar {
   float: left;
-  width: 772px;
+  width: 99.8%;
   margin-top: 20px !important;
   border-top: 1px solid #A0A0A0;
   border-right: 1px solid #A0A0A0;
-  border-radius: 0 3px 0 0;
+  border-left: 1px solid #A0A0A0;
   height: 20px;
   background-color: #F0F0F0;
 }
 
 #outputToolbar {
+  margin-top: 10px;
   float: left;
-  width: 782px;
+  width: 99.8%;
   border-top: 1px solid #A0A0A0;
   border-right: 1px solid #A0A0A0;
-  border-radius: 0 3px 0 0;
+  border-left: 1px solid #A0A0A0;
   height: 20px;
   background-color: #F0F0F0;
 }
@@ -56,22 +52,16 @@
   margin-right: 0 !important;
 }
 
-#outputLabel {
-  padding-left: 35px;
-  float: left;
-}
-
 #editor {
   min-width: 100px;
 }
 
 #editorLabel, #outputLabel {
+  float: left;
   background-color: #F0F0F0;
-  border-left: 1px solid #A0A0A0;
+  width: 150px;
+  text-align: center;
   border-right: 1px solid #A0A0A0;
-  border-top: 1px solid #A0A0A0;
-  width: 80px;
-  border-radius: 3px 0 0 0;
 }
 
 #aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
@@ -79,7 +69,7 @@
 }
 
 #aqlEditor {
-  width: 898px;
+  width: 99.8%;
   height: 200px;
   min-height: 100px;
   border: 1px solid #C0C0C0;
@@ -87,7 +77,6 @@
 }
 
 #queryDiv {
-  margin-top: 10px;
   background-color: rgba(0,0,0,0.05);
 }
 
@@ -108,7 +97,7 @@
 }
 
 #queryOutput {
-  width: 898px;
+  width: 99.8%;
   background-color: white;
   height: 200px;
   min-height: 100px;

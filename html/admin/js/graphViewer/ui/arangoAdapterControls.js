@@ -51,16 +51,18 @@ function ArangoAdapterControls(list, adapter) {
               type: "decission",
               id: "collections",
               group: "loadtype",
-              text: "Use Collections",
+              text: "Select existing collections",
               isDefault: true,
               interior: [
                 {
                   type: "list",
                   id: "node-collection",
+                  text: "Vertex collection",
                   objects: nodeCols
                 },{
                   type: "list",
                   id: "edge-collection",
+                  text: "Edge collection",
                   objects: edgeCols
                 }
               ]
@@ -68,7 +70,7 @@ function ArangoAdapterControls(list, adapter) {
               type: "decission",
               id: "graphs",
               group: "loadtype",
-              text: "Use Graph",
+              text: "Select existing graph",
               isDefault: false,
               interior: [
                 {
@@ -106,7 +108,7 @@ function ArangoAdapterControls(list, adapter) {
       idprefix = prefix + "_",
       prioList = adapter.getPrioList();
       uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
-        modalDialogHelper.createModalDialog("Group By Prioritisation",
+        modalDialogHelper.createModalChangeDialog("Group By",
           idprefix, [{
             type: "extendable",
             id: "attribute",

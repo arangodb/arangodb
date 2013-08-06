@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3*/
+/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 
 var dashboardView = Backbone.View.extend({
   el: '#content',
@@ -10,6 +10,7 @@ var dashboardView = Backbone.View.extend({
   seriesData: {},
   charts: {},
   units: [],
+  graphState: {},
   updateNOW: false,
   collectionsStats: {
     "corrupted": 0,
@@ -22,6 +23,7 @@ var dashboardView = Backbone.View.extend({
   detailGraph: "userTime",
 
   initialize: function () {
+    this.loadGraphState();
     this.arangoReplication = new window.ArangoReplication();
     var self = this;
 
@@ -219,7 +221,7 @@ var dashboardView = Backbone.View.extend({
       //TEST
       $('#menuGroups').append(
         '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
-        '<ul id="' + this.group + 'Divider" class="dropdown-menu"></ul>'
+        '<ul id="' + this.group + 'Divider" class="dropdown-menu graphDropdown"></ul>'
       );
       //TEST
 
@@ -253,6 +255,7 @@ var dashboardView = Backbone.View.extend({
       self.renderCharts();
     }
 
+    this.loadGraphState();
     return this;
   },
 
@@ -310,6 +313,7 @@ var dashboardView = Backbone.View.extend({
     else if (toCheck === true) {
       $("#" + preparedId).show();
     }
+    this.saveGraphState();
   },
 
   initUnits : function () {
@@ -394,6 +398,7 @@ var dashboardView = Backbone.View.extend({
     var figure = $(a.target).attr("value");
     $('#'+figure+'Checkbox').prop('checked', false);
     $('#'+figure).hide();
+    this.saveGraphState();
   },
 
   renderDetailChart: function (a) {
@@ -516,6 +521,7 @@ var dashboardView = Backbone.View.extend({
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
       .transition().duration(500);
     });
+    this.loadGraphState();
   },
 
   calculateSeries: function (flush) {
@@ -594,15 +600,42 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  saveGraphState: function () {
+    var self = this;
+    $.each(this.options.description.models[0].attributes.figures, function(k,v) {
+      var identifier = v.identifier;
+      var toCheck = $('#'+identifier+'Checkbox').is(':checked');
+      if (toCheck === true) {
+        self.graphState[identifier] = true;
+      }
+      else {
+        self.graphState[identifier] = false;
+      }
+    });
+    localStorage.setItem("dbGraphState", this.graphState);
+  },
+
+  loadGraphState: function () {
+    localStorage.getItem("dbGraphState");
+    $.each(this.graphState, function(k,v) {
+      if (v === true) {
+        $("#"+k).show();
+      }
+      else {
+        $("#"+k).hide();
+      }
+    });
+  },
+
   renderFigure: function (figure) {
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
       '</h6>'+
-      '<i class="icon-remove icon-white db-hide" value="'+figure.identifier+'"></i>' +
-      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+
+      '<i class="icon-remove db-hide" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-info-sign db-info" value="'+figure.identifier+
       '" title="'+figure.description+'"></i>' +
-      '<i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-zoom-in db-zoom" value="'+figure.identifier+'"></i>' +
       '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
@@ -610,13 +643,13 @@ var dashboardView = Backbone.View.extend({
 
     $('#' + figure.group + 'Divider').append(
       '<li><a><label class="checkbox checkboxLabel">'+
-      '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
+      '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
       placement: "top"
-    }); 
+    });
   }
 
 });

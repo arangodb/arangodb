@@ -3,11 +3,9 @@
 }
 
 select {
-  border-radius: 2px 2px 2px 2px !important;
 }
 
 input {
-  border-radius: 2px 2px 2px 2px !important;
 }
 
 .arango-logo img {
@@ -123,7 +121,9 @@ input {
   margin-top: 44px;
   min-height: 80px;
   height: 100%;
-  width: 98%;
+  width: 100%;
+  margin-left: 20px;
+  margin-left: 0;
 }
 body {
   background-color: white !important;
@@ -202,7 +202,6 @@ table .sorting {
 
 #aboutDiv .row {
   border: 8px solid #F4F3F3 !important;
-  border-radius: 2px 2px 2px 2px;
   margin-bottom: 25px;
   background-color: white;
   padding-top: 10px;
@@ -228,4 +227,32 @@ table .sorting {
 
 .disabledHover:hover {
   background-color: #8F8D8C !important;
+}
+
+/* TESTING DYN */
+
+.container {
+  width: auto !important;
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.row {
+  margin: 0;
+}
+
+.marginRight10 {
+  padding-right: 33px !important;
+}
+
+.form-actions {
+  margin-top: -10px !important;
+}
+
+input,select,option {
+  border-radius: 0 !important;
+}
+
+.glyphicon:hover {
+  cursor: pointer !important;
 }
