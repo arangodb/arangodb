@@ -374,7 +374,7 @@
           expect($("#control_node_list #control_node_labelandcolour")[0]).toConformToListCSS();
       
           helper.simulateMouseEvent("click", "control_node_labelandcolour");
-          $("#control_node_labelandcolour_key").attr("value", "label");
+          $("#control_node_labelandcolour_label-attribute").attr("value", "label");
           helper.simulateMouseEvent("click", "control_node_labelandcolour_submit");
           
           expect(shaper.changeTo).toHaveBeenCalledWith({
