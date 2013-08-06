@@ -57,7 +57,6 @@ var modalDialogHelper = modalDialogHelper || {};
         secondCell = document.createElement("th"),
         thirdCell = document.createElement("th"),
         addRow = document.createElement("button"),
-        addImg = document.createElement("img"),
         newCounter = 1,
         insertRow;
 
@@ -87,10 +86,7 @@ var modalDialogHelper = modalDialogHelper || {};
     
     
       addRow.id = idprefix + "new";
-      addRow.className = "graphViewer-icon-button";
-    
-      addRow.appendChild(addImg);
-      addImg.className = "gv-icon-small add";
+      addRow.className = "graphViewer-icon-button gv-icon-small add";
     
       insertRow = function(value, key) {
         var internalRegex = /^_(id|rev|key|from|to)/,
@@ -100,8 +96,7 @@ var modalDialogHelper = modalDialogHelper || {};
           valueTh = document.createElement("th"),
           deleteInput,
           keyInput,
-          valueInput,
-          delImg;
+          valueInput;
         if (internalRegex.test(key)) {
           return;
         }
@@ -134,13 +129,9 @@ var modalDialogHelper = modalDialogHelper || {};
         actTh.className = "actionCell";
         deleteInput = document.createElement("button");
         deleteInput.id = idprefix + key + "_delete";
-        deleteInput.className = "graphViewer-icon-button";
+        deleteInput.className = "graphViewer-icon-button gv-icon-small delete";
       
         actTh.appendChild(deleteInput);
-      
-        delImg = document.createElement("img");
-        delImg.className = "gv-icon-small delete";
-        deleteInput.appendChild(delImg);
       
         deleteInput.onclick = function() {
           table.removeChild(tr);
