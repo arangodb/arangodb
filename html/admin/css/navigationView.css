@@ -1,4 +1,5 @@
-.arango-nav {
+.navbar .nav > li > a { 
+  padding: 5px 15px 15px !important;
 }
 
 .dropdown-menu li > a:hover, .dropdown-menu li > a:focus, .dropdown-submenu:hover > a {
@@ -27,7 +28,8 @@
 }
 
 body, input, textarea, .page-title span, .pingback a.url {
-  font-family: "Helvetica",sans-serif;
+  /*font-family: "Helvetica",sans-serif;*/
+  font-family: 'Lato', sans-serif;
   font-weight: 300;
 }
 
