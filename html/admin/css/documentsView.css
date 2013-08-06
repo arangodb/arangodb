@@ -52,7 +52,7 @@ table.dataTable td {
 }
 
 #importHeader input {
-  margin-bottom: 6px;
+  margin-bottom: 11px;
 }
 
 #confirmDocImport {
@@ -393,9 +393,11 @@ table.dataTable thead th {
 #documentsToolbarF a , #documentsToolbar a{
   border-radius: 0 !important;
 }
+
 #documentsToolbarF ul, #documentsToolbar ul {
   border-radius: 0 !important;
 }
+
 #documentsToolbarF li ,#documentsToolbar li{
   border-radius: 0 !important;
 }
@@ -416,4 +418,8 @@ table.dataTable thead th {
 
 #documentsToolbar span {
   font-size: 13px !important;
-} 
+}
+
+#resetView, #filterSend, #confirmDocImport {
+  margin-top: 5px;
+}
