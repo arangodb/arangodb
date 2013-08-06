@@ -145,6 +145,7 @@ var queryView = Backbone.View.extend({
     this.renderSelectboxes();
     this.deselect(outputEditor);
     this.deselect(inputEditor);
+
     $('#queryDiv').show();
     outputEditor.setTheme("ace/theme/merbivore_soft");
 
