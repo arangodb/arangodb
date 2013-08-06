@@ -315,13 +315,10 @@
 }
 
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
-  margin-left: 22px !important;
 }
 
 #leftReplicationDiv table, #rightReplicationDiv table {
   width: 100%;
-  padding-left: 20px;
-  padding-right: 20px;
 }
 
 #leftReplicationDiv table tr, #rightReplicationDiv table tr{
@@ -404,3 +401,9 @@
 .statClient:hover {
   opacity: 1 !important;
 }
+
+#detailReplication {
+  background-color: #D9D5D1 !important;
+  border: 0 !important;
+}
+
