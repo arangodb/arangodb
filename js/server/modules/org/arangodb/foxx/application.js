@@ -208,9 +208,23 @@ extend(Application.prototype, {
 
   handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = internal.constructRoute(method, route, callback);
+    var newRoute = internal.constructRoute(method, route, callback),
+      requestContext = new RequestContext(newRoute),
+      summary;
+
     this.routingInfo.routes.push(newRoute);
-    return new RequestContext(newRoute);
+
+    if (this.applicationContext.comments.length > 0) {
+      do {
+        summary = this.applicationContext.comments.shift();
+      } while (summary === "");
+      requestContext.summary(summary || "");
+      requestContext.notes(this.applicationContext.comments.join("\n"));
+    }
+
+    this.applicationContext.clearComments();
+
+    return requestContext;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
