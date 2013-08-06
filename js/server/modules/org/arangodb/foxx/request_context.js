@@ -29,8 +29,42 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var RequestContext,
+  SwaggerDocs,
   extend = require("underscore").extend,
   internal = require("org/arangodb/foxx/internals");
+
+// Wraps the docs object of a route to add swagger compatible documentation
+SwaggerDocs = function (docs) {
+  this.docs = docs;
+};
+
+extend(SwaggerDocs.prototype, {
+  addNickname: function (httpMethod, match) {
+    this.docs.nickname = internal.constructNickname(httpMethod, match);
+  },
+
+  addPathParam: function (paramName, description, dataType) {
+    this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType));
+  },
+
+  addQueryParam: function (paramName, description, dataType, required, allowMultiple) {
+    this.docs.parameters.push(internal.constructQueryParamDoc(
+      paramName,
+      description,
+      dataType,
+      required,
+      allowMultiple
+    ));
+  },
+
+  addSummary: function (summary) {
+    this.docs.summary = summary;
+  },
+
+  addNotes: function (notes) {
+    this.docs.notes = notes;
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_initializer
@@ -46,7 +80,8 @@ RequestContext = function (route) {
     "int": "/[0-9]+/",
     "string": "/.+/"
   };
-  this.route.docs.nickname = internal.constructNickname(route.docs.httpMethod, route.url.match);
+  this.docs = new SwaggerDocs(this.route.docs);
+  this.docs.addNickname(route.docs.httpMethod, route.url.match);
 };
 
 extend(RequestContext.prototype, {
@@ -66,11 +101,7 @@ extend(RequestContext.prototype, {
 
     constraint[paramName] = this.typeToRegex[attributes.dataType];
     this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
-    this.route.docs.parameters.push(internal.constructPathParamDoc(
-      paramName,
-      attributes.description,
-      attributes.dataType
-    ));
+    this.docs.addPathParam(paramName, attributes.description, attributes.dataType);
     return this;
   },
 
@@ -108,13 +139,13 @@ extend(RequestContext.prototype, {
 
   queryParam: function (paramName, attributes) {
     'use strict';
-    this.route.docs.parameters.push(internal.constructQueryParamDoc(
+    this.docs.addQueryParam(
       paramName,
       attributes.description,
       attributes.dataType,
       attributes.required,
       attributes.allowMultiple
-    ));
+    );
     return this;
   },
 
@@ -133,7 +164,7 @@ extend(RequestContext.prototype, {
     if (summary.length > 60) {
       throw new Error("Summary can't be longer than 60 characters");
     }
-    this.route.docs.summary = summary;
+    this.docs.addSummary(summary);
     return this;
   },
 
@@ -148,7 +179,7 @@ extend(RequestContext.prototype, {
 
   notes: function (notes) {
     'use strict';
-    this.route.docs.notes = notes;
+    this.docs.addNotes(notes);
     return this;
   },
 
