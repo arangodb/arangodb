@@ -214,7 +214,7 @@
       });
       
     });
-    
+    /*
     it('should position the first node in the centre', function() {
       runs(function() {    
         standardConfig.nodes = createNodeList(1);
@@ -239,7 +239,7 @@
         expect(nodes[0]).toBeCloseToNode(center);
       });
     });
-    
+    */
     it('should position not linked nodes close to each other', function() {
       runs(function() {
         nodes = createNodeList(4);
@@ -373,7 +373,7 @@
         expect(func({
           source: {},
           target: {}
-        })).toEqual(config.distance);
+        })).toEqual(2 * config.distance);
       });
       
       it('should set the gravity', function() {
@@ -445,7 +445,7 @@
         expect(func({
           source: {},
           target: {}
-        })).toEqual(200);
+        })).toEqual(2 * 200);
       });
       
       it('should be able to switch the gravity', function() {
