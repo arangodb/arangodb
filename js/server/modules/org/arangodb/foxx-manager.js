@@ -67,6 +67,16 @@ function extendContext (context, app, root) {
   context.path = function (name) {
     return fs.join(root, app._path, name);
   };
+
+  context.comments = [];
+
+  context.comment = function (str) {
+    this.comments.push(str);
+  };
+
+  context.clearComments = function () {
+    this.comments = [];
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
