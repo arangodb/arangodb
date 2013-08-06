@@ -181,7 +181,8 @@ table.dataTable thead th {
 .snippet-no-num {
   font-size: 1em;
   font-weight: normal;
-  font-family: Verdana, Arial, sans-serif;
+  /*font-family: Verdana, Arial, sans-serif;*/
+  font-family: 'Lato', sans-serif;
   margin-bottom:0px;
 }
 
