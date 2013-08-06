@@ -31,9 +31,9 @@ function TransformSpec () {
 
       testFileWithJSDocTransformed = [
         "(function() {",
-        "appContext.comment(\"long description\");",
-        "appContext.comment(\"test\");",
-        "appContext.comment(\"\");",
+        "applicationContext.comment(\"long description\");",
+        "applicationContext.comment(\"test\");",
+        "applicationContext.comment(\"\");",
         "  var x = 2;",
         "}());"
       ].join("\n");
@@ -66,7 +66,7 @@ function TransformerSpec () {
 
       transformedLineOne = [
         "(function() {",
-        "appContext.comment(\"long description\");",
+        "applicationContext.comment(\"long description\");",
         "   * test",
         "   */",
         "  var x = 2;",

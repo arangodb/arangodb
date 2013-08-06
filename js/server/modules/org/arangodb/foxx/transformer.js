@@ -94,7 +94,7 @@ extend(Transformer.prototype, {
 
   convertLine: function () {
     this.iterator.replaceWith(
-      "appContext.comment(\"" +
+      "applicationContext.comment(\"" +
       this.stripComment(this.iterator.current()) +
       "\");"
     );
