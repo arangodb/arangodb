@@ -169,7 +169,7 @@ function CommunityNode(parent, initial) {
       updateNodeArray();
       self._size++;
     },
-    
+
     insertInitialNodes = function(ns) {
       _.each(ns, function(n) {
         nodes[n._id] = n;
@@ -409,11 +409,11 @@ function CommunityNode(parent, initial) {
     
     addDistortion = function(distFunc) {
       if (self._expanded) {
-        var oldFocus = distFunc.focus();
-        var newFocus = [
-          oldFocus[0] - self.position.x, 
-          oldFocus[1] - self.position.y
-        ];
+        var oldFocus = distFunc.focus(),
+          newFocus = [
+            oldFocus[0] - self.position.x, 
+            oldFocus[1] - self.position.y
+          ];
         distFunc.focus(newFocus);
         _.each(nodeArray, function(n) {
           n.position = distFunc(n);
@@ -447,13 +447,14 @@ function CommunityNode(parent, initial) {
     
     shapeEdges = function(g, addQue) {
       var idFunction = function(d) {
-        return d._id;
-      };
+          return d._id;
+        },
+	line,
+	interior;
       if (self._expanded) {
-        var line,
-          interior = g
-            .selectAll(".link")
-            .data(intEdgeArray, idFunction);
+        interior = g
+          .selectAll(".link")
+          .data(intEdgeArray, idFunction);
         // Append the group and class to all new    
         interior.enter()
           .append("g")
@@ -469,7 +470,7 @@ function CommunityNode(parent, initial) {
     },
     
     collapseNode = function(n) {
-      removeOutboundEdgesFromNode(n)
+      removeOutboundEdgesFromNode(n);
     };
   
   ////////////////////////////////////
