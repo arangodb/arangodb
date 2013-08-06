@@ -251,7 +251,7 @@ function NodeShaperControls(list, shaper) {
             colourkey = $("#" + idprefix + "colour-attribute").attr("value"),
             selected = $("input[type='radio'][name='colour']:checked").attr("id");
           if (selected === idprefix + "samecolour") {
-            colourkey = key
+            colourkey = key;
           }
           shaper.changeTo({
             label: key,
