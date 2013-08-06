@@ -145,3 +145,8 @@
   width: 515px;
   resize: vertical !important;
 }
+
+#queryOutput .ace_gutter-cell {
+  color: white;
+  background-color: #686766 !important;
+}
