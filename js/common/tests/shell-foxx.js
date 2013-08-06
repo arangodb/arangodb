@@ -393,9 +393,82 @@ function AddMiddlewareFoxxApplicationSpec () {
   };
 }
 
+function CommentDrivenDocumentationSpec () {
+  var app, routingInfo, noop;
+
+  return {
+    setUp: function () {
+      app = new FoxxApplication(fakeContext);
+      routingInfo = app.routingInfo;
+      noop = function () {};
+    },
+
+    testSettingTheSummary: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+    },
+
+    testSettingTheNotes: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
+    },
+
+    testSettingTheSummaryWithAnEmptyFirstLine: function () {
+      fakeContext.comments = [
+        "",
+        "Get all the foxes"
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+    },
+
+    testCleanUpCommentsAfterwards: function () {
+      var clearCommentsWasCalled = false;
+      fakeContext.clearComments = function () { clearCommentsWasCalled = true; };
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+      assertTrue(clearCommentsWasCalled);
+    },
+
+    testSetBothToEmptyStringsIfTheJSDocWasEmpty: function () {
+      fakeContext.comments = [
+        "",
+        "",
+        ""
+      ];
+
+      app.get('/simple/route', noop);
+      assertEqual(routingInfo.routes[0].docs.summary, "");
+      assertEqual(routingInfo.routes[0].docs.notes, "");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
+jsunity.run(CommentDrivenDocumentationSpec);
 
 return jsunity.done();
