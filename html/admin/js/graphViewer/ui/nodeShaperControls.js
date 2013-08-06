@@ -226,7 +226,7 @@ function NodeShaperControls(list, shaper) {
         idprefix, [{
           type: "text",
           id: "label-attribute",
-	  text: "Vertex label attribute"
+          text: "Vertex label attribute"
         },{
           type: "decission",
           id: "samecolour",
@@ -240,11 +240,11 @@ function NodeShaperControls(list, shaper) {
           text: "Use different attribute for coloring",
           isDefault: false,
           interior: [
-          {
-            type: "text",
-            id: "colour-attribute",
-	    text: "Color attribute"
-          }
+            {
+              type: "text",
+              id: "colour-attribute",
+              text: "Color attribute"
+            }
           ]
         }], function () {
           var key = $("#" + idprefix + "label-attribute").attr("value"),
