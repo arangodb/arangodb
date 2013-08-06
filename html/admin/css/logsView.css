@@ -161,6 +161,7 @@ background-color: none !important;
   border-radius: 0 !important;
 }
 
-#logTableID tbody, #infoTableID tbody, #debugTableID tbody, #critTableID tbody, #warnTableID tbody {
-  margin-top: -2px !important;
+#logTableID thead th, #infoTableID thead th, #debugTableID thead th, #critTableID thead th, #warnTableID thead th {
+  border-bottom: 2px solid #F9F9F9 !important;
+  padding-top: 6px;
 }
