@@ -49,6 +49,9 @@
         changeToCollections: function(){},
         getCollections: function(cb) {
           cb(["nodes", "newNodes"], ["edges", "newEdges"]);
+        },
+        getGraphs: function(cb) {
+          cb(["graph", "newGraph"]);
         }
       };
       list = document.createElement("ul");
@@ -97,26 +100,28 @@
     
     describe('change collections control', function() {
       
+      var idPrefix = "#control_adapter_collections";
+
       beforeEach(function() {
         adapterUI.addControlChangeCollections();
         
-        expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);
-        expect($("#control_adapter_list #control_adapter_collections")[0]).toConformToListCSS();
+        expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
+        expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
         helper.simulateMouseEvent("click", "control_adapter_collections");
-        expect($("#control_adapter_collections_modal").length).toEqual(1);
+        expect($(idPrefix + "_modal").length).toEqual(1);
       });
       
       afterEach(function() {
         waitsFor(function() {
-          return $("#control_adapter_collections_modal").length === 0;
+          return $(idPrefix + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
       });
       
       it('should be added to the list', function() {
         runs(function() {
-          $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
-          $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
-          helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+          $(idPrefix + "_node_collection").prop("selectedIndex", 0);
+          $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
             "newNodes",
             "newEdges",
@@ -128,11 +133,11 @@
       it('should change collections and traversal direction to directed', function() {
         runs(function() {
 
-          $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
-          $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
-          $("#control_adapter_collections_undirected").attr("checked", false);
+          $(idPrefix + "_node_collection").prop("selectedIndex", 0);
+          $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
+          $(idPrefix + "_undirected").attr("checked", false);
         
-          helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
       
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
             "newNodes",
@@ -145,11 +150,11 @@
       
       it('should change collections and traversal direction to undirected', function() {
         runs(function() {
-          $("#control_adapter_collections_nodecollection").attr("value", "newNodes");
-          $("#control_adapter_collections_edgecollection").attr("value", "newEdges");
-          $("#control_adapter_collections_undirected").attr("checked", true);
+          $(idPrefix + "_node_collection").prop("selectedIndex", 0);
+          $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
+          $(idPrefix + "_undirected").attr("checked", true);
         
-          helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
       
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
             "newNodes",
@@ -159,10 +164,10 @@
         });
       });
       
-      it('should offer the available collections as lists', function() {
+      it('should offer the available collections as sorted lists', function() {
         runs(function() {
-          var docList = document.getElementById("control_adapter_collections_nodecollection"),
-            edgeList = document.getElementById("control_adapter_collections_edgecollection"),
+          var docList = document.getElementById(idPrefix.substr(1) + "_node_collection"),
+            edgeList = document.getElementById(idPrefix.substr(1) + "_edge_collection"),
             docCollectionOptions = docList.children,
             edgeCollectionOptions = edgeList.children;
            
@@ -172,9 +177,9 @@
           expect(docCollectionOptions.length).toEqual(2);
           expect(docCollectionOptions[0]).toBeTag("option");
           expect(docCollectionOptions[1]).toBeTag("option");
-          expect(docCollectionOptions[0].value).toEqual("nodes");
-          expect(docCollectionOptions[1].value).toEqual("newNodes");
-        
+          
+          expect(docCollectionOptions[0].value).toEqual("newNodes");
+          expect(docCollectionOptions[1].value).toEqual("nodes");
         
           expect(edgeList).toBeTag("select");
           expect(edgeCollectionOptions.length).toEqual(2);
@@ -183,7 +188,7 @@
           expect(edgeCollectionOptions[0].value).toEqual("edges");
           expect(edgeCollectionOptions[1].value).toEqual("newEdges");
         
-          helper.simulateMouseEvent("click", "control_adapter_collections_submit");
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
         });
       });
     });
