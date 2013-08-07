@@ -88,7 +88,7 @@ exports.Foxxes = function () {
   
   // Define the functionality to display all foxxes
   this.viewAll = function () {
-    return aal.toArray();
+    return aal.toArray().concat(foxxmanager.developmentMounts());
   };
   
   // Define the functionality to update one foxx.
