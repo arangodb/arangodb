@@ -143,7 +143,7 @@
           edges,
           "foxx/route"
         );
-        expect(window.NodeReducer).wasCalledWith(nodes, edges);
+        expect(window.NodeReducer).wasCalledWith();
       });
     
       describe('setup correctly', function() {
@@ -163,7 +163,7 @@
             host = route;
           self.fakeReducerRequest = function() {};
           self.fakeReducerBucketRequest = function() {};
-          spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+          spyOn(window, "NodeReducer").andCallFake(function() {
             return {
               getCommunity: function(limit, focus) {
                 if (focus !== undefined) {

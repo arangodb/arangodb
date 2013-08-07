@@ -323,7 +323,7 @@
             height: 40
           }
         );
-        expect(window.NodeReducer).wasCalledWith(nodes, edges);
+        expect(window.NodeReducer).wasCalledWith();
       });
       
       it('should create the ModularityJoiner as a worker', function() {
@@ -362,7 +362,7 @@
           self.fakeReducerBucketRequest = function() {};
           mockWrapper = {};
           mockWrapper.call = function() {};
-          spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+          spyOn(window, "NodeReducer").andCallFake(function() {
             return {
               bucketNodes: function(toSort, numBuckets) {
                 return self.fakeReducerBucketRequest(toSort, numBuckets);

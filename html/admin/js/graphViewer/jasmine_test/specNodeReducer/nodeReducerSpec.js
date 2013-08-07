@@ -6,7 +6,6 @@
 /*global $, _, d3*/
 /*global helper*/
 /*global NodeReducer, WebWorkerWrapper*/
-/*global console*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -43,21 +42,9 @@
     
     describe('setup process', function() {
       
-      it('should throw an error if no nodes are given', function() {
-        expect(function() {
-          var s = new NodeReducer();
-        }).toThrow("Nodes have to be given.");
-      });
-      
-      it('should throw an error if no edges are given', function() {
-        expect(function() {
-          var s = new NodeReducer([]);
-        }).toThrow("Edges have to be given.");
-      });
-      
       it('should not throw an error if mandatory information is given', function() {
         expect(function() {
-          var s = new NodeReducer([], []);
+          var s = new NodeReducer();
         }).not.toThrow();
       });
 
@@ -65,14 +52,10 @@
     
     describe('setup correctly', function() {
       
-      var reducer,
-      nodes,
-      edges;
+      var reducer;
 
       beforeEach(function () {
-        nodes = [];
-        edges = [];
-        reducer = new NodeReducer(nodes, edges);
+        reducer = new NodeReducer();
       });
       
       describe('checking the interface', function() {
@@ -307,7 +290,7 @@
       beforeEach(function () {
         nodes = [];
         prios = ["age", "type"];
-        reducer = new NodeReducer([], [], prios);
+        reducer = new NodeReducer(prios);
         this.addMatchers({
           toContainAll: function(objs) {
             var bucket = this.actual,
