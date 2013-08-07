@@ -35,6 +35,7 @@ var fs = require("fs");
 
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var checkParameter = arangodb.checkParameter;
+var transformScript = require("org/arangodb/foxx/transformer").transform;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -517,7 +518,7 @@ function routingAalApp (app, mount, options) {
 
         extendContext(context, app, root);
 
-        app.loadAppScript(context.appModule, file, context);
+        app.loadAppScript(context.appModule, file, context, { transform: transformScript });
 
         // .............................................................................
         // routingInfo
