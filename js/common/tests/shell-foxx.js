@@ -1,15 +1,22 @@
 require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
-  console = require("console"),
-  arangodb = require("org/arangodb"),
   FoxxApplication = require("org/arangodb/foxx").Application,
-  db = arangodb.db;
+  db = require("org/arangodb").db,
+  fakeContext;
+
+fakeContext = {
+  prefix: "",
+  foxxes: [],
+  comments: [],
+  clearComments: function () {},
+  comment: function () {}
+};
 
 function CreateFoxxApplicationSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}),
+      var app = new FoxxApplication(fakeContext),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -17,7 +24,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}, {urlPrefix: "/wiese"}),
+      var app = new FoxxApplication(fakeContext, {urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -25,7 +32,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}),
+      var app = new FoxxApplication(fakeContext),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
@@ -40,7 +47,7 @@ function SetRoutesFoxxApplicationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxApplication(fakeContext);
     },
 
     testSettingRoutes: function () {
@@ -165,7 +172,7 @@ function DocumentationAndConstraintsSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxApplication(fakeContext);
       routes = app.routingInfo.routes;
     },
 
@@ -321,7 +328,7 @@ function AddMiddlewareFoxxApplicationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxApplication(fakeContext);
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -386,9 +393,82 @@ function AddMiddlewareFoxxApplicationSpec () {
   };
 }
 
+function CommentDrivenDocumentationSpec () {
+  var app, routingInfo, noop;
+
+  return {
+    setUp: function () {
+      app = new FoxxApplication(fakeContext);
+      routingInfo = app.routingInfo;
+      noop = function () {};
+    },
+
+    testSettingTheSummary: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+    },
+
+    testSettingTheNotes: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
+    },
+
+    testSettingTheSummaryWithAnEmptyFirstLine: function () {
+      fakeContext.comments = [
+        "",
+        "Get all the foxes"
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+    },
+
+    testCleanUpCommentsAfterwards: function () {
+      var clearCommentsWasCalled = false;
+      fakeContext.clearComments = function () { clearCommentsWasCalled = true; };
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+      assertTrue(clearCommentsWasCalled);
+    },
+
+    testSetBothToEmptyStringsIfTheJSDocWasEmpty: function () {
+      fakeContext.comments = [
+        "",
+        "",
+        ""
+      ];
+
+      app.get('/simple/route', noop);
+      assertEqual(routingInfo.routes[0].docs.summary, "");
+      assertEqual(routingInfo.routes[0].docs.notes, "");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
+jsunity.run(CommentDrivenDocumentationSpec);
 
 return jsunity.done();
