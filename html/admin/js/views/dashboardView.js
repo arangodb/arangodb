@@ -211,7 +211,7 @@ var dashboardView = Backbone.View.extend({
       $('.thumbnails').append(
         '<ul class="statGroups" id="' + this.group + '">' +
         '<i class="group-close icon-minus icon-white"></i>' +
-        '<h4 class="statsHeader">' + this.name + '</h4>' +
+        '<div id="statsHeaderDiv"><h4 class="statsHeader">' + this.name + '</h4></div>' +
         '</ul>');
 
       //group
