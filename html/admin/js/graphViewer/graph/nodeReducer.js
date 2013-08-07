@@ -29,15 +29,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function NodeReducer(nodes, edges, prioList) {
+function NodeReducer(prioList) {
   "use strict";
-  
-  if (nodes === undefined) {
-    throw "Nodes have to be given.";
-  }
-  if (edges === undefined) {
-    throw "Edges have to be given.";
-  }
   
   prioList = prioList || [];
   

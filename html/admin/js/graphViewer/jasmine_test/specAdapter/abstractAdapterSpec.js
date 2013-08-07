@@ -103,7 +103,7 @@
         loadNode: function(){}
       };
     });
-    /*
+    
     describe('setup process', function() {
       
       it('should throw an error if nodes are not given', function() {
@@ -143,7 +143,7 @@
         var nodes = [],
           edges = [],
           t = new AbstractAdapter(nodes, edges, descendant);
-        expect(window.NodeReducer).wasCalledWith(nodes, edges);
+        expect(window.NodeReducer).wasCalledWith();
       });
       
       it('should send the nodeReducer the configuration if given', function() {
@@ -154,7 +154,7 @@
             prioList: ["foo", "bar", "baz"]
           },
           t = new AbstractAdapter(nodes, edges, descendant, config);
-        expect(window.NodeReducer).wasCalledWith(nodes, edges, ["foo", "bar", "baz"]);        
+        expect(window.NodeReducer).wasCalledWith(["foo", "bar", "baz"]);        
       });
       
       it('should create a ModularityJoiner worker', function() {
@@ -514,7 +514,7 @@
         mockReducer = {};
         mockReducer.getCommunity = function() {};
         mockReducer.bucketNodes = function() {};
-        spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+        spyOn(window, "NodeReducer").andCallFake(function() {
           return {
             bucketNodes: function(toSort, numBuckets) {
               return mockReducer.bucketNodes(toSort, numBuckets);
@@ -1055,7 +1055,7 @@
       });
       
     });
-    */
+
     describe('checking communities', function() {
       
       var adapter,
@@ -1069,7 +1069,7 @@
         mockReducer = {};
         mockReducer.getCommunity = function() {};
         mockReducer.bucketNodes = function() {};
-        spyOn(window, "NodeReducer").andCallFake(function(v, e) {
+        spyOn(window, "NodeReducer").andCallFake(function() {
           return {
             getCommunity: function(limit, focus) {
               if (focus !== undefined) {
@@ -1406,7 +1406,7 @@
       });
       
     });
-    /*
+
     describe('checking information of modularity joiner', function() {
       
       var adapter,
@@ -2453,6 +2453,5 @@
         });
       });
     });
-    */
   });
 }());
