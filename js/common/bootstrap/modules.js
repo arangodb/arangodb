@@ -1148,8 +1148,10 @@ function require (path) {
 /// @brief loadAppScript
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.loadAppScript = function (appModule, file, appContext, context) {
+  ArangoApp.prototype.loadAppScript = function (appModule, file, appContext, options) {
     'use strict';
+
+    options = options || {};
 
     var fileContent;
     var full;
@@ -1158,6 +1160,15 @@ function require (path) {
     try {
       full = fs.join(this._root, this._path, file);
       fileContent = fs.read(full);
+
+      require("org/arangodb").print(require("org/arangodb").inspect(options));
+
+      if (options.hasOwnProperty('transform')) {
+        require("org/arangodb").print("JA");
+        fileContent = options.transform(fileContent);
+      }
+
+      require("org/arangodb").print(fileContent);
     }
     catch (err1) {
       throw "cannot read file '" + full + "': " + err1 + " - " + err1.stack;
@@ -1165,7 +1176,9 @@ function require (path) {
 
     var sandbox = {};
 
-    if (context !== undefined) {
+    if (options.hasOwnProperty('context')) {
+      var context = options.context;
+
       for (key in context) {
         if (context.hasOwnProperty(key) && key !== "__myenv__") {
           sandbox[key] = context[key];
