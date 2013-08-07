@@ -1618,7 +1618,7 @@
         
       });
       
-      it('should be informed if a community is expanded', function() {
+      it('should be informed if a community is dissolved', function() {
         var n1, n2, n3,
           e1, e2;
         n1 = {
@@ -1662,7 +1662,7 @@
         expect(mockWrapper.call).wasCalledWith("deleteEdge", n1._id, n2._id);
         expect(mockWrapper.call).wasCalledWith("deleteEdge", n2._id, n3._id);
         adapter.setNodeLimit(100);
-        adapter.expandCommunity(getCommunityNodes()[0]);
+        adapter.dissolveCommunity(getCommunityNodes()[0]);
         expect(mockWrapper.call).wasCalledWith("insertEdge", n1._id, n2._id);
         expect(mockWrapper.call).wasCalledWith("insertEdge", n2._id, n3._id);
       });
