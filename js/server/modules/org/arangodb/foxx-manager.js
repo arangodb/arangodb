@@ -38,6 +38,16 @@ var checkParameter = arangodb.checkParameter;
 var transformScript = require("org/arangodb/foxx/transformer").transform;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief development mounts
+////////////////////////////////////////////////////////////////////////////////
+
+var DEVELOPMENTMOUNTS = null;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -1013,6 +1023,7 @@ exports.appRoutes = function () {
 exports.developmentRoutes = function () {
   'use strict';
 
+  var mounts = [];
   var routes = [];
 
   var root = module.devAppPath();
@@ -1029,7 +1040,7 @@ exports.developmentRoutes = function () {
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];
         var options = {
-          prefix : prefixFromMount(mount) || undefined
+          prefix : prefixFromMount(mount)
         };
 
         var app = module.createApp(appId, options);
@@ -1050,6 +1061,23 @@ exports.developmentRoutes = function () {
         routes.push(r);
 
         console.log("Mounted dev app '%s' on '%s'", appId, mount);
+
+        var desc =  {
+          _id: "dev/" + app._id,
+          _key: app._id,
+          type: "mount",
+          app: app._id,
+          name: app._name,
+          description: app._manifest.description,
+          author: app._manifest.author,
+          mount: mount,
+          active: true,
+          collectionPrefix: options.prefix,
+          isSystem: app._manifest.isSystem || false,
+          options: options
+        };
+
+        mounts.push(desc);
       }
       catch (err) {
         console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
@@ -1057,7 +1085,25 @@ exports.developmentRoutes = function () {
     }
   }
 
+  DEVELOPMENTMOUNTS = mounts;
+
   return routes;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the development mounts
+///
+/// Must be called after developmentRoutes.
+////////////////////////////////////////////////////////////////////////////////
+
+exports.developmentMounts = function () {
+  'use strict';
+
+  if (DEVELOPMENTMOUNTS === null) {
+    exports.developmentRoutes();
+  }
+
+  return DEVELOPMENTMOUNTS;
 };
 
 // -----------------------------------------------------------------------------

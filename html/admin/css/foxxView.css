@@ -11,10 +11,17 @@
 }
 
 .foxxDescription {
-  width:170px;
+  margin-top: -15px;
+  width:140px;
+  height: 90px;
   float: left;
   text-align: left;
   word-wrap: break-word;
+}
+
+#availableList .foxxDescription {
+  margin-top: 8px !important;
+  height: 60px !important;
 }
 
 .foxxIcon {
