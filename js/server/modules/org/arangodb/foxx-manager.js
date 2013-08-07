@@ -35,6 +35,7 @@ var fs = require("fs");
 
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var checkParameter = arangodb.checkParameter;
+var transformScript = require("org/arangodb/foxx/transformer").transform;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -66,6 +67,16 @@ function extendContext (context, app, root) {
 
   context.path = function (name) {
     return fs.join(root, app._path, name);
+  };
+
+  context.comments = [];
+
+  context.comment = function (str) {
+    this.comments.push(str);
+  };
+
+  context.clearComments = function () {
+    this.comments = [];
   };
 }
 
@@ -507,7 +518,7 @@ function routingAalApp (app, mount, options) {
 
         extendContext(context, app, root);
 
-        app.loadAppScript(context.appModule, file, context);
+        app.loadAppScript(context.appModule, file, context, { transform: transformScript });
 
         // .............................................................................
         // routingInfo
@@ -674,9 +685,9 @@ exports.mount = function (appId, mount, options) {
   // install the application
   // .............................................................................
 
-  var doc;
-
   options = options || { };
+
+  var doc;
 
   try {
     doc = mountAalApp(app, mount, options);
@@ -695,11 +706,14 @@ exports.mount = function (appId, mount, options) {
   }
 
   // .............................................................................
-  // reload
+  // setup & reload
   // .............................................................................
 
-  if (   typeof options.reload === "undefined" 
-      || options.reload === true) {
+  if (typeof options.setup !== "undefined" && options.setup === true) {
+    exports.setup(mount);
+  }
+
+  if (typeof options.reload === "undefined" || options.reload === true) {
     executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
   }
 
@@ -808,13 +822,22 @@ exports.unmount = function (mount) {
 /// * collectionPrefix: the collection prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.purge = function (name) {
+exports.purge = function (key) {
   'use strict';
 
-  var doc = getStorage().firstExample({ type: "app", name: name });
+  checkParameter(
+    "purge(<app-id>)",
+    [ [ "app-id or name", "string" ] ],
+    [ key ] );
+
+  var doc = getStorage().firstExample({ type: "app", app: key });
 
   if (doc === null) {
-    throw new Error("Cannot find application '" + name + "'");
+    doc = getStorage().firstExample({ type: "app", name: key });
+  }
+
+  if (doc === null) {
+    throw new Error("Cannot find application '" + key + "'");
   }
 
   if (doc.isSystem) {
@@ -823,7 +846,7 @@ exports.purge = function (name) {
 
   var purged = [ ];
 
-  var cursor = getStorage().byExample({ type: "mount", name: name });
+  var cursor = getStorage().byExample({ type: "mount", app: doc.app });
 
   while (cursor.hasNext()) {
     var mount = cursor.next();
@@ -842,7 +865,7 @@ exports.purge = function (name) {
   var path = fs.join(module.appPath(), doc.path);
   fs.removeDirectoryRecursive(path, true);
 
-  return { appId: doc.app, name: name, purged: purged };
+  return { appId: doc.app, name: doc.name, purged: purged };
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -113,20 +113,23 @@ HTTP Methods
 Documenting and Constraining the Routes
 ---------------------------------------
 
-If you define a route like described above, you have the option to match parts of the URL to variables. If you, for example, define a route `/animals/:animal` and the URL `animals/foxx` is requested it is matched by this rule. You can then get the value of this variable (in this case "foxx") by calling `request.params("animal")`.
+If you now want to document your route, you can use JSDoc style comments (a multiline comment block with the first line starting with `/**` instead of `/*`) above your routes to do that:
 
-Furthermore you can describe your API by chaining the following methods onto your path definition. With the provided information, Foxx will generate a nice documentation for you. Some of the methods additionally will check certain properties of the request.
+    /** Get all Foxes
+     * 
+     * If you want to get all foxes, please use this
+     * method to do that.
+     */
+    app.get("/foxes", function () {
+      //...
+    });
+
+The first line will be treated as a summary (For optical reasons in the produced documentation, the summary is restricted to 60 characters). All following lines will be treated as additional notes shown in the detailed view of the route documentation. With the provided information, Foxx will generate a nice documentation for you. Furthermore you can describe your API by chaining the following methods onto your path definition:
 
 @copydetails JSF_foxx_RequestContext_pathParam
 
 @CLEARPAGE
 @copydetails JSF_foxx_RequestContext_queryParam
-
-@CLEARPAGE
-@copydetails JSF_foxx_RequestContext_summary
-
-@CLEARPAGE
-@copydetails JSF_foxx_RequestContext_notes
 
 @CLEARPAGE
 @copydetails JSF_foxx_RequestContext_errorResponse

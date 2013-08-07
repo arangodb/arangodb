@@ -547,6 +547,80 @@ function cmdUsage () {
   printf("%s help\n", fm);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetchs github for install
+////////////////////////////////////////////////////////////////////////////////
+
+function fetchGithubForInstall (name) {
+  'use strict';
+
+  // .............................................................................
+  // latest fishbowl version
+  // .............................................................................
+
+  var fishbowl = getFishbowlStorage();
+  var available = fishbowl.firstExample({name: name});
+  var source = null;
+  var version = null;
+
+  if (available !== null) {
+    var keys = [];
+    var key;
+
+    for (key in available.versions) {
+      if (available.versions.hasOwnProperty(key)) {
+        keys.push(key);
+      }
+    }
+
+    keys = keys.sort(module.compareVersions);
+    version = keys[keys.length - 1];
+    source = available.versions[version];
+  }
+
+  // .............................................................................
+  // latest fetched version
+  // .............................................................................
+
+  var appId = null;
+  var aal = getStorage();
+  var cursor = aal.byExample({ type: "app", name: name });
+
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+
+    if (module.compareVersions(version, doc.version) <= 0) {
+      version = doc.version;
+      source = "fetched";
+      appId = doc.app;
+    }
+  }
+
+  // .............................................................................
+  // fetched latest version
+  // .............................................................................
+
+  if (source === null) {
+    throw new Error("Unknown foxx application '" + name + "', use search");
+  }
+
+  if (source !== "fetched") {
+    appId = exports.fetch(source.type, source.location, source.tag).app;
+  }
+
+  return appId;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetchs directory for install
+////////////////////////////////////////////////////////////////////////////////
+
+function fetchDirectoryForInstall (name) {
+  'use strict';
+
+  return exports.fetch("directory", name).app;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -809,58 +883,13 @@ exports.install = function (name, mount, options) {
 
   validateMount(mount);
 
-  // .............................................................................
-  // latest fishbowl version
-  // .............................................................................
+  var appId;
 
-  var fishbowl = getFishbowlStorage();
-  var available = fishbowl.firstExample({name: name});
-  var source = null;
-  var version = null;
-
-  if (available !== null) {
-    var keys = [];
-    var key;
-
-    for (key in available.versions) {
-      if (available.versions.hasOwnProperty(key)) {
-        keys.push(key);
-      }
-    }
-
-    keys = keys.sort(module.compareVersions);
-    version = keys[keys.length - 1];
-    source = available.versions[version];
+  if (name[0] === '.') {
+    appId = fetchDirectoryForInstall(name);
   }
-
-  // .............................................................................
-  // latest fetched version
-  // .............................................................................
-
-  var appId = null;
-  var aal = getStorage();
-  var cursor = aal.byExample({ type: "app", name: name });
-
-  while (cursor.hasNext()) {
-    var doc = cursor.next();
-
-    if (module.compareVersions(version, doc.version) <= 0) {
-      version = doc.version;
-      source = "fetched";
-      appId = doc.app;
-    }
-  }
-
-  // .............................................................................
-  // fetched latest version
-  // .............................................................................
-
-  if (source === null) {
-    throw new Error("Unknown foxx application '" + name + "', use search");
-  }
-
-  if (source !== "fetched") {
-    appId = exports.fetch(source.type, source.location, source.tag).app;
+  else {
+    appId = fetchGithubForInstall(name);
   }
 
   // .............................................................................
@@ -871,8 +900,17 @@ exports.install = function (name, mount, options) {
     throw new Error("Cannot extract application id");
   }
 
+  options = options || {};
+
+  if (typeof options.setup === "undefined") {
+    options.setup = true;
+  }
+
+  if (! options.setup) {
+    options.reload = false;
+  }
+
   var res = exports.mount(appId, mount, options);
-  exports.setup(mount);
 
   return res;
 };
@@ -900,6 +938,11 @@ exports.uninstall = function (mount) {
 
 exports.purge = function (key) {
   'use strict';
+
+  checkParameter(
+    "purge(<app-id>)",
+    [ [ "app-id or name", "string" ] ],
+    [ key ] );
 
   var req = {
     name: key
