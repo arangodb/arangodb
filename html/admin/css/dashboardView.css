@@ -22,8 +22,8 @@
 
 .group-close, .group-open {
   float:right;
-  margin-top: 17px !important;
-  margin-right: 7px !important;
+  margin-top: 18px !important;
+  margin-right: 25px !important;
 }
 
 .db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
@@ -42,9 +42,10 @@
 }
 
 .statGroups {
+  margin-top: 10px !important;
   margin-left: 0px;
   float:left;
-  width: 100%;
+  width: 100% !important;
   margin-bottom: -15px !important;
 }
 
@@ -61,21 +62,20 @@
 
 .statSingleClient {
   height: 300px;
-  width: 99.7%;
+  width: 100% !important;
   margin-top: 10px;
   margin-left: 10px !important;
-  margin-right: 11px;
+  margin-right: 11px !important;
   margin-bottom: 0px !important;
-  border: 1px solid black;
   background-color: #F4F3F3;
 }
 
 .statClient {
   float: left;
   height: 70px;
-  width: 203px;
-  margin-left: 9px;
-  margin-bottom: 12px;
+  width: 230px;
+  margin-left: 8px !important;
+  margin-bottom: 8px !important;
   border: 1px solid black;
   background-color: #F4F3F3;
 }
@@ -106,8 +106,7 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 140px;
-  /*width: 255px;*/
-  width: 272px;
+  width: 300px;
 }
 
 .svgDetailClass {
@@ -136,14 +135,21 @@
   margin-bottom: -15px !important;
 }
 
-.statsHeader {
+#statsHeaderDiv {
+  margin-bottom: 16px;
   margin-top: 12px;
-  margin-left: 10px;
-  margin-right: 10px;
-  width: 100%;
-  background-color: #686766;
+  margin-right: 20px !important;
+  margin-left: 8px !important;
+  padding: 0 !important;
+  height: 24px !important;
+  width: auto !important;
   color: white;
   height: 36px;
+}
+
+.statsHeader {
+  width: 100%;
+  background-color: #686766 !important;
 }
 
 #dashboardHeader {
@@ -409,3 +415,6 @@
   border: 0 !important;
 }
 
+#detailGraphPadding {
+  padding-right: 33px !important;
+}

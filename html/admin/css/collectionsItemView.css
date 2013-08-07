@@ -1,6 +1,6 @@
 .span3 {
   min-height:100px;
-  width: 280px;
+  width: 230px;
   margin-left: 8px !important;
   margin-bottom: 8px !important;
   border: 0px;
@@ -20,7 +20,7 @@
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  width: 264px;
+  width: 214px;
   color: #fff;
   border: 0;
   background:#676665;
