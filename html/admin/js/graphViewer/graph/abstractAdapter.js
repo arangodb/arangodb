@@ -665,9 +665,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   childLimit = Number.POSITIVE_INFINITY;
   
   if (config.prioList) {
-    reducer = new NodeReducer(nodes, edges, config.prioList);
+    reducer = new NodeReducer(config.prioList);
   } else {
-    reducer = new NodeReducer(nodes, edges);
+    reducer = new NodeReducer();
   }
   joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
   
