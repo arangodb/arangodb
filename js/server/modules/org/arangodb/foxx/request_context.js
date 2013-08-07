@@ -31,7 +31,23 @@
 var RequestContext,
   SwaggerDocs,
   extend = require("underscore").extend,
-  internal = require("org/arangodb/foxx/internals");
+  internal = require("org/arangodb/foxx/internals"),
+  createBubbleWrap;
+
+createBubbleWrap = function (handler, errorClass, code, reason) {
+  return function (req, res) {
+    try {
+      handler(req, res);
+    } catch (e) {
+      if (e instanceof errorClass) {
+        res.status(code);
+        res.json({ error: reason });
+      } else {
+        throw e;
+      }
+    }
+  };
+};
 
 // Wraps the docs object of a route to add swagger compatible documentation
 SwaggerDocs = function (docs) {
@@ -185,16 +201,29 @@ extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_errorResponse
-/// @brief Document an error response
+/// @brief Define an error response
 ///
-/// @FUN{FoxxApplication::errorResponse(@FA{code}, @FA{description})}
+/// @FUN{FoxxApplication::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
 ///
-/// Document the error response for a given error @FA{code} with a reason for
-/// the occurrence.
+/// Define a reaction to a thrown error for this route: If your handler throws an error
+/// of the defined errorClass, it will be caught and the response will have the given
+/// status code and a JSON with error set to your description as the body.
+///
+/// It also adds documentation for this error response to the generated documentation.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       throw new FoxxyError();
+///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  errorResponse: function (code, reason) {
+  errorResponse: function (errorClass, code, reason) {
     'use strict';
+    var handler = this.route.action.callback;
+    this.route.action.callback = createBubbleWrap(handler, errorClass, code, reason);
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
     return this;
   }

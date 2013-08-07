@@ -310,15 +310,50 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(error, new Error("Summary can't be longer than 60 characters"));
     },
 
-    testDefineErrorResponse: function () {
+    testDocumentationForErrorResponse: function () {
+      var CustomErrorClass = function () {};
+
       app.get('/foxx', function () {
         //nothing
-      }).errorResponse(400, "I don't understand a word you're saying");
+      }).errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].docs.errorResponses.length, 1);
       assertEqual(routes[0].docs.errorResponses[0].code, 400);
       assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
+    },
+
+    testCatchesDefinedError: function () {
+      var CustomErrorClass = function () {},
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        statusWasCalled = false,
+        jsonWasCalled = false,
+        passedRequestAndResponse = false;
+
+      res = {
+        status: function (givenCode) {
+          statusWasCalled = (givenCode === code);
+        },
+        json: function (givenBody) {
+          jsonWasCalled = (givenBody.error === reason);
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        if (providedReq === req && providedRes === res) {
+          passedRequestAndResponse = true;
+        }
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(statusWasCalled);
+      assertTrue(jsonWasCalled);
+      assertTrue(passedRequestAndResponse);
     }
   };
 }
