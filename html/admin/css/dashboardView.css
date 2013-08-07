@@ -329,7 +329,12 @@
   padding-right: 10px !important;
 }
 
-#leftReplicationDiv table tr, #rightReplicationDiv table tr{
+#leftReplicationDiv table td, #rightReplicationDiv table td {
+  padding-top: 4px;
+  padding-bottom: 5px;
+}
+
+#leftReplicationDiv table tr, #rightReplicationDiv table tr {
   background-color: #F9F9F9 !important;
   padding-top: 3px;
   padding-bottom: 3px;
@@ -348,7 +353,7 @@
 }
 
 .alignLeft {
-  width: 200px !important;
+  width: 240px !important;
   text-align:left !important;
   padding-left: 7px;
 }
