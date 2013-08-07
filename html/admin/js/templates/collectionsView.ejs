@@ -5,7 +5,8 @@
     <div class="btn-group pull-right">
       <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle">Filter <span class="caret"></span></button>
 
-      <ul class="dropdown-menu">
+      <div id="collectionsDropdown" class="dropdown-menu" role="menu">
+        <ul>
         <li class="nav-header">Type</li>
         <li><a href="#">
             <label class="checkbox checkboxLabel">
@@ -27,8 +28,10 @@
             <label class="css-label"></label>Edge
           </label>
         </a></li>
+      </ul>
 
-        <li class="divider"></li>
+        
+        <ul>
         <li class="nav-header">Status</li>
 
         <li><a href="#">
@@ -45,7 +48,8 @@
           </label>
         </a></li>
 
-        <li class="divider"></li>
+      </ul>
+        <ul>
         <li class="nav-header">Sorting</li>
 
         <li><a href="#">
@@ -68,8 +72,9 @@
             <label class="css-label"></label>Sort descending
           </label>
         </a></li>
-
       </ul>
+    </div>
+
     </div>
     <!-- /btn-group -->
 
