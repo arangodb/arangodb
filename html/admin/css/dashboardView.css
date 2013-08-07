@@ -75,7 +75,7 @@
   height: 70px;
   width: 230px;
   margin-left: 8px !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 4px !important;
   border: 1px solid black;
   background-color: #F4F3F3;
 }
@@ -284,6 +284,7 @@
 
 #detailReplicationDiv {
   padding-top: 26px;
+  padding-right: 20px;
 }
 
 #detailReplicationDiv table {
@@ -325,6 +326,7 @@
 
 #leftReplicationDiv table, #rightReplicationDiv table {
   width: 100%;
+  padding-right: 10px !important;
 }
 
 #leftReplicationDiv table tr, #rightReplicationDiv table tr{
@@ -341,6 +343,7 @@
   width: 100%;
   min-height: 150px;
   margin-bottom: 8px;
+  margin-right: 10px;
   margin-top: -20px;
 }
 
@@ -411,7 +414,8 @@
 }
 
 #detailReplication {
-  background-color: #D9D5D1 !important;
+  margin-right: 20px;
+  background-color: transparent !important;
   border: 0 !important;
 }
 
