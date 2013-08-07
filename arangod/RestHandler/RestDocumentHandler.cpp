@@ -172,7 +172,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// @RESTHEADER{POST /_api/document,creates a document}
 ///
 /// @RESTBODYPARAM{document,json,required}
-/// A JSON representation of document.
+/// A JSON representation of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -839,6 +839,9 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTHEADER{PUT /_api/document/`document-handle`,replaces a document}
 ///
+/// @RESTBODYPARAM{document,json,required}
+/// A JSON representation of the new document.
+///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
@@ -1053,6 +1056,9 @@ bool RestDocumentHandler::replaceDocument () {
 /// @brief updates a document
 ///
 /// @RESTHEADER{PATCH /_api/document/`document-handle`,patches a document}
+///
+/// @RESTBODYPARAM{document,json,required}
+/// A JSON representation of the new document.
 ///
 /// @RESTURLPARAMETERS
 ///

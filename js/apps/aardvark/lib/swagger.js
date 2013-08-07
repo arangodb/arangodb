@@ -66,17 +66,27 @@ exports.Swagger = function () {
   
   this.listOne = function(basePath, key) {
     var result = {},
-    res = _aal.document(key);
+      res;
+
+    if (key.substr(0, 4) === "dev:") {
+      res = "/dev/" + key.split(":")[2];
+    }
+    else {
+      res = _aal.document(key).mount;
+    }
+
     result.swaggerVersion = "1.1";
     result.basePath = basePath;
+
     result.apis = [
-      {path: res.mount}
+      {path: res}
     ];
+
     return result;
   },
   
   // Get details of one specific installed foxx. 
-  this.show = function(appname) {
+  this.show = function(mount) {
       var result = {},
       apis = [],
       pathes,
@@ -85,25 +95,22 @@ exports.Swagger = function () {
       url,
       api,
       ops,
-      foxxApp = _aal.firstExample({"mount": appname}),
       app,
-      list;
-      if (!foxxApp.development) {
-        list = foxx_manager.appRoutes();
-      } else {
-        list = foxx_manager.developmentRoutes();
-      }
+      list = foxx_manager.appRoutes().concat(foxx_manager.developmentRoutes());
+
       _.each(list, function(r) {
         var ac = r.appContext;
-        if (ac.appId === foxxApp.app && ac.mount === foxxApp.mount) {
+        if (ac.mount === mount) {
           app = r;
           return;
         }
       });
+
       result.swaggerVersion = "1.1";
       result.basePath = app.urlPrefix;
       result.apis = apis;
       pathes = app.routes;
+
       for (i in pathes) {
         if (pathes[i].url.methods !== undefined) {
           url = pathes[i].url.match;
@@ -116,6 +123,7 @@ exports.Swagger = function () {
           apis.push(api);
         }
       }
+
       return result;
     }
 };
