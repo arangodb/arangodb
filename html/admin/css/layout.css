@@ -116,7 +116,6 @@ input {
   color:#b9d375;
 }
 
-
 #content {
   margin-top: 44px;
   min-height: 80px;
@@ -125,6 +124,7 @@ input {
   margin-left: 20px;
   margin-left: 0;
 }
+
 body {
   background-color: white !important;
   background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;
