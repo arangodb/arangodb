@@ -43,8 +43,12 @@ table.dataTable td {
     margin-right: 0px;
     margin-left: 0px;
     margin-top: -10px;
-    background-color:#686766;
-    border-bottom: 1px solid #a0a0a0;
+    background-color: #F7F6F6;
+    border-left: 1px solid #686766;
+    border-right: 1px solid #686766;
+    border-bottom: 1px solid #686766;
+    /*background-color:#686766;*/
+    /*border-bottom: 1px solid #a0a0a0;*/
     color:#FFF;
     padding: 0 20px;
     position:relative;
@@ -403,6 +407,11 @@ table.dataTable thead th {
   border-radius: 0 !important;
 }
 
+.queryline {
+  color: black;
+  padding-top: 10px;
+}
+
 .querylineAdd {
   margin-left: -17px !important;
 }
@@ -422,5 +431,4 @@ table.dataTable thead th {
 }
 
 #resetView, #filterSend, #confirmDocImport {
-  margin-top: 5px;
 }
