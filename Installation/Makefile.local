@@ -8,18 +8,13 @@ OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
 ## publish
 ################################################################################
 
-.PHONY: publish publish-wiki publish-html publish-pdf publish-copy
+.PHONY: publish publish-html publish-pdf publish-copy
 
-publish: examples publish-wiki publish-html publish-pdf
+publish: examples publish-html publish-pdf
 	make publish-copy
 
 publish-copy:
 	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
-
-publish-wiki:
-	(cd Doxygen/wiki && git checkout --force -- . && git clean -f -d -x && git pull)
-	$(MAKE) wiki
-	(cd Doxygen/wiki && git add *.md; git commit -m "`date`" -a; git push)
 
 publish-html:
 	$(MAKE) doxygen
