@@ -69,93 +69,6 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/server.c
 
-################################################################################
-### @brief wiki pages
-################################################################################
-
-WIKI = \
-	Aql \
-	AqlExamples \
-	ArangoErrors \
-	CommandLine \
-	Communication \
-	Compiling \
-	DbaManual \
-	DbaManualAuthentication \
-	DbaManualBasics \
-	DbaManualDatafileDebugger \
-	DbaManualEmergencyConsole \
-	ExtendingAql \
-	FirstStepsArangoDB \
-	Glossary \
-	Graphs \
-	HandlingCollections \
-	HandlingDocuments \
-	HandlingEdges \
-	HandlingIndexes \
-	Home \
-	HttpAqlFunctions \
-	HttpBatch \
-	HttpCollection \
-	HttpCurrentDatabase \
-	HttpCursor \
-	HttpGraph \
-	HttpImport \
-	HttpIndex \
-	HttpMisc \
-	HttpQuery \
-	HttpReplication \
-	HttpSimple \
-	HttpSystem \
-	HttpTransactions \
-	HttpTraversals \
-	HttpUser \
-	ImpManual \
-	ImpManualBasics \
-	ImplementorManual \
-	ImplementorManualArangoErrors \
-	IndexBitArray \
-	IndexCap \
-	IndexCapHttp \
-	IndexFulltext \
-	IndexFulltextHttp \
-	IndexGeo \
-	IndexGeoHttp \
-	IndexHash \
-	IndexHashHttp \
-	IndexSkiplist \
-	IndexSkiplistHttp \
-	InstallManual \
-	Installing \
-	JSModuleActions \
-	JSModuleConsole \
-	JSModuleFs \
-	JSModuleGraph \
-	JSModules \
-	NamingConventions \
-	NewFeatures11 \
-	NewFeatures12 \
-	NewFeatures13 \
-	RefManual \
-	RefManualArangoErrors \
-	RefManualReplication \
-	RestDocument \
-	RestEdge \
-	SimpleQueries \
-	Transactions \
-	Upgrading \
-	Upgrading11 \
-	Upgrading12 \
-	Upgrading13 \
-	UserManual \
-	UserManualActions \
-	UserManualArangosh \
-	UserManualFoxx \
-	UserManualFoxxManager \
-	UserManualReplication \
-	UserManualWebInterface \
-	jsUnity
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           DOXYGEN
 ## -----------------------------------------------------------------------------
@@ -179,7 +92,6 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
 	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
-	@test -d Doxygen/wiki || mkdir -p Doxygen/wiki
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 	@touch $@
 
@@ -235,25 +147,6 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
-
-################################################################################
-### @brief wiki
-################################################################################
-
-.PHONY: wiki wiki-raw
-
-Doxygen/arango-xml.doxy: Documentation/arango.template Doxygen/toc.doxy
-	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
-	cat Doxygen/toc.doxy >> $@
-
-wiki: wiki-raw
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
-
-wiki-raw: Doxygen/arango-xml.doxy $(DOXYGEN)
-	$(MAKE) lib/BasicsC/voc-errors.h
-	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
 ### @brief latex
