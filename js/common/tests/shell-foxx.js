@@ -354,6 +354,34 @@ function DocumentationAndConstraintsSpec () {
       assertTrue(statusWasCalled);
       assertTrue(jsonWasCalled);
       assertTrue(passedRequestAndResponse);
+    },
+
+    testCatchesDefinedErrorWithCustomFunction: function () {
+      var jsonWasCalled = false,
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        CustomErrorClass = function () {};
+
+      res = {
+        status: function () {},
+        json: function (givenBody) {
+          jsonWasCalled = givenBody.success;
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason, function (e) {
+        if (e instanceof CustomErrorClass) {
+          return { success: "true" };
+        }
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(jsonWasCalled);
     }
   };
 }
