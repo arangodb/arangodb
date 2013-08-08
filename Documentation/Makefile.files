@@ -5,6 +5,95 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief pages
+################################################################################
+
+WIKI = \
+	Aql \
+	AqlExamples \
+	ArangoErrors \
+	CommandLine \
+	Communication \
+	Compiling \
+	DbaManual \
+	DbaManualAuthentication \
+	DbaManualBasics \
+	DbaManualDatafileDebugger \
+	DbaManualEmergencyConsole \
+	ExtendingAql \
+	FirstStepsArangoDB \
+	Glossary \
+	Graphs \
+	HandlingCollections \
+	HandlingDocuments \
+	HandlingEdges \
+	HandlingIndexes \
+	Home \
+	HttpAqlFunctions \
+	HttpBatch \
+	HttpCollection \
+	HttpCurrentDatabase \
+	HttpCursor \
+	HttpGraph \
+	HttpImport \
+	HttpIndex \
+	HttpMisc \
+	HttpQuery \
+	HttpReplication \
+	HttpSimple \
+	HttpSystem \
+	HttpTransactions \
+	HttpTraversals \
+	HttpUser \
+	ImpManual \
+	ImpManualBasics \
+	ImplementorManual \
+	ImplementorManualArangoErrors \
+	IndexBitArray \
+	IndexCap \
+	IndexCapHttp \
+	IndexFulltext \
+	IndexFulltextHttp \
+	IndexGeo \
+	IndexGeoHttp \
+	IndexHash \
+	IndexHashHttp \
+	IndexSkiplist \
+	IndexSkiplistHttp \
+	InstallManual \
+	Installing \
+	JSModuleActions \
+	JSModuleConsole \
+	JSModuleFs \
+	JSModuleGraph \
+	JSModules \
+	NamingConventions \
+	NewFeatures11 \
+	NewFeatures12 \
+	NewFeatures13 \
+	NewFeatures14 \
+	RefManual \
+	RefManualArangoErrors \
+	RefManualReplication \
+	RestDocument \
+	RestEdge \
+	SimpleQueries \
+	Transactions \
+	Upgrading \
+	Upgrading11 \
+	Upgrading12 \
+	Upgrading13 \
+	Upgrading14 \
+	UserManual \
+	UserManualActions \
+	UserManualArangosh \
+	UserManualFoxx \
+	UserManualFoxxManager \
+	UserManualReplication \
+	UserManualWebInterface \
+	jsUnity
+
+################################################################################
 ### @brief TOC files
 ################################################################################
 
