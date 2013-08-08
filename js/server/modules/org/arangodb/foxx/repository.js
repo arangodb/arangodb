@@ -40,27 +40,40 @@ var Repository,
 /// @fn JSF_foxx_repository_initializer
 /// @brief Create a new instance of Repository
 ///
-/// @FUN{new FoxxRepository(@FA{prefix}, @FA{collection}, @FA{model})}
+/// @FUN{new FoxxRepository(@FA{collection}, @FA{opts})}
 ///
 /// Create a new instance of Repository
-/// 
-/// A Foxx Repository is always initialized with the prefix, the collection and
-/// the modelPrototype.  If you initialize a model, you can give it initial data
-/// as an object.
+///
+/// A Foxx Repository is always initialized with a collection object. You can
+/// your collection object by asking your Foxx application for it via the
+/// `collection` method that takes the name of the collection (and will prepend
+/// the prefix of your application). It also takes two optional arguments:
+///
+/// 1. Model: The prototype of a model. If you do not provide it, it will default
+/// to Foxx.Model
+/// 2. Prefix: You can provide the prefix of the application if you need it in
+/// your Repository (for some AQL queries probably). Get it from the Foxx application
+/// via the `collectionPrefix` attribute.
 ///
 /// @EXAMPLES
 ///
 /// @code
-///     instance = new Repository(prefix, collection, modelPrototype);
+///     instance = new Repository(app.collection("my_collection"));
+///     // or:
+///     instance = new Repository(app.collection("my_collection"), {
+///       model: MyModelPrototype,
+///       prefix: app.collectionPrefix,
+///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-Repository = function (prefix, collection, modelPrototype) {
+Repository = function (collection, opts) {
   'use strict';
+  var options = opts || {};
 
-  this.prefix = prefix;
   this.collection = collection;
-  this.modelPrototype = modelPrototype;
+  this.modelPrototype = options.model || require("org/arangodb/foxx/model").Model;
+  this.prefix = options.prefix;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
