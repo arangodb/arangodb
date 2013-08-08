@@ -528,10 +528,41 @@ function CommentDrivenDocumentationSpec () {
   };
 }
 
+function HelperFunctionSpec () {
+  var app;
+
+  return {
+    setUp: function () {
+      fakeContext.collectionPrefix = "fancy";
+      app = new FoxxApplication(fakeContext);
+    },
+
+    testGetACollection: function () {
+      db._create("fancy_pants");
+
+      assertEqual(app.collection("pants"), db._collection("fancy_pants"));
+    },
+
+    testGetACollectionThatDoesNotExist: function () {
+      var err;
+      db._drop("fancy_pants");
+
+      try {
+        app.collection("pants");
+      } catch(e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "collection with name 'fancy_pants' does not exist.");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
+jsunity.run(HelperFunctionSpec);
 
 return jsunity.done();

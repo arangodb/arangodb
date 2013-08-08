@@ -85,9 +85,6 @@ Details on FoxxApplication{#UserManualFoxxDetailsApplication}
 @copydetails JSF_foxx_application_initializer
 
 @CLEARPAGE
-@copydetails JSF_foxx_application_createRepository
-
-@CLEARPAGE
 HTTP Methods
 ------------
 
