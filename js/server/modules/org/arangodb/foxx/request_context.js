@@ -32,16 +32,23 @@ var RequestContext,
   SwaggerDocs,
   extend = require("underscore").extend,
   internal = require("org/arangodb/foxx/internals"),
+  is = require("org/arangodb/is"),
   createBubbleWrap;
 
-createBubbleWrap = function (handler, errorClass, code, reason) {
+createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
+  if (is.notExisty(errorHandler)) {
+    errorHandler = function () {
+      return { error: reason };
+    };
+  }
+
   return function (req, res) {
     try {
       handler(req, res);
     } catch (e) {
       if (e instanceof errorClass) {
         res.status(code);
-        res.json({ error: reason });
+        res.json(errorHandler(e));
       } else {
         throw e;
       }
@@ -209,6 +216,12 @@ extend(RequestContext.prototype, {
 /// of the defined errorClass, it will be caught and the response will have the given
 /// status code and a JSON with error set to your description as the body.
 ///
+/// If you want more control over the returned JSON, you can give an optional fourth
+/// parameter in form of a function. It gets the error as an argument, the return
+/// value will transformed into JSON and then be used as the body.
+/// The status code will be used as described above. The description will be used for
+/// the documentation.
+///
 /// It also adds documentation for this error response to the generated documentation.
 ///
 /// @EXAMPLES
@@ -217,13 +230,22 @@ extend(RequestContext.prototype, {
 ///     app.get("/foxx", function {
 ///       throw new FoxxyError();
 ///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+///
+///     app.get("/foxx", function {
+///       throw new FoxxyError();
+///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
+///       return {
+///         code: 123,
+///         desc: e.description
+///       };
+///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  errorResponse: function (errorClass, code, reason) {
+  errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
     var handler = this.route.action.callback;
-    this.route.action.callback = createBubbleWrap(handler, errorClass, code, reason);
+    this.route.action.callback = createBubbleWrap(handler, errorClass, code, reason, errorHandler);
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
     return this;
   }
