@@ -171,6 +171,9 @@ This is the complete path as supplied by the user as a String.
 @copydetails JSF_foxx_BaseMiddleware_request_body
 
 @CLEARPAGE
+@copydetails JSF_foxx_BaseMiddleware_request_rawBody
+
+@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_request_params
 
 @CLEARPAGE
