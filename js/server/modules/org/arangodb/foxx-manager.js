@@ -37,6 +37,8 @@ var executeGlobalContextFunction = require("internal").executeGlobalContextFunct
 var checkParameter = arangodb.checkParameter;
 var transformScript = require("org/arangodb/foxx/transformer").transform;
 
+var developmentMode = require("internal").developmentMode;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1006,7 +1008,9 @@ exports.appRoutes = function () {
 
       routes.push(r);
 
-      console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+      if (!developmentMode) {
+        console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+      }
     }
     catch (err) {
       console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
