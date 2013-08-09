@@ -113,7 +113,25 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_pathParam
 /// @brief Describe a path parameter
 ///
-/// meow
+/// If you defined a route "/foxx/:id", you can constrain which format a path
+/// parameter (`/foxx/12`) can have by giving it a type.  We currently support
+/// the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx/:id", function {
+///       // Do something
+///     }).pathParam("id", {
+///       description: "Id of the Foxx",
+///       type: "int"
+///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
@@ -122,9 +140,9 @@ extend(RequestContext.prototype, {
       docs = this.route.docs,
       constraint = url.constraint || {};
 
-    constraint[paramName] = this.typeToRegex[attributes.dataType];
+    constraint[paramName] = this.typeToRegex[attributes.type];
     this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
-    this.docs.addPathParam(paramName, attributes.description, attributes.dataType);
+    this.docs.addPathParam(paramName, attributes.description, attributes.type);
     return this;
   },
 
@@ -153,7 +171,7 @@ extend(RequestContext.prototype, {
 ///       // Do something
 ///     }).queryParam("id", {
 ///       description: "Id of the Foxx",
-///       dataType: "int",
+///       type: "int",
 ///       required: true,
 ///       allowMultiple: false
 ///     });
@@ -165,7 +183,7 @@ extend(RequestContext.prototype, {
     this.docs.addQueryParam(
       paramName,
       attributes.description,
-      attributes.dataType,
+      attributes.type,
       attributes.required,
       attributes.allowMultiple
     );
