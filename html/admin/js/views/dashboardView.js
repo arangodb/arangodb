@@ -215,15 +215,15 @@ var dashboardView = Backbone.View.extend({
         '</ul>');
 
       //group
-      //$('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
-      //$('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+      $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
+      $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
 
-      //TEST
+      /*TEST
       $('#menuGroups').append(
         '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
         '<ul id="' + this.group + 'Divider" class="dropdown-menu graphDropdown"></ul>'
       );
-      //TEST
+      */
 
 
       //group entries
@@ -641,7 +641,8 @@ var dashboardView = Backbone.View.extend({
       '</li>'
     );
 
-    $('#' + figure.group + 'Divider').append(
+    console.log(figure.group);
+    $('#' + figure.group + 'Divider').after(
       '<li><a><label class="checkbox checkboxLabel">'+
       '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
       '<label class="css-label"/>' +

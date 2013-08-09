@@ -29,16 +29,15 @@
 
 #tableDiv,
 #logContent {
-  margin-top: -40px;
+  margin-top: 0px;
   padding: 20px 20px 20px 20px;
 /*  background-color: rgba(0, 0, 0, 0.05);*/
 }
 
-#tableDiv .nav-tabs > li,
-#sourceDiv .nav-tabs > li,
-#logContent .nav-tabs > li {
+.arangoTab > li {
   position: relative;
   z-index: 900;
+  margin-left: 2px;
 }
 
 #addDocumentLine {
@@ -118,31 +117,42 @@
     background:#F1F0EE;/* #fdf6df*/
 }
 
-#tableDiv .nav-tabs > .active > a, #tableDiv .nav-tabs > .active > a:hover {
-	border:none;
+
+.arangoTab {
+  margin-bottom:-1px;
+  margin-right: 20px;
 }
 
-#tableDiv .nav-tabs,
-#sourceDiv .nav-tabs {
-	margin-bottom:-1px; border-bottom:#FFFFFF solid 1px;
+.arangoTab > li > a,
+.arangoTab > li:hover > a {
+    border-radius: 0 !important;
+    background-color: #F1F0EE;
+    border-top: 1px solid #C1BDBA;
+    border-left: 1px solid #C1BDBA;
+    border-right: 1px solid #C1BDBA;
+    border-bottom: 1px solid #C1BDBA;
+    font-size: 13px !important;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
-#tableDiv .nav-tabs > li > a,
-#tableDiv .nav-tabs > li:hover > a,
-#sourceDiv .nav-tabs > li > a,
-#sourceDiv .nav-tabs > li:hover > a {
-    border-top: 1px solid #F3EFEC;
-    border-left: 1px solid #F3EFEC;
-    border-right: 1px solid #F3EFEC;
-    border-bottom: 1px solid #F3EFEC;
+.arangoTab > li.active {
+  width: auto;
 }
 
-#tableDiv .nav-tabs > li.active > a,
-#tableDiv .nav-tabs > li:hover.active > a,
-#sourceDiv .nav-tabs > li.active > a,
-#sourceDiv .nav-tabs > li:hover.active > a  {
-	background: #FFF;
-    border: 1px solid #FFF;
+.arangoTab > li > a {
+  background-color: none;
+}
+
+.arangoTab > li.active > a,
+.arangoTab > li:hover.active > a {
+  background: #FFF;
+  border-left: 1px solid #C1BDBA;
+  border-right: 1px solid #C1BDBA;
+  border-top: 1px solid #C1BDBA;
+  border-bottom: 1px solid #FFFFFF;
 }
 
 .rightCell{
@@ -165,7 +175,14 @@
   resize: vertical;
 }
 
-#tableDiv .nav-tabs li {
-  background-color: #F2EEEB !important;
+.arangoTab {
+  margin-bottom: -5px !important;
+}
+
+.arangoTab .nav-tabs li {
   margin-left: 2px;
+}
+
+#logContent .tab-content {
+  margin-top: 5px;
 }

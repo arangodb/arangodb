@@ -35,8 +35,8 @@ var navigationView = Backbone.View.extend({
     $('#content').width(newWidth);
     $('#content').css('margin-left', marginWidth);
     $('#content').css('margin-right', marginWidth);
-    $('.arango-logo').css('margin-left', marginWidth -20);
-    $('.nav-collapse').css('margin-right', marginWidth -20);
+    $('.arango-logo').css('margin-left', marginWidth -15);
+    $('.nav-collapse').css('margin-right', marginWidth -15);
   },
 
   selectMenuItem: function (menuItem) {
