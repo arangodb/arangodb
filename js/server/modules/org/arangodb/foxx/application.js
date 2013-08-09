@@ -73,6 +73,9 @@ Application = function (context, options) {
     routes: []
   };
 
+  // Models for the Documentation
+  this.models = {};
+
   options = options || {};
   urlPrefix = options.urlPrefix || "";
 

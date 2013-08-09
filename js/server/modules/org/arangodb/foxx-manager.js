@@ -33,6 +33,8 @@ var arangodb = require("org/arangodb");
 var console = require("console");
 var fs = require("fs");
 
+var _ = require("underscore");
+
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var checkParameter = arangodb.checkParameter;
 var transformScript = require("org/arangodb/foxx/transformer").transform;
@@ -462,6 +464,7 @@ function routingAalApp (app, mount, options) {
       routes: [],
       middleware: [],
       context: {},
+      models: {},
 
       foxx: true,
 
@@ -547,6 +550,8 @@ function routingAalApp (app, mount, options) {
           var route;
           var j;
           var k;
+
+          _.extend(routes.models, foxx.models);
 
           p = ri.urlPrefix;
 

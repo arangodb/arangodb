@@ -109,6 +109,7 @@ exports.Swagger = function () {
       result.swaggerVersion = "1.1";
       result.basePath = app.urlPrefix;
       result.apis = apis;
+      result.models = app.models;
       pathes = app.routes;
 
       for (i in pathes) {
