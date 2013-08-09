@@ -181,7 +181,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("id", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -190,7 +190,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "id");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, true);
     },
 
     testDefinePathCaseParam: function () {
@@ -198,7 +197,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("idParam", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -207,7 +206,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "idParam");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, true);
     },
 
     testDefineMultiplePathParams: function () {
@@ -215,10 +213,10 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("foxx", {
         description: "Kind of Foxx",
-        dataType: "string"
+        type: "string"
       }).pathParam("id", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -228,14 +226,12 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "foxx");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "string");
-      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "id");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineMultiplePathCaseParams: function () {
@@ -243,10 +239,10 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("foxxParam", {
         description: "Kind of Foxx",
-        dataType: "string"
+        type: "string"
       }).pathParam("idParam", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -256,14 +252,12 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "string");
-      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "idParam");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineQueryParam: function () {
@@ -271,7 +265,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).queryParam("a", {
         description: "The value of an a",
-        dataType: "int",
+        type: "int",
         required: false,
         allowMultiple: true
       });
@@ -283,31 +277,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
       assertEqual(routes[0].docs.parameters[0].required, false);
       assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
-    },
-
-    testDefineMetaData: function () {
-      app.get('/foxx', function () {
-        //nothing
-      }).summary("b").notes("c");
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.nickname, "get_foxx");
-      assertEqual(routes[0].docs.summary, "b");
-      assertEqual(routes[0].docs.notes, "c");
-    },
-
-    testSummaryRestrictedTo60Characters: function () {
-      var error;
-
-      try {
-        app.get('/foxx', function () {
-          //nothing
-        }).summary("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
-      } catch(e) {
-        error = e;
-      }
-
-      assertEqual(error, new Error("Summary can't be longer than 60 characters"));
     },
 
     testDocumentationForErrorResponse: function () {
