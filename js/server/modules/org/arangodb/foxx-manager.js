@@ -1060,8 +1060,6 @@ exports.developmentRoutes = function () {
 
         routes.push(r);
 
-        console.log("Mounted dev app '%s' on '%s'", appId, mount);
-
         var desc =  {
           _id: "dev/" + app._id,
           _key: app._id,
