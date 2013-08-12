@@ -58,6 +58,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     nodeShaper,
     edgeShaper,
     layouter,
+    zoomManager,
     graphContainer,
     nodeContainer,
     edgeContainer,
@@ -95,7 +96,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   parseZoomConfig = function(config) {
     if (config) {
-      self.zoomManager = new ZoomManager(width, height, svg,
+      zoomManager = new ZoomManager(width, height, svg,
         graphContainer, nodeShaper, edgeShaper,
         {}, nodeLimitCallBack);
     }
@@ -162,14 +163,14 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
   
   parseConfig(config || {});
     
-  self.start = function() {
+  this.start = function() {
     layouter.stop();
     nodeShaper.drawNodes(nodes);
     edgeShaper.drawEdges(edges);
     layouter.start();
   };
   
-  self.loadGraph = function(nodeId, callback) {
+  this.loadGraph = function(nodeId, callback) {
 //    loadNode
 //  loadInitialNode
     adapter.loadInitialNode(nodeId, function (node) {
@@ -185,7 +186,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     });
   };
   
-  self.loadGraphWithAttributeValue = function(attribute, value, callback) {
+  this.loadGraphWithAttributeValue = function(attribute, value, callback) {
 //    loadNodeFromTreeByAttributeValue
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
@@ -200,7 +201,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     });
   };
   
-  self.dispatcherConfig = {
+  this.dispatcherConfig = {
     expand: {
       edges: edges,
       nodes: nodes,
@@ -220,8 +221,9 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       adapter: adapter
     }  
   };
-  self.adapter = adapter;
-  self.nodeShaper = nodeShaper;
-  self.edgeShaper = edgeShaper;
-  self.layouter = layouter;
+  this.adapter = adapter;
+  this.nodeShaper = nodeShaper;
+  this.edgeShaper = edgeShaper;
+  this.layouter = layouter;
+  this.zoomManager = zoomManager;
 }

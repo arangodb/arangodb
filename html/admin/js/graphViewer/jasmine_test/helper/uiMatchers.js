@@ -47,7 +47,7 @@ var uiMatchers = uiMatchers || {};
       toBeOfClass: function(name) {
         var el = $(this.actual);
         this.message = function() {
-          return "Expected " + el.className + " to contain " + name; 
+          return "Expected \"" + el.attr("class") + "\" to contain " + name; 
         };
         return el.hasClass(name);
       },

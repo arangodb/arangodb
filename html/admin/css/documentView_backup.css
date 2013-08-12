@@ -28,8 +28,8 @@
 }
 
 #tableDiv, #logContent{
-  margin-top: 10px;
-  padding: 10px 5px 5px 5px;
+  margin-top: 0px;
+  padding: 20px 20px 20px 20px;
 }
 
 #logContent .tab-content {
@@ -51,10 +51,6 @@
 }
 
 #addDocumentLine {
-  padding-top: 7px;
-  padding-right: 0;
-  margin-right: 0;
-  float: right;
   color: black;
 }
 
@@ -63,30 +59,24 @@
   cursor: pointer;
 }
 
-#addRow {
-  margin-right:7px;
-  padding-right: 0;
-}
-
 #deleteRow, #addRow {
-  float: right;
   border: medium none;
   margin-top: -8px;
   background-color: transparent;
 }
 
 #documentTableID {
-  font-weight: 300;
+  font-weight: 500;
   border-collapse:separate;
-  border-spacing:0 0px;
+  border-spacing:0 2px;
+	padding:20px;
+	margin-bottom: 5px;
 	border:1px solid #c1bdba;
   background-color: #FFFFFF;
 }
 
 #documentTableID thead {
   text-align: left;
-  padding-top: 6px;
-  padding-bottom: 6px;
 }
 
 #documentTableID .writeable {
@@ -97,16 +87,10 @@
   cursor: default !important;
 }
 
-#editFirstRow {
-  float:right;
-  text-align:right;
-  margin-right: -15px !important;
-}
-
 #editSecondRow {
   float:right;
   text-align:right;
-  margin-right: -23px !important;
+  margin-right: -5px !important;
 }
 
 #documentTableID .icon-edit {
@@ -118,8 +102,7 @@
 }
 
 #documentTableID.dataTable thead tr {
-/*  background-color: #F1F0EE;*/
-  background-color: #FFFFFF;
+  background-color: #F1F0EE;
 }
 
 #documentTableID .odd,
@@ -130,18 +113,18 @@
 }
 
 #documentTableID .odd {
-	background:#F1F0EE;
+	background:#FFFFFF;
 }
 #documentTableID .even {
-	background:#FFFFFF;
+	background:#F1F0EE;
 }
 
 #documentTableID tr.odd td.sorting_1 {
-    background:#F1F0EE;/* #fdf6df*/
+    background:#FFFFFF; /*#fdfaec*/
 }
 
 #documentTableID tr.even td.sorting_1 {
-    background:#FFFFFF; /*#fdfaec*/
+    background:#F1F0EE;/* #fdf6df*/
 }
 
 .arangoTab > li > a,
@@ -208,18 +191,4 @@
 
 #logContent .tab-content {
   margin-top: 5px;
-}
-
-table.dataTable thead th {
-  padding: 7px 18px 7px 20px;
-}
-
-table.dataTable td {
-  padding: 12px 20px;
-}
-
-.tdRoundButton {
-  padding-top: 7px !important;
-  padding-right: 0px;
-  float: right;
 }

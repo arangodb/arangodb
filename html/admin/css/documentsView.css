@@ -40,11 +40,15 @@ table.dataTable td {
 }
 
 #filterHeader, #importHeader {
-    margin-right: 0px;
-    margin-left: 0px;
+    margin-right: 15px;
+    margin-left: 15px;
     margin-top: -10px;
-    background-color:#686766;
-    border-bottom: 1px solid #a0a0a0;
+    background-color: #F7F6F6;
+    border-left: 1px solid #686766;
+    border-right: 1px solid #686766;
+    border-bottom: 1px solid #686766;
+    /*background-color:#686766;*/
+    /*border-bottom: 1px solid #a0a0a0;*/
     color:#FFF;
     padding: 0 20px;
     position:relative;
@@ -92,7 +96,7 @@ table.dataTable td {
 }
 
 #documentsDiv {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.025);
 }
 
 #documentsTableID thead {
@@ -104,7 +108,7 @@ table.dataTable td {
 }
 
 #documentsTableID_wrapper {
-  padding-top: 30px !important;
+  padding-top: 28px !important;
   padding-bottom: 0px !important;
 }
 
@@ -403,6 +407,11 @@ table.dataTable thead th {
   border-radius: 0 !important;
 }
 
+.queryline {
+  color: black;
+  padding-top: 10px;
+}
+
 .querylineAdd {
   margin-left: -17px !important;
 }
@@ -422,5 +431,4 @@ table.dataTable thead th {
 }
 
 #resetView, #filterSend, #confirmDocImport {
-  margin-top: 5px;
 }

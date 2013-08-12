@@ -1,15 +1,22 @@
 require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
-  console = require("console"),
-  arangodb = require("org/arangodb"),
   FoxxApplication = require("org/arangodb/foxx").Application,
-  db = arangodb.db;
+  db = require("org/arangodb").db,
+  fakeContext;
+
+fakeContext = {
+  prefix: "",
+  foxxes: [],
+  comments: [],
+  clearComments: function () {},
+  comment: function () {}
+};
 
 function CreateFoxxApplicationSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}),
+      var app = new FoxxApplication(fakeContext),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -17,7 +24,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}, {urlPrefix: "/wiese"}),
+      var app = new FoxxApplication(fakeContext, {urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -25,7 +32,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new FoxxApplication({prefix: "", foxxes: []}),
+      var app = new FoxxApplication(fakeContext),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
@@ -40,7 +47,7 @@ function SetRoutesFoxxApplicationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxApplication(fakeContext);
     },
 
     testSettingRoutes: function () {
@@ -165,7 +172,7 @@ function DocumentationAndConstraintsSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxApplication(fakeContext);
       routes = app.routingInfo.routes;
     },
 
@@ -174,7 +181,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("id", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -183,7 +190,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "id");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, true);
     },
 
     testDefinePathCaseParam: function () {
@@ -191,7 +197,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("idParam", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -200,7 +206,6 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "idParam");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, true);
     },
 
     testDefineMultiplePathParams: function () {
@@ -208,10 +213,10 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("foxx", {
         description: "Kind of Foxx",
-        dataType: "string"
+        type: "string"
       }).pathParam("id", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -221,14 +226,12 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "foxx");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "string");
-      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "id");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineMultiplePathCaseParams: function () {
@@ -236,10 +239,10 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).pathParam("foxxParam", {
         description: "Kind of Foxx",
-        dataType: "string"
+        type: "string"
       }).pathParam("idParam", {
         description: "Id of the Foxx",
-        dataType: "int"
+        type: "int"
       });
 
       assertEqual(routes.length, 1);
@@ -249,14 +252,12 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
       assertEqual(routes[0].docs.parameters[0].dataType, "string");
-      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "idParam");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "int");
-      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineQueryParam: function () {
@@ -264,7 +265,7 @@ function DocumentationAndConstraintsSpec () {
         //nothing
       }).queryParam("a", {
         description: "The value of an a",
-        dataType: "int",
+        type: "int",
         required: false,
         allowMultiple: true
       });
@@ -278,40 +279,78 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
     },
 
-    testDefineMetaData: function () {
+    testDocumentationForErrorResponse: function () {
+      var CustomErrorClass = function () {};
+
       app.get('/foxx', function () {
         //nothing
-      }).summary("b").notes("c");
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.nickname, "get_foxx");
-      assertEqual(routes[0].docs.summary, "b");
-      assertEqual(routes[0].docs.notes, "c");
-    },
-
-    testSummaryRestrictedTo60Characters: function () {
-      var error;
-
-      try {
-        app.get('/foxx', function () {
-          //nothing
-        }).summary("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
-      } catch(e) {
-        error = e;
-      }
-
-      assertEqual(error, new Error("Summary can't be longer than 60 characters"));
-    },
-
-    testDefineErrorResponse: function () {
-      app.get('/foxx', function () {
-        //nothing
-      }).errorResponse(400, "I don't understand a word you're saying");
+      }).errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].docs.errorResponses.length, 1);
       assertEqual(routes[0].docs.errorResponses[0].code, 400);
       assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
+    },
+
+    testCatchesDefinedError: function () {
+      var CustomErrorClass = function () {},
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        statusWasCalled = false,
+        jsonWasCalled = false,
+        passedRequestAndResponse = false;
+
+      res = {
+        status: function (givenCode) {
+          statusWasCalled = (givenCode === code);
+        },
+        json: function (givenBody) {
+          jsonWasCalled = (givenBody.error === reason);
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        if (providedReq === req && providedRes === res) {
+          passedRequestAndResponse = true;
+        }
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(statusWasCalled);
+      assertTrue(jsonWasCalled);
+      assertTrue(passedRequestAndResponse);
+    },
+
+    testCatchesDefinedErrorWithCustomFunction: function () {
+      var jsonWasCalled = false,
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        CustomErrorClass = function () {};
+
+      res = {
+        status: function () {},
+        json: function (givenBody) {
+          jsonWasCalled = givenBody.success;
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason, function (e) {
+        if (e instanceof CustomErrorClass) {
+          return { success: "true" };
+        }
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(jsonWasCalled);
     }
   };
 }
@@ -321,7 +360,7 @@ function AddMiddlewareFoxxApplicationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication({prefix: "", foxxes: []});
+      app = new FoxxApplication(fakeContext);
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -386,9 +425,113 @@ function AddMiddlewareFoxxApplicationSpec () {
   };
 }
 
+function CommentDrivenDocumentationSpec () {
+  var app, routingInfo, noop;
+
+  return {
+    setUp: function () {
+      app = new FoxxApplication(fakeContext);
+      routingInfo = app.routingInfo;
+      noop = function () {};
+    },
+
+    testSettingTheSummary: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+    },
+
+    testSettingTheNotes: function () {
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
+    },
+
+    testSettingTheSummaryWithAnEmptyFirstLine: function () {
+      fakeContext.comments = [
+        "",
+        "Get all the foxes"
+      ];
+
+      app.get('/simple/route', noop);
+
+      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+    },
+
+    testCleanUpCommentsAfterwards: function () {
+      var clearCommentsWasCalled = false;
+      fakeContext.clearComments = function () { clearCommentsWasCalled = true; };
+      fakeContext.comments = [
+        "Get all the foxes",
+        "A function to get all foxes from the database",
+        "in a good way."
+      ];
+
+      app.get('/simple/route', noop);
+      assertTrue(clearCommentsWasCalled);
+    },
+
+    testSetBothToEmptyStringsIfTheJSDocWasEmpty: function () {
+      fakeContext.comments = [
+        "",
+        "",
+        ""
+      ];
+
+      app.get('/simple/route', noop);
+      assertEqual(routingInfo.routes[0].docs.summary, "");
+      assertEqual(routingInfo.routes[0].docs.notes, "");
+    }
+  };
+}
+
+function HelperFunctionSpec () {
+  var app;
+
+  return {
+    setUp: function () {
+      fakeContext.collectionPrefix = "fancy";
+      app = new FoxxApplication(fakeContext);
+    },
+
+    testGetACollection: function () {
+      db._create("fancy_pants");
+
+      assertEqual(app.collection("pants"), db._collection("fancy_pants"));
+    },
+
+    testGetACollectionThatDoesNotExist: function () {
+      var err;
+      db._drop("fancy_pants");
+
+      try {
+        app.collection("pants");
+      } catch(e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "collection with name 'fancy_pants' does not exist.");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
+jsunity.run(CommentDrivenDocumentationSpec);
+jsunity.run(HelperFunctionSpec);
 
 return jsunity.done();

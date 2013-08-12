@@ -5,72 +5,7 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief TOC files
-################################################################################
-
-DOXYGEN_TOC = \
-	Documentation/DbaManual/DbaManual.md \
-	Documentation/ImplementorManual/ImplementorManual.md \
-	Documentation/InstallationManual/InstallationManual.md \
-	Documentation/Manual/Home.md \
-	Documentation/RefManual/RefManual.md \
-	Documentation/UserManual/UserManual.md \
-	Documentation/Manual/Upgrading.md
-
-################################################################################
-### @brief install man pages
-################################################################################
-
-dist_man_MANS += \
-	Documentation/man/man1/arangob.1 \
-	Documentation/man/man1/arangoimp.1 \
-	Documentation/man/man1/arangosh.1 \
-        Documentation/man/man8/rcarangod.8 \
-        Documentation/man/man8/arangod.8 \
-        Documentation/man/man8/arango-dfdb.8 \
-        Documentation/man/man8/foxx-manager.8 
-
-################################################################################
-### @brief JavaScript files
-################################################################################
-
-DOXYGEN = \
-	Doxygen/js/actions/api-aqlfunction.c \
-	Doxygen/js/actions/api-collection.c \
-	Doxygen/js/actions/api-current-database.c \
-	Doxygen/js/actions/api-cursor.c \
-	Doxygen/js/actions/api-edges.c \
-	Doxygen/js/actions/api-explain.c \
-	Doxygen/js/actions/api-foxx.c \
-	Doxygen/js/actions/api-graph.c \
-	Doxygen/js/actions/api-index.c \
-	Doxygen/js/actions/api-query.c \
-	Doxygen/js/actions/api-simple.c \
-	Doxygen/js/actions/api-system.c \
-	Doxygen/js/actions/api-transaction.c \
-	Doxygen/js/actions/api-traversal.c \
-	Doxygen/js/actions/api-user.c \
-	Doxygen/js/common/bootstrap/module-console.c \
-	Doxygen/js/common/bootstrap/module-fs.c \
-	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
-	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
-	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
-	Doxygen/js/common/modules/org/arangodb/graph-common.c \
-	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
-	Doxygen/js/common/modules/org/arangodb/users-common.c \
-	Doxygen/js/server/modules/org/arangodb/actions.c \
-	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
-	Doxygen/js/server/modules/org/arangodb/arango-database.c \
-	Doxygen/js/server/modules/org/arangodb/foxx.c \
-	Doxygen/js/server/modules/org/arangodb/graph.c \
-	Doxygen/js/server/modules/org/arangodb/graph/algorithms.c \
-	Doxygen/js/server/modules/org/arangodb/simple-query.c \
-	Doxygen/js/server/server.c
-
-################################################################################
-### @brief wiki pages
+### @brief pages
 ################################################################################
 
 WIKI = \
@@ -136,6 +71,7 @@ WIKI = \
 	NewFeatures11 \
 	NewFeatures12 \
 	NewFeatures13 \
+	NewFeatures14 \
 	RefManual \
 	RefManualArangoErrors \
 	RefManualReplication \
@@ -147,6 +83,7 @@ WIKI = \
 	Upgrading11 \
 	Upgrading12 \
 	Upgrading13 \
+	Upgrading14 \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -155,6 +92,71 @@ WIKI = \
 	UserManualReplication \
 	UserManualWebInterface \
 	jsUnity
+
+################################################################################
+### @brief TOC files
+################################################################################
+
+DOXYGEN_TOC = \
+	Documentation/DbaManual/DbaManual.md \
+	Documentation/ImplementorManual/ImplementorManual.md \
+	Documentation/InstallationManual/InstallationManual.md \
+	Documentation/Manual/Home.md \
+	Documentation/RefManual/RefManual.md \
+	Documentation/UserManual/UserManual.md \
+	Documentation/Manual/Upgrading.md
+
+################################################################################
+### @brief install man pages
+################################################################################
+
+dist_man_MANS += \
+	Documentation/man/man1/arangob.1 \
+	Documentation/man/man1/arangoimp.1 \
+	Documentation/man/man1/arangosh.1 \
+        Documentation/man/man8/rcarangod.8 \
+        Documentation/man/man8/arangod.8 \
+        Documentation/man/man8/arango-dfdb.8 \
+        Documentation/man/man8/foxx-manager.8 
+
+################################################################################
+### @brief JavaScript files
+################################################################################
+
+DOXYGEN = \
+	Doxygen/js/actions/api-aqlfunction.c \
+	Doxygen/js/actions/api-collection.c \
+	Doxygen/js/actions/api-current-database.c \
+	Doxygen/js/actions/api-cursor.c \
+	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-foxx.c \
+	Doxygen/js/actions/api-graph.c \
+	Doxygen/js/actions/api-index.c \
+	Doxygen/js/actions/api-query.c \
+	Doxygen/js/actions/api-simple.c \
+	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-transaction.c \
+	Doxygen/js/actions/api-traversal.c \
+	Doxygen/js/actions/api-user.c \
+	Doxygen/js/common/bootstrap/module-console.c \
+	Doxygen/js/common/bootstrap/module-fs.c \
+	Doxygen/js/common/bootstrap/modules.c \
+	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
+	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
+	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
+	Doxygen/js/common/modules/org/arangodb/graph-common.c \
+	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
+	Doxygen/js/common/modules/org/arangodb/users-common.c \
+	Doxygen/js/server/modules/org/arangodb/actions.c \
+	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
+	Doxygen/js/server/modules/org/arangodb/arango-database.c \
+	Doxygen/js/server/modules/org/arangodb/foxx.c \
+	Doxygen/js/server/modules/org/arangodb/graph.c \
+	Doxygen/js/server/modules/org/arangodb/graph/algorithms.c \
+	Doxygen/js/server/modules/org/arangodb/simple-query.c \
+	Doxygen/js/server/server.c
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           DOXYGEN
@@ -179,7 +181,6 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
 	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
-	@test -d Doxygen/wiki || mkdir -p Doxygen/wiki
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 	@touch $@
 
@@ -235,25 +236,6 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
-
-################################################################################
-### @brief wiki
-################################################################################
-
-.PHONY: wiki wiki-raw
-
-Doxygen/arango-xml.doxy: Documentation/arango.template Doxygen/toc.doxy
-	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
-	cat Doxygen/toc.doxy >> $@
-
-wiki: wiki-raw
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
-
-wiki-raw: Doxygen/arango-xml.doxy $(DOXYGEN)
-	$(MAKE) lib/BasicsC/voc-errors.h
-	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
 ### @brief latex

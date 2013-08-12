@@ -17,9 +17,15 @@ function BaseMiddlewareSpec () {
     },
 
     testBodyFunctionAddedToRequest: function () {
-      request.requestBody = "test";
+      request.requestBody = JSON.stringify({test: 123});
       baseMiddleware(request, response, options, next);
-      assertEqual(request.body(), "test");
+      assertEqual(request.body(), {test: 123});
+    },
+
+    testRawBodyFunctionAddedToRequest: function () {
+      request.requestBody = JSON.stringify({test: 123});
+      baseMiddleware(request, response, options, next);
+      assertEqual(request.rawBody(), JSON.stringify({test: 123}));
     },
 
     testParamFunctionReturnsUrlParameters: function () {

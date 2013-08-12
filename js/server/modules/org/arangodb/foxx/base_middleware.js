@@ -52,14 +52,28 @@ BaseMiddleware = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_BaseMiddleware_request_body
-/// @brief The superfluous `body` function
+/// @brief Get the JSON parsed body of the request
 ///
 /// @FUN{request.body()}
 ///
-/// Get the body of the request
+/// Get the JSON parsed body of the request – if you need the raw version, please
+/// refer to the `rawBody` function.
 ////////////////////////////////////////////////////////////////////////////////
 
       body: function () {
+        return JSON.parse(this.requestBody);
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_BaseMiddleware_request_rawBody
+/// @brief Get the raw body of the request
+///
+/// @FUN{request.rawBody()}
+///
+/// The raw request body, not parsed – just a String.
+////////////////////////////////////////////////////////////////////////////////
+
+      rawBody: function () {
         return this.requestBody;
       },
 

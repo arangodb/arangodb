@@ -33,8 +33,23 @@ var arangodb = require("org/arangodb");
 var console = require("console");
 var fs = require("fs");
 
+var _ = require("underscore");
+
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var checkParameter = arangodb.checkParameter;
+var transformScript = require("org/arangodb/foxx/transformer").transform;
+
+var developmentMode = require("internal").developmentMode;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief development mounts
+////////////////////////////////////////////////////////////////////////////////
+
+var DEVELOPMENTMOUNTS = null;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -66,6 +81,16 @@ function extendContext (context, app, root) {
 
   context.path = function (name) {
     return fs.join(root, app._path, name);
+  };
+
+  context.comments = [];
+
+  context.comment = function (str) {
+    this.comments.push(str);
+  };
+
+  context.clearComments = function () {
+    this.comments = [];
   };
 }
 
@@ -439,6 +464,7 @@ function routingAalApp (app, mount, options) {
       routes: [],
       middleware: [],
       context: {},
+      models: {},
 
       foxx: true,
 
@@ -507,7 +533,7 @@ function routingAalApp (app, mount, options) {
 
         extendContext(context, app, root);
 
-        app.loadAppScript(context.appModule, file, context);
+        app.loadAppScript(context.appModule, file, context, { transform: transformScript });
 
         // .............................................................................
         // routingInfo
@@ -524,6 +550,8 @@ function routingAalApp (app, mount, options) {
           var route;
           var j;
           var k;
+
+          _.extend(routes.models, foxx.models);
 
           p = ri.urlPrefix;
 
@@ -674,9 +702,9 @@ exports.mount = function (appId, mount, options) {
   // install the application
   // .............................................................................
 
-  var doc;
-
   options = options || { };
+
+  var doc;
 
   try {
     doc = mountAalApp(app, mount, options);
@@ -695,11 +723,14 @@ exports.mount = function (appId, mount, options) {
   }
 
   // .............................................................................
-  // reload
+  // setup & reload
   // .............................................................................
 
-  if (   typeof options.reload === "undefined" 
-      || options.reload === true) {
+  if (typeof options.setup !== "undefined" && options.setup === true) {
+    exports.setup(mount);
+  }
+
+  if (typeof options.reload === "undefined" || options.reload === true) {
     executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
   }
 
@@ -808,13 +839,22 @@ exports.unmount = function (mount) {
 /// * collectionPrefix: the collection prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.purge = function (name) {
+exports.purge = function (key) {
   'use strict';
 
-  var doc = getStorage().firstExample({ type: "app", name: name });
+  checkParameter(
+    "purge(<app-id>)",
+    [ [ "app-id or name", "string" ] ],
+    [ key ] );
+
+  var doc = getStorage().firstExample({ type: "app", app: key });
 
   if (doc === null) {
-    throw new Error("Cannot find application '" + name + "'");
+    doc = getStorage().firstExample({ type: "app", name: key });
+  }
+
+  if (doc === null) {
+    throw new Error("Cannot find application '" + key + "'");
   }
 
   if (doc.isSystem) {
@@ -823,7 +863,7 @@ exports.purge = function (name) {
 
   var purged = [ ];
 
-  var cursor = getStorage().byExample({ type: "mount", name: name });
+  var cursor = getStorage().byExample({ type: "mount", app: doc.app });
 
   while (cursor.hasNext()) {
     var mount = cursor.next();
@@ -842,7 +882,7 @@ exports.purge = function (name) {
   var path = fs.join(module.appPath(), doc.path);
   fs.removeDirectoryRecursive(path, true);
 
-  return { appId: doc.app, name: name, purged: purged };
+  return { appId: doc.app, name: doc.name, purged: purged };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -973,7 +1013,9 @@ exports.appRoutes = function () {
 
       routes.push(r);
 
-      console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+      if (!developmentMode) {
+        console.log("Mounted foxx app '%s' on '%s'", appId, mount);
+      }
     }
     catch (err) {
       console.error("Cannot mount foxx app '%s': %s", appId, String(err.stack || err));
@@ -990,6 +1032,7 @@ exports.appRoutes = function () {
 exports.developmentRoutes = function () {
   'use strict';
 
+  var mounts = [];
   var routes = [];
 
   var root = module.devAppPath();
@@ -1006,7 +1049,7 @@ exports.developmentRoutes = function () {
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];
         var options = {
-          prefix : prefixFromMount(mount) || undefined
+          prefix : prefixFromMount(mount)
         };
 
         var app = module.createApp(appId, options);
@@ -1026,7 +1069,22 @@ exports.developmentRoutes = function () {
 
         routes.push(r);
 
-        console.log("Mounted dev app '%s' on '%s'", appId, mount);
+        var desc =  {
+          _id: "dev/" + app._id,
+          _key: app._id,
+          type: "mount",
+          app: app._id,
+          name: app._name,
+          description: app._manifest.description,
+          author: app._manifest.author,
+          mount: mount,
+          active: true,
+          collectionPrefix: options.prefix,
+          isSystem: app._manifest.isSystem || false,
+          options: options
+        };
+
+        mounts.push(desc);
       }
       catch (err) {
         console.error("Cannot read app manifest '%s': %s", m, String(err.stack || err));
@@ -1034,7 +1092,25 @@ exports.developmentRoutes = function () {
     }
   }
 
+  DEVELOPMENTMOUNTS = mounts;
+
   return routes;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the development mounts
+///
+/// Must be called after developmentRoutes.
+////////////////////////////////////////////////////////////////////////////////
+
+exports.developmentMounts = function () {
+  'use strict';
+
+  if (DEVELOPMENTMOUNTS === null) {
+    exports.developmentRoutes();
+  }
+
+  return DEVELOPMENTMOUNTS;
 };
 
 // -----------------------------------------------------------------------------

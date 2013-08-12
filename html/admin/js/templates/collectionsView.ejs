@@ -1,11 +1,22 @@
 <ul class="thumbnails2">
   <div id="transparentHeader">
 
-    <!-- /btn-group -->
-    <div class="btn-group pull-right">
-      <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle">Filter <span class="caret"></span></button>
+    <div class="pagination pagination-small pagination-right">
+      <ul><li class="enabled"><a id="collectionsToggle"><span class="glyphicon glyphicon-cog" title="Settings"></span></a></li></ul>
+    </div>
 
-      <ul class="dropdown-menu">
+    <div id="transparentPlaceholder">
+      <input type="text" id="searchInput" class="searchInput" placeholder="Search..."><img id="searchSubmit" width="16" height="16" src="img/enter_icon.png">
+    </div>
+  </div>
+  <br/>
+
+
+    <div id="collectionsDropdown2">
+
+      <div id="collectionsDropdown">
+
+        <ul>
         <li class="nav-header">Type</li>
         <li><a href="#">
             <label class="checkbox checkboxLabel">
@@ -27,8 +38,9 @@
             <label class="css-label"></label>Edge
           </label>
         </a></li>
+      </ul>
 
-        <li class="divider"></li>
+        <ul>
         <li class="nav-header">Status</li>
 
         <li><a href="#">
@@ -45,7 +57,8 @@
           </label>
         </a></li>
 
-        <li class="divider"></li>
+      </ul>
+        <ul>
         <li class="nav-header">Sorting</li>
 
         <li><a href="#">
@@ -68,20 +81,16 @@
             <label class="css-label"></label>Sort descending
           </label>
         </a></li>
-
       </ul>
     </div>
-    <!-- /btn-group -->
-
-
-    <div id="transparentPlaceholder">
-      <input type="text" id="searchInput" class="searchInput" placeholder="Search..."><img id="searchSubmit" width="16" height="16" src="img/enter_icon.png">
-
 
     </div>
-  </div>
-  <br/>
+
+
+
+
 </ul>
 <ul class="thumbnails">
+  <div class="containerdivNewLine"/>
 </ul>
 

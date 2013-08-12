@@ -105,8 +105,7 @@ constructPathParamDoc = function (paramName, description, dataType) {
     paramType: "path",
     name: paramName,
     description: description,
-    dataType: dataType,
-    required: true
+    dataType: dataType
   };
 };
 

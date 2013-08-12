@@ -15,6 +15,8 @@ var documentView = Backbone.View.extend({
   events: {
     "click #saveDocument"               : "saveDocument",
     //"click #addDocumentLine"          : "addLine",
+    "click #addDocumentLine"          : "addLine",
+    "click #addRow"          : "addLine",
     "click #documentTableID #deleteRow" : "deleteLine",
     "click #sourceView"                 : "sourceView",
     "click #editFirstRow"               : "editFirst",
@@ -145,7 +147,7 @@ var documentView = Backbone.View.extend({
   },
   drawTable: function () {
     var self = this;
-    $(self.table).dataTable().fnAddData([
+/*    $(self.table).dataTable().fnAddData([
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
@@ -153,7 +155,7 @@ var documentView = Backbone.View.extend({
       '<div class="notwriteable"></div>',
       '<button class="enabled" id="addRow"><img id="addDocumentLine"'+
       'class="plusIcon" src="img/plus_icon.png"></button>'
-    ]);
+    ]);*/
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
         $(self.table).dataTable().fnAddData([
@@ -173,8 +175,8 @@ var documentView = Backbone.View.extend({
             self.value2html(value),
             JSON.stringify(value, null, 4),
             '<i class="icon-edit" id="editSecondRow"></i>',
-            '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
-            'width="16" height="16"></button>'
+            '<button class="enabled" id="deleteRow" class="pull-right"><img src="img/icon_delete.png"'+
+            'width="16" height="16" class="tdRoundButton"></button>'
         ]);
       }
     });
@@ -199,8 +201,8 @@ var documentView = Backbone.View.extend({
         this.value2html("editme"),
         JSON.stringify("editme"),
         '<i class="icon-edit" id="editSecondRow"></i>',
-        '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
-        'width="16" height="16"></button>'
+        '<button class="enabled" id="deleteRow" class="pull-right"><img src="img/icon_delete.png"'+
+        'width="16" height="16" class="tdRoundButton"></button>'
       ]
     );
     this.makeEditable();

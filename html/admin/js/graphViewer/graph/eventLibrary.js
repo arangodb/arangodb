@@ -31,8 +31,6 @@
 
 // configs:
 //  expand: {
-//    edges,
-//    nodes,
 //    startCallback,
 //    loadNode,
 //    reshapeNodes
