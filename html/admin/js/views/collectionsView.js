@@ -71,7 +71,7 @@ var collectionsView = Backbone.View.extend({
   },
 
   toggleView: function() {
-    $('#collectionsDropdown2').slideToggle(150);
+    $('#collectionsDropdown2').slideToggle(70);
   },
 
   checkSystem: function () {
