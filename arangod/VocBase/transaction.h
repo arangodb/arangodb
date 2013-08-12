@@ -301,9 +301,7 @@ typedef enum {
   TRI_TRANSACTION_HINT_NONE              = 0,
   TRI_TRANSACTION_HINT_SINGLE_OPERATION  = 1,
   TRI_TRANSACTION_HINT_LOCK_ENTIRELY     = 2,
-  TRI_TRANSACTION_HINT_LOCK_NEVER        = 4,
-  TRI_TRANSACTION_HINT_READ_ONLY         = 8,
-  TRI_TRANSACTION_HINT_SINGLE_COLLECTION = 16
+  TRI_TRANSACTION_HINT_LOCK_NEVER        = 4
 }
 TRI_transaction_hint_e;
 
@@ -312,17 +310,18 @@ TRI_transaction_hint_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_s {
-  TRI_transaction_context_t* _context;        // global context object
-  TRI_voc_tid_t              _id;
-  TRI_transaction_type_e     _type;           // access type (read|write)
-  TRI_transaction_status_e   _status;         // current status
-  TRI_vector_pointer_t       _collections;    // list of participating collections
-  TRI_transaction_hint_t     _hints;          // hints;
-  int                        _nestingLevel;
-  uint64_t                   _timeout;        // timeout for lock acquisition
-  bool                       _hasOperations;  // whether or not there are write operations in the trx
-  bool                       _replicate;      // replicate this transaction?
-  bool                       _waitForSync;    // whether or not the collection had a synchronous op
+  TRI_transaction_context_t*           _context;           // global context object
+  TRI_voc_tid_t                        _id;                // trx id
+  TRI_transaction_type_e               _type;              // access type (read|write)
+  TRI_transaction_status_e             _status;            // current status
+  TRI_vector_pointer_t                 _collections;       // list of participating collections
+  TRI_transaction_hint_t               _hints;             // hints;
+  int                                  _nestingLevel;
+  TRI_server_id_t                      _generatingServer;  // id of server that generated the trx
+  uint64_t                             _timeout;           // timeout for lock acquisition
+  bool                                 _hasOperations;     // whether or not there are write operations in the trx
+  bool                                 _replicate;         // replicate this transaction?
+  bool                                 _waitForSync;       // whether or not the collection had a synchronous op
 }
 TRI_transaction_t;
 
@@ -340,7 +339,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_collection_global_t* _globalInstance;    // pointer to the global instance
 #endif
   TRI_vector_t*                        _operations;        // buffered CRUD operations
-  TRI_voc_tick_t                       _originalTick;      // collection revision at trx start
+  TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
   bool                                 _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool                                 _waitForSync;       // whether or not the collection has waitForSync
@@ -361,16 +360,17 @@ TRI_transaction_collection_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new transaction container
+/// @brief create a new transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const,
+                                          TRI_server_id_t,
                                           bool,
                                           double, 
                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a transaction container
+/// @brief free a transaction 
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeTransaction (TRI_transaction_t* const);

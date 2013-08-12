@@ -1,4 +1,4 @@
-HTTP Interface for bulk imports {#HttpImport}
+HTTP Interface for Bulk Imports {#HttpImport}
 =============================================
 
 @NAVIGATE_HttpImport

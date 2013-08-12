@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
+var errors = arangodb.errors;
 var db = arangodb.db;
 
 var replication = require("org/arangodb/replication");
@@ -51,8 +52,12 @@ function ReplicationSuite () {
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
+  // these must match the values in the Makefile!
+  var replicatorUser = "replicator-user";
+  var replicatorPassword = "replicator-password";
+
   var connectToMaster = function () {
-    arango.reconnect(masterEndpoint, "root", "");
+    arango.reconnect(masterEndpoint, replicatorUser, replicatorPassword);
   };
   
   var connectToSlave = function () {
@@ -60,7 +65,8 @@ function ReplicationSuite () {
   };
 
   var collectionChecksum = function (name) {
-    return db._collection(name).checksum(true).checksum;
+    var c = db._collection(name).checksum(true);
+    return c.checksum + "-" + c.revision;
   };
   
   var collectionCount = function (name) {
@@ -68,10 +74,10 @@ function ReplicationSuite () {
   };
 
 
-  var compare = function (master, slave) {
+  var compare = function (masterFunc, slaveFunc, applierConfiguration) {
     var state = { };
 
-    master(state);  
+    masterFunc(state);  
 
     var masterState = replication.logger.state();
     assertTrue(masterState.state.running);
@@ -84,10 +90,32 @@ function ReplicationSuite () {
     connectToSlave();
     replication.applier.stop();
 
-    replication.applier.properties({ endpoint: masterEndpoint, username: "root", password: "" });
-    replication.applier.start(true);
+    var syncResult = replication.sync({ 
+      endpoint: masterEndpoint, 
+      username: replicatorUser,
+      password: replicatorPassword,
+      verbose: true 
+    });
 
-    console.log("waiting for slave to catch up");
+    assertTrue(syncResult.hasOwnProperty('lastLogTick'));
+  
+    if (typeof applierConfiguration === 'object') {
+      console.log("using special applier configuration: " + JSON.stringify(applierConfiguration));
+    }
+
+    applierConfiguration = applierConfiguration || { };
+    applierConfiguration.endpoint = masterEndpoint;
+    applierConfiguration.username = replicatorUser;
+    applierConfiguration.password = replicatorPassword;
+
+    if (! applierConfiguration.hasOwnProperty('chunkSize')) {
+      applierConfiguration.chunkSize = 16384;
+    }
+
+    replication.applier.properties(applierConfiguration);
+    replication.applier.start(syncResult.lastLogTick);
+
+    // console.log("waiting for slave to catch up");
 
     while (1) {
       var slaveState = replication.applier.state();
@@ -96,15 +124,16 @@ function ReplicationSuite () {
         break;
       }
 
-      if (slaveState.state.lastAppliedContinuousTick === lastTick || 
-          slaveState.state.lastAppliedInitialTick >= lastTick) {
+      if (slaveState.state.lastAppliedContinuousTick === syncResult.lastLogTick || 
+          slaveState.state.lastProcessedContinuousTick === syncResult.lastLogTick ||
+          slaveState.state.lastAvailableContinuousTick === syncResult.lastLogTick) { 
         break;
       }
 
       sleep(1);
     }
 
-    slave(state);
+    slaveFunc(state);
   };
 
   return {
@@ -120,6 +149,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
     
+      replication.logger.properties({ maxEvents: 1048576 });
       replication.logger.start();
     },
 
@@ -130,6 +160,7 @@ function ReplicationSuite () {
     tearDown : function () {
       connectToMaster();
       replication.logger.stop();
+      replication.logger.properties({ maxEvents: 1048576 });
       
       db._drop(cn);
       db._drop(cn2);
@@ -138,6 +169,120 @@ function ReplicationSuite () {
       replication.applier.stop();
       db._drop(cn);
       db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid credentials
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCredentials1 : function () {
+      var configuration = {
+        endpoint: masterEndpoint,
+        username: replicatorUser,
+        password: replicatorPassword + "xx" // invalid
+      };
+
+      try {
+        replication.applier.properties();
+      }
+      catch (err) {
+        require("internal").print(err);
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid credentials
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCredentials2 : function () {
+      var configuration = {
+        endpoint: masterEndpoint,
+        username: replicatorUser + "xx", // invalid
+        password: replicatorPassword
+      };
+
+      try {
+        replication.applier.properties();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid credentials
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidCredentials3 : function () {
+      var configuration = {
+        endpoint: masterEndpoint,
+        username: "root",
+        password: "abc"
+      };
+
+      try {
+        replication.applier.properties();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test exceeding cap
+////////////////////////////////////////////////////////////////////////////////
+
+    testCapped : function () {
+      connectToMaster();
+      // set a low cap which we'll exceed easily
+      replication.logger.properties({ maxEvents: 4096 });
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 50000; ++i) {
+            c.save({ "value" : i });
+          }
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(50000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test not exceeding cap
+////////////////////////////////////////////////////////////////////////////////
+
+    testUncapped : function () {
+      connectToMaster();
+      // set a low cap which we'll exceed easily
+      replication.logger.properties({ maxEvents: 0, maxEventsSize: 0 });
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 50000; ++i) {
+            c.save({ "value" : i });
+          }
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(50000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        }
+      );
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,6 +359,33 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocuments4 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 50000; ++i) {
+            c.save({ "_key" : "test" + i, "foo" : "bar", "baz" : "bat" });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(50000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        },
+        {
+          chunkSize: 512
         }
       );
     },
@@ -409,6 +581,48 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test big transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionBig : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          db._executeTransaction({
+            collections: { 
+              write: cn
+            },
+            action: function (params) {
+              var c = require("internal").db._collection(params.cn), i;
+
+              for (i = 0; i < 50000; ++i) {
+                c.save({ "_key" : "test" + i, value : i });
+                c.update("test" + i, { value : i + 1 });
+
+                if (i % 5 == 0) {
+                  c.remove("test" + i);
+                }
+              }
+            },
+            params: { "cn" : cn }, 
+          });
+          
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(40000, state.count);
+        },
+        function (state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        },
+        {
+          chunkSize: 2048
         }
       );
     },

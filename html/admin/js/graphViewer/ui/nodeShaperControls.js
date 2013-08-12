@@ -123,7 +123,7 @@ function NodeShaperControls(list, shaper) {
     var prefix = "control_node_label",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
-      modalDialogHelper.createModalDialog("Switch Label Attribute",
+      modalDialogHelper.createModalChangeDialog("Change label attribute",
         idprefix, [{
           type: "text",
           id: "key"
@@ -222,34 +222,36 @@ function NodeShaperControls(list, shaper) {
     var prefix = "control_node_labelandcolour",
       idprefix = prefix + "_";
     uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
-      modalDialogHelper.createModalDialog("Switch Label Attribute",
+      modalDialogHelper.createModalChangeDialog("Change label attribute",
         idprefix, [{
           type: "text",
-          id: "label-attribute"
+          id: "label-attribute",
+          text: "Vertex label attribute"
         },{
           type: "decission",
           id: "samecolour",
           group: "colour",
-          text: "Use same for colour",
+          text: "Use this attribute for coloring, too",
           isDefault: true
         },{
           type: "decission",
           id: "othercolour",
           group: "colour",
-          text: "Use other for colour",
+          text: "Use different attribute for coloring",
           isDefault: false,
           interior: [
-          {
-            type: "text",
-            id: "colour-attribute"
-          }
+            {
+              type: "text",
+              id: "colour-attribute",
+              text: "Color attribute"
+            }
           ]
         }], function () {
           var key = $("#" + idprefix + "label-attribute").attr("value"),
             colourkey = $("#" + idprefix + "colour-attribute").attr("value"),
             selected = $("input[type='radio'][name='colour']:checked").attr("id");
           if (selected === idprefix + "samecolour") {
-            colourkey = key
+            colourkey = key;
           }
           shaper.changeTo({
             label: key,

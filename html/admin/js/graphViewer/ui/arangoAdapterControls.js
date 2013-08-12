@@ -51,16 +51,18 @@ function ArangoAdapterControls(list, adapter) {
               type: "decission",
               id: "collections",
               group: "loadtype",
-              text: "Use Collections",
+              text: "Select existing collections",
               isDefault: true,
               interior: [
                 {
                   type: "list",
-                  id: "node-collection",
+                  id: "node_collection",
+                  text: "Vertex collection",
                   objects: nodeCols
                 },{
                   type: "list",
-                  id: "edge-collection",
+                  id: "edge_collection",
+                  text: "Edge collection",
                   objects: edgeCols
                 }
               ]
@@ -68,7 +70,7 @@ function ArangoAdapterControls(list, adapter) {
               type: "decission",
               id: "graphs",
               group: "loadtype",
-              text: "Use Graph",
+              text: "Select existing graph",
               isDefault: false,
               interior: [
                 {
@@ -81,9 +83,18 @@ function ArangoAdapterControls(list, adapter) {
               type: "checkbox",
               id: "undirected"
             }], function () {
-              var nodes = $("#" + idprefix + "node-collection").attr("value"),
-                edges = $("#" + idprefix + "edge-collection").attr("value"),
-                graph = $("#" + idprefix + "graph").attr("value"),
+              var nodes = $("#" + idprefix + "node_collection")
+                .children("option")
+                .filter(":selected")
+                .text(),
+                edges = $("#" + idprefix + "edge_collection")
+                  .children("option")
+                  .filter(":selected")
+                  .text(),
+                graph = $("#" + idprefix + "graph")
+                  .children("option")
+                  .filter(":selected")
+                  .text(),
                 undirected = !!$("#" + idprefix + "undirected").attr("checked"),
                 selected = $("input[type='radio'][name='loadtype']:checked").attr("id");
               if (selected === idprefix + "collections") {
@@ -106,7 +117,7 @@ function ArangoAdapterControls(list, adapter) {
       idprefix = prefix + "_",
       prioList = adapter.getPrioList();
       uiComponentsHelper.createButton(baseClass, list, "Group By", prefix, function() {
-        modalDialogHelper.createModalDialog("Group By Prioritisation",
+        modalDialogHelper.createModalChangeDialog("Group By",
           idprefix, [{
             type: "extendable",
             id: "attribute",

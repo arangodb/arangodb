@@ -35,7 +35,6 @@ unittests-brief: \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
-	unittests-replication \
 	unittests-arangob \
 	unittests-import \
 	unittests-upgrade \
@@ -201,7 +200,7 @@ unittests-make:
 
 unittests-codebase-static:
 	@rm -f duplicates.test
-	@(find lib arangosh arangod arangoirb -regex ".*/.*\.\(c\|h\|cpp\)" -printf "%f\n" | sort | uniq -c | grep -v "^ \+1 \+" > duplicates.test) || true
+	@(find lib arangosh arangod arangoirb -regex ".*/.*\.\(c\|h\|cpp\)" -print | cut -d "/" -f2-9 | tr "[:upper:]" "[:lower:]" | sort | uniq -c | grep -v "^ \+1 \+" > duplicates.test) || true
 	@if [ "`grep " " duplicates.test`" != "" ]; then echo ; echo "Duplicate filenames found. These should be fixed to allow compilation with Visual Studio:"; cat duplicates.test; rm -f duplicates.test; false; fi
 	@rm -f duplicates.test
 
@@ -306,13 +305,6 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
 
-
-if ENABLE_REPLICATION
-SHELL_COMMON += \
-               @top_srcdir@/js/common/tests/shell-replication.js
-
-endif
-
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
@@ -322,6 +314,12 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
+               @top_srcdir@/js/common/tests/shell-foxx-repository.js \
+               @top_srcdir@/js/common/tests/shell-foxx-model.js \
+               @top_srcdir@/js/common/tests/shell-foxx-base-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-template-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-format-middleware.js \
+               @top_srcdir@/js/common/tests/shell-foxx-transformer.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
@@ -568,14 +566,63 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-data unittests-replication-logger
+.PHONY: unittests-replication unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data unittests-replication-logger
 	
-if ENABLE_REPLICATION
+unittests-replication: unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data unittests-replication-logger
 
-unittests-replication: unittests-replication-data unittests-replication-logger
+unittests-replication-server:
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION SERVER TESTS                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+unittests-replication-client:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION CLIENT TESTS                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/shell-replication.js || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+unittests-replication-http:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION HTTP TESTS                                                     >>"
+	@echo "================================================================================"
+	@echo
+
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests-replication || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 unittests-replication-data:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
 	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
 
 	@echo
@@ -584,15 +631,15 @@ unittests-replication-data:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('org/arangodb/users').save('replicator-user', 'replicator-password', true); require('org/arangodb/users').reload();"
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-data.js || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 	kill `cat $(SLAVEPIDFILE)`
-
 	while test -f $(PIDFILE); do sleep 1; done
 	while test -f $(SLAVEPIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
 	@rm -rf "$(VOCDIR)"
 	@rm -rf "$(SLAVEDIR)"
 	@echo
@@ -606,29 +653,10 @@ unittests-replication-logger:
 
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --replication.enable-logger true $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
-
+	@echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 	@rm -rf "$(VOCDIR)"
 	@echo
-
-else
-
-unittests-replication:
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION TESTS                                                          >>"
-	@echo "================================================================================"
-	@echo
-	@echo "to enable replication tests, configure with --enable-replication"
-	@echo
-
-
-unittests-replication-data:
-
-unittests-replication-logger:
-
-endif
 
 ################################################################################
 ### @brief UPGRADE TESTS

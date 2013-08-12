@@ -255,7 +255,7 @@ typedef struct TRI_col_info_s {
   TRI_col_version_t  _version;         // collection version
   TRI_col_type_e     _type;            // collection type
   TRI_voc_cid_t      _cid;             // collection identifier
-  TRI_voc_tick_t     _tick;            // last tick
+  TRI_voc_rid_t      _revision;        // last revision id written
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
@@ -336,7 +336,9 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetDirectoryCollection (char const*,
-                                  const TRI_col_info_t* const);
+                                  char const*,
+                                  TRI_col_type_e,
+                                  TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection

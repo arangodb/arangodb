@@ -29,6 +29,7 @@ var collectionsView = Backbone.View.extend({
     }, this);
 
     //append info icon for loaded collections
+    /*
     $('.loaded').parent().prev().append(
       '<i class="icon-info-sign show-info-view" alt="Show collection properties"'+
       'title="Show collection properties"></i>'
@@ -36,6 +37,12 @@ var collectionsView = Backbone.View.extend({
     $('.unloaded').parent().prev().append(
       '<i class="icon-info-sign disabled-info-view" alt="disabled"'+
       'title="disabled"></i>'
+    );*/
+    $('.loaded').parent().prev().append(
+      '<span class="glyphicon glyphicon-info-sign spanInfo ICON" alt="Collection properties"</span>'
+    );
+    $('.unloaded').parent().prev().append(
+      '<span class="glyphicon glyphicon-info-sign spanDisabled ICON" alt="disabled"</span>'
     );
 
     $('#searchInput').val(searchOptions.searchPhrase);
@@ -58,7 +65,12 @@ var collectionsView = Backbone.View.extend({
     "click #checkEdge"      : "checkEdge",
     "click #sortName"       : "sortName",
     "click #sortType"       : "sortType",
-    "click #sortOrder"      : "sortOrder"
+    "click #sortOrder"      : "sortOrder",
+    "click #transparentHeader .btn-group .dropdown-toggle" : "slideEffect"
+  },
+
+  slideEffect: function (e) {
+    $(e.target).next('.dropdown-menu').slideToggle(150);
   },
 
   checkSystem: function () {

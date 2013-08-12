@@ -1474,7 +1474,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
     TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
 
-    if (listJson != 0 && n > 0) {
+    if (listJson != 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_ObjectToJson(item);

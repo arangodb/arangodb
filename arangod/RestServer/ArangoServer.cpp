@@ -135,12 +135,10 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
                             RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
 
-#ifdef TRI_ENABLE_REPLICATION
   // add replication handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::REPLICATION_PATH,
                             RestHandlerCreator<RestReplicationHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
-#endif  
 
   // add upload handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -202,11 +200,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _forceSyncProperties(true),
     _forceSyncShapes(true),
     _multipleDatabases(false),
+    _disableReplicationLogger(false),
+    _disableReplicationApplier(false),
     _removeOnCompacted(true),
     _removeOnDrop(true),
-#ifdef TRI_ENABLE_REPLICATION    
-    _replicationEnableLogger(false),
-#endif    
     _vocbase(0) {
 
   // locate path to binary
@@ -361,16 +358,6 @@ void ArangoServer::buildApplicationServer () {
   ;
   
   // .............................................................................
-  // replication options
-  // .............................................................................
-
-#ifdef TRI_ENABLE_REPLICATION 
-  additional[ApplicationServer::OPTIONS_REPLICATION + ":help-replication"]
-    ("replication.enable-logger", &_replicationEnableLogger, "enable replication logger")
-  ;
-#endif  
-
-  // .............................................................................
   // database options
   // .............................................................................
 
@@ -404,6 +391,8 @@ void ArangoServer::buildApplicationServer () {
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
     ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
+    ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
+    ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
 
 
@@ -519,6 +508,8 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   LOGGER_INFO("using default language '" << languageName << "'");
+
+  TRI_SetupReplicationVocBase(_disableReplicationLogger, _disableReplicationApplier);
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
@@ -1162,7 +1153,7 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->removeOnDrop);
   defaults.removeOnCompacted = doc.getBooleanValue("removeOnCompacted", 
           systemDefaults->removeOnCompacted);
-  defaults.defaultMaximalSize = (TRI_voc_size_t) doc.getNumericValue("defaultMaximalSize", 
+  defaults.defaultMaximalSize = (TRI_voc_size_t) doc.getNumericValue<uint64_t>("defaultMaximalSize", 
           systemDefaults->defaultMaximalSize);
   defaults.defaultWaitForSync = doc.getBooleanValue("waitForSync", 
           systemDefaults->defaultWaitForSync);
@@ -1174,10 +1165,6 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->requireAuthentication);
   defaults.authenticateSystemOnly = doc.getBooleanValue("authenticateSystemOnly",
           systemDefaults->authenticateSystemOnly);
-#ifdef TRI_ENABLE_REPLICATION
-  defaults.replicationEnableLogger = doc.getBooleanValue("replicationEnableLogger", 
-          systemDefaults->replicationEnableLogger);
-#endif
   
   // open/load database
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), dbName.c_str(), &defaults);
@@ -1397,9 +1384,6 @@ void ArangoServer::openDatabases () {
   defaults.forceSyncProperties           = _forceSyncProperties;
   defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
-#ifdef TRI_ENABLE_REPLICATION  
-  defaults.replicationEnableLogger       = _replicationEnableLogger;
-#endif  
   
   // store these settings as initial system defaults
   TRI_SetSystemDefaultsVocBase(&defaults);
@@ -1407,7 +1391,7 @@ void ArangoServer::openDatabases () {
   // open/load the first database
   _vocbase = TRI_OpenVocBase(_databasePath.c_str(), TRI_VOC_SYSTEM_DATABASE, &defaults);
 
-  if (_vocbase == NULL) {
+  if (_vocbase == 0) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }

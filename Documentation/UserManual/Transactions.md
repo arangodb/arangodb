@@ -4,7 +4,6 @@ Transactions {#Transactions}
 @NAVIGATE_Transactions
 @EMBEDTOC{TransactionsTOC}
 
-
 Introduction {#TransactionsIntroduction}
 ========================================
 
@@ -24,7 +23,6 @@ These *ACID* properties provide the following guarantees:
   transactions that have committed will be made persistent. The amount of
   transaction durability is configurable in ArangoDB, as is the durability
   on collection level.
-
 
 Transaction invocation {#TransactionsInvocation}
 ================================================
@@ -53,7 +51,6 @@ This function will then automatically start a transaction, execute all required
 data retrieval and/or modification operations, and at the end automatically 
 commit the transaction. If an error occurs during transaction execution, the
 transaction is automatically aborted, and all changes are rolled back.
-
 
 Declaration of collections
 ==========================
@@ -103,7 +100,6 @@ Note that it is currently optional to specify collections for read-only access.
 Even without specifying them, it is still possible to read from such collections
 from within a transaction, but with relaxed isolation. Please refer to 
 @ref TransactionsLocking for more details.
-
 
 Declaration of data modification and retrieval operations
 =========================================================
@@ -188,7 +184,6 @@ case, the user can return any legal Javascript value from the function:
         return "hello"; 
       }
     });
-
 
 Examples
 ========
@@ -303,7 +298,6 @@ start. The following example using a cap constraint should illustrate that:
 
     /* we now have these keys back: [ "key2", "key3", "key4" ] */
 
-
 Cross-collection transactions
 =============================
 
@@ -359,7 +353,6 @@ transaction abort and roll back all changes in all collections:
     db.c1.count(); /* 0 */
     db.c2.count(); /* 0 */
 
-
 Passing parameters to transactions {#TransactionsParameters}
 ============================================================
 
@@ -391,7 +384,6 @@ Some example that uses collections:
       }
     });
 
-
 Disallowed operations {#TransactionsDisallowedOperations}
 =========================================================
 
@@ -402,7 +394,6 @@ Some operations are not allowed inside ArangoDB transactions:
 If an attempt is made to carry out any of these operations during a transaction,
 ArangoDB will abort the transaction with error code `1653 (disallowed operation inside
 transaction)`.
-
 
 Locking and isolation {#TransactionsLocking}
 ============================================
@@ -473,7 +464,6 @@ transaction. The total lock wait time may thus be much higher than the value of
 
 To avoid both deadlocks and non-repeatable reads, all collections used in a 
 transaction should always be specified if known in advance.
-
 
 Durability {#TransactionsDurability}
 ====================================
@@ -549,7 +539,6 @@ synchronisation for multi-collection transactions in ArangoDB.
 The disk sync speed of the system will thus be the most important factor for the 
 performance of multi-collection transactions.
 
-
 Limitations {#TransactionsLimitations}
 ======================================
 
@@ -588,4 +577,3 @@ It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
 
 Please refer to @ref TransactionsLocking for more details.
-

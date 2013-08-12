@@ -426,6 +426,46 @@ namespace triagens {
         bool _multipleDatabases;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the replication logger on server startup
+///
+/// @CMDOPT{\--server.disable-replication-logger @CA{flag}}
+///
+/// If @LIT{true} the server will start with the replication logger turned off,
+/// even if the replication logger is configured with the `autoStart` option.
+/// Using this option will not change the value of the `autoStart` option in
+/// the logger configuration, but will suppress auto-starting the replication 
+/// logger just once.
+///
+/// If the option is not used, ArangoDB will read the logger configuration from
+/// the file `REPLICATION-LOGGER-CONFIG` on startup, and use the value of the
+/// `autoStart` attribute from this file.
+///
+/// The default is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableReplicationLogger;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the replication applier on server startup
+///
+/// @CMDOPT{\--server.disable-replication-applier @CA{flag}}
+///
+/// If @LIT{true} the server will start with the replication applier turned off,
+/// even if the replication applier is configured with the `autoStart` option.
+/// Using the command-line option will not change the value of the `autoStart`
+/// option in the applier configuration, but will suppress auto-starting the 
+/// replication applier just once.
+///
+/// If the option is not used, ArangoDB will read the applier configuration from
+/// the file `REPLICATION-APPLIER-CONFIG` on startup, and use the value of the
+/// `autoStart` attribute from this file.
+///
+/// The default is @LIT{false}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableReplicationApplier;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on compaction
 ///
 /// @CMDOPT{\--database.remove-on-compaction @CA{flag}}
@@ -511,14 +551,6 @@ namespace triagens {
 
         string _defaultLanguage;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable replication logging
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_REPLICATION
-        bool _replicationEnableLogger;
-#endif
- 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////

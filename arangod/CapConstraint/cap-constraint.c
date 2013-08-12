@@ -31,6 +31,7 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/headers.h"
+#include "VocBase/server-id.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT
@@ -135,7 +136,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     vocbase = primary->base._vocbase;
     cid = primary->base._info._cid;
 
-    trx = TRI_CreateTransaction(vocbase->_transactionContext, true, 0.0, false);
+    trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_GetServerId(), true, 0.0, false);
 
     if (trx == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -207,8 +208,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveIndexCapConstraint (TRI_index_t* idx,
-                                      TRI_primary_collection_t* collection) {
-  collection->_capConstraint = NULL;
+                                      TRI_primary_collection_t* primary) {
+  primary->_capConstraint = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,6 +288,11 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   TRI_index_t* idx;
 
   cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+
+  if (cap == NULL) {
+    return NULL;
+  }
+
   idx = &cap->base;
 
   idx->typeName = TypeNameCapConstraint;

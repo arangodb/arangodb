@@ -601,6 +601,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     
     collapseNode = function(node) {
       node._expanded = false;
+      if (joinedInCommunities[node._id]) {
+        cachedCommunities[joinedInCommunities[node._id]].collapseNode(node);
+      }
       var removedEdges = removeOutboundEdgesFromNode(node);
       _.each(removedEdges, handleRemovedEdge);
     },
@@ -620,7 +623,6 @@ function AbstractAdapter(nodes, edges, descendant, config) {
     
     expandNode = function(n, startCallback) {
       if (n._isCommunity) {
-        console.log("Adapter Explore!");
         self.expandCommunity(n, startCallback);
       } else {
         n._expanded = true;
@@ -663,9 +665,9 @@ function AbstractAdapter(nodes, edges, descendant, config) {
   childLimit = Number.POSITIVE_INFINITY;
   
   if (config.prioList) {
-    reducer = new NodeReducer(nodes, edges, config.prioList);
+    reducer = new NodeReducer(config.prioList);
   } else {
-    reducer = new NodeReducer(nodes, edges);
+    reducer = new NodeReducer();
   }
   joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
   

@@ -1,6 +1,21 @@
 v1.4
 ----
 
+
+v1.4.0-alpha1 (2013-08-02)
+--------------------------
+
+* added replication. check online manual for details.
+
+* added server startup options `--server.disable-replication-logger` and 
+  `--server.disable-replication-applier`
+
+* removed action deployment tool, this now handled with Foxx and its manager or
+  by kaerus node utility
+
+* fixed a server crash when using byExample / firstExample inside a transaction
+  and the collection contained a usable hash/skiplist index for the example
+
 * defineHttp now only expects a single context
 
 * added collection detail dialog (web interface)
@@ -258,7 +273,7 @@ v1.4
 * issue #512: Binded Parameters for LIMIT
 
 
-v1.3.3 (XXXX-XX-XX)
+v1.3.3 (2013-08-01)
 -------------------
 
 * issue #570: updateFishbowl() fails once
@@ -270,7 +285,7 @@ v1.3.3 (XXXX-XX-XX)
 * added missing error reporting for errors that happened during import of edges
 
 
-v1.3.2 (2013-XX-XX)
+v1.3.2 (2013-06-21)
 -------------------
 
 * fixed memleak in internal.download()

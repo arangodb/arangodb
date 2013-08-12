@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3*/
+/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 
 var dashboardView = Backbone.View.extend({
   el: '#content',
@@ -10,6 +10,7 @@ var dashboardView = Backbone.View.extend({
   seriesData: {},
   charts: {},
   units: [],
+  graphState: {},
   updateNOW: false,
   collectionsStats: {
     "corrupted": 0,
@@ -22,11 +23,12 @@ var dashboardView = Backbone.View.extend({
   detailGraph: "userTime",
 
   initialize: function () {
+    this.loadGraphState();
     this.arangoReplication = new window.ArangoReplication();
     var self = this;
 
     this.initUnits();
-    this.addCustomCharts();
+    //this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
@@ -59,7 +61,7 @@ var dashboardView = Backbone.View.extend({
             error: function() {
               // need to flush previous values
               self.calculateSeries(true);
-              arangoHelper.arangoError("Lost connection to Database!");
+              arangoHelper.arangoError("Lost connection to database!");
               self.renderCharts();
             }
           });
@@ -76,7 +78,8 @@ var dashboardView = Backbone.View.extend({
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",
     "click .group-close"           : "hideGroup",
-    "click .group-open"            : "showGroup"
+    "click .group-open"            : "showGroup",
+    "click .dashSwitch"            : "showCategory"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
@@ -98,10 +101,10 @@ var dashboardView = Backbone.View.extend({
   },
 
   putReplicationStatus: function () {
-    var time;
-    var clientString = '-';
+    var loggerRunning  = this.replLogState.state.running;
+    var applierRunning = this.replApplyState.state.running;
 
-    if (this.replApplyState.state.running === true) {
+    if (applierRunning || this.replApplyState.state.lastError !== '') {
       $('#detailReplication').height(290);
       $('.checkApplyRunningStatus').show();
     }
@@ -109,19 +112,15 @@ var dashboardView = Backbone.View.extend({
       $('.checkApplyRunningStatus').hide();
     }
 
-    time = this.replLogState.state.time;
+    var time = this.replLogState.state.time;
 
-    var runningLog;
-    if (this.replLogState.state.running === true) {
-      runningLog = '<div class="trueClass">true</div>';
-    }
-    else {
-      runningLog = '<div class="falseClass">false</div>';
-    }
+    var cls = loggerRunning ? 'true' : 'false';
+    var runningLog = '<div class="' + cls + 'Class">' + cls + '</div>';
 
+    var clientString = '-';
     if (this.replLogState.state.clients) {
       $.each(this.replLogState.state.clients, function(k,v) {
-        clientString = clientString + "Server: "+v.serverId+" | Time: "+v.time+"\n";
+        clientString = clientString + "Server: " + v.serverId + " | Time: " + v.time + "\n";
       });
     }
 
@@ -130,37 +129,35 @@ var dashboardView = Backbone.View.extend({
       lastLog = '-';
     }
 
+    var numEvents = this.replLogState.state.totalEvents || 0;
+
     //log table
     $('#logRunningVal').html(runningLog);
+    $('#logTotalEventsVal').text(numEvents);
     $('#logTimeVal').text(time);
     $('#logLastTickVal').text(lastLog);
     $('#logClientsVal').text(clientString);
 
 
     //apply table
-    var lastAppliedTick;
-    var phase = "-";
+    var lastAppliedTick = "-";
+    var lastAvailableTick = "-";
     var progress = "-";
     var lastError = "-";
     var endpoint = "-";
+    var numRequests = "-";
+    var numFailed = "-";
 
-    if (this.replApplyState.state.lastAppliedContinuousTick === null) {
-      lastAppliedTick = this.replApplyState.state.lastAppliedInitialTick;
-    }
-    else {
+    if (this.replApplyState.state.lastAppliedContinuousTick !== null) {
       lastAppliedTick = this.replApplyState.state.lastAppliedContinuousTick;
     }
 
-    if (lastAppliedTick === null) {
-      lastAppliedTick = "-";
+    if (this.replApplyState.state.lastAvailableContinuousTick !== null) {
+      lastAvailableTick = this.replApplyState.state.lastAvailableContinuousTick;
     }
 
     if (this.replApplyState.state.endpoint !== undefined) {
       endpoint = this.replApplyState.state.endpoint;
-    }
-
-    if (this.replApplyState.state.currentPhase) {
-      phase = this.replApplyState.state.currentPhase.label;
     }
 
     time = this.replApplyState.state.time;
@@ -172,23 +169,24 @@ var dashboardView = Backbone.View.extend({
     if (this.replApplyState.state.lastError) {
       lastError = this.replApplyState.state.lastError.errorMessage;
     }
-    var runningApply;
-    if (this.replApplyState.state.running === true) {
-      runningApply = '<div class="trueClass">true</div>';
-    }
-    else {
-      runningApply = '<div class="falseClass">false</div>';
-    }
 
+    cls = applierRunning ? 'true' : 'false';
+    var runningApply = '<div class="' + cls + 'Class">' + cls + '</div>';
+
+    numEvents = this.replApplyState.state.totalEvents || 0;
+    numRequests = this.replApplyState.state.totalRequests || 0;
+    numFailed = this.replApplyState.state.totalFailedConnects || 0;
 
     $('#applyRunningVal').html(runningApply);
     $('#applyEndpointVal').text(endpoint);
     $('#applyLastAppliedTickVal').text(lastAppliedTick);
-    $('#applyCurrentPhaseLabelVal').text(phase);
+    $('#applyLastAvailableTickVal').text(lastAvailableTick);
     $('#applyTimeVal').text(time);
     $('#applyProgressVal').text(progress);
+    $('#applyTotalEventsVal').text(numEvents);
+    $('#applyTotalRequestsVal').text(numRequests);
+    $('#applyTotalFailedVal').text(numFailed);
     $('#applyLastErrorVal').text(lastError);
-
   },
 
   render: function() {
@@ -213,10 +211,22 @@ var dashboardView = Backbone.View.extend({
       $('.thumbnails').append(
         '<ul class="statGroups" id="' + this.group + '">' +
         '<i class="group-close icon-minus icon-white"></i>' +
-        '<h4 class="statsHeader">' + this.name + '</h4>' +
+        '<div id="statsHeaderDiv"><h4 class="statsHeader">' + this.name + '</h4></div>' +
         '</ul>');
+
+      //group
       $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
       $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+
+      /*TEST
+      $('#menuGroups').append(
+        '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
+        '<ul id="' + this.group + 'Divider" class="dropdown-menu graphDropdown"></ul>'
+      );
+      */
+
+
+      //group entries
       if (self.options.description.models[0].attributes.groups.length === counter) {
         $('#'+this.group+'Divider').addClass('dbNotVisible');
       }
@@ -245,6 +255,7 @@ var dashboardView = Backbone.View.extend({
       self.renderCharts();
     }
 
+    this.loadGraphState();
     return this;
   },
 
@@ -302,6 +313,7 @@ var dashboardView = Backbone.View.extend({
     else if (toCheck === true) {
       $("#" + preparedId).show();
     }
+    this.saveGraphState();
   },
 
   initUnits : function () {
@@ -357,6 +369,24 @@ var dashboardView = Backbone.View.extend({
     $(group).addClass("groupHidden");
   },
 
+  showCategory: function (e) {
+    var id = e.target.id;
+    if (id === 'replSwitch') {
+      $('#statSwitch').removeClass('activeSwitch');
+      $('#'+id).addClass('activeSwitch');
+      $('#detailGraph').hide();
+      $('.statGroups').hide();
+      $('#detailReplication').show();
+    }
+    else if (id === 'statSwitch') {
+      $('#'+id).addClass('activeSwitch');
+      $('#replSwitch').removeClass('activeSwitch');
+      $('#detailReplication').hide();
+      $('#detailGraph').show();
+      $('.statGroups').show();
+    }
+  },
+
   showGroup: function (a) {
     var group = $(a.target).parent();
     $(a.target).removeClass('icon-plus group-open');
@@ -368,6 +398,7 @@ var dashboardView = Backbone.View.extend({
     var figure = $(a.target).attr("value");
     $('#'+figure+'Checkbox').prop('checked', false);
     $('#'+figure).hide();
+    this.saveGraphState();
   },
 
   renderDetailChart: function (a) {
@@ -490,6 +521,7 @@ var dashboardView = Backbone.View.extend({
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
       .transition().duration(500);
     });
+    this.loadGraphState();
   },
 
   calculateSeries: function (flush) {
@@ -568,29 +600,57 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
+  saveGraphState: function () {
+    var self = this;
+    $.each(this.options.description.models[0].attributes.figures, function(k,v) {
+      var identifier = v.identifier;
+      var toCheck = $('#'+identifier+'Checkbox').is(':checked');
+      if (toCheck === true) {
+        self.graphState[identifier] = true;
+      }
+      else {
+        self.graphState[identifier] = false;
+      }
+    });
+    localStorage.setItem("dbGraphState", this.graphState);
+  },
+
+  loadGraphState: function () {
+    localStorage.getItem("dbGraphState");
+    $.each(this.graphState, function(k,v) {
+      if (v === true) {
+        $("#"+k).show();
+      }
+      else {
+        $("#"+k).hide();
+      }
+    });
+  },
+
   renderFigure: function (figure) {
     $('#' + figure.group).append(
       '<li class="statClient" id="' + figure.identifier + '">' +
       '<div class="boxHeader"><h6 class="dashboardH6">' + figure.name +
       '</h6>'+
-      '<i class="icon-remove icon-white db-hide" value="'+figure.identifier+'"></i>' +
-      '<i class="icon-info-sign icon-white db-info" value="'+figure.identifier+
+      '<i class="icon-remove db-hide" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-info-sign db-info" value="'+figure.identifier+
       '" title="'+figure.description+'"></i>' +
-      '<i class="icon-zoom-in icon-white db-zoom" value="'+figure.identifier+'"></i>' +
+      '<i class="icon-zoom-in db-zoom" value="'+figure.identifier+'"></i>' +
       '</div>' +
       '<div class="statChart" id="' + figure.identifier + 'Chart"><svg class="svgClass"/></div>' +
       '</li>'
     );
 
-    $('#' + figure.group + 'Divider').before(
+    console.log(figure.group);
+    $('#' + figure.group + 'Divider').after(
       '<li><a><label class="checkbox checkboxLabel">'+
-      '<input class="css-checkbox" type="checkbox" id=' + figure.identifier + 'Checkbox checked/>' +
+      '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
     $('.db-info').tooltip({
       placement: "top"
-    }); 
+    });
   }
 
 });

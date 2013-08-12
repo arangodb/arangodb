@@ -39,19 +39,31 @@ table.dataTable td {
   margin-top: -65px !important;
 }
 
-#filterHeader {
+#filterHeader, #importHeader {
     margin-right: 0px;
     margin-left: 0px;
     margin-top: -10px;
-    background-color:#686766;
-    border-bottom: 1px solid #a0a0a0;
+    background-color: #F7F6F6;
+    border-left: 1px solid #686766;
+    border-right: 1px solid #686766;
+    border-bottom: 1px solid #686766;
+    /*background-color:#686766;*/
+    /*border-bottom: 1px solid #a0a0a0;*/
     color:#FFF;
     padding: 0 20px;
     position:relative;
     top: 8px;
 }
 
-#filterHeader #sendFilter {
+#importHeader input {
+  margin-bottom: 11px;
+}
+
+#confirmDocImport {
+  margin-right: 0px;
+}
+
+#filterHeader #sendFilter{
     margin-right: 0px;
     margin-left: 0px;
     margin-top: -10px;
@@ -105,14 +117,13 @@ table.dataTable td {
 }
 
 #documentsTableID {
-   margin-left: 20px !important;
-}
-#documentsTableID,
-#logContent .dataTable {
-  	width: 900px; !important;
+   padding-left: 20px !important;
+   padding-right: 20px !important;
+  	width: 100% !important;
+    position: relative;
   	table-layout:fixed !important;
   	border-collapse:separate;
-	border-spacing:0 5px;
+	border-spacing:0 2px;
 }
 
 table.dataTable thead th {
@@ -121,36 +132,20 @@ table.dataTable thead th {
 
 #documentsTableID.dataTable thead tr,
 #logContent .dataTable thead tr {
-    background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
-    background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
-    background-image: linear-gradient(top, #f3efec, #ebe7e3);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
 	border:1px solid #c1bdba;
 }
 
 #documentsTableID.dataTable tr,
 #logContent .dataTable tr {
-    -webkit-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-    -moz-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
-    box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
 }
 
 #documentsTableID .odd,
 #documentsTableID .even,
 #logContent .odd,
 #logContent .even {
-	margin-bottom: 5px;
-    background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
-    background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
-    background-image: linear-gradient(top, #ffffff, #f5f5f5);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+	margin-bottom: 2px;
     border:1px solid #c1bdba;
+    background-color: #F9F9F9;
 }
 
 
@@ -160,46 +155,24 @@ table.dataTable thead th {
 #logContent .even:hover {
   border: 1px solid #fbdb7e;
   cursor: pointer;
-  background-image: -moz-linear-gradient(top, #f4f4f4, #e4e4e4);
-  background-image: -ms-linear-gradient(top,#f4f4f4, #e4e4e4);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f4f4f4), to(#e4e4e4));
-  background-image: -webkit-linear-gradient(top, #f4f4f4, #e4e4e4);
-  background-image: -o-linear-gradient(top, #f4f4f4, #e4e4e4);
-  background-image: linear-gradient(top, #f4f4f4, #e4e4e4);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f4f4f4', endColorstr='#e4e4e4', GradientType=0);
 }
 
 #documentsTableID.dataTable tr.even td.sorting_1,
 #documentsTableID.dataTable tr.odd td.sorting_1,
 #logContent tr.even td.sorting_1,
 #logContent tr.odd td.sorting_1 {
-    background-image: -moz-linear-gradient(top, #f4f4f4, #e4e4e4);
-    background-image: -ms-linear-gradient(top,#f4f4f4, #e4e4e4);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f4f4f4), to(#e4e4e4));
-    background-image: -webkit-linear-gradient(top, #f4f4f4, #e4e4e4);
-    background-image: -o-linear-gradient(top, #f4f4f4, #e4e4e4);
-    background-image: linear-gradient(top, #f4f4f4, #e4e4e4);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f4f4f4', endColorstr='#e4e4e4', GradientType=0);
 }
 
 #documentsTableID tr.even:hover td.sorting_1,
 #documentsTableID tr.odd:hover td.sorting_1,
 #logContent tr.even:hover td.sorting_1,
 #logContent tr.odd:hover td.sorting_1 {
-    background-image: -moz-linear-gradient(top, #e7e7e7, #d5d5d5);
-    background-image: -ms-linear-gradient(top, #e7e7e7, #d5d5d5);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#e7e7e7), to(#d5d5d5));
-    background-image: -webkit-linear-gradient(top, #e7e7e7, #d5d5d5);
-    background-image: -o-linear-gradient(top, #e7e7e7, #d5d5d5);
-    background-image: linear-gradient(top, #e7e7e7, #d5d5d5);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#e7e7e7', endColorstr='#d5d5d5', GradientType=0);
 }
 
 
 #documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
   visibility: hidden;
 }
-
 
 .sorting_asc, .sorting_desc {
   background:#e4e0dd;
@@ -212,7 +185,8 @@ table.dataTable thead th {
 .snippet-no-num {
   font-size: 1em;
   font-weight: normal;
-  font-family: Verdana, Arial, sans-serif;
+  /*font-family: Verdana, Arial, sans-serif;*/
+  font-family: 'Lato', sans-serif;
   margin-bottom:0px;
 }
 
@@ -408,3 +382,53 @@ table.dataTable thead th {
   opacity: 0.8 !important;
 }
 
+.docsFirstCol{
+  width: 70%;
+}
+.docsSecCol {
+ width: 20%;
+ min-width: 400px !important;
+}
+
+.docsThirdCol {
+  width: 20px !important;
+}
+
+/*RADIUS*/
+#documentsToolbarF a , #documentsToolbar a{
+  border-radius: 0 !important;
+}
+
+#documentsToolbarF ul, #documentsToolbar ul {
+  border-radius: 0 !important;
+}
+
+#documentsToolbarF li ,#documentsToolbar li{
+  border-radius: 0 !important;
+}
+
+.queryline {
+  color: black;
+  padding-top: 10px;
+}
+
+.querylineAdd {
+  margin-left: -17px !important;
+}
+
+.removeFilterItem i {
+  margin-top: -5px !important;
+  margin-left: 5px !important;
+}
+
+#documentsToolbar li a {
+  padding-top: 5px;
+  padding-bottom: -3px;
+}
+
+#documentsToolbar span {
+  font-size: 13px !important;
+}
+
+#resetView, #filterSend, #confirmDocImport {
+}

@@ -57,7 +57,6 @@ var modalDialogHelper = modalDialogHelper || {};
         secondCell = document.createElement("th"),
         thirdCell = document.createElement("th"),
         addRow = document.createElement("button"),
-        addImg = document.createElement("img"),
         newCounter = 1,
         insertRow;
 
@@ -87,10 +86,7 @@ var modalDialogHelper = modalDialogHelper || {};
     
     
       addRow.id = idprefix + "new";
-      addRow.className = "graphViewer-icon-button";
-    
-      addRow.appendChild(addImg);
-      addImg.className = "gv-icon-small add";
+      addRow.className = "graphViewer-icon-button gv-icon-small add";
     
       insertRow = function(value, key) {
         var internalRegex = /^_(id|rev|key|from|to)/,
@@ -100,8 +96,7 @@ var modalDialogHelper = modalDialogHelper || {};
           valueTh = document.createElement("th"),
           deleteInput,
           keyInput,
-          valueInput,
-          delImg;
+          valueInput;
         if (internalRegex.test(key)) {
           return;
         }
@@ -134,13 +129,9 @@ var modalDialogHelper = modalDialogHelper || {};
         actTh.className = "actionCell";
         deleteInput = document.createElement("button");
         deleteInput.id = idprefix + key + "_delete";
-        deleteInput.className = "graphViewer-icon-button";
+        deleteInput.className = "graphViewer-icon-button gv-icon-small delete";
       
         actTh.appendChild(deleteInput);
-      
-        delImg = document.createElement("img");
-        delImg.className = "gv-icon-small delete";
-        deleteInput.appendChild(delImg);
       
         deleteInput.onclick = function() {
           table.removeChild(tr);
@@ -213,7 +204,10 @@ var modalDialogHelper = modalDialogHelper || {};
       });
     },
     
-    insertDecissionInput = function(idPre, idPost, group, text, isDefault, interior, contentTh, table) {
+    insertModalRow,
+    
+    insertDecissionInput = function(idPre, idPost, group,
+      text, isDefault, interior, contentTh, table) {
       var input = document.createElement("input"),
         id = idPre + idPost,
         lbl = document.createElement("label");
@@ -249,7 +243,6 @@ var modalDialogHelper = modalDialogHelper || {};
         lastId = 1,
         addLineButton = document.createElement("button"),
         input = document.createElement("input"),
-        icon = document.createElement("img"),
         addNewLine = function(content) {
           lastId++;
           var innerTr = document.createElement("tr"),
@@ -257,7 +250,6 @@ var modalDialogHelper = modalDialogHelper || {};
             innerContentTh = document.createElement("th"),
             innerInput = document.createElement("input"),
             removeRow = document.createElement("button"),
-            innerIcon = document.createElement("img"),
             lastItem;
           innerInput.type = "text";
           innerInput.id = id + "_" + lastId;
@@ -275,9 +267,7 @@ var modalDialogHelper = modalDialogHelper || {};
           innerContentTh.className = "collectionTh";
           innerContentTh.appendChild(innerInput);
           removeRow.id = id + "_" + lastId + "_remove";
-          removeRow.className = "graphViewer-icon-button";
-          removeRow.appendChild(innerIcon);
-          innerIcon.className = "gv-icon-small delete";
+          removeRow.className = "graphViewer-icon-button gv-icon-small delete";
           removeRow.onclick = function() {
             table.removeChild(innerTr);
             rows.splice(rows.indexOf(innerTr), 1 );
@@ -294,51 +284,59 @@ var modalDialogHelper = modalDialogHelper || {};
         addNewLine();
       };
       addLineButton.id = id + "_addLine";
-      addLineButton.className = "graphViewer-icon-button";
-      addLineButton.appendChild(icon);
-      icon.className = "gv-icon-small add";
+      addLineButton.className = "graphViewer-icon-button gv-icon-small add";
       if (list.length > 0) {
-        input.value = o.objects[0];
+        input.value = list[0];
       }
       for (i = 1; i < list.length; i++) {
         addNewLine(list[i]);
       }
-    },
-    
-    insertModalRow = function(table, idprefix, o) {
-      var tr = document.createElement("tr"),
-        labelTh = document.createElement("th"),
-        contentTh = document.createElement("th");
-      table.appendChild(tr);
-      tr.appendChild(labelTh);
-      labelTh.className = "collectionTh capitalize";
-      labelTh.appendChild(document.createTextNode(o.id + ":"));
-      tr.appendChild(contentTh);
-      contentTh.className = "collectionTh";
-      switch(o.type) {
-        case "text":
-          contentTh.appendChild(createTextInput(idprefix + o.id));
-          break;
-        case "checkbox":
-          contentTh.appendChild(createCheckboxInput(idprefix + o.id));
-          break;
-        case "list":
-          contentTh.appendChild(createListInput(idprefix + o.id, o.objects));
-          break;
-        case "extendable":
-          insertExtendableInput(idprefix, o.id, o.objects, contentTh, table, tr);
-          break;
-        case "decission":
-          insertDecissionInput(idprefix, o.id, o.group, o.text, o.isDefault, o.interior, contentTh, table);
-          labelTh.innerHTML = "";
-          break;
-        default:
-          //Sorry unknown
-          table.removeChild(tr);
-          break;
-      }
-      return tr;
     };
+    
+  insertModalRow = function(table, idprefix, o) {
+    var tr = document.createElement("tr"),
+      labelTh = document.createElement("th"),
+      contentTh = document.createElement("th");
+    table.appendChild(tr);
+    tr.appendChild(labelTh);
+    labelTh.className = "collectionTh";
+    if (o.text) {
+      labelTh.appendChild(document.createTextNode(o.text + ":"));
+    } else {
+      labelTh.className += " capitalize";
+      if (o.type && o.type === "extenadable") {
+        labelTh.appendChild(document.createTextNode(o.id + ":"));
+      } else {
+        labelTh.appendChild(document.createTextNode(o.id + ":"));
+      }
+    }
+    tr.appendChild(contentTh);
+    contentTh.className = "collectionTh";
+    switch(o.type) {
+      case "text":
+        contentTh.appendChild(createTextInput(idprefix + o.id));
+        break;
+      case "checkbox":
+        contentTh.appendChild(createCheckboxInput(idprefix + o.id));
+        break;
+      case "list":
+        contentTh.appendChild(createListInput(idprefix + o.id, o.objects));
+        break;
+      case "extendable":
+        insertExtendableInput(idprefix, o.id, o.objects, contentTh, table, tr);
+        break;
+      case "decission":
+        insertDecissionInput(idprefix, o.id, o.group, o.text,
+          o.isDefault, o.interior, contentTh, table);
+        labelTh.innerHTML = "";
+        break;
+      default:
+        //Sorry unknown
+        table.removeChild(tr);
+        break;
+    }
+    return tr;
+  };
   
   modalDialogHelper.modalDivTemplate = function (title, buttonTitle, idprefix, callback) {
     // Create needed Elements
@@ -426,6 +424,14 @@ var modalDialogHelper = modalDialogHelper || {};
   
   modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
     var table =  modalDialogHelper.modalDivTemplate(title, null, idprefix, callback);
+    _.each(objects, function(o) {
+      insertModalRow(table, idprefix, o);
+    });
+    $("#" + idprefix + "modal").modal('show');
+  };
+  
+  modalDialogHelper.createModalChangeDialog = function(title, idprefix, objects, callback) {
+    var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback);
     _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });

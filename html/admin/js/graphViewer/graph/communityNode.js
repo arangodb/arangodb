@@ -64,30 +64,33 @@ function CommunityNode(parent, initial) {
   
     getDistance = function(def) {
       if (self._expanded) {
-        return 2 * def;
+        return 2 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
   
     getCharge = function(def) {
       if (self._expanded) {
-        return 8 * def;
+        return 4 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
   
-    getSourcePosition = function(e) {    
+    compPosi = function(p) {
+      var d = self.position,
+        x = p.x * d.z + d.x,
+        y = p.y * d.z + d.y,
+        z = p.z * d.z;
+      return {
+        x: x,
+        y: y,
+        z: z
+      };
+    },
+  
+    getSourcePosition = function(e) {
       if (self._expanded) {
-        var p = self.position,
-          diff = e._source.position,
-          x = p.x + diff.x,
-          y = p.y + diff.y,
-          z = p.z + diff.z;
-        return {
-          x: x,
-          y: y,
-          z: z
-        };
+        return compPosi(e._source.position);
       }
       return self.position;
     },
@@ -95,16 +98,7 @@ function CommunityNode(parent, initial) {
   
     getTargetPosition = function(e) {
       if (self._expanded) {
-        var p = self.position,
-          diff = e._target.position,
-          x = p.x + p.z * diff.x,
-          y = p.y + p.z * diff.y,
-          z = p.z + diff.z;
-        return {
-          x: x,
-          y: y,
-          z: z
-        };
+        return compPosi(e._target.position);
       }
       return self.position;
     },
@@ -174,6 +168,14 @@ function CommunityNode(parent, initial) {
       nodes[n._id] = n;
       updateNodeArray();
       self._size++;
+    },
+
+    insertInitialNodes = function(ns) {
+      _.each(ns, function(n) {
+        nodes[n._id] = n;
+        self._size++;
+      });
+      updateNodeArray();
     },
     
     removeNode = function(n) {
@@ -406,14 +408,21 @@ function CommunityNode(parent, initial) {
     },
     
     addDistortion = function(distFunc) {
-      _.each(nodeArray, function(n) {
-        //n.position = distFunc(n);
-        n.position = {
-          x: n.x,
-          y: n.y,
-          z: 1
-        };
-      });
+      if (self._expanded) {
+        var oldFocus = distFunc.focus(),
+          newFocus = [
+            oldFocus[0] - self.position.x, 
+            oldFocus[1] - self.position.y
+          ];
+        distFunc.focus(newFocus);
+        _.each(nodeArray, function(n) {
+          n.position = distFunc(n);
+          n.position.x /= self.position.z;
+          n.position.y /= self.position.z;
+          n.position.z /= self.position.z;
+        });
+        distFunc.focus(oldFocus);
+      }
     },
     
     shapeAll = function(g, shapeFunc, shapeQue, start, colourMapper) {
@@ -425,6 +434,43 @@ function CommunityNode(parent, initial) {
         return;
       }
       addCollapsedShape(g, shapeFunc, start, colourMapper);
+    },
+    
+    updateEdges = function(g, addPosition, addUpdate) {
+      if (self._expanded) {
+        var interior = g.selectAll(".link"),
+          line = interior.select("line");
+        addPosition(line, interior);
+        addUpdate(interior);
+      }
+    },
+    
+    shapeEdges = function(g, addQue) {
+      var idFunction = function(d) {
+          return d._id;
+        },
+	line,
+	interior;
+      if (self._expanded) {
+        interior = g
+          .selectAll(".link")
+          .data(intEdgeArray, idFunction);
+        // Append the group and class to all new    
+        interior.enter()
+          .append("g")
+          .attr("class", "link") // link is CSS class that might be edited
+          .attr("id", idFunction);
+        // Remove all old
+        interior.exit().remove();
+        // Remove all elements that are still included.
+        interior.selectAll("* > *").remove();
+        line = interior.append("line");
+        addQue(line, interior);
+      }
+    },
+    
+    collapseNode = function(n) {
+      removeOutboundEdgesFromNode(n);
     };
   
   ////////////////////////////////////
@@ -460,9 +506,7 @@ function CommunityNode(parent, initial) {
   // no need for a regex on the _id any more.
   this._isCommunity = true;
   
-  _.each(initial, function(n) {
-    insertNode(n);
-  });
+  insertInitialNodes(initial);
   
   ////////////////////////////////////
   // Public functions               //
@@ -484,13 +528,20 @@ function CommunityNode(parent, initial) {
   this.removeOutboundEdge = removeOutboundEdge;
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
   
+  
+  this.collapseNode = collapseNode;
+  
   this.dissolve = dissolve;
   this.getDissolveInfo = getDissolveInfo;
   
   this.collapse = collapse;
   this.expand = expand;
   
-  this.shape = shapeAll;
+  this.shapeNodes = shapeAll;
+  this.shapeInnerEdges = shapeEdges;
+  this.updateInnerEdges = updateEdges;
+  
+  
   this.addDistortion = addDistortion;
 
   this.getSourcePosition = getSourcePosition;

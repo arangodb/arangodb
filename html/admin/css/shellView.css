@@ -8,9 +8,10 @@
 }
 
 #shell_workspace {
-  width: 900px;
+  width: auto;
   margin-top: 30px;
   margin-left: 20px;
+  margin-right: 20px !important;
   margin-bottom: -20px;
   height: 400px;
   background-color: black;
@@ -28,17 +29,20 @@
 .vsplitbar {
   border: 0;
   width: 10px;
-  background-color: #686766;
-  border-bottom: 1px solid black;
+  background-color: #F0F0F0;
   border-top: 1px solid black;
+  border-bottom: 1px solid black;
+  border-left: 1px solid #A0A0A0;
+  border-right: 1px solid #A0A0A0;
+  background-image: url(../img/stripes90.gif);
+  background-repeat:no-repeat;
+  background-position: 50% 50%;
 }
 
 .vsplitbar:hover {
   cursor: col-resize !important;
 }
 
-/* REPL SHELL */
-/* REPL SHELL */
 /* REPL SHELL */
 #replShell {
   float:left;
@@ -101,23 +105,18 @@
 }
 
 #editor-run:hover {
-  opacity: 0.6;
+  opacity: 1.0;
 }
 
 #editor-run {
   cursor: pointer !important;
   position: absolute;
   z-index: 5;
-  top: 4px;
-  right: 30px;
-  width: 20px;
-  height: 20px;
-  background-color: #8AA051;
-  opacity: 0.2;
-  padding-left: 6px;
-  padding-top: 2px;
-  padding-bottom: 2px;
-  border: 1px solid black;
+  bottom: 15px;
+  right: 32px;
+  width: 60px;
+  opacity: 0.6;
+  content: "Submit";
   height: 20px !important;
 }
 
