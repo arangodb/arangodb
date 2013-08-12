@@ -240,7 +240,7 @@ self.naviView.selectMenuItem('dashboard-menu');
       window.arangoCollectionsStore.fetch({
         success: function () {
           self.graphView.render();
-          self.naviView.selectMenuItem('graph-menu');
+          self.naviView.selectMenuItem('graphviewer-menu');
         }
       });
     },

@@ -134,33 +134,17 @@ namespace triagens {
 /// @brief returns a numeric sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-        static double getNumberValue (TRI_json_t const*, 
-                                      const char*, 
-                                      double);
+        template<typename T> static T getNumericValue (TRI_json_t const* json,
+                                                       const char* name,
+                                                       T defaultValue) {
+          TRI_json_t const* sub = getArrayElement(json, name);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a double sub-element, or a default it is does not exist
-////////////////////////////////////////////////////////////////////////////////
+          if (isNumber(sub)) {
+            return (T) sub->_value._number;
+          }
 
-        static double getDoubleValue (TRI_json_t const*, 
-                                      const char*, 
-                                      double);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an int sub-element, or a default it is does not exist
-////////////////////////////////////////////////////////////////////////////////
-
-        static int getIntValue (TRI_json_t const*, 
-                                const char*, 
-                                int);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a uint64 sub-element, or a default it is does not exist
-////////////////////////////////////////////////////////////////////////////////
-
-        static uint64_t getUInt64Value (TRI_json_t const*, 
-                                        const char*, 
-                                        uint64_t);
+          return defaultValue;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default it is does not exist

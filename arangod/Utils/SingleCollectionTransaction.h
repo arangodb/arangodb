@@ -37,6 +37,7 @@
 
 #include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
+#include "VocBase/server-id.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -73,7 +74,7 @@ namespace triagens {
                                      const triagens::arango::CollectionNameResolver& resolver,
                                      const TRI_voc_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, resolver, true),
+          Transaction<T>(vocbase, TRI_GetServerId(), resolver, true),
           _cid(cid),
           _accessType(accessType) {
 
@@ -144,6 +145,14 @@ namespace triagens {
 
         int lockRead () {
           return this->lock(this->trxCollection(), TRI_TRANSACTION_READ);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explicitly unlock the underlying collection after read access
+////////////////////////////////////////////////////////////////////////////////
+
+        int unlockRead () {
+          return this->unlock(this->trxCollection(), TRI_TRANSACTION_READ);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

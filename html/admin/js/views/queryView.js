@@ -138,15 +138,16 @@ var queryView = Backbone.View.extend({
     $('#queryOutput').height(windowHeight/3);
     $('#aqlEditor').height(windowHeight/2);
 
+    outputEditor.setTheme("ace/theme/merbivore_soft");
     inputEditor.resize();
     outputEditor.resize();
-
-    inputEditor.setTheme("ace/theme/merbivore_soft");
 
     this.renderSelectboxes();
     this.deselect(outputEditor);
     this.deselect(inputEditor);
+
     $('#queryDiv').show();
+    outputEditor.setTheme("ace/theme/merbivore_soft");
 
     return this;
   },
@@ -461,6 +462,7 @@ var queryView = Backbone.View.extend({
       }
     });
     outputEditor.resize();
+    this.deselect(inputEditor);
 
   }
 

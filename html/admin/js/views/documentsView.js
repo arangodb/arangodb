@@ -27,12 +27,14 @@ var documentsView = Backbone.View.extend({
     "click #collectionPrev"      : "prevCollection",
     "click #collectionNext"      : "nextCollection",
     "click #filterCollection"    : "filterCollection",
+    "click #importCollection"    : "importCollection",
     "click #filterSend"          : "sendFilter",
     "click #addFilterItem"       : "addFilterItem",
     "click .removeFilterItem"    : "removeFilterItem",
     "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
+    "click #addDocumentButton"   : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
@@ -126,11 +128,11 @@ var documentsView = Backbone.View.extend({
               }
 
               if (data.errors === 0) {
-                arangoHelper.arangoNotification("Upload successful. " + 
-                                                data.created + "document(s) imported.");
+                arangoHelper.arangoError("Upload successful. " + 
+                                                data.created + " document(s) imported.");
               }
               else if (data.errors !== 0) {
-                arangoHelper.arangoNotification("Upload failed." + 
+                arangoHelper.arangoError("Upload failed." + 
                                                 data.errors + "error(s).");
               }
               self.hideSpinner();
@@ -192,7 +194,8 @@ var documentsView = Backbone.View.extend({
   },
 
   filterCollection : function () {
-    $('#filterHeader').slideToggle("slow");
+    $('#filterHeader').slideToggle("fast");
+    $('#importHeader').hide();
 
     var i;
     for (i in this.filters) {
@@ -201,6 +204,11 @@ var documentsView = Backbone.View.extend({
         return;
       }
     }
+  },
+
+  importCollection: function () {
+    $('#importHeader').slideToggle("fast");
+    $('#filterHeader').hide();
   },
 
   sendFilter : function () {
@@ -238,7 +246,7 @@ var documentsView = Backbone.View.extend({
     // adds a line to the filter widget
     
     var num = ++this.filterId;
-    $('#filterHeader').append(' <div class="queryline">'+
+    $('#filterHeader').append(' <div class="queryline querylineAdd"> & &#160;'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
        '<select name="operator" id="operator' + num + '">'+
        '    <option value="==">==</option>'+
@@ -251,7 +259,7 @@ var documentsView = Backbone.View.extend({
        '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" ' + 
        'class="filterValue">'+
        ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-       '<i class="icon icon-white icon-minus"></i></a>'+
+       '<i class="icon icon-minus"></i></a>'+
        ' </div>');
     this.filters[num] = true;
   },
@@ -440,9 +448,9 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"","bSortable": false, "sWidth":"470px"},
-        { "sClass":"", "bSortable": false, "sWidth":"100px"},
-        { "bSortable": false, "sClass": "", "sWidth":"20px"}
+        { "sClass":"docsFirstCol","bSortable": false},
+        { "sClass":"docsSecCol", "bSortable": false},
+        { "bSortable": false, "sClass": "docsThirdCol"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
@@ -453,6 +461,7 @@ var documentsView = Backbone.View.extend({
   drawTable: function() {
     var self = this;
 
+    /*
     if (this.addDocumentSwitch === true) {
       $(self.table).dataTable().fnAddData(
         [
@@ -461,7 +470,7 @@ var documentsView = Backbone.View.extend({
           '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
         ]
       );
-    }
+    }*/
 
     $.each(window.arangoDocumentsStore.models, function(key, value) {
 
@@ -526,7 +535,11 @@ var documentsView = Backbone.View.extend({
     this.uploadSetup();
 
     $('.modalImportTooltips').tooltip({
-            placement: "left"
+      placement: "left"
+    });
+
+    $('.glyphicon').tooltip({
+      placement: "top"
     });
 
     return this;

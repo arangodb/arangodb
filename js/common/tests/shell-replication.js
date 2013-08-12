@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var errors = arangodb.errors;
 var db = arangodb.db;
+var internal = require("internal");
 
 var replication = require("org/arangodb/replication");
 
@@ -81,6 +82,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      replication.logger.properties({ maxEvents: 1048576 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +91,7 @@ function ReplicationLoggerSuite () {
 
     tearDown : function () {
       replication.logger.stop();
+      replication.logger.properties({ maxEvents: 1048576 });
       db._drop(cn);
       db._drop(cn2);
     },
@@ -107,6 +110,8 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 1);
     
       // start again  
       actual = replication.logger.start();
@@ -132,6 +137,8 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 1);
     
       // stop
       actual = replication.logger.stop();
@@ -140,6 +147,8 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertFalse(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 2);
       
       var entry = getLastLogEntry();
       assertEqual(1000, entry.type);
@@ -163,8 +172,11 @@ function ReplicationLoggerSuite () {
       
       state = replication.logger.state().state;
       assertFalse(state.running);
-      assertTrue(tick, state.lastLogTick);
+
+      assertEqual(tick, state.lastLogTick);
       assertTrue(typeof state.lastLogTick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
       
       server = replication.logger.state().server;
       assertEqual(server.version, db._version()); 
@@ -186,6 +198,8 @@ function ReplicationLoggerSuite () {
       assertFalse(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
 
       // do something that will cause logging (if it was enabled...)
       var c = db._create(cn);
@@ -193,6 +207,8 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       assertFalse(state.running);
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
       assertEqual(tick, state.lastLogTick);
     },
 
@@ -207,6 +223,8 @@ function ReplicationLoggerSuite () {
       assertFalse(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 0);
 
       replication.logger.start();
 
@@ -216,8 +234,313 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       assertTrue(state.running);
+      assertMatch(/^\d+$/, state.lastLogTick);
+      assertTrue(state.totalEvents >= 3);
       assertNotEqual(tick, state.lastLogTick);
       assertEqual(1, compareTicks(state.lastLogTick, tick));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test logging, total events
+////////////////////////////////////////////////////////////////////////////////
+
+    testEventsLogger : function () {
+      var state, tick;
+      
+      replication.logger.start();
+      state = replication.logger.state().state;
+      assertTrue(state.totalEvents >= 1);
+      var value = state.totalEvents;
+
+      replication.logger.stop();
+      
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      assertTrue(state.totalEvents >= 0);
+      value = state.totalEvents;
+
+      replication.logger.start();
+      
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      value = state.totalEvents;
+
+      // do something that will cause logging
+      var c = db._create(cn);
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      value = state.totalEvents;
+
+      c.save({ "test" : 1 });
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+      value = state.totalEvents;
+      
+      replication.logger.stop();
+      state = replication.logger.state().state;
+      assertEqual(value + 1, state.totalEvents);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test logger properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testPropertiesLogger : function () {
+      var properties;
+      
+      properties = replication.logger.properties();
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      var autoStart = properties.autoStart;
+      var maxEvents = properties.maxEvents;
+      var maxEventsSize = properties.maxEventsSize;
+
+      assertFalse(properties.logRemoteChanges);
+
+      properties = replication.logger.properties({
+        logRemoteChanges: true
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.logRemoteChanges);
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(autoStart, properties.autoStart);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        logRemoteChanges: false
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(autoStart, properties.autoStart);
+      assertFalse(properties.logRemoteChanges);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        autoStart: true
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(true, properties.autoStart);
+      assertFalse(properties.logRemoteChanges);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        autoStart: false
+      });
+      
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('autoStart'));
+      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(false, properties.autoStart);
+      assertFalse(properties.logRemoteChanges);
+      assertEqual(maxEvents, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test event sizes
+////////////////////////////////////////////////////////////////////////////////
+
+    testEventSizesLogger : function () {
+      var properties;
+      
+      properties = replication.logger.properties();
+      assertTrue(typeof properties === 'object');
+      var maxEvents = properties.maxEvents;
+      var maxEventsSize = properties.maxEventsSize;
+
+      properties = replication.logger.properties({
+        maxEvents: 8192
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(8192, properties.maxEvents);
+      assertEqual(maxEventsSize, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEventsSize: 16777216
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(8192, properties.maxEvents);
+      assertEqual(16777216, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEvents: 16384,
+        maxEventsSize: 1048576
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(16384, properties.maxEvents);
+      assertEqual(1048576, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEvents: 0,
+        maxEventsSize: 1048580
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(0, properties.maxEvents);
+      assertEqual(1048580, properties.maxEventsSize);
+      
+      properties = replication.logger.properties({
+        maxEvents: 16384,
+        maxEventsSize: 0
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(16384, properties.maxEvents);
+      assertEqual(0, properties.maxEventsSize);
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 10,
+          maxEventsSize: 0
+        });
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err1.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 0,
+          maxEventsSize: 10
+        });
+        fail();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err2.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 10,
+          maxEventsSize: 10
+        });
+        fail();
+      }
+      catch (err3) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err3.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 16384,
+          maxEventsSize: 10
+        });
+        fail();
+      }
+      catch (err4) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err4.errorNum);
+      }
+      
+      try {
+        properties = replication.logger.properties({
+          maxEvents: 10,
+          maxEventsSize: 1048576
+        });
+        fail();
+      }
+      catch (err5) {
+        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err5.errorNum);
+      }
+      
+      properties = replication.logger.properties({
+        maxEvents: 0,
+        maxEventsSize: 0
+      });
+
+      assertTrue(typeof properties === 'object');
+      assertTrue(properties.hasOwnProperty('maxEvents'));
+      assertTrue(properties.hasOwnProperty('maxEventsSize'));
+      assertEqual(0, properties.maxEvents);
+      assertEqual(0, properties.maxEventsSize);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test capped logging
+////////////////////////////////////////////////////////////////////////////////
+
+    testCappedLogger : function () {
+      var state, tick;
+      
+      state = replication.logger.state().state;
+      assertFalse(state.running);
+      tick = state.lastLogTick;
+      assertTrue(typeof tick === 'string');
+
+      replication.logger.properties({ maxEvents: 5000 });
+      replication.logger.start();
+
+      // do something that will cause logging
+      var c = db._create(cn);
+
+      for (var i = 0; i < 50000; ++i) {
+        c.save({ value: i });
+      }
+
+      assertEqual(5000, db._collection('_replication').count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uncapped logging
+////////////////////////////////////////////////////////////////////////////////
+
+    testUncappedLogger : function () {
+      var state, tick;
+      
+      state = replication.logger.state().state;
+      assertFalse(state.running);
+      tick = state.lastLogTick;
+      assertTrue(typeof tick === 'string');
+
+      // manually flush all entries in the collection
+      db._collection('_replication').truncate();
+
+      replication.logger.properties({ maxEvents: 0, maxEventsSize: 0 });
+      replication.logger.start();
+
+      // do something that will cause logging
+      var c = db._create(cn);
+
+      for (var i = 0; i < 50000; ++i) {
+        c.save({ value: i });
+      }
+
+      // 50000 + transaction start + transaction commit
+      assertEqual(50000 + 2, db._collection('_replication').count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2263,7 +2586,7 @@ function ReplicationApplierSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_CONFIGURATION.code, err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2271,7 +2594,7 @@ function ReplicationApplierSuite () {
 /// @brief start applier with configuration 
 ////////////////////////////////////////////////////////////////////////////////
 
-    testStartApplierInvalidEndpoint : function () {
+    testStartApplierInvalidEndpoint1 : function () {
       var state;
 
       state = replication.applier.state();
@@ -2279,11 +2602,85 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
 
       // configure && start 
-      replication.applier.properties({ endpoint: "tcp://9.9.9.9:9999" });
+      replication.applier.properties({ 
+        endpoint: "tcp://9.9.9.9:9999",
+        connectTimeout: 3,
+        maxConnectRetries: 1 
+      });
+
+      replication.applier.start();
+      state = replication.applier.state();
+      assertEqual(errors.ERROR_NO_ERROR.code, state.state.lastError.errorNum);
+      assertTrue(state.state.running);
+
+      var i = 0, max = 30;
+      while (i++ < max) {
+        internal.wait(1);
+      
+        state = replication.applier.state();
+        if (state.state.running) {
+          continue;
+        }
+
+        assertFalse(state.state.running);
+        assertTrue(state.state.totalFailedConnects > 0);
+        assertTrue(state.state.progress.failedConnects > 0);
+        assertTrue(errors.ERROR_REPLICATION_NO_RESPONSE.code, state.state.lastError.errorNum); 
+        break;
+      }
+
+      if (i >= max) {
+        fail();
+      }
+
+      // call start again
+      replication.applier.start();
+      
+      state = replication.applier.state();
+      assertTrue(state.state.running);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start applier with configuration 
+////////////////////////////////////////////////////////////////////////////////
+
+    testStartApplierInvalidEndpoint2 : function () {
+      var state;
+
+      state = replication.applier.state();
+
+      assertFalse(state.state.running);
+
+      // configure && start 
+      replication.applier.properties({ 
+        endpoint: "tcp://www.arangodb.org:80",
+        connectTimeout: 3,
+        maxConnectRetries: 1 
+      });
       replication.applier.start();
 
       state = replication.applier.state();
       assertTrue(state.state.running);
+      
+      var i = 0, max = 30;
+      while (i++ < max) {
+        internal.wait(1);
+      
+        state = replication.applier.state();
+        if (state.state.running) {
+          continue;
+        }
+
+        assertFalse(state.state.running);
+        assertTrue(state.state.totalFailedConnects <= i);
+        assertTrue(state.state.lastError.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
+                   state.state.lastError.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code);
+        break;
+      }
+
+      if (i >= max) {
+        fail();
+      }
 
       // call start again
       replication.applier.start();
@@ -2304,10 +2701,13 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
 
       // configure && start 
-      replication.applier.properties({ endpoint: "tcp://9.9.9.9:9999" });
+      replication.applier.properties({ 
+        endpoint: "tcp://9.9.9.9:9999" 
+      });
+      
       replication.applier.start();
-
       state = replication.applier.state();
+      assertEqual(errors.ERROR_NO_ERROR.code, state.state.lastError.errorNum);
       assertTrue(state.state.running);
 
       // stop
@@ -2315,16 +2715,12 @@ function ReplicationApplierSuite () {
       
       state = replication.applier.state();
       assertFalse(state.state.running);
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
       
       // stop again
       replication.applier.stop();
             
       state = replication.applier.state();
       assertFalse(state.state.running);
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2338,16 +2734,18 @@ function ReplicationApplierSuite () {
 
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
-      assertEqual(10, properties.maxConnectRetries);
+      assertEqual(100, properties.maxConnectRetries);
+      assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
       assertUndefined(properties.endpoint); 
 
       try {
         replication.applier.properties({ });
+        fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_CONFIGURATION.code, err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
       
       replication.applier.properties({
@@ -2358,7 +2756,8 @@ function ReplicationApplierSuite () {
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
       assertEqual(300, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
-      assertEqual(10, properties.maxConnectRetries);
+      assertEqual(100, properties.maxConnectRetries);
+      assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
 
@@ -2368,7 +2767,8 @@ function ReplicationApplierSuite () {
         adaptivePolling: false,
         requestTimeout: 5,
         connectTimeout: 9,
-        maxConnectRetries: 4
+        maxConnectRetries: 4,
+        chunkSize: 65536
       });
       
       properties = replication.applier.properties();
@@ -2376,6 +2776,7 @@ function ReplicationApplierSuite () {
       assertEqual(5, properties.requestTimeout);
       assertEqual(9, properties.connectTimeout);
       assertEqual(4, properties.maxConnectRetries);
+      assertEqual(65536, properties.chunkSize);
       assertTrue(properties.autoStart);
       assertFalse(properties.adaptivePolling);
     },
@@ -2395,6 +2796,7 @@ function ReplicationApplierSuite () {
       
       try {
         replication.applier.properties({ endpoint: "tcp://9.9.9.9:9998" });
+        fail();
       }
       catch (err) {
         assertEqual(errors.ERROR_REPLICATION_RUNNING.code, err.errorNum);
@@ -2413,15 +2815,187 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.state.time);
 
-      // phase
-      assertEqual(0, state.state.currentPhase.id);
-      assertEqual("not running", state.state.currentPhase.label);
-      
       assertEqual(state.server.version, db._version()); 
       assertNotEqual("", state.server.serverId); 
       assertMatch(/^\d+$/, state.server.serverId);
       
       assertUndefined(state.endpoint);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              sync
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationSyncSuite () {
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      replication.applier.stop();
+      replication.applier.forget();
+      replication.logger.stop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server id
+////////////////////////////////////////////////////////////////////////////////
+
+    testServerId : function () {
+      var result = replication.serverId(); 
+
+      assertTrue(typeof result === 'string');
+      assertMatch(/^\d+$/, result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief no endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncNoEndpoint : function () {
+      try {
+        replication.sync(); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncNoEndpoint : function () {
+      try {
+        replication.sync({
+          endpoint: "tcp://9.9.9.9:9999"
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_REPLICATION_NO_RESPONSE.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid response
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncInvalidResponse : function () {
+      try {
+        replication.sync({
+          endpoint: "tcp://www.arangodb.org:80"
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
+                   err.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid restrictType
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncRestrict1 : function () {
+      try {
+        replication.sync({ 
+          endpoint: "tcp://9.9.9.9:9999",
+          restrictType: "foo"
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid restrictCollections
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncRestrict2 : function () {
+      try {
+        replication.sync({ 
+          endpoint: "tcp://9.9.9.9:9999",
+          restrictType: "exclude"
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid restrictCollections
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncRestrict3 : function () {
+      try {
+        replication.sync({ 
+          endpoint: "tcp://9.9.9.9:9999",
+          restrictType: "include"
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid restrictCollections
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncRestrict4 : function () {
+      try {
+        replication.sync({ 
+          endpoint: "tcp://9.9.9.9:9999",
+          restrictCollections: [ "foo" ]
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalid restrictCollections
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncRestrict5 : function () {
+      try {
+        replication.sync({ 
+          endpoint: "tcp://9.9.9.9:9999",
+          restrictType: "include",
+          restrictCollections: "foo"
+        }); 
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     }
 
   };
@@ -2437,6 +3011,7 @@ function ReplicationApplierSuite () {
 
 jsunity.run(ReplicationLoggerSuite);
 jsunity.run(ReplicationApplierSuite);
+jsunity.run(ReplicationSyncSuite);
 
 return jsunity.done();
 

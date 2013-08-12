@@ -327,6 +327,7 @@ int TRI_AddToIndexGC(TRI_index_gc_t* indexData) {
   insertNode->_indexData = (TRI_index_gc_t*)(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_gc_t), true));
   if (insertNode->_indexData == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, insertNode);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }  
   
   

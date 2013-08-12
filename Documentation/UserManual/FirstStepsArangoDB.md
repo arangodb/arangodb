@@ -9,8 +9,9 @@ What is ArangoDB? {#FirstStepsArangoDBIntro}
 
 ArangoDB is a universal open-source database with a flexible data
 model for documents, graphs, and key-values. You can easily build high
-performance applications using a convenient sql-like query language or
-JavaScript/Ruby extensions.
+performance applications using a convenient 
+@ref Aql "SQL-like query language" or @ref UserManualFoxxManager 
+"JavaScript" and Ruby extensions.
 
 The database server _arangod_ stores all documents and serves them
 using a REST interface. There are driver for all major language like
@@ -41,50 +42,10 @@ For more in-depth information
 - read more on the 
   @S_EXTREF_S{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals} 
   of ArangoDB
-- @EXTREF{http://vimeo.com/36411892,watch the video}: Martin Schoenert, 
+- @EXTREF{http://vimeo.com/36411892,watch the video}: Martin Schönert, 
   architect of ArangoDB, gives an introduction of what the ArangoDB project 
   is about
 - or give it a @S_EXTREF{http://www.arangodb.org/try,try}.
-
-Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
-===============================================================
-
-First of all download and install the corresponding RPM or Debian package or use
-homebrew on the MacOS X. See the @S_EXTREF_S{InstallManual.html, installation
-manual} for more details.  In case you just want to experiment with ArangoDB you
-can use the @S_EXTREF_S{http://www.arangodb.org/try,on-line} demo without
-installing ArangoDB locally.
-
-For Linux:
-
-- visit the official ArangoDB download page at 
-  @S_EXTREF_S{http://www.arangodb.org/download,http://www.arangodb.org/download}
-  and download the correct package for you Linux distribution
-- install the package using your favorite package manager
-- start up the database server, normally this is done by
-  executing `/etc/init.d/arangod start`. The exact command
-  depends on your Linux distribution
-
-For MacOS X:
-
-- execute `brew install arangodb`
-- and start the server using `/usr/local/sbin/arangod &`
-
-After these steps there should be a running instance of _arangod_ -
-the ArangoDB database server.
-
-    unix> ps auxw | fgrep arangod
-    arangodb 14536 0.1 0.6 5307264 23464 s002 S 1:21pm 0:00.18 /usr/local/sbin/arangod
-
-If there is no such process, check the log file
-`/var/log/arangodb/arangod.log` for errors. If you see a log message
-like
-
-    2012-12-03T11:35:29Z [12882] ERROR Database directory version (1) is lower than server version (1.2).
-    2012-12-03T11:35:29Z [12882] ERROR It seems like you have upgraded the ArangoDB binary. If this is what you wanted to do, please restart with the --upgrade option to upgrade the data in the database directory.
-    2012-12-03T11:35:29Z [12882] FATAL Database version check failed. Please start the server with the --upgrade option
-
-make sure to start the server once with the `--upgrade` option.
 
 
 ArangoDB programs {#FirstStepsArangoDBBinaries}
@@ -101,6 +62,54 @@ The ArangoDB database package comes with the following programs:
   administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
 - _arangoimp_: A bulk importer for the ArangoDB server.
   See @ref ImpManual
+
+
+Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
+===============================================================
+
+First of all download and install the corresponding RPM or Debian package or use
+homebrew on the MacOS X. See the @S_EXTREF_S{InstallManual.html, installation
+manual} for more details.  In case you just want to experiment with ArangoDB you
+can use the @S_EXTREF_S{http://www.arangodb.org/try,on-line} demo without
+installing ArangoDB locally.
+
+For Linux:
+
+- visit the official ArangoDB download page at 
+  @S_EXTREF_S{http://www.arangodb.org/download,http://www.arangodb.org/download}
+  and download the correct package for your Linux distribution
+- install the package using your favorite package manager
+- start up the database server, normally this is done by
+  executing `/etc/init.d/arangod start`. The exact command
+  depends on your Linux distribution
+
+For MacOS X:
+
+- execute `brew install arangodb`
+- and start the server using `/usr/local/sbin/arangod &`
+
+For Microsoft Windows:
+
+- visit the official ArangoDB download page at 
+  @S_EXTREF_S{http://www.arangodb.org/download,http://www.arangodb.org/download}
+  and download the installer for Windows
+- start up the database server
+
+After these steps there should be a running instance of _arangod_ -
+the ArangoDB database server.
+
+    unix> ps auxw | fgrep arangod
+    arangodb 14536 0.1 0.6 5307264 23464 s002 S 1:21pm 0:00.18 /usr/local/sbin/arangod
+
+If there is no such process, check the log file
+`/var/log/arangodb/arangod.log` for errors. If you see a log message
+like
+
+    2012-12-03T11:35:29Z [12882] ERROR Database directory version (1) is lower than server version (1.2).
+    2012-12-03T11:35:29Z [12882] ERROR It seems like you have upgraded the ArangoDB binary. If this is what you wanted to do, please restart with the --upgrade option to upgrade the data in the database directory.
+    2012-12-03T11:35:29Z [12882] FATAL Database version check failed. Please start the server with the --upgrade option
+
+make sure to start the server once with the `--upgrade` option.
 
 
 Exploring Collections and Documents {#FirstStepsArangoDBFirstSteps}
@@ -168,9 +177,13 @@ The standard setup does not require a password. Depending on you
 setup, you might need to specify the endpoint, username and password
 in order to run the shell on your system. You can use the options
 `--server.endpoint`, `--server.username` and `--server.password` for
-this. If you do not specify a password, arangosh will prompt for one.
+this.
 
     unix> arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
+
+A default configuration is normally installed under
+`/etc/arangodb/arangosh.conf`. It contains a default endpoint and an
+empty password.
 
 Troubleshooting {#FirstStepsArangoDBTroubleShooting}
 ----------------------------------------------------
@@ -245,8 +258,7 @@ All documents are stored in collections. All collections are stored in a
 database. The database object is accessible there the variable `db` from
 the module 
 
-    arangosh> db = require("org/arangodb").db;
-    [object ArangoDatabase]
+    arangosh> var db = require("org/arangodb").db;
 
 Creating a collection is simple. You can use the `_create` method
 of the `db` variable.
@@ -400,6 +412,7 @@ The front-end allows you to browse through the collections and
 documents. If you need to administrate the database, please use
 the ArangoDB shell described in the next section.
 
+
 Details about the ArangoDB Server {#FirstStepsServerStartStop}
 ==============================================================
 
@@ -433,6 +446,9 @@ After starting the server, point your favorite browser to:
 
 to access the administration front-end.
 
+Linux
+-----
+
 To start the server at system boot time, you should use one of the 
 pre-rolled packages that will install the necessary start / stop
 scripts for ArangoDB. To start and stop the server manually, you can
@@ -440,11 +456,11 @@ use the start / stop script like this (provided the start / stop script
 is located in /etc/init.d/arangod, the command actual name and invocation are
 platform-dependent):
 
-    /etc/init.d/arangod start
+    unix> /etc/init.d/arangod start
  
 To stop the server, you can use the command
 
-    /etc/init.d/arangod stop
+    unix> /etc/init.d/arangod stop
 
 You may require root privileges to execute these commands.
 
@@ -456,7 +472,7 @@ line as shown before. To stop the database server gracefully, you can
 either pressCTRL-C or by send the SIGINT signal to the server process. 
 On many systems, this can be achieved with the following command:
 
-    kill -2 `pidof arangod`
+    unix> kill -2 `pidof arangod`
 
 Frequently Used Options {#FirstStepsServerStartStopOptions}
 -----------------------------------------------------------
@@ -495,6 +511,7 @@ more information see @ref CommandLineLogging "here".
 
 Runs the server as a daemon (as a background process).
 
+
 Details about the ArangoDB Shell {#FirstStepsShellStartStop}
 ============================================================
 
@@ -517,21 +534,35 @@ Use `--help` to get a list of command-line options:
 
     unix> ./arangosh --help
     STANDARD options:
-      --help                                     help message
-      --javascript.modules-path <string>         one or more directories separated by cola (default: "...")
-      --javascript.startup-directory <string>    startup paths containing the JavaScript files; multiple directories can be separated by cola
+      --audit-log <string>          audit log file to save commands and results to
+      --configuration <string>      read configuration file
+      --help                        help message
+      --max-upload-size <uint64>    maximum size of import chunks (in bytes) (default: 500000)
+      --no-auto-complete            disable auto completion
+      --no-colors                   deactivate color support
+      --pager <string>              output pager (default: "less -X -R -F -L")
+      --pretty-print                pretty print values
+      --quiet                       no banner
+      --temp-path <string>          path for temporary files (default: "/tmp/arangodb")
+      --use-pager                   use pager
+
+    JAVASCRIPT options:
+      --javascript.check <string>                syntax check code Javascript code from file
+      --javascript.execute <string>              execute Javascript code from file
+      --javascript.execute-string <string>       execute Javascript code from string
+      --javascript.modules-path <string>         one or more directories separated by semi-colons
+      --javascript.package-path <string>         one or more directories separated by semi-colons
+      --javascript.startup-directory <string>    startup paths containing the JavaScript files
       --javascript.unit-tests <string>           do not start as shell, run unit tests instead
       --jslint <string>                          do not start as shell, run jslint instead
-      --log.level <string>                       log level (default: "info")
-      --max-upload-size <uint64>                 maximum size of import chunks (in bytes) (default: 500000)
-      --no-auto-complete                         disable auto completion
-      --no-colors                                deactivate color support
-      --pager <string>                           output pager (default: "less -X -R -F -L")
-      --pretty-print                             pretty print values
-      --quiet                                    no banner
-      --server.connect-timeout <int64>           connect timeout in seconds (default: 3)
-      --server.endpoint <string>                 endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
-      --server.password <string>                 password to use when connecting (leave empty for prompt)
-      --server.request-timeout <int64>           request timeout in seconds (default: 300)
-      --server.username <string>                 username to use when connecting (default: "root")
-      --use-pager                                use pager
+
+    LOGGING options:
+      --log.level <string>    log level (default: "info")
+
+    CLIENT options:
+      --server.connect-timeout <double>         connect timeout in seconds (default: 3)
+      --server.disable-authentication <bool>    disable authentication (default: false)
+      --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
+      --server.password <string>                password to use when connecting (leave empty for prompt)
+      --server.request-timeout <double>         request timeout in seconds (default: 300)
+      --server.username <string>                username to use when connecting (default: "root")

@@ -90,18 +90,14 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         btnTop = document.createElement("button"),
         btnLeft = document.createElement("button"),
         btnRight = document.createElement("button"),
-        btnBottom = document.createElement("button"),
-        icnTop = document.createElement("image"),
-        icnLeft = document.createElement("image"),
-        icnRight = document.createElement("image"),
-        icnBottom = document.createElement("image");
+        btnBottom = document.createElement("button");
       zoomUI.className = "gv_zoom_widget";
       zoomButtons.className = "gv_zoom_buttons_bg";
       
-      btnTop.className = "btn btn-icon btn-zoom btn-zoom-top";
-      btnLeft.className = "btn btn-icon btn-zoom btn-zoom-left";
-      btnRight.className = "btn btn-icon btn-zoom btn-zoom-right";
-      btnBottom.className = "btn btn-icon btn-zoom btn-zoom-bottom";
+      btnTop.className = "btn btn-icon btn-zoom btn-zoom-top gv-zoom-btn pan-top";
+      btnLeft.className = "btn btn-icon btn-zoom btn-zoom-left gv-zoom-btn pan-left";
+      btnRight.className = "btn btn-icon btn-zoom btn-zoom-right gv-zoom-btn pan-right";
+      btnBottom.className = "btn btn-icon btn-zoom btn-zoom-bottom gv-zoom-btn pan-bottom";
       btnTop.onclick = function() {
         graphViewer.zoomManager.triggerTranslation(0, -10);
       };
@@ -115,22 +111,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         graphViewer.zoomManager.triggerTranslation(0, 10);
       };
       
-      icnTop.className = "gv-zoom-btn pan-top";
-      icnLeft.className = "gv-zoom-btn pan-left";
-      icnRight.className = "gv-zoom-btn pan-right";
-      icnBottom.className = "gv-zoom-btn pan-bottom";
-      
       zoomButtons.appendChild(btnTop);
       zoomButtons.appendChild(btnLeft);
       zoomButtons.appendChild(btnRight);
       zoomButtons.appendChild(btnBottom);
-      
-      
-      btnTop.appendChild(icnTop);
-      btnLeft.appendChild(icnLeft);
-      btnRight.appendChild(icnRight);
-      btnBottom.appendChild(icnBottom);
-      
       
       slider = document.createElement("div");
       slider.id = "gv_zoom_slider";
@@ -192,7 +176,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           searchAttrExampleList.appendChild(entry);
           entry.onclick = function() {
             searchAttrField.value = r;
-          }
+          };
         });
       });
     },

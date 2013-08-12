@@ -412,7 +412,12 @@ namespace triagens {
             upper = true;
           }
           else {
-            *qtr++ = upper ? static_cast<char>(::toupper(*ptr)) : static_cast<char>(::tolower(*ptr));
+            if (upper) {
+              *qtr++ = static_cast<char>(::toupper(*ptr)); 
+            }
+            else {
+              *qtr++ = static_cast<char>(::tolower(*ptr));
+            }
             upper = false;
           }
         }

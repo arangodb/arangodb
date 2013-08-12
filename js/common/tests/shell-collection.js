@@ -28,10 +28,27 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
+var internal = require("internal");
 
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
+ 
+  
+var compareStringIds = function (l, r) {
+  if (l.length != r.length) {
+    return l.length - r.length < 0 ? -1 : 1;
+  }
+
+  // length is equal
+  for (i = 0; i < l.length; ++i) {
+    if (l[i] != r[i]) {
+      return l[i] < r[i] ? -1 : 1;
+    }
+  }
+
+  return 0;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -971,7 +988,7 @@ function CollectionSuite () {
 /// @brief test revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRevision : function () {
+    testRevision1 : function () {
       var cn = "example";
 
       db._drop(cn);
@@ -979,29 +996,112 @@ function CollectionSuite () {
 
       var r1 = c1.revision();
       assertTypeOf("string", r1);
-      assertTrue(r1 !== "");
       assertTrue(r1.match(/^[0-9]+$/));
 
       c1.save({ a : 1 });
       var r2 = c1.revision();
-      assertTrue(r1 != r2);
       assertTypeOf("string", r2);
-      assertTrue(r2 !== "");
       assertTrue(r2.match(/^[0-9]+$/));
+      assertEqual(1, compareStringIds(r2, r1));
       
       c1.save({ a : 2 });
       var r3 = c1.revision();
-      assertTrue(r1 != r3);
-      assertTrue(r2 != r3);
       assertTypeOf("string", r3);
-      assertTrue(r3 !== "");
       assertTrue(r3.match(/^[0-9]+$/));
+      assertEqual(1, compareStringIds(r3, r2));
 
+      // unload
       c1.unload();
+      c1 = null;
+      internal.wait(5);
+      c1 = db._collection(cn);
+
       var r4 = c1.revision();
       assertTypeOf("string", r4);
-      assertEqual(r3, r4);
+      assertEqual(0, compareStringIds(r3, r4));
       
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test revision id
+////////////////////////////////////////////////////////////////////////////////
+
+    testRevision2 : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      var r1 = c1.revision();
+      assertTrue(r1.match(/^[0-9]+$/));
+
+      c1.save({ _key: "abc" });
+      var r2 = c1.revision();
+      assertTrue(r2.match(/^[0-9]+$/));
+      assertEqual(1, compareStringIds(r2, r1));
+      
+      c1.save({ _key: "123" });
+      c1.save({ _key: "456" });
+      c1.save({ _key: "789" });
+      
+      var r3 = c1.revision();
+      assertTrue(r3.match(/^[0-9]+$/));
+      assertEqual(1, compareStringIds(r3, r2));
+
+      c1.remove("123");
+      var r4 = c1.revision();
+      assertTrue(r4.match(/^[0-9]+$/));
+      assertEqual(1, compareStringIds(r4, r3));
+
+      c1.truncate();
+      var r5 = c1.revision();
+      assertTrue(r5.match(/^[0-9]+$/));
+      assertEqual(1, compareStringIds(r5, r4));
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r6 = c1.revision();
+      assertTrue(r6.match(/^[0-9]+$/));
+      assertEqual(0, compareStringIds(r6, r5));
+     
+      for (var i = 0; i < 10; ++i) {
+        c1.save({ _key: "test" + i });
+        assertTrue(c1.revision().match(/^[0-9]+$/));
+        assertEqual(1, compareStringIds(c1.revision(), r6));
+        r6 = c1.revision();
+      }
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+      
+      // compare rev
+      c1 = db._collection(cn);
+      var r7 = c1.revision();
+      assertTrue(r7.match(/^[0-9]+$/));
+      assertEqual(0, compareStringIds(r7, r6));
+
+      c1.truncate();
+      var r8 = c1.revision();
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+      
+      // compare rev
+      c1 = db._collection(cn);
+      var r9 = c1.revision();
+      assertTrue(r9.match(/^[0-9]+$/));
+      assertEqual(0, compareStringIds(r9, r8));
+
       db._drop(cn);
     },
 

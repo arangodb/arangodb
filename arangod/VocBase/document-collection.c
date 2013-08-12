@@ -112,12 +112,13 @@ static inline bool IsVisible (TRI_doc_mptr_t const* header) {
 /// @brief set the collection tick with the marker's tick value
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void SetTick (TRI_document_collection_t* document,
-                            TRI_voc_tick_t tick) {
+static inline void SetRevision (TRI_document_collection_t* document,
+                                TRI_voc_rid_t rid,
+                                bool force) {
   TRI_col_info_t* info = &document->base.base._info;
 
-  if (tick > info->_tick) {
-    info->_tick = tick;
+  if (force || rid > info->_revision) {
+    info->_revision = rid;
   }
 }
 
@@ -864,7 +865,7 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
 
   assert(totalSize == marker->base._size);
   res = TRI_WriteMarkerDocumentCollection(document, &marker->base, totalSize, &fid, result, waitForSync);
-
+    
   if (res == TRI_ERROR_NO_ERROR) {
     // writing the element into the datafile has succeeded
     TRI_doc_datafile_info_t* dfi;
@@ -883,6 +884,9 @@ static int WriteInsertMarker (TRI_document_collection_t* document,
       dfi->_numberAlive++;
       dfi->_sizeAlive += (int64_t) marker->base._size;
     }
+  
+    // update tick
+    SetRevision(document, marker->_rid, false);
   }
 
   return res;
@@ -1033,6 +1037,9 @@ static int WriteRemoveMarker (TRI_document_collection_t* document,
     if (dfi != NULL) {
       dfi->_numberDeletion++;
     }
+    
+    // update tick
+    SetRevision(document, marker->_rid, false);
   }
 
   return res;
@@ -1206,6 +1213,9 @@ static int WriteUpdateMarker (TRI_document_collection_t* document,
       dfi->_numberDead++;
       dfi->_sizeDead += size;
     }
+    
+    // update tick
+    SetRevision(document, marker->_rid, false);
   }
 
   return res;
@@ -1970,15 +1980,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   
   marker = operation->_marker;
   d = (TRI_doc_document_key_marker_t const*) marker;
-
+  
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
     state->_dfi = TRI_FindDatafileInfoPrimaryCollection(primary, operation->_fid, true);
   }
   
-  SetTick(document, marker->_tick);
-
+  SetRevision(document, d->_rid, false);
+  
 #ifdef TRI_ENABLE_LOGGER
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     LOG_TRACE("document: fid %llu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
@@ -2119,7 +2129,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   marker = operation->_marker;
   d = (TRI_doc_deletion_key_marker_t const*) marker;
   
-  SetTick(document, marker->_tick);
+  SetRevision(document, d->_rid, false);
   
   if (state->_fid != operation->_fid) {
     // update the state
@@ -3220,9 +3230,6 @@ int TRI_WriteMarkerDocumentCollection (TRI_document_collection_t* document,
     if (forceSync) {
       WaitSync(document, journal, ((char const*) *result) + totalSize);
     }
-    
-    // update tick
-    SetTick(document, (*result)->_tick);
   }
   else {
     // writing the element into the datafile has failed
@@ -3606,6 +3613,92 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
   }
 
   return keyValues;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+////////////////////////////////////////////////////////////////////////////////
+
+static bool DropIndex (TRI_document_collection_t* document, 
+                       TRI_idx_iid_t iid,
+                       TRI_server_id_t generatingServer,
+                       bool full) {
+  TRI_index_t* found;
+  TRI_vocbase_t* vocbase;
+  TRI_primary_collection_t* primary;
+  size_t i, n;
+
+  if (iid == 0) {
+    // invalid index id or primary index
+    return true;
+  }
+
+  found = NULL;
+  primary = &document->base;
+  
+  vocbase = primary->base._vocbase;
+  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
+
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  n = document->_allIndexes._length;
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = document->_allIndexes._buffer[i];
+
+    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+      // cannot remove these index types
+      continue;
+    }
+
+    if (idx->_iid == iid) {
+      found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
+
+      if (found != NULL && found->removeIndex != NULL) {
+        // notify the index about its removal
+        found->removeIndex(found, primary);
+      }
+
+      break;
+    }
+  }
+
+  RebuildIndexInfo(document);
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  if (found != NULL) {
+    bool result = true;
+
+    if (full) {
+      result = TRI_RemoveIndexFile(primary, found);
+
+      // it is safe to use _name as we hold a read-lock on the collection status
+      TRI_LogDropIndexReplication(vocbase,
+                                  primary->base._info._cid, 
+                                  primary->base._info._name, 
+                                  iid,
+                                  generatingServer);
+    }
+      
+    TRI_FreeIndex(found);
+
+    return result;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4057,92 +4150,23 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an index
+/// @brief drops an index, including index file removal and replication
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, 
-                                      TRI_idx_iid_t iid) {
-  TRI_index_t* found;
-#ifdef TRI_ENABLE_REPLICATION
-  TRI_vocbase_t* vocbase;
-#endif
-  TRI_primary_collection_t* primary;
-  size_t i, n;
+                                      TRI_idx_iid_t iid,
+                                      TRI_server_id_t generatingServer) {
+  return DropIndex(document, iid, generatingServer, true);
+}
 
-  if (iid == 0) {
-    // invalid index id or primary index
-    return true;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index, without index file removal and replication
+////////////////////////////////////////////////////////////////////////////////
 
-  found = NULL;
-  primary = &document->base;
-  
-#ifdef TRI_ENABLE_REPLICATION
-  vocbase = primary->base._vocbase;
-  TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
-#endif
-
-
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  n = document->_allIndexes._length;
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-
-    idx = document->_allIndexes._buffer[i];
-
-    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-        idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      // cannot remove these index types
-      continue;
-    }
-
-    if (idx->_iid == iid) {
-      found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
-
-      if (found != NULL && found->removeIndex != NULL) {
-        // notify the index about its removal
-        found->removeIndex(found, primary);
-      }
-
-      break;
-    }
-  }
-
-  RebuildIndexInfo(document);
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-#ifdef TRI_ENABLE_REPLICATION
-  TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
-#endif
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
-  if (found != NULL) {
-    bool removeResult;
-
-    removeResult = TRI_RemoveIndexFile(primary, found);
-    TRI_FreeIndex(found);
-
-#ifdef TRI_ENABLE_REPLICATION
-    // it is safe to use _name as we hold a read-lock on the collection status
-    TRI_LogDropIndexReplication(vocbase,
-                                primary->base._info._cid, 
-                                primary->base._info._name, 
-                                iid);
-#endif
-
-    return removeResult;
-  }
-
-  return false;
+bool TRI_DropIndex2DocumentCollection (TRI_document_collection_t* document, 
+                                       TRI_idx_iid_t iid,
+                                       TRI_server_id_t generatingServer) {
+  return DropIndex(document, iid, generatingServer, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4393,7 +4417,8 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
 TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
                                                         size_t count,
                                                         int64_t size,
-                                                        bool* created) {
+                                                        bool* created,
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -4403,9 +4428,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   // inside write-lock
   // .............................................................................
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
@@ -4421,7 +4444,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -4429,9 +4452,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -4814,15 +4835,14 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     bool geoJson,
                                                     bool unique,
                                                     bool ignoreNull,
-                                                    bool* created) {
+                                                    bool* created,
+                                                    TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
   primary = &document->base;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock
@@ -4842,7 +4862,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -4850,9 +4870,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -4866,15 +4884,14 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     char const* longitude,
                                                     bool unique,
                                                     bool ignoreNull,
-                                                    bool* created) {
+                                                    bool* created,
+                                                    TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
   primary = &document->base;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock
@@ -4894,7 +4911,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -4902,9 +4919,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -5050,6 +5065,7 @@ static int HashIndexFromJson (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
+/// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* document,
@@ -5074,19 +5090,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
     return NULL;
   }
 
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5102,15 +5106,14 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique,
-                                                    bool* created) {
+                                                    bool* created,
+                                                    TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
   primary = &document->base;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock
@@ -5131,7 +5134,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5139,9 +5142,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -5279,6 +5280,7 @@ static int SkiplistIndexFromJson (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index (unique or non-unique)
+/// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
@@ -5303,19 +5305,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
     return NULL;
   }
 
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -5331,15 +5321,14 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique,
-                                                        bool* created) {
+                                                        bool* created, 
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
   primary = &document->base;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock the collection
@@ -5359,7 +5348,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5367,9 +5356,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -5591,6 +5578,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index (unique or non-unique)
+/// the index lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
@@ -5598,23 +5586,8 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
                                                         const bool indexSubstrings,
                                                         int minWordLength) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
-
-  primary = &document->base;
-
-  // .............................................................................
-  // inside write-lock
-  // .............................................................................
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
 
   return idx;
 }
@@ -5627,15 +5600,14 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
                                                         const char* attributeName,
                                                         const bool indexSubstrings,
                                                         int minWordLength,
-                                                        bool* created) {
+                                                        bool* created,
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
   primary = &document->base;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock the collection
@@ -5655,7 +5627,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5663,9 +5635,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -5895,15 +5865,14 @@ TRI_index_t* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document_collec
 TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collection_t* document,
                                                             TRI_vector_pointer_t const* attributes,
                                                             bool unique,
-                                                            bool* created) {
+                                                            bool* created,
+                                                            TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
   primary = &document->base;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock
@@ -5924,7 +5893,7 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = NULL;
@@ -5932,9 +5901,7 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   return idx;
 }
@@ -6190,7 +6157,8 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
                                                         bool supportUndef,
                                                         bool* created,
                                                         int* errorCode,
-                                                        char** errorStr) {
+                                                        char** errorStr,
+                                                        TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
 
@@ -6199,9 +6167,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   *errorCode = TRI_ERROR_NO_ERROR;
   *errorStr  = NULL;
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadLockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // inside write-lock the collection
@@ -6226,7 +6192,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
     if (created) {
       int res;
 
-      res = TRI_SaveIndex(primary, idx);
+      res = TRI_SaveIndex(primary, idx, generatingServer);
 
       // ...........................................................................
       // If index could not be saved, report the error and return NULL
@@ -6241,9 +6207,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
     }
   }
 
-#ifdef TRI_ENABLE_REPLICATION
   TRI_ReadUnlockReadWriteLock(&primary->base._vocbase->_inventoryLock);
-#endif
 
   // .............................................................................
   // Index already exists so simply return it
@@ -6383,12 +6347,13 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection tick
+/// @brief set the collection revision
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetTickDocumentCollection (TRI_document_collection_t* document,
-                                    TRI_voc_tick_t tick) {
-  SetTick(document, tick);
+void TRI_SetRevisionDocumentCollection (TRI_document_collection_t* document,
+                                        TRI_voc_rid_t rid,
+                                        bool force) {
+  SetRevision(document, rid, force);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

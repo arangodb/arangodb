@@ -6,7 +6,6 @@
   border: 1px solid black;
   background-color: white;
   width: 886px;
-  border-radius: 2px 2px 2px 2px;
   box-shadow: 0 0 3px #333333;
   border: 8px solid #FFFFFF;
 }
@@ -23,8 +22,8 @@
 
 .group-close, .group-open {
   float:right;
-  margin-top: 17px !important;
-  margin-right: 7px !important;
+  margin-top: 18px !important;
+  margin-right: 25px !important;
 }
 
 .db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
@@ -43,9 +42,10 @@
 }
 
 .statGroups {
+  margin-top: 10px !important;
   margin-left: 0px;
   float:left;
-  width: 100%;
+  width: 100% !important;
   margin-bottom: -15px !important;
 }
 
@@ -60,35 +60,24 @@
   width: 300px;
 }
 
-.dashboardH5 {
-
-}
-
-.dashboardH4 {
-}
-
 .statSingleClient {
   height: 300px;
-  width: 888px;
-  margin-top: 0px;
-  margin-left: 9px !important;
+  width: 100% !important;
+  margin-top: 10px;
+  margin-left: 10px !important;
+  margin-right: 11px !important;
   margin-bottom: 0px !important;
-  border: 1px solid black;
-  border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
-  box-shadow: 0 0 3px #333333;
 }
 
 .statClient {
   float: left;
-  height: 120px;
-  width: 203px;
-  margin-left: 9px;
-  margin-bottom: 12px;
+  height: 70px;
+  width: 230px;
+  margin-left: 8px !important;
+  margin-bottom: 4px !important;
   border: 1px solid black;
-  border-radius: 2px 2px 2px 2px;
   background-color: #F4F3F3;
-  box-shadow: 0 0 3px #333333;
 }
 
 #detailGraphChart {
@@ -96,7 +85,8 @@
 }
 
 .statGroups .statChart {
-  margin-left: -45px !important;
+  margin-left: -55px !important;
+  margin-top: -50px !important;
 }
 
 .nv-axislabel {
@@ -116,47 +106,64 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 140px;
-  width: 255px;
+  width: 300px;
 }
 
 .svgDetailClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 300px;
-  width: 887px;
+  width: 100%;
 }
 
 .boxHeader {
-  background-color: #686766;
+  margin-top: 5px;
+  /*background-color: #686766;*/
+  color: black;
+  opacity: 0.25;
+}
+
+.boxHeader:hover {
+  opacity: 0.8;
 }
 
 .boxHeader h6 {
-  padding-top: 2px;
-  color: white;
-  margin-left: 5px;
+  padding-top: 0 !important;
+  color: black;
+  margin-left: 10px;
+  margin-top: 0 !important;
   margin-bottom: -15px !important;
 }
 
-.statsHeader {
+#statsHeaderDiv {
+  margin-bottom: 16px;
   margin-top: 12px;
-  margin-left: -10px;
-  width: 940px;
-  background-color: #686766;
+  margin-right: 20px !important;
+  margin-left: 8px !important;
+  padding: 0 !important;
+  height: 24px !important;
+  width: auto !important;
   color: white;
   height: 36px;
 }
 
+.statsHeader {
+  width: 100%;
+  background-color: #686766 !important;
+}
+
 #dashboardHeader {
+  padding-left: 5px;
+  margin-left: 15px;
+  margin-right: 15px;
+  padding-right: 5px;
   background-color: #686766;
   border-bottom: 1px solid #A0A0A0;
   border-top: 1px solid #A0A0A0;
   color: #FFFFFF;
   height: 36px;
   margin-bottom: 0px !important;
-  margin-left: 0;
-  margin-right: 0;
   margin-top: 20px !important;
-  padding: 0 20px;
   position: relative;
 }
 
@@ -278,11 +285,12 @@
 
 #detailReplicationDiv {
   padding-top: 26px;
+  padding-right: 20px;
 }
 
 #detailReplicationDiv table {
   border-collapse: separate;
-  border-spacing: 0 5px;
+  border-spacing: 0 2px;
 }
 
 #detailReplicationDiv table thead {
@@ -301,7 +309,6 @@
 }
 
 #detailReplicationDiv table tr {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 #detailReplicationDiv table tbody tr th {
@@ -310,21 +317,44 @@
 }
 
 #rightReplicationDiv {
-  width: 868px;
+  width: 100%;
   min-height: 150px;
-  margin-left: 10px;
   margin-bottom: 8px;
+}
+
+#leftReplicationDiv h4, #rightReplicationDiv h4 {
+}
+
+#leftReplicationDiv table, #rightReplicationDiv table {
+  width: 100%;
+  padding-right: 10px !important;
+}
+
+#leftReplicationDiv table td, #rightReplicationDiv table td {
+  padding-top: 4px;
+  padding-bottom: 5px;
+}
+
+#leftReplicationDiv table tr, #rightReplicationDiv table tr {
+  background-color: #F9F9F9 !important;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+#leftReplicationDiv tbody, #rightReplicationDiv tbody {
+  background-color: #F9F9F9 !important;
 }
 
 #leftReplicationDiv {
-  width: 868px;
+  width: 100%;
   min-height: 150px;
-  margin-left: 10px;
   margin-bottom: 8px;
+  margin-right: 10px;
+  margin-top: -20px;
 }
 
 .alignLeft {
-  width: 200px !important;
+  width: 240px !important;
   text-align:left !important;
   padding-left: 7px;
 }
@@ -354,7 +384,47 @@
 }
 
 #shortcutDiv {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 200;
 }
+
+.headerH6 {
+  margin-left: 30px;
+  float:left;
+}
+
+.headerH4 {
+  margin-top: 9px;
+  float:left;
+}
+
+#statSwitch, #replSwitch {
+  margin-top: 6px;
+  background-color: #686766;
+}
+
+#statSwitch:hover, #replSwitch:hover {
+  background-color: #8F8D8C;
+}
+
+.activeSwitch {
+  background-color: #8F8D8C !important;
+}
+
+.activeSwitch:hover {
+  cursor: default !important;
+}
+
+.statClient:hover {
+  opacity: 1 !important;
+}
+
+#detailReplication {
+  margin-right: 20px;
+  background-color: transparent !important;
+  border: 0 !important;
+}
+
+#detailGraphPadding {
+  padding-right: 33px !important;
 }

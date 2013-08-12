@@ -35,6 +35,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/replication-logger.h"
+#include "VocBase/server-id.h"
 #include "VocBase/vocbase.h"
 
 #define LOG_TRX(trx, level, format, ...) \
@@ -495,6 +496,7 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
                                    size_t totalSize) {
   TRI_transaction_operation_t trxOperation;
   TRI_document_collection_t* document;
+  TRI_voc_rid_t rid;
   int res;
   
   TRI_DEBUG_INTENTIONAL_FAIL_IF("AddCollectionOperation-OOM") {
@@ -529,16 +531,24 @@ static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
   }
   
   document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+  rid = 0;
 
-  if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    rid = ((TRI_doc_document_key_marker_t*) marker)->_rid;
+  }
+  else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     document->_headers->moveBack(document->_headers, newHeader, oldData);
+    rid = ((TRI_doc_document_key_marker_t*) marker)->_rid;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     document->_headers->unlink(document->_headers, oldHeader);
+    rid = ((TRI_doc_deletion_key_marker_t*) marker)->_rid;
   }
 
-  // update collection tick
-  TRI_SetTickDocumentCollection(document, marker->_tick);
+  // update collection revision
+  if (rid > 0) {
+    TRI_SetRevisionDocumentCollection(document, rid, false);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -844,11 +854,9 @@ static int WriteOperationsSingle (TRI_transaction_t* const trx) {
       // something went wrong. now write the "abort" marker
       WriteAbortMarkers(trx, i + 1);
     }
-#ifdef TRI_ENABLE_REPLICATION
     else if (trx->_replicate) {
-      TRI_LogTransactionReplication(trx->_context->_vocbase, trx);
+      TRI_LogTransactionReplication(trx->_context->_vocbase, trx, trx->_generatingServer);
     }
-#endif    
 
     return res;
   }
@@ -963,11 +971,9 @@ static int WriteOperationsMulti (TRI_transaction_t* const trx,
                                                     false);
           
       
-#ifdef TRI_ENABLE_REPLICATION
         if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
-          TRI_LogTransactionReplication(trx->_context->_vocbase, trx);
+          TRI_LogTransactionReplication(trx->_context->_vocbase, trx, trx->_generatingServer);
         }
-#endif        
       }
     }
     else {
@@ -1056,7 +1062,7 @@ static int RollbackCollectionOperations (TRI_transaction_collection_t* trxCollec
     
   }
 
-  TRI_SetTickDocumentCollection(document, trxCollection->_originalTick);
+  TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision, true);
   
   return res;
 }
@@ -1210,7 +1216,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_globalInstance   = globalInstance;
 #endif
   trxCollection->_operations       = NULL;
-  trxCollection->_originalTick     = 0;
+  trxCollection->_originalRevision = 0;
   trxCollection->_locked           = false;
   trxCollection->_compactionLocked = false;
   trxCollection->_waitForSync      = false;
@@ -1555,6 +1561,7 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
+                                          TRI_server_id_t generatingServer,
                                           bool replicate,
                                           double timeout,
                                           bool waitForSync) {
@@ -1567,25 +1574,26 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
     return NULL;
   }
 
-  trx->_context       = context;
+  trx->_context           = context;
+  trx->_generatingServer  = generatingServer;
 
   // note: the real transaction id will be acquired on transaction start
-  trx->_id            = 0; 
+  trx->_id                = 0; 
   
-  trx->_status        = TRI_TRANSACTION_CREATED;
-  trx->_type          = TRI_TRANSACTION_READ;
-  trx->_hints         = 0;
-  trx->_nestingLevel  = 0;
-  trx->_timeout       = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
-  trx->_hasOperations = false;
-  trx->_replicate     = replicate;
-  trx->_waitForSync   = waitForSync;
+  trx->_status            = TRI_TRANSACTION_CREATED;
+  trx->_type              = TRI_TRANSACTION_READ;
+  trx->_hints             = 0;
+  trx->_nestingLevel      = 0;
+  trx->_timeout           = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
+  trx->_hasOperations     = false;
+  trx->_replicate         = replicate;
+  trx->_waitForSync       = waitForSync;
 
   if (timeout > 0.0) {
-    trx->_timeout     = (uint64_t) (timeout * 1000000.0);
+    trx->_timeout         = (uint64_t) (timeout * 1000000.0);
   }
   else if (timeout == 0.0) {
-    trx->_timeout     = (uint64_t) 0;
+    trx->_timeout         = (uint64_t) 0;
   }
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
@@ -1900,8 +1908,8 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
   trx = trxCollection->_transaction;
   primary = trxCollection->_collection->_collection;
 
-  if (trxCollection->_originalTick == 0) {
-    trxCollection->_originalTick = primary->base._info._tick;
+  if (trxCollection->_originalRevision == 0) {
+    trxCollection->_originalRevision = primary->base._info._revision;
   }
  
   if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {
@@ -1920,16 +1928,14 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                                doSync);
     *directOperation = true;
 
-    
-#ifdef TRI_ENABLE_REPLICATION
     if (res == TRI_ERROR_NO_ERROR && trx->_replicate) {
       TRI_LogDocumentReplication(trx->_context->_vocbase, 
                                  (TRI_document_collection_t*) primary, 
                                  type, 
                                  marker, 
-                                 oldData);
+                                 oldData,
+                                 trx->_generatingServer);
     }
-#endif    
   }
   else {
     trx->_hasOperations = true;
@@ -1996,15 +2002,7 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
     // get a new id
     trx->_id = TRI_NewTickVocBase();
 
-    // update hints
-    if (trx->_collections._length == 1) {
-      hints |= (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_COLLECTION;
-    }
-
-    if (trx->_type == TRI_TRANSACTION_READ) {
-      hints |= (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_READ_ONLY;
-    }
-
+    // set hints
     trx->_hints = hints;
   }
   else {
@@ -2138,7 +2136,11 @@ int TRI_ExecuteSingleOperationTransaction (TRI_vocbase_t* vocbase,
   cid = collection->_cid;
 
   // write the data using a one-operation transaction  
-  trx = TRI_CreateTransaction(vocbase->_transactionContext, replicate, 0.0, false);
+  trx = TRI_CreateTransaction(vocbase->_transactionContext, 
+                              TRI_GetServerId(), 
+                              replicate, 
+                              0.0, 
+                              false);
 
   if (trx == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;

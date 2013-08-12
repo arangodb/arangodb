@@ -59,7 +59,7 @@ app.del("/foxxes/:key", function (req, res) {
   res.json(foxxes.uninstall(req.params("key")));
 }).pathParam("key", {
   description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("Uninstall a Foxx.")
@@ -80,7 +80,7 @@ app.put("/foxxes/:key", function (req, res) {
   }
 }).pathParam("key", {
   description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("Update a foxx.")
@@ -95,7 +95,7 @@ app.get("/foxxes/thumbnail/:app", function (req, res) {
   res.body = foxxes.thumbnail(req.params("app"));
 }).pathParam("app", {
   description: "The appname which is used to identify the foxx in the list of available foxxes.",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("Get the thumbnail of a foxx.")
@@ -145,7 +145,7 @@ app.get('/docu/:key/*', function(req, res) {
   res.json(docus.show(mountPoint))
 }).pathParam("appname", {
   description: "The mount point of the App the documentation should be requested for",
-  dataType: "string",
+  type: "string",
   required: true,
   allowMultiple: false
 }).summary("List the API for one foxx")

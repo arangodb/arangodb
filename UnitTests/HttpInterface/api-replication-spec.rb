@@ -11,6 +11,23 @@ describe ArangoDB do
   context "dealing with the replication interface:" do
 
 ################################################################################
+## general
+################################################################################
+
+    context "dealing with general functions" do
+      
+      it "fetches the server id" do
+        # fetch id
+        cmd = api + "/server-id"
+        doc = ArangoDB.log_get("#{prefix}-server-id", cmd)
+
+        doc.code.should eq(200)
+        doc.parsed_response['serverId'].should match(/^\d+$/)
+      end
+
+    end
+
+################################################################################
 ## logger
 ################################################################################
 
@@ -649,18 +666,62 @@ describe ArangoDB do
 
         i.should eq(100)
       end
+
+      it "checks the dump for a non-empty collection, small chunkSize" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
+          doc.code.should eq(202)
+        }
+
+        cmd = api + "/dump?collection=UnitTestsReplication&chunkSize=1024"
+        doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-checkmore"].should eq("true")
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          doc = JSON.parse(part)
+          doc['type'].should eq(2300)
+          doc['key'].should eq("test" + i.to_s)
+          doc['rev'].should match(/^\d+$/)
+          doc['data']['_key'].should eq("test" + i.to_s)
+          doc['data']['_rev'].should match(/^\d+$/)
+          doc['data']['test'].should eq(i)
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should be < 100
+      end
+
       
       it "checks the dump for an edge collection" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
 
-        (0...500).each{|i|
+        (0...100).each{|i|
           body = "{ \"_key\" : \"test" + i.to_s + "\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
           doc = ArangoDB.post("/_api/edge?collection=UnitTestsReplication2&from=UnitTestsReplication/foo&to=UnitTestsReplication/bar", :body => body)
           doc.code.should eq(202)
         }
 
-        cmd = api + "/dump?collection=UnitTestsReplication2"
+        cmd = api + "/dump?collection=UnitTestsReplication2&chunkSize=65536"
         doc = ArangoDB.log_get("#{prefix}-dump-edge", cmd, :body => "", :format => :plain)
 
         doc.code.should eq(200)
@@ -696,8 +757,65 @@ describe ArangoDB do
           i = i + 1
         end
 
-        i.should eq(500)
+        i.should eq(100)
       end
+
+      it "checks the dump for an edge collection, small chunkSize" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+        cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
+          doc = ArangoDB.post("/_api/edge?collection=UnitTestsReplication2&from=UnitTestsReplication/foo&to=UnitTestsReplication/bar", :body => body)
+          doc.code.should eq(202)
+        }
+
+        cmd = api + "/dump?collection=UnitTestsReplication2&chunkSize=1024"
+        doc = ArangoDB.log_get("#{prefix}-dump-edge", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-checkmore"].should eq("true")
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          document = JSON.parse(part)
+          document['type'].should eq(2301)
+          document['key'].should eq("test" + i.to_s)
+          document['rev'].should match(/^\d+$/)
+          document['data']['_key'].should eq("test" + i.to_s)
+          document['data']['_rev'].should match(/^\d+$/)
+          document['data']['_from'].should eq(cid + "/foo")
+          document['data']['_to'].should eq(cid + "/bar")
+          document['data']['test1'].should eq(i)
+          document['data']['test2'].should eq(false)
+          document['data']['test3'].should eq([ ])
+          document['data']['test4'].should eq({ })
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should be < 100
+      end
+
+
+
+
+
+
+
+
       
       it "checks the dump for a collection with deleted documents" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)

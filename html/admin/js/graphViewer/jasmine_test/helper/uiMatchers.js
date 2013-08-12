@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global expect, _ */
+/*global expect, _, $ */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -45,11 +45,11 @@ var uiMatchers = uiMatchers || {};
       },
       
       toBeOfClass: function(name) {
-        var el = this.actual;
+        var el = $(this.actual);
         this.message = function() {
-          return "Expected " + el.className + " to be " + name; 
+          return "Expected \"" + el.attr("class") + "\" to contain " + name; 
         };
-        return el.className === name;
+        return el.hasClass(name);
       },
       
       toBeADropdownMenu: function() {

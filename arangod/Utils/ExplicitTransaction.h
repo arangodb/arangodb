@@ -30,6 +30,7 @@
 
 #include "Utils/Transaction.h"
 
+#include "VocBase/server-id.h"
 #include "VocBase/transaction.h"
 
 struct TRI_vocbase_s;
@@ -66,7 +67,7 @@ namespace triagens {
                              const double lockTimeout,
                              const bool waitForSync,
                              const bool doReplicate) :
-          Transaction<T>(vocbase, resolver, doReplicate) {
+          Transaction<T>(vocbase, TRI_GetServerId(), resolver, doReplicate) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 

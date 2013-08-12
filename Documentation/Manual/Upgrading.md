@@ -1,10 +1,13 @@
 Upgrading ArangoDB{#Upgrading}
 ==============================
 
-- @ref NewFeatures13
-- @ref Upgrading13
+- @ref NewFeatures14
+- @ref Upgrading14
 
 Older Releases:
+
+- @BOOK_REF{NewFeatures13}
+- @BOOK_REF{Upgrading13}
 
 - @BOOK_REF{NewFeatures12}
 - @BOOK_REF{Upgrading12}

@@ -241,7 +241,7 @@ ALIASES += \
 
 # examples
 ALIASES += \
-  "EXAMPLES=@htmlonly<H3>Examples</H3>@endhtmlonly" \
+  "EXAMPLES=@htmlonly<p><b>Examples</b></p>@endhtmlonly" \
   "EXAMPLE_ARANGOSH_OUTPUT{1}=@verbinclude \1.generated@if IGNORE" \
   "END_EXAMPLE_ARANGOSH_OUTPUT=@endif" \
   "EXAMPLE_ARANGOSH_RUN{1}=@verbinclude \1.generated@if IGNORE" \
@@ -260,7 +260,7 @@ ALIASES += \
 # table of content
 ALIASES += \
   "BOOK_REF{1}=@ref \1" \
-  "CHAPTER_REF{1}=@if LATEX - @ref \1\n@else@copydetails \1TOC@endif"
+  "CHAPTER_REF{1}=- @ref \1\n"
 
 # other aliases
 ALIASES += \
@@ -778,10 +778,6 @@ RECURSIVE              = YES
 
 EXCLUDE                = @srcdir@/arangod/Ahuacatl/ahuacatl-tokens.c \
                          @srcdir@/lib/JsonParser/json-parser.c \
-                         @srcdir@/lib/JsonParserX/JsonParserX.cpp \
-                         @srcdir@/lib/JsonParserX/JsonParserX.h \
-                         @srcdir@/lib/JsonParserX/JsonScannerX.cpp \
-                         @srcdir@/lib/JsonParserX/JsonScannerX.h \
                          @srcdir@/lib/V8/v8-json.cpp \
                          @srcdir@/lib/V8/v8-json.h
 
@@ -1618,7 +1614,7 @@ INCLUDE_FILE_PATTERNS  =
 # undefined via #undef or recursively expanded use the := operator
 # instead of the = operator.
 
-PREDEFINED             =
+PREDEFINED             =  
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then
 # this tag can be used to specify a list of macro names that should be expanded.

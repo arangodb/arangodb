@@ -35,6 +35,7 @@
 #include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
+#include "VocBase/voc-types.h"
 
 #include "BasicsC/random.h"
 #include "BasicsC/tri-strings.h"
@@ -87,6 +88,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Transaction (TRI_vocbase_t* const vocbase,
+                     TRI_server_id_t generatingServer,
                      const triagens::arango::CollectionNameResolver& resolver,
                      const bool replicate) :
           T(),
@@ -99,6 +101,7 @@ namespace triagens {
           _replicate(replicate),
           _trx(0),
           _vocbase(vocbase),
+          _generatingServer(generatingServer),
           _resolver(resolver) {
 
           TRI_ASSERT_MAINTAINER(_vocbase != 0);
@@ -1116,7 +1119,11 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _replicate, _timeout, _waitForSync);
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, 
+                                       _generatingServer,
+                                       _replicate, 
+                                       _timeout, 
+                                       _waitForSync);
 
           if (_trx == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -1226,6 +1233,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_t* const _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the id of the generating server
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_server_id_t _generatingServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection name resolver

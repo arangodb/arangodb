@@ -93,14 +93,41 @@ logger.state = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the replication applier
+/// @brief configures the replication logger
 ////////////////////////////////////////////////////////////////////////////////
   
-applier.start = function (forceFullSynchronisation) {
+logger.properties = function (config) {
   'use strict';
 
   var db = internal.db;
-  var append = (forceFullSynchronisation ? "?fullSync=true" : "");
+
+  var requestResult;
+  if (config === undefined) {
+    requestResult = db._connection.GET("_api/replication/logger-config");
+  }
+  else {
+    requestResult = db._connection.PUT("_api/replication/logger-config",
+      JSON.stringify(config));
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+applier.start = function (initialTick) {
+  'use strict';
+
+  var db = internal.db;
+  var append = "";
+
+  if (initialTick !== undefined) {
+    append = "?from=" + encodeURIComponent(initialTick);
+  }
 
   var requestResult = db._connection.PUT("_api/replication/applier-start" + append, "");
   arangosh.checkRequestResult(requestResult);
@@ -181,6 +208,52 @@ applier.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   other functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a one-time synchronisation with a remote endpoint
+////////////////////////////////////////////////////////////////////////////////
+  
+var sync = function (config) {
+  'use strict';
+
+  var db = internal.db;
+
+  var body = JSON.stringify(config || { });
+  var requestResult = db._connection.PUT("_api/replication/sync", body);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches a server's id
+////////////////////////////////////////////////////////////////////////////////
+  
+var serverId = function () {
+  'use strict';
+
+  var db = internal.db;
+
+  var requestResult = db._connection.GET("_api/replication/server-id");
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.serverId;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
@@ -189,8 +262,10 @@ applier.properties = function (config) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.logger  = logger; 
-exports.applier = applier; 
+exports.logger   = logger; 
+exports.applier  = applier; 
+exports.sync     = sync; 
+exports.serverId = serverId; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

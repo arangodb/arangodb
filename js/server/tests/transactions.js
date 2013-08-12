@@ -31,6 +31,22 @@ var arangodb = require("org/arangodb");
 var helper = require("org/arangodb/aql-helper");
 var db = arangodb.db;
 
+
+var compareStringIds = function (l, r) {
+  if (l.length != r.length) {
+    return l.length - r.length < 0 ? -1 : 1;
+  }
+
+  // length is equal
+  for (i = 0; i < l.length; ++i) {
+    if (l[i] != r[i]) {
+      return l[i] < r[i] ? -1 : 1;
+    }
+  }
+
+  return 0;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -1428,6 +1444,159 @@ function transactionOperationsSuite () {
       TRANSACTION(obj);
       assertEqual(1, c1.count());
       assertEqual([ "foo" ], sortedKeys(c1));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with byExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExample : function () {
+      c1 = db._create(cn1);
+      c1.ensureUniqueConstraint("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.byExample({ name: "test99" }).toArray();
+          assertEqual(r.length, 1);
+          assertEqual("test99", r[0].name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample1 : function () {
+      c1 = db._create(cn1);
+      c1.ensureUniqueConstraint("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample2 : function () {
+      c1 = db._create(cn1);
+      c1.ensureHashIndex("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample3 : function () {
+      c1 = db._create(cn1);
+      c1.ensureUniqueSkiplist("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with firstExample operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstExample4 : function () {
+      c1 = db._create(cn1);
+      c1.ensureSkiplist("name");
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ name: "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.firstExample({ name: "test99" });
+          assertEqual("test99", r.name);
+        }
+      };
+
+      TRANSACTION(obj);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with fulltext operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testFulltext : function () {
+      c1 = db._create(cn1);
+      var idx = c1.ensureFulltextIndex("text");
+
+      c1.save({ text: "steam", other: 1 });
+      c1.save({ text: "steamboot", other: 2 });
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var r = c1.FULLTEXT(idx, "prefix:steam");
+          assertEqual(2, r.documents.length);
+          
+          r = c1.FULLTEXT(idx, "steam");
+          assertEqual(1, r.documents.length);
+        }
+      };
+
+      TRANSACTION(obj);
     }
 
   };
@@ -1802,14 +1971,31 @@ function transactionRollbackSuite () {
           write: [ cn1 ]
         },
         action : function () {
+          var _r = r;
+
           c1.save({ _key: "tom" });
-          assertTrue(c1.revision() > r);
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
 
           c1.save({ _key: "tim" });
-          assertTrue(c1.revision() > r);
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
 
           c1.save({ _key: "tam" });
-          assertTrue(c1.revision() > r);
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
+          
+          c1.remove("tam");
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
+          
+          c1.update("tom", { "bom" : true });
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          _r = c1.revision();
+          
+          c1.remove("tom");
+          assertEqual(1, compareStringIds(c1.revision(), _r));
+          //_r = c1.revision();
         
           throw "rollback";
         }

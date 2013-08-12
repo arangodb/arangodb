@@ -30,7 +30,7 @@ window.arangoHelper = {
   arangoError: function (message) {
     var returnVal = false;
     $.gritter.add({
-      title: "Error:",
+      title: "Notification:",
       text: message,
       sticky: true,
       before_open: function(){

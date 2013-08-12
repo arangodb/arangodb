@@ -60,6 +60,12 @@
         r.getCollections = function(callback) {
           callback(["nodes"], ["edges"]);
         };
+        r.getGraphs = function(callback) {
+          callback(["graph"]);
+        };
+        r.getAttributeExamples = function(callback) {
+          callback(["name", "type"]);
+        };
         r.getPrioList = function() {
           return [];
         };
@@ -67,9 +73,13 @@
       };
       //Mock for ZoomManager
       if (window.ZoomManager === undefined) {
-        window.ZoomManager = {};
+        window.ZoomManager = {
+          getMinimalZoomFactor: function() {
+            return 0.16;
+          }
+        };
       }
-      spyOn(window, "ZoomManager");
+      spyOn(window, "ZoomManager").andCallThrough();
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -187,12 +197,13 @@
         expect($(barSelector + " #loadnode").length).toEqual(1);
         expect(attrfield).toBeTag("input");
         expect(attrfield.type).toEqual("text");
-        expect(attrfield.className).toEqual("input-mini searchByAttribute");
-        expect(attrfield.placeholder).toEqual("key");
+        expect(attrfield).toBeOfClass("input");
+        expect(attrfield.placeholder).toEqual("Attribute");
         expect(valfield).toBeTag("input");
         expect(valfield.type).toEqual("text");
-        expect(valfield.className).toEqual("searchInput");
-        expect(valfield.placeholder).toEqual("value");
+        expect(valfield).toBeOfClass("searchInput");
+        expect(valfield).toBeOfClass("input-xlarge");
+        expect(valfield.placeholder).toEqual("Value");
         expect(btn).toBeTag("img");
         expect(btn.className).toEqual("searchSubmit");
       });
@@ -261,7 +272,8 @@
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
           transHeader = header.firstChild,
-          searchField = transHeader.children[0],
+          transPH = transHeader.children[0],
+          searchField = transPH.children[0],
           
           content = div.children[1];
         expect(header).toBeTag("ul");
@@ -269,15 +281,20 @@
         expect(header.className).toEqual("thumbnails2");
         expect(transHeader).toBeTag("div");
         expect(transHeader.id).toEqual("transparentHeader");
-        
+       
+        expect(transPH).toBeTag("div");
+        expect(transPH).toBeOfClass("pull-left");
+        expect(transPH.id).toEqual("transparentPlaceholder");
         expect(searchField).toBeTag("div");
-        expect(searchField.id).toEqual("transparentPlaceholder");
-        expect(searchField.className).toEqual("pull-left");
+        expect(searchField).toBeOfClass("pull-left");
+        expect(searchField).toBeOfClass("input-append");
+        expect(searchField).toBeOfClass("searchByAttribute");
+        expect(searchField.children[0]).toBeTag("input");
         expect(searchField.children[0].id).toEqual("attribute");
-        expect(searchField.children[1]).toBeTag("span");
-        expect(searchField.children[1].textContent).toEqual("==");
-        expect(searchField.children[2].id).toEqual("value");
-        expect(searchField.children[3].id).toEqual("loadnode");
+        expect(transPH.children[1]).toBeTag("span");
+        expect(transPH.children[1].textContent).toEqual("==");
+        expect(transPH.children[2].id).toEqual("value");
+        expect(transPH.children[3].id).toEqual("loadnode");
       });
     });
     
