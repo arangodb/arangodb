@@ -23,7 +23,7 @@
 
 .thumbnails2 {
   padding-top: 1px !important;
-  background-color: rgba(0, 0, 0, 0.025);
+  background-color: rgba(0, 0, 0, 0.1);
   margin-left:0;
   margin-bottom:0;
 }
@@ -94,18 +94,17 @@
 #transparentHeader {
   height: 36px;
   margin-top: 20px !important;
-  margin-right: 0px;
-  margin-left: 0px;
   margin-bottom: -10px !important;
   background-color:#686766;
   border-top: 1px solid #a0a0a0;
   border-bottom: 1px solid #a0a0a0;
   color:#FFF;
-  margin-left: 15px;
-  margin-right: 15px;
+  margin-left: 5px;
+  margin-right: 5px;
   padding-left: 5px;
   padding-right: 5px;
   position:relative;
+  font-size: 16px;
 }
 
 
@@ -118,6 +117,10 @@
 
 #transparentHeader a.disabledBread {
 	color:#fff;
+}
+
+#transparentHeader a {
+  padding-left: 5px;
 }
 
 #transparentHeader .pagination {
@@ -222,15 +225,15 @@ border-top: 0;
 }
 
 #collectionsDropdown ul:last-of-type {
-  border-right: 1px solid #686766;
-}
-
-#collectionsDropdown ul:first-of-type {
   border-left: 1px solid #686766;
 }
 
+#collectionsDropdown ul:first-of-type {
+  border-right: 1px solid #686766;
+}
+
 #collectionsDropdown ul {
-  float: right;
+  float: left;
   margin-top: 10px;
   width: 241px;
   display: inline;
