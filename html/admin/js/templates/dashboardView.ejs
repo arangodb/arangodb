@@ -2,8 +2,6 @@
   <div id="dashboardHeader">
     <div class="pull-left">
       <h4 class="headerH4">Dashboard</h4>
-      <h6 id="statSwitch" class="dashSwitch activeSwitch headerH6 btn btn-small btn-inverse">Statistics</h6>
-      <h6 id="replSwitch" class="dashSwitch headerH6 btn btn-small btn-inverse">Replication</h6>
     </div>
 
 
@@ -37,11 +35,11 @@
   </div>
 </ul>
 
-<ul class="thumbnails marginRight10">
+<ul class="thumbnails marginRight10 dashboardContent">
 
   <ul class="nav nav-tabs arangoTab">
-    <li class="pull-right active"><a>Statistics</a></li>
-    <li class="pull-right"><a>Replication</a></li>
+    <li class="pull-right active dashSwitch" id="statSwitch"><a>Statistics</a></li>
+    <li class="pull-right dashSwitch" id="replSwitch"><a>Replication</a></li>
   </ul>
 
 

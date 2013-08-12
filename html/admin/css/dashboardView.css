@@ -204,11 +204,11 @@
 }
 
 /*Dashboard Checkbox*/
-#dashboardHeader input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox {
+#dashboardHeader input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox, #collectionsDropdown input[type=checkbox].css-checkbox {
   display:none;
 }
 
-#dashboardHeader input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label {
+#dashboardHeader input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
   margin-bottom: -0px;
@@ -222,7 +222,7 @@
   cursor:pointer;
 }
 
-#dashboardHeader input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label {
+#dashboardHeader input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
   background-position: 0 -15px;
 }
 
@@ -398,23 +398,6 @@
   float:left;
 }
 
-#statSwitch, #replSwitch {
-  margin-top: 6px;
-  background-color: #686766;
-}
-
-#statSwitch:hover, #replSwitch:hover {
-  background-color: #8F8D8C;
-}
-
-.activeSwitch {
-  background-color: #8F8D8C !important;
-}
-
-.activeSwitch:hover {
-  cursor: default !important;
-}
-
 .statClient:hover {
   opacity: 1 !important;
 }
@@ -427,4 +410,5 @@
 
 #detailGraphPadding {
   padding-right: 33px !important;
+  margin-top: -12px !important;
 }

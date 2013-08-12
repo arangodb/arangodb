@@ -34,7 +34,13 @@
 /*  background-color: rgba(0, 0, 0, 0.05);*/
 }
 
+.arangoTab a {
+  color: black !important;
+}
+
 .arangoTab > li {
+  background-color: transparent !important;
+  border: 0 !important;
   position: relative;
   z-index: 900;
   margin-left: 2px;
@@ -117,12 +123,6 @@
     background:#F1F0EE;/* #fdf6df*/
 }
 
-
-.arangoTab {
-  margin-bottom:-1px;
-  margin-right: 20px;
-}
-
 .arangoTab > li > a,
 .arangoTab > li:hover > a {
     border-radius: 0 !important;
@@ -176,7 +176,9 @@
 }
 
 .arangoTab {
+  padding-bottom: 0 !important;
   margin-bottom: -5px !important;
+  margin-right: 20px;
 }
 
 .arangoTab .nav-tabs li {

@@ -370,17 +370,15 @@ var dashboardView = Backbone.View.extend({
   },
 
   showCategory: function (e) {
-    var id = e.target.id;
-    if (id === 'replSwitch') {
-      $('#statSwitch').removeClass('activeSwitch');
-      $('#'+id).addClass('activeSwitch');
+    var parent = $(e.target).parent().attr('id');
+    $('.arangoTab li').removeClass('active');
+    $('.arangoTab #'+parent).addClass('active');
+    if (parent === 'replSwitch') {
       $('#detailGraph').hide();
       $('.statGroups').hide();
       $('#detailReplication').show();
     }
-    else if (id === 'statSwitch') {
-      $('#'+id).addClass('activeSwitch');
-      $('#replSwitch').removeClass('activeSwitch');
+    else if (parent === 'statSwitch') {
       $('#detailReplication').hide();
       $('#detailGraph').show();
       $('.statGroups').show();

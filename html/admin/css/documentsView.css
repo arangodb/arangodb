@@ -40,8 +40,8 @@ table.dataTable td {
 }
 
 #filterHeader, #importHeader {
-    margin-right: 0px;
-    margin-left: 0px;
+    margin-right: 15px;
+    margin-left: 15px;
     margin-top: -10px;
     background-color: #F7F6F6;
     border-left: 1px solid #686766;
@@ -96,7 +96,7 @@ table.dataTable td {
 }
 
 #documentsDiv {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.025);
 }
 
 #documentsTableID thead {
