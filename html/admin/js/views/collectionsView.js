@@ -65,7 +65,13 @@ var collectionsView = Backbone.View.extend({
     "click #checkEdge"      : "checkEdge",
     "click #sortName"       : "sortName",
     "click #sortType"       : "sortType",
-    "click #sortOrder"      : "sortOrder"
+    "click #sortOrder"      : "sortOrder",
+    "click #collectionsToggle"     : "toggleView",
+    "click #transparentHeader .btn-group .dropdown-toggle" : "slideEffect"
+  },
+
+  toggleView: function() {
+    $('#collectionsDropdown2').slideToggle(70);
   },
 
   checkSystem: function () {

@@ -24,7 +24,9 @@ var navigationView = Backbone.View.extend({
     //padding row 40px
     var containerWidth = $(window).width() - 70;
     //var spanWidth = $('.span3').outerWidth(true);
-    var spanWidth = 292;
+    var test = $('.span3').outerWidth(true);
+    console.log(test);
+    var spanWidth = 242;
     var divider = containerWidth / spanWidth;
     var roundDiv = parseInt(divider, 10);
 
@@ -33,7 +35,8 @@ var navigationView = Backbone.View.extend({
     $('#content').width(newWidth);
     $('#content').css('margin-left', marginWidth);
     $('#content').css('margin-right', marginWidth);
-    $('.arango-logo').css('margin-left', marginWidth -20);
+    $('.arango-logo').css('margin-left', marginWidth -10);
+    $('.nav-collapse').css('margin-right', marginWidth);
   },
 
   selectMenuItem: function (menuItem) {

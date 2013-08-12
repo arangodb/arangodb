@@ -2,15 +2,19 @@
   <div id="dashboardHeader">
     <div class="pull-left">
       <h4 class="headerH4">Dashboard</h4>
-      <h6 id="statSwitch" class="dashSwitch activeSwitch headerH6 btn btn-small btn-inverse">Statistics</h6>
-      <h6 id="replSwitch" class="dashSwitch headerH6 btn btn-small btn-inverse">Replication</h6>
     </div>
 
+    <div class="pagination pagination-small pull-right btn-group">
+      <ul><li class="enabled"><a id="dashboardToggle"><span class="glyphicon glyphicon-cog" title="Settings"></span></a></li></ul>
+    </div>
 
     <!-- /btn-group -->
     <div class="btn-group pull-right">
       <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle">Filter <span class="caret"></span></button>
 
+
+      <!--<div id="menuGroups" class="dropdown-menu" role="menu">
+      </div>--!>
       <ul class="dropdown-menu dashboard-dropdown" id="menuGroups">
       </ul>
     </div>
@@ -34,7 +38,14 @@
   </div>
 </ul>
 
-<ul class="thumbnails marginRight10">
+<ul class="thumbnails marginRight10 dashboardContent">
+
+  <ul class="nav nav-tabs arangoTab">
+    <li class="pull-right active dashSwitch" id="statSwitch"><a>Statistics</a></li>
+    <li class="pull-right dashSwitch" id="replSwitch"><a>Replication</a></li>
+  </ul>
+
+
   <li id="detailReplication" class="statSingleClient" style="margin-bottom: 13px !important; display:none;">
     <div id="detailReplicationDiv" class="statChart">
       <div id="leftReplicationDiv">
@@ -127,6 +138,7 @@
     <h4 class="">Detail Chart</h4>
   </li>
 
+  <div id="detailGraphPadding">
   <li id="detailGraph" class="statSingleClient">
     <div class="boxHeader">
       <h6 id="detailGraphHeader" class="dashboardH6">User Time</h6>
@@ -135,5 +147,6 @@
       <svg class="svgDetailClass"/>
     </div>
   </li>
+  </div>
 
 </ul>

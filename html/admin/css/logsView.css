@@ -68,10 +68,6 @@ background-color: none !important;
   /*border-bottom: 1px solid #C1BDBA;*/
 }
 
-.nav-tabs > li > a, .nav-tabs > li > a:hover {
-  border-radius: 0 0 0 0;
-}
-
 #logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
   background-color: #F4F4F4 !important;
   width: 80px !important;
@@ -107,54 +103,10 @@ background-color: none !important;
 #logTableID_wrapper, #infoTableID_wrapper, #debugTableID_wrapper, #critTableID_wrapper, #warnTableID_wrapper{
 }
 
-#logNav li a {
-  margin-left: 10px !important;
-}
-
-#logNav li a {
-  background-color: #686766 !important;
-}
-
-#logNav li a {
-  background-color: #BFBDBC !important;
-  border: 0px solid #FFFFFF !important;
-  background-image: none !important;
-  color: white !important;
-  padding: 0;
-  background-color: #686766;
-  /*border-radius: 4px 4px 4px 4px;*/
-}
-
-#logNav .active a {
-  background-color: #EEEAE6 !important;
-  color: black !important;
-}
-
 #logContent .dataTable {
 › table-layout:fixed !important;
 › border-collapse:separate;
 › border-spacing:0 5px;
-}
-
-#logNav li a {
-  width: 65px;
-  text-align: center;
-  margin-top: -20px;
-  background-color: #686766 !important;
-}
-
-#logNav .active a {
-  background-color: #8F8D8C !important;
-  color: #FFFFFF !important;
-  margin-top: -10px !important;
-}
-#logNav li a:hover {
-  background-color: #8F8D8C !important;
-}
-
-#logNav .active h6 {
-  margin-top: 0px !important;
-  margin-bottom: 0px !important;
 }
 
 #logtestdiv a {

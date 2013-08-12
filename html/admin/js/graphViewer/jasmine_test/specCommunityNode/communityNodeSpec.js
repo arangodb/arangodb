@@ -66,7 +66,12 @@
       });
       
       it('should create a ForceLayouter on setup', function() {
-        spyOn(window, "ForceLayouter");
+        spyOn(window, "ForceLayouter").andCallFake(function() {
+          return {
+            start: function(){},
+            stop: function(){}
+          };
+        });
         var t = new CommunityNode({
           dissolveCommunity: function() {},
           checkNodeLimit: function() {}
@@ -161,7 +166,7 @@
       });
       
       it('should offer a function to shape the community', function() {
-        expect(testee).toHaveFunction("shape", 3);
+        expect(testee).toHaveFunction("shapeNodes", 5);
       });
       
       it('should offer a function to expand the community', function() {
@@ -331,8 +336,8 @@
         
         expect(layouter.start).wasCalled();
         expect(layouter.stop).wasCalled();
-        expect(layouter.start.calls.length).toEqual(10);
-        expect(layouter.stop.calls.length).toEqual(10);
+        expect(layouter.start.calls.length).toEqual(1);
+        expect(layouter.stop.calls.length).toEqual(1);
       });
       
       it('should update the positioning if a new node is inserted', function() {
@@ -585,7 +590,7 @@
         spyOn(comShapeInner, "attr").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         
-        c.shape(
+        c.shapeNodes(
           g,
           shaper.shapeFunc,
           shaper.shapeQue,
@@ -621,7 +626,7 @@
         spyOn(tSpan1, "text").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
         
-        c.shape(
+        c.shapeNodes(
           g,
           shaper.shapeFunc,
           shaper.shapeQue,
@@ -668,7 +673,7 @@
         spyOn(tSpan3, "attr").andCallThrough();
         spyOn(tSpan3, "text").andCallThrough();
         spyOn(colourMapper, "getForegroundCommunityColour").andCallThrough();
-        c.shape(
+        c.shapeNodes(
           g,
           shaper.shapeFunc,
           shaper.shapeQue,
@@ -769,7 +774,7 @@
           spyOn(titleText, "attr").andCallThrough();
           
         
-          c.shape(
+          c.shapeNodes(
             g,
             shaper.shapeFunc,
             shaper.shapeQue,
@@ -825,7 +830,7 @@
           spyOn(observer, "observe").andCallThrough();
           spyOn(observer, "disconnect").andCallThrough();
           
-          c.shape(
+          c.shapeNodes(
             g,
             shaper.shapeFunc,
             shaper.shapeQue,
@@ -870,7 +875,7 @@
           spyOn(iAll, "remove").andCallThrough();
           spyOn(shaper, "shapeQue").andCallThrough();
           
-          c.shape(
+          c.shapeNodes(
             g,
             shaper.shapeFunc,
             shaper.shapeQue,
@@ -894,6 +899,25 @@
         
         it('should apply distortion on the interior nodes', function() {
           // Fake Layouting to test correctness
+          var distFake = {
+            distFunc: function(n){
+              return {
+                x: n.x,
+                y: n.y,
+                z: 1
+               };
+            }
+          };
+          distFake.distFunc.focus = function() {
+            return [20, 10];
+          };
+          // Fake distortion from nodeShaper
+          c.position = {
+            x: 20,
+            y: 10,
+            z: 1
+          };
+
           nodes[0].x = -20;
           nodes[0].y = 20;
           nodes[1].x = -10;
@@ -905,7 +929,7 @@
           nodes[4].x = 20;
           nodes[4].y = -20;
           
-          c.addDistortion();
+          c.addDistortion(distFake.distFunc);
           
           
           expect(nodes[0].position).toEqual({

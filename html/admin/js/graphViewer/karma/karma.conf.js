@@ -14,15 +14,16 @@ module.exports = function(karma) {
 
     // list of files / patterns to load in the browser
     files: [
-    'lib/jasmine-1.3.1/jasmine-html.js',
-    'lib/jslint.js',
-    '../../lib/d3.v3.min.js',
-    '../../lib/d3.fisheye.js',
-    '../../lib/underscore.js',
-    '../../lib/jquery-1.8.3.js',
-    '../../lib/bootstrap.js',
-    '../../lib/jquery.livequery.js',
-    
+      'lib/jasmine-1.3.1/jasmine-html.js',
+      'lib/jslint.js',
+      '../../lib/d3.v3.min.js',
+      '../../lib/d3.fisheye.js',
+      '../../lib/underscore.js',
+      '../../lib/jquery-1.8.3.js',
+      '../../lib/bootstrap.js',
+      '../../lib/jquery.livequery.js',
+      '../../lib/jquery-ui-1.9.2.custom.js',
+
     // Mocks
       'helper/eventHelper.js',
       'helper/objectsHelper.js',
@@ -62,7 +63,7 @@ module.exports = function(karma) {
       '../ui/graphViewerPreview.js',
   
     // Specs
-    
+   
       'specColourMapper/colourMapperSpec.js',
       'specWindowObjects/domObserverFactorySpec.js',
       'specCommunityNode/communityNodeSpec.js',

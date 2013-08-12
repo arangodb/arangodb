@@ -31,7 +31,30 @@
 var RequestContext,
   SwaggerDocs,
   extend = require("underscore").extend,
-  internal = require("org/arangodb/foxx/internals");
+  internal = require("org/arangodb/foxx/internals"),
+  is = require("org/arangodb/is"),
+  createBubbleWrap;
+
+createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
+  if (is.notExisty(errorHandler)) {
+    errorHandler = function () {
+      return { error: reason };
+    };
+  }
+
+  return function (req, res) {
+    try {
+      handler(req, res);
+    } catch (e) {
+      if (e instanceof errorClass) {
+        res.status(code);
+        res.json(errorHandler(e));
+      } else {
+        throw e;
+      }
+    }
+  };
+};
 
 // Wraps the docs object of a route to add swagger compatible documentation
 SwaggerDocs = function (docs) {
@@ -90,7 +113,25 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_pathParam
 /// @brief Describe a path parameter
 ///
-/// meow
+/// If you defined a route "/foxx/:id", you can constrain which format a path
+/// parameter (`/foxx/12`) can have by giving it a type.  We currently support
+/// the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx/:id", function {
+///       // Do something
+///     }).pathParam("id", {
+///       description: "Id of the Foxx",
+///       type: "int"
+///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
@@ -99,9 +140,9 @@ extend(RequestContext.prototype, {
       docs = this.route.docs,
       constraint = url.constraint || {};
 
-    constraint[paramName] = this.typeToRegex[attributes.dataType];
+    constraint[paramName] = this.typeToRegex[attributes.type];
     this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
-    this.docs.addPathParam(paramName, attributes.description, attributes.dataType);
+    this.docs.addPathParam(paramName, attributes.description, attributes.type);
     return this;
   },
 
@@ -130,7 +171,7 @@ extend(RequestContext.prototype, {
 ///       // Do something
 ///     }).queryParam("id", {
 ///       description: "Id of the Foxx",
-///       dataType: "int",
+///       type: "int",
 ///       required: true,
 ///       allowMultiple: false
 ///     });
@@ -142,7 +183,7 @@ extend(RequestContext.prototype, {
     this.docs.addQueryParam(
       paramName,
       attributes.description,
-      attributes.dataType,
+      attributes.type,
       attributes.required,
       attributes.allowMultiple
     );
@@ -185,16 +226,44 @@ extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_errorResponse
-/// @brief Document an error response
+/// @brief Define an error response
 ///
-/// @FUN{FoxxApplication::errorResponse(@FA{code}, @FA{description})}
+/// @FUN{FoxxApplication::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
 ///
-/// Document the error response for a given error @FA{code} with a reason for
-/// the occurrence.
+/// Define a reaction to a thrown error for this route: If your handler throws an error
+/// of the defined errorClass, it will be caught and the response will have the given
+/// status code and a JSON with error set to your description as the body.
+///
+/// If you want more control over the returned JSON, you can give an optional fourth
+/// parameter in form of a function. It gets the error as an argument, the return
+/// value will transformed into JSON and then be used as the body.
+/// The status code will be used as described above. The description will be used for
+/// the documentation.
+///
+/// It also adds documentation for this error response to the generated documentation.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       throw new FoxxyError();
+///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+///
+///     app.get("/foxx", function {
+///       throw new FoxxyError();
+///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
+///       return {
+///         code: 123,
+///         desc: e.description
+///       };
+///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  errorResponse: function (code, reason) {
+  errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
+    var handler = this.route.action.callback;
+    this.route.action.callback = createBubbleWrap(handler, errorClass, code, reason, errorHandler);
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
     return this;
   }

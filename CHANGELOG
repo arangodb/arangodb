@@ -273,7 +273,7 @@ v1.4.0-alpha1 (2013-08-02)
 * issue #512: Binded Parameters for LIMIT
 
 
-v1.3.3 (XXXX-XX-XX)
+v1.3.3 (2013-08-01)
 -------------------
 
 * issue #570: updateFishbowl() fails once
@@ -285,7 +285,7 @@ v1.3.3 (XXXX-XX-XX)
 * added missing error reporting for errors that happened during import of edges
 
 
-v1.3.2 (2013-XX-XX)
+v1.3.2 (2013-06-21)
 -------------------
 
 * fixed memleak in internal.download()

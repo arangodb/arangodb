@@ -211,19 +211,19 @@ var dashboardView = Backbone.View.extend({
       $('.thumbnails').append(
         '<ul class="statGroups" id="' + this.group + '">' +
         '<i class="group-close icon-minus icon-white"></i>' +
-        '<h4 class="statsHeader">' + this.name + '</h4>' +
+        '<div id="statsHeaderDiv"><h4 class="statsHeader">' + this.name + '</h4></div>' +
         '</ul>');
 
       //group
-      //$('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
-      //$('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+      $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
+      $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
 
-      //TEST
+      /*TEST
       $('#menuGroups').append(
         '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
         '<ul id="' + this.group + 'Divider" class="dropdown-menu graphDropdown"></ul>'
       );
-      //TEST
+      */
 
 
       //group entries
@@ -370,17 +370,15 @@ var dashboardView = Backbone.View.extend({
   },
 
   showCategory: function (e) {
-    var id = e.target.id;
-    if (id === 'replSwitch') {
-      $('#statSwitch').removeClass('activeSwitch');
-      $('#'+id).addClass('activeSwitch');
+    var parent = $(e.target).parent().attr('id');
+    $('.arangoTab li').removeClass('active');
+    $('.arangoTab #'+parent).addClass('active');
+    if (parent === 'replSwitch') {
       $('#detailGraph').hide();
       $('.statGroups').hide();
       $('#detailReplication').show();
     }
-    else if (id === 'statSwitch') {
-      $('#'+id).addClass('activeSwitch');
-      $('#replSwitch').removeClass('activeSwitch');
+    else if (parent === 'statSwitch') {
       $('#detailReplication').hide();
       $('#detailGraph').show();
       $('.statGroups').show();
@@ -641,7 +639,8 @@ var dashboardView = Backbone.View.extend({
       '</li>'
     );
 
-    $('#' + figure.group + 'Divider').append(
+    console.log(figure.group);
+    $('#' + figure.group + 'Divider').after(
       '<li><a><label class="checkbox checkboxLabel">'+
       '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
       '<label class="css-label"/>' +
