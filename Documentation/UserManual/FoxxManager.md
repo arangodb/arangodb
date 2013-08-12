@@ -7,7 +7,10 @@ Foxx Manager {#UserManualFoxxManager}
 Foxx Applications{#UserManualFoxxManagerIntro}
 ==============================================
 
-Foxx is an easy way to create APIs and simple web applications from within ArangoDB. It is inspired by Sinatra, the classy Ruby web framework.  An application built with Foxx is written in JavaScript and deployed to ArangoDB directly. ArangoDB serves this application, you do not need a separate application server.
+Foxx is an easy way to create APIs and simple web applications from within ArangoDB. 
+It is inspired by Sinatra, the classy Ruby web framework.  An application built 
+with Foxx is written in JavaScript and deployed to ArangoDB directly. ArangoDB 
+serves this application, you do not need a separate application server.
 
 In order to share your applications with the community, we have created a central GitHub repository
 
@@ -20,7 +23,9 @@ Applications are managed using the Foxx manager `foxx-manager`. It is similar to
 First Steps with the Foxx Manager{#UserManualFoxxManagerFirstSteps}
 ===================================================================
 
-The Foxx manager is a shell program. It should have been installed under `/usr/bin` when installing the ArangoDB package. An instance of the ArangoDB server must be up and running.
+The Foxx manager is a shell program. It should have been installed under `/usr/bin` 
+when installing the ArangoDB package. An instance of the ArangoDB server must be 
+up and running.
 
     unix> foxx-manager
     Expecting a command, please try:
@@ -34,11 +39,13 @@ The Foxx manager is a shell program. It should have been installed under `/usr/b
 
 The most important commands are
 
-* `install`: Fetches a Foxx application from the central `foxx-apps` repository, mounts it to a local URL and sets it up
+* `install`: Fetches a Foxx application from the central `foxx-apps` repository, 
+  mounts it to a local URL and sets it up
 * `uninstall`: Unmounts a mounted Foxx application and calls its teardown method 
 * `list`: Lists all installed Foxx applications
 
-When dealing with a fresh install of ArangoDB, there should be no installed applications besides the system applications delivered with ArangoDB.
+When dealing with a fresh install of ArangoDB, there should be no installed 
+applications besides the system applications delivered with ArangoDB.
 
     unix> foxx-manager list
     Name        Author               Description                                                AppID               Version    Mount               Active    System 
@@ -47,14 +54,17 @@ When dealing with a fresh install of ArangoDB, there should be no installed appl
     ---------   ------------------   --------------------------------------------------------   -----------------   --------   -----------------   -------   -------
     1 application(s) found
 
-There is currently one application installed. It is called "aardvark" and it is a system application. You can safely ignore system applications.  
+There is currently one application installed. It is called "aardvark" and it 
+is a system application. You can safely ignore system applications.  
 
-We are now going to install the hello world application. It is called "hello-foxx" - no suprise there.
+We are now going to install the hello world application. It is called 
+"hello-foxx" - no suprise there.
 
     unix> foxx-manager install hello-foxx /example
     Application app:hello-foxx:1.2.2 installed successfully at mount point /example
 
-The second parameter `/example` is the mount path of the application. You should now be able to access the example application under
+The second parameter `/example` is the mount path of the application. You 
+should now be able to access the example application under
 
     http://localhost:8529/example
 
@@ -73,7 +83,8 @@ You can install the application again under different mount path.
     unix> foxx-manager install hello-foxx /hello
     Application app:hello-foxx:1.2.2 installed successfully at mount point /hello
 
-You now have to separated instances of the same application. They are completely independent of each other.
+You now have to separated instances of the same application. They are 
+completely independent of each other.
 
     unix> foxx-manager list
     Name          Author               Description                                                AppID                   Version    Mount               Active    System 
@@ -84,7 +95,9 @@ You now have to separated instances of the same application. They are completely
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     3 application(s) found
 
-The current version of the application is `1.2.2` (check the output of `list` for the current version).  It is even possible to mount a different version of an application.
+The current version of the application is `1.2.2` (check the output of `list` 
+for the current version). It is even possible to mount a different version 
+of an application.
 
 Now let's remove the instance mounted under `/hello`.
 
@@ -94,7 +107,8 @@ Now let's remove the instance mounted under `/hello`.
 Behind the Foxx Manager scenes{#UserManualFoxxManagerBehindScences}
 ===================================================================
 
-In the previous chapter we have seen how to install and install applications.  We now go into more details.
+In the previous chapter we have seen how to install and install applications. 
+We now go into more details.
 
 There are five steps when installing or uninstalling applications.
 
@@ -104,12 +118,15 @@ There are five steps when installing or uninstalling applications.
 * `teardown` the application, removing the application-specific collections
 * `unmount` the application
 
-When installing an application, the steps "fetch", "mount", and "setup" are executed automatically. When uninstalling an application, the steps `teardown` and `unmount` are executed automatically.
+When installing an application, the steps "fetch", "mount", and "setup" are 
+executed automatically. When uninstalling an application, the steps `teardown` 
+and `unmount` are executed automatically.
 
 Installing an application manually
 ----------------------------------
 
-We are now going to install the hello world application manually. You can use `search` to find application in your local copy of the central repository.
+We are now going to install the hello world application manually. You can use `search` 
+to find application in your local copy of the central repository.
 
 So, first we update our local copy to get the newest versions from the central repository.
 
@@ -168,7 +185,9 @@ Let's now mount the application in version 1.2.1 under `/hello`.
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     3 application(s) found
 
-The application is mounted but not yet initialized. If you check the available collections, you will see that there is no collection called `hello_texts`.
+The application is mounted but not yet initialized. If you check the 
+available collections, you will see that there is no collection 
+called `hello_texts`.
 
     arangosh> db._collections()
     [ 
@@ -177,7 +196,9 @@ The application is mounted but not yet initialized. If you check the available c
       ...
     ]
 
-A collection `example_texts` exists. This belongs to the mounted application at `/example`. If we set-up the application, then the setup script will create the missing collection.
+A collection `example_texts` exists. This belongs to the mounted application 
+at `/example`. If we set-up the application, then the setup script will 
+create the missing collection.
 
     unix> foxx-manager setup /hello
 
@@ -202,16 +223,20 @@ You can now use the mounted and initialized application.
     -----------   ------------------   --------------------------------------------------------   ---------------------   --------   -----------------   -------   -------
     3 application(s) found
 
-As you can see, there are two instances of the application under two mount paths in two different versions. As the collections are not shared between applications, they are completely independent from each other.
+As you can see, there are two instances of the application under two mount 
+paths in two different versions. As the collections are not shared between 
+applications, they are completely independent from each other.
 
 Uninstalling an application manually
 ------------------------------------
 
-Now let us uninstall the application again. First we have to call the teardown script, which will remove the collection `hello_texts`.
+Now let us uninstall the application again. First we have to call the 
+teardown script, which will remove the collection `hello_texts`.
 
     unix> foxx-manager teardown /hello
 
-This will drop the collection `hello_exists`. The application is, however, still reachable. We still need to unmount it.
+This will drop the collection `hello_exists`. The application is, 
+however, still reachable. We still need to unmount it.
 
     unix> foxx-manager unmount /hello
 
