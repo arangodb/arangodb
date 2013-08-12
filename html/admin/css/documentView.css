@@ -27,15 +27,18 @@
   cursor: default !important;
 }
 
-#tableDiv,
-#logContent {
+#tableDiv, #logContent{
   margin-top: 0px;
   padding: 20px 20px 20px 20px;
-/*  background-color: rgba(0, 0, 0, 0.05);*/
+}
+
+#logContent .tab-content {
+  margin-top: 1px !important;
 }
 
 .arangoTab a {
   color: black !important;
+  cursor: pointer;
 }
 
 .arangoTab > li {
@@ -44,6 +47,7 @@
   position: relative;
   z-index: 900;
   margin-left: 2px;
+  cursor: pointer;
 }
 
 #addDocumentLine {
@@ -177,7 +181,7 @@
 
 .arangoTab {
   padding-bottom: 0 !important;
-  margin-bottom: -5px !important;
+  margin-bottom: -1px !important;
   margin-right: 20px;
 }
 
