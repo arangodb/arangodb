@@ -63,24 +63,33 @@
   cursor: pointer;
 }
 
+#deleteRow {
+  margin-right: 3px !important;
+  margin-top: -8px;
+}
+
 #addRow {
-  margin-right:9px;
-  padding-right: 0;
+  margin-top: -8px;
 }
 
 #deleteRow, #addRow {
   float: right;
   border: medium none;
-  margin-top: -8px;
   background-color: transparent;
+  margin-right: 5px;
+  padding-right: 0;
 }
 
 #documentTableID {
   font-weight: 300;
   border-collapse:separate;
   border-spacing:0 0px;
-	border:1px solid #c1bdba;
+  border-top: 1px solid #888;
   background-color: #FFFFFF;
+}
+
+table.dataTable thead th {
+  font-weight: 400 !important;
 }
 
 #documentTableID thead {
@@ -149,10 +158,7 @@
 .arangoTab > li:hover > a {
     border-radius: 0 !important;
     background-color: #F1F0EE;
-    border-top: 1px solid #C1BDBA;
-    border-left: 1px solid #C1BDBA;
-    border-right: 1px solid #C1BDBA;
-    border-bottom: 1px solid #C1BDBA;
+    border-bottom: 1px solid #888;
     font-size: 13px !important;
     padding-top: 4px;
     padding-bottom: 4px;
@@ -171,9 +177,9 @@
 .arangoTab > li.active > a,
 .arangoTab > li:hover.active > a {
   background: #FFF;
-  border-left: 1px solid #C1BDBA;
-  border-right: 1px solid #C1BDBA;
-  border-top: 1px solid #C1BDBA;
+  border-left: 1px solid #888;
+  border-right: 1px solid #888;
+  border-top: 1px solid #888;
   border-bottom: 1px solid #FFFFFF;
 }
 
@@ -200,7 +206,7 @@
 .arangoTab {
   padding-bottom: 0 !important;
   margin-bottom: -1px !important;
-  margin-right: 25px;
+  margin-right: 20px;
 }
 
 .arangoTab .nav-tabs li {
@@ -212,7 +218,7 @@
 }
 
 table.dataTable thead th {
-  padding: 7px 18px 7px 20px;
+  padding: 7px 18px 5px 20px;
 }
 
 table.dataTable td {
@@ -221,6 +227,5 @@ table.dataTable td {
 
 .tdRoundButton {
   padding-top: 7px !important;
-  padding-right: 1px;
   float: right;
 }

@@ -93,11 +93,9 @@
 
 #transparentHeader {
   height: 36px;
-  margin-top: 20px !important;
+  margin-top: 5px !important;
   margin-bottom: -10px !important;
   background-color:#686766;
-  border-top: 1px solid #a0a0a0;
-  border-bottom: 1px solid #a0a0a0;
   color:#FFF;
   margin-left: 5px;
   margin-right: 5px;
