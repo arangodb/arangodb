@@ -15,8 +15,6 @@
 
       <!--<div id="menuGroups" class="dropdown-menu" role="menu">
       </div>--!>
-      <ul class="dropdown-menu dashboard-dropdown" id="menuGroups">
-      </ul>
     </div>
     <!-- /btn-group -->
 
@@ -24,7 +22,13 @@
     <div class="btn-group pull-right">
       <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle">Interval <span class="caret"></span></button>
 
-      <ul class="dropdown-menu interval-dropdown">
+    </div>
+    <!-- /btn-group -->
+
+  </div>
+
+  <div id="dashboardDropdown">
+      <ul>
         <li class="nav-header">Update every:</li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every10seconds" value="10"><label><span></span>5 seconds</label></label></a></li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every15seconds" value="15"><label><span></span>15 seconds</label></label></a></li>
@@ -32,12 +36,10 @@
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every60seconds" value="60"><label><span></span>60 seconds</label></label></a></li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every120seconds" value="120"><label><span></span>120 seconds</label></label></a></li>
       </ul>
-    </div>
-    <!-- /btn-group -->
-
   </div>
-</ul>
 
+</ul>
+<div class="containerdivNewLine"/>
 <ul class="thumbnails marginRight10 dashboardContent">
 
   <ul class="nav nav-tabs arangoTab">
