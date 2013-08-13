@@ -64,7 +64,7 @@
 }
 
 #deleteRow {
-  margin-right: 3px !important;
+  margin-right: -2px !important;
   margin-top: -8px;
 }
 
@@ -76,7 +76,7 @@
   float: right;
   border: medium none;
   background-color: transparent;
-  margin-right: 5px;
+  margin-right: 0px;
   padding-right: 0;
 }
 
@@ -115,7 +115,7 @@ table.dataTable thead th {
 #editSecondRow {
   float:right;
   text-align:right;
-  margin-right: -25px !important;
+  margin-right: -30px !important;
   padding-bottom: 1px;
 }
 
@@ -206,7 +206,7 @@ table.dataTable thead th {
 .arangoTab {
   padding-bottom: 0 !important;
   margin-bottom: -1px !important;
-  margin-right: 20px;
+  margin-right: 15px;
 }
 
 .arangoTab .nav-tabs li {
@@ -218,7 +218,7 @@ table.dataTable thead th {
 }
 
 table.dataTable thead th {
-  padding: 7px 18px 5px 20px;
+  padding: 7px 18px 5px 15px;
 }
 
 table.dataTable td {
