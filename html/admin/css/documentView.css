@@ -64,7 +64,7 @@
 }
 
 #addRow {
-  margin-right:7px;
+  margin-right:9px;
   padding-right: 0;
 }
 
@@ -100,13 +100,14 @@
 #editFirstRow {
   float:right;
   text-align:right;
-  margin-right: -15px !important;
+  margin-right: -14px !important;
 }
 
 #editSecondRow {
   float:right;
   text-align:right;
-  margin-right: -23px !important;
+  margin-right: -22px !important;
+  padding-bottom: 1px;
 }
 
 #documentTableID .icon-edit {
@@ -199,7 +200,7 @@
 .arangoTab {
   padding-bottom: 0 !important;
   margin-bottom: -1px !important;
-  margin-right: 20px;
+  margin-right: 25px;
 }
 
 .arangoTab .nav-tabs li {
@@ -220,6 +221,6 @@ table.dataTable td {
 
 .tdRoundButton {
   padding-top: 7px !important;
-  padding-right: 0px;
+  padding-right: 1px;
   float: right;
 }
