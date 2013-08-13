@@ -226,7 +226,7 @@ table.dataTable thead th {
 
 .pagination ul > li > a, .pagination ul > li > span {
 	cursor:pointer;
-	border-width:0 0 0 1px;
+	border-width:0 0 0 0px;
 }
 
 /*
@@ -373,7 +373,7 @@ table.dataTable thead th {
 #filterHeader button {
   float: right;
   margin-top: 1px;
-  margin-left: 10px !important;
+  margin-left: 5px !important;
 }
 
 #addFilterItem {
@@ -426,6 +426,10 @@ table.dataTable thead th {
 
 #documentsToolbarF li ,#documentsToolbar li{
   border-radius: 0 !important;
+}
+
+#documentsToolbarF a {
+  margin-left: 5px;
 }
 
 #documentsToolbar ul {
