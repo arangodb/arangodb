@@ -226,7 +226,7 @@ table.dataTable thead th {
 
 .pagination ul > li > a, .pagination ul > li > span {
 	cursor:pointer;
-	border-width:0 0 0 1px;
+	border-width:0 0 0 0px;
 }
 
 /*
@@ -372,7 +372,8 @@ table.dataTable thead th {
 
 #filterHeader button {
   float: right;
-  margin-left: 10px !important;
+  margin-top: 1px;
+  margin-left: 5px !important;
 }
 
 #addFilterItem {
@@ -380,7 +381,7 @@ table.dataTable thead th {
 }
 
 #addFilterItem i {
-  margin-top: -3px !important;
+  margin-top: 0px !important;
 }
 
 #filterHeader input, #filterHeader select, #filterHeader button {
@@ -427,6 +428,10 @@ table.dataTable thead th {
   border-radius: 0 !important;
 }
 
+#documentsToolbarF a {
+  margin-left: 5px;
+}
+
 #documentsToolbar ul {
   margin-left: 0 !important;
   padding-left: 0!important;
@@ -448,7 +453,7 @@ table.dataTable thead th {
 }
 
 .removeFilterItem i {
-  margin-top: -3px !important;
+  margin-top: 0px !important;
   margin-left: 5px !important;
 }
 
