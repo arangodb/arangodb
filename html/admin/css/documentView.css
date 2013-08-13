@@ -109,13 +109,13 @@ table.dataTable thead th {
 #editFirstRow {
   float:right;
   text-align:right;
-  margin-right: -14px !important;
+  margin-right: -17px !important;
 }
 
 #editSecondRow {
   float:right;
   text-align:right;
-  margin-right: -22px !important;
+  margin-right: -25px !important;
   padding-bottom: 1px;
 }
 
