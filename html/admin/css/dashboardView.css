@@ -20,14 +20,14 @@
   margin-top: 6px;
 }
 
-#dashboardHeader ul a {
-  margin-top: -2px;
-  padding-top: 5px;
-  padding-bottom: 3px;
-  padding-left: 12px;
-  padding-right: 8px;
-  border-radius: 0;
-  margin-right: 0px;
+.pagination-right ul a, #dashboardHeader ul a {
+  margin-top: -2px !important;
+  padding-top: 5px !important;
+  padding-bottom: 3px !important;
+  padding-left: 12px !important;
+  padding-right: 8px !important;
+  border-radius: 0 !important;
+  margin-right: 0px !important;
 }
 
 .group-close, .group-open {
@@ -71,23 +71,23 @@
 }
 
 .statSingleClient {
-  height: 300px;
+  height: 400px;
   width: 100% !important;
   margin-top: 11px;
   margin-left: 10px !important;
   margin-right: 11px !important;
-  margin-bottom: 0px !important;
+  margin-bottom: -10px !important;
   border: 1px solid #C1BDBA !important;
   background-color: #FFFFFF !important;
 }
 
 .statClient {
   float: left;
-  height: 70px;
+  height: 130px;
   width: 230px;
   margin-left: 8px !important;
   margin-bottom: 4px !important;
-  border: 1px solid black;
+  border: 1px solid rgba(0, 0, 0, 0.1)
   background-color: #FFFFFF !important;
 }
 
@@ -114,41 +114,42 @@
 }
 
 .svgClass {
-  margin-top: 0 !important;
+  margin-top: 20px !important;
   padding-top: 0 !important;
-  height: 140px;
+  /*height: 140px;*/
+  height: 185px;
   width: 300px;
 }
 
 .svgDetailClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
-  height: 300px;
+  height: 400px;
   width: 100%;
 }
 
-.boxHeader {
-  margin-top: 5px;
-  /*background-color: #686766;*/
-  color: black;
-  opacity: 0.25;
+li:hover  i, li.hover i,
+li:hover h6, li.hover h6 {
+  opacity: 0.7 !important
 }
 
-.boxHeader:hover {
-  opacity: 0.8;
+.boxHeader i {
+  opacity: 0;
+  margin-top: -2px !important;
 }
 
 .boxHeader h6 {
+  opacity: 0.25;
   padding-top: 0 !important;
   color: black;
-  margin-left: 10px;
+  margin-left: 5px;
   margin-top: 0 !important;
   margin-bottom: -15px !important;
 }
 
 #statsHeaderDiv {
   margin-bottom: 16px;
-  margin-top: 12px;
+  margin-top: 0px;
   margin-right: 20px !important;
   margin-left: 8px !important;
   padding: 0 !important;
@@ -435,10 +436,15 @@
 }
 
 #detailGraphPadding {
-  padding-right: 33px !important;
+  padding-right: 31px !important;
+  margin-left: -2px !important;
   margin-top: -12px !important;
 }
 
 #statSwitch {
   margin-right: -40px;
+}
+
+#dashboardDropdown ul {
+  float:left;
 }
