@@ -53,7 +53,7 @@
 #addDocumentLine {
   padding-top: 7px;
   padding-right: 0;
-  margin-right: 0;
+  margin-right: -1px;
   float: right;
   color: black;
 }
@@ -64,7 +64,7 @@
 }
 
 #deleteRow {
-  margin-right: -2px !important;
+  margin-right: -1px !important;
   margin-top: -8px;
 }
 
@@ -221,8 +221,8 @@ table.dataTable thead th {
   padding: 7px 18px 5px 15px;
 }
 
-table.dataTable td {
-  padding: 12px 20px;
+#documentsDiv table.dataTable td {
+  padding: 12px 15px !important;
 }
 
 .tdRoundButton {

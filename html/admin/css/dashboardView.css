@@ -20,7 +20,7 @@
   margin-top: 6px;
 }
 
-.pagination-right ul a, #dashboardHeader ul a {
+#dashboardHeader ul a {
   margin-top: -2px !important;
   padding-top: 5px !important;
   padding-bottom: 3px !important;
