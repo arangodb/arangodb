@@ -45,7 +45,7 @@
 .thumbnails a.add {
 	padding:40px 0;
 	display:block;
-	font-weight:bold;
+	font-weight: 400;
 	text-align:left;
 }
 
@@ -91,13 +91,13 @@
 }
 
 #transparentHeader .breadcrumb {
-  padding-left: 10px !important;
+  padding-left: 5px !important;
 }
 
 #transparentHeader {
   height: 36px;
   margin-top: 5px !important;
-  margin-bottom: -10px !important;
+  margin-bottom: 0px !important;
   background-color:#686766;
   color:#FFF;
   margin-left: 5px;
