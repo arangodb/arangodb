@@ -372,6 +372,7 @@ table.dataTable thead th {
 
 #filterHeader button {
   float: right;
+  margin-top: 1px;
   margin-left: 10px !important;
 }
 
