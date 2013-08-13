@@ -3,10 +3,9 @@
     <div id="documentsToolbar" class="pagination pagination-small pagination-right">
 
     <!-- remove marker for docupdiv--!>
-    <ul><li class="enabled"><a id="filterCollection"><span class="glyphicon glyphicon-filter" title="Filter collection"></span></a></li></ul>
-    <ul><li class="enabled"><a id="importCollection"><span class="glyphicon glyphicon-paperclip" title="Upload documents"></span></a></li></ul>
-    <ul><li class="enabled"><a id="addDocumentButton"><span class="glyphicon glyphicon-plus-sign" title="Add a document"></span></a></li></ul>
-
+      <ul><li class="enabled"><a id="filterCollection"><span class="glyphicon glyphicon-filter" title="Filter collection"></span></a></li></ul>
+      <ul><li class="enabled"><a id="importCollection"><span class="glyphicon glyphicon-paperclip" title="Upload documents"></span></a></li></ul>
+      <ul><li class="enabled"><a id="addDocumentButton"><span class="glyphicon glyphicon-plus-sign" title="Add a document"></span></a></li></ul>
     <ul>
       <li class="enabled"><a id="collectionPrev"><i class="icon icon-white icon-chevron-left"></i></a></li>
       <li class="enabled"><a id="collectionNext"><i class="icon icon-white icon-chevron-right"></i></a></li>
@@ -16,7 +15,8 @@
   </div>
 </ul>
 
-<div id="filterHeader" style="display:none">
+<div class="arangoDropdown">
+  <div id="filterHeader" style="display:none">
     <div class="queryline">
        <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0">
            <option value="==">==</option>
@@ -26,19 +26,21 @@
            <option value="&gt;">&gt;</option>
            <option value="&gt;=">&gt;=</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
-        <a id="addFilterItem"><i class="icon-plus"></i></a>
+        <a id="addFilterItem"><i class="icon-plus icon-white"></i></a>
         <button id="resetView" class="btn btn-primary btn-success">Reset</button>
         <button id="filterSend" class="btn btn-primary btn-success">Filter</button>
     </div>
-</div>
+  </div>
 
-<div id="importHeader" style="display:none">
+  <div id="importHeader" style="display:none">
     <div class="queryline">
       <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
       <button id="confirmDocImport" class="btn btn-success" style="float:right">
         <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>Import
       </button>
     </div>
+  </div>
+
 </div>
 
 <div id="documentsDiv">

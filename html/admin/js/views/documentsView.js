@@ -246,7 +246,7 @@ var documentsView = Backbone.View.extend({
     // adds a line to the filter widget
     
     var num = ++this.filterId;
-    $('#filterHeader').append(' <div class="queryline querylineAdd"> & &#160;'+
+    $('#filterHeader').append(' <div class="queryline querylineAdd">'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
        '<select name="operator" id="operator' + num + '">'+
        '    <option value="==">==</option>'+
@@ -259,8 +259,8 @@ var documentsView = Backbone.View.extend({
        '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" ' + 
        'class="filterValue">'+
        ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-       '<i class="icon icon-minus"></i></a>'+
-       ' </div>');
+       '<i class="icon icon-minus icon-white"></i></a>'+
+       ' <span>AND</span></div>');
     this.filters[num] = true;
   },
 
