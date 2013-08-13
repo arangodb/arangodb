@@ -381,7 +381,7 @@ table.dataTable thead th {
 }
 
 #addFilterItem i {
-  margin-top: -3px !important;
+  margin-top: 0px !important;
 }
 
 #filterHeader input, #filterHeader select, #filterHeader button {
@@ -453,7 +453,7 @@ table.dataTable thead th {
 }
 
 .removeFilterItem i {
-  margin-top: -3px !important;
+  margin-top: 0px !important;
   margin-left: 5px !important;
 }
 
