@@ -7,7 +7,11 @@ table.dataTable thead th {
 }
 
 table.dataTable td {
-  padding:12px 10px;
+  padding:12px 18px !important;
+}
+
+#documentsDiv table.dataTable td {
+  padding:12px 15px !important;
 }
 
 #documentAddBtn {
@@ -21,6 +25,10 @@ table.dataTable td {
 #deleteDoc, #documentsToolbar button {
   border: medium none;
   background-color: transparent;
+}
+
+#deleteDoc {
+  padding-right: 5px;
 }
 
 #documentsFooterBox {
@@ -96,10 +104,13 @@ table.dataTable td {
 }
 
 #documentsDiv {
-  background-color: rgba(0, 0, 0, 0.025);
+  margin-top: 10px !important;
+  padding-top: 38px;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 #documentsTableID thead {
+  font-weight: 400 !important;
   background-color: #F7F6F6 !important;
 }
 
@@ -108,7 +119,6 @@ table.dataTable td {
 }
 
 #documentsTableID_wrapper {
-  padding-top: 28px !important;
   padding-bottom: 0px !important;
 }
 
@@ -117,13 +127,13 @@ table.dataTable td {
 }
 
 #documentsTableID {
-   padding-left: 20px !important;
-   padding-right: 20px !important;
-  	width: 100% !important;
-    position: relative;
-  	table-layout:fixed !important;
-  	border-collapse:separate;
-	border-spacing:0 2px;
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+  width: 100% !important;
+  position: relative;
+  table-layout:fixed !important;
+  border-collapse:separate;
+  border-spacing:0 2px;
 }
 
 table.dataTable thead th {
@@ -184,8 +194,7 @@ table.dataTable thead th {
 
 .snippet-no-num {
   font-size: 1em;
-  font-weight: normal;
-  /*font-family: Verdana, Arial, sans-serif;*/
+  font-weight: 300;
   font-family: 'Lato', sans-serif;
   margin-bottom:0px;
 }
@@ -203,8 +212,8 @@ table.dataTable thead th {
   font-size: 1em !important;
 }
 
-  #documentsToolbar button {
-    float:right;
+#collectionPrev {
+  margin-right: 5px;
 }
 
 .pagination ul > li > a, .pagination ul > li > span {
@@ -212,6 +221,7 @@ table.dataTable thead th {
 	border-width:0 0 0 1px;
 }
 
+/*
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
 	margin-right:10px;
 }
@@ -219,6 +229,7 @@ table.dataTable thead th {
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span {
 	margin-left:10px;
 }
+*/
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
@@ -226,7 +237,6 @@ table.dataTable thead th {
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;
-	/*font-size:1.8em;*/
 	position:relative;
 	width:14px;
 	height:20px;
@@ -391,7 +401,8 @@ table.dataTable thead th {
 }
 
 .docsThirdCol {
-  width: 20px !important;
+  padding-right: 15px !important;
+  float:right;
 }
 
 /*RADIUS*/
@@ -405,6 +416,11 @@ table.dataTable thead th {
 
 #documentsToolbarF li ,#documentsToolbar li{
   border-radius: 0 !important;
+}
+
+#documentsToolbar ul {
+  margin-left: 0 !important;
+  padding-left: 0!important;
 }
 
 .queryline {
@@ -422,6 +438,7 @@ table.dataTable thead th {
 }
 
 #documentsToolbar li a {
+  margin-top: 0px !important;
   padding-top: 5px;
   padding-bottom: -3px;
 }
