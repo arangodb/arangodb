@@ -140,7 +140,7 @@ table.dataTable td {
   position: relative;
   table-layout:fixed !important;
   border-collapse:separate;
-  border-spacing:0 2px;
+  border-spacing:0 0px;
 }
 
 table.dataTable thead th {
