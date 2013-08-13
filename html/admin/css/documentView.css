@@ -28,7 +28,6 @@
 }
 
 #tableDiv, #logContent{
-  margin-top: 10px;
   padding: 10px 5px 5px 5px;
 }
 
@@ -139,10 +138,10 @@ table.dataTable thead th {
     box-shadow: none;
 }
 
-#documentTableID .odd {
+#documentTableID .odd, #documentsTableID .odd {
 	background:#F1F0EE;
 }
-#documentTableID .even {
+#documentTableID .even, #documentsTableID .even {
 	background:#FFFFFF;
 }
 
