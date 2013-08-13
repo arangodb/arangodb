@@ -90,6 +90,9 @@
   cursor: pointer;
 }
 
+#transparentHeader .breadcrumb {
+  padding-left: 10px !important;
+}
 
 #transparentHeader {
   height: 36px;
@@ -118,7 +121,6 @@
 }
 
 #transparentHeader a {
-  padding-left: 5px;
 }
 
 #transparentHeader .pagination {
