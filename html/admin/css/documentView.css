@@ -62,21 +62,22 @@
   cursor: pointer;
 }
 
-#deleteRow {
-  margin-right: -1px !important;
-  margin-top: -8px;
-}
-
 #addRow {
-  margin-top: -8px;
+  color: #8AA050;
 }
 
-#deleteRow, #addRow {
-  float: right;
-  border: medium none;
-  background-color: transparent;
-  margin-right: 0px;
-  padding-right: 0;
+#deleteRow {
+  color: #B30000;
+}
+
+#editSecondRow, #editFirstRow {
+  color: #444444;
+}
+
+#addRow, #deleteRow, #editSecondRow, #editFirstRow {
+  font-size: 20px;
+  float:right;
+  padding-top: 2px;
 }
 
 #documentTableID {
