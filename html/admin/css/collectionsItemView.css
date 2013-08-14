@@ -1,5 +1,5 @@
 .span3 {
-  min-height:130px;
+  min-height:100px;
   width: 230px;
   margin-left: 8px !important;
   margin-bottom: 8px !important;
@@ -45,6 +45,7 @@
   margin-right: 5px;
   opacity: 0.5;
   cursor: pointer;
+  font-size: 20px;
 }
 
 .span3 .ICON{
@@ -52,7 +53,7 @@
 }
 
 .span3 .spanInfo {
-  right: 20px;
+  right: 25px;
 }
 
 .span3 .ICON:hover {
@@ -60,7 +61,7 @@
 }
 
 .spanDisabled {
-  right: 20px !important;
+  right: 25px !important;
   opacity: 0.2 !important;
 }
 
