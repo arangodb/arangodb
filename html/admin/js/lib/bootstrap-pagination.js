@@ -9,8 +9,8 @@
   function stopPropagation(event) { event.stopPropagation(); }
   $.fn.pagination = function (config) {
     var options = $.extend({
-      prev: '<i class="icon icon-backward"></i>',
-      next: '<i class="icon icon-forward"></i>',
+      prev: '<span class="glyphicon glyphicon-backward"></span>',
+      next: '<span class="glyphicon glyphicon-forward"></span>',
       left: 3,
       right: 3,
       page: 1,
