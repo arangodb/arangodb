@@ -493,8 +493,10 @@ var documentsView = Backbone.View.extend({
           + value.attributes.key
           + '</div>',
 
-          '<button class="enabled" id="deleteDoc">'
-          + '<img src="img/icon_delete.png" width="16" height="16"></button>'
+        /*  '<button class="enabled" id="deleteDoc">'
+          + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
+          '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
+          +'Add a document"></span><a>'
         ]
       );
     });

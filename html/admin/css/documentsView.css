@@ -3,6 +3,7 @@
 }
 
 #addDocumentButton {
+  position: relative;
   margin-right: 6px;
   font-size: 20px;
   color: #8AA050;
@@ -35,7 +36,14 @@ table.dataTable thead th {
 }
 
 #deleteDoc {
-  padding-right: 5px;
+  color: #B30000;
+  font-size: 20px;
+  padding-right: 3px;
+  top: 3px;
+  position: relative;
+}
+
+#deleteDoc span {
 }
 
 #documentsFooterBox {
