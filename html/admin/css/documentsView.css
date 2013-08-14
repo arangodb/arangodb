@@ -30,11 +30,6 @@ table.dataTable thead th {
   width: 30px !important;
 }
 
-#deleteDoc, #documentsToolbar button {
-  border: medium none;
-  background-color: transparent;
-}
-
 #deleteDoc {
   color: #B30000;
   font-size: 20px;
@@ -62,6 +57,17 @@ table.dataTable thead th {
 #documentsToolbarF {
   padding-bottom: 5px;
   margin-top: 20px;
+}
+
+#documentsToolbarF span {
+  position: relative;
+  top: 1px;
+  font-size: 16px;
+  color: black;
+}
+
+#documentsToolbarF .glyphicon-backward {
+  right: 2px;
 }
 
 #totalDocuments{
@@ -178,7 +184,10 @@ table.dataTable thead th {
 
 #documentsTableID.dataTable thead tr,
 #logContent .dataTable thead tr {
-	border-bottom:1px solid #c1bdba;
+	border-bottom:1px solid #686766;
+}
+
+#documentsTableID tbody {
 }
 
 #documentsTableID.dataTable tr,
@@ -199,7 +208,7 @@ table.dataTable thead th {
 #logContent .odd:hover,
 #logContent .even:hover {
   cursor: pointer;
-  background-color: #D4DFC3 !important;
+  /*background-color: #D4DFC3 !important;*/
 }
 
 #documentsTableID.dataTable tr.even td.sorting_1,
@@ -245,6 +254,11 @@ table.dataTable thead th {
   padding: 0 !important;
   margin: 0 !important;
   font-size: 1em !important;
+}
+
+#collectionPrev, #collectionNext {
+  padding-top: 5px !important;
+  padding-bottom: 2px !important;
 }
 
 #collectionPrev {
@@ -507,12 +521,14 @@ table.dataTable thead th {
 
 #documentsToolbar li a {
   margin-top: 0px !important;
-  padding-top: 5px;
-  padding-bottom: -3px;
+  padding-top: 6px;
+  padding-bottom: 1px;
 }
 
 #documentsToolbar span {
-  font-size: 13px !important;
+  font-size: 16px;
+  margin-right: 3px;
+  margin-left: 0px;
 }
 
 #resetView, #filterSend, #confirmDocImport {
