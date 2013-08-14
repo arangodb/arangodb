@@ -2,16 +2,24 @@
   margin-top: 4px;
 }
 
+#addDocumentButton {
+  position: relative;
+  margin-right: 6px;
+  font-size: 20px;
+  color: #8AA050;
+  margin-top: 2px;
+}
+
 table.dataTable thead th {
   cursor: default !important;
 }
 
-table.dataTable td {
+#tableDiv table.dataTable td {
   padding:12px 18px !important;
 }
 
 #documentsDiv table.dataTable td {
-  padding:12px 15px !important;
+  padding:10px 18px !important;
 }
 
 #documentAddBtn {
@@ -22,13 +30,15 @@ table.dataTable td {
   width: 30px !important;
 }
 
-#deleteDoc, #documentsToolbar button {
-  border: medium none;
-  background-color: transparent;
+#deleteDoc {
+  color: #B30000;
+  font-size: 20px;
+  padding-right: 3px;
+  top: 3px;
+  position: relative;
 }
 
-#deleteDoc {
-  padding-right: 5px;
+#deleteDoc span {
 }
 
 #documentsFooterBox {
@@ -40,16 +50,31 @@ table.dataTable td {
   margin-bottom: 0 !important;
 }
 
+.marginRight5 {
+  margin-right: 10px;
+}
+
 #documentsToolbarF {
-  padding-bottom: 0px;
-  margin-top: 33px;
+  padding-bottom: 5px;
+  margin-top: 20px;
+}
+
+#documentsToolbarF span {
+  position: relative;
+  top: 1px;
+  font-size: 16px;
+  color: black;
+}
+
+#documentsToolbarF .glyphicon-backward {
+  right: 2px;
 }
 
 #totalDocuments{
   float: left;
   color: black;
-  padding-left: 15px;
-  margin-top: -49px !important;
+  padding-left: 10px;
+  margin-top: -54px !important;
 }
 
 .arangoDropdown {
@@ -58,10 +83,11 @@ table.dataTable td {
 }
 
 #filterHeader, #importHeader, .arangoDropdownIn {
-  background-color: rgba(0, 0, 0, 0.2);
-  padding-top: 5px;
-  padding-left: 5px;
-  padding-right: 5px;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
   margin-left: 5px;
   margin-right: 5px;
   border-left: 1px solid #686766;
@@ -111,7 +137,9 @@ table.dataTable td {
 
 #documentsDiv {
   margin-top: 10px !important;
-  padding-top: 33px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 40px;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
@@ -139,8 +167,15 @@ table.dataTable td {
   width: 100% !important;
   position: relative;
   table-layout:fixed !important;
-  border-collapse:separate;
   border-spacing:0 0px;
+}
+
+#documentsTable thead {
+  border: 0 !important;
+}
+
+.docsFirstCol, .docsSecCol, .docsThirdCol {
+  border: 0 !important;
 }
 
 table.dataTable thead th {
@@ -149,7 +184,10 @@ table.dataTable thead th {
 
 #documentsTableID.dataTable thead tr,
 #logContent .dataTable thead tr {
-	border:1px solid #c1bdba;
+	border-bottom:1px solid #686766;
+}
+
+#documentsTableID tbody {
 }
 
 #documentsTableID.dataTable tr,
@@ -161,8 +199,7 @@ table.dataTable thead th {
 #logContent .odd,
 #logContent .even {
 	margin-bottom: 2px;
-    border:1px solid #c1bdba;
-    background-color: #F9F9F9;
+  background-color: #F9F9F9;
 }
 
 
@@ -170,8 +207,8 @@ table.dataTable thead th {
 #documentsTableID .even:hover,
 #logContent .odd:hover,
 #logContent .even:hover {
-  border: 1px solid #fbdb7e;
   cursor: pointer;
+  /*background-color: #D4DFC3 !important;*/
 }
 
 #documentsTableID.dataTable tr.even td.sorting_1,
@@ -219,9 +256,26 @@ table.dataTable thead th {
   font-size: 1em !important;
 }
 
+#collectionPrev, #collectionNext {
+  padding-top: 5px !important;
+  padding-bottom: 2px !important;
+}
+
 #collectionPrev {
-  margin-right: 5px;
-  margin-left: 5px;
+  margin-right: 11px;
+  margin-left: 20px;
+}
+
+#collectionNext {
+  margin-right: -5px;
+}
+
+.arangoPagination li:first-child a {
+  margin-right: 20px;
+}
+
+.arangoPagination li:last-child a {
+  margin-left: 30px !important;
 }
 
 .pagination ul > li > a, .pagination ul > li > span {
@@ -229,15 +283,23 @@ table.dataTable thead th {
 	border-width:0 0 0 0px;
 }
 
-/*
-.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
-	margin-right:10px;
+#documentsToolbar li {
+  margin-right: 6px;
 }
 
-.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span {
-	margin-left:10px;
+#documentsToolbar .pagination-mini ul > li:first-child > a,
+#documentsToolbar .pagination-small ul > li:first-child > a,
+#documentsToolbar .pagination-mini ul > li:first-child > span,
+#documentsToolbar .pagination-small ul > li:first-child > span {
+	margin-right: 5px;
 }
-*/
+/*
+.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
+	margin-right: 5px;
+}
+.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span {
+	margin-left: 0px;
+}*/
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
@@ -373,7 +435,7 @@ table.dataTable thead th {
 #filterHeader button {
   float: right;
   margin-top: 1px;
-  margin-left: 5px !important;
+  margin-left: 10px !important;
 }
 
 #addFilterItem {
@@ -389,8 +451,8 @@ table.dataTable thead th {
 }
 
 #filterHeader select {
-  margin-left: 5px !important;
-  margin-right: 5px !important;
+  margin-left: 10px !important;
+  margin-right: 10px !important;
 }
 
 .readOnlyClass a {
@@ -429,7 +491,7 @@ table.dataTable thead th {
 }
 
 #documentsToolbarF a {
-  margin-left: 6px;
+  margin-left: 11px;
 }
 
 #documentsToolbar ul {
@@ -459,12 +521,14 @@ table.dataTable thead th {
 
 #documentsToolbar li a {
   margin-top: 0px !important;
-  padding-top: 5px;
-  padding-bottom: -3px;
+  padding-top: 6px;
+  padding-bottom: 1px;
 }
 
 #documentsToolbar span {
-  font-size: 13px !important;
+  font-size: 16px;
+  margin-right: 3px;
+  margin-left: 0px;
 }
 
 #resetView, #filterSend, #confirmDocImport {
