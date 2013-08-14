@@ -9,8 +9,8 @@
   function stopPropagation(event) { event.stopPropagation(); }
   $.fn.pagination = function (config) {
     var options = $.extend({
-      prev: '<i class="icon icon-backward"></i>',
-      next: '<i class="icon icon-forward"></i>',
+      prev: '<span class="glyphicon glyphicon-backward"></span>',
+      next: '<span class="glyphicon glyphicon-forward"></span>',
       left: 3,
       right: 3,
       page: 1,
@@ -38,7 +38,7 @@
       return li;
     }
     function newUL() {
-      var ul = $('<ul/>'), i;
+      var ul = $('<ul class="arangoPagination"/>'), i;
       ul.append(newLI(options.prev, options.page - 1));
       for (i = begin; i <= end; i += 1) { ul.append(newLI(i, i)); }
       return ul.append(newLI(options.next, options.page + 1));

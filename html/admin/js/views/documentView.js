@@ -15,8 +15,8 @@ var documentView = Backbone.View.extend({
   events: {
     "click #saveDocument"               : "saveDocument",
     //"click #addDocumentLine"          : "addLine",
-    "click #addDocumentLine"          : "addLine",
-    "click #addRow"          : "addLine",
+    "click #addDocumentLine"            : "addLine",
+    "click #addRow"                     : "addLine",
     "click #documentTableID #deleteRow" : "deleteLine",
     "click #sourceView"                 : "sourceView",
     "click #editFirstRow"               : "editFirst",
@@ -171,12 +171,11 @@ var documentView = Backbone.View.extend({
         $(self.table).dataTable().fnAddData(
           [
             key,
-            '<i class="icon-edit" id="editFirstRow"></i>',
+            '<a id="editFirstRow"><span class="glyphicon glyphicon-edit"></span></a>',
             self.value2html(value),
             JSON.stringify(value, null, 4),
-            '<i class="icon-edit" id="editSecondRow"></i>',
-            '<button class="enabled" id="deleteRow" class="pull-right"><img src="img/icon_delete.png"'+
-            'width="16" height="16" class="tdRoundButton"></button>'
+            '<a id="editSecondRow"><span class="glyphicon glyphicon-edit"></span></a>',
+            '<a id="deleteRow"><span class="glyphicon glyphicon-minus-sign"></span></a>'
         ]);
       }
     });
@@ -197,12 +196,11 @@ var documentView = Backbone.View.extend({
     $(this.table).dataTable().fnAddData(
       [
         self.currentKey,
-        '<i class="icon-edit" id="editFirstRow"></i>',
+        '<a id="editFirstRow"><span class="glyphicon glyphicon-edit"></span></a>',
         this.value2html("editme"),
         JSON.stringify("editme"),
-        '<i class="icon-edit" id="editSecondRow"></i>',
-        '<button class="enabled" id="deleteRow" class="pull-right"><img src="img/icon_delete.png"'+
-        'width="16" height="16" class="tdRoundButton"></button>'
+        '<a id="editSecondRow"><span class="glyphicon glyphicon-edit"></span></a>',
+        '<a id="deleteRow"><span class="glyphicon glyphicon-minus-sign"></span></a>'
       ]
     );
     this.makeEditable();

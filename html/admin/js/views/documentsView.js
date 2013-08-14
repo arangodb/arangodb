@@ -493,8 +493,10 @@ var documentsView = Backbone.View.extend({
           + value.attributes.key
           + '</div>',
 
-          '<button class="enabled" id="deleteDoc">'
-          + '<img src="img/icon_delete.png" width="16" height="16"></button>'
+        /*  '<button class="enabled" id="deleteDoc">'
+          + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
+          '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
+          +'Add a document"></span><a>'
         ]
       );
     });
@@ -561,10 +563,10 @@ var documentsView = Backbone.View.extend({
     target.pagination(options);
     $('#documentsToolbarF').prepend(
       '<ul class="prePagi"><li><a id="documents_first">'+
-      '<i class="icon icon-step-backward"></i></a></li></ul>');
+      '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>');
       $('#documentsToolbarF').append(
         '<ul class="lasPagi"><li><a id="documents_last">'+
-        '<i class="icon icon-step-forward"></i></a></li></ul>');
+        '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>');
         var total = $('#totalDocuments');
         if (total.length > 0) {
           total.html("Total: " + this.documentsCount + " documents");
