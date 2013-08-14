@@ -2,6 +2,13 @@
   margin-top: 4px;
 }
 
+#addDocumentButton {
+  margin-right: 6px;
+  font-size: 20px;
+  color: #8AA050;
+  margin-top: 2px;
+}
+
 table.dataTable thead th {
   cursor: default !important;
 }
@@ -38,6 +45,10 @@ table.dataTable thead th {
 
 #documentsToolbar {
   margin-bottom: 0 !important;
+}
+
+.marginRight5 {
+  margin-right: 10px;
 }
 
 #documentsToolbarF {
@@ -112,6 +123,8 @@ table.dataTable thead th {
 
 #documentsDiv {
   margin-top: 10px !important;
+  padding-left: 5px;
+  padding-right: 5px;
   padding-top: 40px;
   background-color: rgba(0, 0, 0, 0.1);
 }
@@ -140,8 +153,15 @@ table.dataTable thead th {
   width: 100% !important;
   position: relative;
   table-layout:fixed !important;
-  border-collapse:separate;
   border-spacing:0 0px;
+}
+
+#documentsTable thead {
+  border: 0 !important;
+}
+
+.docsFirstCol, .docsSecCol, .docsThirdCol {
+  border: 0 !important;
 }
 
 table.dataTable thead th {
@@ -150,7 +170,7 @@ table.dataTable thead th {
 
 #documentsTableID.dataTable thead tr,
 #logContent .dataTable thead tr {
-	border:1px solid #c1bdba;
+	border-bottom:1px solid #c1bdba;
 }
 
 #documentsTableID.dataTable tr,
@@ -162,8 +182,7 @@ table.dataTable thead th {
 #logContent .odd,
 #logContent .even {
 	margin-bottom: 2px;
-    border:1px solid #c1bdba;
-    background-color: #F9F9F9;
+  background-color: #F9F9F9;
 }
 
 
@@ -171,8 +190,8 @@ table.dataTable thead th {
 #documentsTableID .even:hover,
 #logContent .odd:hover,
 #logContent .even:hover {
-  border: 1px solid #fbdb7e;
   cursor: pointer;
+  background-color: #D4DFC3 !important;
 }
 
 #documentsTableID.dataTable tr.even td.sorting_1,
@@ -222,7 +241,19 @@ table.dataTable thead th {
 
 #collectionPrev {
   margin-right: 11px;
-  margin-left: 10px;
+  margin-left: 20px;
+}
+
+#collectionNext {
+  margin-right: -5px;
+}
+
+.arangoPagination li:first-child a {
+  margin-right: 20px;
+}
+
+.arangoPagination li:last-child a {
+  margin-left: 30px !important;
 }
 
 .pagination ul > li > a, .pagination ul > li > span {
