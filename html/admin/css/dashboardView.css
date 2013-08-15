@@ -468,6 +468,11 @@ li:hover h6, li.hover h6 {
   margin-right: -40px;
 }
 
-#dashboardDropdown ul {
-  float:left;
+#dashboardDropdown {
+  min-height: 230px !important;
 }
+
+#dashboardDropdown ul {
+  min-height: 206px !important;
+}
+
