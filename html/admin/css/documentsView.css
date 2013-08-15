@@ -273,7 +273,7 @@ table.dataTable thead th {
 }
 
 .arangoPagination li:first-child a {
-  margin-right: 20px;
+  margin-right: 20px !important;
 }
 
 .arangoPagination li:last-child a {

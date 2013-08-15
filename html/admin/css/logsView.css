@@ -20,7 +20,9 @@
   min-height: 390px;
 }
 
-
+#logContent {
+  padding-bottom: 0px !important;
+}
 
 .dataTables_info {
   display:none !important;
@@ -62,6 +64,7 @@ background-color: none !important;
 
 #logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
   background-color: #F9F9F9;
+  text-align: left;
 }
 
 #logTableID thead tr th, #infoTableID thead tr th, #debugTableID thead tr th, #critTableID thead tr th, #warnTableID thead tr th {
@@ -88,7 +91,7 @@ background-color: none !important;
 
 .seccol, .dataTables_empty{
   margin-bottom: 5px;
-  width: 140px !important;
+  width: 100px !important;
   cursor: default !important;
 }
 
@@ -113,8 +116,12 @@ background-color: none !important;
 › border-spacing:0 5px;
 }
 
-#logtestdiv a {
+#logPaginationDiv a {
   border-radius: 0 !important;
+}
+
+#logPaginationDiv {
+  padding-bottom: 5px !important;
 }
 
 #logContent .nav-tabs {
