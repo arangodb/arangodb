@@ -25,7 +25,6 @@ var navigationView = Backbone.View.extend({
     var containerWidth = $(window).width() - 70;
     //var spanWidth = $('.span3').outerWidth(true);
     var test = $('.span3').outerWidth(true);
-    console.log(test);
     var spanWidth = 242;
     var divider = containerWidth / spanWidth;
     var roundDiv = parseInt(divider, 10);
