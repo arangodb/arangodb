@@ -46,8 +46,11 @@ input {
   margin-left: 15px !important;
 }
 
-#transparentHeader h4 {
-  margin-top: 7px;
+#transparentHeader .arangoHeader {
+  color: #B1D375;
+  position: relative;
+  top: 7px;
+  left: 5px;
 }
 
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
@@ -118,6 +121,7 @@ input {
 
 #content {
   margin-top: 74px;
+  margin-bottom: 33px;
   min-height: 80px;
   height: 100%;
   width: 100%;

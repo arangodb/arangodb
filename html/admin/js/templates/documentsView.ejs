@@ -103,29 +103,3 @@
     <button id="confirmCreateEdge" class="btn btn-success" style="float:right">Create</button>
   </div>
 </div>
-
-<!-- Document Import Modal -->
-<div id="docImportModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">Import documents</h3>
-  </div>
-  <div class="modal-body" id="importDocument">
-    <p style="float:left">Choose your file:</p>
-    <i class="icon-info-sign modalImportTooltips" title="Supported filetype: json" style="float:right"></i>
-    <br></br>
-    <table>
-      <tr>
-        <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
-      </tr>
-      <tr>
-      </tr>
-    </table>
-  </div>
-  <div class="modal-footer">
-    <button class="btn btn-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="confirmDocImport" class="btn btn-success" style="float:right">
-      <img id="uploadIndicator" style="display: none;" src="/_admin/html/img/ajax-loader.gif"/>Import
-    </button>
-  </div>
-</div>
