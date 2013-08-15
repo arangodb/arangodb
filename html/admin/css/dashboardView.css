@@ -11,6 +11,13 @@
 }
 */
 
+#dashboardContent {
+  padding-left: 0px !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  padding-right: 0px !important;
+}
+
 .dbNotVisible {
   opacity: 0 !important;
 }
@@ -33,7 +40,7 @@
 .group-close, .group-open {
   float:right;
   margin-top: 18px !important;
-  margin-right: 25px !important;
+  margin-right: 10px !important;
 }
 
 .db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
@@ -83,11 +90,11 @@
 
 .statClient {
   float: left;
-  height: 130px;
-  width: 230px;
-  margin-left: 8px !important;
-  margin-bottom: 4px !important;
-  border: 1px solid rgba(0, 0, 0, 0.1)
+  height: 100px;
+  width: 233px;
+  margin-left: 5px !important;
+  margin-bottom: 5px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   background-color: #FFFFFF !important;
 }
 
@@ -117,7 +124,7 @@
   margin-top: 20px !important;
   padding-top: 0 !important;
   /*height: 140px;*/
-  height: 185px;
+  height: 155px;
   width: 300px;
 }
 
@@ -130,7 +137,22 @@
 
 li:hover  i, li.hover i,
 li:hover h6, li.hover h6 {
-  opacity: 0.7 !important
+  opacity: 0.7 !important;
+  -webkit-transition-property: background color;
+  -webkit-transition-duration: 1s;
+  -webkit-transition-timing-function: linear;
+  -moz-transition-property: background color;
+  -moz-transition-duration: 1s;
+  -moz-transition-timing-function: linear;
+  -o-transition-property: background color;
+  -o-transition-duration: 1s;
+  -o-transition-timing-function: linear;
+  -ms-transition-property: background color;
+  -ms-transition-duration: 1s;
+  -ms-transition-timing-function: linear;
+  transition-property: background color;
+  transition-duration: 1s;
+  transition-timing-function: linear;
 }
 
 .boxHeader i {
@@ -150,8 +172,8 @@ li:hover h6, li.hover h6 {
 #statsHeaderDiv {
   margin-bottom: 16px;
   margin-top: 0px;
-  margin-right: 20px !important;
-  margin-left: 8px !important;
+  margin-right: 5px !important;
+  margin-left: 5px !important;
   padding: 0 !important;
   height: 24px !important;
   width: auto !important;
@@ -165,10 +187,10 @@ li:hover h6, li.hover h6 {
 }
 
 #dashboardHeader {
-  padding-left: 5px;
-  margin-left: 15px;
-  margin-right: 15px;
+  margin-left: 5px;
+  margin-right: 5px;
   padding-right: 5px;
+  padding-left: 5px;
   background-color: #686766;
   border-bottom: 1px solid #A0A0A0;
   border-top: 1px solid #A0A0A0;

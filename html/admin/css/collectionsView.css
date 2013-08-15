@@ -30,10 +30,10 @@
 
 .thumbnails {
   margin-left:0px;
-  padding-left: 10px;
-  padding-right: 20px;
-  padding-bottom: 10px;
-  padding-top: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-bottom: 5px;
+  padding-top: 33px;
   background-color: rgba(0, 0, 0, 0.1);
 }
 

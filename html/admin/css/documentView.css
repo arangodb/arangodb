@@ -171,6 +171,8 @@ table.dataTable thead th {
 }
 
 .arangoTab > li > a {
+  min-width: 40px;
+  text-align: center;
   background-color: none;
 }
 

@@ -61,8 +61,8 @@ table.dataTable thead th {
 
 #documentsToolbarF span, #logPaginationDiv span {
   position: relative;
-  top: 1px;
-  font-size: 16px;
+  top: 2px;
+  font-size: 14px;
   color: black;
 }
 

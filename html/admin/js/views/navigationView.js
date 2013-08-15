@@ -30,7 +30,8 @@ var navigationView = Backbone.View.extend({
     var divider = containerWidth / spanWidth;
     var roundDiv = parseInt(divider, 10);
 
-    var newWidth = roundDiv*spanWidth+30;
+    //var newWidth = roundDiv*spanWidth+5; OLD
+    var newWidth = roundDiv*spanWidth+5;
     var marginWidth = ((containerWidth+30) - newWidth)/2;
     $('#content').width(newWidth);
     $('#content').css('margin-left', marginWidth);
