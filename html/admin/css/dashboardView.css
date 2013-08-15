@@ -411,6 +411,7 @@ li:hover h6, li.hover h6 {
 }
 
 #shortcutDiv {
+  padding-top: 5px;
   font-size: 12px;
   font-weight: 200;
 }

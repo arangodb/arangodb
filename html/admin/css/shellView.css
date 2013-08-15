@@ -9,10 +9,11 @@
 
 #shell_workspace {
   width: auto;
-  margin-top: 30px;
-  margin-left: 20px;
-  margin-right: 20px !important;
-  margin-bottom: -20px;
+  margin-top: 33px;
+  margin-left: 5px;
+  margin-right: 5px !important;
+  margin-bottom: -25px;
+  padding-bottom: 20px;
   height: 400px;
   background-color: black;
 }
