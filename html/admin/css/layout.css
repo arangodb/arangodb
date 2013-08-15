@@ -46,11 +46,12 @@ input {
   margin-left: 15px !important;
 }
 
-#transparentHeader .arangoHeader {
+#transparentHeader .arangoHeader, #dashboardHeader .arangoHeader{
   color: #B1D375;
   position: relative;
   top: 7px;
   left: 5px;
+  font-size: 16px;
 }
 
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
@@ -207,7 +208,7 @@ table .sorting {
 /* ABOUT VIEW */
 #aboutDiv {
   padding-top: 20px;
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0,0,0,0.1);
   padding-bottom: 10px;
 }
 
@@ -226,10 +227,6 @@ table .sorting {
 
 #aboutDiv .row a {
   padding-left: 20px;
-}
-
-#aboutHeader {
-  margin-bottom: 10px;
 }
 
 .disabledHover {

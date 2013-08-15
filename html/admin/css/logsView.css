@@ -117,12 +117,15 @@ background-color: none !important;
   border-radius: 0 !important;
 }
 
+#logContent .nav-tabs {
+  border-bottom: 0 !important;
+}
+
 #logTableID thead , #infoTableID thead , #debugTableID thead , #critTableID thead , #warnTableID thead {
-  border-top: 1px solid #888888 !important;
+  border-top: 6px solid #888888 !important;
 }
 
 #logTableID thead th, #infoTableID thead th, #debugTableID thead th, #critTableID thead th, #warnTableID thead th {
-  padding-top: 6px;
-  border-top: 1px solid #888888;
+  border-top: 2px solid #888888;
   background-color: #FFFFFF !important;
 }
