@@ -59,14 +59,14 @@ table.dataTable thead th {
   margin-top: 20px;
 }
 
-#documentsToolbarF span {
+#documentsToolbarF span, #logPaginationDiv span {
   position: relative;
   top: 1px;
   font-size: 16px;
   color: black;
 }
 
-#documentsToolbarF .glyphicon-backward {
+#documentsToolbarF .glyphicon-backward, #logPaginationDiv .glyphicon-backward {
   right: 2px;
 }
 
@@ -333,7 +333,7 @@ table.dataTable thead th {
 	left:10px;
 }
 
-.prePagi {
+#documentsToolbarF .prePagi {
   margin-right: -5px !important;
 }
 
@@ -492,7 +492,7 @@ table.dataTable thead th {
   border-radius: 0 !important;
 }
 
-#documentsToolbarF a {
+#documentsToolbarF a, #logPaginationDiv a {
   margin-left: 11px;
 }
 
