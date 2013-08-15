@@ -40,7 +40,18 @@
   padding-bottom: 5px !important;
 }
 
+#outputToolbar span, #editorToolbar span {
+  position: relative;
+  float:right;
+  height: 10px !important;
+  margin-right: 5px;
+  margin-left: 5px;
+  top: 3px;
+}
+
+
 #outputToolbar {
+  position: relative;
   margin-top: 5px;
   margin-left: 0;
   margin-right: 0;
