@@ -107,3 +107,12 @@
 .modal {
   border-radius: 0 !important;
 }
+
+.modalTooltips span {
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+.modalTooltips span:hover {
+  opacity: 0.8;
+}
