@@ -64,7 +64,7 @@ background-color: none !important;
 
 #logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
   background-color: #F9F9F9;
-  text-align: left;
+  text-align: center;
 }
 
 #logTableID thead tr th, #infoTableID thead tr th, #debugTableID thead tr th, #critTableID thead tr th, #warnTableID thead tr th {
