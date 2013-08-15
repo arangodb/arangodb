@@ -207,19 +207,22 @@ table .sorting {
 
 /* ABOUT VIEW */
 #aboutDiv {
-  padding-top: 20px;
   background-color: rgba(0,0,0,0.1);
-  padding-bottom: 10px;
+  padding-bottom: 5px;
 }
 
 #aboutDiv .row {
   border: 8px solid #F4F3F3 !important;
   margin-bottom: 25px;
   background-color: white;
-  padding-top: 10px;
-  padding-bottom: 20px;
-  margin-right: 20px;
-  margin-left: 20px;
+  padding-bottom: 5px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  margin-left: 5px;
+}
+
+#aboutHeader {
+  padding-bottom: 33px;
 }
 
 #aboutDiv h3 {
