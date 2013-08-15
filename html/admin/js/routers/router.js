@@ -69,10 +69,10 @@ $(document).ready(function() {
           });
         }
       });
-      this.naviView = new window.navigationView();
       this.footerView = new window.footerView();
-      this.naviView.render();
+      this.naviView = new window.navigationView();
       this.footerView.render();
+      this.naviView.render();
       this.graphView = new window.graphView({
         collection: window.arangoCollectionsStore
       });
