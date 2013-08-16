@@ -1,6 +1,6 @@
 .span3 {
   min-height:100px;
-  width: 233px;
+  width: 237px;
   margin-left: 5px !important;
   margin-bottom: 5px !important;
   border: 0px;
@@ -20,7 +20,7 @@
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  width: 217px;
+  width: 221px;
   color: #fff;
   border: 0;
   background:#676665;
@@ -30,6 +30,7 @@
 
 .collectionName {
   text-align:left;
+  font-weight: 300 !important;
   position:absolute;
   bottom:0px;
 }
@@ -68,4 +69,8 @@
 .spanDisabled:hover {
   opacity: 0.2 !important;
   cursor: default !important;
+}
+
+.badge, .label, .btn {
+  text-shadow: none !important;
 }

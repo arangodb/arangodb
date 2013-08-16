@@ -39,7 +39,7 @@
 
 .thumbnails li {
   background-color: #f4f3f3;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  /*border: 2px solid rgba(0, 0, 0, 0.1);*/
 }
 
 .thumbnails a.add {
@@ -139,7 +139,7 @@
   padding-left: 10px !important;
   padding-right: 10px !important;
   padding-top: 5px !important;
-  font-size: 16px !important;
+  font-size: 17px !important;
 }
 
 #transparentHeader ul, #transparentHeader li, #transparentHeader a {
@@ -231,11 +231,11 @@ border-top: 0;
 
 #collectionsDropdown .nav-header, #dashboardDropdown .nav-header{
   font-size: 13px;
-  color: white;
+  color: black;
 }
 
 #collectionsDropdown label, #dashboardDropdown label{
-  color: white;
+  color: black;
 }
 
 #collectionsDropdown ul, #dashboardDropdown ul {
