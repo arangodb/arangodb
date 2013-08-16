@@ -7,7 +7,7 @@ window.FoxxActiveView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/foxxActiveView.ejs'}),
 
   events: {
-    'click .icon-edit': 'editFoxx',
+    'click .glyphicon-edit': 'editFoxx',
     'click' : 'showDocu'
   },
 
