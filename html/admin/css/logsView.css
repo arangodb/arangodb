@@ -98,6 +98,7 @@ background-color: none !important;
 #logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {
   border-spacing: 0 0px;
   margin-top: -5px !important;
+  font-size: 15px !important;
 }
 
 
@@ -134,5 +135,6 @@ background-color: none !important;
 
 #logTableID thead th, #infoTableID thead th, #debugTableID thead th, #critTableID thead th, #warnTableID thead th {
   border-top: 2px solid #888888;
+  border-bottom: 1px solid #888888;
   background-color: #FFFFFF !important;
 }
