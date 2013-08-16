@@ -302,7 +302,6 @@ var dashboardView = Backbone.View.extend({
 
   checkInterval: function (a) {
     this.updateFrequency = a.target.value;
-    console.log(a);
     this.calculateSeries();
     this.renderCharts();
   },
