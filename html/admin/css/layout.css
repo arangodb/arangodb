@@ -72,6 +72,8 @@ textarea, .alert {
 	border: none;
 	color:#FFFFFF;
 	margin-left:4px;
+  padding-top: 6px !important;
+  font-weight: 300 !important;
 }
 
 .btn:hover {
