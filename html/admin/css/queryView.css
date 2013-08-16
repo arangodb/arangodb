@@ -117,8 +117,7 @@
 
 #submitQueryButton {
   float: right;
-  margin-bottom: 5px;
-  margin-top: 5px;
+  margin-top: 0px;
 }
 
 .querynavbar {
