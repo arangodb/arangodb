@@ -86,7 +86,7 @@ var dashboardView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   toggleEvent: function () {
-    $('#dashboardDropdownOut').slideToggle(140);
+    $('#dashboardDropdownOut').slideToggle(200);
   },
 
   countCollections: function() {
