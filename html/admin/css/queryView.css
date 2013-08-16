@@ -46,7 +46,7 @@
   height: 10px !important;
   margin-right: 5px;
   margin-left: 5px;
-  top: 3px;
+  top: 2px;
 }
 
 
@@ -118,6 +118,7 @@
 #submitQueryButton {
   float: right;
   margin-bottom: 5px;
+  margin-top: 5px;
 }
 
 .querynavbar {
