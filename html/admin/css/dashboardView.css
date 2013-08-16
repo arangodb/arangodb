@@ -445,7 +445,7 @@ li:hover h6, li.hover h6 {
 }
 
 #detailGraphPadding {
-  margin-top: -12px !important;
+  margin-top: -11px !important;
 }
 
 .dashboardContent .arangoTab {
@@ -453,7 +453,7 @@ li:hover h6, li.hover h6 {
 }
 
 #statSwitch {
-  margin-right: 15px;
+  margin-right: -13px;
 }
 
 #dashboardDropdownOut {
@@ -470,3 +470,6 @@ li:hover h6, li.hover h6 {
   min-height: 206px !important;
 }
 
+#clearDashboard {
+  display:none !important;
+}
