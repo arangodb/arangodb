@@ -38,20 +38,20 @@ input {
   box-shadow: 0;
 }
 
-.btn-close {
-  float:left;
-}
-
 .btn-margin {
-  margin-left: 15px !important;
+ /* margin-left: 15px !important;*/
 }
 
-#transparentHeader .arangoHeader, #dashboardHeader .arangoHeader{
-  color: #B1D375;
+#transparentHeader .arangoHeader, #dashboardHeader .arangoHeader, .modal-header .arangoHeader{
+  color: white;
   position: relative;
   top: 7px;
   left: 5px;
   font-size: 16px;
+}
+
+.modal-header .arangoHeader {
+  color: black !important;
 }
 
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
@@ -71,8 +71,8 @@ textarea, .alert {
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;
-	margin-left:4px;
-  padding-top: 6px !important;
+	margin-left:10px;
+  padding-top: 4px !important;
   font-weight: 300 !important;
 }
 
