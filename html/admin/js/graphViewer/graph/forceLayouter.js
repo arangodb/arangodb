@@ -54,7 +54,7 @@ function ForceLayouter(config) {
     */
     defaultCharge = config.charge || -600,
     defaultDistance = config.distance || 80,
-    gravity = config.gravity || 0.08,
+    gravity = config.gravity || 0.01,
     distance = function(d) {
       var res = 0;
       if (d.source._isCommunity) {
@@ -145,5 +145,10 @@ function ForceLayouter(config) {
   
   self.changeTo = function(config) {
     parseConfig(config);
+  };
+
+  self.changeWidth = function(w) {
+    width = w;
+    force.size([width, height]); // Set width and height
   };
 }
