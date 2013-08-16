@@ -163,7 +163,24 @@
 }
 
 .modal-header {
+  margin-top: 5px;
+  background-color: #686766;
   border-bottom: 0 !important;
+  padding-top: 4px;
+}
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px;
+}
+
+.modal-header .close {
+  color: #FFFFFF;
+  opacity: 0.5;
+}
+
+.modal-header .close:hover {
+  opacity: 1;
 }
 
 .modal-body .glyphicon-info-sign {
