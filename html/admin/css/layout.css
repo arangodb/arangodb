@@ -89,6 +89,11 @@ textarea, .alert {
 	background: #3a322e;
 }
 
+.btn-notification {
+  background-color: #FAA020;
+  margin-right: 5px;
+}
+
 .btn-success {
 	background: #8AA051;
 }

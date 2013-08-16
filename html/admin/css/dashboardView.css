@@ -26,13 +26,7 @@
 }
 
 #dashboardHeader ul a {
-  margin-top: -2px !important;
-  padding-top: 5px !important;
-  padding-bottom: 3px !important;
-  padding-left: 12px !important;
-  padding-right: 8px !important;
   border-radius: 0 !important;
-  margin-right: 0px !important;
 }
 
 .group-close, .group-open {
@@ -83,19 +77,15 @@
   margin-right: 5px !important;
   margin-bottom: -10px !important;
   border-top: 1px solid #888888 !important;
-  border-left: 1px solid #E5E5E5 !important;
-  border-right: 1px solid #E5E5E5 !important;
-  border-bottom: 1px solid #E5E5E5 !important;
   background-color: #FFFFFF !important;
 }
 
 .statClient {
   float: left;
   height: 100px;
-  width: 233px;
+  width: 237px;
   margin-left: 5px !important;
   margin-bottom: 5px !important;
-  border: 1px solid rgba(0, 0, 0, 0.1);
   background-color: #FFFFFF !important;
 }
 
