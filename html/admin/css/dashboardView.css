@@ -96,6 +96,8 @@
 .statGroups .statChart {
   margin-left: -55px !important;
   margin-top: -50px !important;
+  float:left;
+  (;margin-top: -37px !important;)
 }
 
 .nv-axislabel {
