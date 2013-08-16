@@ -68,9 +68,14 @@ textarea, .alert {
 	border: none;
 	color:#FFFFFF;
 	margin-left:10px;
-  padding-top: 4px !important;
+  padding: 8px 16px;
   font-weight: 300 !important;
-  font-size: 16px;
+  font-size: 14px;
+}
+
+.btn-old-padding {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
 }
 
 .btn:hover {
