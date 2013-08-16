@@ -58,16 +58,16 @@ var collectionView = Backbone.View.extend({
     $('#change-collection-status').text(this.myCollection.status);
 
     if (this.myCollection.status === 'unloaded') {
-      $('#colFooter').append(
-        '<button id="load-modified-collection" class="btn" style="margin-right: 10px">Load</button>'
+      $('#colFooter').prepend(
+        '<button id="load-modified-collection" class="btn btn-notification">Load</button>'
       );
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
     else if (this.myCollection.status === 'loaded') {
-      $('#colFooter').append(
+      $('#colFooter').prepend(
         '<button id="unload-modified-collection"'+
-        'class="btn" style="margin-right: 10px">Unload</button>'
+        'class="btn btn-notification">Unload</button>'
       );
       var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
       this.fillLoadedModal(data);
