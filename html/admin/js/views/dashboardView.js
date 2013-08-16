@@ -73,7 +73,7 @@ var dashboardView = Backbone.View.extend({
 
   events: {
     "click .dashboard-dropdown li" : "checkEnabled",
-    "click .interval-dropdown li"  : "checkInterval",
+    "click .dashboard-dropdown li" : "checkInterval",
     "click .db-zoom"               : "renderDetailChart",
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",

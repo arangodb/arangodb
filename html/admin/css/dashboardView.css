@@ -10,12 +10,10 @@
   border: 8px solid #FFFFFF;
 }
 */
-
-#dashboardContent {
-  padding-left: 0px !important;
-  padding-top: 5px !important;
-  padding-bottom: 5px !important;
-  padding-right: 0px !important;
+.dashboardContent {
+  padding-bottom: 20px !important;
+  padding-top: 10px !important;
+  margin-bottom: 10px !important;
 }
 
 .dbNotVisible {
@@ -79,12 +77,15 @@
 
 .statSingleClient {
   height: 400px;
-  width: 100% !important;
+  width: auto !important;
   margin-top: 11px;
-  margin-left: 10px !important;
-  margin-right: 11px !important;
+  margin-left: 5px !important;
+  margin-right: 5px !important;
   margin-bottom: -10px !important;
-  border: 1px solid #C1BDBA !important;
+  border-top: 1px solid #888888 !important;
+  border-left: 1px solid #E5E5E5 !important;
+  border-right: 1px solid #E5E5E5 !important;
+  border-bottom: 1px solid #E5E5E5 !important;
   background-color: #FFFFFF !important;
 }
 
@@ -192,13 +193,9 @@ li:hover h6, li.hover h6 {
   padding-right: 5px;
   padding-left: 5px;
   background-color: #686766;
-  border-bottom: 1px solid #A0A0A0;
-  border-top: 1px solid #A0A0A0;
   color: #FFFFFF;
   height: 36px;
-  margin-bottom: 0px !important;
-  margin-top: 20px !important;
-  position: relative;
+  margin-top: 5px !important;
 }
 
 #dashboardHeader .btn-group {
@@ -243,17 +240,16 @@ li:hover h6, li.hover h6 {
 }
 
 /*Dashboard Checkbox*/
-#dashboardHeader input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox, #collectionsDropdown input[type=checkbox].css-checkbox {
+#dashboardDropdownOut input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox, #collectionsDropdown input[type=checkbox].css-checkbox {
   display:none;
 }
 
-#dashboardHeader input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
+#dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
   margin-bottom: -0px;
   height:15px; 
   display:inline-block;
-  line-height:15px;
   background-repeat:no-repeat;
   background-position: 0 0;
   font-size:15px;
@@ -261,7 +257,7 @@ li:hover h6, li.hover h6 {
   cursor:pointer;
 }
 
-#dashboardHeader input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+#dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
   background-position: 0 -15px;
 }
 
@@ -275,17 +271,17 @@ li:hover h6, li.hover h6 {
   margin-left: -21px;
 }
 
-#dashboardHeader input[type="radio"], #transparentHeader input[type="radio"] {
+#dashboardDropdownOut input[type="radio"], #transparentHeader input[type="radio"] {
   display:none;
 }
 
-#dashboardHeader input[type="radio"] + label, #transparentHeader input[type="radio"] + label {
+#dashboardDropdownOut input[type="radio"] + label, #transparentHeader input[type="radio"] + label {
   /*color:#f2f2f2;*/
   /*font-family:Arial, sans-serif;
   font-size:14px;*/
 }
 
-#dashboardHeader input[type="radio"] + label span, #transparentHeader input[type="radio"] + label span {
+#dashboardDropdownOut input[type="radio"] + label span, #transparentHeader input[type="radio"] + label span {
   display:inline-block;
   width:19px;
   height:19px;
@@ -295,7 +291,7 @@ li:hover h6, li.hover h6 {
   cursor:pointer;
 }
 
-#dashboardHeader input[type="radio"]:checked + label span, #transparentHeader input[type="radio"]:checked + label span {
+#dashboardDropdownOut input[type="radio"]:checked + label span, #transparentHeader input[type="radio"]:checked + label span {
   background:url(../img/check_radio_sheet.png) -57px top no-repeat;
 }
 
@@ -433,7 +429,7 @@ li:hover h6, li.hover h6 {
 }
 
 #shortcutDiv {
-  padding-top: 5px;
+  padding-top: 10px;
   font-size: 12px;
   font-weight: 200;
 }
@@ -459,16 +455,24 @@ li:hover h6, li.hover h6 {
 }
 
 #detailGraphPadding {
-  padding-right: 31px !important;
-  margin-left: -2px !important;
   margin-top: -12px !important;
 }
 
+.dashboardContent .arangoTab {
+  border-bottom: 0 !important;
+}
+
 #statSwitch {
-  margin-right: -40px;
+  margin-right: 15px;
+}
+
+#dashboardDropdownOut {
+  padding-bottom: 5px;
+  background-color: transparent !important;
 }
 
 #dashboardDropdown {
+  background-color: rgba(0,0,0,0.1) !important;
   min-height: 230px !important;
 }
 
