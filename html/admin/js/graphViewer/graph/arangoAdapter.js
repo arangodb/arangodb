@@ -606,6 +606,7 @@ function ArangoAdapter(nodes, edges, config) {
     }
   };
   
+  self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;
 }

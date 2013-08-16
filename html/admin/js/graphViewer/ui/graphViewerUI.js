@@ -43,7 +43,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     throw "An adapter configuration has to be given";
   } 
   
-  var graphViewer,
+  var self = this,
+    graphViewer,
     width = (optWidth || container.offsetWidth) - 60,
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
@@ -81,7 +82,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .attr("width",width)
         .attr("height",height)
         .attr("class", "graphViewer pull-right")
-        .attr("style", "width:" + width + "px;height:" + height + "px;");
+        .style("width", width + "px")
+        .style("height", height + "px");
     },
     
     createZoomUIWidget = function() {
@@ -173,6 +175,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           entry.appendChild(link);
           link.appendChild(lbl);
           lbl.appendChild(document.createTextNode(r));
+          lbl.className = "gv_dropdown_label";
           searchAttrExampleList.appendChild(entry);
           entry.onclick = function() {
             searchAttrField.value = r;
@@ -402,4 +405,10 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     graphViewer.loadGraph(startNode);
   }
 
+  this.changeWidth = function(w) {
+    graphViewer.changeWidth(w);
+    var reducedW = w - 60;
+    svg.attr("width", reducedW)
+      .style("width", reducedW + "px");
+  }
 }
