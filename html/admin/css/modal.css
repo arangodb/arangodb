@@ -164,6 +164,8 @@
 
 .modal-header {
   margin-top: 5px;
+  margin-left: 5px;
+  margin-right: 5px;
   background-color: #686766;
   border-bottom: 0 !important;
   padding-top: 4px;
@@ -210,4 +212,8 @@
 
 #confirmCreateEdge {
   margin-left: 20px;
+}
+
+.modal.fade.in {
+  top: 12.1% !important;
 }
