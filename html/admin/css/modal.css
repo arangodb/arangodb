@@ -96,7 +96,7 @@
 }
 
 .figuresHeader {
-  border-bottom: 1px solid #C1BDBA;
+  border-bottom: 1px solid #888888;
 }
 
 #collectionIndexTable {
@@ -118,11 +118,36 @@
 }
 
 #infoTab {
-  border-bottom: 1px solid #888888 !important;
+  padding-right: 30px;
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 1px;
+}
+
+#infoTab li {
+  float:right;
 }
 
 #infoTab a {
+  margin-right: 4px;
+  color: black;
+  margin-bottom: -1px;
+  background-color: #F1F0EE;
+  border-bottom: 1px solid #888888;
   border-radius: 0 !important;
+}
+
+#infoTab .active > a {
+  border-color: #888888 #888888 transparent !important;
+  background-color: #FFFFFF;
+}
+
+#tab-content-collection-info #info,
+#tab-content-collection-info #figures,
+#tab-content-collection-info #index {
+  padding-top: 10px;
+  border-top: 1px solid #888888 !important;
+  margin-left: 0px !important;
 }
 
 .modal-footer {
@@ -131,4 +156,15 @@
 
 .modal-header {
   border-bottom: 1px solid #888888 !important;
+}
+
+.modal-body .glyphicon-info-sign {
+  color: #736B68;
+  font-size: 18px;
+  margin-left: 5px;
+  margin-top: 2px;
+}
+
+.modal-body .glyphicon-info-sign:hover {
+  color: black;
 }
