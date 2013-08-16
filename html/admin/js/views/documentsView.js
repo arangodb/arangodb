@@ -194,7 +194,7 @@ var documentsView = Backbone.View.extend({
   },
 
   filterCollection : function () {
-    $('#filterHeader').slideToggle(70);
+    $('#filterHeader').slideToggle(140);
     $('#importHeader').hide();
 
     var i;
@@ -207,7 +207,7 @@ var documentsView = Backbone.View.extend({
   },
 
   importCollection: function () {
-    $('#importHeader').slideToggle(70);
+    $('#importHeader').slideToggle(140);
     $('#filterHeader').hide();
   },
 
