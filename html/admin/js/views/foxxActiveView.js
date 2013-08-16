@@ -7,13 +7,19 @@ window.FoxxActiveView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/foxxActiveView.ejs'}),
 
   events: {
-    'click .glyphicon-edit': 'editFoxx',
-    'click' : 'showDocu'
+    'click .glyphicon-edit' : 'editFoxx',
+    'click #foxxToggle'     : 'toggleDropdown',
+    'click'                 : 'showDocu'
   },
 
   initialize: function(){
     this._show = true;
     _.bindAll(this, 'render');
+  },
+
+  toggleDropdown: function () {
+    console.log(123);
+    $('#foxxDropdownOut').slideToggle(200);
   },
 
   toggle: function(type, shouldShow) {

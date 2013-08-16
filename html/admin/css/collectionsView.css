@@ -209,7 +209,7 @@ border-top: 0;
   border-radius: 0 !important;
 }
 
-#collectionsDropdown2, #dashboardDropdownOut{
+#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
   background-color: rgba(0, 0, 0, 0.1);
   position:relative;
   display:none;
@@ -218,7 +218,7 @@ border-top: 0;
   width: auto;
 }
 
-#collectionsDropdown, #dashboardDropdown{
+#collectionsDropdown, #dashboardDropdown, #foxxDropdown {
   position: relative;
   min-height: 125px;
   width: auto;
@@ -229,39 +229,45 @@ border-top: 0;
   box-shadow: 0 !important;
 }
 
-#collectionsDropdown .nav-header, #dashboardDropdown .nav-header{
+#collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header {
   font-size: 13px;
   color: black;
 }
 
-#collectionsDropdown label, #dashboardDropdown label{
+#collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label{
   color: black;
 }
 
-#collectionsDropdown ul, #dashboardDropdown ul {
+#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
   border-left: 1px solid white;
 }
 
-#collectionsDropdown ul:last-of-type, #dashboardDropdown ul:last-of-type {
+#collectionsDropdown ul:last-of-type,
+#dashboardDropdown ul:last-of-type,
+#foxxDropdown ul:last-of-type {
   border-left: 1px solid white;
 }
 
-#collectionsDropdown ul:first-of-type, #dashboardDropdown ul:first-of-type {
+#collectionsDropdown ul:first-of-type, 
+#dashboardDropdown ul:first-of-type,
+#foxxDropdown ul:first-of-type {
   border: 0 !important;
 }
 
-#collectionsDropdown ul {
+#collectionsDropdown ul, #foxxDropdown ul {
   min-height: 105px;
 }
 
-#collectionsDropdown ul, #dashboardDropdown ul{
+#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
   float: left;
   margin-top: 10px;
   width: 238px;
   display: inline;
 }
 
-#collectionsDropdown ul li label, #dashboardDropdown ul li label {
+#collectionsDropdown ul li label,
+#dashboardDropdown ul li label,
+#foxxDropdown ul li label {
   padding-left: 35px;
   color: black;
 }
