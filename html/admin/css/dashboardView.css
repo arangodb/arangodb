@@ -237,8 +237,7 @@ li:hover h6, li.hover h6 {
 #dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
-  margin-bottom: -0px;
-  height:15px; 
+  height:15px;
   display:inline-block;
   background-repeat:no-repeat;
   background-position: 0 0;
@@ -457,7 +456,6 @@ li:hover h6, li.hover h6 {
 }
 
 #dashboardDropdownOut {
-  padding-bottom: 5px;
   background-color: transparent !important;
 }
 
