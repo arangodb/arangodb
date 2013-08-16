@@ -72,9 +72,12 @@
 
 #editSecondRow, #editFirstRow {
   color: #444444;
+  font-size: 16px;
+  float:right;
+  padding-top: 4px;
 }
 
-#addRow, #deleteRow, #editSecondRow, #editFirstRow {
+#addRow, #deleteRow {
   font-size: 20px;
   float:right;
   padding-top: 2px;
@@ -82,6 +85,7 @@
 
 #documentTableID {
   font-weight: 300;
+  font-size: 15px !important;
   border-collapse:separate;
   border-spacing:0 0px;
   border-top: 1px solid #888;
@@ -171,7 +175,7 @@ table.dataTable thead th {
 }
 
 .arangoTab > li > a {
-  min-width: 40px;
+  min-width: 50px;
   text-align: center;
   background-color: none;
 }
@@ -229,4 +233,8 @@ table.dataTable thead th {
 .tdRoundButton {
   padding-top: 7px !important;
   float: right;
+}
+
+#documentTableID.dataTable thead tr th {
+  border-bottom: 1px solid #888888;
 }
