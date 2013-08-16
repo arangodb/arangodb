@@ -90,6 +90,10 @@ textarea, .alert {
   margin-right: 5px;
 }
 
+.btn-notification:hover {
+  background-color: #F87C0F;
+}
+
 .btn-success {
 	background: #8AA051;
 }
