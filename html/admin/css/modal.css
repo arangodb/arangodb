@@ -168,3 +168,7 @@
 .modal-body .glyphicon-info-sign:hover {
   color: black;
 }
+
+#closeBtnInfoView {
+  margin-left: 0 !important;
+}
