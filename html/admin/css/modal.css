@@ -116,3 +116,19 @@
 .modalTooltips span:hover {
   opacity: 0.8;
 }
+
+#infoTab {
+  border-bottom: 1px solid #888888 !important;
+}
+
+#infoTab a {
+  border-radius: 0 !important;
+}
+
+.modal-footer {
+  border-top: 1px solid #888888 !important;
+}
+
+.modal-header {
+  border-bottom: 1px solid #888888 !important;
+}
