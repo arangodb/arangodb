@@ -451,8 +451,13 @@ function ArangoAdapter(nodes, edges, config) {
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        absAdapter.insertNode(data);
-        callback(data);
+        if (data.error === false) {
+          nodeToAdd._key = data._key;
+          nodeToAdd._id = data._id;
+          nodeToAdd._rev = data._rev;
+          absAdapter.insertNode(nodeToAdd);
+          callback(nodeToAdd);
+        }
       },
       error: function(data) {
         throw data.statusText;
