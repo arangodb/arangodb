@@ -56,7 +56,9 @@ window.graphView = Backbone.View.extend({
       groupByAttribute,
       label,
       config,
-      ui;
+      ui,
+      width,
+      self = this;
 
     ecol = $("#edgeCollection").val();
     ncol = $("#nodeCollection").val();
@@ -90,7 +92,7 @@ window.graphView = Backbone.View.extend({
         }
       };
     }
-
+    width = this.width || $("#content").width();
     $("#background").remove();
     if (randomStart) {
       $.ajax({
@@ -102,14 +104,20 @@ window.graphView = Backbone.View.extend({
         }),
         contentType: "application/json",
         success: function(data) {
-          ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config, data.document._id);
+          self.ui = new GraphViewerUI($("#content")[0], aaconfig, width, 680, config, data.document._id);
         }
       });
     } else {
-      ui = new GraphViewerUI($("#content")[0], aaconfig, 940, 680, config);
+      self.ui = new GraphViewerUI($("#content")[0], aaconfig, width, 680, config);
     }
   },
 
+  handleResize: function(w) {
+    this.width = w;
+    if (this.ui) {
+      this.ui.changeWidth(w);
+    }
+  },
 
   render: function() {
     var self = this;
@@ -121,6 +129,7 @@ window.graphView = Backbone.View.extend({
       success: function(data) {
         self.graphs = _.pluck(data.graphs, "_key");
         $(self.el).html(self.template.render({col: self.collection, gs: self.graphs}));
+        delete self.ui;
       }
     });
     return this;

@@ -263,6 +263,10 @@ input.gv_radio_button {
   width: auto;
 }
 
+label.gv_dropdown_label {
+  color: white;
+}
+
 /*Overriding the slider UI*/
 .ui-slider {
   background: #333333;
