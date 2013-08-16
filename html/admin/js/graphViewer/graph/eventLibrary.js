@@ -121,8 +121,16 @@ function EventLibrary() {
     var adapter = config.adapter,
     nodeShaper = config.shaper;
     
-    return function(callback) {
-      adapter.createNode({}, function(newNode) {
+    return function(data, callback) {
+      var cb, d;
+      if (_.isFunction(data) && !callback) {
+        cb = data;
+        d = {};
+      } else {
+        cb = callback;
+        d = data;
+      }
+      adapter.createNode(d, function(newNode) {
         nodeShaper.reshapeNodes();
         callback(newNode);
       });
