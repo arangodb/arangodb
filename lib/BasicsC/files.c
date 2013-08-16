@@ -1490,7 +1490,6 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 
 char* TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
-  char* dir;
   char* binaryPath = NULL;
   size_t i;
 
@@ -1502,14 +1501,10 @@ char* TRI_LocateBinaryPath (char const* argv0) {
 
   // contains a path
   if (*p) {
-    dir = TRI_Dirname(argv0);
+    binaryPath = TRI_Dirname(argv0);
 
-    if (dir == 0) {
+    if (binaryPath == 0) {
       binaryPath = TRI_DuplicateString("");
-    }
-    else {
-      binaryPath = TRI_DuplicateString(dir);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
   }
 
