@@ -24,15 +24,15 @@
   height: 400px;
   background-color:white;
   overflow: hidden;
-  border: 1px solid black;
+  border: 1px solid #A0A0A0;
 }
 
 .vsplitbar {
   border: 0;
   width: 10px;
   background-color: #F0F0F0;
-  border-top: 1px solid black;
-  border-bottom: 1px solid black;
+  border-top: 1px solid #A0A0A0;
+  border-bottom: 1px solid #A0A0A0;
   border-left: 1px solid #A0A0A0;
   border-right: 1px solid #A0A0A0;
   background-image: url(../img/stripes90.gif);
@@ -53,6 +53,13 @@
   position: relative;
   height: 400px;
   border-bottom: 2px solid black !important;
+}
+
+#replShell pre {
+  border-top: 1px solid #A0A0A0 !important;
+  border-right: 1px solid #A0A0A0 !important;
+  border-left: 0 !important;
+  border-bottom: 0 !important;
 }
 /* The inner console element. */
 .jqconsole {

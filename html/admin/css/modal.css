@@ -53,7 +53,7 @@
 }
 
 .modal-text {
-  font-weight: normal;
+  font-weight: 300;
   padding-top: 3px;
   padding-bottom: 3px;
 }
@@ -99,6 +99,11 @@
   border-bottom: 1px solid #888888;
 }
 
+.figuresHeader th {
+  font-weight: 400 !important;
+  font-family: 'Lato', sans-serif !important;
+}
+
 #collectionIndexTable {
   margin-left: 0;
   width: 100%;
@@ -118,7 +123,7 @@
 }
 
 #infoTab {
-  padding-right: 30px;
+  padding-right: 10px;
   border-bottom: 0;
   padding-bottom: 0;
   margin-bottom: 1px;
@@ -135,6 +140,9 @@
   background-color: #F1F0EE;
   border-bottom: 1px solid #888888;
   border-radius: 0 !important;
+  height: 21px;
+  font-size: 13px !important;
+  padding: 4px !important;
 }
 
 #infoTab .active > a {
@@ -151,11 +159,11 @@
 }
 
 .modal-footer {
-  border-top: 1px solid #888888 !important;
+  border-top: 0 !important;
 }
 
 .modal-header {
-  border-bottom: 1px solid #888888 !important;
+  border-bottom: 0 !important;
 }
 
 .modal-body .glyphicon-info-sign {
@@ -171,4 +179,18 @@
 
 #closeBtnInfoView {
   margin-left: 0 !important;
+}
+
+.modal-body {
+  font-weight: 300;
+  font-family: 'Lato', sans-serif !important;
+}
+
+.collectionTh, .collectionInfoTh2 {
+  font-weight: 400 !important;
+  font-family: 'Lato', sans-serif !important;
+}
+
+#confirmCreateEdge {
+  margin-left: 20px;
 }

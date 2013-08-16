@@ -39,7 +39,7 @@
 
 .thumbnails li {
   background-color: #f4f3f3;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  /*border: 2px solid rgba(0, 0, 0, 0.1);*/
 }
 
 .thumbnails a.add {
@@ -133,13 +133,13 @@
 .arangoHeaderA {
   width: 14px !important;
   height: 20px !important;
-  margin-right: 7px !important;
+  margin-right: 5px !important;
   margin-top: -2px !important;
   padding-bottom: 2px !important;
-  padding-left: 10px !important;
-  padding-right: 10px !important;
+  padding-left: 9px !important;
+  padding-right: 11px !important;
   padding-top: 5px !important;
-  font-size: 16px !important;
+  font-size: 17px !important;
 }
 
 #transparentHeader ul, #transparentHeader li, #transparentHeader a {
@@ -231,11 +231,11 @@ border-top: 0;
 
 #collectionsDropdown .nav-header, #dashboardDropdown .nav-header{
   font-size: 13px;
-  color: white;
+  color: black;
 }
 
 #collectionsDropdown label, #dashboardDropdown label{
-  color: white;
+  color: black;
 }
 
 #collectionsDropdown ul, #dashboardDropdown ul {
@@ -263,7 +263,7 @@ border-top: 0;
 
 #collectionsDropdown ul li label, #dashboardDropdown ul li label {
   padding-left: 35px;
-  color: white;
+  color: black;
 }
 
 .containerdivNewLine {
