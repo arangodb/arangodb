@@ -380,7 +380,8 @@ li:hover h6, li.hover h6 {
   min-height: 150px;
   margin-bottom: 8px;
   margin-right: 10px;
-  margin-top: -11px;
+  margin-top: -1px;
+  border-top: 1px solid #888;
   background-color: #FFFFFF;
 }
 
@@ -395,6 +396,8 @@ li:hover h6, li.hover h6 {
 }
 
 #detailReplication {
+  margin-top: 1px;
+  border-top: 1px solid #888;
   height: auto !important;
   width: 100% !important;
 }
@@ -449,10 +452,6 @@ li:hover h6, li.hover h6 {
   border-bottom: 0 !important;
 }
 
-#statSwitch {
-  margin-right: 32px;
-}
-
 #dashboardDropdownOut {
   background-color: transparent !important;
 }
@@ -466,11 +465,10 @@ li:hover h6, li.hover h6 {
   min-height: 206px !important;
 }
 
-#clearDashboard {
-  /*display:none !important;*/
-  height: 1px;
-  position: relative;
-  margin: 0;
-  max-height: 1px;
-  background-color: none;
+.dashboardContent .arangoTab {
+  float:none;
+}
+
+#statSwitch {
+  margin-left: 15px;
 }
