@@ -72,8 +72,8 @@ var dashboardView = Backbone.View.extend({
   },
 
   events: {
-    "click .dashboard-dropdown li" : "checkEnabled",
-    "click .interval-dropdown li"  : "checkInterval",
+    "click #dashboardDropdown li"  : "checkEnabled",
+    "click #intervalUL li"         : "checkInterval",
     "click .db-zoom"               : "renderDetailChart",
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",
@@ -86,7 +86,7 @@ var dashboardView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   toggleEvent: function () {
-    $('#dashboardDropdown').slideToggle(70);
+    $('#dashboardDropdownOut').slideToggle(200);
   },
 
   countCollections: function() {
@@ -301,14 +301,14 @@ var dashboardView = Backbone.View.extend({
   },
 
   checkInterval: function (a) {
-    var self = this;
     this.updateFrequency = a.target.value;
-    self.calculateSeries();
-    self.renderCharts();
+    this.calculateSeries();
+    this.renderCharts();
   },
 
   checkEnabled: function (a) {
     var myId = a.target.id;
+    console.log(myId);
     var position = myId.search('Checkbox');
     var preparedId = myId.substring(0, position);
     var toCheck = $(a.target).is(':checked');

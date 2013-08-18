@@ -191,6 +191,8 @@ function PreviewAdapter(nodes, edges, config) {
     absAdapter.setChildLimit(pLimit);
   };
   
+  self.setWidth = absAdapter.setWidth;
+
   self.expandCommunity = function (commNode, callback) {
     absAdapter.expandCommunity(commNode);
     if (callback !== undefined) {

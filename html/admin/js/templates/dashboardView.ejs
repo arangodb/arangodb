@@ -1,34 +1,17 @@
 <ul class="thumbnails2">
   <div id="dashboardHeader">
     <div class="pull-left">
-      <h4 class="headerH4">Dashboard</h4>
+      <a class="arangoHeader">Dashboard</a>
     </div>
 
     <div class="pagination pagination-small pull-right btn-group">
-      <ul><li class="enabled"><a id="dashboardToggle"><span class="glyphicon glyphicon-cog" title="Settings"></span></a></li></ul>
+      <ul><li class="enabled"><a id="dashboardToggle" class="arangoHeaderA"><span class="glyphicon glyphicon-cog" title="Settings"></span></a></li></ul>
     </div>
-
-    <!-- /btn-group -->
-    <div class="btn-group pull-right">
-      <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle">Filter <span class="caret"></span></button>
-
-
-      <!--<div id="menuGroups" class="dropdown-menu" role="menu">
-      </div>--!>
-    </div>
-    <!-- /btn-group -->
-
-    <!-- /btn-group update interval-->
-    <div class="btn-group pull-right">
-      <button data-toggle="dropdown" class="btn btn-inverse btn-small dropdown-toggle">Interval <span class="caret"></span></button>
-
-    </div>
-    <!-- /btn-group -->
-
   </div>
 
-  <div id="dashboardDropdown">
-      <ul>
+  <div id="dashboardDropdownOut">
+    <div id="dashboardDropdown">
+      <ul id="intervalUL">
         <li class="nav-header">Update every:</li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every10seconds" value="10"><label><span></span>5 seconds</label></label></a></li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every15seconds" value="15"><label><span></span>15 seconds</label></label></a></li>
@@ -36,11 +19,13 @@
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every60seconds" value="60"><label><span></span>60 seconds</label></label></a></li>
         <li><a><label class="radio"><input type="radio" name="updateInterval" id="every120seconds" value="120"><label><span></span>120 seconds</label></label></a></li>
       </ul>
+    </div>
   </div>
 
 </ul>
-<div class="containerdivNewLine"/>
-<ul class="thumbnails marginRight10 dashboardContent">
+
+<div id="clearDashboard" class="containerdivNewLine"/>
+<ul class="thumbnails dashboardContent">
 
   <ul class="nav nav-tabs arangoTab">
     <li class="pull-right active dashSwitch" id="statSwitch"><a>Statistics</a></li>

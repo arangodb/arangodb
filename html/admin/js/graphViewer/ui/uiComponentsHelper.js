@@ -42,6 +42,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
     button.appendChild(a);
     a.appendChild(label);
     label.appendChild(document.createTextNode(title));
+    label.className = "gv_dropdown_label";
     list.appendChild(button);
     button.onclick = callback;
   };
