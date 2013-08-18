@@ -30,16 +30,16 @@
 
 .thumbnails {
   margin-left:0px;
-  padding-left: 10px;
-  padding-right: 20px;
-  padding-bottom: 10px;
-  padding-top: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-bottom: 5px;
+  padding-top: 33px;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
 .thumbnails li {
   background-color: #f4f3f3;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  /*border: 2px solid rgba(0, 0, 0, 0.1);*/
 }
 
 .thumbnails a.add {
@@ -72,7 +72,7 @@
   margin-top: 3px;
   padding: 2px;
   vertical-align: middle;
-  width:218px !important;
+  width:213px !important;
   border-radius: 0px 0px 0px 0px !important;
 }
 
@@ -95,6 +95,7 @@
 }
 
 #transparentHeader {
+  width: auto;
   height: 36px;
   margin-top: 5px !important;
   margin-bottom: 0px !important;
@@ -102,8 +103,8 @@
   color:#FFF;
   margin-left: 5px;
   margin-right: 5px;
-  padding-left: 5px;
-  padding-right: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
   position:relative;
   font-size: 16px;
 }
@@ -129,11 +130,16 @@
 	margin:4px 0;
 }
 
-#collectionsToggle {
-  right: 0 !important;
-  margin-right: 0;
-  padding-bottom: 3px;
-  padding-top: 5px;
+.arangoHeaderA {
+  width: 14px !important;
+  height: 20px !important;
+  margin-right: 5px !important;
+  margin-top: -2px !important;
+  padding-bottom: 2px !important;
+  padding-left: 9px !important;
+  padding-right: 11px !important;
+  padding-top: 5px !important;
+  font-size: 17px !important;
 }
 
 #transparentHeader ul, #transparentHeader li, #transparentHeader a {
@@ -203,19 +209,19 @@ border-top: 0;
   border-radius: 0 !important;
 }
 
-#collectionsDropdown2 {
-  margin-top: -11px;
+#collectionsDropdown2, #dashboardDropdownOut, #foxxDropdownOut {
+  background-color: rgba(0, 0, 0, 0.1);
   position:relative;
   display:none;
-  margin-left: 15px;
-  margin-right: 17px;
+  margin-left: 5px;
+  margin-right: 5px;
+  width: auto;
 }
 
-#collectionsDropdown {
+#collectionsDropdown, #dashboardDropdown, #foxxDropdown {
   position: relative;
-  height: 125px;
-  width: 100%;
-  background-color: #F7F6F6;
+  min-height: 125px;
+  width: auto;
   border-left: 1px solid #686766;
   border-bottom: 1px solid #686766;
   border-right: 1px solid #686766;
@@ -223,22 +229,45 @@ border-top: 0;
   box-shadow: 0 !important;
 }
 
-#collectionsDropdown ul:last-of-type {
-  border-left: 1px solid #686766;
+#collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header {
+  font-size: 13px;
+  color: black;
 }
 
-#collectionsDropdown ul:first-of-type {
-  border-right: 1px solid #686766;
+#collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label{
+  color: black;
 }
 
-#collectionsDropdown ul {
+#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
+  border-left: 1px solid white;
+}
+
+#collectionsDropdown ul:last-of-type,
+#dashboardDropdown ul:last-of-type,
+#foxxDropdown ul:last-of-type {
+  border-left: 1px solid white;
+}
+
+#collectionsDropdown ul:first-of-type, 
+#dashboardDropdown ul:first-of-type,
+#foxxDropdown ul:first-of-type {
+  border: 0 !important;
+}
+
+#collectionsDropdown ul, #foxxDropdown ul {
+  min-height: 105px;
+}
+
+#collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
   float: left;
   margin-top: 10px;
-  width: 241px;
+  width: 238px;
   display: inline;
 }
 
-#collectionsDropdown ul li label{
+#collectionsDropdown ul li label,
+#dashboardDropdown ul li label,
+#foxxDropdown ul li label {
   padding-left: 35px;
   color: black;
 }

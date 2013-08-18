@@ -45,9 +45,15 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           patch = new eventlib.PatchNode(config),
           del = new eventlib.DeleteNode(config);
         
-        self.events.CREATENODE = function(callback) {
+        self.events.CREATENODE = function(getNewData, callback) {
+          var data;
+          if (!_.isFunction(getNewData)) {
+            data = getNewData;
+          } else {
+            data = getNewData();
+          }
           return function() {
-            insert(callback);
+            insert(data, callback);
           };
         };
         self.events.PATCHNODE = function(node, getNewData, callback) {

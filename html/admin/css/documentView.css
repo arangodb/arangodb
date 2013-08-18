@@ -28,7 +28,7 @@
 }
 
 #tableDiv, #logContent{
-  padding: 10px 5px 5px 5px;
+  padding: 10px 5px 10px 5px;
 }
 
 #logContent .tab-content {
@@ -72,9 +72,12 @@
 
 #editSecondRow, #editFirstRow {
   color: #444444;
+  font-size: 16px;
+  float:right;
+  padding-top: 4px;
 }
 
-#addRow, #deleteRow, #editSecondRow, #editFirstRow {
+#addRow, #deleteRow {
   font-size: 20px;
   float:right;
   padding-top: 2px;
@@ -82,6 +85,7 @@
 
 #documentTableID {
   font-weight: 300;
+  font-size: 15px !important;
   border-collapse:separate;
   border-spacing:0 0px;
   border-top: 1px solid #888;
@@ -171,6 +175,8 @@ table.dataTable thead th {
 }
 
 .arangoTab > li > a {
+  min-width: 50px;
+  text-align: center;
   background-color: none;
 }
 
@@ -178,9 +184,12 @@ table.dataTable thead th {
 .arangoTab > li:hover.active > a {
   background: #FFF;
   border-left: 1px solid #888;
+  margin-top: -1px;
+  padding-bottom: -2px;
   border-right: 1px solid #888;
   border-top: 1px solid #888;
   border-bottom: 1px solid #FFFFFF;
+  height: 21px;
 }
 
 .rightCell{
@@ -218,10 +227,15 @@ table.dataTable thead th {
 }
 
 table.dataTable thead th {
-  padding: 7px 18px 5px 15px;
+  padding: 10px 14px;
+  /*padding: 7px 18px 5px 15px;*/
 }
 
 .tdRoundButton {
   padding-top: 7px !important;
   float: right;
+}
+
+#documentTableID.dataTable thead tr th {
+  border-bottom: 1px solid #888888;
 }

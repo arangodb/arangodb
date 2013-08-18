@@ -20,7 +20,9 @@
   min-height: 390px;
 }
 
-
+#logContent {
+  padding-bottom: 0px !important;
+}
 
 .dataTables_info {
   display:none !important;
@@ -62,17 +64,23 @@ background-color: none !important;
 
 #logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
   background-color: #F9F9F9;
+  text-align: center;
 }
 
 #logTableID thead tr th, #infoTableID thead tr th, #debugTableID thead tr th, #critTableID thead tr th, #warnTableID thead tr th {
   /*border-bottom: 1px solid #C1BDBA;*/
+  background-color: #FFFFFF !important;
 }
 
 #logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
-  background-color: #F4F4F4 !important;
+  /*background-color: #F4F4F4 !important;*/
   width: 80px !important;
   max-width: 80px !important;
   cursor: default !important;
+}
+
+#logTableID tbody .firstcol, #infoTableID tbody .firstcol, #debugTableID tbody .firstcol, #critTableID tbody .firstcol, #warnTableID tbody .firstcol {
+  background-color: transparent !important;
 }
 
 .thirdcol {
@@ -83,14 +91,14 @@ background-color: none !important;
 
 .seccol, .dataTables_empty{
   margin-bottom: 5px;
-  width: 140px !important;
+  width: 100px !important;
   cursor: default !important;
 }
 
 #logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {
-  border-collapse: separate;
-  border-spacing: 0 2px;
+  border-spacing: 0 0px;
   margin-top: -5px !important;
+  font-size: 15px !important;
 }
 
 
@@ -109,11 +117,24 @@ background-color: none !important;
 › border-spacing:0 5px;
 }
 
-#logtestdiv a {
+#logPaginationDiv a {
   border-radius: 0 !important;
 }
 
+#logPaginationDiv {
+  padding-bottom: 5px !important;
+}
+
+#logContent .nav-tabs {
+  border-bottom: 0 !important;
+}
+
+#logTableID thead , #infoTableID thead , #debugTableID thead , #critTableID thead , #warnTableID thead {
+  border-top: 6px solid #888888 !important;
+}
+
 #logTableID thead th, #infoTableID thead th, #debugTableID thead th, #critTableID thead th, #warnTableID thead th {
-  border-bottom: 2px solid #F9F9F9 !important;
-  padding-top: 6px;
+  border-top: 2px solid #888888;
+  border-bottom: 1px solid #888888;
+  background-color: #FFFFFF !important;
 }

@@ -59,14 +59,14 @@ table.dataTable thead th {
   margin-top: 20px;
 }
 
-#documentsToolbarF span {
+#documentsToolbarF span, #logPaginationDiv span {
   position: relative;
-  top: 1px;
-  font-size: 16px;
+  top: 2px;
+  font-size: 14px;
   color: black;
 }
 
-#documentsToolbarF .glyphicon-backward {
+#documentsToolbarF .glyphicon-backward, #logPaginationDiv .glyphicon-backward {
   right: 2px;
 }
 
@@ -97,11 +97,14 @@ table.dataTable thead th {
 }
 
 #importHeader input {
-  margin-bottom: 11px;
+  line-height: 0px !important;
+  (;margin-top: 5px;margin-bottom: -5px;)
 }
 
 #confirmDocImport {
   margin-right: 0px;
+  margin-bottom: 11px;
+  height: 30px;
 }
 
 #filterHeader #sendFilter{
@@ -182,8 +185,7 @@ table.dataTable thead th {
   border-bottom:none;
 }
 
-#documentsTableID.dataTable thead tr,
-#logContent .dataTable thead tr {
+#documentsTableID.dataTable thead tr {
 	border-bottom:1px solid #686766;
 }
 
@@ -194,12 +196,12 @@ table.dataTable thead th {
 #logContent .dataTable tr {
 }
 
-#documentsTableID .odd,
-#documentsTableID .even,
-#logContent .odd,
+#logContent .odd {
+  background-color: #F1F0EE;
+}
+
 #logContent .even {
-	margin-bottom: 2px;
-  background-color: #F9F9F9;
+  background-color: #FFFFFF;
 }
 
 
@@ -271,7 +273,7 @@ table.dataTable thead th {
 }
 
 .arangoPagination li:first-child a {
-  margin-right: 20px;
+  margin-right: 20px !important;
 }
 
 .arangoPagination li:last-child a {
@@ -331,7 +333,7 @@ table.dataTable thead th {
 	left:10px;
 }
 
-.prePagi {
+#documentsToolbarF .prePagi {
   margin-right: -5px !important;
 }
 
@@ -490,7 +492,7 @@ table.dataTable thead th {
   border-radius: 0 !important;
 }
 
-#documentsToolbarF a {
+#documentsToolbarF a, #logPaginationDiv a {
   margin-left: 11px;
 }
 
@@ -505,6 +507,8 @@ table.dataTable thead th {
 
 .queryline {
   color: black;
+  height: 50px;
+  margin-bottom: -15px;
 }
 
 .querylineAdd span {

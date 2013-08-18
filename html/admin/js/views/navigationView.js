@@ -20,23 +20,22 @@ var navigationView = Backbone.View.extend({
   },
 
   handleResize: function () {
-    //padding thumbnails 30px
-    //padding row 40px
+    var oldWidth = $('#content').width();
     var containerWidth = $(window).width() - 70;
-    //var spanWidth = $('.span3').outerWidth(true);
-    var test = $('.span3').outerWidth(true);
-    console.log(test);
     var spanWidth = 242;
     var divider = containerWidth / spanWidth;
     var roundDiv = parseInt(divider, 10);
-
-    var newWidth = roundDiv*spanWidth+30;
+    var newWidth = roundDiv*spanWidth+5;
     var marginWidth = ((containerWidth+30) - newWidth)/2;
-    $('#content').width(newWidth);
-    $('#content').css('margin-left', marginWidth);
-    $('#content').css('margin-right', marginWidth);
+    $('#content').width(newWidth)
+      .css('margin-left', marginWidth)
+      .css('margin-right', marginWidth);
     $('.arango-logo').css('margin-left', marginWidth - 17);
+    $('.footer-right p').css('margin-right', marginWidth + 25);
     $('.nav-collapse').css('margin-right', marginWidth - 10);
+    if (newWidth !== oldWidth && window.App) {
+      window.App.graphView.handleResize(newWidth);
+    }
   },
 
   selectMenuItem: function (menuItem) {
