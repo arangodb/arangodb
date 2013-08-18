@@ -310,16 +310,17 @@ li:hover h6, li.hover h6 {
 }
 
 #detailReplicationDiv {
+  width: 100%;
   padding-right: 20px;
 }
 
 #detailReplicationDiv table {
-  border-collapse: separate;
-  border-spacing: 0 2px;
+  border-spacing: 0 0px;
 }
 
 #detailReplicationDiv table thead {
   /*background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;*/
+  border-bottom: 1px solid #888;
 }
 
 #detailReplicationDiv table {
@@ -343,7 +344,6 @@ li:hover h6, li.hover h6 {
   margin-right: 10px;
   margin-bottom: 8px;
   background-color: #FFFFFF;
-  border: 1px solid #C1BDBA;
 }
 
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
@@ -373,7 +373,6 @@ li:hover h6, li.hover h6 {
 }
 
 #leftReplicationDiv tbody tr, #rightReplicationDiv tbody tr {
-  border: 1px solid #C1BDBA;
 }
 
 #leftReplicationDiv {
@@ -383,7 +382,6 @@ li:hover h6, li.hover h6 {
   margin-right: 10px;
   margin-top: -11px;
   background-color: #FFFFFF;
-  border: 1px solid #C1BDBA;
 }
 
 .alignLeft {
@@ -398,6 +396,7 @@ li:hover h6, li.hover h6 {
 
 #detailReplication {
   height: auto !important;
+  width: 100% !important;
 }
 
 .trueClass {
@@ -451,7 +450,7 @@ li:hover h6, li.hover h6 {
 }
 
 #statSwitch {
-  margin-right: -13px;
+  margin-right: 32px;
 }
 
 #dashboardDropdownOut {
@@ -468,5 +467,10 @@ li:hover h6, li.hover h6 {
 }
 
 #clearDashboard {
-  display:none !important;
+  /*display:none !important;*/
+  height: 1px;
+  position: relative;
+  margin: 0;
+  max-height: 1px;
+  background-color: none;
 }
