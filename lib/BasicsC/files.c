@@ -179,12 +179,10 @@ static void RemoveAllLockedFiles (void) {
 
   for (i = 0;  i < FileNames._length;  i++) {
     TRI_UnlinkFile(FileNames._buffer[i]);
-    TRI_RemoveVectorString(&FileNames, i);
 
     fd = * (int*) TRI_AtVector(&FileDescriptors, i);
 
     TRI_CLOSE(fd);
-    TRI_RemoveVector(&FileDescriptors, i);
   }
 
   TRI_DestroyVectorString(&FileNames);
