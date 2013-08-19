@@ -14,27 +14,27 @@ window.arangoDocuments = Backbone.Collection.extend({
       getFirstDocuments: function () {
         if (this.currentPage !== 1) {
           var link = window.location.hash.split("/");
-          window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/1";
+          window.location.hash = link[0] + "/" + link[1] + "/" + link[2] + "/1";
         }
       },
       getLastDocuments: function () {
         if (this.currentPage !== this.totalPages) {
           var link = window.location.hash.split("/");
-          window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+this.totalPages;
+          window.location.hash = link[0] + "/" + link[1] + "/" + link[2] + "/" + this.totalPages;
         }
       },
       getPrevDocuments: function () {
         if (this.currentPage !== 1) {
           var link = window.location.hash.split("/");
           var page = parseInt(this.currentPage, null) - 1;
-          window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+page;
+          window.location.hash = link[0] + "/" + link[1] + "/" + link[2] + "/" + page;
         }
       },
       getNextDocuments: function () {
         if (this.currentPage !== this.totalPages) {
           var link = window.location.hash.split("/");
           var page = parseInt(this.currentPage, null) + 1;
-          window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+page;
+          window.location.hash = link[0] + "/" + link[1] + "/" + link[2] + "/" + page;
         }
       },
       getDocuments: function (colid, currpage) {
@@ -84,7 +84,6 @@ window.arangoDocuments = Backbone.Collection.extend({
                   "id": v._id,
                   "rev": v._rev,
                   "key": v._key,
-                  "zipcode": v.zipcode,
                   "content": v
                 });
               });
@@ -113,8 +112,14 @@ window.arangoDocuments = Backbone.Collection.extend({
         }
         var body = {
           //temp solution, waiting for api with paging possibility
-          query: "FOR u IN " + this.collectionID + filterString + " LIMIT 0,10 RETURN u",
-          bindVars: bindValues
+          query: "FOR u IN " + this.collectionID + 
+                 filterString + 
+                 " LIMIT 0," + self.documentsPerPage + 
+                 " RETURN u",
+          bindVars: bindValues,
+          options: { 
+            fullCount: true
+          } 
         };
         $.ajax({
           cache: false,
@@ -125,7 +130,7 @@ window.arangoDocuments = Backbone.Collection.extend({
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();
-            self.documentsCount = data.result.length;
+            self.documentsCount = data.extra.fullCount; 
             self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
             if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
               this.currentPage = 1;
@@ -141,7 +146,6 @@ window.arangoDocuments = Backbone.Collection.extend({
                   "id": v._id,
                   "rev": v._rev,
                   "key": v._key,
-                  "zipcode": v.zipcode,
                   "content": v
                 });
               });
@@ -151,7 +155,6 @@ window.arangoDocuments = Backbone.Collection.extend({
             else {
               window.documentsView.initTable();
               window.documentsView.drawTable();
-              window.documentsView.renderPagination(self.totalPages);
             }
           },
           error: function(data) {

@@ -160,6 +160,10 @@ ArangoStatement.prototype.execute = function () {
   if (this._batchSize) {
     body.batchSize = this._batchSize;
   }
+  
+  if (this._options) {
+    body.options = this._options;
+  }
 
   var requestResult = this._database._connection.POST(
     "/_api/cursor",
