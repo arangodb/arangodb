@@ -315,12 +315,17 @@ li:hover h6, li.hover h6 {
 }
 
 #detailReplicationDiv table {
+  margin-top: 10px;
   border-spacing: 0 0px;
 }
 
 #detailReplicationDiv table thead {
   /*background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;*/
   border-bottom: 1px solid #888;
+}
+
+#detailReplicationDiv table thead tr th{
+  font-weight: 400 !important;
 }
 
 #detailReplicationDiv table {
@@ -341,6 +346,7 @@ li:hover h6, li.hover h6 {
 
 #rightReplicationDiv {
   min-height: 150px;
+  padding-top: 5px;
   margin-right: 10px;
   margin-bottom: 8px;
   background-color: #FFFFFF;
@@ -363,7 +369,8 @@ li:hover h6, li.hover h6 {
 }
 
 #leftReplicationDiv table tr, #rightReplicationDiv table tr {
-  background-color: #F9F9F9 !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #F7F3F2;
   padding-top: 3px;
   padding-bottom: 3px;
 }
@@ -376,6 +383,7 @@ li:hover h6, li.hover h6 {
 }
 
 #leftReplicationDiv {
+  padding-top: 5px;
   width: auto;
   min-height: 150px;
   margin-bottom: 8px;
@@ -397,6 +405,7 @@ li:hover h6, li.hover h6 {
 
 #detailReplication {
   margin-top: 1px;
+  margin-bottom: -17px !important;
   border-top: 1px solid #888;
   height: auto !important;
   width: 100% !important;
@@ -471,4 +480,13 @@ li:hover h6, li.hover h6 {
 
 #statSwitch {
   margin-left: 15px;
+}
+
+.arangoSubHeader {
+  font-weight: 400px;
+  color: black;
+  margin-top: 5px;
+  padding-left: 7px;
+  font-size: 15px;
+
 }

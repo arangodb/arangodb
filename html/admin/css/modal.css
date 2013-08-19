@@ -217,3 +217,7 @@
 .modal.fade.in {
   top: 12.1% !important;
 }
+
+.modal table tr {
+  border-bottom: 1px solid #F7F3F2 !important;
+}

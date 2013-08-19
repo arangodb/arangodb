@@ -22,21 +22,21 @@
     </div>
   </div>
 
-<div id="clearDashboard" class="containerdivNewLine"/>
+  <!--<div id="clearDashboard" class="containerdivNewLine"></div>--!>
 </ul>
 
 <ul class="thumbnails dashboardContent">
 
   <ul class="nav nav-tabs arangoTab">
-    <li class="pull-right active dashSwitch" id="statSwitch"><a>Statistics</a></li>
-    <li class="pull-right dashSwitch" id="replSwitch"><a>Replication</a></li>
+    <li class="active dashSwitch" id="statSwitch"><a>Statistics</a></li>
+    <li class="dashSwitch" id="replSwitch"><a>Replication</a></li>
   </ul>
 
 
-  <li id="detailReplication" class="statSingleClient" style="margin-bottom: 13px !important; display:none;">
+  <li id="detailReplication" class="statSingleClient" style="display:none;">
     <div id="detailReplicationDiv" class="statChart">
       <div id="leftReplicationDiv">
-        <h4>Logger State</h4>
+        <a class="arangoSubHeader">Logger State</a>
         <table id="logReplicationTable">
           <thead>
             <tr>
@@ -68,7 +68,7 @@
       </div>
 
       <div id="rightReplicationDiv">
-        <h4>Applier State</h4>
+        <a class="arangoSubHeader">Applier State</a>
         <table id="applyReplicationTable">
           <thead>
             <tr>
