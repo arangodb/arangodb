@@ -3,7 +3,8 @@
 
 var collectionsView = Backbone.View.extend({
   el: '#content',
-  el2: '.thumbnails',
+  /*el2: '.thumbnails',*/
+  el2: '#collectionsThumbnailsIn',
 
   searchTimeout: null,
 
@@ -18,12 +19,13 @@ var collectionsView = Backbone.View.extend({
 
     var searchOptions = this.collection.searchOptions;
 
-    $('.thumbnails', this.el).append(
+    $('#collectionsThumbnailsIn', this.el).append(
       '<li class="span3"><a href="#new" class="add"><img id="newCollection"'+
       'src="img/plus_icon.png" class="pull-left" />Add Collection</a></li>'
     );
+
     this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
-      $('.thumbnails', this.el).append(new window.CollectionListItemView({
+      $('#collectionsThumbnailsIn', this.el).append(new window.CollectionListItemView({
         model: arango_collection
       }).render().el);
     }, this);

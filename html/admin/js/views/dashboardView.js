@@ -213,7 +213,7 @@ var dashboardView = Backbone.View.extend({
 
     var counter = 1;
     $.each(this.options.description.models[0].attributes.groups, function () {
-      $('.thumbnails').append(
+      $('#dbThumbnailsIn').append(
         '<ul class="statGroups" id="' + this.group + '">' +
         '<i class="group-close icon-minus icon-white"></i>' +
         '<div id="statsHeaderDiv"><h4 class="statsHeader">' + this.name + '</h4></div>' +
