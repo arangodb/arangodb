@@ -14,7 +14,8 @@ var documentView = Backbone.View.extend({
 
   events: {
     "click #saveDocument"               : "saveDocument",
-    //"click #addDocumentLine"          : "addLine",
+    "click #addDocumentLine"            : "addLine",
+    "click #addRow"                     : "addLine",
     "click #documentTableID #deleteRow" : "deleteLine",
     "click #sourceView"                 : "sourceView",
     "click #editFirstRow"               : "editFirst",
@@ -145,7 +146,7 @@ var documentView = Backbone.View.extend({
   },
   drawTable: function () {
     var self = this;
-    $(self.table).dataTable().fnAddData([
+/*    $(self.table).dataTable().fnAddData([
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
@@ -153,7 +154,7 @@ var documentView = Backbone.View.extend({
       '<div class="notwriteable"></div>',
       '<button class="enabled" id="addRow"><img id="addDocumentLine"'+
       'class="plusIcon" src="img/plus_icon.png"></button>'
-    ]);
+    ]);*/
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
         $(self.table).dataTable().fnAddData([
@@ -169,12 +170,11 @@ var documentView = Backbone.View.extend({
         $(self.table).dataTable().fnAddData(
           [
             key,
-            '<i class="icon-edit" id="editFirstRow"></i>',
+            '<a id="editFirstRow"><span class="glyphicon glyphicon-edit"></span></a>',
             self.value2html(value),
             JSON.stringify(value, null, 4),
-            '<i class="icon-edit" id="editSecondRow"></i>',
-            '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
-            'width="16" height="16"></button>'
+            '<a id="editSecondRow"><span class="glyphicon glyphicon-edit"></span></a>',
+            '<a id="deleteRow"><span class="glyphicon glyphicon-minus-sign"></span></a>'
         ]);
       }
     });
@@ -195,12 +195,11 @@ var documentView = Backbone.View.extend({
     $(this.table).dataTable().fnAddData(
       [
         self.currentKey,
-        '<i class="icon-edit" id="editFirstRow"></i>',
+        '<a id="editFirstRow"><span class="glyphicon glyphicon-edit"></span></a>',
         this.value2html("editme"),
         JSON.stringify("editme"),
-        '<i class="icon-edit" id="editSecondRow"></i>',
-        '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png"'+
-        'width="16" height="16"></button>'
+        '<a id="editSecondRow"><span class="glyphicon glyphicon-edit"></span></a>',
+        '<a id="deleteRow"><span class="glyphicon glyphicon-minus-sign"></span></a>'
       ]
     );
     this.makeEditable();
@@ -293,11 +292,15 @@ var documentView = Backbone.View.extend({
     var i = 0;
     $('.writeable', documentEditTable.fnGetNodes() ).each(function () {
       var aPos = documentEditTable.fnGetPosition(this);
-      if (aPos[0] === 0) {
+     /* if (aPos[0] === 0) {
+        console.log("i=0");
+        console.log(this);
         $(this).removeClass('writeable');
-      }
+      }*/
       if ( i === 1) {
         $(this).removeClass('writeable');
+        console.log("i=1");
+        console.log(this);
         i = 0;
       }
       if (arangoHelper.isSystemAttribute(this.innerHTML)) {

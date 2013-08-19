@@ -278,5 +278,9 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
   self.triggerTranslation = function(x, y) {
     reactToZoom(null, x, y, true);
   };
+
+  self.changeWidth = function(w) {
+    size =  width * height;
+  };
  
 }

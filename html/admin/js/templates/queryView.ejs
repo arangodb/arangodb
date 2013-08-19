@@ -1,15 +1,15 @@
 <ul class="thumbnails2">
   <div id="transparentHeader">
-    <h4>AQL Editor</h4>
+    <a class="arangoHeader">AQL Editor</a>
   </div>
 </ul>
 
 <div id="queryDiv" class="form-actions" style="display:none">
   <div id="outputToolbar">
     <div id="outputLabel">Result</div>
-    <i class="icon-ban-circle queryTooltips" title="Clear" id="clearOutput"></i>
-    <i class="icon-plus queryTooltips" title="Unfold" id="bigOutput"></i>
-    <i class="icon-minus queryTooltips" title="Fold" id="smallOutput"></i>
+      <span class="glyphicon glyphicon-trash queryTooltips" title="Clear" id="clearOutput"></span>
+      <span class="glyphicon glyphicon-resize-full queryTooltips" title="Unfold" id="bigOutput"></span>
+      <span class="glyphicon glyphicon-resize-small queryTooltips" title="Fold" id="smallOutput"></span>
   </div>
   <div id="queryOutput" class="thumbnail">
   </div>
@@ -17,12 +17,12 @@
   <div id="editorToolbar">
     <div id="editorLabel">Query</div>
     <select id="querySelect"/>
-    <i class="icon-list-alt queryTooltips" title="Edit custom queries" id="editAQL"/>
-    <i class="icon-star queryTooltips" title="Save current query" id="addAQL"/>
-    <i class="icon-ban-circle queryTooltips" title="Clear" id="clearInput"></i>
-    <i class="icon-comment queryTooltips" title="Comment" id="commentText"/>
-    <i class="icon-arrow-right queryTooltips" title="Redo" id="redoText"/>
-    <i class="icon-arrow-left queryTooltips" title="Undo" id="undoText"/>
+    <span class="glyphicon glyphicon-cog queryTooltips" title="Edit custom queries" id="editAQL"/>
+    <span class="glyphicon glyphicon-plus-sign queryTooltips" title="Save current query" id="addAQL"/>
+    <span class="glyphicon glyphicon-trash queryTooltips" title="Clear" id="clearInput"/>
+    <span class="glyphicon glyphicon-comment queryTooltips" title="Comment" id="commentText"/>
+    <span class="glyphicon glyphicon-circle-arrow-right queryTooltips" title="Redo" id="redoText"/>
+    <span class="glyphicon glyphicon-circle-arrow-left queryTooltips" title="Undo" id="undoText"/>
   </div>
   <div id="aqlEditor"></div>
   <button id="submitQueryButton" class="btn btn-success">Submit</button>
@@ -67,7 +67,7 @@
   </div>
   <div id="colFooter" class="modal-footer">
     <button id="save-edit-query" class="btn btn-success pull-right">Save</button>
-    <button id="delete-edit-query" class="btn btn-danger pull-left">Delete</button>
+    <button id="delete-edit-query" class="btn btn-danger">Delete</button>
     <button class="btn btn-close btn-margin" data-dismiss="modal" aria-hidden="true">Close</button>
   </div>
   <div class="alert alert-error" style="display:none" id="reallyDeleteQueryDiv">

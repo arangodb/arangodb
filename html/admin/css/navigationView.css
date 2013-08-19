@@ -1,7 +1,3 @@
-.navbar .nav > li > a { 
-  padding: 5px 15px 15px !important;
-}
-
 .dropdown-menu li > a:hover, .dropdown-menu li > a:focus, .dropdown-submenu:hover > a {
   background-image:none;
   background-color: #8AA051 !important;
@@ -29,7 +25,7 @@
 
 body, input, textarea, .page-title span, .pingback a.url {
   /*font-family: "Helvetica",sans-serif;*/
-  font-family: 'Lato', sans-serif;
+  font-family: 'Lato', sans-serif !important;
   font-weight: 300;
 }
 

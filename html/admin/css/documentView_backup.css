@@ -28,7 +28,8 @@
 }
 
 #tableDiv, #logContent{
-  padding: 10px 5px 10px 5px;
+  margin-top: 0px;
+  padding: 20px 20px 20px 20px;
 }
 
 #logContent .tab-content {
@@ -50,10 +51,6 @@
 }
 
 #addDocumentLine {
-  padding-top: 7px;
-  padding-right: 0;
-  margin-right: -1px;
-  float: right;
   color: black;
 }
 
@@ -62,44 +59,24 @@
   cursor: pointer;
 }
 
-#addRow {
-  color: #8AA050;
-}
-
-#deleteRow {
-  color: #B30000;
-}
-
-#editSecondRow, #editFirstRow {
-  color: #444444;
-  font-size: 16px;
-  float:right;
-  padding-top: 4px;
-}
-
-#addRow, #deleteRow {
-  font-size: 20px;
-  float:right;
-  padding-top: 2px;
+#deleteRow, #addRow {
+  border: medium none;
+  margin-top: -8px;
+  background-color: transparent;
 }
 
 #documentTableID {
-  font-weight: 300;
-  font-size: 15px !important;
+  font-weight: 500;
   border-collapse:separate;
-  border-spacing:0 0px;
-  border-top: 1px solid #888;
+  border-spacing:0 2px;
+	padding:20px;
+	margin-bottom: 5px;
+	border:1px solid #c1bdba;
   background-color: #FFFFFF;
-}
-
-table.dataTable thead th {
-  font-weight: 400 !important;
 }
 
 #documentTableID thead {
   text-align: left;
-  padding-top: 6px;
-  padding-bottom: 6px;
 }
 
 #documentTableID .writeable {
@@ -110,17 +87,10 @@ table.dataTable thead th {
   cursor: default !important;
 }
 
-#editFirstRow {
-  float:right;
-  text-align:right;
-  margin-right: -17px !important;
-}
-
 #editSecondRow {
   float:right;
   text-align:right;
-  margin-right: -30px !important;
-  padding-bottom: 1px;
+  margin-right: -5px !important;
 }
 
 #documentTableID .icon-edit {
@@ -132,8 +102,7 @@ table.dataTable thead th {
 }
 
 #documentTableID.dataTable thead tr {
-/*  background-color: #F1F0EE;*/
-  background-color: #FFFFFF;
+  background-color: #F1F0EE;
 }
 
 #documentTableID .odd,
@@ -143,26 +112,29 @@ table.dataTable thead th {
     box-shadow: none;
 }
 
-#documentTableID .odd, #documentsTableID .odd {
-	background:#F1F0EE;
-}
-#documentTableID .even, #documentsTableID .even {
+#documentTableID .odd {
 	background:#FFFFFF;
+}
+#documentTableID .even {
+	background:#F1F0EE;
 }
 
 #documentTableID tr.odd td.sorting_1 {
-    background:#F1F0EE;/* #fdf6df*/
+    background:#FFFFFF; /*#fdfaec*/
 }
 
 #documentTableID tr.even td.sorting_1 {
-    background:#FFFFFF; /*#fdfaec*/
+    background:#F1F0EE;/* #fdf6df*/
 }
 
 .arangoTab > li > a,
 .arangoTab > li:hover > a {
     border-radius: 0 !important;
     background-color: #F1F0EE;
-    border-bottom: 1px solid #888;
+    border-top: 1px solid #C1BDBA;
+    border-left: 1px solid #C1BDBA;
+    border-right: 1px solid #C1BDBA;
+    border-bottom: 1px solid #C1BDBA;
     font-size: 13px !important;
     padding-top: 4px;
     padding-bottom: 4px;
@@ -175,21 +147,16 @@ table.dataTable thead th {
 }
 
 .arangoTab > li > a {
-  min-width: 50px;
-  text-align: center;
   background-color: none;
 }
 
 .arangoTab > li.active > a,
 .arangoTab > li:hover.active > a {
   background: #FFF;
-  border-left: 1px solid #888;
-  margin-top: -1px;
-  padding-bottom: -2px;
-  border-right: 1px solid #888;
-  border-top: 1px solid #888;
+  border-left: 1px solid #C1BDBA;
+  border-right: 1px solid #C1BDBA;
+  border-top: 1px solid #C1BDBA;
   border-bottom: 1px solid #FFFFFF;
-  height: 21px;
 }
 
 .rightCell{
@@ -215,7 +182,7 @@ table.dataTable thead th {
 .arangoTab {
   padding-bottom: 0 !important;
   margin-bottom: -1px !important;
-  margin-right: 15px;
+  margin-right: 20px;
 }
 
 .arangoTab .nav-tabs li {
@@ -224,18 +191,4 @@ table.dataTable thead th {
 
 #logContent .tab-content {
   margin-top: 5px;
-}
-
-table.dataTable thead th {
-  padding: 10px 14px;
-  /*padding: 7px 18px 5px 15px;*/
-}
-
-.tdRoundButton {
-  padding-top: 7px !important;
-  float: right;
-}
-
-#documentTableID.dataTable thead tr th {
-  border-bottom: 1px solid #888888;
 }

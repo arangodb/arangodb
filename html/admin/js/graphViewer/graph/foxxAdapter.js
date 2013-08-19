@@ -312,6 +312,7 @@ function FoxxAdapter(nodes, edges, route, config) {
     }
   };
   
+  self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;
 }
