@@ -16,6 +16,7 @@ var queryView = Backbone.View.extend({
     'click #submitQueryIcon'         : 'submitQuery',
     'click #submitQueryButton'       : 'submitQuery',
     'click #commentText'             : 'commentText',
+    'click #uncommentText'           : 'uncommentText',
     'click #undoText'                : 'undoText',
     'click #redoText'                : 'redoText',
     'click #smallOutput'             : 'smallOutput',
