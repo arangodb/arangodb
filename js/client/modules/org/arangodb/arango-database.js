@@ -780,10 +780,13 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (query, bindVars) {  
+ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {  
   var payload = {
     query: query,
-    bindVars: bindVars || undefined 
+    bindVars: bindVars || undefined,
+    count: (cursorOptions && cursorOptions.count) || false,
+    batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
+    options: options || undefined 
   };
   
   return new ArangoStatement(this, payload).execute();

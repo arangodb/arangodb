@@ -52,16 +52,7 @@ var internal = require("internal");
 /// @RESTHEADER{POST /_api/cursor,creates a cursor}
 ///
 /// @RESTBODYPARAM{query,json,required}
-/// The following attributes can be used inside the JSON object:
-/// - `query`: contains the query string to be executed (mandatory)
-/// - `count`: boolean flag that indicates whether the total number of documents
-///   in the result set should be returned in the "count" attribute of the result
-///   (optional). Calculating the "count" attribute might in the future have a 
-///   performance impact for some queries so this option is turned off by default.
-/// - `batchSize`: maximum number of result documents to be transferred from
-///   the server to the client in one roundtrip (optional). If this attribute is
-///   not set, a server-controlled default value will be used.
-/// - `bindVars`: key/value list of bind parameters (optional). 
+/// A JSON object describing the query and query parameters.
 ///
 /// @RESTDESCRIPTION
 /// The query details include the query string plus optional query options and
@@ -84,11 +75,26 @@ var internal = require("internal");
 ///
 /// - `bindVars`: key/value list of bind parameters (optional). 
 ///
+/// - `options`: key/value list of extra options for the query (optional).
+///
+/// The following options are supported at the moment:
+/// 
+/// - `fullCount`: if set to `true` and the query contains a `LIMIT` clause, then the
+///   result will contain an extra attribute `extra` with a sub-attribute `fullCount`. 
+///   This sub-attribute will contain the number of documents in the result before the
+///   last LIMIT in the query was applied. It can be used to count the number of documents that
+///   match certain filter criteria, but only return a subset of them, in one go. 
+///   It is thus similar to MySQL's `SQL_CALC_FOUND_ROWS` hint. Note that setting the option 
+///   will disable a few LIMIT optimisations and may lead to more documents being processed,
+///   and thus make queries run longer. Note that the `fullCount` sub-attribute will only
+///   be present in the result if the query has a LIMIT clause and the LIMIT clause is 
+///   actually used in the query.
+///
 /// If the result set can be created by the server, the server will respond with
 /// `HTTP 201`. The body of the response will contain a JSON object with the
 /// result set.
 ///
-/// The JSON object has the following properties:
+/// The returned JSON object has the following properties:
 ///
 /// - `error`: boolean flag to indicate that an error occurred (`false`
 ///   in this case)
@@ -97,13 +103,15 @@ var internal = require("internal");
 ///
 /// - `result`: an array of result documents (might be empty if query has no results)
 ///
-/// - `hasMore`: a boolean indicator whether there are more results
-///   available on the server
+/// - `hasMore`: a boolean indicator whether there are more results 
+///   available for the cursor on the server
 ///
 /// - `count`: the total number of result documents available (only
-///   available if the query was executed with the `count` attribute set.
+///   available if the query was executed with the `count` attribute set)
 ///
 /// - `id`: id of temporary cursor created on the server (optional, see above)
+///
+/// - `extra`: an optional JSON object with extra information about the query result
 ///
 /// If the JSON representation is malformed or the query specification is
 /// missing from the request, the server will respond with `HTTP 400`.
@@ -164,7 +172,7 @@ var internal = require("internal");
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a query and extract part of the result:
+/// Executes a query and extracts part of the result:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturn}
 ///     var cn = "products";
@@ -190,6 +198,26 @@ var internal = require("internal");
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Using a query option:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorOption}
+///     var url = "/_api/cursor";
+///     var body = { 
+///       query: "FOR i IN 1..1000 FILTER i > 500 LIMIT 10 RETURN i",
+///       count: true,
+///       options: {
+///         fullCount: true
+///       }
+///     };
+/// 
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
 ///
 /// Bad queries:
 ///

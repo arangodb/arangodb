@@ -83,6 +83,7 @@ function StatementSuite () {
       assertEqual(query, st.getQuery());
       assertEqual([ ], st.getBindVariables());
       assertEqual(false, st.getCount());
+      assertUndefined(st.getOptions());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,6 +320,23 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method, return extra
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteExtra : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..50 limit 1,2 return i", count: true, options: { fullCount: true } });
+      var result = st.execute();
+
+      assertEqual(2, result.count());
+      assertEqual(50, result.getExtra().fullCount);
+      assertEqual(50, result.getExtra("fullCount"));
+      var docs = result.toArray();
+      assertEqual(2, docs.length);
+      
+      assertEqual([ 2, 3 ], docs);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test bind method
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -439,6 +457,22 @@ function StatementSuite () {
       
       st.setBatchSize(10000);
       assertEqual(10000, st.getBatchSize());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test options
+////////////////////////////////////////////////////////////////////////////////
+
+    testOptions : function () {
+      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1", options : { foo: 1, bar: 2 } });
+
+      assertEqual({ foo: 1, bar: 2 }, st.getOptions());
+      
+      st.setOptions({ });
+      assertEqual({ }, st.getOptions());
+      
+      st.setOptions({ baz: true });
+      assertEqual({ baz: true }, st.getOptions());
     }
 
   };

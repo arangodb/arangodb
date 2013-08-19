@@ -115,8 +115,9 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   var payload = {
     query: query,
     bindVars: bindVars || undefined,
-    options: options || undefined,
-    count: cursorOptions.count || false
+    count: (cursorOptions && cursorOptions.count) || false,
+    batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
+    options: options || undefined
   };
   return new ArangoStatement(this, payload).execute();
 };
