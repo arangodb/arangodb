@@ -19,6 +19,11 @@
   margin-right: 0px;
   padding-bottom: 20px;
   border-top: 1px solid #888;
+  border-left: 1px solid #C0C0C0;
+}
+
+#sourceEditor .ui-resizable-handle {
+  border-left: 0;
 }
 
 #sourceDiv {
