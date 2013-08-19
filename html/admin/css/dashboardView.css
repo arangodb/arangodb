@@ -83,8 +83,8 @@
 .statClient {
   float: left;
   height: 100px;
-  width: 237px;
-  margin-left: 5px !important;
+  width: 230px;
+  margin-left: 13px !important;
   margin-bottom: 5px !important;
   background-color: #FFFFFF !important;
 }
@@ -118,7 +118,7 @@
   padding-top: 0 !important;
   /*height: 140px;*/
   height: 155px;
-  width: 300px;
+  width: 305px;
 }
 
 .svgDetailClass {
@@ -166,7 +166,7 @@ li:hover h6, li.hover h6 {
   margin-bottom: 16px;
   margin-top: 0px;
   margin-right: 5px !important;
-  margin-left: 5px !important;
+  margin-left: 12px !important;
   padding: 0 !important;
   height: 24px !important;
   width: auto !important;
@@ -488,5 +488,8 @@ li:hover h6, li.hover h6 {
   margin-top: 5px;
   padding-left: 7px;
   font-size: 15px;
+}
 
+#dbThumbnailsIn {
+  margin-left: -7px;
 }
