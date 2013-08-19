@@ -140,11 +140,11 @@ corresponding directories.
 
 The server will by default be installed in
 
-    /usr/sbin/arangod
+    /usr/local/sbin/arangod
 
 The configuration file will be installed in
 
-    /etc/arangodb/arangod.conf
+    /usr/local/etc/arangodb/arangod.conf
 
 The database will be installed in
 
@@ -152,7 +152,7 @@ The database will be installed in
 
 The arango shell will be installed in
 
-    /usr/bin/arangosh
+    /usr/local/bin/arangosh
 
 Devel Version{#CompilingDevel}
 ==============================
