@@ -308,7 +308,6 @@ var dashboardView = Backbone.View.extend({
 
   checkEnabled: function (a) {
     var myId = a.target.id;
-    console.log(myId);
     var position = myId.search('Checkbox');
     var preparedId = myId.substring(0, position);
     var toCheck = $(a.target).is(':checked');

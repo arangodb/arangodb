@@ -18,7 +18,6 @@ window.FoxxActiveView = Backbone.View.extend({
   },
 
   toggleDropdown: function () {
-    console.log(123);
     $('#foxxDropdownOut').slideToggle(200);
   },
 
