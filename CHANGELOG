@@ -3,6 +3,8 @@ v1.4
 
 * issue #581: Parameter binding for attributes
 
+* issue #558: HTTP cursors, allow count to ignore LIMIT
+
 
 v1.4.0-alpha1 (2013-08-02)
 --------------------------
