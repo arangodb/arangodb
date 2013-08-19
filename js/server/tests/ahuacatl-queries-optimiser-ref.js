@@ -29,6 +29,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
+var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -161,8 +162,43 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name && u2.name == u1.name && u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }");
 
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a ref access with index and bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefAccessIndexBind1 : function () {
+      users.ensureHashIndex("name");
+
+      var expected = [ 28 ];
+      var query = "FOR u IN " + cn + " FILTER u.@att == 'Diego' RETURN u.@what";
+      var actual = getQueryResults(query, { "att" : "name", "what" : "age" });
+
+      assertEqual(expected, actual);
+
+      var explain = getQueryExplanation(query, { "att": "name", "what": "age" });
+      assertEqual("for", explain[0].type);
+      assertEqual("index", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a ref access with index and bind parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testRefAccessIndexBind2 : function () {
+      var expected = [ "Diego" ];
+      var query = "FOR u IN " + cn + " FILTER u.@att == 28 RETURN u.@what";
+      var actual = getQueryResults(query, { "att" : "age", "what" : "name" });
+
+      assertEqual(expected, actual);
+
+      var explain = getQueryExplanation(query, { "att": "age", "what": "name" });
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
     }
-  }
+
+  };
 
 }
 

@@ -368,6 +368,68 @@ function ahuacatlBindTestSuite () {
       assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : 1, "count" : "foo" }); });
       assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : "foo", "count" : "foo" }); });
       assertException(function() { getQueryResults("FOR u IN [ 1, 2, 3 ] LIMIT @offset, @count RETURN u", { "offset" : -1, "count" : -1 }); });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bound attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAttributeNames1 : function () {
+      var actual = getQueryResults("FOR u IN [ { age: 1 }, { age: 2 }, { age: 3 } ] RETURN u.@what", { "what": "age" });
+
+      assertEqual([ 1, 2, 3 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bound attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAttributeNames2 : function () {
+      var actual = getQueryResults("FOR u IN [ { age: 1 }, { age: 2 }, { age: 3 } ] FILTER u.@what == @age RETURN u.@what", { "what": "age", "age": 2 });
+
+      assertEqual([ 2 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bound attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAttributeNames3 : function () {
+      var actual = getQueryResults("FOR u IN [ { age1: 1 }, { age2: 2 }, { age3: 3 } ] RETURN u.@what", { "what": "age2" });
+
+      assertEqual([ null, 2, null ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bound attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAttributeNames4 : function () {
+      var actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER u.@what == @value RETURN @value", { "what" : "the fox", "value" : 1 });
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER u.@what == @value RETURN @value", { "what" : "the-foxx", "value" : 2 });
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER u.@what == @value RETURN @value", { "what" : "3", "value" : 3 });
+      assertEqual([ 3 ], actual);
+      
+      actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER HAS(u, @what) RETURN u", { "what" : "the fox" });
+      assertEqual([ { "the fox" : 1 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bound attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAttributeNamesInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : 1 });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : true });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : null });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : "" });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : [ ] });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : { } });
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "age" : "age" });
     }
 
   };
