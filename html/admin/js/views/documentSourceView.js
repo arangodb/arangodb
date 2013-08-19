@@ -6,8 +6,9 @@ var documentSourceView = Backbone.View.extend({
   init: function () {
   },
   events: {
-    "click #tableView"     :   "tableView",
-    "click #saveSourceDoc" :   "saveSourceDoc"
+    "click #tableView"       : "tableView",
+    "click #saveSourceDoc"   : "saveSourceDoc",
+    "keypress #sourceEditor" : "sourceShortcut"
   },
 
   template: new EJS({url: 'js/templates/documentSourceView.ejs'}),
@@ -16,8 +17,30 @@ var documentSourceView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     this.breadcrumb();
     this.editor();
+
+    $('#sourceEditor').resizable({
+      handles: "s",
+      ghost: true,
+      stop: function () {
+        setTimeout(function () {
+          var editor = ace.edit("sourceEditor");
+          editor.resize();
+        },200);
+      }
+    });
     return this;
   },
+
+  sourceShortcut: function (e) {
+    console.log("test");
+    if (e.ctrlKey && e.keyCode === 13) {
+      this.saveSourceDoc();
+    }
+    else if (e.metaKey && !e.ctrlKey && e.keyCode === 13) {
+      this.saveSourceDoc();
+    }
+  },
+
   typeCheck: function (type) {
     this.type = type;
     if (type === 'edge') {
