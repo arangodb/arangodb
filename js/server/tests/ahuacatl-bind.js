@@ -422,6 +422,21 @@ function ahuacatlBindTestSuite () {
 /// @brief test bound attribute names
 ////////////////////////////////////////////////////////////////////////////////
 
+    testBindAttributeNames5 : function () {
+      var actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.name.@part1 == 'foo' && u.name.@part2 == 'bar' RETURN u", { "part1" : "first", "part2" : "last" });
+      assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
+      
+      actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.@part1.@first == 'foo' && u.@part1.@last == 'bar' RETURN u", { "part1" : "name", "first" : "first", "last" : "last" });
+      assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
+      
+      actual = getQueryResults("FOR u IN [ { values: [ { age: 28 }, { age: 30 }, { age: 40 } ] } ] RETURN u.values[*].@what", { "what" : "age" });
+      assertEqual([ [ 28, 30, 40 ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bound attribute names
+////////////////////////////////////////////////////////////////////////////////
+
     testBindAttributeNamesInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : 1 });
       assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, "FOR u IN [ { age: 1 }, { age: 2 } ] RETURN u.@what", { "what" : true });
