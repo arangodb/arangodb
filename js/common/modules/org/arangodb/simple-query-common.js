@@ -54,11 +54,12 @@ var SimpleQueryWithin;
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
 
-function GeneralArrayCursor (documents, skip, limit) {
+function GeneralArrayCursor (documents, skip, limit, extra) {
   this._documents = documents;
   this._countTotal = documents.length;
   this._skip = skip;
   this._limit = limit;
+  this._extra = extra;
 
   this.execute();
 }
@@ -171,6 +172,26 @@ GeneralArrayCursor.prototype.count = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return an extra value of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralArrayCursor.prototype.getExtra = function (name) {
+  if (name === undefined) {
+    return this._extra || null;
+  }
+
+  if (this._extra === undefined || this._extra === null) {
+    return null;
+  }
+
+  if (! this._extra.hasOwnProperty(name)) {
+    return null;
+  }
+
+  return this._extra[name];
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the cursor is exhausted
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -202,6 +223,7 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._countQuery = null;
   this._current = null;
   this._stop = null;
+  this._extra = null;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

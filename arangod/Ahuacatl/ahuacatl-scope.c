@@ -121,6 +121,12 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_limit._hasFilter = false;
   scope->_limit._found     = 0;
 
+  if (context->_fullCount) {
+    // if option "fullCount" is specified, we must ignore all limit optimisations
+    scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
+  }
+
+
   TRI_InitVectorPointer(&scope->_sorts, TRI_UNKNOWN_MEM_ZONE);
 
   res = TRI_InitAssociativePointer(&scope->_variables,

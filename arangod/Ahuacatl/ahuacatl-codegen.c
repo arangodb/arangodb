@@ -799,7 +799,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   }
 
   forScope = CurrentScope(generator);
-
+    
   // limit: offset and limit registers
   if (forScope->_limitRegister != 0) {
     if (forScope->_offsetRegister != 0) {
@@ -823,14 +823,13 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 #endif
   }
 
-
   // for (var keyx in listx)
   if (forScope->_hint != NULL &&
       forScope->_hint->_limit._status == TRI_AQL_LIMIT_USE &&
       ! forScope->_hint->_limit._hasFilter) {
     // we have a limit the we need to handle in the for loop
     TRI_aql_codegen_register_t maxRegister = IncRegister(generator);
-
+  
     ScopeOutput(generator, "var ");
     ScopeOutputRegister(generator, maxRegister);
     ScopeOutput(generator, " = ");
@@ -861,6 +860,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   }
   else {
     // regular for loop
+
     ScopeOutput(generator, "for (var ");
     ScopeOutputRegister(generator, keyRegister);
     ScopeOutput(generator, " = 0; ");
@@ -2155,7 +2155,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   // a rowRegister, and we need that
   variableNames = StoreSymbols(generator, rowRegister, true);
   TRI_DestroyVectorString(&variableNames);
-
+  
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ".push(");
@@ -2254,7 +2254,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
 
   // save symbols
   variableNames = StoreSymbols(generator, rowRegister, false);
-
+  
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ".push(");
@@ -2263,7 +2263,12 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
 
   // }
   CloseLoops(generator);
-
+ 
+  // store full count 
+  ScopeOutput(generator, "extra.fullCount = ");
+  ScopeOutputRegister(generator, sourceRegister);
+  ScopeOutput(generator, ".length;\n");
+  
   // now apply actual limit
   limitRegister = IncRegister(generator);
   ScopeOutput(generator, "var ");
@@ -2302,13 +2307,13 @@ static void ProcessReturn (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " = ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ";\n");
-
+  
   // result.push(row);
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ".push(");
   ScopeOutputRegister(generator, rowRegister);
   ScopeOutput(generator, ");\n");
-
+  
   generator->_lastResultRegister = scope->_resultRegister;
 
   // }
@@ -2414,7 +2419,7 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
 
   if (scope->_limitRegister != 0) {
     assert(scope->_hint != NULL);
-
+    
     if (scope->_offsetRegister != 0) {
       ScopeOutput(generator, "if (++");
       ScopeOutputRegister(generator, scope->_offsetRegister);
@@ -2691,15 +2696,24 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  OutputString(&generator->_functionBuffer, "(function () {\nvar aql = require(\"org/arangodb/ahuacatl\");\n");
+  OutputString(&generator->_functionBuffer, "(function () {\nvar aql = require(\"org/arangodb/ahuacatl\"), extra = { };\n");
+
+  if (context->_userOptions != NULL && context->_userOptions->_type == TRI_JSON_ARRAY) {
+    OutputString(&generator->_functionBuffer, "var options = ");
+    TRI_StringifyJson(&generator->_functionBuffer, context->_userOptions);
+    OutputString(&generator->_functionBuffer, ";\n");
+  }
 
   resultRegister = CreateCode(generator);
 
   // append result
-  OutputString(&generator->_buffer, "return ");
+  OutputString(&generator->_buffer, "return {\n");
+  OutputString(&generator->_buffer, "docs: ");
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
-  OutputString(&generator->_buffer, ";\n");
+  OutputString(&generator->_buffer, ",\n");
+  OutputString(&generator->_buffer, "extra: extra");
+  OutputString(&generator->_buffer, "\n};\n");
 
   OutputString(&generator->_buffer, "})();");
 

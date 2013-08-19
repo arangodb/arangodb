@@ -241,8 +241,11 @@ function post_api_cursor(req, res) {
   if (json.query !== undefined) {
     cursor = internal.AQL_QUERY(json.query, 
                                 json.bindVars, 
-                                json.count,
-                                json.batchSize || 1000); 
+                                { 
+                                  count : json.count || false,
+                                  batchSize: json.batchSize || 1000
+                                },
+                                json.options);
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
@@ -260,7 +263,9 @@ function post_api_cursor(req, res) {
                        res, 
                        cursor, 
                        actions.HTTP_CREATED, 
-                       { countRequested: json.count ? true : false });
+                       { 
+                         countRequested: json.count ? true : false
+                       });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
