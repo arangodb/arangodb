@@ -379,8 +379,8 @@ size_t TRI_StringInt8InPlace (int8_t attr, char* buffer) {
   char* p;
 
   if (attr == INT8_MIN) {
-    memcpy(buffer, "-128\0", 4);
-    return 3;
+    memcpy(buffer, "-128\0", 5);
+    return 4;
   }
 
   p = buffer;
