@@ -326,6 +326,14 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (struct TRI_aql_context_s* cons
                                                   const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST attribute node w/ bind parameter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeBoundAttributeAccessAql (struct TRI_aql_context_s* const,
+                                                       const TRI_aql_node_t* const,
+                                                       const TRI_aql_node_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST index access node
 ////////////////////////////////////////////////////////////////////////////////
 

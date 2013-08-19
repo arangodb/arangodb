@@ -2569,6 +2569,9 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
     case TRI_AQL_NODE_SCOPE_END:
       ProcessScopeEnd(generator, node);
       break;
+    case TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS:
+      assert(false);
+      break;
     default: {
     }
   }
