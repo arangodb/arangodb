@@ -32,7 +32,6 @@ var documentSourceView = Backbone.View.extend({
   },
 
   sourceShortcut: function (e) {
-    console.log("test");
     if (e.ctrlKey && e.keyCode === 13) {
       this.saveSourceDoc();
     }
