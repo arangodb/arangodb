@@ -53,7 +53,7 @@
 }
 
 .modal-text {
-  font-weight: normal;
+  font-weight: 300;
   padding-top: 3px;
   padding-bottom: 3px;
 }
@@ -96,7 +96,12 @@
 }
 
 .figuresHeader {
-  border-bottom: 1px solid #C1BDBA;
+  border-bottom: 1px solid #888888;
+}
+
+.figuresHeader th {
+  font-weight: 400 !important;
+  font-family: 'Lato', sans-serif !important;
 }
 
 #collectionIndexTable {
@@ -106,4 +111,113 @@
 
 .modal {
   border-radius: 0 !important;
+}
+
+.modalTooltips span {
+  font-size: 20px;
+  opacity: 0.5;
+}
+
+.modalTooltips span:hover {
+  opacity: 0.8;
+}
+
+#infoTab {
+  padding-right: 10px;
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 1px;
+}
+
+#infoTab li {
+  float:right;
+}
+
+#infoTab a {
+  margin-right: 4px;
+  color: black;
+  margin-bottom: -1px;
+  background-color: #F1F0EE;
+  border-bottom: 1px solid #888888;
+  border-radius: 0 !important;
+  height: 21px;
+  font-size: 13px !important;
+  padding: 4px !important;
+}
+
+#infoTab .active > a {
+  border-color: #888888 #888888 transparent !important;
+  background-color: #FFFFFF;
+}
+
+#tab-content-collection-info #info,
+#tab-content-collection-info #figures,
+#tab-content-collection-info #index {
+  padding-top: 10px;
+  border-top: 1px solid #888888 !important;
+  margin-left: 0px !important;
+}
+
+.modal-footer {
+  border-top: 0 !important;
+}
+
+.modal-header {
+  margin-top: 5px;
+  margin-left: 5px;
+  margin-right: 5px;
+  background-color: #686766;
+  border-bottom: 0 !important;
+  padding-top: 4px;
+}
+
+.modal-header .arangoHeader {
+  position: relative;
+  top: 3px;
+}
+
+.modal-header .close {
+  color: #FFFFFF;
+  opacity: 0.5;
+}
+
+.modal-header .close:hover {
+  opacity: 1;
+}
+
+.modal-body .glyphicon-info-sign {
+  color: #736B68;
+  font-size: 18px;
+  margin-left: 5px;
+  margin-top: 2px;
+}
+
+.modal-body .glyphicon-info-sign:hover {
+  color: black;
+}
+
+#closeBtnInfoView {
+  margin-left: 0 !important;
+}
+
+.modal-body {
+  font-weight: 300;
+  font-family: 'Lato', sans-serif !important;
+}
+
+.collectionTh, .collectionInfoTh2 {
+  font-weight: 400 !important;
+  font-family: 'Lato', sans-serif !important;
+}
+
+#confirmCreateEdge {
+  margin-left: 20px;
+}
+
+.modal.fade.in {
+  top: 12.1% !important;
+}
+
+.modal table tr {
+  border-bottom: 1px solid #F7F3F2 !important;
 }

@@ -194,7 +194,7 @@ var documentsView = Backbone.View.extend({
   },
 
   filterCollection : function () {
-    $('#filterHeader').slideToggle("fast");
+    $('#filterHeader').slideToggle(200);
     $('#importHeader').hide();
 
     var i;
@@ -207,7 +207,7 @@ var documentsView = Backbone.View.extend({
   },
 
   importCollection: function () {
-    $('#importHeader').slideToggle("fast");
+    $('#importHeader').slideToggle(200);
     $('#filterHeader').hide();
   },
 
@@ -246,7 +246,7 @@ var documentsView = Backbone.View.extend({
     // adds a line to the filter widget
     
     var num = ++this.filterId;
-    $('#filterHeader').append(' <div class="queryline querylineAdd"> & &#160;'+
+    $('#filterHeader').append(' <div class="queryline querylineAdd">'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
        '<select name="operator" id="operator' + num + '">'+
        '    <option value="==">==</option>'+
@@ -259,8 +259,8 @@ var documentsView = Backbone.View.extend({
        '<input id="attribute_value' + num + '" type="text" placeholder="Attribute value" ' + 
        'class="filterValue">'+
        ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-       '<i class="icon icon-minus"></i></a>'+
-       ' </div>');
+       '<i class="icon icon-minus icon-white"></i></a>'+
+       ' <span>AND</span></div>');
     this.filters[num] = true;
   },
 
@@ -493,8 +493,10 @@ var documentsView = Backbone.View.extend({
           + value.attributes.key
           + '</div>',
 
-          '<button class="enabled" id="deleteDoc">'
-          + '<img src="img/icon_delete.png" width="16" height="16"></button>'
+        /*  '<button class="enabled" id="deleteDoc">'
+          + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
+          '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
+          +'Add a document"></span><a>'
         ]
       );
     });
@@ -561,10 +563,10 @@ var documentsView = Backbone.View.extend({
     target.pagination(options);
     $('#documentsToolbarF').prepend(
       '<ul class="prePagi"><li><a id="documents_first">'+
-      '<i class="icon icon-step-backward"></i></a></li></ul>');
+      '<span class="glyphicon glyphicon-step-backward"></span></a></li></ul>');
       $('#documentsToolbarF').append(
         '<ul class="lasPagi"><li><a id="documents_last">'+
-        '<i class="icon icon-step-forward"></i></a></li></ul>');
+        '<span class="glyphicon glyphicon-step-forward"></span></a></li></ul>');
         var total = $('#totalDocuments');
         if (total.length > 0) {
           total.html("Total: " + this.documentsCount + " documents");

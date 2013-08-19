@@ -201,6 +201,12 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     });
   };
   
+  this.changeWidth = function(w) {
+    layouter.changeWidth(w);
+    zoomManager.changeWidth(w);
+    adapter.setWidth(w);
+  };
+
   this.dispatcherConfig = {
     expand: {
       edges: edges,

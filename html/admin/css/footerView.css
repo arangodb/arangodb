@@ -4,7 +4,7 @@
 
 .footer {
   position: fixed;
-  background: url("../img/footer_hd_bg.png") repeat-x scroll left 10px #4A4A4A;
+  background-color: #383434;
   font-size: 14px;
   text-align: center;
   left: 0;
@@ -94,12 +94,9 @@
 .footer-right {
   background: none repeat scroll 0 0 #383434;
   color: #383434;
-  width: 33.3%;
-  float: left;
+  float: right;
 }
 
 .footer-right p {
   color: white;
-  text-align: right;
-  padding-right: 15px;
 }

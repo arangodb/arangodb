@@ -179,12 +179,10 @@ static void RemoveAllLockedFiles (void) {
 
   for (i = 0;  i < FileNames._length;  i++) {
     TRI_UnlinkFile(FileNames._buffer[i]);
-    TRI_RemoveVectorString(&FileNames, i);
 
     fd = * (int*) TRI_AtVector(&FileDescriptors, i);
 
     TRI_CLOSE(fd);
-    TRI_RemoveVector(&FileDescriptors, i);
   }
 
   TRI_DestroyVectorString(&FileNames);
@@ -405,7 +403,7 @@ bool TRI_ExistsFile (char const* path) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateRecursiveDirectory (char const* path) {
+int TRI_CreateRecursiveDirectory (char const* path) {
   char* copy;
   char* p;
   char* s;
@@ -1492,7 +1490,6 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 
 char* TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
-  char* dir;
   char* binaryPath = NULL;
   size_t i;
 
@@ -1504,14 +1501,10 @@ char* TRI_LocateBinaryPath (char const* argv0) {
 
   // contains a path
   if (*p) {
-    dir = TRI_Dirname(argv0);
+    binaryPath = TRI_Dirname(argv0);
 
-    if (dir == 0) {
+    if (binaryPath == 0) {
       binaryPath = TRI_DuplicateString("");
-    }
-    else {
-      binaryPath = TRI_DuplicateString(dir);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
   }
 

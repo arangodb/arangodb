@@ -184,8 +184,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
           idprefix,
           {},
           function(data) {
-            dispatcher.events.CREATENODE(data, function() {
+            dispatcher.events.CREATENODE(data, function(node) {
               $("#" + idprefix + "modal").modal('hide');
+              console.log(node);
+              nodeShaper.reshapeNodes();
             })();
           }
         );

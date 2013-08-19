@@ -8,21 +8,32 @@
   background: none;
   margin-bottom: 0;
   padding-right: 0;
-  padding-bottom: 0;
+  padding-top: 30px;
+  padding-bottom: 5px;
 }
 
 #sourceEditor {
   height: 400px;
-  width: 100%;
+  width: auto;
   overflow:hidden;
+  margin-right: 0px;
   padding-bottom: 20px;
-  border: 1px solid #A0A0A0;
+  border-top: 1px solid #888;
+  border-left: 1px solid #C0C0C0;
+}
+
+#sourceEditor .ui-resizable-handle {
+  border-left: 0;
 }
 
 #sourceDiv {
   margin-top: 0px;
-  padding: 20px 20px 20px 20px;
+  padding-left: 5px;
+  padding-top: 10px;
+  padding-right: 5px;
+  padding-bottom: 5px;
   min-height: 400px;
+  margin-bottom: 20px;
 }
 
 .sourceBox {

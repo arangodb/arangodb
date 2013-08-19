@@ -10,6 +10,11 @@
   border: 8px solid #FFFFFF;
 }
 */
+.dashboardContent {
+  padding-bottom: 20px !important;
+  padding-top: 10px !important;
+  margin-bottom: 10px !important;
+}
 
 .dbNotVisible {
   opacity: 0 !important;
@@ -20,10 +25,14 @@
   margin-top: 6px;
 }
 
+#dashboardHeader ul a {
+  border-radius: 0 !important;
+}
+
 .group-close, .group-open {
   float:right;
   margin-top: 18px !important;
-  margin-right: 25px !important;
+  margin-right: 10px !important;
 }
 
 .db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
@@ -61,23 +70,23 @@
 }
 
 .statSingleClient {
-  height: 300px;
-  width: 100% !important;
-  margin-top: 10px;
-  margin-left: 10px !important;
-  margin-right: 11px !important;
-  margin-bottom: 0px !important;
-  background-color: #F4F3F3;
+  height: 400px;
+  width: auto !important;
+  margin-top: 11px;
+  margin-left: 5px !important;
+  margin-right: 5px !important;
+  margin-bottom: -10px !important;
+  border-top: 1px solid #888888 !important;
+  background-color: #FFFFFF !important;
 }
 
 .statClient {
   float: left;
-  height: 70px;
-  width: 230px;
-  margin-left: 8px !important;
-  margin-bottom: 4px !important;
-  border: 1px solid black;
-  background-color: #F4F3F3;
+  height: 100px;
+  width: 237px;
+  margin-left: 5px !important;
+  margin-bottom: 5px !important;
+  background-color: #FFFFFF !important;
 }
 
 #detailGraphChart {
@@ -87,6 +96,8 @@
 .statGroups .statChart {
   margin-left: -55px !important;
   margin-top: -50px !important;
+  float:left;
+  (;margin-top: -37px !important;)
 }
 
 .nv-axislabel {
@@ -103,43 +114,59 @@
 }
 
 .svgClass {
-  margin-top: 0 !important;
+  margin-top: 20px !important;
   padding-top: 0 !important;
-  height: 140px;
-  width: 300px;
+  /*height: 140px;*/
+  height: 155px;
+  width: 305px;
 }
 
 .svgDetailClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
-  height: 300px;
+  height: 400px;
   width: 100%;
 }
 
-.boxHeader {
-  margin-top: 5px;
-  /*background-color: #686766;*/
-  color: black;
-  opacity: 0.25;
+li:hover  i, li.hover i,
+li:hover h6, li.hover h6 {
+  opacity: 0.7 !important;
+  -webkit-transition-property: background color;
+  -webkit-transition-duration: 1s;
+  -webkit-transition-timing-function: linear;
+  -moz-transition-property: background color;
+  -moz-transition-duration: 1s;
+  -moz-transition-timing-function: linear;
+  -o-transition-property: background color;
+  -o-transition-duration: 1s;
+  -o-transition-timing-function: linear;
+  -ms-transition-property: background color;
+  -ms-transition-duration: 1s;
+  -ms-transition-timing-function: linear;
+  transition-property: background color;
+  transition-duration: 1s;
+  transition-timing-function: linear;
 }
 
-.boxHeader:hover {
-  opacity: 0.8;
+.boxHeader i {
+  opacity: 0;
+  margin-top: -2px !important;
 }
 
 .boxHeader h6 {
+  opacity: 0.25;
   padding-top: 0 !important;
   color: black;
-  margin-left: 10px;
+  margin-left: 5px;
   margin-top: 0 !important;
   margin-bottom: -15px !important;
 }
 
 #statsHeaderDiv {
   margin-bottom: 16px;
-  margin-top: 12px;
-  margin-right: 20px !important;
-  margin-left: 8px !important;
+  margin-top: 0px;
+  margin-right: 5px !important;
+  margin-left: 5px !important;
   padding: 0 !important;
   height: 24px !important;
   width: auto !important;
@@ -153,18 +180,19 @@
 }
 
 #dashboardHeader {
-  padding-left: 5px;
-  margin-left: 15px;
-  margin-right: 15px;
+  margin-left: 5px;
+  margin-right: 5px;
   padding-right: 5px;
+  padding-left: 5px;
   background-color: #686766;
-  border-bottom: 1px solid #A0A0A0;
-  border-top: 1px solid #A0A0A0;
   color: #FFFFFF;
   height: 36px;
-  margin-bottom: 0px !important;
-  margin-top: 20px !important;
-  position: relative;
+  margin-top: 5px !important;
+}
+
+#dashboardHeader .btn-group {
+  border-radius: 0 !important;
+  max-height: 36px !important;
 }
 
 /*NVD3*/
@@ -204,17 +232,15 @@
 }
 
 /*Dashboard Checkbox*/
-#dashboardHeader input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox {
+#dashboardDropdownOut input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox, #collectionsDropdown input[type=checkbox].css-checkbox {
   display:none;
 }
 
-#dashboardHeader input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label {
+#dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
-  margin-bottom: -0px;
-  height:15px; 
+  height:15px;
   display:inline-block;
-  line-height:15px;
   background-repeat:no-repeat;
   background-position: 0 0;
   font-size:15px;
@@ -222,7 +248,7 @@
   cursor:pointer;
 }
 
-#dashboardHeader input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label {
+#dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
   background-position: 0 -15px;
 }
 
@@ -236,17 +262,17 @@
   margin-left: -21px;
 }
 
-#dashboardHeader input[type="radio"], #transparentHeader input[type="radio"] {
+#dashboardDropdownOut input[type="radio"], #transparentHeader input[type="radio"] {
   display:none;
 }
 
-#dashboardHeader input[type="radio"] + label, #transparentHeader input[type="radio"] + label {
+#dashboardDropdownOut input[type="radio"] + label, #transparentHeader input[type="radio"] + label {
   /*color:#f2f2f2;*/
   /*font-family:Arial, sans-serif;
   font-size:14px;*/
 }
 
-#dashboardHeader input[type="radio"] + label span, #transparentHeader input[type="radio"] + label span {
+#dashboardDropdownOut input[type="radio"] + label span, #transparentHeader input[type="radio"] + label span {
   display:inline-block;
   width:19px;
   height:19px;
@@ -256,7 +282,7 @@
   cursor:pointer;
 }
 
-#dashboardHeader input[type="radio"]:checked + label span, #transparentHeader input[type="radio"]:checked + label span {
+#dashboardDropdownOut input[type="radio"]:checked + label span, #transparentHeader input[type="radio"]:checked + label span {
   background:url(../img/check_radio_sheet.png) -57px top no-repeat;
 }
 
@@ -284,20 +310,22 @@
 }
 
 #detailReplicationDiv {
-  padding-top: 26px;
+  width: 100%;
   padding-right: 20px;
 }
 
 #detailReplicationDiv table {
-  border-collapse: separate;
-  border-spacing: 0 2px;
+  margin-top: 10px;
+  border-spacing: 0 0px;
 }
 
 #detailReplicationDiv table thead {
-  background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;
-  border-bottom: 1px solid #C1BDBA;
-  padding-bottom: 2px !important;
-  padding-top: 2px !important;
+  /*background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3) !important;*/
+  border-bottom: 1px solid #888;
+}
+
+#detailReplicationDiv table thead tr th{
+  font-weight: 400 !important;
 }
 
 #detailReplicationDiv table {
@@ -317,17 +345,22 @@
 }
 
 #rightReplicationDiv {
-  width: 100%;
   min-height: 150px;
+  padding-top: 5px;
+  margin-right: 10px;
   margin-bottom: 8px;
+  background-color: #FFFFFF;
 }
 
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
+  padding-left: 5px;
 }
 
 #leftReplicationDiv table, #rightReplicationDiv table {
   width: 100%;
   padding-right: 10px !important;
+  padding-left: 10px !important;
+  padding-bottom: 10px;
 }
 
 #leftReplicationDiv table td, #rightReplicationDiv table td {
@@ -336,7 +369,8 @@
 }
 
 #leftReplicationDiv table tr, #rightReplicationDiv table tr {
-  background-color: #F9F9F9 !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #F7F3F2;
   padding-top: 3px;
   padding-bottom: 3px;
 }
@@ -345,12 +379,18 @@
   background-color: #F9F9F9 !important;
 }
 
+#leftReplicationDiv tbody tr, #rightReplicationDiv tbody tr {
+}
+
 #leftReplicationDiv {
-  width: 100%;
+  padding-top: 5px;
+  width: auto;
   min-height: 150px;
   margin-bottom: 8px;
   margin-right: 10px;
-  margin-top: -20px;
+  margin-top: -1px;
+  border-top: 1px solid #888;
+  background-color: #FFFFFF;
 }
 
 .alignLeft {
@@ -364,7 +404,11 @@
 }
 
 #detailReplication {
+  margin-top: 1px;
+  margin-bottom: -17px !important;
+  border-top: 1px solid #888;
   height: auto !important;
+  width: 100% !important;
 }
 
 .trueClass {
@@ -384,6 +428,7 @@
 }
 
 #shortcutDiv {
+  padding-top: 10px;
   font-size: 12px;
   font-weight: 200;
 }
@@ -398,23 +443,6 @@
   float:left;
 }
 
-#statSwitch, #replSwitch {
-  margin-top: 6px;
-  background-color: #686766;
-}
-
-#statSwitch:hover, #replSwitch:hover {
-  background-color: #8F8D8C;
-}
-
-.activeSwitch {
-  background-color: #8F8D8C !important;
-}
-
-.activeSwitch:hover {
-  cursor: default !important;
-}
-
 .statClient:hover {
   opacity: 1 !important;
 }
@@ -426,5 +454,39 @@
 }
 
 #detailGraphPadding {
-  padding-right: 33px !important;
+  margin-top: -11px !important;
+}
+
+.dashboardContent .arangoTab {
+  border-bottom: 0 !important;
+}
+
+#dashboardDropdownOut {
+  background-color: transparent !important;
+}
+
+#dashboardDropdown {
+  background-color: rgba(0,0,0,0.1) !important;
+  min-height: 230px !important;
+}
+
+#dashboardDropdown ul {
+  min-height: 206px !important;
+}
+
+.dashboardContent .arangoTab {
+  float:none;
+}
+
+#statSwitch {
+  margin-left: 15px;
+}
+
+.arangoSubHeader {
+  font-weight: 400px;
+  color: black;
+  margin-top: 5px;
+  padding-left: 7px;
+  font-size: 15px;
+
 }

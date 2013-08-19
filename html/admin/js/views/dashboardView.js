@@ -72,17 +72,22 @@ var dashboardView = Backbone.View.extend({
   },
 
   events: {
-    "click .dashboard-dropdown li" : "checkEnabled",
-    "click .interval-dropdown li"  : "checkInterval",
+    "click #dashboardDropdown li"  : "checkEnabled",
+    "click #intervalUL li"         : "checkInterval",
     "click .db-zoom"               : "renderDetailChart",
     "click .db-minimize"           : "checkDetailChart",
     "click .db-hide"               : "hideChart",
     "click .group-close"           : "hideGroup",
     "click .group-open"            : "showGroup",
-    "click .dashSwitch"            : "showCategory"
+    "click .dashSwitch"            : "showCategory",
+    "click #dashboardToggle"       : "toggleEvent"
   },
 
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
+
+  toggleEvent: function () {
+    $('#dashboardDropdownOut').slideToggle(200);
+  },
 
   countCollections: function() {
     var self = this;
@@ -215,8 +220,8 @@ var dashboardView = Backbone.View.extend({
         '</ul>');
 
       //group
-      $('#menuGroups').append('<li class="nav-header">' + this.name + '</li>');
-      $('#menuGroups').append('<li class="divider" id="' + this.group + 'Divider"></li>');
+      $('#dashboardDropdown').append('<ul id="' + this.group + 'Ul"></ul>');
+      $('#'+this.group+'Ul').append('<li class="nav-header">' + this.name + '</li>');
 
       /*TEST
       $('#menuGroups').append(
@@ -296,14 +301,14 @@ var dashboardView = Backbone.View.extend({
   },
 
   checkInterval: function (a) {
-    var self = this;
     this.updateFrequency = a.target.value;
-    self.calculateSeries();
-    self.renderCharts();
+    this.calculateSeries();
+    this.renderCharts();
   },
 
   checkEnabled: function (a) {
     var myId = a.target.id;
+    console.log(myId);
     var position = myId.search('Checkbox');
     var preparedId = myId.substring(0, position);
     var toCheck = $(a.target).is(':checked');
@@ -370,17 +375,15 @@ var dashboardView = Backbone.View.extend({
   },
 
   showCategory: function (e) {
-    var id = e.target.id;
-    if (id === 'replSwitch') {
-      $('#statSwitch').removeClass('activeSwitch');
-      $('#'+id).addClass('activeSwitch');
+    var parent = $(e.target).parent().attr('id');
+    $('.arangoTab li').removeClass('active');
+    $('.arangoTab #'+parent).addClass('active');
+    if (parent === 'replSwitch') {
       $('#detailGraph').hide();
       $('.statGroups').hide();
       $('#detailReplication').show();
     }
-    else if (id === 'statSwitch') {
-      $('#'+id).addClass('activeSwitch');
-      $('#replSwitch').removeClass('activeSwitch');
+    else if (parent === 'statSwitch') {
       $('#detailReplication').hide();
       $('#detailGraph').show();
       $('.statGroups').show();
@@ -409,7 +412,7 @@ var dashboardView = Backbone.View.extend({
         $('#detailGraphHeader').text(this.name);
         $("html, body").animate({ scrollTop: 0 }, "slow");
         $('#detailGraphChart').show();
-        $('#detailGraph').height(300);
+        $('#detailGraph').height(400);
         $('#dbHideSwitch').addClass('icon-minus');
         $('#dbHideSwitch').removeClass('icon-plus');
         self.updateNOW = true;
@@ -641,8 +644,7 @@ var dashboardView = Backbone.View.extend({
       '</li>'
     );
 
-    console.log(figure.group);
-    $('#' + figure.group + 'Divider').after(
+    $('#' + figure.group + 'Ul').append(
       '<li><a><label class="checkbox checkboxLabel">'+
       '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
       '<label class="css-label"/>' +

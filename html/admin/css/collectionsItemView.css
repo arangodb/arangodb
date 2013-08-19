@@ -1,8 +1,8 @@
 .span3 {
   min-height:100px;
   width: 230px;
-  margin-left: 8px !important;
-  margin-bottom: 8px !important;
+  margin-left: 13px !important;
+  margin-bottom: 13px !important;
   border: 0px;
   position:relative;
   text-align:center;
@@ -30,6 +30,7 @@
 
 .collectionName {
   text-align:left;
+  font-weight: 300 !important;
   position:absolute;
   bottom:0px;
 }
@@ -41,10 +42,14 @@
 
 .span3 .ICON {
   position: absolute;
-  margin-top: 3px;
+  margin-top: 5px;
   margin-right: 5px;
   opacity: 0.5;
   cursor: pointer;
+  font-size: 20px;
+}
+.span3 .glyphicon-edit {
+  margin-top: 4px !important;
 }
 
 .span3 .ICON{
@@ -52,7 +57,7 @@
 }
 
 .span3 .spanInfo {
-  right: 20px;
+  right: 25px;
 }
 
 .span3 .ICON:hover {
@@ -60,11 +65,15 @@
 }
 
 .spanDisabled {
-  right: 20px !important;
+  right: 25px !important;
   opacity: 0.2 !important;
 }
 
 .spanDisabled:hover {
   opacity: 0.2 !important;
   cursor: default !important;
+}
+
+.badge, .label, .btn {
+  text-shadow: none !important;
 }
