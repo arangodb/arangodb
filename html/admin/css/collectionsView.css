@@ -280,4 +280,7 @@ border-top: 0;
   margin-bottom: 30px;
 }
 
-
+#collectionsThumbnailsIn {
+  background-color: none;
+  margin-left: -7px;
+}
