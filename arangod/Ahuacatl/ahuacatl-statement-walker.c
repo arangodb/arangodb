@@ -355,6 +355,7 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
   walker->postVisitStatement = postVisitStatement;
 
   res = TRI_InitVectorPointer2(&walker->_currentScopes, TRI_UNKNOWN_MEM_ZONE, 4);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
 

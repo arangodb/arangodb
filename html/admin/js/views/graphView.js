@@ -104,7 +104,12 @@ window.graphView = Backbone.View.extend({
         }),
         contentType: "application/json",
         success: function(data) {
-          self.ui = new GraphViewerUI($("#content")[0], aaconfig, width, 680, config, data.document._id);
+          self.ui = new GraphViewerUI($("#content")[0], 
+                                      aaconfig, 
+                                      width, 
+                                      680, 
+                                      config, 
+                                      data.document._id);
         }
       });
     } else {

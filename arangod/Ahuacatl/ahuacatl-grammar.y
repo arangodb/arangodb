@@ -879,7 +879,7 @@ single_reference:
   | function_call {
       $$ = $1;
       
-      if (! $$) {
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
@@ -887,7 +887,15 @@ single_reference:
       // named variable access, e.g. variable.reference
       $$ = TRI_CreateNodeAttributeAccessAql(context, $1, $3);
       
-      if (! $$) {
+      if ($$ == NULL) {
+        ABORT_OOM
+      }
+    }
+  | single_reference '.' bind_parameter %prec REFERENCE {
+      // named variable access, e.g. variable.@reference
+      $$ = TRI_CreateNodeBoundAttributeAccessAql(context, $1, $3);
+      
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
@@ -895,7 +903,7 @@ single_reference:
       // indexed variable access, e.g. variable[index]
       $$ = TRI_CreateNodeIndexedAql(context, $1, $3);
       
-      if (! $$) {
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
@@ -908,7 +916,17 @@ expansion:
 
       $$ = TRI_CreateNodeAttributeAccessAql(context, node, $2);
 
-      if (! $$) {
+      if ($$ == NULL) {
+        ABORT_OOM
+      }
+    }
+  | '.' bind_parameter %prec REFERENCE {
+      // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.@reference
+      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+
+      $$ = TRI_CreateNodeBoundAttributeAccessAql(context, node, $2);
+
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
@@ -918,21 +936,31 @@ expansion:
 
       $$ = TRI_CreateNodeIndexedAql(context, node, $2);
 
-      if (! $$) {
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
   | expansion '.' T_STRING %prec REFERENCE {
       // named variable access, continuation from * expansion, e.g. [*].variable.xx.reference
       $$ = TRI_CreateNodeAttributeAccessAql(context, $1, $3);
-      if (! $$) {
+
+      if ($$ == NULL) {
+        ABORT_OOM
+      }
+    }
+  | expansion '.' bind_parameter %prec REFERENCE {
+      // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.xx.@reference
+      $$ = TRI_CreateNodeBoundAttributeAccessAql(context, $1, $3);
+
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
   | expansion T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
       $$ = TRI_CreateNodeIndexedAql(context, $1, $3);
-      if (! $$) {
+
+      if ($$ == NULL) {
         ABORT_OOM
       }
     }
@@ -960,12 +988,14 @@ numeric_value:
       }
       
       value = TRI_DoubleString($1);
+
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
         TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
         YYABORT;
       }
       
       node = TRI_CreateNodeValueDoubleAql(context, value);
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -976,6 +1006,7 @@ numeric_value:
 value_literal: 
     T_QUOTED_STRING {
       TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, $1);
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -987,6 +1018,7 @@ value_literal:
     }
   | T_NULL {
       TRI_aql_node_t* node = TRI_CreateNodeValueNullAql(context);
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -995,6 +1027,7 @@ value_literal:
     }
   | T_TRUE {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, true);
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -1003,6 +1036,7 @@ value_literal:
     }
   | T_FALSE {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, false);
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -1014,6 +1048,7 @@ value_literal:
 bind_parameter:
     T_PARAMETER {
       TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, $1);
+
       if (node == NULL) {
         ABORT_OOM
       }

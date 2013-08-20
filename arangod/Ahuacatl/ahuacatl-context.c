@@ -28,6 +28,7 @@
 #include "Ahuacatl/ahuacatl-context.h"
 
 #include "BasicsC/hashes.h"
+#include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 
@@ -147,6 +148,23 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief process options from the context
+////////////////////////////////////////////////////////////////////////////////
+  
+static void ProcessOptions (TRI_aql_context_t* context) {
+  TRI_json_t* value;
+
+  // default values
+  context->_fullCount = false;
+  
+  value = TRI_GetOptionContextAql(context, "fullCount");
+
+  if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
+    context->_fullCount = value->_value._boolean;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,7 +183,8 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 
 TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                          const char* const query,
-                                         const size_t queryLength) {
+                                         const size_t queryLength,
+                                         TRI_json_t* userOptions) {
   TRI_aql_context_t* context;
   int res;
 
@@ -180,10 +199,11 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  context->_vocbase = vocbase;
+  context->_vocbase       = vocbase;
+  context->_userOptions   = userOptions;
 
   context->_variableIndex = 0;
-  context->_scopeIndex = 0;
+  context->_scopeIndex    = 0;
 
   // actual bind parameter values
   res = TRI_InitAssociativePointer(&context->_parameters._values,
@@ -265,6 +285,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
     return NULL;
   }
+  
+  ProcessOptions(context);
 
   return context;
 }
@@ -525,6 +547,19 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
       context->_error._data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, data);
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the value of an option variable
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_GetOptionContextAql (TRI_aql_context_t* const context,
+                              const char* name) {
+  if (context->_userOptions == NULL || context->_userOptions->_type != TRI_JSON_ARRAY) {
+    return NULL; 
+  }
+
+  return TRI_LookupArrayJson(context->_userOptions, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
