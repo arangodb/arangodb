@@ -106,6 +106,11 @@ ERROR_ARANGO_DATADIR_NOT_WRITABLE,1224,"database directory not writable","Will b
 ERROR_ARANGO_OUT_OF_KEYS,1225,"out of keys","Will be raised when a key generator runs out of keys."
 ERROR_ARANGO_DOCUMENT_KEY_MISSING,1226,"missing document key","Will be raised when a document key is missing."
 ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised when there is an attempt to create a document with an invalid type."
+ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a non-existing database is accessed."
+ERROR_ARANGO_DATABASE_NAME_USED,1229,"database name already used","Will be raised when a duplicate database name is used."
+ERROR_ARANGO_DATABASE_PATH_USED,1230,"database path already used","Will be raised when a duplicate database path is used."
+ERROR_ARANGO_DATABASE_NAME_INVALID,1231,"database name invalid","Will be raised when an invalid database name is used."
+ERROR_ARANGO_USE_SYSTEM_DATABASE,1232,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
 
 ################################################################################
 ## ArangoDB storage errors
