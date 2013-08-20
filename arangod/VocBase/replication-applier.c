@@ -372,9 +372,8 @@ static int SetError (TRI_replication_applier_t* applier,
   }
 
   // log error message
-  if (errorCode != TRI_ERROR_REPLICATION_NO_RESPONSE &&
-      errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG_WARNING("replication applier error for database '%s': %s", applier->_databaseName, realMsg);
+  if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+    LOG_ERROR("replication applier error for database '%s': %s", applier->_databaseName, realMsg);
   }
 
   state = &applier->_state;
