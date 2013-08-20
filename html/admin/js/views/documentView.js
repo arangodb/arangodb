@@ -292,15 +292,8 @@ var documentView = Backbone.View.extend({
     var i = 0;
     $('.writeable', documentEditTable.fnGetNodes() ).each(function () {
       var aPos = documentEditTable.fnGetPosition(this);
-     /* if (aPos[0] === 0) {
-        console.log("i=0");
-        console.log(this);
-        $(this).removeClass('writeable');
-      }*/
       if ( i === 1) {
         $(this).removeClass('writeable');
-        console.log("i=1");
-        console.log(this);
         i = 0;
       }
       if (arangoHelper.isSystemAttribute(this.innerHTML)) {

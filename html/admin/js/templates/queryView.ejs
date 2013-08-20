@@ -7,7 +7,7 @@
 <div id="queryDiv" class="form-actions" style="display:none">
   <div id="outputToolbar">
     <div id="outputLabel">Result</div>
-      <span class="glyphicon glyphicon-trash queryTooltips" title="Clear" id="clearOutput"></span>
+      <span class="arangoicon arango-icon-remove queryTooltips" title="Clear" id="clearOutput"></span>
       <span class="glyphicon glyphicon-resize-full queryTooltips" title="Unfold" id="bigOutput"></span>
       <span class="glyphicon glyphicon-resize-small queryTooltips" title="Fold" id="smallOutput"></span>
   </div>
@@ -18,11 +18,12 @@
     <div id="editorLabel">Query</div>
     <select id="querySelect"/>
     <span class="glyphicon glyphicon-cog queryTooltips" title="Edit custom queries" id="editAQL"/>
-    <span class="glyphicon glyphicon-plus-sign queryTooltips" title="Save current query" id="addAQL"/>
-    <span class="glyphicon glyphicon-trash queryTooltips" title="Clear" id="clearInput"/>
-    <span class="glyphicon glyphicon-comment queryTooltips" title="Comment" id="commentText"/>
-    <span class="glyphicon glyphicon-circle-arrow-right queryTooltips" title="Redo" id="redoText"/>
-    <span class="glyphicon glyphicon-circle-arrow-left queryTooltips" title="Undo" id="undoText"/>
+    <span class="arangoicon arango-icon-disk queryTooltips" title="Save current query" id="addAQL"/>
+    <span class="arangoicon arango-icon-remove queryTooltips" title="Clear" id="clearInput"/>
+    <span class="arangoicon arango-icon-uncomment queryTooltips" title="Uncomment" id="commentText"/>
+    <span class="arangoicon arango-icon-comment queryTooltips" title="Comment" id="commentText"/>
+    <span class="arangoicon arango-icon-redo queryTooltips" title="Redo" id="redoText"/>
+    <span class="arangoicon arango-icon-undo queryTooltips" title="Undo" id="undoText"/>
   </div>
   <div id="aqlEditor"></div>
   <button id="submitQueryButton" class="btn btn-success">Submit</button>

@@ -22,7 +22,7 @@ var documentSourceView = Backbone.View.extend({
       handles: "s",
       ghost: true,
       stop: function () {
-        setTimeout(function () {
+        window.setTimeout(function () {
           var editor = ace.edit("sourceEditor");
           editor.resize();
         },200);

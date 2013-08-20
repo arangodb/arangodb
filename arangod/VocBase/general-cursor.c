@@ -25,9 +25,13 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/logging.h"
-
 #include "VocBase/general-cursor.h"
+
+#include "BasicsC/json.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/vector.h"
+
+#include "VocBase/shadow-data.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                cursor result sets
@@ -48,8 +52,8 @@
 
 TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
   void (*freeData)(TRI_general_cursor_result_t*),
-  TRI_general_cursor_row_t (*getAt)(TRI_general_cursor_result_t*, const TRI_general_cursor_length_t),
-  TRI_general_cursor_length_t (*getLength)(TRI_general_cursor_result_t*)) {
+  TRI_general_cursor_row_t (*getAt)(TRI_general_cursor_result_t const*, const TRI_general_cursor_length_t),
+  TRI_general_cursor_length_t (*getLength)(TRI_general_cursor_result_t const*)) {
 
   TRI_general_cursor_result_t* result;
 
@@ -58,15 +62,16 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
   }
 
   result = (TRI_general_cursor_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t), false);
+
   if (result == NULL) {
     return NULL;
   }
 
-  result->_data = data;
-  result->_freed = false;
+  result->_data     = data;
+  result->_freed    = false;
 
-  result->freeData = freeData;
-  result->getAt = getAt;
+  result->freeData  = freeData;
+  result->getAt     = getAt;
   result->getLength = getLength;
 
   return result;
@@ -134,7 +139,7 @@ static inline TRI_general_cursor_row_t NextGeneralCursor (TRI_general_cursor_t* 
 /// @brief checks if the cursor is exhausted
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool HasNextGeneralCursor (const TRI_general_cursor_t* const cursor) {
+static bool HasNextGeneralCursor (const TRI_general_cursor_t* const cursor) {
   return cursor->_currentRow < cursor->_length;
 }
 
@@ -142,7 +147,7 @@ static inline bool HasNextGeneralCursor (const TRI_general_cursor_t* const curso
 /// @brief returns if the count flag is set for the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool HasCountGeneralCursor (const TRI_general_cursor_t* const cursor) {
+static bool HasCountGeneralCursor (const TRI_general_cursor_t* const cursor) {
   return cursor->_hasCount;
 }
 
@@ -150,8 +155,16 @@ static inline bool HasCountGeneralCursor (const TRI_general_cursor_t* const curs
 /// @brief returns the maximum number of results per transfer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_general_cursor_length_t GetBatchSizeGeneralCursor (const TRI_general_cursor_t* const cursor) {
+static TRI_general_cursor_length_t GetBatchSizeGeneralCursor (const TRI_general_cursor_t* const cursor) {
   return cursor->_batchSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the cursor's extra data
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* GetExtraGeneralCursor (const TRI_general_cursor_t* const cursor) {
+  return cursor->_extra;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,10 +186,15 @@ static inline TRI_general_cursor_length_t GetBatchSizeGeneralCursor (const TRI_g
 
 void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
   if (cursor->_deleted) {
+    // prevent duplicate deletion
     return;
   }
 
   cursor->_deleted = true;
+
+  if (cursor->_extra != NULL) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cursor->_extra);
+  }
 
   TRI_FreeCursorResult(cursor->_result);
 
@@ -192,27 +210,33 @@ void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
 
 TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* result,
                                                const bool doCount,
-                                               const TRI_general_cursor_length_t batchSize) {
+                                               const TRI_general_cursor_length_t batchSize,
+                                               TRI_json_t* extra) {
   TRI_general_cursor_t* cursor;
 
   cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
+
   if (cursor == NULL) {
     return NULL;
   }
 
-  cursor->_result = result;
-  cursor->_currentRow = 0;
-  cursor->_length = result->getLength(result);
+  cursor->_result      = result;
+  cursor->_extra       = extra; // might be NULL
 
-  cursor->_hasCount = doCount;
-  cursor->_batchSize = batchSize;
-  cursor->_deleted = false;
+  // state
+  cursor->_currentRow  = 0;
+  cursor->_length      = result->getLength(result);
+  cursor->_hasCount    = doCount;
+  cursor->_batchSize   = batchSize;
+  cursor->_deleted     = false;
 
-  cursor->next = NextGeneralCursor;
-  cursor->hasNext = HasNextGeneralCursor;
-  cursor->hasCount = HasCountGeneralCursor;
+  // assign functions
+  cursor->next         = NextGeneralCursor;
+  cursor->hasNext      = HasNextGeneralCursor;
+  cursor->hasCount     = HasCountGeneralCursor;
   cursor->getBatchSize = GetBatchSizeGeneralCursor;
-  cursor->free = TRI_FreeGeneralCursor;
+  cursor->getExtra     = GetExtraGeneralCursor;
+  cursor->free         = TRI_FreeGeneralCursor;
 
   TRI_InitMutex(&cursor->_lock);
 

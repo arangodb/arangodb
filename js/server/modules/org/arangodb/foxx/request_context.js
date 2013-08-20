@@ -36,6 +36,7 @@ var RequestContext,
   createBubbleWrap;
 
 createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
+  'use strict';
   if (is.notExisty(errorHandler)) {
     errorHandler = function () {
       return { error: reason };
@@ -58,19 +59,23 @@ createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
 
 // Wraps the docs object of a route to add swagger compatible documentation
 SwaggerDocs = function (docs) {
+  'use strict';
   this.docs = docs;
 };
 
 extend(SwaggerDocs.prototype, {
   addNickname: function (httpMethod, match) {
+    'use strict';
     this.docs.nickname = internal.constructNickname(httpMethod, match);
   },
 
   addPathParam: function (paramName, description, dataType) {
+    'use strict';
     this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType));
   },
 
   addQueryParam: function (paramName, description, dataType, required, allowMultiple) {
+    'use strict';
     this.docs.parameters.push(internal.constructQueryParamDoc(
       paramName,
       description,
@@ -81,10 +86,12 @@ extend(SwaggerDocs.prototype, {
   },
 
   addSummary: function (summary) {
+    'use strict';
     this.docs.summary = summary;
   },
 
   addNotes: function (notes) {
+    'use strict';
     this.docs.notes = notes;
   }
 });

@@ -71,6 +71,7 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server-id.h"
+#include "VocBase/shadow-data.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 #include "RestServer/VocbaseManager.h"
@@ -1946,14 +1947,27 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   if (tryCatch.HasCaught()) {
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
+  
+  if (! result->IsObject()) {
+    // some error happened
+    return scope.Close(result);
+  }
+  
+  v8::Handle<v8::Object> resultObject = v8::Handle<v8::Object>::Cast(result);
+  if (! resultObject->Has(TRI_V8_SYMBOL("docs"))) {
+    // some error happened
+    return scope.Close(result);
+  }
 
-  if (! result->IsArray()) {
+  v8::Handle<v8::Value> docs = resultObject->Get(TRI_V8_SYMBOL("docs"));
+
+  if (! docs->IsArray()) {
     // some error happened
     return scope.Close(result);
   }
 
   // result is an array...
-  v8::Handle<v8::Array> r = v8::Handle<v8::Array>::Cast(result);
+  v8::Handle<v8::Array> r = v8::Handle<v8::Array>::Cast(docs);
 
   if (r->Length() <= batchSize) {
     // return the array value as it is. this is a performance optimisation
@@ -1961,8 +1975,8 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   // return the result as a cursor object. 
-  // transform the result in JSON first
-  TRI_json_t* json = TRI_ObjectToJson(result);
+  // transform the result into JSON first
+  TRI_json_t* json = TRI_ObjectToJson(docs);
 
   if (json == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1974,12 +1988,21 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
+  
+  // extra return values
+  TRI_json_t* extra = 0;
+  if (resultObject->Has(TRI_V8_SYMBOL("extra"))) {
+    extra = TRI_ObjectToJson(resultObject->Get(TRI_V8_SYMBOL("extra")));
+  }
 
-  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize, extra);
 
   if (cursor == 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (extra != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
+    }
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -2553,7 +2576,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   }
 
   if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_CURSOR(<list>, <do-count>, <batch-size>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_CURSOR(<list>, <doCount>, <batchSize>)");
   }
 
   if (! argv[0]->IsArray()) {
@@ -2579,9 +2602,9 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   uint32_t batchSize = 1000;
 
   if (argv.Length() >= 3) {
-    double maxValue = TRI_ObjectToDouble(argv[2]);
+    int64_t maxValue = TRI_ObjectToInt64(argv[2]);
 
-    if (maxValue >= 1.0) {
+    if (maxValue > 0 && maxValue < (int64_t) UINT32_MAX) {
       batchSize = (uint32_t) maxValue;
     }
   }
@@ -2591,7 +2614,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
   if (cursorResult != 0) {
-    cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
+    cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize, 0);
 
     if (cursor == 0) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
@@ -2891,6 +2914,41 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
 
     TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
     return scope.Close(v8::Number::New(max));
+  }
+
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return extra data for cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetExtraGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getExtra()");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  TRI_general_cursor_t* cursor;
+
+  cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  if (cursor) {
+    TRI_json_t* extra = cursor->getExtra(cursor);
+    TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+
+    if (extra != 0 && extra->_type == TRI_JSON_ARRAY) {
+      return scope.Close(TRI_ObjectJson(extra));
+    }
+
+    return scope.Close(v8::Undefined());
   }
 
   TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
@@ -3661,7 +3719,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   const uint32_t argc = argv.Length();
 
   if (argc < 1 || argc > 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <batchSize>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_RUN(<querystring>, <bindvalues>, <cursorOptions>, <options>)"); 
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3678,44 +3736,77 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   const string queryString = TRI_ObjectToString(queryArg);
+  
+  // bind parameters
+  TRI_json_t* parameters = 0;
+
+  if (argc > 1 && argv[1]->IsObject()) {
+    parameters = TRI_ObjectToJson(argv[1]);
+  }
+
+  // cursor options
+  // -------------------------------------------------
 
   // return number of total records in cursor?
   bool doCount       = false;
-
+  
   // maximum number of results to return at once
   uint32_t batchSize = UINT32_MAX;
 
-  if (argc > 2) {
-    doCount = TRI_ObjectToBoolean(argv[2]);
-
-    if (argc > 3) {
-      int64_t maxValue = TRI_ObjectToInt64(argv[3]);
+  if (argc > 2 && argv[2]->IsObject()) {
+    // treat the argument as an object from now on
+    v8::Handle<v8::Object> options = v8::Handle<v8::Object>::Cast(argv[2]);
+  
+    if (options->Has(TRI_V8_SYMBOL("count"))) {
+      doCount = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("count")));
+    }
+    
+    if (options->Has(TRI_V8_SYMBOL("batchSize"))) {
+      int64_t maxValue = TRI_ObjectToInt64(options->Get(TRI_V8_SYMBOL("batchSize")));
      
       if (maxValue > 0 && maxValue < (int64_t) UINT32_MAX) {
         batchSize = (uint32_t) maxValue;
       }
     }
   }
+  
+  // user options
+  // -------------------------------------------------
 
-  // bind parameters
-  ResourceHolder holder;
+  TRI_json_t* userOptions = 0;
+  if (argc > 3 && argv[3]->IsObject()) {
+    // treat the argument as an object from now on
+    v8::Handle<v8::Object> options = v8::Handle<v8::Object>::Cast(argv[3]);
 
-  TRI_json_t* parameters = 0;
-  if (argc > 1) {
-    parameters = TRI_ObjectToJson(argv[1]);
-    holder.registerJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+    userOptions = TRI_ObjectToJson(options);
   }
 
-  AhuacatlGuard context(vocbase, queryString);
+  AhuacatlGuard context(vocbase, queryString, userOptions);
 
   if (! context.valid()) {
+    if (userOptions != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, userOptions);
+    }
+
+    if (parameters != 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+    }
+
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> result;
   result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize);
   context.free();
-
+  
+  if (userOptions != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, userOptions);
+  }
+    
+  if (parameters != 0) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+  }
+    
   if (tryCatch.HasCaught()) {
     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
       // we already have an ArangoError object
@@ -3766,7 +3857,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
     holder.registerJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
-  AhuacatlGuard guard(vocbase, queryString);
+  AhuacatlGuard guard(vocbase, queryString, 0);
 
   if (! guard.valid()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -3867,7 +3958,7 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 
   string queryString = TRI_ObjectToString(queryArg);
 
-  AhuacatlGuard context(vocbase, queryString);
+  AhuacatlGuard context(vocbase, queryString, 0);
 
   if (! context.valid()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -7692,7 +7783,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     userVocbase = 0;
 
     // return with error
-    TRI_V8_EXCEPTION_INTERNAL(scope, "Database version check failed for '" + string(userVocbase->_path) + "'. Please insert database manually and restart with the --upgrade option.");
+    TRI_V8_EXCEPTION_INTERNAL(scope, "Database version check failed for '" + string(userVocbase->_path) + 
+                                     "'. Please insert database manually and restart with the --upgrade option.");
   }
 
   LOGGER_INFO("database version check passed for " + string(userVocbase->_path));
@@ -8573,6 +8665,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "count", JS_CountGeneralCursor);
   TRI_AddMethodVocbase(rt, "dispose", JS_DisposeGeneralCursor);
   TRI_AddMethodVocbase(rt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
+  TRI_AddMethodVocbase(rt, "getExtra", JS_GetExtraGeneralCursor);
   TRI_AddMethodVocbase(rt, "getRows", JS_GetRowsGeneralCursor, true); // DEPRECATED, use toArray
   TRI_AddMethodVocbase(rt, "hasCount", JS_HasCountGeneralCursor);
   TRI_AddMethodVocbase(rt, "hasNext", JS_HasNextGeneralCursor);

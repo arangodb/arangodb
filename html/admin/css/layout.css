@@ -283,3 +283,7 @@ button {
 .glyphicon:hover {
   cursor: pointer !important;
 }
+
+.arangoicon:hover {
+  cursor: pointer !important;
+}
