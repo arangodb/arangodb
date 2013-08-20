@@ -110,7 +110,8 @@ ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a
 ERROR_ARANGO_DATABASE_NAME_USED,1229,"database name already used","Will be raised when a duplicate database name is used."
 ERROR_ARANGO_DATABASE_PATH_USED,1230,"database path already used","Will be raised when a duplicate database path is used."
 ERROR_ARANGO_DATABASE_NAME_INVALID,1231,"database name invalid","Will be raised when an invalid database name is used."
-ERROR_ARANGO_USE_SYSTEM_DATABASE,1232,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
+ERROR_ARANGO_DATABASE_PATH_INVALID,1232,"database path invalid","Will be raised when an invalid database path is used."
+ERROR_ARANGO_USE_SYSTEM_DATABASE,1233,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
 
 ################################################################################
 ## ArangoDB storage errors

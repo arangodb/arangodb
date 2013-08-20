@@ -7584,20 +7584,21 @@ static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "USE_DATABASE(<database name>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "USE_DATABASE(<name>)");
   }
 
   string name = TRI_ObjectToString(argv[0]);
   
   TRI_vocbase_t* vocbase = VocbaseManager::manager.lookupVocbaseByName(name);
+
   if (vocbase) {
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
     v8g->_vocbase = vocbase;
     
     return scope.Close(WrapVocBase(vocbase));
   }
-    
-  return scope.Close(v8::Boolean::New(false));
+
+  TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7634,11 +7635,12 @@ static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase, 
-        std::string const& collectionName, v8::Handle<v8::Object> newDoc) {
+                                               std::string const& collectionName, 
+                                               std::string const& key,
+                                               v8::Handle<v8::Object> newDoc) {
   v8::HandleScope scope;
   
-  TRI_vocbase_col_t* col = 
-          TRI_LookupCollectionByNameVocBase(vocbase, collectionName.c_str());
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, collectionName.c_str());
 
   if (col == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
@@ -7658,14 +7660,18 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
     TRI_primary_collection_t* primary = trx.primaryCollection();
     TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(newDoc, primary->_shaper);
 
-    if (!holder.registerShapedJson(primary->_shaper, shaped)) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), 
-              "<data> cannot be converted into JSON shape");
+    if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
     }
 
     TRI_doc_mptr_t document;
-    TRI_voc_key_t key = 0;
-    res = trx.createDocument(key, &document, shaped, true);
+
+    if (key.empty()) {
+      res = trx.createDocument(0, &document, shaped, true);
+    }
+    else {
+      res = trx.createDocument((const TRI_voc_key_t) key.c_str(), &document, shaped, true);
+    }
 
     res = trx.finish(res);
 
@@ -7685,7 +7691,7 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
     return scope.Close(result);
   }
   
-  TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document into collection.");
+  TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document into collection");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7700,20 +7706,22 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<database name>, <database path>, <database options>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<name>, <path>, <options>)");
   }
 
   TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
-  if (!vocbase->_isSystem) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "current database is not the system database");
+  if (! vocbase->_isSystem) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
   string name = TRI_ObjectToString(argv[0]);
   string path = TRI_ObjectToString(argv[1]);
 
-  if (! VocbaseManager::manager.canAddVocbase(name, path)) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot create database with that name and path");
+  int res = VocbaseManager::manager.canAddVocbase(name, path, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   v8::Local<v8::String> keyName = v8::String::New("name");
@@ -7768,6 +7776,14 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     }
   }
 
+  // now create the directory
+  res = TRI_CreateDirectory(path.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+
   // load vocbase with defaults
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(), name.c_str(), &defaults);
 
@@ -7776,7 +7792,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   }
 
   bool vocbaseOk = VocbaseManager::manager.runVersionCheck(userVocbase, v8::Context::GetCurrent());
-  if (!vocbaseOk) {
+
+  if (! vocbaseOk) {
     // unload vocbase
     TRI_DestroyVocBase(userVocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
@@ -7810,7 +7827,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, name.c_str(), newDoc);
   }
   catch (...) {
   }
@@ -7865,7 +7882,7 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
   v8::Handle<v8::Object> newDoc = v8::Object::New();
   newDoc->Set(keyEndpoint, TRI_V8_SYMBOL(endpoint.c_str()));
   
-  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, newDoc);
+  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, "", newDoc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7904,7 +7921,7 @@ static v8::Handle<v8::Value> JS_AddPrefixMapping (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, TRI_COL_NAME_PREFIXES, newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_PREFIXES, "", newDoc);
   }
   catch (...) {
   }
@@ -8682,25 +8699,28 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // generate global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_RUN", JS_RunAhuacatl);
-  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_EXPLAIN", JS_ExplainAhuacatl);
-  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_PARSE", JS_ParseAhuacatl);
+  // AQL functions. not intended to be used by end users
+  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_RUN", JS_RunAhuacatl, true);
+  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_EXPLAIN", JS_ExplainAhuacatl, true);
+  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_PARSE", JS_ParseAhuacatl, true);
 
-  TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor);
-  TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor);
-  TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
+  // cursor functions. not intended to be used by end users
+  TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor, true);
+  TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor, true);
+  TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor, true);
   
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication);
+  // replication functions. not intended to be used by end users
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication, true);
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);

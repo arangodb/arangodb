@@ -88,6 +88,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_USED, "database name already used");
   REG_ERROR(ERROR_ARANGO_DATABASE_PATH_USED, "database path already used");
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_INVALID, "database name invalid");
+  REG_ERROR(ERROR_ARANGO_DATABASE_PATH_INVALID, "database path invalid");
   REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");

@@ -182,7 +182,9 @@ extern "C" {
 ///   Will be raised when a duplicate database path is used.
 /// - 1231: @LIT{database name invalid}
 ///   Will be raised when an invalid database name is used.
-/// - 1232: @LIT{operation only allowed in system database}
+/// - 1232: @LIT{database path invalid}
+///   Will be raised when an invalid database path is used.
+/// - 1233: @LIT{operation only allowed in system database}
 ///   Will be raised when an operation is requested in a database other than
 ///   the system database.
 /// - 1300: @LIT{datafile full}
@@ -1270,7 +1272,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1231)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1232: ERROR_ARANGO_USE_SYSTEM_DATABASE
+/// @brief 1232: ERROR_ARANGO_DATABASE_PATH_INVALID
+///
+/// database path invalid
+///
+/// Will be raised when an invalid database path is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATABASE_PATH_INVALID                            (1232)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1233: ERROR_ARANGO_USE_SYSTEM_DATABASE
 ///
 /// operation only allowed in system database
 ///
@@ -1278,7 +1290,7 @@ void TRI_InitialiseErrorMessages (void);
 /// system database.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1232)
+#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1233)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
