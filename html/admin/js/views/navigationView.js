@@ -16,7 +16,15 @@ var navigationView = Backbone.View.extend({
   render: function() {
     $(this.el).html(this.template.text);
     this.handleResize();
+    this.handleSelectNavigation();
     return this;
+  },
+
+  handleSelectNavigation: function () {
+    $("#arangoCollectionSelect").change(function() {
+        navigateTo = $(this).find("option:selected").val();
+        window.App.navigate(navigateTo, {trigger: true});
+    });
   },
 
   handleResize: function () {

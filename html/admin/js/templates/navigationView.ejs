@@ -4,11 +4,11 @@
 
           <a class="arango-logo brand navlogo" href="#"><img src="img/logo_arangob_white.gif"/></a>
 
-            <div class="nav-collapse">
+            <div class="nav-collapse arangoNavSwitch">
                 <ul class="nav">
                 </ul>
 
-                <ul class="arango-nav nav pull-right">
+                <ul class="arango-nav nav pull-right" id="arangoCollectionUl">
                     <li class="dashboard-menu"><a href="#dashboard">Dashboard</a></li>
                     <li class="collections-menu"><a href="#">Collections</a></li>
                     <li class="applications-menu"><a href="#applications">Applications</a></li>
@@ -38,6 +38,22 @@
                         </ul>
                     </li>
                 </ul>
+
+              <select id="arangoCollectionSelect">
+                <option value="" selected="selected">Select</option>
+
+                <option value="#dashboard">Dashboard</option>
+                <option value="#">Collections</option>
+                <option value="#applications">Applications</option>
+                <option value="#graph">Graph</option>
+                <option value="#query">AQL Editor</option>
+                <option value="#shell">JS Shell</option>
+                <option value="#logs">Logs</option>
+                <option value="#api">Api</option>
+                <option value="#about">About</option>
+
+              </select>
+
             </div>
         </div>
     </div>
