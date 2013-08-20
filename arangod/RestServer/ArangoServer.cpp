@@ -1126,21 +1126,12 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
   }
 
   string dbName = doc.getStringValue("name", "");
-  if (dbName == "") {
-    // database name not found
-    LOG_ERROR("Database name not found. User database not loaded!");
-    return true;
-  }
-
   string dbPath = doc.getStringValue("path", "");
-  if (dbPath == "") {
-    // database path not found
-    LOG_ERROR("Database path not found. User database not loaded!");
-    return true;
-  }
 
-  if (! VocbaseManager::manager.canAddVocbase(dbName, dbPath)) {
-    LOG_ERROR("Cannot add database. (Wrong name or path)");
+  int res = VocbaseManager::manager.canAddVocbase(dbName, dbPath, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOGGER_ERROR("cannot load database: " << string(TRI_errno_string(res)));
     return true;    
   }
   
@@ -1171,9 +1162,12 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
   
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
-  }
 
-  LOGGER_INFO("loaded user database '" << dbName << "' from '" << dbPath << "'");
+    LOGGER_INFO("loaded database '" << dbName << "' from '" << dbPath << "'");
+  }
+  else {
+    LOGGER_ERROR("unable to load database '" << dbName << "' from '" << dbPath << "'");
+  }
 
   return true;
 }

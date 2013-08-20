@@ -449,17 +449,25 @@ int TRI_CreateRecursiveDirectory (char const* path) {
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateDirectory (char const* path) {
+int TRI_CreateDirectory (char const* path) {
   int res;
+
+  // reset error flag
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   res = TRI_MKDIR(path, 0777);
 
-  if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return false;
+  if (res != TRI_ERROR_NO_ERROR) {
+    // check errno
+    res = TRI_errno();
+
+    // if errno doesn't indicate an error, return a system error
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_ERROR_SYS_ERROR;
+    }
   }
 
-  return true;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

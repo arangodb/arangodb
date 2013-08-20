@@ -122,7 +122,7 @@ int ContinuousSyncer::run () {
   _applier->_state._failedConnects = 0;
   TRI_WriteUnlockReadWriteLock(&_applier->_statusLock);
 
-  while (1) {
+  while (_vocbase->_state < 2) {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 
@@ -765,7 +765,8 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       }
       else {
         ignoreCount--;
-        LOGGER_WARNING("ignoring replication error: " << errorMsg);
+        LOGGER_WARNING("ignoring replication error for database '" << 
+                       _applier->_databaseName << "': " << errorMsg);
         errorMsg = "";
       }
     }
