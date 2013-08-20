@@ -111,6 +111,7 @@ var logsView = Backbone.View.extend({
       table = $('#'+table).dataTable({
         "bFilter": false,
         "bPaginate": false,
+        "bSort" : false,
         "bLengthChange": false,
         "bDeferRender": true,
         "bProcessing": true,
@@ -118,11 +119,11 @@ var logsView = Backbone.View.extend({
         "iDisplayLength": -1,
         "bJQueryUI": false,
         "aoColumns": [
-          { "sClass":"center firstcol", "bSortable":false},
-          { "sClass":"center seccol", "bSortable":false},
-          { "bSortable": false, "sClass":"logContent thirdcol"}
+          { "sClass": "center firstcol", "bSortable":false },
+          { "sClass": "center seccol", "bSortable":false },
+          { "bSortable": false, "sClass":"logContent thirdcol" }
         ],
-        "oLanguage": {"sEmptyTable": "No logfiles available"}
+        "oLanguage": { "sEmptyTable": "No logfiles available" }
       });
     });
 

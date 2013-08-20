@@ -1029,6 +1029,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
                                         char const* path,
                                         const TRI_col_info_t* const parameter) {
   char* filename;
+  int res;
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
@@ -1074,12 +1075,14 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   // create directory
-  if (! TRI_CreateDirectory(filename)) {
+  res = TRI_CreateDirectory(filename);
+
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create collection '%s' in '%s' as '%s': %s",
               parameter->_name,
               path,
               filename,
-              TRI_last_error());
+              TRI_errno_string(res));
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
