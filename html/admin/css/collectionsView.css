@@ -275,7 +275,8 @@ border-top: 0;
 .containerdivNewLine {
   clear: both;
   float: left;
-  display: block;
+  /*display: block;*/
+  display:none;
   position: relative;
   margin-bottom: 30px;
 }
