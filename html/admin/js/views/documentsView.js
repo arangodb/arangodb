@@ -238,7 +238,9 @@ var documentsView = Backbone.View.extend({
     this.addDocumentSwitch = false;
     window.documentsView.clearTable();
     window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, filters, bindValues);
-    $('#documentsToolbarF ul').css("visibility", "hidden");
+    
+    //Hide pagination 
+    //$('#documentsToolbarF ul').css("visibility", "hidden");
   },
 
   addFilterItem : function () {
