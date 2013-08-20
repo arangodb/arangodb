@@ -208,20 +208,12 @@ var collectionInfoView = Backbone.View.extend({
   appendIndex: function () {
     var cssClass = 'collectionInfoTh modal-text';
     if (this.index) {
-        var fieldString = '';
-        var indexId = '';
+      var fieldString = '';
+      var indexId = '';
       $.each(this.index.indexes, function(k,v) {
-        fieldString = '';
-        var counter = 1;
-
-        //prettify json-array to string
-        $.each(v.fields, function(k,v) {
-          fieldString = fieldString + v;
-          if (counter > 1) {
-            fieldString = ', ' + fieldString;
-          }
-          counter++;
-        });
+        if (v.fields !== undefined) {
+          fieldString = v.fields.join(", ");
+        }
 
         //cut index id
         var position = v.id.indexOf('/');
@@ -229,10 +221,10 @@ var collectionInfoView = Backbone.View.extend({
 
         $('#collectionIndexTable').append(
           '<tr>'+
-            '<th class='+JSON.stringify(cssClass)+'>'+indexId+'</th>'+
-            '<th class='+JSON.stringify(cssClass)+'>'+v.type+'</th>'+
-            '<th class='+JSON.stringify(cssClass)+'>'+v.unique+'</th>'+
-            '<th class='+JSON.stringify(cssClass)+'>'+fieldString+'</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>'+
           '</tr>'
         );
       });
