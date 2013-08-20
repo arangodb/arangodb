@@ -23,6 +23,8 @@
 #dashboardHeader .btn-group {
   margin-left: 10px;
   margin-top: 6px;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 #dashboardHeader ul a {
@@ -192,7 +194,7 @@ li:hover h6, li.hover h6 {
 
 #dashboardHeader .btn-group {
   border-radius: 0 !important;
-  max-height: 36px !important;
+  max-height: 30px !important;
 }
 
 /*NVD3*/
@@ -478,8 +480,12 @@ li:hover h6, li.hover h6 {
   float:none;
 }
 
+#statSwitch, #replSwitch {
+  float:right;
+}
+
 #statSwitch {
-  margin-left: 15px;
+  margin-right: -3px;
 }
 
 .arangoSubHeader {
