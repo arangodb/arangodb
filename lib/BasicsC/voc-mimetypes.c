@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/common.h>
-#include <BasicsC/voc-mimetypes.h>
+#include "./lib/BasicsC/voc-mimetypes.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Mimetypes
@@ -28,6 +28,11 @@ void TRI_InitialiseEntriesMimetypes (void) {
   TRI_RegisterMimetype("txt", "text/plain", true);
   TRI_RegisterMimetype("text", "text/plain", true);
   TRI_RegisterMimetype("xml", "application/xml", true);
+  TRI_RegisterMimetype("svg", "image/svg+xml", true);
+  TRI_RegisterMimetype("ttf", "application/x-font-ttf", false);
+  TRI_RegisterMimetype("otf", "application/x-font-opentype", false);
+  TRI_RegisterMimetype("woff", "application/font-woff", false);
+  TRI_RegisterMimetype("eot", "application/vnd.ms-fontobject", false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

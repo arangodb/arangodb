@@ -25,16 +25,26 @@ exports.mimeTypes = {
   "pdf": [ "application/pdf", false ], 
   "txt": [ "text/plain", true ], 
   "text": [ "text/plain", true ], 
-  "xml": [ "application/xml", true ]
+  "xml": [ "application/xml", true ], 
+  "svg": [ "image/svg+xml", true ], 
+  "ttf": [ "application/x-font-ttf", false ], 
+  "otf": [ "application/x-font-opentype", false ], 
+  "woff": [ "application/font-woff", false ], 
+  "eot": [ "application/vnd.ms-fontobject", false ]
 };
 
 exports.extensions = {
+  "application/vnd.ms-fontobject": [ "eot" ], 
   "text/html": [ "html", "htm" ], 
   "text/javascript": [ "js" ], 
+  "image/svg+xml": [ "svg" ], 
+  "application/x-font-ttf": [ "ttf" ], 
   "image/png": [ "png" ], 
   "image/x-icon": [ "ico" ], 
+  "application/x-font-opentype": [ "otf" ], 
   "image/gif": [ "gif" ], 
   "image/jpg": [ "jpg" ], 
+  "application/font-woff": [ "woff" ], 
   "text/plain": [ "txt", "text" ], 
   "application/xml": [ "xml" ], 
   "application/json": [ "json" ], 
