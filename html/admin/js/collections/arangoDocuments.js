@@ -104,6 +104,7 @@ window.arangoDocuments = Backbone.Collection.extend({
         var self = this;
         this.collectionID = colid;
         this.currentPage = currpage;
+        this.currentFilterPage = currpage;
         var filterString;
         if(filter.length === 0){
            filterString ="";
@@ -130,7 +131,7 @@ window.arangoDocuments = Backbone.Collection.extend({
           contentType: "application/json",
           success: function(data) {
             self.clearDocuments();
-            self.documentsCount = data.extra.fullCount; 
+            self.documentsCount = data.extra.fullCount;
             self.totalPages = Math.ceil(self.documentsCount / self.documentsPerPage);
             if (isNaN(this.currentPage) || this.currentPage === undefined || this.currentPage < 1) {
               this.currentPage = 1;
@@ -150,7 +151,7 @@ window.arangoDocuments = Backbone.Collection.extend({
                 });
               });
               window.documentsView.drawTable();
-              window.documentsView.renderPagination(self.totalPages);
+              window.documentsView.renderPagination(self.totalPages, true);
             }
             else {
               window.documentsView.initTable();
