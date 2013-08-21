@@ -1,10 +1,10 @@
 @font-face {
 	font-family: 'arangodbfont';
-	src:url('../fonts/arangodbfont.eot');
-	src:url('../fonts/arangodbfont.eot?#iefix') format('embedded-opentype'),
-		url('../fonts/arangodbfont.woff') format('woff'),
-		url('../fonts/arangodbfont.ttf') format('truetype'),
-		url('../fonts/arangodbfont.svg#arangodbfont') format('svg');
+	src:url('fonts/arangodbfont.eot');
+	src:url('fonts/arangodbfont.eot?#iefix') format('embedded-opentype'),
+		url('fonts/arangodbfont.woff') format('woff'),
+		url('fonts/arangodbfont.ttf') format('truetype'),
+		url('fonts/arangodbfont.svg#arangodbfont') format('svg');
 	font-weight: normal;
 	font-style: normal;
 }
@@ -19,6 +19,41 @@
 	text-transform: none;
 	line-height: 1;
 	-webkit-font-smoothing: antialiased;
+}
+
+
+.arango-icon-disk:before {
+	content: "\61";
+}
+.arango-icon-uncomment:before {
+	content: "\62";
+}
+.arango-icon-export:before {
+	content: "\63";
+}
+.arango-icon-import:before {
+	content: "\64";
+}
+.arango-icon-remove:before {
+	content: "\65";
+}
+.arango-icon-remove-2:before {
+	content: "\66";
+}
+.arango-icon-trashcan:before {
+	content: "\67";
+}
+.arango-icon-undo:before {
+	content: "\6a";
+}
+.arango-icon-loop:before {
+	content: "\6b";
+}
+.arango-icon-comment:before {
+	content: "\6c";
+}
+.arango-icon-redo:before {
+	content: "\69";
 }
 
 /* Use the following CSS code if you want to have a class per icon */
@@ -36,37 +71,4 @@ you can use the generic selector below, but it's slower:
 	text-transform: none;
 	line-height: 1;
 	-webkit-font-smoothing: antialiased;
-}
-.arango-icon-disk:before {
-	content: "\21";
-}
-.arango-icon-comment:before {
-	content: "\22";
-}
-.arango-icon-uncomment:before {
-	content: "\23";
-}
-.arango-icon-export:before {
-	content: "\24";
-}
-.arango-icon-import:before {
-	content: "\25";
-}
-.arango-icon-remove:before {
-	content: "\26";
-}
-.arango-icon-remove-2:before {
-	content: "\27";
-}
-.arango-icon-trashcan:before {
-	content: "\28";
-}
-.arango-icon-undo:before {
-	content: "\29";
-}
-.arango-icon-redo:before {
-	content: "\2a";
-}
-.arango-icon-loop:before {
-	content: "\2b";
 }
