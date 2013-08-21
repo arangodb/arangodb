@@ -61,7 +61,6 @@ var dashboardView = Backbone.View.extend({
             error: function() {
               // need to flush previous values
               self.calculateSeries(true);
-              arangoHelper.arangoError("Lost connection to database!");
               self.renderCharts();
             }
           });
@@ -215,6 +214,7 @@ var dashboardView = Backbone.View.extend({
     );*/
 
     var counter = 1;
+
     $.each(this.options.description.models[0].attributes.groups, function () {
       $('#dbThumbnailsIn').append(
         '<ul class="statGroups" id="' + this.group + '">' +
@@ -424,44 +424,9 @@ var dashboardView = Backbone.View.extend({
     });
   },
 
-  renderCollectionsChart: function () {
-    var self = this;
-    nv.addGraph(function() {
-      var chart = nv.models.pieChart()
-      .x(function(d) { return d.label; })
-      .y(function(d) { return d.value; })
-      .showLabels(true);
-
-      d3.select("#detailCollectionsChart svg")
-      .datum(self.convertCollections())
-      .transition().duration(1200)
-      .call(chart);
-
-      return chart;
-    });
-
-  },
-
-  convertCollections: function () {
-    var self = this;
-    var collValues = [];
-    $.each(self.collectionsStats, function(k,v) {
-      collValues.push({
-        "label" : k,
-        "value" : v
-      });
-    });
-
-    return [{
-      key: "Collections Status",
-      values: collValues
-    }];
-  },
-
   renderCharts: function () {
     var self = this;
     $('#every'+self.updateFrequency+'seconds').prop('checked',true);
-    //self.renderCollectionsChart();
 
     $.each(self.options.description.models[0].attributes.figures, function () {
       var figure = this;
@@ -508,6 +473,7 @@ var dashboardView = Backbone.View.extend({
       if (self.detailGraph === undefined) {
         self.detailGraph = "userTime";
       }
+
       if (self.detailGraph === identifier) {
         d3.select("#detailGraphChart svg")
         .call(chart)
@@ -526,6 +492,7 @@ var dashboardView = Backbone.View.extend({
       .datum([ { values: self.seriesData[identifier].values, key: identifier, color: "#8AA051" } ])
       .transition().duration(500);
     });
+
     this.loadGraphState();
   },
 
@@ -648,7 +615,7 @@ var dashboardView = Backbone.View.extend({
 
     $('#' + figure.group + 'Ul').append(
       '<li><a><label class="checkbox checkboxLabel">'+
-      '<input class="css-checkbox" type="checkbox" id='+figure.identifier+'Checkbox checked/>'+
+      '<input class="css-checkbox" type="checkbox" id="'+figure.identifier+'Checkbox" checked/>'+
       '<label class="css-label"/>' +
       figure.name + '</label></a></li>'
     );
