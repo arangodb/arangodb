@@ -3,6 +3,7 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 
 @NAVIGATE_UserManual
 
+@CHAPTER_REF{Installing}
 @CHAPTER_REF{FirstStepsArangoDB}
 @CHAPTER_REF{UserManualArangosh}
 @CHAPTER_REF{UserManualWebInterface}

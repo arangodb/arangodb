@@ -4,11 +4,11 @@ First Steps with ArangoDB {#FirstStepsArangoDB}
 @NAVIGATE_FirstStepsArangoDB
 @EMBEDTOC{FirstStepsArangoDBTOC}
 
-For installation instructions, please refer to the 
-@S_EXTREF_S{InstallManual.html, installation manual}.
-
 What is ArangoDB? {#FirstStepsArangoDBIntro}
 ============================================
+
+For installation instructions, please refer to the 
+@S_EXTREF_S{InstallManual.html,installation manual}
 
 ArangoDB is a multi-purpose open-source database with a flexible data
 models for documents, graphs, and key-values. You can easily build high
@@ -72,7 +72,7 @@ The ArangoDB database package comes with the following programs:
 - _foxx-manager_: a shell script to administer Foxx applications.
   See @ref UserManualFoxxManager
 - _arango-dfdb_: a datafile debugger for ArangoDB. It is intended to be
-  used primarily during development of ArangoDB. See ref @DbaManualDatafileDebugger
+  used primarily during development of ArangoDB. See @ref DbaManualDatafileDebugger
 - _arangob_: a tool for conducting tests and benchmarks with ArangoDB.
   It is intended to be used primarily during development and testing of
   ArangoDB.
