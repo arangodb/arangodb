@@ -285,6 +285,16 @@ describe ArangoDB do
         doc.parsed_response['figures']['alive']['count'].should eq(0)
         doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['shapes']['count'].should eq(6)
+        doc.parsed_response['figures']['attributes']['count'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['attributes']['count'].should >= 0
+        doc.parsed_response['figures']['datafiles']['count'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['datafiles']['fileSize'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['journals']['count'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['journals']['fileSize'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['compactors']['count'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['compactors']['fileSize'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['shapefiles']['count'].should be_kind_of(Integer)
+        doc.parsed_response['figures']['shapefiles']['fileSize'].should be_kind_of(Integer)
         doc.parsed_response['journalSize'].should be_kind_of(Integer)
               
         # create a few documents, this should increase counts and number of shapes
