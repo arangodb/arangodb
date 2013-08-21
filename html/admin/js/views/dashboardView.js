@@ -3,8 +3,8 @@
 
 var dashboardView = Backbone.View.extend({
   el: '#content',
-  updateInterval: 500, // 0.5 second, constant
-  updateFrequency: 10, // the actual update rate (5 s)
+  updateInterval: 1000, // 1 second, constant
+  updateFrequency: 5, // the actual update rate (5 s)
   updateCounter: 0,
   arraySize: 20, // how many values will we keep per figure?
   seriesData: {},
@@ -12,14 +12,6 @@ var dashboardView = Backbone.View.extend({
   units: [],
   graphState: {},
   updateNOW: false,
-  collectionsStats: {
-    "corrupted": 0,
-    "new born collection" : 0,
-    "unloaded" : 0,
-    "loaded" : 0,
-    "in the process of being unloaded" : 0,
-    "deleted" : 0
-  },
   detailGraph: "userTime",
 
   initialize: function () {
@@ -28,11 +20,10 @@ var dashboardView = Backbone.View.extend({
     var self = this;
 
     this.initUnits();
-    //this.addCustomCharts();
 
     this.collection.fetch({
       success: function() {
-        self.countCollections();
+        self.addCustomCharts();
         self.calculateSeries();
         self.renderCharts();
 
@@ -85,17 +76,7 @@ var dashboardView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   toggleEvent: function () {
-    $('#dashboardDropdownOut').slideToggle(200);
-  },
-
-  countCollections: function() {
-    var self = this;
-    $.each(window.arangoCollectionsStore.models, function(k,v) {
-      if ( self.collectionsStats[this.attributes.status] === undefined ) {
-        self.collectionsStats[this.attributes.status] = 0;
-      }
-      self.collectionsStats[this.attributes.status]++;
-    });
+    $('#dashboardDropdownOut').slideToggle(220);
   },
 
   getReplicationStatus: function () {
@@ -202,17 +183,6 @@ var dashboardView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     this.getReplicationStatus();
 
-    //Client calculated charts
-    /*self.genCustomCategories();
-    self.genCustomChartDescription(
-      "userTime + systemTime",
-      "custom",
-      "totalTime2",
-      "Total Time (User+System)",
-      "accumulated",
-      "seconds"
-    );*/
-
     var counter = 1;
 
     $.each(this.options.description.models[0].attributes.groups, function () {
@@ -225,14 +195,6 @@ var dashboardView = Backbone.View.extend({
       //group
       $('#dashboardDropdown').append('<ul id="' + this.group + 'Ul"></ul>');
       $('#'+this.group+'Ul').append('<li class="nav-header">' + this.name + '</li>');
-
-      /*TEST
-      $('#menuGroups').append(
-        '<li class="dropdown-submenu pull-left"><a tabindex="-1" href="#">'+this.name+'</a>'+
-        '<ul id="' + this.group + 'Divider" class="dropdown-menu graphDropdown"></ul>'
-      );
-      */
-
 
       //group entries
       if (self.options.description.models[0].attributes.groups.length === counter) {
@@ -270,17 +232,20 @@ var dashboardView = Backbone.View.extend({
   addCustomCharts: function () {
     var self = this;
     var figure = {
-      "description" : "my custom chart",
-      "group" : "custom",
-      "identifier" : "custom1",
-      "name" : "Custom1",
+      "description" : "Cumulated values of User + System Time",
+      "group" : "system",
+      "identifier" : "userSystemTime",
+      "name" : "User + System Time",
       "type" : "accumulated",
       "units" : "seconds",
       "exec" : function () {
         var val1 = self.collection.models[0].attributes.system.userTime;
         var val2 = self.collection.models[0].attributes.system.systemTime;
-        var totalTime2Value = val1+val2;
-        return totalTime2Value;
+
+        if (val1 === undefined || val2 === undefined) {
+          return undefined;
+        }
+        return val1 + val2;
       }
     };
 
