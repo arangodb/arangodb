@@ -28,7 +28,7 @@ Instead of a list of all class selectors,
 you can use the generic selector below, but it's slower:
 [class*="arango-icon-"] {
 */
-.arango-icon-disk, .arango-icon-uncomment, .arango-icon-upload, .arango-icon-download, .arango-icon-remove, .arango-icon-remove-2, .arango-icon-trashcan, .arango-icon-undo, .arango-icon-loop, .arango-icon-comment, .arango-icon-redo {
+.arango-icon-disk, .arango-icon-uncomment, .arango-icon-export, .arango-icon-import, .arango-icon-remove, .arango-icon-remove-2, .arango-icon-trashcan, .arango-icon-undo, .arango-icon-loop, .arango-icon-comment, .arango-icon-redo {
 	font-family: 'arangodbfont';
 	speak: none;
 	font-style: normal;
@@ -44,10 +44,10 @@ you can use the generic selector below, but it's slower:
 .arango-icon-uncomment:before {
 	content: "\e001";
 }
-.arango-icon-upload:before {
+.arango-icon-export:before {
 	content: "\e002";
 }
-.arango-icon-download:before {
+.arango-icon-import:before {
 	content: "\e003";
 }
 .arango-icon-remove:before {
