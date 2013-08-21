@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* issue #587: Add db._create() in help for startup arangosh
+
 * issue #581: Parameter binding for attributes
 
 * issue #558: HTTP cursors, allow count to ignore LIMIT
