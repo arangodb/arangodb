@@ -49,7 +49,7 @@
 }
 
 li.applicationList {
-  margin-left:-10px;
+  margin-left: -17px;
   background-color: transparent;
   border: none;
 }
@@ -72,7 +72,7 @@ li.applicationList {
 .foxxList .boxHeader {
   background-color: #686766;
   opacity: 1;
-  margin-left: 5px;
+  margin-left: 12px;
   margin-right: 5px;
 }
 
