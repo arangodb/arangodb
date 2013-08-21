@@ -176,6 +176,8 @@ advantage that you can use auto-completion.
       db:                                    ArangoDatabase             
     Example:                                                            
      > db._collections();                    list all collections       
+     > db._create(<coll_name>);              create a new collection
+     > db._drop(<coll_name>);                drop a collection
      > db.<coll_name>.all();                 list all documents         
      > id = db.<coll_name>.save({ ... });    save a document            
      > db.<coll_name>.remove(<_id>);         delete a document          
