@@ -139,6 +139,29 @@ var collectionInfoView = Backbone.View.extend({
               '<span class="glyphicon glyphicon-info-sign"></span></a>'+
             '</th>'+
           '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Compactors</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.compactors.count+'</th>'+
+            '<th class="'+cssClass+'">'+
+              this.roundNumber(this.data.figures.compactors.fileSize / 1024 / 1024 , 2)+
+            '</th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="Number of compactor files.">'+
+              '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+            '</th>'+
+          '</tr>'+
+          '<tr>'+
+            '<th class="'+cssClass+'">Shape files</th>'+
+            '<th class="'+cssClass+'">'+this.data.figures.shapefiles.count+'</th>'+
+            '<th class="'+cssClass+'">'+
+              this.roundNumber(this.data.figures.shapefiles.fileSize / 1024 / 1024 , 2)+
+            '</th>'+
+            '<th class="tooltipInfoTh '+cssClass+'">'+
+              '<a class="modalInfoTooltips" title="Number of shape files.">'+
+              '<span class="glyphicon glyphicon-info-sign"></span></a>'+
+            '</th>'+
+          '</tr>'+
+
         '</table>'+
 
         '<table id="figures2">'+
