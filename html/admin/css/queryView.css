@@ -163,6 +163,19 @@
   z-index: 9999 !important;
 }
 
+#querySize {
+  height: 20px !important;
+  line-height: 20px !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 0;
+  border: 0 !important;
+  float: left !important;
+  margin-left: 50px;
+  margin-right: 0 !important;
+}
+
 .queryTH {
   width: 20% !important;
 }
