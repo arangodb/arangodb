@@ -193,3 +193,7 @@
 .ace_print-margin {
   visibility: hidden !important;
 }
+
+#queryOutput .ace_replace_form {
+  display:none;
+}

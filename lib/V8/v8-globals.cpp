@@ -222,9 +222,15 @@ void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const char* const name,
-                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&)) {
+                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&),
+                                   const bool isHidden) {
   // all global functions are read-only
-  context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
+  if (isHidden) {
+    context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+  }
+  else {
+    context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,9 +239,15 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
                                    const char* const name,
-                                   v8::Handle<v8::Function> func) {
+                                   v8::Handle<v8::Function> func,
+                                   const bool isHidden) {
   // all global functions are read-only
-  context->Global()->Set(TRI_V8_SYMBOL(name), func, v8::ReadOnly);
+  if (isHidden) {
+    context->Global()->Set(TRI_V8_SYMBOL(name), func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+  }
+  else {
+    context->Global()->Set(TRI_V8_SYMBOL(name), func, v8::ReadOnly);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +257,7 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
                                    const char* const name,
                                    v8::Handle<v8::Value> value) {
-  // all global functions are read-only
+  // all global variables are read-only
   context->Global()->Set(TRI_V8_SYMBOL(name), value, v8::ReadOnly);
 }
 

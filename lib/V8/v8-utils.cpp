@@ -1059,10 +1059,10 @@ static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
   }
 
-  bool result = TRI_CreateDirectory(*name);
+  int res = TRI_CreateDirectory(*name);
 
-  if (! result) {
-    TRI_V8_EXCEPTION_SYS(scope, "cannot create directory");
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   return scope.Close(v8::Undefined());

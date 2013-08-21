@@ -273,14 +273,11 @@ var documentView = Backbone.View.extend({
     var row;
 
     for (row in data) {
-      //Exclude "add-collection" row
-      if (row !== '0') {
         var row_data = data[row];
         var key = row_data[0];
         var value = row_data[3];
 
         result[key] = JSON.parse(value);
-      }
     }
     window.arangoDocumentStore.updateLocalDocument(result);
     //then sent to server
