@@ -103,9 +103,15 @@ var queryView = Backbone.View.extend({
             var token = session.getTokenAt(cursor.row, cursor.column);
             if (token) {
                 if (token.type === "comment") {
-                    $("#commentText").removeClass("arango-icon-comment").addClass("arango-icon-uncomment").attr("data-original-title", "Uncomment");
+                    $("#commentText")
+                       .removeClass("arango-icon-comment")
+                       .addClass("arango-icon-uncomment")
+                       .attr("data-original-title", "Uncomment");
                 } else {
-                    $("#commentText").addClass("arango-icon-comment").removeClass("arango-icon-uncomment").attr("data-original-title", "Comment");
+                    $("#commentText")
+                       .addClass("arango-icon-comment")
+                       .removeClass("arango-icon-uncomment")
+                       .attr("data-original-title", "Comment");
                 }
             }
         });

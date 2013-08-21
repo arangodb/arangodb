@@ -577,7 +577,6 @@ var documentsView = Backbone.View.extend({
     else {
       currentPage = JSON.parse(this.pageid);
     }
-    var self = this;
     var target = $('#documentsToolbarF'),
     options = {
       left: 2,
