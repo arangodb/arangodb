@@ -122,18 +122,18 @@
   opacity: 0.8;
 }
 
-#infoTab {
+#infoTab, #collectionTab{
   padding-right: 10px;
   border-bottom: 0;
   padding-bottom: 0;
   margin-bottom: 1px;
 }
 
-#infoTab li {
+#infoTab li, #collectionTab li{
   float:right;
 }
 
-#infoTab a {
+#infoTab a, #collectionTab a{
   margin-right: 4px;
   color: black;
   margin-bottom: -1px;
@@ -145,14 +145,16 @@
   padding: 4px !important;
 }
 
-#infoTab .active > a {
+#infoTab .active > a, #collectionTab .active > a {
   border-color: #888888 #888888 transparent !important;
   background-color: #FFFFFF;
 }
 
 #tab-content-collection-info #info,
 #tab-content-collection-info #figures,
-#tab-content-collection-info #index {
+#tab-content-collection-info #index,
+#tab-content-collection-edit #main,
+#tab-content-collection-edit #editIndex {
   padding-top: 10px;
   border-top: 1px solid #888888 !important;
   margin-left: 0px !important;
