@@ -43,6 +43,8 @@
 #include "VocBase/primary-collection.h"
 #include "BasicsC/utf8-helper.h"
 
+#ifdef TRI_SKIPLIST_EX
+
 #define USE_STATIC_SKIPLIST_EX_COMPARE 1
 
 #define SKIPLIST_EX_ELEMENT_TYPE(a,b) \
@@ -1092,10 +1094,10 @@ static bool IndexStaticMultiEqualElementElement (TRI_skiplistEx_multi_t* multiSk
 
 
 
-
-
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

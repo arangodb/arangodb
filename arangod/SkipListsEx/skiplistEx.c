@@ -32,6 +32,8 @@
 #include "skiplistEx.h"
 #include "compareEx.h"
 
+#ifdef TRI_SKIPLIST_EX
+
 #define SKIPLIST_EX_ABSOLUTE_MAX_HEIGHT 100
 
 // -----------------------------------------------------------------------------
@@ -2677,12 +2679,11 @@ static int32_t RandLevel (TRI_skiplistEx_base_t* skiplist) {
   return level;  
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+#endif
 
 // Local Variables:
 // mode: outline-minor
