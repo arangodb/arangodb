@@ -218,16 +218,23 @@ This will call aclocal, autoheader, automake, and autoconf in the correct order.
 Configure{#CompilingDevelConfigure}
 -----------------------------------
 
-In order to configure the build environment execute
+In order to configure the build environment please execute
 
-    unix> ./configure --disable-all-in-one-v8 --disable-all-in-one-libev --disable-all-in-one-icu --enable-maintainer-mode
+    unix> ./configure --disable-all-in-one-v8 --disable-all-in-one-libev --disable-all-in-one-icu 
 
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
 
 Now continue with @ref CompilingAIOCompile.
 
-The following configuration options exists:
+If you also plan to make changes to the source code of ArangoDB, add the following
+option to the `configure` command: `--enable-maintainer-mode`. Using this option,
+you can make changes to the lexer and parser files and some other source files that
+will generate other files. Enabling this option will add extra dependencies to
+BISON, FLEX, and PYTHON. These external tools then need to be available in the 
+correct versions on your system.
+
+The following configuration options exist:
 
 `--enable-all-in-one-libev` tells the build system to use the bundled version
 of LIBEV instead of using the system version.
