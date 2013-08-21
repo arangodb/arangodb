@@ -5678,6 +5678,10 @@ static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
 /// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
 /// - @LIT{journals.count}: The number of journal files.
 /// - @LIT{journals.fileSize}: The total filesize of the journal files.
+/// - @LIT{compactors.count}: The number of compactor files.
+/// - @LIT{compactors.fileSize}: The total filesize of the compactor files.
+/// - @LIT{shapefiles.count}: The number of shape files.
+/// - @LIT{shapefiles.fileSize}: The total filesize of the shape files.
 /// - @LIT{shapes.count}: The total number of shapes used in the collection
 ///   (this includes shapes that are not in use anymore)
 /// - @LIT{shapes.fileSize}: The total filesize of the shapes files.

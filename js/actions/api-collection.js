@@ -556,7 +556,12 @@ function get_api_collections (req, res) {
 /// - `journalSize`: The maximal size of the journal in bytes.
 ///
 /// Note: the filesizes of collection and index parameter JSON files are
-/// not reported.
+/// not reported. These files should normally have a size of a few bytes
+/// each. Please also note that the `fileSize` values are reported in bytes
+/// and reflect the logical file sizes. Some filesystems may use optimisations
+/// (e.g. sparse files) so that the actual physical file size is somewhat
+/// different. Directories and sub-directories may also require space in the
+/// file system, but this space is not reported in the `fileSize` results.
 ///
 /// That means that the figures reported do not reflect the actual disk
 /// usage of the collection with 100% accuracy. The actual disk usage of
