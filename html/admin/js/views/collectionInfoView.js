@@ -228,6 +228,7 @@ var collectionInfoView = Backbone.View.extend({
       );
     }
   },
+
   appendIndex: function () {
     var cssClass = 'collectionInfoTh modal-text';
     if (this.index) {
@@ -253,6 +254,7 @@ var collectionInfoView = Backbone.View.extend({
       });
     }
   },
+
   fillLoadedModal: function (data) {
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();

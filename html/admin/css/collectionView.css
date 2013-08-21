@@ -15,3 +15,29 @@
 #tab-content-collection-info {
   min-height: 200px !important;
 }
+
+#change-collection .tab-content {
+  min-height: 230px ;
+}
+
+#change-collection .glyphicon-plus-sign,
+#change-collection .glyphicon-remove-circle {
+  float: right;
+  font-size: 22px;
+  color: #788F3D;
+  position: absolute;
+  right: 30px;
+  top: 59px;
+}
+
+#change-collection .glyphicon-remove-circle {
+  color: red !important;
+}
+
+#change-collection #collectionEditIndexTable {
+  margin-top: 20px;
+}
+
+#change-collection #newIndexView {
+  margin-top: 20px;
+}

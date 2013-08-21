@@ -4,49 +4,90 @@
     <a class="arangoHeader">Modify Collection</a>
   </div>
   <div class="modal-body">
-    <table>
-      <tr>
-        <th class="collectionTh">Name:</th>
-        <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
-      </tr>
-      <tr id="collectionSizeBox" style="display:none">
-        <th class="collectionTh">Journal size:</th>
-        <th class="collectionTh"><input type="text" id="change-collection-size" name="size" value=""/></th>
-        <th><a class="modalTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><span class="glyphicon glyphicon-info-sign" style="color:black"></span></a></th>
-      </tr>
-      <tr id="collectionSyncBox" style="display:none">
-        <th class="collectionTh">Wait for sync:</th>
-        <th class="collectionTh">
-          <select id="change-collection-sync">
-            <option value="false">No</option>
-            <option value="true">Yes</option>
-          </select> 
-        </th> 
-        <th><a class="modalTooltips" title="Synchronise to disk before returning from a create or update of a document."><span class="glyphicon glyphicon-info-sign" style="color:black"></span></a></th>
-      </tr> 
 
-      <tr>
-        <th class="collectionTh">ID:</th>
-        <th class="collectionTh">
-          <div id="change-collection-id" class="modal-text"/>
-        <th>
-      </tr>
+    <ul id="collectionTab" class="nav nav-tabs" style="visibility:hidden">
+      <li class="active"><a href="#main" data-toggle="tab">Main</a></li>
+      <li><a href="#editIndex" data-toggle="tab">Index</a></li>
+    </ul>
 
-      <tr>
-        <th class="collectionTh">Type:</th> 
-        <th class="collectionTh">
-          <div id="change-collection-type" class="modal-text"/>
-        </th>
-      </tr>
+    <div class="tab-content" id="tab-content-collection-edit">
+      <div class="tab-pane active" id="main">
+        <table>
+          <tr>
+            <th class="collectionTh">Name:</th>
+            <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
+          </tr>
+          <tr id="collectionSizeBox" style="display:none">
+            <th class="collectionTh">Journal size:</th>
+            <th class="collectionTh"><input type="text" id="change-collection-size" name="size" value=""/></th>
+            <th><a class="modalTooltips" title="The maximal size of a journal or datafile (in MB). Must be at least 1."><span class="glyphicon glyphicon-info-sign" style="color:black"></span></a></th>
+          </tr>
+          <tr id="collectionSyncBox" style="display:none">
+            <th class="collectionTh">Wait for sync:</th>
+            <th class="collectionTh">
+              <select id="change-collection-sync">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select> 
+            </th> 
+            <th><a class="modalTooltips" title="Synchronise to disk before returning from a create or update of a document."><span class="glyphicon glyphicon-info-sign" style="color:black"></span></a></th>
+          </tr> 
 
-      <tr>
-        <th class="collectionTh">Status:</th>
-        <th class="collectionTh">
-          <div id="change-collection-status" class="modal-text"/>
-        </th>
-      </tr>
-      
-    </table>
+          <tr>
+            <th class="collectionTh">ID:</th>
+            <th class="collectionTh">
+              <div id="change-collection-id" class="modal-text"/>
+            <th>
+          </tr>
+
+          <tr>
+            <th class="collectionTh">Type:</th> 
+            <th class="collectionTh">
+              <div id="change-collection-type" class="modal-text"/>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionTh">Status:</th>
+            <th class="collectionTh">
+              <div id="change-collection-status" class="modal-text"/>
+            </th>
+          </tr>
+        </table>
+      </div>
+
+      <div class="tab-pane" id="editIndex">
+
+        <div id="indexEditView">
+          <span class="glyphicon glyphicon-plus-sign" data-original-title="Add index"></span>
+          <table id="collectionEditIndexTable">
+            <tr class="figuresHeader">
+              <th class="collectionInfoTh">ID</th>
+              <th class="collectionInfoTh">Type</th>
+              <th class="collectionInfoTh">Unique</th>
+              <th class="collectionInfoTh">Fields</th>
+              <th class="collectionInfoTh">Action</th>
+            </tr>
+          </table>
+        </div>
+
+        <div id="newIndexView" style="display:none">
+          <span class="glyphicon glyphicon-remove-circle" data-original-title="Abort"></span>
+          <a class="arangoHeader">New Index:</a>
+
+          <select id="newIndexType">
+            <option value="cap">Cap Constraints</option>
+            <option value="geo">Geo Index</option>
+            <option value="hash">Hash Index</option>
+            <option value="fulltext">Fulltext Index</option>
+            <option value="skiplist">Skip-List Index</option>
+          </select>
+
+        </div>
+
+      </div>
+    </div>
+
   </div>
   <div id="colFooter" class="modal-footer">
     <button id="delete-modified-collection" class="btn btn-danger">Delete</button>

@@ -17,22 +17,30 @@ var collectionView = Backbone.View.extend({
       $('#change-collection-name').focus();
     });
     this.fillModal();
+
     $('.modalTooltips').tooltip({
       placement: "left"
     });
 
+    $('#collectionTab a').click(function (e) {
+      e.preventDefault();
+      $(this).tab('show');
+    }); 
+
     return this;
   },
   events: {
-    "click #save-modified-collection"     :    "saveModifiedCollection",
-    "hidden #change-collection"           :    "hidden",
-    "click #delete-modified-collection"   :    "deleteCollection",
-    "click #load-modified-collection"     :    "loadCollection",
-    "click #unload-modified-collection"   :    "unloadCollection",
-    "click #confirmDeleteCollection"      :    "confirmDeleteCollection",
-    "click #abortDeleteCollection"       :    "abortDeleteCollection",
-    "keydown #change-collection-name"     :    "listenKey",
-    "keydown #change-collection-size"     :    "listenKey"
+    "click #save-modified-collection"       :    "saveModifiedCollection",
+    "hidden #change-collection"             :    "hidden",
+    "click #delete-modified-collection"     :    "deleteCollection",
+    "click #load-modified-collection"       :    "loadCollection",
+    "click #unload-modified-collection"     :    "unloadCollection",
+    "click #confirmDeleteCollection"        :    "confirmDeleteCollection",
+    "click #abortDeleteCollection"          :    "abortDeleteCollection",
+    "keydown #change-collection-name"       :    "listenKey",
+    "keydown #change-collection-size"       :    "listenKey",
+    "click #editIndex .glyphicon-plus-sign"     :    "toggleNewIndexView",
+    "click #editIndex .glyphicon-remove-circle" :    "toggleNewIndexView"
   },
   listenKey: function(e) {
     if (e.keyCode === 13) {
@@ -41,6 +49,14 @@ var collectionView = Backbone.View.extend({
   },
   hidden: function () {
     window.App.navigate("#", {trigger: true});
+  },
+  toggleNewIndexView: function () {
+    $('#indexEditView').toggle();
+    $('#newIndexView').toggle();
+
+  },
+  hideNewIndexView: function () {
+
   },
   fillModal: function() {
     try {
@@ -63,6 +79,7 @@ var collectionView = Backbone.View.extend({
       );
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
+      //
     }
     else if (this.myCollection.status === 'loaded') {
       $('#colFooter').prepend(
@@ -73,7 +90,52 @@ var collectionView = Backbone.View.extend({
       this.fillLoadedModal(data);
     }
   },
+
+  appendIndex: function () {
+    this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
+    var cssClass = 'collectionInfoTh modal-text';
+    if (this.index) {
+      var fieldString = '';
+      var indexId = '';
+      var actionString = '';
+
+      $.each(this.index.indexes, function(k,v) {
+        console.log(v);
+
+        if (v.type === 'primary' || v.type === 'edge') {
+          actionString = '<span class="glyphicon glyphicon-ban-circle" data-original-title="No action"></span>'
+        }
+        else {
+          actionString = '<span class="glyphicon glyphicon-minus-sign" data-original-title="Delete index"></span>'
+        }
+
+        if (v.fields !== undefined) {
+          fieldString = v.fields.join(", ");
+        }
+
+        //cut index id
+        var position = v.id.indexOf('/');
+        var indexId = v.id.substr(position+1, v.id.length);
+
+        $('#collectionEditIndexTable').append(
+          '<tr>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>'+
+            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>'+
+          '</tr>'
+        );
+      });
+    }
+  },
+
   fillLoadedModal: function (data) {
+
+    //show tabs & render figures tab-view
+    $('#change-collection .nav-tabs').css("visibility","visible");
+    this.appendIndex();
+
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();
     if (data.waitForSync === false) {
