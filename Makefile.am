@@ -32,7 +32,7 @@ dist_man_MANS =
 CLEANUP =
 
 ################################################################################
-### @brief tragets for cleanup of 3rd party libraries
+### @brief targets for cleanup of 3rd party libraries
 ################################################################################
 
 CLEANUP_3RD =
