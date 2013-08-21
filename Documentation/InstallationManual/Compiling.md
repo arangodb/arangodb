@@ -225,9 +225,13 @@ In order to configure the build environment please execute
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
 
-If you compile on MacOS, you should add the following options to the configure command:
+Please note that it may be required to set the `--host` and `--target` variables when 
+running the configure command. For example, if you compile on MacOS, you should add the 
+following options to the configure command:
 
     --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+
+The host and target values for other architectures vary. 
 
 Now continue with @ref CompilingAIOCompile.
 
