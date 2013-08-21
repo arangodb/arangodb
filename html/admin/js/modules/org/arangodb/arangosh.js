@@ -141,6 +141,8 @@ exports.HELP = exports.createHelpHeadline("Help") +
   '  fm:                                    FoxxManager                ' + "\n" +
   'Example:                                                            ' + "\n" +
   ' > db._collections();                    list all collections       ' + "\n" +
+  ' > db._create(<coll_name>);              create a new collection    ' + "\n" +
+  ' > db._drop(<coll_name>);                drop a collection          ' + "\n" +
   ' > db.<coll_name>.all().toArray();       list all documents         ' + "\n" +
   ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
   ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
