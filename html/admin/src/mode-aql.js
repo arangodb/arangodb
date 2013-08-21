@@ -97,7 +97,7 @@ var AqlHighlightRules = function() {
         "like|floor|ceil|round|abs|sqrt|rand|length|min|max|average|sum|median|variance_population|" +
         "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|unset|keep|" +
         "near|within|fulltext|paths|traversal|traversal_tree|edges|not_null|first_list|first_document|" +
-        "collections|document)"
+        "collections|document|stddev_population|stddev_sample|neighbors)"
     );
 
     var keywordMapper = this.createKeywordMapper({
@@ -109,6 +109,9 @@ var AqlHighlightRules = function() {
 
     this.$rules = {
         "start" : [ {
+           token : "comment",
+           regex : /\/\/.*$/
+        }, {
             token : "comment",
             regex : /\/\*/,
             next : "comment_ml"
