@@ -541,6 +541,12 @@ function get_api_collections (req, res) {
 /// - `figures.journals.count`: The number of journal files.
 /// - `figures.journals.fileSize`: The total filesize of all journal files.
 ///
+/// - `figures.compactors.count`: The number of compactor files.
+/// - `figures.compactors.fileSize`: The total filesize of all compactor files.
+///
+/// - `figures.shapefiles.count`: The number of shape files.
+/// - `figures.shapefiles.fileSize`: The total filesize of all shape files.
+///
 /// - `figures.shapes.count`: The total number of shapes in the 
 ///   collection (this includes shapes that are not in use anymore) 
 ///
@@ -549,13 +555,14 @@ function get_api_collections (req, res) {
 ///
 /// - `journalSize`: The maximal size of the journal in bytes.
 ///
-/// Note: the filesizes of shapes and compactor files are not reported. 
+/// Note: the filesizes of collection and index parameter JSON files are
+/// not reported.
 ///
 /// That means that the figures reported do not reflect the actual disk
 /// usage of the collection with 100% accuracy. The actual disk usage of
-/// a collection is normally higher than the sum of the reported `fileSize` 
-/// values. Still the sum of the `fileSize` values can still be used as 
-/// a lower bound approximation of the disk usage.
+/// a collection is normally slightly higher than the sum of the reported 
+/// `fileSize` values. Still the sum of the `fileSize` values can still be 
+/// used as a lower bound approximation of the disk usage.
 ///
 /// @RESTRETURNCODES
 ///

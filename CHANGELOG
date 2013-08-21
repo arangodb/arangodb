@@ -5,6 +5,12 @@ v1.4
 
 * issue #581: Parameter binding for attributes
 
+* issue #576: Get disk usage for collections and graphs
+
+  This extends the result of the REST API for /_api/collection/figures with
+  the attributes `compactors.count`, `compactors.fileSize`, `shapefiles.count`,
+  and `shapefiles.fileSize`.
+
 * issue #558: HTTP cursors, allow count to ignore LIMIT
 
 
