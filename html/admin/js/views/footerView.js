@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, $*/
+/*global require, exports, Backbone, EJS, $, arangoHelper, window*/
 
 var footerView = Backbone.View.extend({
   el: '.footer',
