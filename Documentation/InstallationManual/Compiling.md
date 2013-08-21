@@ -225,6 +225,10 @@ In order to configure the build environment please execute
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
 
+If you compile on MacOS, you should add the following options to the configure command:
+
+    --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+
 Now continue with @ref CompilingAIOCompile.
 
 If you also plan to make changes to the source code of ArangoDB, add the following
