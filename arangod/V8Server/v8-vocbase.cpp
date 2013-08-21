@@ -5678,8 +5678,13 @@ static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
 /// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
 /// - @LIT{journals.count}: The number of journal files.
 /// - @LIT{journals.fileSize}: The total filesize of the journal files.
+/// - @LIT{compactors.count}: The number of compactor files.
+/// - @LIT{compactors.fileSize}: The total filesize of the compactor files.
+/// - @LIT{shapefiles.count}: The number of shape files.
+/// - @LIT{shapefiles.fileSize}: The total filesize of the shape files.
 /// - @LIT{shapes.count}: The total number of shapes used in the collection
 ///   (this includes shapes that are not in use anymore)
+/// - @LIT{shapes.fileSize}: The total filesize of the shapes files.
 /// - @LIT{attributes.count}: The total number of attributes used in the 
 ///   collection (this includes attributes that are not in use anymore)
 ///
@@ -5751,6 +5756,20 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   result->Set(v8::String::New("journals"), js);
   js->Set(v8::String::New("count"), v8::Number::New(info->_numberJournalfiles));
   js->Set(v8::String::New("fileSize"), v8::Number::New(info->_journalfileSize));
+  
+  // compactors info
+  v8::Handle<v8::Object> cs = v8::Object::New();
+
+  result->Set(v8::String::New("compactors"), cs);
+  cs->Set(v8::String::New("count"), v8::Number::New(info->_numberCompactorfiles));
+  cs->Set(v8::String::New("fileSize"), v8::Number::New(info->_compactorfileSize));
+  
+  // shapefiles info
+  v8::Handle<v8::Object> sf = v8::Object::New();
+
+  result->Set(v8::String::New("shapefiles"), sf);
+  sf->Set(v8::String::New("count"), v8::Number::New(info->_numberShapefiles));
+  sf->Set(v8::String::New("fileSize"), v8::Number::New(info->_shapefileSize));
 
   // shape info
   v8::Handle<v8::Object> shapes = v8::Object::New();
