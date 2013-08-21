@@ -33,49 +33,51 @@ var queryView = Backbone.View.extend({
         'keydown #new-query-name': 'listenKey',
         'change #queryModalSelect': 'updateEditSelect',
         'change #querySelect': 'importSelected',
+        'change #querySize': 'changeSize',
         'keypress #aqlEditor': 'aqlShortcuts'
     },
 
     listenKey: function (e) {
-        if (e.keyCode === 13) {
-            this.saveAQL(e);
-        }
+      if (e.keyCode === 13) {
+        this.saveAQL(e);
+      }
     },
 
     clearOutput: function () {
-        var outputEditor = ace.edit("queryOutput");
-        outputEditor.setValue('');
+      var outputEditor = ace.edit("queryOutput");
+      outputEditor.setValue('');
     },
 
     clearInput: function () {
-        var inputEditor = ace.edit("aqlEditor");
-        inputEditor.setValue('');
+      var inputEditor = ace.edit("aqlEditor");
+      inputEditor.setValue('');
     },
 
     smallOutput: function () {
-        var outputEditor = ace.edit("queryOutput");
-        outputEditor.getSession().foldAll();
+      var outputEditor = ace.edit("queryOutput");
+      outputEditor.getSession().foldAll();
     },
 
     bigOutput: function () {
-        var outputEditor = ace.edit("queryOutput");
-        outputEditor.getSession().unfold();
+      var outputEditor = ace.edit("queryOutput");
+      outputEditor.getSession().unfold();
     },
 
     aqlShortcuts: function (e) {
-        if (e.ctrlKey && e.keyCode === 13) {
-            this.submitQuery();
-        }
-        else if (e.metaKey && !e.ctrlKey && e.keyCode === 13) {
-            this.submitQuery();
-        }
-        else if (e.ctrlKey && e.keyCode === 90) {
-            this.undoText();
-        }
-        else if (e.ctrlKey && e.shiftKey && e.keyCode === 90) {
-            this.redeText();
-        }
-
+      if (e.ctrlKey && e.keyCode === 13) {
+        this.submitQuery();
+      }
+      else if (e.metaKey && ! e.ctrlKey && e.keyCode === 13) {
+        this.submitQuery();
+      }
+      else if (e.ctrlKey && e.keyCode === 90) {
+        // TODO: undo/redo seems to work even without this. check if can be removed
+        this.undoText();
+      }
+      else if (e.ctrlKey && e.shiftKey && e.keyCode === 90) {
+        // TODO: undo/redo seems to work even without this. check if can be removed
+        this.redoText();
+      }
     },
 
     queries: [
@@ -87,6 +89,20 @@ var queryView = Backbone.View.extend({
 
     render: function () {
         $(this.el).html(this.template.text);
+         
+        // fill select box with # of results    
+        var querySize = 1000;
+        if (typeof Storage) {
+          if (localStorage.getItem("querySize") > 0) {
+            querySize = parseInt(localStorage.getItem("querySize"), 10);
+          }
+        }
+
+        var sizeBox = $('#querySize'); 
+        sizeBox.empty();
+        [ 100, 250, 500, 1000, 2500, 5000 ].forEach(function (value) {
+          sizeBox.append('<option value="' + value + '"' + (querySize === value ? ' selected' : '') + '>' + value + ' results</option>');
+        });
 
         var outputEditor = ace.edit("queryOutput");
         outputEditor.setReadOnly(true);
@@ -97,59 +113,59 @@ var queryView = Backbone.View.extend({
         var inputEditor = ace.edit("aqlEditor");
         inputEditor.getSession().setMode("ace/mode/aql");
         inputEditor.getSession().selection.on('changeCursor', function (e) {
-            var inputEditor = ace.edit("aqlEditor");
-            var session = inputEditor.getSession();
-            var cursor = inputEditor.getCursorPosition();
-            var token = session.getTokenAt(cursor.row, cursor.column);
-            if (token) {
-                if (token.type === "comment") {
-                    $("#commentText")
-                       .removeClass("arango-icon-comment")
-                       .addClass("arango-icon-uncomment")
-                       .attr("data-original-title", "Uncomment");
-                } else {
-                    $("#commentText")
-                       .addClass("arango-icon-comment")
-                       .removeClass("arango-icon-uncomment")
-                       .attr("data-original-title", "Comment");
-                }
-            }
+          var inputEditor = ace.edit("aqlEditor");
+          var session = inputEditor.getSession();
+          var cursor = inputEditor.getCursorPosition();
+          var token = session.getTokenAt(cursor.row, cursor.column);
+          if (token) {
+            if (token.type === "comment") {
+              $("#commentText")
+                .removeClass("arango-icon-comment")
+                .addClass("arango-icon-uncomment")
+                .attr("data-original-title", "Uncomment");
+              } else {
+                $("#commentText")
+                  .addClass("arango-icon-comment")
+                  .removeClass("arango-icon-uncomment")
+                  .attr("data-original-title", "Comment");
+              }
+          }
         });
         $('#queryOutput').resizable({
-            handles: "s",
-            ghost: true,
-            stop: function () {
-                setTimeout(function () {
-                    var outputEditor = ace.edit("queryOutput");
-                    outputEditor.resize();
-                }, 200);
-            }
+          handles: "s",
+          ghost: true,
+          stop: function () {
+            setTimeout(function () {
+              var outputEditor = ace.edit("queryOutput");
+              outputEditor.resize();
+            }, 200);
+          }
         });
 
         $('#aqlEditor').resizable({
-            handles: "s",
-            ghost: true,
-            //helper: "resizable-helper",
-            stop: function () {
-                setTimeout(function () {
-                    var inputEditor = ace.edit("aqlEditor");
-                    inputEditor.resize();
-                }, 200);
-            }
+          handles: "s",
+          ghost: true,
+          //helper: "resizable-helper",
+          stop: function () {
+            setTimeout(function () {
+              var inputEditor = ace.edit("aqlEditor");
+              inputEditor.resize();
+            }, 200);
+          }
         });
 
         $('.queryTooltips').tooltip({
-            placement: "top"
+          placement: "top"
         });
 
         $('#aqlEditor .ace_text-input').focus();
         $.gritter.removeAll();
 
         if (typeof Storage) {
-            var queryContent = localStorage.getItem("queryContent");
-            var queryOutput = localStorage.getItem("queryOutput");
-            inputEditor.setValue(queryContent);
-            outputEditor.setValue(queryOutput);
+          var queryContent = localStorage.getItem("queryContent");
+          var queryOutput = localStorage.getItem("queryOutput");
+          inputEditor.setValue(queryContent);
+          outputEditor.setValue(queryOutput);
         }
 
         var windowHeight = $(window).height() - 250;
@@ -340,6 +356,11 @@ var queryView = Backbone.View.extend({
 
         this.deselect(ace.edit("aqlEditor"));
     },
+    changeSize: function (e) {
+      if (Storage) {
+        localStorage.setItem("querySize", parseInt($('#' + e.currentTarget.id).val(), 10));
+      }
+    },
     renderSelectboxes: function (modal) {
         this.sortQueries();
         var selector = '';
@@ -446,8 +467,12 @@ var queryView = Backbone.View.extend({
     },
     submitQuery: function () {
         var self = this;
+        var sizeBox = $('#querySize'); 
         var inputEditor = ace.edit("aqlEditor");
-        var data = {query: inputEditor.getValue()};
+        var data = {
+          query: inputEditor.getValue(), 
+          batchSize: parseInt(sizeBox.val(), 10) 
+        };
         var outputEditor = ace.edit("queryOutput");
 
         $.ajax({
@@ -457,25 +482,25 @@ var queryView = Backbone.View.extend({
             contentType: "application/json",
             processData: false,
             success: function (data) {
-                outputEditor.setValue(arangoHelper.FormatJSON(data.result));
-                if (typeof Storage) {
-                    localStorage.setItem("queryContent", inputEditor.getValue());
-                    localStorage.setItem("queryOutput", outputEditor.getValue());
-                }
-                self.deselect(outputEditor);
+              outputEditor.setValue(arangoHelper.FormatJSON(data.result));
+              if (typeof Storage) {
+                localStorage.setItem("queryContent", inputEditor.getValue());
+                localStorage.setItem("queryOutput", outputEditor.getValue());
+              }
+              self.deselect(outputEditor);
             },
             error: function (data) {
                 try {
-                    var temp = JSON.parse(data.responseText);
-                    outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+                  var temp = JSON.parse(data.responseText);
+                  outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
 
-                    if (typeof Storage) {
-                        localStorage.setItem("queryContent", inputEditor.getValue());
-                        localStorage.setItem("queryOutput", outputEditor.getValue());
-                    }
+                  if (typeof Storage) {
+                    localStorage.setItem("queryContent", inputEditor.getValue());
+                    localStorage.setItem("queryOutput", outputEditor.getValue());
+                  }
                 }
                 catch (e) {
-                    outputEditor.setValue('ERROR');
+                  outputEditor.setValue('ERROR');
                 }
             }
         });
