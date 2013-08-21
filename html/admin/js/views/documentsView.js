@@ -462,7 +462,7 @@ var documentsView = Backbone.View.extend({
         { "sClass":"docsSecCol", "bSortable": false},
         { "bSortable": false, "sClass": "docsThirdCol"}
       ],
-      "oLanguage": { "sEmptyTable": "No documents"}
+      "oLanguage": { "sEmptyTable": "Loading..."}
     });
   },
   clearTable: function() {
@@ -482,41 +482,47 @@ var documentsView = Backbone.View.extend({
       );
     }*/
 
-    $.each(window.arangoDocumentsStore.models, function(key, value) {
+    if (window.arangoDocumentsStore.models.length === 0) {
+      $('.dataTables_empty').text('No documents');
+    }
+    else {
 
-      var tempObj = {};
-      $.each(value.attributes.content, function(k, v) {
-        if (! (k === '_id' || k === '_rev' || k === '_key')) {
-          tempObj[k] = v;
-        }
-      });
+      $.each(window.arangoDocumentsStore.models, function(key, value) {
 
-      $(self.table).dataTable().fnAddData(
-        [
-          '<pre class="prettify" title="'
-          + self.escaped(JSON.stringify(tempObj))
-          + '">'
-          + self.cutByResolution(JSON.stringify(tempObj))
-          + '</pre>',
+        var tempObj = {};
+        $.each(value.attributes.content, function(k, v) {
+          if (! (k === '_id' || k === '_rev' || k === '_key')) {
+            tempObj[k] = v;
+          }
+        });
 
-          '<div class="key">'
-          + value.attributes.key
-          + '</div>',
+        $(self.table).dataTable().fnAddData(
+          [
+            '<pre class="prettify" title="'
+            + self.escaped(JSON.stringify(tempObj))
+            + '">'
+            + self.cutByResolution(JSON.stringify(tempObj))
+            + '</pre>',
 
-        /*  '<button class="enabled" id="deleteDoc">'
-          + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
-          '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
-          +'Add a document"></span><a>'
+            '<div class="key">'
+            + value.attributes.key
+            + '</div>',
+
+            /*  '<button class="enabled" id="deleteDoc">'
+                + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
+            '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
+            +'Add a document"></span><a>'
         ]
-      );
-    });
-    $(".prettify").snippet("javascript", {
-      style: "nedit",
-      menu: false,
-      startText: false,
-      transparent: true,
-      showNum: false
-    });
+        );
+      });
+      $(".prettify").snippet("javascript", {
+        style: "nedit",
+        menu: false,
+        startText: false,
+        transparent: true,
+        showNum: false
+      });
+    }
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
@@ -556,17 +562,20 @@ var documentsView = Backbone.View.extend({
 
     return this;
   },
+  showLoadingState: function () {
+    $('.dataTables_empty').text('Loading...');
+  },
   renderPagination: function (totalPages, filter) {
 
     var checkFilter = filter;
     var self = this;
 
     var currentPage;
-    if (checkFilter === false) {
-      currentPage = JSON.parse(this.pageid);
+    if (checkFilter === true) {
+      currentPage = window.arangoDocumentsStore.currentFilterPage;
     }
     else {
-      currentPage = window.arangoDocumentsStore.currentFilterPage;
+      currentPage = JSON.parse(this.pageid);
     }
     var self = this;
     var target = $('#documentsToolbarF'),
@@ -578,10 +587,12 @@ var documentsView = Backbone.View.extend({
       click: function(i) {
         options.page = i;
         if (checkFilter === true) {
+
           var filterArray = self.getFilterContent();
           var filters = filterArray[0];
           var bindValues = filterArray[1];
-          this.addDocumentSwitch = false;
+          self.addDocumentSwitch = false;
+
           window.documentsView.clearTable();
           window.arangoDocumentsStore.getFilteredDocuments(self.colid, i, filters, bindValues);
         
