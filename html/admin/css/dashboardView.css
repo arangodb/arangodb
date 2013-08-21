@@ -469,11 +469,11 @@ li:hover h6, li.hover h6 {
 
 #dashboardDropdown {
   background-color: rgba(0,0,0,0.1) !important;
-  min-height: 230px !important;
+  min-height: 260px !important;
 }
 
 #dashboardDropdown ul {
-  min-height: 206px !important;
+  min-height: 236px !important;
 }
 
 .dashboardContent .arangoTab {
