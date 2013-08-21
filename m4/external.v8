@@ -128,6 +128,14 @@ _ACEOF
   fi
 fi
 
+if test "x$TRI_V8_VERSION" != "xV8"; then
+  [tr_v8_version=`echo "$TRI_V8_VERSION" | awk -F. '{print $1 * 10000 + $2 * 100 + $3}'`] 
+
+  if test "$tr_v8_version" -lt 31600; then
+    AC_MSG_ERROR([V8 version found is too low: $TRI_V8_VERSION. Please install V8 with version 3.16.0 or higher or use the option --enable-all-in-one-v8.])
+  fi
+fi
+
 dnl ----------------------------------------------------------------------------
 dnl restore flags
 dnl ----------------------------------------------------------------------------
