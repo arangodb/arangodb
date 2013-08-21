@@ -90,7 +90,8 @@ var documentsView = Backbone.View.extend({
     this.removeAllFilterItems();
 
     this.clearTable();
-    $('#documentsToolbarF ul').css("visibility", "visible");
+    $('#documents_last').css("visibility", "visible");
+    $('#documents_first').css("visibility", "visible");
     this.addDocumentSwitch = true;
     window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
   },
@@ -211,7 +212,7 @@ var documentsView = Backbone.View.extend({
     $('#filterHeader').hide();
   },
 
-  sendFilter : function () {
+  getFilterContent: function () {
     var filters = [ ], bindValues = { };
     var i;
 
@@ -234,19 +235,26 @@ var documentsView = Backbone.View.extend({
         }
       }
     }
+    return [filters, bindValues];
+  },
 
+  sendFilter : function () {
+    var filterArray = this.getFilterContent();
+    var filters = filterArray[0];
+    var bindValues = filterArray[1];
     this.addDocumentSwitch = false;
     window.documentsView.clearTable();
     window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, filters, bindValues);
-    
-    //Hide pagination 
-    //$('#documentsToolbarF ul').css("visibility", "hidden");
+
+    //Hide first/last pagination
+    $('#documents_last').css("visibility", "hidden");
+    $('#documents_first').css("visibility", "hidden");
   },
 
   addFilterItem : function () {
     "use strict";
     // adds a line to the filter widget
-    
+
     var num = ++this.filterId;
     $('#filterHeader').append(' <div class="queryline querylineAdd">'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
@@ -548,8 +556,18 @@ var documentsView = Backbone.View.extend({
 
     return this;
   },
-  renderPagination: function (totalPages) {
-    var currentPage = JSON.parse(this.pageid);
+  renderPagination: function (totalPages, filter) {
+
+    var checkFilter = filter;
+    var self = this;
+
+    var currentPage;
+    if (checkFilter === false) {
+      currentPage = JSON.parse(this.pageid);
+    }
+    else {
+      currentPage = window.arangoDocumentsStore.currentFilterPage;
+    }
     var self = this;
     var target = $('#documentsToolbarF'),
     options = {
@@ -559,7 +577,22 @@ var documentsView = Backbone.View.extend({
       lastPage: totalPages,
       click: function(i) {
         options.page = i;
-        window.location.hash = '#collection/' + self.colid + '/documents/' + options.page;
+        if (checkFilter === true) {
+          var filterArray = self.getFilterContent();
+          var filters = filterArray[0];
+          var bindValues = filterArray[1];
+          this.addDocumentSwitch = false;
+          window.documentsView.clearTable();
+          window.arangoDocumentsStore.getFilteredDocuments(self.colid, i, filters, bindValues);
+        
+          //Hide first/last pagination
+          $('#documents_last').css("visibility", "hidden");
+          $('#documents_first').css("visibility", "hidden");
+        }
+        else {
+          var windowLocationHash =  '#collection/' + self.colid + '/documents/' + options.page;
+          window.location.hash = windowLocationHash;
+        }
       }
     };
     target.pagination(options);
