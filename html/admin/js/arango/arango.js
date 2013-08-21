@@ -31,7 +31,7 @@ window.arangoHelper = {
         returnVal = true;
       }
     });
-    this.lastNotificationMessage = message;
+    this.lastNotificationMessage = null;
 
     return returnVal;
   },
