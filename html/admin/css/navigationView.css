@@ -47,3 +47,22 @@ body, input, textarea, .page-title span, .pingback a.url {
 .applications-menu {
   display: block;
 }
+
+#arangoCollectionSelect {
+  display: none;
+  float: right;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  margin-right: 15px;
+}
+
+@media (max-width: 1060px) {
+  #arangoCollectionUl { display: none; }
+  #collectionsDropdown ul { width: auto !important; }
+  #arangoCollectionSelect { display: inline-block; }
+  .footer-left { display: none; }
+  .footer-mid { margin-left: 35%; height: 30px; margin-top: 10px;}
+  .footer-mid p { display: inline; }
+  .footer-right { display: none; }
+}
+

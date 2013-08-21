@@ -133,6 +133,9 @@ var dashboardView = Backbone.View.extend({
     if (this.replLogState.state.lastLogTick === '0') {
       lastLog = '-';
     }
+    else {
+      lastLog = this.replLogState.state.lastLogTick;
+    }
 
     var numEvents = this.replLogState.state.totalEvents || 0;
 

@@ -90,7 +90,8 @@ var documentsView = Backbone.View.extend({
     this.removeAllFilterItems();
 
     this.clearTable();
-    $('#documentsToolbarF ul').css("visibility", "visible");
+    $('#documents_last').css("visibility", "visible");
+    $('#documents_first').css("visibility", "visible");
     this.addDocumentSwitch = true;
     window.arangoDocumentsStore.getDocuments(this.collectionID, 1);
   },
@@ -211,7 +212,7 @@ var documentsView = Backbone.View.extend({
     $('#filterHeader').hide();
   },
 
-  sendFilter : function () {
+  getFilterContent: function () {
     var filters = [ ], bindValues = { };
     var i;
 
@@ -234,17 +235,26 @@ var documentsView = Backbone.View.extend({
         }
       }
     }
+    return [filters, bindValues];
+  },
 
+  sendFilter : function () {
+    var filterArray = this.getFilterContent();
+    var filters = filterArray[0];
+    var bindValues = filterArray[1];
     this.addDocumentSwitch = false;
     window.documentsView.clearTable();
     window.arangoDocumentsStore.getFilteredDocuments(this.colid, 1, filters, bindValues);
-    $('#documentsToolbarF ul').css("visibility", "hidden");
+
+    //Hide first/last pagination
+    $('#documents_last').css("visibility", "hidden");
+    $('#documents_first').css("visibility", "hidden");
   },
 
   addFilterItem : function () {
     "use strict";
     // adds a line to the filter widget
-    
+
     var num = ++this.filterId;
     $('#filterHeader').append(' <div class="queryline querylineAdd">'+
        '<input id="attribute_name' + num +'" type="text" placeholder="Attribute name">'+
@@ -452,7 +462,7 @@ var documentsView = Backbone.View.extend({
         { "sClass":"docsSecCol", "bSortable": false},
         { "bSortable": false, "sClass": "docsThirdCol"}
       ],
-      "oLanguage": { "sEmptyTable": "No documents"}
+      "oLanguage": { "sEmptyTable": "Loading..."}
     });
   },
   clearTable: function() {
@@ -472,41 +482,47 @@ var documentsView = Backbone.View.extend({
       );
     }*/
 
-    $.each(window.arangoDocumentsStore.models, function(key, value) {
+    if (window.arangoDocumentsStore.models.length === 0) {
+      $('.dataTables_empty').text('No documents');
+    }
+    else {
 
-      var tempObj = {};
-      $.each(value.attributes.content, function(k, v) {
-        if (! (k === '_id' || k === '_rev' || k === '_key')) {
-          tempObj[k] = v;
-        }
-      });
+      $.each(window.arangoDocumentsStore.models, function(key, value) {
 
-      $(self.table).dataTable().fnAddData(
-        [
-          '<pre class="prettify" title="'
-          + self.escaped(JSON.stringify(tempObj))
-          + '">'
-          + self.cutByResolution(JSON.stringify(tempObj))
-          + '</pre>',
+        var tempObj = {};
+        $.each(value.attributes.content, function(k, v) {
+          if (! (k === '_id' || k === '_rev' || k === '_key')) {
+            tempObj[k] = v;
+          }
+        });
 
-          '<div class="key">'
-          + value.attributes.key
-          + '</div>',
+        $(self.table).dataTable().fnAddData(
+          [
+            '<pre class="prettify" title="'
+            + self.escaped(JSON.stringify(tempObj))
+            + '">'
+            + self.cutByResolution(JSON.stringify(tempObj))
+            + '</pre>',
 
-        /*  '<button class="enabled" id="deleteDoc">'
-          + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
-          '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
-          +'Add a document"></span><a>'
+            '<div class="key">'
+            + value.attributes.key
+            + '</div>',
+
+            /*  '<button class="enabled" id="deleteDoc">'
+                + '<img src="img/icon_delete.png" width="16" height="16"></button>'*/
+            '<a id="deleteDoc"><span class="glyphicon glyphicon-minus-sign" data-original-title="'
+            +'Add a document"></span><a>'
         ]
-      );
-    });
-    $(".prettify").snippet("javascript", {
-      style: "nedit",
-      menu: false,
-      startText: false,
-      transparent: true,
-      showNum: false
-    });
+        );
+      });
+      $(".prettify").snippet("javascript", {
+        style: "nedit",
+        menu: false,
+        startText: false,
+        transparent: true,
+        showNum: false
+      });
+    }
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
@@ -546,8 +562,21 @@ var documentsView = Backbone.View.extend({
 
     return this;
   },
-  renderPagination: function (totalPages) {
-    var currentPage = JSON.parse(this.pageid);
+  showLoadingState: function () {
+    $('.dataTables_empty').text('Loading...');
+  },
+  renderPagination: function (totalPages, filter) {
+
+    var checkFilter = filter;
+    var self = this;
+
+    var currentPage;
+    if (checkFilter === true) {
+      currentPage = window.arangoDocumentsStore.currentFilterPage;
+    }
+    else {
+      currentPage = JSON.parse(this.pageid);
+    }
     var self = this;
     var target = $('#documentsToolbarF'),
     options = {
@@ -557,7 +586,24 @@ var documentsView = Backbone.View.extend({
       lastPage: totalPages,
       click: function(i) {
         options.page = i;
-        window.location.hash = '#collection/' + self.colid + '/documents/' + options.page;
+        if (checkFilter === true) {
+
+          var filterArray = self.getFilterContent();
+          var filters = filterArray[0];
+          var bindValues = filterArray[1];
+          self.addDocumentSwitch = false;
+
+          window.documentsView.clearTable();
+          window.arangoDocumentsStore.getFilteredDocuments(self.colid, i, filters, bindValues);
+        
+          //Hide first/last pagination
+          $('#documents_last').css("visibility", "hidden");
+          $('#documents_first').css("visibility", "hidden");
+        }
+        else {
+          var windowLocationHash =  '#collection/' + self.colid + '/documents/' + options.page;
+          window.location.hash = windowLocationHash;
+        }
       }
     };
     target.pagination(options);

@@ -43,7 +43,7 @@ var shellView = Backbone.View.extend({
     if (! this.resizing) {
       var editorWidth = $('#editor').width();
       this.resizing = true;
-      var windowHeight = $(window).height() - 200;
+      var windowHeight = $(window).height() - 250;
       $('#shell_workspace').height(windowHeight);
       $("#shell_workspace").trigger("resize", [ editorWidth ]);
       this.resizing = false;

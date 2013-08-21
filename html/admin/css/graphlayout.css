@@ -302,3 +302,9 @@ label.gv_dropdown_label {
 legend.gv_inner {
   font-size: 16px;
 }
+
+.gv_zoom_widget .ui-state-default,
+.gv_zoom_widget .ui-widget-content .ui-state-default,
+.gv_zoom_widget .ui-widget-header .ui-state-default {
+  background: #F6F6F6;
+}
