@@ -556,7 +556,7 @@ var documentsView = Backbone.View.extend({
       placement: "left"
     });
 
-    $('.glyphicon').tooltip({
+    $('.glyphicon, .arangoicon').tooltip({
       placement: "top"
     });
 
