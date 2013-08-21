@@ -156,6 +156,8 @@ TRI_doc_datafile_info_t;
 typedef struct TRI_doc_collection_info_s {
   TRI_voc_ssize_t _numberDatafiles;
   TRI_voc_ssize_t _numberJournalfiles;
+  TRI_voc_ssize_t _numberCompactorfiles;
+  TRI_voc_ssize_t _numberShapefiles;
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
@@ -168,6 +170,8 @@ typedef struct TRI_doc_collection_info_s {
 
   int64_t         _datafileSize;
   int64_t         _journalfileSize;
+  int64_t         _compactorfileSize;
+  int64_t         _shapefileSize;
 
   TRI_voc_ssize_t _numberShapes;
   TRI_voc_ssize_t _numberAttributes;
