@@ -22,7 +22,7 @@ var navigationView = Backbone.View.extend({
 
   handleSelectNavigation: function () {
     $("#arangoCollectionSelect").change(function() {
-        navigateTo = $(this).find("option:selected").val();
+        var navigateTo = $(this).find("option:selected").val();
         window.App.navigate(navigateTo, {trigger: true});
     });
   },
