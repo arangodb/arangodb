@@ -15,6 +15,9 @@ window.arangoHelper = {
       '$id' : true
     };
   },
+  removeNotifications: function () {
+    $.gritter.removeAll();
+  },
   arangoNotification: function (message) {
     var returnVal = false;
     $.gritter.add({

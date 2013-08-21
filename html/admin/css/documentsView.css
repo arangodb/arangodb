@@ -157,6 +157,7 @@ table.dataTable thead th {
 }
 
 #documentsTableID_wrapper {
+  min-height: 513px !important;
   padding-bottom: 0px !important;
 }
 
