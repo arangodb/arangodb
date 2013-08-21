@@ -905,6 +905,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 // COMPARE & SWAP operations below for windows
 // -----------------------------------------------------------------------------
 
+#ifdef TRI_SKIPLIST_EX
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically compares and swaps 32bit integers
@@ -940,6 +941,7 @@ bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* n
   return ( InterlockedCompareExchangePointer(theValue, newValue, oldValue) == oldValue );
 }
 
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

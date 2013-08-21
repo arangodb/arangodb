@@ -559,6 +559,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 // COMPARE & SWAP operations below for MAC and GNUC
 // -----------------------------------------------------------------------------
 
+#ifdef TRI_SKIPLIST_EX
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically compares and swaps 32bit integers
@@ -621,6 +622,8 @@ bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* n
     #error No TRI_CompareAndSwapPointer implementation defined
 #endif
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
