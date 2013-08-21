@@ -2,6 +2,8 @@
 /*global window, $  */
 
 window.arangoHelper = {
+  lastNotificationMessage: null,
+
   CollectionTypes: {},
   systemAttributes: function () {
     return {
@@ -17,30 +19,43 @@ window.arangoHelper = {
   },
   removeNotifications: function () {
     $.gritter.removeAll();
+    this.lastNotificationMessage = null;
   },
   arangoNotification: function (message) {
     var returnVal = false;
     $.gritter.add({
-      title: "Notification:",
+      title: "Notice:",
       text: message,
       time: 3000,
       before_open: function(){
         returnVal = true;
       }
     });
+    this.lastNotificationMessage = null;
+
     return returnVal;
   },
   arangoError: function (message) {
     var returnVal = false;
     $.gritter.add({
-      title: "Notification:",
+      title: "Error:",
       text: message,
       sticky: true,
       before_open: function(){
-        if($('.gritter-item-wrapper').length == 3) {
+        if (this.lastNotificationMessage === message) {
+          // prevent display the same message over & over
           return false;
         }
+        if($('.gritter-item-wrapper').length == 3) {
+          // not more than 3 messages at once
+          return false;
+        }
+        this.lastNotificationMessage = message;
         returnVal = true;
+      },
+      before_close: function(){
+        // reset last text when closing a specific message
+        this.lastNotificationMessage = null;
       }
     });
     return returnVal;
