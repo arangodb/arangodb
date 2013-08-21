@@ -47,7 +47,7 @@ oop.inherits(Mode, TextMode);
     this.toggleCommentLines = function(state, doc, startRow, endRow) {
         var outdent = true;
         var outentedRows = [];
-        var re = /^(\s*)--/;
+        var re = /^(\s*)\/\//;
 
         for (var i=startRow; i<= endRow; i++) {
             if (!re.test(doc.getLine(i))) {
@@ -69,7 +69,7 @@ oop.inherits(Mode, TextMode);
             }
         }
         else {
-            doc.indentRows(startRow, endRow, "--");
+            doc.indentRows(startRow, endRow, "//");
         }
     };
 
