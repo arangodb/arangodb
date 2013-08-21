@@ -4,11 +4,14 @@ First Steps with ArangoDB {#FirstStepsArangoDB}
 @NAVIGATE_FirstStepsArangoDB
 @EMBEDTOC{FirstStepsArangoDBTOC}
 
+For installation instructions, please refer to the 
+@S_EXTREF_S{InstallManual.html, installation manual}.
+
 What is ArangoDB? {#FirstStepsArangoDBIntro}
 ============================================
 
-ArangoDB is a universal open-source database with a flexible data
-model for documents, graphs, and key-values. You can easily build high
+ArangoDB is a multi-purpose open-source database with a flexible data
+models for documents, graphs, and key-values. You can easily build high
 performance applications using a convenient 
 @ref Aql "SQL-like query language" or @ref UserManualFoxxManager 
 "JavaScript" and Ruby extensions.
@@ -30,11 +33,15 @@ Key features include:
 - *Flexible data modeling:* model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
 - *Free index choice:* use the correct index for your problem, be it a skip
-  list or a n-gram search
+  list or a fulltext search
 - *Configurable durability:* let the application decide if it needs more
   durability or more performance
 - *No-nonsense storage:* ArangoDB uses all of the power of modern storage
   hardware, like SSD and large caches
+- *Powerful query language* (AQL) to retrieve data 
+- *Transactions*: run queries on multiple documents or collections with 
+  optional transactional consistency and isolation
+- *Replication*: set up the database in a master-slave configuration
 - It is open source (*Apache Licence 2.0*)
 
 For more in-depth information
@@ -62,6 +69,13 @@ The ArangoDB database package comes with the following programs:
   administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
 - _arangoimp_: A bulk importer for the ArangoDB server.
   See @ref ImpManual
+- _foxx-manager_: a shell script to administer Foxx applications.
+  See @ref UserManualFoxxManager
+- _arango-dfdb_: a datafile debugger for ArangoDB. It is intended to be
+  used primarily during development of ArangoDB. See ref @DbaManualDatafileDebugger
+- _arangob_: a tool for conducting tests and benchmarks with ArangoDB.
+  It is intended to be used primarily during development and testing of
+  ArangoDB.
 
 
 Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
