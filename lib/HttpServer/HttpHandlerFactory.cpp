@@ -202,22 +202,30 @@ bool HttpHandlerFactory::authenticate (HttpRequest* request) {
     }
 
     // auth info has not been in the cache yet
-
     string up = StringUtils::decodeBase64(auth);
-    vector<string> split = StringUtils::split(up, ":");
 
-    if (split.size() != 2) {
+    // separate user name and password
+    size_t delimiter = up.find(':');
+
+    if (delimiter == 0 ||
+        delimiter == string::npos) {
+      // delimiter is at start, or no delimiter found
+      LOGGER_TRACE("invalid authentication data found, cannot extract username/password");
+
       return false;
     }
 
-    bool res = _checkAuthentication(split[0].c_str(), split[1].c_str());
+    const string username = up.substr(0, delimiter);
+    const string password = up.substr(delimiter + 1);
+
+    bool res = _checkAuthentication(username.c_str(), password.c_str());
 
     if (res) {
       // put auth info into cache
       WRITE_LOCKER(_authLock);
 
-      _authCache[auth] = split[0];
-      request->setUser(split[0]);
+      _authCache[auth] = username;
+      request->setUser(username);
     }
 
     return res;

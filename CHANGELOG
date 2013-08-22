@@ -1,6 +1,9 @@
 v1.3.3 (XXXX-XX-XX)
 -------------------
 
+* fixed HTTP basic authentication with password containing the special characters
+  ':' and '\'
+
 * issue #570: updateFishbowl() fails once
 
 * updated and fixed generated examples
