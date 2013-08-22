@@ -60,8 +60,15 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
 {
   int code_block_open = FALSE;
 
-  /* check for unterminated string */
-  if (parser->sterm) return TRUE;
+  /* check for heredoc */
+  if (parser->parsing_heredoc != NULL) {
+    return TRUE;
+  }
+
+  if (parser->heredoc_end_now) {
+    parser->heredoc_end_now = FALSE;
+    return FALSE;
+  }
 
   /* check if parser error are available */
   if (0 < parser->nerr) {
@@ -82,8 +89,12 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
     else if (strcmp(message, "syntax error, unexpected tREGEXP_BEG") == 0) {
       code_block_open = FALSE;
     }
+
     return code_block_open;
   }
+
+  /* check for unterminated string */
+  if (parser->lex_strterm) return TRUE;
 
   switch (parser->lstate) {
 
@@ -94,20 +105,24 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
     /* we can't end it like this */
     code_block_open = TRUE;
     break;
+
   case EXPR_DOT:
     /* a message dot was the last token, */
     /* there has to come more */
     code_block_open = TRUE;
     break;
+
   case EXPR_CLASS:
     /* a class keyword is not enough! */
     /* we need also a name of the class */
     code_block_open = TRUE;
     break;
+
   case EXPR_FNAME:
     /* a method name is necessary */
     code_block_open = TRUE;
     break;
+
   case EXPR_VALUE:
     /* if, elsif, etc. without condition */
     code_block_open = TRUE;
@@ -124,21 +139,26 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
 
   case EXPR_CMDARG:
     break;
+
   case EXPR_END:
     /* an expression was ended */
     break;
+
   case EXPR_ENDARG:
     /* closing parenthese */
     break;
+
   case EXPR_ENDFN:
     /* definition end */
     break;
   case EXPR_MID:
     /* jump keyword like break, return, ... */
     break;
+
   case EXPR_MAX_STATE:
     /* don't know what to do with this token */
     break;
+
   default:
     /* this state is unexpected! */
     break;
