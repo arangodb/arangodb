@@ -80,6 +80,7 @@ WIKI = \
 	SimpleQueries \
 	Transactions \
 	Upgrading \
+	UpgradingGeneral \
 	Upgrading11 \
 	Upgrading12 \
 	Upgrading13 \
