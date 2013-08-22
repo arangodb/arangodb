@@ -1,5 +1,5 @@
 arango> db.geo.ensureGeoIndex("loc");
-{ "id" : "127629/47772301", "type" : "geo", "geoJson" : false, "fields" : ["loc"], "isNewlyCreated" : true }
+{ "id" : "127629/47772301", "type" : "geo1", "geoJson" : false, "fields" : ["loc"], "isNewlyCreated" : true }
 
 arango> for (i = -90;  i <= 90;  i += 10) {
 .......>   for (j = -180; j <= 180; j += 10) {
