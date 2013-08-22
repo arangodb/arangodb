@@ -411,6 +411,7 @@ var queryView = Backbone.View.extend({
     commentText: function () {
         var inputEditor = ace.edit("aqlEditor");
         inputEditor.toggleCommentLines();
+
 //        var value;
 //        var newValue;
 //        var flag = false;
