@@ -125,6 +125,8 @@ bool ClientConnection::checkSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::connectSocket () {
+  assert(_endpoint != 0);
+
   if (_endpoint->isConnected()) {
     _endpoint->disconnect();
   }
@@ -146,7 +148,9 @@ bool ClientConnection::connectSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClientConnection::disconnectSocket () {
-  _endpoint->disconnect();
+  if (_endpoint) {
+    _endpoint->disconnect();
+  }
   _socket.fileDescriptor = 0;
   _socket.fileHandle = 0;
 }

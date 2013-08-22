@@ -40,7 +40,8 @@ unittests-brief: \
 	unittests-upgrade \
 	unittests-dfdb \
 	unittests-foxx-manager \
-	unittests-authentication
+	unittests-authentication \
+	unittests-authentication-parameters
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -794,10 +795,32 @@ unittests-arangob:
 .PHONY: unittests-authentication
 
 unittests-authentication:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
 
 	@echo
 	@echo "================================================================================"
 	@echo "<< AUTHENTICATION TESTS                                                       >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/client/tests/shell-auth.js || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+
+.PHONY: unittests-authentication-parameters
+
+unittests-authentication-parameters:
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< AUTHENTICATION PARAMETER TESTS                                             >>"
 	@echo "================================================================================"
 	@echo
 
