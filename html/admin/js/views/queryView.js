@@ -116,7 +116,7 @@ var queryView = Backbone.View.extend({
             name: "togglecomment",
             bindKey: {win:"Ctrl-Shift-C", linux:"Ctrl-Shift-C", mac:"Command-Shift-C"},
             exec: function (editor) {
-                inputEditor.toggleCommentLines();
+                editor.toggleCommentLines();
             },
             multiSelectAction: "forEach"
         });
@@ -410,63 +410,64 @@ var queryView = Backbone.View.extend({
     },
     commentText: function () {
         var inputEditor = ace.edit("aqlEditor");
-        var value;
-        var newValue;
-        var flag = false;
-        var cursorRange = inputEditor.getSelection().getRange();
-
-        var regExp = new RegExp(/\*\//);
-        var regExp2 = new RegExp(/\/\*/);
-
-        if (cursorRange.end.row === cursorRange.start.row) {
-            //single line comment /* */
-            value = inputEditor.getSession().getLine(cursorRange.start.row);
-            if (value.search(regExp) === -1 && value.search(regExp2) === -1) {
-                newValue = '/*' + value + '*/';
-                flag = true;
-            }
-            else if (value.search(regExp) !== -1 && value.search(regExp2) !== -1) {
-                newValue = value.replace(regExp, '').replace(regExp2, '');
-                flag = true;
-            }
-            if (flag === true) {
-                inputEditor.find(value, {
-                    range: cursorRange
-                });
-                inputEditor.replace(newValue);
-            }
-        }
-        else {
-            //multi line comment
-            value = inputEditor.getSession().getLines(cursorRange.start.row, cursorRange.end.row);
-            var firstString = value[0];
-            var lastString = value[value.length - 1];
-            var newFirstString;
-            var newLastString;
-
-            if (firstString.search(regExp2) === -1 && lastString.search(regExp) === -1) {
-                newFirstString = '/*' + firstString;
-                newLastString = lastString + '*/';
-                flag = true;
-            }
-            else if (firstString.search(regExp2) !== -1 && lastString.search(regExp) !== -1) {
-                newFirstString = firstString.replace(regExp2, '');
-                newLastString = lastString.replace(regExp, '');
-                flag = true;
-            }
-            if (flag === true) {
-                inputEditor.find(firstString, {
-                    range: cursorRange
-                });
-                inputEditor.replace(newFirstString);
-                inputEditor.find(lastString, {
-                    range: cursorRange
-                });
-                inputEditor.replace(newLastString);
-            }
-        }
-        cursorRange.end.column = cursorRange.end.column + 2;
-        inputEditor.getSelection().setSelectionRange(cursorRange, false);
+        inputEditor.toggleCommentLines();
+//        var value;
+//        var newValue;
+//        var flag = false;
+//        var cursorRange = inputEditor.getSelection().getRange();
+//
+//        var regExp = new RegExp(/\*\//);
+//        var regExp2 = new RegExp(/\/\*/);
+//
+//        if (cursorRange.end.row === cursorRange.start.row) {
+//            //single line comment /* */
+//            value = inputEditor.getSession().getLine(cursorRange.start.row);
+//            if (value.search(regExp) === -1 && value.search(regExp2) === -1) {
+//                newValue = '/*' + value + '*/';
+//                flag = true;
+//            }
+//            else if (value.search(regExp) !== -1 && value.search(regExp2) !== -1) {
+//                newValue = value.replace(regExp, '').replace(regExp2, '');
+//                flag = true;
+//            }
+//            if (flag === true) {
+//                inputEditor.find(value, {
+//                    range: cursorRange
+//                });
+//                inputEditor.replace(newValue);
+//            }
+//        }
+//        else {
+//            //multi line comment
+//            value = inputEditor.getSession().getLines(cursorRange.start.row, cursorRange.end.row);
+//            var firstString = value[0];
+//            var lastString = value[value.length - 1];
+//            var newFirstString;
+//            var newLastString;
+//
+//            if (firstString.search(regExp2) === -1 && lastString.search(regExp) === -1) {
+//                newFirstString = '/*' + firstString;
+//                newLastString = lastString + '*/';
+//                flag = true;
+//            }
+//            else if (firstString.search(regExp2) !== -1 && lastString.search(regExp) !== -1) {
+//                newFirstString = firstString.replace(regExp2, '');
+//                newLastString = lastString.replace(regExp, '');
+//                flag = true;
+//            }
+//            if (flag === true) {
+//                inputEditor.find(firstString, {
+//                    range: cursorRange
+//                });
+//                inputEditor.replace(newFirstString);
+//                inputEditor.find(lastString, {
+//                    range: cursorRange
+//                });
+//                inputEditor.replace(newLastString);
+//            }
+//        }
+//        cursorRange.end.column = cursorRange.end.column + 2;
+//        inputEditor.getSelection().setSelectionRange(cursorRange, false);
     },
     sortQueries: function () {
         this.queries = _.sortBy(this.queries, 'name');
