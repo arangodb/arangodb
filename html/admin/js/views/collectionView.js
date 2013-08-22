@@ -186,7 +186,7 @@ var collectionView = Backbone.View.extend({
   },
 
   resetIndexForms: function () {
-    $('#change-collection input').val('').prop("checked", false);
+    $('#editIndex input').val('').prop("checked", false);
     $('#newIndexType').val('Cap').prop('selected',true);
   },
 
