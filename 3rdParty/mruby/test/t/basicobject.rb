@@ -2,10 +2,10 @@
 # BasicObject
 
 assert('BasicObject') do
-  BasicObject.class == Class
+  assert_equal(Class, BasicObject.class)
 end
 
 assert('BasicObject superclass') do
-  BasicObject.superclass == nil
+  assert_nil(BasicObject.superclass)
 end
 

@@ -25,7 +25,7 @@ module Comparable
   # Return true if +self+ is less
   # than or equal to +other+.
   # Otherwise return false.
-  # 
+  #
   # ISO 15.3.3.2.2
   def <= other
     cmp = self <=> other
@@ -88,7 +88,7 @@ module Comparable
   end
 
   ##
-  # Return true if +self+ is greater 
+  # Return true if +self+ is greater
   # than or equal to +min+ and
   # less than or equal to +max+.
   # Otherwise return false.

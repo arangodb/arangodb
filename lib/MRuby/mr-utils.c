@@ -68,7 +68,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static mrb_value MR_Time (mrb_state* mrb, mrb_value self) {
-  return mrb_float_value(TRI_microtime());
+  return mrb_float_value(mrb, TRI_microtime());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +132,7 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       return json->_value._boolean ? mrb_true_value() : mrb_false_value();
 
     case TRI_JSON_NUMBER:
-      return mrb_float_value(json->_value._number);
+      return mrb_float_value(mrb, json->_value._number);
 
     case TRI_JSON_STRING:
       return mrb_str_new(mrb, json->_value._string.data, json->_value._string.length - 1);

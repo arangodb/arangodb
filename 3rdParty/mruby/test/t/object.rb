@@ -2,10 +2,10 @@
 # Object ISO Test
 
 assert('Object', '15.2.1') do
-  Object.class == Class
+  assert_equal Class, Object.class
 end
 
 assert('Object superclass', '15.2.1.2') do
-  Object.superclass == BasicObject
+  assert_equal BasicObject, Object.superclass
 end
 

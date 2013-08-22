@@ -3,6 +3,17 @@
 #
 # ISO 15.3.1
 module Kernel
+
+  # 15.3.1.2.1
+  def self.`(s)
+    raise NotImplementedError.new("` not implemented")
+  end
+
+  # 15.3.1.3.5
+  def `(s)
+    Kernel.`(s)
+  end
+
   ##
   # Calls the given block repetitively.
   #

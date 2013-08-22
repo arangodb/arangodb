@@ -327,7 +327,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
           key = mrb_str_new(mrb, k.c_str(), k.size());
           // TODO: val is assigned and then re-assigned. Is this intentional??
           val = mrb_str_new(mrb, v.c_str(), v.size());
-          val = mrb_float_value(TRI_DoubleString(v.c_str()));
+          val = mrb_float_value(mrb, TRI_DoubleString(v.c_str()));
 
           mrb_hash_set(mrb, parametersArray, key, val);
           break;

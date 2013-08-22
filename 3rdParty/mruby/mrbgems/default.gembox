@@ -1,0 +1,61 @@
+MRuby::GemBox.new do |conf|
+  # Use standard Kernel#sprintf method
+  conf.gem :core => "mruby-sprintf"
+
+  # Use standard print/puts/p
+  conf.gem :core => "mruby-print"
+
+  # Use standard Math module
+  conf.gem :core => "mruby-math"
+
+  # Use standard Time class
+  conf.gem :core => "mruby-time"
+
+  # Use standard Struct class
+  conf.gem :core => "mruby-struct"
+
+  # Use extensional Enumerable module
+  conf.gem :core => "mruby-enum-ext"
+
+  # Use extensional String class
+  conf.gem :core => "mruby-string-ext"
+
+  # Use extensional Numeric class
+  conf.gem :core => "mruby-numeric-ext"
+
+  # Use extensional Array class
+  conf.gem :core => "mruby-array-ext"
+
+  # Use extensional Hash class
+  conf.gem :core => "mruby-hash-ext"
+
+  # Use extensional Range class
+  conf.gem :core => "mruby-range-ext"
+
+  # Use extensional Proc class
+  conf.gem :core => "mruby-proc-ext"
+
+  # Use extensional Symbol class
+  conf.gem :core => "mruby-symbol-ext"
+
+  # Use Random class
+  conf.gem :core => "mruby-random"
+
+  # Use extensional Object class
+  conf.gem :core => "mruby-object-ext"
+
+  # Use ObjectSpace class
+  conf.gem :core => "mruby-objectspace"
+
+  # Use Fiber class
+  conf.gem :core => "mruby-fiber"
+
+  # Use extended toplevel object (main) methods
+  conf.gem :core => "mruby-toplevel-ext"
+
+  # Generate mirb command
+  conf.gem :core => "mruby-bin-mirb"
+
+  # Generate mruby command
+  conf.gem :core => "mruby-bin-mruby"
+end
