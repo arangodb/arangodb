@@ -23,8 +23,9 @@ class Range
       val = val.succ
     end
 
-    block.call(val) unless exclude_end?
-
+    if not exclude_end? and (val <=> last) == 0
+      block.call(val)
+    end
     self
   end
 end

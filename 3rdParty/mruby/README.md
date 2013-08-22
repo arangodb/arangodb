@@ -2,8 +2,10 @@
     This is a preliminary release for internal team review.
     The URLs and addresses described below are not available yet.
     The official release will be announced later.
-    Any suggestion for modification is welcome.
+    Any suggestions for modification are welcome.
     Delays in replies are to be expected. Sorry in advance.
+
+[![Build Status](https://travis-ci.org/mruby/mruby.png?branch=master)](https://travis-ci.org/mruby/mruby)
 
 ## What's mruby
 
@@ -59,9 +61,19 @@ To run the tests, execute the following from the project's root directory.
 
     $ make test
 
+Or
+
+    $ ruby ./minirake test
+
+## Customization
+
+mruby contains a package manager called *mrbgems*. To create extensions
+in C and/or Ruby you should create a *GEM*. You will find a complete
+documentation with examples under *examples/mrbgems*.
+
 ## License
 
-Copyright (c) 2012 mruby developers
+Copyright (c) 2013 mruby developers
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"), 
@@ -100,6 +112,7 @@ Please ask us if you want to distribute your code under another license.
 
 ## How to Contribute
 
-Send pull request to <http://github.com/mruby/mruby>.   We consider you have granted
+See the [contribution guidelines](https://github.com/mruby/mruby/blob/master/CONTRIBUTING.md)
+then send a pull request to <http://github.com/mruby/mruby>.  We consider you have granted
 non-exclusive right to your contributed code under MIT license.  If you want to be named
-as one of mruby developers, include update to the AUTHORS file in your pull request.
+as one of mruby developers, please include an update to the AUTHORS file in your pull request.

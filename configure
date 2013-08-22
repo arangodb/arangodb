@@ -8078,9 +8078,9 @@ fi
 if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
   MRUBY_LDFLAGS=""
-  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/build/host/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-09-20 (15cf8fdea4a6598aa470e698e8cbc9b9b492319d)"
+  TRI_MRUBY_VERSION="2013-08-22 (aa099f7f7d1f8c61db936fb7c39a3c734175af16)"
 
 
 cat >>confdefs.h <<_ACEOF

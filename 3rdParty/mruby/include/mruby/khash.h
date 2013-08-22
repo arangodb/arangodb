@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
+#include "mruby.h"
 #include <string.h>
 
 typedef uint32_t khint_t;
@@ -22,17 +22,19 @@ typedef khint_t khiter_t;
 #endif
 #define KHASH_MIN_SIZE 8
 
-#define UPPER_BOUND(x) ((x)>>2|(x>>1))
+#define UPPER_BOUND(x) ((x)>>2|(x)>>1)
 
 //extern uint8_t __m[];
 
 /* mask for flags */
-static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
+static const uint8_t __m_empty[8]  = {0x02, 0x08, 0x20, 0x80};
+static const uint8_t __m_del[8]    = {0x01, 0x04, 0x10, 0x40};
+static const uint8_t __m_either[8] = {0x03, 0x0c, 0x30, 0xc0};
 
 
-#define __ac_isempty(e_flag, d_flag, i) (e_flag[(i)/8]&__m[(i)%8])
-#define __ac_isdel(e_flag, d_flag, i) (d_flag[(i)/8]&__m[(i)%8])
-#define __ac_iseither(e_flag, d_flag, i) (__ac_isempty(e_flag,d_flag,i)||__ac_isdel(e_flag,d_flag,i))
+#define __ac_isempty(ed_flag, i) (ed_flag[(i)/4]&__m_empty[(i)%4])
+#define __ac_isdel(ed_flag, i) (ed_flag[(i)/4]&__m_del[(i)%4])
+#define __ac_iseither(ed_flag, i) (ed_flag[(i)/4]&__m_either[(i)%4])
 #define khash_power2(v) do { \
   v--;\
   v |= v >> 1;\
@@ -41,11 +43,11 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
   v |= v >> 8;\
   v |= v >> 16;\
   v++;\
-} while (0);
+} while (0)
 
 /* declare struct kh_xxx and kh_xxx_funcs
 
-   name: ash name
+   name: hash name
    khkey_t: key data type
    khval_t: value data type
    kh_is_map: (not implemented / not used in RiteVM)
@@ -56,8 +58,7 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
     khint_t size;                                                       \
     khint_t n_occupied;                                                 \
     khint_t upper_bound;                                                \
-    uint8_t *e_flags;                                                   \
-    uint8_t *d_flags;                                                   \
+    uint8_t *ed_flags;                                                  \
     khkey_t *keys;                                                      \
     khval_t *vals;                                                      \
     khint_t mask;                                                       \
@@ -75,9 +76,17 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
   void kh_del_##name(kh_##name##_t *h, khint_t x);                      \
   kh_##name##_t *kh_copy_##name(mrb_state *mrb, kh_##name##_t *h);
 
+static inline void
+kh_fill_flags(uint8_t *p, uint8_t c, size_t len)
+{
+  while (len-- > 0) {
+    *p++ = c;
+  }
+}
+
 /* define kh_xxx_funcs
 
-   name: ash name
+   name: hash name
    khkey_t: key data type
    khval_t: value data type
    kh_is_map: (not implemented / not used in RiteVM)
@@ -88,14 +97,13 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
   void kh_alloc_##name(kh_##name##_t *h)                                \
   {                                                                     \
     khint_t sz = h->n_buckets;                                          \
+    uint8_t *p = mrb_malloc(h->mrb, sizeof(uint8_t)*sz/4+(sizeof(khkey_t)+sizeof(khval_t))*sz); \
     h->size = h->n_occupied = 0;                                        \
     h->upper_bound = UPPER_BOUND(sz);                                   \
-    h->e_flags = (uint8_t *)mrb_malloc(h->mrb, sizeof(uint8_t)*sz/4);   \
-    h->d_flags = h->e_flags + sz/8;                                     \
-    memset(h->e_flags, 0xff, sz/8*sizeof(uint8_t));                     \
-    memset(h->d_flags, 0x00, sz/8*sizeof(uint8_t));                     \
-    h->keys = (khkey_t *)mrb_malloc(h->mrb, sizeof(khkey_t)*sz);        \
-    h->vals = (khval_t *)mrb_malloc(h->mrb, sizeof(khval_t)*sz);        \
+    h->keys = (khkey_t *)p;                                             \
+    h->vals = (khval_t *)(p+sizeof(khkey_t)*sz);                        \
+    h->ed_flags = (p+sizeof(khkey_t)*sz+sizeof(khval_t)*sz);            \
+    kh_fill_flags(h->ed_flags, 0xaa, sz/4);                             \
     h->mask = sz-1;                                                     \
     h->inc = sz/2-1;                                                    \
   }                                                                     \
@@ -116,24 +124,21 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
   {                                                                     \
     if (h) {                                                            \
       mrb_free(h->mrb, h->keys);                                        \
-      mrb_free(h->mrb, h->vals);                                        \
-      mrb_free(h->mrb, h->e_flags);                                     \
       mrb_free(h->mrb, h);                                              \
     }                                                                   \
   }                                                                     \
   void kh_clear_##name(kh_##name##_t *h)                                \
   {                                                                     \
-    if (h && h->e_flags) {                                              \
-      memset(h->e_flags, 0xff, h->n_buckets/8*sizeof(uint8_t));         \
-      memset(h->d_flags, 0x00, h->n_buckets/8*sizeof(uint8_t));         \
+    if (h && h->ed_flags) {                                             \
+      kh_fill_flags(h->ed_flags, 0xaa, h->n_buckets/4);                 \
       h->size = h->n_occupied = 0;                                      \
     }                                                                   \
   }                                                                     \
   khint_t kh_get_##name(kh_##name##_t *h, khkey_t key)                  \
   {                                                                     \
     khint_t k = __hash_func(h->mrb,key) & (h->mask);                    \
-    while (!__ac_isempty(h->e_flags, h->d_flags, k)) {                  \
-      if (!__ac_isdel(h->e_flags, h->d_flags, k)) {                     \
+    while (!__ac_isempty(h->ed_flags, k)) {                             \
+      if (!__ac_isdel(h->ed_flags, k)) {                                \
         if (__hash_equal(h->mrb,h->keys[k], key)) return k;             \
       }                                                                 \
       k = (k+h->inc) & (h->mask);                                       \
@@ -146,7 +151,7 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
       new_n_buckets = KHASH_MIN_SIZE;                                   \
     khash_power2(new_n_buckets);                                        \
     {                                                                   \
-      uint8_t *old_e_flags = h->e_flags;                                \
+      uint8_t *old_ed_flags = h->ed_flags;                              \
       khkey_t *old_keys = h->keys;                                      \
       khval_t *old_vals = h->vals;                                      \
       khint_t old_n_buckets = h->n_buckets;                             \
@@ -155,14 +160,12 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
       kh_alloc_##name(h);                                               \
       /* relocate */                                                    \
       for (i=0 ; i<old_n_buckets ; i++) {                               \
-        if (!__ac_isempty(old_e_flags, old_d_flags, i)) {               \
+        if (!__ac_iseither(old_ed_flags, i)) {                          \
           khint_t k = kh_put_##name(h, old_keys[i]);                    \
           kh_value(h,k) = old_vals[i];                                  \
         }                                                               \
       }                                                                 \
-      mrb_free(h->mrb, old_e_flags);                                    \
       mrb_free(h->mrb, old_keys);                                       \
-      mrb_free(h->mrb, old_vals);                                       \
     }                                                                   \
   }                                                                     \
   khint_t kh_put_##name(kh_##name##_t *h, khkey_t key)                  \
@@ -172,27 +175,27 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
       kh_resize_##name(h, h->n_buckets*2);                              \
     }                                                                   \
     k = __hash_func(h->mrb,key) & (h->mask);                            \
-    while (!__ac_iseither(h->e_flags, h->d_flags, k)) {                 \
+    while (!__ac_iseither(h->ed_flags, k)) {                            \
       if (__hash_equal(h->mrb,h->keys[k], key)) break;                  \
       k = (k+h->inc) & (h->mask);                                       \
     }                                                                   \
-    if (__ac_isempty(h->e_flags, h->d_flags, k)) {                      \
+    if (__ac_isempty(h->ed_flags, k)) {                                 \
       /* put at empty */                                                \
       h->keys[k] = key;                                                 \
-      h->e_flags[k/8] &= ~__m[k%8];                                     \
+      h->ed_flags[k/4] &= ~__m_empty[k%4];                              \
       h->size++;                                                        \
       h->n_occupied++;                                                  \
-    } else if (__ac_isdel(h->e_flags, h->d_flags, k)) {                 \
+    } else if (__ac_isdel(h->ed_flags, k)) {                            \
       /* put at del */                                                  \
       h->keys[k] = key;                                                 \
-      h->d_flags[k/8] &= ~__m[k%8];                                     \
+      h->ed_flags[k/4] &= ~__m_del[k%4];                                \
       h->size++;                                                        \
     }                                                                   \
     return k;                                                           \
   }                                                                     \
   void kh_del_##name(kh_##name##_t *h, khint_t x)                       \
   {                                                                     \
-    h->d_flags[x/8] |= __m[x%8];                                        \
+    h->ed_flags[x/4] |= __m_del[x%4];                                   \
     h->size--;                                                          \
   }                                                                     \
   kh_##name##_t *kh_copy_##name(mrb_state *mrb, kh_##name##_t *h)       \
@@ -223,7 +226,7 @@ static const uint8_t __m[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 #define kh_del(name, h, k) kh_del_##name(h, k)
 #define kh_copy(name, mrb, h) kh_copy_##name(mrb, h)
 
-#define kh_exist(h, x) (!__ac_iseither((h)->e_flags, (h)->d_flags, (x)))
+#define kh_exist(h, x) (!__ac_iseither((h)->ed_flags, (x)))
 #define kh_key(h, x) ((h)->keys[x])
 #define kh_val(h, x) ((h)->vals[x])
 #define kh_value(h, x) ((h)->vals[x])
