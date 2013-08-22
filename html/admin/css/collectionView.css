@@ -30,8 +30,26 @@
   top: 59px;
 }
 
-#change-collection .glyphicon-remove-circle {
-  color: red !important;
+#newIndexView .glyphicon-remove-circle {
+  color: #DA4F49;
+}
+
+#change-collection .glyphicon-minus-sign {
+  color: #DA4F49;
+  font-size: 20px;
+  margin-left: 10px;
+}
+
+#change-collection .glyphicon-ban-circle {
+  color: black;
+  opacity: 0.6;
+  font-size: 20px;
+  margin-left: 10px;
+}
+
+#change-collection .glyphicon-ban-circle:hover {
+  cursor: default;
+  float: right;
 }
 
 #change-collection #collectionEditIndexTable {
@@ -40,4 +58,16 @@
 
 #change-collection #newIndexView {
   margin-top: 20px;
+}
+
+#newIndexType {
+  margin-left: 5px;
+}
+
+#createIndex {
+  margin-top: 15px !important;
+}
+
+#tab-content-collection-edit {
+  max-height: 300px !important;
 }

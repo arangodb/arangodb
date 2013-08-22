@@ -553,7 +553,10 @@ var dashboardView = Backbone.View.extend({
   },
 
   loadGraphState: function () {
-    localStorage.getItem("dbGraphState");
+    var loadGraphState = localStorage.getItem("dbGraphState");
+    if (loadGraphState === undefined) {
+      return;
+    }
     $.each(this.graphState, function(k,v) {
       if (v === true) {
         $("#"+k).show();

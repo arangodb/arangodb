@@ -9,6 +9,7 @@ var collectionView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/collectionView.ejs'}),
 
   render: function() {
+    var self = this;
     $(this.el).html(this.template.text);
     $('#change-collection').modal('show');
     $('#change-collection').on('hidden', function () {
@@ -18,14 +19,17 @@ var collectionView = Backbone.View.extend({
     });
     this.fillModal();
 
-    $('.modalTooltips').tooltip({
-      placement: "left"
+    $('.modalTooltips, .glyphicon-info-sign').tooltip({
+      placement: "top"
     });
 
     $('#collectionTab a').click(function (e) {
       e.preventDefault();
       $(this).tab('show');
-    }); 
+      if ($(this).attr('href') === '#editIndex') {
+        self.resetIndexForms();
+      }
+    });
 
     return this;
   },
@@ -40,7 +44,10 @@ var collectionView = Backbone.View.extend({
     "keydown #change-collection-name"       :    "listenKey",
     "keydown #change-collection-size"       :    "listenKey",
     "click #editIndex .glyphicon-plus-sign"     :    "toggleNewIndexView",
-    "click #editIndex .glyphicon-remove-circle" :    "toggleNewIndexView"
+    "click #editIndex .glyphicon-remove-circle" :    "toggleNewIndexView",
+    "change #newIndexType" : "selectIndexType",
+    "click #createIndex" : "createIndex",
+    "click .deleteIndex" : "deleteIndex"
   },
   listenKey: function(e) {
     if (e.keyCode === 13) {
@@ -51,12 +58,14 @@ var collectionView = Backbone.View.extend({
     window.App.navigate("#", {trigger: true});
   },
   toggleNewIndexView: function () {
-    $('#indexEditView').toggle();
-    $('#newIndexView').toggle();
-
+    $('#indexEditView').toggle("fast");
+    $('#newIndexView').toggle("fast");
+    this.resetIndexForms();
   },
-  hideNewIndexView: function () {
-
+  selectIndexType: function () {
+    $('.newIndexClass').hide();
+    var type = $('#newIndexType').val();
+    $('#newIndexType'+type).show();
   },
   fillModal: function() {
     try {
@@ -90,8 +99,110 @@ var collectionView = Backbone.View.extend({
       this.fillLoadedModal(data);
     }
   },
+  stringToArray: function (fieldString) {
+    var fields = [];
+    fieldString.split(',').forEach(function(field){
+      field = field.replace(/(^\s+|\s+$)/g,'');
+      if (field !== '') {
+        fields.push(field);
+      }
+    });
+    return fields;
+  },
+  checkboxToValue: function (id) {
+    var checked = $(id).is('checked');
+    return checked;
+  },
+  createIndex: function (e) {
+    //e.preventDefault();
+    var self = this;
+    var collection = this.myCollection.name;
+    var indexType = $('#newIndexType').val();
+    var result;
+    var postParameter = {};
 
-  appendIndex: function () {
+    switch(indexType) {
+      case 'Cap':
+        var size = parseInt($('#newCapSize').val(), 10) || 0;
+        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
+        postParameter = {
+          type: 'cap',
+          size: size,
+          byteSize: byteSize
+        };
+        break;
+      case 'Geo':
+        //HANDLE ARRAY building
+        var fields = $('#newGeoFields').val();
+        var geoJson = self.checkboxToValue('#newGeoJson');
+        var constraint = self.checkboxToValue('#newGeoConstraint');
+        var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
+        postParameter = {
+          type: 'geo',
+          fields: self.stringToArray(fields),
+          geoJson: geoJson,
+          constraint: constraint,
+          ignoreNull: ignoreNull
+        };
+        break;
+      case 'Hash':
+        var fields = $('#newHashFields').val();
+        var unique = self.checkboxToValue('#newHashUnique');
+        postParameter = {
+          type: 'hash',
+          fields: self.stringToArray(fields),
+          unique: unique
+        };
+        break;
+      case 'Fulltext':
+        var fields = ($('#newFulltextFields').val());
+        var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
+        postParameter = {
+          type: 'fulltext',
+          fields: self.stringToArray(fields),
+          minLength: minLength
+        };
+        break;
+      case 'Skiplist':
+        var fields = $('#newSkiplistFields').val();
+        var unique = self.checkboxToValue('#newSkiplistUnique');
+        postParameter = {
+          type: 'skiplist',
+          fields: self.stringToArray(fields),
+          unique: unique
+        };
+        break;
+    }
+    result = window.arangoCollectionsStore.createIndex(collection, postParameter);
+    if (result === true) {
+      $('#collectionEditIndexTable tr').remove();
+      self.getIndex();
+      self.toggleNewIndexView();
+      self.resetIndexForms();
+    }
+    else {
+      //notification for user missing
+    }
+  },
+
+  resetIndexForms: function () {
+    $('#change-collection input').val('').prop("checked", false);
+    $('#newIndexType').val('Cap').prop('selected',true);
+  },
+
+  deleteIndex: function (e) {
+    var collection = this.myCollection.name;
+    var id = $(e.currentTarget).parent().parent().first().children().first().text();;
+    var result = window.arangoCollectionsStore.deleteIndex(collection, id);
+    if (result === true) {
+      $(e.currentTarget).parent().parent().remove();
+    } 
+    else {
+      alert("ERROR");
+    }
+  },
+
+  getIndex: function () {
     this.index = window.arangoCollectionsStore.getIndex(this.options.colId, true);
     var cssClass = 'collectionInfoTh modal-text';
     if (this.index) {
@@ -100,13 +211,12 @@ var collectionView = Backbone.View.extend({
       var actionString = '';
 
       $.each(this.index.indexes, function(k,v) {
-        console.log(v);
 
         if (v.type === 'primary' || v.type === 'edge') {
           actionString = '<span class="glyphicon glyphicon-ban-circle" data-original-title="No action"></span>'
         }
         else {
-          actionString = '<span class="glyphicon glyphicon-minus-sign" data-original-title="Delete index"></span>'
+          actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" data-original-title="Delete index"></span>'
         }
 
         if (v.fields !== undefined) {
@@ -134,7 +244,7 @@ var collectionView = Backbone.View.extend({
 
     //show tabs & render figures tab-view
     $('#change-collection .nav-tabs').css("visibility","visible");
-    this.appendIndex();
+    this.getIndex();
 
     $('#collectionSizeBox').show();
     $('#collectionSyncBox').show();
