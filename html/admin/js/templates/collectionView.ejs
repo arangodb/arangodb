@@ -73,15 +73,124 @@
 
         <div id="newIndexView" style="display:none">
           <span class="glyphicon glyphicon-remove-circle" data-original-title="Abort"></span>
-          <a class="arangoHeader">New Index:</a>
+          <a class="arangoHeader">Add Index:</a>
+          <table>
+            <tr>
+              <th class="collectionTh">Type:</th>
+              <th>
+                <select id="newIndexType">
+                  <option value="Cap">Cap Constraints</option>
+                  <option value="Geo">Geo Index</option>
+                  <option value="Hash">Hash Index</option>
+                  <option value="Fulltext">Fulltext Index</option>
+                  <option value="Skiplist">Skip-List Index</option>
+                </select>
+              </th>
+            </tr>
+          </table>
 
-          <select id="newIndexType">
-            <option value="cap">Cap Constraints</option>
-            <option value="geo">Geo Index</option>
-            <option value="hash">Hash Index</option>
-            <option value="fulltext">Fulltext Index</option>
-            <option value="skiplist">Skip-List Index</option>
-          </select>
+          <div id="newIndexTypeCap" class="newIndexClass">
+            <table>
+              <tr>
+                <th class="collectionTh">Size:</th>
+                <th><input type="text" id="newCapSize" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal number of documents for the collection."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Bytesize:</th>
+                <th><input type="text" id="newCapByteSize" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="The maximal size of the active document data in the collection."/></th>
+              </tr>
+            </table>
+          </div>
+
+          <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newGeoFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list with one or two attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Geo JSON:</th>
+                <th>
+                  <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Constraint:</th>
+                <th>
+                  <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If constraint is true, then a geo-spatial constraint is created."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Ignore Null:</th>
+                <th>
+                  <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newHashFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                </th>
+              </tr>
+            </table>
+
+          </div>
+
+          <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newFulltextFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ]."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Min. length:</th>
+                <th><input type="text" id="newFulltextMinLength" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index."/></th>
+              </tr>
+            </table>
+
+          </div>
+
+          <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newSkiplistFields" value=""/></th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="A list of attribute paths."/></th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
+                </th>
+                <th><span class="glyphicon glyphicon-info-sign" data-original-title="If true, then create a unique index."/>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <button id="createIndex" class="btn btn-success" style="margin-right:8px; margin-top: 8px">Create Index</button>
+
 
         </div>
 

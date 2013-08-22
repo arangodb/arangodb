@@ -168,12 +168,48 @@ window.arangoCollections = Backbone.Collection.extend({
         });
         return data2;
       },
+      createIndex: function (collection, postParameter) {
+        var returnVal = false;
+
+        $.ajax({
+          cache: false,
+          type: "POST",
+          url: "/_api/index?collection="+encodeURIComponent(collection),
+          data: JSON.stringify(postParameter),
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            returnVal = true;
+          },
+          error: function(data) {
+          }
+        });
+        return returnVal;
+      },
+      deleteIndex: function (collection, id) {
+        var returnval = false;
+        var self = this;
+        $.ajax({
+          cache: false,
+          type: 'DELETE',
+          url: "/_api/index/"+encodeURIComponent(collection)+"/"+encodeURIComponent(id),
+          async: false,
+          success: function () {
+            returnval = true;
+          },
+          error: function () {
+            returnval = false;
+          }
+        });
+        return returnval;
+      },
       getProperties: function (id) {
         var data2;
         $.ajax({
           type: "GET",
           cache: false,
-          url: "/_api/collection/" + id + "/properties",
+          url: "/_api/collection/" + encodeURIComponent(id) + "/properties",
           contentType: "application/json",
           processData: false,
           async: false,
