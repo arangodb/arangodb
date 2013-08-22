@@ -1,6 +1,8 @@
 v1.4
 ----
 
+* updated mruby to 2013-08-22
+
 * issue #587: Add db._create() in help for startup arangosh
 
 * issue #586: Share a link on installation instructions in the User Manual 
