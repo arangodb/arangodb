@@ -1,6 +1,8 @@
 v1.3.3 (2013-XX-XX)
 -------------------
 
+* updated mruby to 2013-08-22
+
 * fixed HTTP basic authentication with password containing the special characters
   ':' and '\'
 
