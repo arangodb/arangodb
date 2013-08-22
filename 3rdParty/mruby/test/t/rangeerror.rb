@@ -2,10 +2,9 @@
 # RangeError ISO Test
 
 assert('RangeError', '15.2.26') do
-  RangeError.class == Class
+  assert_equal Class, RangeError.class
 end
 
 assert('RangeError superclass', '15.2.26.2') do
-  RangeError.superclass == StandardError
+  assert_equal StandardError, RangeError.superclass
 end
-

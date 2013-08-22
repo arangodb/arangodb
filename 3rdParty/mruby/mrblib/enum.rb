@@ -73,7 +73,7 @@ module Enumerable
   ##
   # Call the given block for each element
   # which is yield by +each+. Append all
-  # values of each block together and 
+  # values of each block together and
   # return this value.
   #
   # ISO 15.3.2.2.3
@@ -89,7 +89,7 @@ module Enumerable
   # Call the given block for each element
   # which is yield by +each+. Return
   # +ifnone+ if no block value was true.
-  # Otherwise return the first block value 
+  # Otherwise return the first block value
   # which had was true.
   #
   # ISO 15.3.2.2.4
@@ -158,8 +158,8 @@ module Enumerable
   # Call the given block for each element
   # which is yield by +each+ and which return
   # value was true when invoking === with
-  # +pattern+. Return an array with all 
-  # elements or the respective block values. 
+  # +pattern+. Return an array with all
+  # elements or the respective block values.
   #
   # ISO 15.3.2.2.9
   def grep(pattern, &block)
@@ -200,19 +200,30 @@ module Enumerable
   # ISO 15.3.2.2.11
   def inject(*args, &block)
     raise ArgumentError, "too many arguments" if args.size > 2
-    flag = true  # 1st element?
-    result = nil
+    if Symbol === args[-1]
+      sym = args[-1]
+      block = ->(x,y){x.send(sym,y)}
+      args.pop
+    end
+    if args.empty?
+      flag = true  # no initial argument
+      result = nil
+    else
+      flag = false
+      result = args[0]
+    end
     self.each{|val|
       if flag
-        # 1st element
-        result = (args.empty?)? val: block.call(args[0], val)
+        # push first element as initial
         flag = false
+        result = val
       else
         result = block.call(result, val)
       end
     }
     result
   end
+  alias reduce inject
 
   ##
   # Alias for collect
@@ -280,9 +291,9 @@ module Enumerable
 
   ##
   # Call the given block for each element
-  # which is yield by +each+. Return an 
+  # which is yield by +each+. Return an
   # array which contains two arrays. The
-  # first array contains all elements 
+  # first array contains all elements
   # whose block value was true. The second
   # array contains all elements whose
   # block value was false.

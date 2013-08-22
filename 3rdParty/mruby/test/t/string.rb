@@ -2,37 +2,41 @@
 # String ISO Test
 
 assert('String', '15.2.10') do
-  String.class == Class
+  assert_equal Class, String.class
 end
 
 assert('String superclass', '15.2.10.2') do
-  String.superclass == Object
+  assert_equal Object, String.superclass
 end
 
-assert('String#*', '15.2.10.5.1') do
-  'a' * 5 == 'aaaaa'
-end
-
-assert('String#+', '15.2.10.5.2') do
-  'a' + 'b' == 'ab'
-end
-
-assert('String#<=>', '15.2.10.5.3') do
+assert('String#<=>', '15.2.10.5.1') do
   a = '' <=> ''
   b = '' <=> 'not empty'
   c = 'not empty' <=> ''
   d = 'abc' <=> 'cba'
   e = 'cba' <=> 'abc'
 
-  a == 0 and b == -1 and c == 1 and
-    d == -1 and e == 1
+  assert_equal  0, a
+  assert_equal(-1, b)
+  assert_equal  1, c
+  assert_equal(-1, d)
+  assert_equal  1, e
 end
 
-assert('String#==', '15.2.10.5.4') do
-  'abc' == 'abc' and not 'abc' == 'cba'
+assert('String#==', '15.2.10.5.2') do
+  assert_equal 'abc', 'abc'
+  assert_not_equal 'abc', 'cba'
 end
 
-# TODO: SEGFAULT ATM assert('String#=~', '15.2.10.5.5')
+assert('String#+', '15.2.10.5.4') do
+  assert_equal 'ab', 'a' + 'b'
+end
+
+assert('String#*', '15.2.10.5.5') do
+  assert_equal 'aaaaa', 'a' * 5
+end
+
+# 'String#=~', '15.2.10.5.5' will be tested in mrbgems.
 
 assert('String#[]', '15.2.10.5.6') do
   # length of args is 1
@@ -49,30 +53,78 @@ assert('String#[]', '15.2.10.5.6') do
   e1 = 'abc'[1, 2]
 
   # args is RegExp
-  # TODO SEGFAULT ATM
+  # It will be tested in mrbgems.
 
   # args is String
   a3 = 'abc'['bc']
   b3 = 'abc'['XX']
 
-  a == 'a' and b == 'c' and c == nil and d == nil and
-    a1 == nil and b1 == nil and c1 == nil and d1 == '' and
-    e1 == 'bc' and
-    a3 == 'bc' and b3 == nil
+  assert_equal 'a', a
+  assert_equal 'c', b
+  assert_nil c
+  assert_nil d
+  assert_nil a1
+  assert_nil b1
+  assert_nil c1
+  assert_equal '', d1
+  assert_equal 'bc', e1
+  assert_equal 'bc', a3
+  assert_nil b3
+end
+
+assert('String#[] with Range') do
+  a1 = 'abc'[1..0]
+  b1 = 'abc'[1..1]
+  c1 = 'abc'[1..2]
+  d1 = 'abc'[1..3]
+  e1 = 'abc'[1..4]
+  f1 = 'abc'[0..-2]
+  g1 = 'abc'[-2..3]
+  h1 = 'abc'[3..4]
+  i1 = 'abc'[4..5]
+  a2 = 'abc'[1...0]
+  b2 = 'abc'[1...1]
+  c2 = 'abc'[1...2]
+  d2 = 'abc'[1...3]
+  e2 = 'abc'[1...4]
+  f2 = 'abc'[0...-2]
+  g2 = 'abc'[-2...3]
+  h2 = 'abc'[3...4]
+  i2 = 'abc'[4...5]
+
+  assert_equal '', a1
+  assert_equal 'b', b1
+  assert_equal 'bc', c1
+  assert_equal 'bc', d1
+  assert_equal 'bc', e1
+  assert_equal 'ab', f1
+  assert_equal 'bc', g1
+  assert_equal '', h1
+  assert_nil i2
+  assert_equal '', a2
+  assert_equal '', b2
+  assert_equal 'b', c2
+  assert_equal 'bc', d2
+  assert_equal 'bc', e2
+  assert_equal 'a', f2
+  assert_equal 'bc', g2
+  assert_equal '', h2
+  assert_nil i2
 end
 
 assert('String#capitalize', '15.2.10.5.7') do
   a = 'abc'
   a.capitalize
 
-  a == 'abc' and 'abc'.capitalize == 'Abc'
+  assert_equal 'abc', a
+  assert_equal 'Abc', 'abc'.capitalize
 end
 
 assert('String#capitalize!', '15.2.10.5.8') do
   a = 'abc'
   a.capitalize!
 
-  a == 'Abc'
+  assert_equal 'Abc', a
 end
 
 assert('String#chomp', '15.2.10.5.9') do
@@ -85,8 +137,12 @@ assert('String#chomp', '15.2.10.5.9') do
 
   f.chomp
 
-  a == 'abc' and b == '' and c == 'abc' and
-    d == "abc\n" and e == 'abc' and f == "abc\n"
+  assert_equal 'abc', a
+  assert_equal '', b
+  assert_equal 'abc', c
+  assert_equal "abc\n", d
+  assert_equal 'abc', e
+  assert_equal "abc\n", f
 end
 
 assert('String#chomp!', '15.2.10.5.10') do
@@ -102,8 +158,11 @@ assert('String#chomp!', '15.2.10.5.10') do
   d.chomp!
   e.chomp!("\t")
 
-  a == 'abc' and b == '' and c == 'abc' and
-    d == "abc\n" and e == 'abc'
+  assert_equal 'abc', a
+  assert_equal '', b
+  assert_equal 'abc', c
+  assert_equal "abc\n", d
+  assert_equal 'abc', e
 end
 
 assert('String#chop', '15.2.10.5.11') do
@@ -113,7 +172,9 @@ assert('String#chop', '15.2.10.5.11') do
 
   c.chop
 
-  a == '' and b == 'ab' and c == 'abc'
+  assert_equal '', a
+  assert_equal 'ab', b
+  assert_equal 'abc', c
 end
 
 assert('String#chop!', '15.2.10.5.12') do
@@ -123,7 +184,8 @@ assert('String#chop!', '15.2.10.5.12') do
   a.chop!
   b.chop!
 
-  a == '' and b == 'ab'
+  assert_equal a, ''
+  assert_equal b, 'ab'
 end
 
 assert('String#downcase', '15.2.10.5.13') do
@@ -132,7 +194,8 @@ assert('String#downcase', '15.2.10.5.13') do
 
   b.downcase
 
-  a == 'abc' and b == 'ABC'
+  assert_equal 'abc', a
+  assert_equal 'ABC', b
 end
 
 assert('String#downcase!', '15.2.10.5.14') do
@@ -140,7 +203,7 @@ assert('String#downcase!', '15.2.10.5.14') do
 
   a.downcase!
 
-  a == 'abc'
+  assert_equal 'abc', a
 end
 
 assert('String#each_line', '15.2.10.5.15') do
@@ -152,94 +215,121 @@ assert('String#each_line', '15.2.10.5.15') do
     n_list << line
   end
 
-  list == n_list
+  assert_equal list, n_list
 end
 
 assert('String#empty?', '15.2.10.5.16') do
   a = ''
   b = 'not empty'
 
-  a.empty? and not b.empty?
+  assert_true a.empty?
+  assert_false b.empty?
 end
 
 assert('String#eql?', '15.2.10.5.17') do
-  'abc'.eql?('abc') and not 'abc'.eql?('cba')
+  assert_true 'abc'.eql?('abc')
+  assert_false 'abc'.eql?('cba')
 end
 
-# TODO ATM broken assert('String#gsub', '15.2.10.5.18') do
+assert('String#gsub', '15.2.10.5.18') do
+  assert_equal('aBcaBc', 'abcabc'.gsub('b', 'B'), 'gsub without block')
+  assert_equal('aBcaBc', 'abcabc'.gsub('b'){|w| w.capitalize }, 'gsub with block')
+  assert_equal('$a$a$',  '#a#a#'.gsub('#', '$'), 'mruby/mruby#847')
+  assert_equal('$a$a$',  '#a#a#'.gsub('#'){|w| '$' }, 'mruby/mruby#847 with block')
+  assert_equal('$$a$$',  '##a##'.gsub('##', '$$'), 'mruby/mruby#847 another case')
+  assert_equal('$$a$$',  '##a##'.gsub('##'){|w| '$$' }, 'mruby/mruby#847 another case with block')
+  assert_equal('A',      'a'.gsub('a', 'A'))
+  assert_equal('A',      'a'.gsub('a'){|w| w.capitalize })
+end
 
-# TODO ATM broken assert('String#gsub!', '15.2.10.5.19') do
+assert('String#gsub!', '15.2.10.5.19') do
+  a = 'abcabc'
+  a.gsub!('b', 'B')
+
+  b = 'abcabc'
+  b.gsub!('b') { |w| w.capitalize }
+
+  assert_equal 'aBcaBc', a
+  assert_equal 'aBcaBc', b
+end
 
 assert('String#hash', '15.2.10.5.20') do
   a = 'abc'
 
-  a.hash == 'abc'.hash
+  assert_equal 'abc'.hash, a.hash
 end
 
 assert('String#include?', '15.2.10.5.21') do
-  'abc'.include?(97) and not 'abc'.include?(100) and
-    'abc'.include?('a') and not 'abc'.include?('d')
+  assert_true 'abc'.include?(97)
+  assert_false 'abc'.include?(100)
+  assert_true 'abc'.include?('a')
+  assert_false 'abc'.include?('d')
 end
 
 assert('String#index', '15.2.10.5.22') do
-  'abc'.index('a') == 0 and 'abc'.index('d') == nil and
-    'abcabc'.index('a', 1) == 3
+  assert_equal 0, 'abc'.index('a')
+  assert_nil 'abc'.index('d')
+  assert_equal 3, 'abcabc'.index('a', 1)
 end
 
 assert('String#initialize', '15.2.10.5.23') do
   a = ''
   a.initialize('abc')
 
-  a == 'abc'
+  assert_equal 'abc', a
 end
 
 assert('String#initialize_copy', '15.2.10.5.24') do
   a = ''
   a.initialize_copy('abc')
 
-  a == 'abc'
+  assert_equal 'abc', a
 end
 
 assert('String#intern', '15.2.10.5.25') do
-  'abc'.intern == :abc
+  assert_equal :abc, 'abc'.intern
 end
 
 assert('String#length', '15.2.10.5.26') do
-  'abc'.length == 3
+  assert_equal 3, 'abc'.length
 end
 
-# TODO Broken ATM assert('String#match', '15.2.10.5.27') do
+# 'String#match', '15.2.10.5.27' will be tested in mrbgems.
 
 assert('String#replace', '15.2.10.5.28') do
   a = ''
   a.replace('abc')
 
-  a == 'abc'
+  assert_equal 'abc', a
 end
 
 assert('String#reverse', '15.2.10.5.29') do
   a = 'abc'
   a.reverse
 
-  a == 'abc' and 'abc'.reverse == 'cba'
+  assert_equal 'abc', a
+  assert_equal 'cba', 'abc'.reverse
 end
 
 assert('String#reverse!', '15.2.10.5.30') do
   a = 'abc'
   a.reverse!
 
-  a == 'cba' and 'abc'.reverse! == 'cba'
+  assert_equal 'cba', a
+  assert_equal 'cba', 'abc'.reverse!
 end
 
 assert('String#rindex', '15.2.10.5.31') do
-  'abc'.rindex('a') == 0 and 'abc'.rindex('d') == nil and
-    'abcabc'.rindex('a', 1) == 0 and 'abcabc'.rindex('a', 4) == 3
+  assert_equal 0, 'abc'.rindex('a')
+  assert_nil 'abc'.rindex('d')
+  assert_equal 0, 'abcabc'.rindex('a', 1)
+  assert_equal 3, 'abcabc'.rindex('a', 4)
 end
 
-# TODO Broken ATM assert('String#scan', '15.2.10.5.32') do
+# 'String#scan', '15.2.10.5.32' will be tested in mrbgems.
 
 assert('String#size', '15.2.10.5.33') do
-  'abc'.size == 3
+  assert_equal 3, 'abc'.size
 end
 
 assert('String#slice', '15.2.10.5.34') do
@@ -260,55 +350,80 @@ assert('String#slice', '15.2.10.5.34') do
   e11 = e1.slice(0)
 
   # args is RegExp
-  # TODO SEGFAULT ATM
+  # It will be tested in mrbgems.
 
   # args is String
   a3 = 'abc'.slice('bc')
   b3 = 'abc'.slice('XX')
 
-  a == 'a' and b == 'c' and c == nil and d == nil and
-    a1 == nil and b1 == nil and c1 == nil and d1 == '' and
-    e1 == 'bc' and e11 == 'b' and
-    a3 == 'bc' and b3 == nil
+  assert_equal 'a', a
+  assert_equal 'c', b
+  assert_nil c
+  assert_nil d
+  assert_nil a1
+  assert_nil b1
+  assert_nil c1
+  assert_equal '', d1
+  assert_equal 'bc', e1
+  assert_equal 'b', e11
+  assert_equal 'bc', a3
+  assert_nil b3
 end
 
 # TODO Broken ATM
 assert('String#split', '15.2.10.5.35') do
   # without RegExp behavior is actually unspecified
-  'abc abc abc'.split == ['abc', 'abc', 'abc'] and
-    'a,b,c,,d'.split(',') == ["a", "b", "c", "", "d"] and
-    'abc abc abc'.split(nil) == ['abc', 'abc', 'abc'] and
-    'abc'.split("") == ['a', 'b', 'c']
+  assert_equal ['abc', 'abc', 'abc'], 'abc abc abc'.split
+  assert_equal ["a", "b", "c", "", "d"], 'a,b,c,,d'.split(',')
+  assert_equal ['abc', 'abc', 'abc'], 'abc abc abc'.split(nil)
+  assert_equal ['a', 'b', 'c'], 'abc'.split("")
 end
 
-# TODO ATM broken assert('String#sub', '15.2.10.5.36') do
-
-# TODO ATM broken assert('String#sub!', '15.2.10.5.37') do
-
-assert('String#to_i', '15.2.10.5.38') do
-  a = ''.to_i
-  b = '123456789'.to_i
-  c = 'a'.to_i(16)
-  d = '100'.to_i(2)
-
-  a == 0 and b == 123456789 and c == 10 and d == 4
+assert('String#sub', '15.2.10.5.36') do
+  assert_equal 'aBcabc', 'abcabc'.sub('b', 'B')
+  assert_equal 'aBcabc', 'abcabc'.sub('b') { |w| w.capitalize }
+  assert_equal 'aa$', 'aa#'.sub('#', '$')
 end
 
-assert('String#to_f', '15.2.10.5.39') do
+assert('String#sub!', '15.2.10.5.37') do
+  a = 'abcabc'
+  a.sub!('b', 'B')
+
+  b = 'abcabc'
+  b.sub!('b') { |w| w.capitalize }
+
+  assert_equal 'aBcabc', a
+  assert_equal 'aBcabc', b
+end
+
+assert('String#to_f', '15.2.10.5.38') do
   a = ''.to_f
   b = '123456789'.to_f
   c = '12345.6789'.to_f
 
-  check_float(a, 0.0) and check_float(b, 123456789.0) and
-    check_float(c, 12345.6789)
+  assert_float(0.0, a)
+  assert_float(123456789.0, b)
+  assert_float(12345.6789, c)
+end
+
+assert('String#to_i', '15.2.10.5.39') do
+  a = ''.to_i
+  b = '32143'.to_i
+  c = 'a'.to_i(16)
+  d = '100'.to_i(2)
+
+  assert_equal 0, a
+  assert_equal 32143, b
+  assert_equal 10, c
+  assert_equal 4, d
 end
 
 assert('String#to_s', '15.2.10.5.40') do
-  'abc'.to_s == 'abc'
+  assert_equal 'abc', 'abc'.to_s
 end
 
 assert('String#to_sym', '15.2.10.5.41') do
-  'abc'.to_sym == :abc
+  assert_equal :abc, 'abc'.to_sym
 end
 
 assert('String#upcase', '15.2.10.5.42') do
@@ -317,7 +432,8 @@ assert('String#upcase', '15.2.10.5.42') do
 
   b.upcase
 
-  a == 'ABC' and b == 'abc'
+  assert_equal 'ABC', a
+  assert_equal 'abc', b
 end
 
 assert('String#upcase!', '15.2.10.5.43') do
@@ -325,17 +441,42 @@ assert('String#upcase!', '15.2.10.5.43') do
 
   a.upcase!
 
-  a == 'ABC'
+  assert_equal 'ABC', a
 end
 
 # Not ISO specified
 
 assert('String interpolation (mrb_str_concat for shared strings)') do
   a = "A" * 32
-  "#{a}:" == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:"
+  assert_equal "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:", "#{a}:"
 end
 
 assert('Check the usage of a NUL character') do
   "qqq\0ppp"
 end
 
+assert('String#bytes') do
+  str1 = "hello"
+  bytes1 = [104, 101, 108, 108, 111]
+
+  str2 = "\xFF"
+  bytes2 = [0xFF]
+
+  assert_equal bytes1, str1.bytes
+  assert_equal bytes2, str2.bytes
+end
+
+assert('String#each_byte') do
+  str1 = "hello"
+  bytes1 = [104, 101, 108, 108, 111]
+  bytes2 = []
+
+  str1.each_byte {|b| bytes2 << b }
+
+  assert_equal bytes1, bytes2
+end
+
+assert('String#inspect') do
+  ("\1" * 100).inspect  # should not raise an exception - regress #1210
+  assert_equal "\"\\000\"", "\0".inspect
+end

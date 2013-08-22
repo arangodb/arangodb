@@ -2,17 +2,19 @@
 # Bootstrap tests for blocks
 
 assert('BS Block 1') do
-  1.times{
-    begin
-      a = 1
-    ensure
-      foo = nil
-    end
-  } == 1
+  assert_equal(1) do
+    1.times{
+      begin
+        a = 1
+      ensure
+        foo = nil
+      end
+    }
+  end
 end
 
 assert('BS Block 2') do
-  [1,2,3].find{|x| x == 2} == 2
+  assert_equal 2, [1,2,3].find{|x| x == 2}
 end
 
 assert('BS Block 3') do
@@ -22,7 +24,7 @@ assert('BS Block 3') do
       [1, 2, 3].each(&block)
     end
   end
-  E.new.find {|x| x == 2 } == 2
+  assert_equal 2, E.new.find {|x| x == 2 }
 end
 
 assert('BS Block 3') do
@@ -30,7 +32,7 @@ assert('BS Block 3') do
   for x in [1, 2, 3]
     sum += x
   end
-  sum == 6
+  assert_equal 6, sum
 end
 
 assert('BS Block 4') do
@@ -38,7 +40,7 @@ assert('BS Block 4') do
   for x in (1..5)
     sum += x
   end
-  sum == 15
+  assert_equal 15, sum
 end
 
 assert('BS Block 5') do
@@ -46,37 +48,43 @@ assert('BS Block 5') do
   for x in []
     sum += x
   end
-  sum == 0
+  assert_equal 0, sum
 end
 
 assert('BS Block 6') do
   ans = []
-  1.times{
-    for n in 1..3
-      a = n
-      ans << a
-    end
-  } == 1
+  assert_equal(1) do
+    1.times{
+      for n in 1..3
+        a = n
+        ans << a
+      end
+    }
+  end
 end
 
 assert('BS Block 7') do
   ans = []
-  for m in 1..3
-    for n in 2..4
-      a = [m, n]
-      ans << a
+  assert_equal((1..3)) do
+    for m in 1..3
+      for n in 2..4
+        a = [m, n]
+        ans << a
+      end
     end
-  end == (1..3)
+  end
 end
 
 assert('BS Block 8') do
-  (1..3).to_a == [1, 2, 3]
+  assert_equal [1, 2, 3], (1..3).to_a
 end
 
 assert('BS Block 9') do
-  (1..3).map{|e|
-    e * 4
-  } == [4, 8, 12]
+  assert_equal([4, 8, 12]) do
+    (1..3).map{|e|
+      e * 4
+    }
+  end
 end
 
 assert('BS Block 10') do
@@ -87,11 +95,13 @@ assert('BS Block 10') do
     yield
   end
 
-  m{
-    n{
-      100
+  assert_equal(100) do
+    m{
+      n{
+        100
+      }
     }
-  } == 100
+  end
 end
 
 assert('BS Block 11') do
@@ -99,11 +109,13 @@ assert('BS Block 11') do
     yield 1
   end
 
-  m{|ib|
-    m{|jb|
-      i = 20
+  assert_equal(20) do
+    m{|ib|
+      m{|jb|
+        i = 20
+      }
     }
-  } == 20
+  end
 end
 
 assert('BS Block 12') do
@@ -111,12 +123,14 @@ assert('BS Block 12') do
     yield 1
   end
 
-  m{|ib|
-    m{|jb|
-      ib = 20
-      kb = 2
+  assert_equal(2) do
+    m{|ib|
+      m{|jb|
+        ib = 20
+        kb = 2
+      }
     }
-  } == 2
+  end
 end
 
 assert('BS Block 13') do
@@ -130,13 +144,15 @@ assert('BS Block 13') do
     yield
   end
 
-  iter1{
-    jb = 2
+  assert_equal(3) do
     iter1{
-      jb = 3
+      jb = 2
+      iter1{
+        jb = 3
+      }
+      jb
     }
-    jb
-  } == 3
+  end
 end
 
 assert('BS Block 14') do
@@ -150,31 +166,37 @@ assert('BS Block 14') do
     yield
   end
 
-  iter1{
-    jb = 2
+  assert_equal(2) do
     iter1{
+      jb = 2
+      iter1{
+        jb
+      }
       jb
     }
-    jb
-  } == 2
+  end
 end
 
 assert('BS Block 15') do
   def m
     yield 1
   end
-  m{|ib|
-    ib*2
-  } == 2
+  assert_equal(2) do
+    m{|ib|
+      ib*2
+    }
+  end
 end
 
 assert('BS Block 16') do
   def m
     yield 12345, 67890
   end
-  m{|ib,jb|
-    ib*2+jb
-  } == 92580
+  assert_equal(92580) do
+    m{|ib,jb|
+      ib*2+jb
+    }
+  end
 end
 
 assert('BS Block 17') do
@@ -183,9 +205,11 @@ assert('BS Block 17') do
   end
 
   a = nil
-  [iter{|a|
-    a
-  }, a] == [10, nil]
+  assert_equal [10, nil] do
+    [iter{|a|
+      a
+    }, a]
+  end
 end
 
 assert('BS Block 18') do
@@ -193,11 +217,13 @@ assert('BS Block 18') do
     yield 10
   end
 
-  iter{|a|
+  assert_equal(21) do
     iter{|a|
-      a + 1
-    } + a
-  } == 21
+      iter{|a|
+        a + 1
+      } + a
+    }
+  end
 end
 
 assert('BS Block 19') do
@@ -206,9 +232,11 @@ assert('BS Block 19') do
   end
 
   a = b = c = d = nil
-  iter{|a, b, c, d|
-    [a, b, c, d]
-  } + [a, b, c, d] == [10, 20, 30, 40, nil, nil, nil, nil]
+  assert_equal([10, 20, 30, 40, nil, nil, nil, nil]) do
+    iter{|a, b, c, d|
+      [a, b, c, d]
+    } + [a, b, c, d]
+  end
 end
 
 assert('BS Block 20') do
@@ -217,9 +245,11 @@ assert('BS Block 20') do
   end
 
   a = b = nil
-  iter{|a, b, c, d|
-    [a, b, c, d]
-  } + [a, b] == [10, 20, 30, 40, nil, nil]
+  assert_equal([10, 20, 30, 40, nil, nil]) do
+    iter{|a, b, c, d|
+      [a, b, c, d]
+    } + [a, b]
+  end
 end
 
 assert('BS Block 21') do
@@ -227,9 +257,11 @@ assert('BS Block 21') do
     yield 1, 2
   end
 
-  iter{|a, *b|
-    [a, b]
-  } == [1, [2]]
+  assert_equal([1, [2]]) do
+    iter{|a, *b|
+      [a, b]
+    }
+  end
 end
 
 assert('BS Block 22') do
@@ -237,9 +269,11 @@ assert('BS Block 22') do
     yield 1, 2
   end
 
-  iter{|*a|
-    [a]
-  } == [[1, 2]]
+  assert_equal([[1, 2]]) do
+    iter{|*a|
+      [a]
+    }
+  end
 end
 
 assert('BS Block 23') do
@@ -247,40 +281,48 @@ assert('BS Block 23') do
     yield 1, 2
   end
 
-  iter{|a, b, *c|
-    [a, b, c]
-  } == [1, 2, []]
+  assert_equal([1, 2, []]) do
+    iter{|a, b, *c|
+      [a, b, c]
+    }
+  end
 end
 
 assert('BS Block 24') do
   def m
     yield
   end
-  m{
-    1
-  } == 1
+  assert_equal(1) do
+    m{
+      1
+    }
+  end
 end
 
 assert('BS Block 25') do
   def m
     yield 123
   end
-  m{|ib|
-    m{|jb|
-      ib*jb
+  assert_equal(15129) do
+    m{|ib|
+      m{|jb|
+        ib*jb
+      }
     }
-  } == 15129
+  end
 end
 
 assert('BS Block 26') do
   def m a
     yield a
   end
-  m(1){|ib|
-    m(2){|jb|
-      ib*jb
+  assert_equal(2) do
+    m(1){|ib|
+      m(2){|jb|
+        ib*jb
+      }
     }
-  } == 2
+  end
 end
 
 assert('BS Block 27') do
@@ -289,13 +331,15 @@ assert('BS Block 27') do
     2.times{|jb|
       sum += ib + jb
     }}
-  sum == 9
+  assert_equal sum, 9
 end
 
 assert('BS Block 28') do
-  3.times{|bl|
-    break 10
-  } == 10
+  assert_equal(10) do
+    3.times{|bl|
+      break 10
+    }
+  end
 end
 
 assert('BS Block 29') do
@@ -303,9 +347,11 @@ assert('BS Block 29') do
     yield 1,2,3
   end
 
-  iter{|i, j|
-    [i, j]
-  } == [1, 2]
+  assert_equal([1, 2]) do
+    iter{|i, j|
+      [i, j]
+    }
+  end
 end
 
 assert('BS Block 30') do
@@ -313,41 +359,52 @@ assert('BS Block 30') do
     yield 1
   end
 
-  iter{|i, j|
-    [i, j]
-  } == [1, nil]
+  assert_equal([1, nil]) do
+    iter{|i, j|
+      [i, j]
+    }
+  end
 end
 
 assert('BS Block [ruby-dev:31147]') do
   def m
     yield
   end
-  m{|&b| b} == nil
+  assert_nil m{|&b| b}
 end
 
 assert('BS Block [ruby-dev:31160]') do
   def m()
     yield
   end
-  m {|(v,(*))|} == nil
+  assert_nil m {|(v,(*))|}
+end
+
+assert('BS Block [issue #750]') do
+  def m(a, *b)
+    yield
+  end
+  args = [1, 2, 3]
+  assert_equal m(*args){ 1 }, 1
 end
 
 assert('BS Block 31') do
   def m()
     yield
   end
-  m {|((*))|} == nil
+  assert_nil m {|((*))|}
 end
 
 assert('BS Block [ruby-dev:31440]') do
   def m
     yield [0]
   end
-  m{|v, &b| v} == [0]
+  assert_equal m{|v, &b| v}, [0]
 end
 
 assert('BS Block 32') do
-  r = false; 1.times{|&b| r = b}; r.class == NilClass
+  r = false; 1.times{|&b| r = b}
+  assert_equal NilClass, r.class
 end
 
 assert('BS Block [ruby-core:14395]') do
@@ -386,5 +443,47 @@ assert('BS Block [ruby-core:14395]') do
     end
   end
   t = Controller.new
-  t.test_for_bug
+  assert_true t.test_for_bug
+end
+
+assert("BS Block 33") do
+  module TestReturnFromNestedBlock
+    def self.test
+      1.times do
+        1.times do
+          return :ok
+        end
+      end
+      :bad
+    end
+  end
+  assert_equal :ok, TestReturnFromNestedBlock.test
+end
+
+assert("BS Block 34") do
+  module TestReturnFromNestedBlock_BSBlock34
+    def self.test
+      1.times do
+        while true
+          return :ok
+        end
+      end
+      :bad
+    end
+  end
+  assert_equal :ok, TestReturnFromNestedBlock_BSBlock34.test
+end
+
+assert("BS Block 35") do
+  module TestReturnFromNestedBlock_BSBlock35
+    def self.test
+      1.times do
+        until false
+          return :ok
+        end
+      end
+      :bad
+    end
+  end
+  assert_equal :ok, TestReturnFromNestedBlock_BSBlock35.test
 end
