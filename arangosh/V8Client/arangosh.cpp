@@ -589,11 +589,11 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     password = TRI_ObjectToString(argv[2]);
   }
 
-  delete connection;
-
   const string oldDefinition = BaseClient.endpointString();
   const string oldUsername   = BaseClient.username();
   const string oldPassword   = BaseClient.password();
+  
+  delete connection;
 
   BaseClient.setEndpointString(definition);
   BaseClient.setUsername(username);
@@ -636,6 +636,13 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   }
   else {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
+    
+    string errorMsg = "could not connect";
+    if (newConnection->getErrorMessage() != "") {
+      errorMsg = newConnection->getErrorMessage();
+    }
+
+    delete newConnection;
 
     // rollback
     BaseClient.setEndpointString(oldDefinition);
@@ -645,13 +652,6 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
     ClientConnection = CreateConnection();
     argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(ClientConnection));
-
-    string errorMsg = "could not connect";
-    if (newConnection->getErrorMessage() != "") {
-      errorMsg = newConnection->getErrorMessage();
-    }
-
-    delete newConnection;
 
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, errorMsg.c_str());
   }
