@@ -177,69 +177,6 @@ bool HttpHandlerFactory::setRequestContext (HttpRequest * request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request, worker method
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpHandlerFactory::authenticate (HttpRequest* request) {
-  bool found;
-  char const* auth = request->header("authorization", found);
-
-  if (found) {
-    if (! TRI_CaseEqualString2(auth, "basic ", 6)) {
-      return false;
-    }
-
-    auth += 6;
-
-    while (*auth == ' ') {
-      ++auth;
-    }
-
-    // check if the cache is outdated
-    if (_flushAuthentication()) {
-      // cache is outdated, now flush it
-      flushAuthentication();
-    }
-
-
-    // try reading auth info from cache first
-    {
-      READ_LOCKER(_authLock);
-
-      map<string,string>::iterator i = _authCache.find(auth);
-
-      if (i != _authCache.end()) {
-        request->setUser(i->second);
-        return true;
-      }
-    }
-
-    // auth info has not been in the cache yet
-
-    string up = StringUtils::decodeBase64(auth);
-    vector<string> split = StringUtils::split(up, ":");
-
-    if (split.size() != 2) {
-      return false;
-    }
-
-    bool res = _checkAuthentication(split[0].c_str(), split[1].c_str());
-
-    if (res) {
-      // put auth info into cache
-      WRITE_LOCKER(_authLock);
-
-      _authCache[auth] = split[0];
-      request->setUser(split[0]);
-    }
-
-    return res;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 

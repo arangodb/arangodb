@@ -360,10 +360,15 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
 
     std::string::size_type n = up.find(':', 0);
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+      LOGGER_TRACE("invalid authentication data found, cannot extract username/password");
       return false;
     }
+   
+    const string username = up.substr(0, n);
     
-    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, up.substr(0, n).c_str(), up.substr(n + 1).c_str());
+    LOGGER_TRACE("checking authentication for user '" << username << "'"); 
+
+    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, username.c_str(), up.substr(n + 1).c_str());
     
     if (res) {
       WRITE_LOCKER(_rwLock);
@@ -374,8 +379,8 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
         return false;
       }      
       
-      mapIter->second[auth] = up.substr(0, n);
-      request->setUser(up.substr(0, n));
+      mapIter->second[auth] = username;
+      request->setUser(username);
       
       // TODO: create a user object for the VocbaseContext
     }
