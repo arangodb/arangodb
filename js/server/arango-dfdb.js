@@ -380,6 +380,18 @@ function main (argv) {
     return;
   }
 
+  // sort the collections
+  collections.sort(function (l, r) {
+    var lName = l.name().toLowerCase();
+    var rName = r.name().toLowerCase();
+
+    if (lName !== rName) {
+      return lName < rName ? -1 : 1;
+    }
+
+    return 0;
+  });
+
   printf("Available collections:\n");
 
   for (i = 0;  i < collections.length;  ++i) {
