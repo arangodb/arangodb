@@ -118,14 +118,25 @@ describe ArangoDB do
   
     context "dealing with the admin interface:" do
   
-      it "checks whether the admin interface is available at /_admin/html/index.html" do
-        cmd = "/_admin/html/index.html"
+      it "checks whether the admin interface is available at /_admin/aardvark/index.html" do
+        cmd = "/_admin/aardvark/index.html"
         doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
 
         # check response code
         doc.code.should eq(200)
         # check whether HTML result contains expected title
         doc.response.body.should include("<!-- ArangoDB web interface -->")
+      end
+      
+      it "checks whether the admin interface is available at /" do
+        cmd = "/"
+        begin
+          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+        rescue HTTParty::RedirectionTooDeep => e
+          # check response code
+          e.response.code.should eq("301")
+          e.response.header['location'].should =~ /^https?:\/\/.*\/_admin\/html\/index.html$/
+        end
       end
 
       it "checks whether the admin interface is available at /_admin/html" do
@@ -149,17 +160,18 @@ describe ArangoDB do
           e.response.header['location'].should =~ /^\/_admin\/html\/index.html$/
         end
       end
-    
-      it "checks whether the admin interface is available at /" do
-        cmd = "/"
+      
+      it "checks whether the admin interface is available at /_admin/aardvark/" do
+        cmd = "/_admin/aardvark/"
         begin
           doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
-          e.response.header['location'].should =~ /^https?:\/\/.*\/_admin\/html\/index.html$/
+          e.response.header['location'].should =~ /\/_admin\/aardvark\/index.html$/
         end
       end
+    
     end
     
   end
