@@ -1,7 +1,7 @@
 {
   "name": "aardvark",
   "description": "ArangoDB Admin Web Interface",
-  "author": "Heiko Kernbach, Michael Hackstein",
+  "author": "Heiko Kernbach, Michael Hackstein, moonglum",
   "version": "1.0",
   "isSystem": true,
 
