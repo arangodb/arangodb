@@ -2507,7 +2507,11 @@ function UNIQUE (values) {
 
   values.forEach(function (value) {
     var normalized = NORMALIZE(value);
-    keys[JSON.stringify(normalized)] = normalized;
+    var key = JSON.stringify(normalized);
+
+    if (! keys.hasOwnProperty(key)) {
+      keys[key] = normalized;
+    }
   });
 
   for (a in keys) {
@@ -2526,7 +2530,7 @@ function UNIQUE (values) {
 function UNION () {
   "use strict";
 
-  var result = [ ], i, a;
+  var result = [ ], i;
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -2536,11 +2540,99 @@ function UNION () {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
       }
 
-      for (a in element) {
-        if (element.hasOwnProperty(a)) {
-          result.push(element[a]);
+      var n = element.length, j;
+
+      for (j = 0; j < n; ++j) {
+        result.push(element[j]);
+      }
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the union (distinct) of all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function UNION_DISTINCT () {
+  "use strict";
+
+  var keys = { }, i;
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION_DISTINCT");
+      }
+      
+      var n = element.length, j;
+
+      for (j = 0; j < n; ++j) {
+        var normalized = NORMALIZE(element[j]);
+        var key = JSON.stringify(normalized);
+
+        if (! keys.hasOwnProperty(key)) {
+          keys[key] = normalized;
         }
       }
+    }
+  }
+
+  var result = [ ];
+  for (i in keys) {
+    if (keys.hasOwnProperty(i)) {
+      result.push(keys[i]);
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief subtract lists from other lists
+////////////////////////////////////////////////////////////////////////////////
+
+function MINUS () {
+  "use strict";
+
+  var keys = { }, i, first = true;
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MINUS");
+      }
+      
+      var n = element.length, j;
+
+      for (j = 0; j < n; ++j) {
+        var normalized = NORMALIZE(element[j]);
+        var key = JSON.stringify(normalized);
+        var contained = keys.hasOwnProperty(key);
+
+        if (first) {
+          if (! contained) {
+            keys[key] = normalized;
+          }
+        }
+        else if (contained) {
+          delete keys[key];
+        }
+      }
+
+      first = false;
+    }
+  }
+
+  var result = [ ];
+  for (i in keys) {
+    if (keys.hasOwnProperty(i)) {
+      result.push(keys[i]);
     }
   }
 
@@ -3896,6 +3988,8 @@ exports.REVERSE = REVERSE;
 exports.RANGE = RANGE;
 exports.UNIQUE = UNIQUE;
 exports.UNION = UNION;
+exports.UNION_DISTINCT = UNION_DISTINCT;
+exports.MINUS = MINUS;
 exports.INTERSECTION = INTERSECTION;
 exports.MAX = MAX;
 exports.MIN = MIN;

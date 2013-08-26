@@ -1111,8 +1111,8 @@ AQL supports the following functions to operate on list values:
   The function expects at least two list values as its arguments. The result is a list
   of values in an undefined order.
 
-  Note: no duplicates will be removed. In order to remove duplicates, please use the
-  @LIT{UNIQUE} function.
+  Note: no duplicates will be removed. In order to remove duplicates, please use either
+  @LIT{UNION_DISTINCT} function or apply the @LIT{UNIQUE} on the result of @LIT{union}.
 
   Example:
     RETURN UNION(
@@ -1134,6 +1134,16 @@ AQL supports the following functions to operate on list values:
   
   will produce:
     [ [ 1, 2, 3 ] ]
+
+- @FN{UNION_DISTINCT(@FA{list1, list2, ...})}: returns the union of distinct values of
+  all lists specified. The function expects at least two list values as its arguments. 
+  The result is a list of values in an undefined order.
+
+- @FN{MINUS(@FA{list1, list2, ...})}: returns the difference of all lists specified.
+  The function expects at least two list values as its arguments.
+  The result is a list of values that occur in the first list but not in any of the
+  subsequent lists. The order of the result list is undefined and should not be relied on.
+  Note: duplicates will be removed.
 
 - @FN{INTERSECTION(@FA{list1, list2, ...})}: returns the intersection of all lists specified.
   The function expects at least two list values as its arguments.
