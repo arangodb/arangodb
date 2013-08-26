@@ -1032,7 +1032,7 @@ int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
 
 int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
                                      TRI_replication_applier_state_t const* state,
-                                     bool sync) {
+                                     bool doSync) {
   TRI_json_t* json;
   char* filename;
   int res;
@@ -1046,7 +1046,7 @@ int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
   filename = GetStateFilename(vocbase);
   LOG_TRACE("saving replication applier state to file '%s'", filename);
 
-  if (! TRI_SaveJson(filename, json, sync)) {
+  if (! TRI_SaveJson(filename, json, doSync)) {
     res = TRI_errno();
   }
   else {
@@ -1238,7 +1238,7 @@ int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
 
 int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
                                              TRI_replication_applier_configuration_t const* config,
-                                             bool sync) {
+                                             bool doSync) {
   TRI_json_t* json;
   char* filename;
   int res;
@@ -1251,7 +1251,7 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
 
   filename = GetConfigurationFilename(vocbase);
 
-  if (! TRI_SaveJson(filename, json, sync)) {
+  if (! TRI_SaveJson(filename, json, doSync)) {
     res = TRI_errno();
   }
   else {
