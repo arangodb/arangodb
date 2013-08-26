@@ -1,126 +1,138 @@
 {
   "name": "aardvark",
-
-  "description": "Foxx application manager for the ArangoDB web interface",
-
-  "author": "Michael Hackstein",
-
+  "description": "ArangoDB Admin Web Interface",
+  "author": "Heiko Kernbach, Michael Hackstein",
   "version": "1.0",
-
   "isSystem": true,
 
   "apps": {
     "/": "aardvark.js"
   },
-    
+
   "assets": {
     "index.html": {
       "files": [
         "index.html"
       ]
     },
+
     "ace.js": {
       "files": [
-        "../../../html/admin/src/ace.js"
+        "frontend/src/ace.js"
       ]
     },
-    "second.js": {
-      "files": [
-        "../../../html/admin/js/lib/jqconsole.min.js",
-        "../../../html/admin/js/lib/splitter.js",
-        "../../../html/admin/js/lib/swagger.js",
-        "../../../html/admin/js/lib/swagger-ui.js",
-        "../../../html/admin/js/lib/highlight.7.3.pack.js",
-        "../../../html/admin/js/arango/arango.js",
-        "../../../html/admin/js/shell/browser.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-collection-common.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-collection.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-database.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-query-cursor.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-statement-common.js",
-        "../../../html/admin/js/modules/org/arangodb/arango-statement.js",
-        "../../../html/admin/js/modules/org/arangodb/arangosh.js",
-        "../../../html/admin/js/modules/org/arangodb/graph-common.js",
-        "../../../html/admin/js/modules/org/arangodb/graph.js",
-        "../../../html/admin/js/modules/org/arangodb/mimetypes.js",
-        "../../../html/admin/js/modules/org/arangodb/simple-query-common.js",
-        "../../../html/admin/js/modules/org/arangodb/simple-query.js",
-        "../../../html/admin/js/modules/org/arangodb/graph/traversal.js",
-        "../../../html/admin/js/modules/org/arangodb-common.js",
-        "../../../html/admin/js/modules/org/arangodb.js",
-        "../../../html/admin/js/bootstrap/errors.js",
-        "../../../html/admin/js/bootstrap/monkeypatches.js",
-        "../../../html/admin/js/bootstrap/module-internal.js",
-        "../../../html/admin/js/client/bootstrap/module-internal.js",
-        "../../../html/admin/js/client/client.js",
-        "../../../html/admin/js/models/**",
-        "../../../html/admin/js/collections/**",
-        "../../../html/admin/js/views/**",
-        "../../../html/admin/js/routers/**"
-      ]
-    },
+
     "app.js": {
       "files": [
-        "../../../html/admin/js/lib/jquery-1.8.3.js",
-        "../../../html/admin/js/lib/jquery-ui-1.9.2.custom.js",
-        "../../../html/admin/js/lib/jquery.dataTables.js",
-        "../../../html/admin/js/lib/jquery.autogrow.js",
-        "../../../html/admin/js/lib/jquery.jeditable.js",
-        "../../../html/admin/js/lib/jquery.jeditable.autogrow.js",
-        "../../../html/admin/js/lib/jquery.snippet.js",
-        "../../../html/admin/js/lib/jquery.gritter.js",
-        "../../../html/admin/js/lib/jquery.slideto.min.js",
-        "../../../html/admin/js/lib/jquery.wiggle.min.js",
-        "../../../html/admin/js/lib/jquery.ba-bbq.min.js",
-        "../../../html/admin/js/lib/handlebars-1.0.rc.1.js",
-        "../../../html/admin/js/lib/underscore.js",
-        "../../../html/admin/js/lib/backbone-1.0.0.js",
-        "../../../html/admin/js/lib/d3.v3.js",
-        "../../../html/admin/js/lib/nv.d3.js",
-        "../../../html/admin/js/lib/ColVis.js",
-        "../../../html/admin/js/lib/ejs_fulljslint.js",
-        "../../../html/admin/js/lib/ejs_0.9_alpha_1_production.js",
-        "../../../html/admin/js/lib/bootstrap.js",
-        "../../../html/admin/js/lib/bootstrap-pagination.js"
+        "frontend/js/graphViewer/graph/domObserverFactory.js",
+        "frontend/js/graphViewer/graph/webWorkerWrapper.js",
+        "frontend/js/graphViewer/graph/colourMapper.js",
+        "frontend/js/graphViewer/graph/forceLayouter.js",
+        "frontend/js/graphViewer/graph/eventLibrary.js",
+        "frontend/js/graphViewer/graph/eventDispatcher.js",
+        "frontend/js/graphViewer/graph/nodeShaper.js",
+        "frontend/js/graphViewer/graph/edgeShaper.js",
+        "frontend/js/graphViewer/graph/communityNode.js",
+        "frontend/js/graphViewer/graph/abstractAdapter.js",
+        "frontend/js/graphViewer/graph/arangoAdapter.js",
+        "frontend/js/graphViewer/graph/zoomManager.js",
+        "frontend/js/graphViewer/graph/modularityJoiner.js",
+        "frontend/js/graphViewer/graph/nodeReducer.js",
+        "frontend/js/graphViewer/ui/**",
+        "frontend/js/graphViewer/graphViewer.js",
+        "frontend/js/arango/arango.js",
+        "frontend/js/shell/browser.js",
+        "frontend/js/modules/org/arangodb/**",
+        "frontend/js/modules/org/arangodb-common.js",
+        "frontend/js/modules/org/arangodb.js",
+        "frontend/js/bootstrap/errors.js",
+        "frontend/js/bootstrap/monkeypatches.js",
+        "frontend/js/bootstrap/module-internal.js",
+        "frontend/js/client/bootstrap/module-internal.js",
+        "frontend/js/client/client.js",
+        "frontend/js/models/**",
+        "frontend/js/collections/**",
+        "frontend/js/views/**",
+        "frontend/js/routers/**"
+      ]
+    },
+
+    "libs.js": {
+      "files": [
+        "frontend/js/lib/jquery-1.8.3.js",
+        "frontend/js/lib/jquery-ui-1.9.2.custom.js",
+        "frontend/js/lib/jquery.dataTables.js",
+        "frontend/js/lib/jquery.autogrow.js",
+        "frontend/js/lib/jquery.jeditable.js",
+        "frontend/js/lib/jquery.jeditable.autogrow.js",
+        "frontend/js/lib/jquery.snippet.js",
+        "frontend/js/lib/jquery.gritter.js",
+        "frontend/js/lib/jquery.slideto.min.js",
+        "frontend/js/lib/jquery.wiggle.min.js",
+        "frontend/js/lib/jquery.ba-bbq.min.js",
+        "frontend/js/lib/handlebars-1.0.rc.1.js",
+        "frontend/js/lib/underscore.js",
+        "frontend/js/lib/backbone-1.0.0.js",
+        "frontend/js/lib/d3.v3.js",
+        "frontend/js/lib/nv.d3.js",
+        "frontend/js/lib/d3.fisheye.js",
+        "frontend/js/lib/ColVis.js",
+        "frontend/js/lib/ejs_fulljslint.js",
+        "frontend/js/lib/ejs_0.9_alpha_1_production.js",
+        "frontend/js/lib/bootstrap.js",
+        "frontend/js/lib/bootstrap-pagination.js",
+        "frontend/js/lib/jqconsole.min.js",
+        "frontend/js/lib/splitter.js",
+        "frontend/js/lib/swagger.js",
+        "frontend/js/lib/swagger-ui.js",
+        "frontend/js/lib/highlight.7.3.pack.js"
       ]
     },
 
     "css/style.css": {
       "files": [
-        "../../../html/admin/css/swagger/hightlight.default.css",
-        "../../../html/admin/css/swagger/screen.css",
-        "../../../html/admin/css/bootstrap.css",
-        "../../../html/admin/css/jquery-ui-1.9.2.custom.css",
-        "../../../html/admin/css/layout.css",
-        "../../../html/admin/css/jquery.dataTables.css",
-        "../../../html/admin/css/nv.d3.css",
-        "../../../html/admin/css/navigationView.css",
-        "../../../html/admin/css/footerView.css",
-        "../../../html/admin/css/shellView.css",
-        "../../../html/admin/css/queryView.css",
-        "../../../html/admin/css/dashboardView.css",
-        "../../../html/admin/css/logsView.css",
-        "../../../html/admin/css/collectionsView.css",
-        "../../../html/admin/css/collectionsItemView.css",
-        "../../../html/admin/css/collectionView.css",
-        "../../../html/admin/css/documentsView.css",
-        "../../../html/admin/css/documentView.css",
-        "../../../html/admin/css/documentSourceView.css",
-        "../../../html/admin/css/swaggerView.css",
-        "../../../html/admin/css/foxxView.css",
-        "../../../html/admin/css/jquery.snippet.css",
-        "../../../html/admin/css/jquery.gritter.css",
-        "../../../html/admin/css/modal.css",
-        "../../../html/admin/css/ansi.css"
+        "frontend/css/swagger/hightlight.default.css",
+        "frontend/css/bootstrap.css",
+        "frontend/css/arangodbIcons.css",
+        "frontend/css/bootstrap-glyphicons.css",
+        "frontend/css/jquery-ui-1.9.2.custom.css",
+        "frontend/css/layout.css",
+        "frontend/css/jquery.dataTables.css",
+        "frontend/css/nv.d3.css",
+        "frontend/css/navigationView.css",
+        "frontend/css/footerView.css",
+        "frontend/css/shellView.css",
+        "frontend/css/queryView.css",
+        "frontend/css/dashboardView.css",
+        "frontend/css/logsView.css",
+        "frontend/css/collectionsView.css",
+        "frontend/css/collectionsItemView.css",
+        "frontend/css/collectionView.css",
+        "frontend/css/documentsView.css",
+        "frontend/css/documentView.css",
+        "frontend/css/documentSourceView.css",
+        "frontend/css/swaggerView.css",
+        "frontend/css/foxxView.css",
+        "frontend/css/graphView.css",
+        "frontend/css/loginView.css",
+        "frontend/css/jquery.snippet.css",
+        "frontend/css/jquery.gritter.css",
+        "frontend/css/modal.css",
+        "frontend/css/ansi.css",
+        "frontend/css/graphlayout.css"
       ]
     }
   },
 
   "files": {
-    "/img" : "../../../html/admin/img",
-    "/js/templates" : "../../../html/admin/js/templates",
-    "/" : "../../../html/admin/src"
+    "/api-docs.json": "api-docs.json",
+    "/api-docs": "api-docs",
+    "/fonts": "frontend/fonts",
+    "/img" : "frontend/img",
+    "/js/templates" : "frontend/js/templates",
+    "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
+    "/" : "frontend/src"
   },
-  
+
   "lib": "."
 }

@@ -34,7 +34,7 @@ define('ace/ext/static_highlight', ['require', 'exports', 'module' , 'ace/edit_s
 var EditSession = require("../edit_session").EditSession;
 var TextLayer = require("../layer/text").Text;
 var baseStyles = ".ace_editor {\
-font-family: 'Monaco', 'Menlo', 'Droid Sans Mono', 'Courier New', monospace;\
+font-family: 'Monaco', 'Menlo', 'Courier New', monospace;\
 font-size: 12px;\
 }\
 .ace_editor .ace_gutter { \

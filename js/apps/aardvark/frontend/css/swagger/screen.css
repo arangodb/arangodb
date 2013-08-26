@@ -73,7 +73,6 @@ h1 {
     font-size: 1.5em;
     line-height: 1.3em;
     padding: 10px 0 10px 0;
-    font-family: "Droid Sans", sans-serif;
     font-weight: bold;
 }
 
@@ -179,7 +178,6 @@ ol li {
 }
 
 .markdown ol, .markdown ul {
-    font-family: "Droid Sans", sans-serif;
     margin: 5px 0 10px 0;
     padding: 0 0 0 18px;
     list-style-type: disc;
@@ -220,7 +218,6 @@ a.hider {
 }
 
 strong {
-    font-family: "Droid Sans", sans-serif;
     font-weight: bold;
 }
 
@@ -346,7 +343,6 @@ form.formtastic fieldset.inputs ol li.string input.title, form.formtastic fields
 }
 
 form.formtastic fieldset.inputs ol li.text textarea {
-    font-family: "Droid Sans", sans-serif;
     height: 250px;
     padding: 4px;
     display: block;
@@ -387,10 +383,6 @@ form.formtastic fieldset.buttons {
 
 form.fullwidth ol li.string input, form.fullwidth ol li.url input, form.fullwidth ol li.text textarea, form.fullwidth ol li.numeric input {
     width: 500px !important;
-}
-
-body {
-  /* font-family: "Droid Sans", sans-serif; */
 }
 
 body #content_message {
@@ -465,7 +457,6 @@ body p#colophon {
     padding: 10px 0;
     font-size: 0.8em;
     border-top: 1px solid #dddddd;
-    font-family: "Droid Sans", sans-serif;
     color: #999999;
     font-style: italic;
 }
@@ -476,7 +467,6 @@ body p#colophon a {
 }
 
 body ul#resources {
-    font-family: "Droid Sans", sans-serif;
     font-size: 0.9em;
 }
 
@@ -503,7 +493,6 @@ body ul#resources li.resource div.heading h2 {
     display: block;
     clear: none;
     float: left;
-    font-family: "Droid Sans", sans-serif;
     font-weight: bold;
     font-size: 17px;
     margin: 0px;
@@ -1714,7 +1703,6 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
 
 
 .model-signature {
-    font-family: "Droid Sans", sans-serif;
     font-size: 1em;
     line-height: 1.5em;
 }
