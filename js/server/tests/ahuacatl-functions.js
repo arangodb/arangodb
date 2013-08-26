@@ -1291,8 +1291,8 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnion1 : function () {
-      var expected = [ [ 1, 2, 3, 1, 2, 3 ], [ 1, 2, 3, 1, 2, 3 ] ];
-      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 1, 2, 3 ])");
+      var expected = [ [ 1, 2, 3, 1, 2, 3 ] ];
+      var actual = getQueryResults("RETURN UNION([ 1, 2, 3 ], [ 1, 2, 3 ])");
       assertEqual(expected, actual);
     },
 
@@ -1301,8 +1301,8 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnion2 : function () {
-      var expected = [ [ 1, 2, 3, 3, 2, 1 ], [ 1, 2, 3, 3, 2, 1 ] ];
-      var actual = getQueryResults("FOR u IN [ 1, 2 ] return UNION([ 1, 2, 3 ], [ 3, 2, 1 ])");
+      var expected = [ [ 1, 2, 3, 3, 2, 1 ] ];
+      var actual = getQueryResults("RETURN UNION([ 1, 2, 3 ], [ 3, 2, 1 ])");
       assertEqual(expected, actual);
     },
 
@@ -1312,7 +1312,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testUnion3 : function () {
       var expected = [ "Fred", "John", "John", "Amy" ];
-      var actual = getQueryResults("FOR u IN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) return u");
+      var actual = getQueryResults("FOR u IN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) RETURN u");
       assertEqual(expected, actual);
     },
 
@@ -1368,6 +1368,90 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ "bar" ];
       var actual = getQueryResults("RETURN UNION([ { title : \"foo\" } ], [ { title : \"bar\" } ])[1].title");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinct1 : function () {
+      var expected = [ [ 1, 2, 3, ] ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinct2 : function () {
+      var expected = [ [ 1, 2, 3 ] ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinct3 : function () {
+      var expected = [ "Fred", "John", "Amy" ];
+      var actual = getQueryResults("FOR u IN UNION_DISTINCT([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) RETURN u");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinct4 : function () {
+      var expected = [ [ 1, 2, 3, 4, 5, 6 ] ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT([ 1, 2, 3 ], [ 3, 2, 1 ], [ 4 ], [ 5, 6, 1 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinct5 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT([ ], [ ], [ ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionDistinct6 : function () {
+      var expected = [ [ false, true ] ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT([ ], [ false ], [ ], [ true ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNION_DISTINCT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNION_DISTINCT([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], [ ], null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], [ ], true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], [ ], 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], [ ], \"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT([ ], [ ], { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT(null, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT(true, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT(3, [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT(\"yes\", [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT({ }, [ ])"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1480,6 +1564,66 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(-1, -1, 0)");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(1, -1, 1)");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN RANGE(-1, 1, -1)");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minus function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinus1 : function () {
+      var expected = [ [ 'b', 'd' ] ];
+      var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minus function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinus2 : function () {
+      var expected = [ [ 'a', 'b' ] ];
+      var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minus function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinus3 : function () {
+      var expected = [ [ 'a', 'b', 'c' ] ];
+      var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minus function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinus4 : function () {
+      var expected = [ [ 'a', 'b', 'c' ] ];
+      var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minus function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinus5 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN MINUS([ 2 ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minus function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinus6 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN MINUS([ ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
