@@ -67,7 +67,6 @@ h1 span.divider, h2 span.divider, h3 span.divider, h4 span.divider, h5 span.divi
     font-size: 1.5em;
     line-height: 1.3em;
     padding: 10px 0 10px 0;
-    font-family: "Droid Sans", sans-serif;
     font-weight: bold;
 }
 
@@ -173,7 +172,6 @@ div.heading_with_menu ul {
 }
 
 .markdown ol, .markdown ul {
-    font-family: "Droid Sans", sans-serif;
     margin: 5px 0 10px 0;
     padding: 0 0 0 18px;
     list-style-type: disc;
@@ -214,7 +212,6 @@ a.hider {
 }
 
 .swagger-ui-wrap strong {
-    font-family: "Droid Sans", sans-serif;
     font-weight: bold;
 }
 
@@ -340,7 +337,6 @@ a.hider {
 }
 
 .swagger-ui-wrap form.formtastic fieldset.inputs ol li.text textarea {
-    font-family: "Droid Sans", sans-serif;
     height: 250px;
     padding: 4px;
     display: block;
@@ -381,9 +377,6 @@ a.hider {
 
 .swagger-ui-wrap form.fullwidth ol li.string input, .swagger-ui-wrap form.fullwidth ol li.url input, .swagger-ui-wrap form.fullwidth ol li.text textarea, .swagger-ui-wrap form.fullwidth ol li.numeric input {
     width: 500px !important;
-}
-.swagger-ui-wrap {
-  font-family: "Droid Sans", sans-serif;
 }
 
 .swagger-ui-wrap #content_message {
@@ -458,7 +451,6 @@ a.hider {
     padding: 10px 0;
     font-size: 0.8em;
     border-top: 1px solid #dddddd;
-    font-family: "Droid Sans", sans-serif;
     color: #999999;
     font-style: italic;
 }
@@ -469,7 +461,6 @@ a.hider {
 }
 
 .swagger-ui-wrap ul#resources {
-    font-family: "Droid Sans", sans-serif;
     font-size: 0.9em;
 }
 
@@ -496,7 +487,6 @@ a.hider {
     display: block;
     clear: none;
     float: left;
-    font-family: "Droid Sans", sans-serif;
     font-weight: bold;
     font-size: 17px;
     margin: 0px;
@@ -1734,7 +1724,6 @@ a.hider {
 
 
 .model-signature {
-    font-family: "Droid Sans", sans-serif;
     font-size: 1em;
     line-height: 1.5em;
 }

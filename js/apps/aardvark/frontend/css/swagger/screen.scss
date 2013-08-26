@@ -70,7 +70,6 @@ h1 {
   font-size: 1.5em;
   line-height: 1.3em;
   padding: 10px 0 10px 0;
-  font-family: "Droid Sans", sans-serif;
   font-weight: bold;
 }
 
@@ -166,7 +165,6 @@ ol {
     padding: 1px 3px;
   }
   ol, ul {
-    font-family: "Droid Sans", sans-serif;
     margin: 5px 0 10px 0;
     padding: 0 0 0 18px;
     list-style-type: disc;
@@ -207,7 +205,6 @@ a {
 }
 
 strong {
-  font-family: "Droid Sans", sans-serif;
   font-weight: bold;
 }
 
@@ -321,7 +318,6 @@ form {
         font-size: 1.3em;
       }
       &.text textarea {
-        font-family: "Droid Sans", sans-serif;
         height: 250px;
         padding: 4px;
         display: block;
@@ -364,7 +360,6 @@ form {
 }
 
 body {
-  /* font-family: "Droid Sans", sans-serif; */
   #content_message {
     margin: 10px 15px;
     font-style: italic;
@@ -427,7 +422,6 @@ body {
     padding: 10px 0;
     font-size: 0.8em;
     border-top: 1px solid #dddddd;
-    font-family: "Droid Sans", sans-serif;
     color: #999999;
     font-style: italic;
     a {
@@ -436,7 +430,6 @@ body {
     }
   }
   ul#resources {
-    font-family: "Droid Sans", sans-serif;
     font-size: 0.9em;
     li.resource {
       border-bottom: 1px solid #dddddd;
@@ -456,7 +449,6 @@ body {
           display: block;
           clear: none;
           float: left;
-          font-family: "Droid Sans", sans-serif;
           font-weight: bold;
           font-size: 17px;
           margin: 0px;
@@ -1528,7 +1520,6 @@ body {
 }
 
 .model-signature {
-  font-family: "Droid Sans", sans-serif;
   font-size: 1em;
   line-height: 1.5em;
   .description span {
