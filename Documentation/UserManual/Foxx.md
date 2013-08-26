@@ -266,55 +266,23 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_modelPrototype
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_remove
 
-@FUN{FoxxRepository::remove}
+@copydetails JSF_foxx_repository_replace
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_update
 
-@FUN{FoxxRepository::replace}
+@copydetails JSF_foxx_repository_removeByExample
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_replaceByExample
 
-@FUN{FoxxRepository::update}
+@copydetails JSF_foxx_repository_updateByExample
 
-#### Foxx.Repository#update
+@copydetails JSF_foxx_repository_all
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_byExample
 
-@FUN{FoxxRepository::removeByExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@FUN{FoxxRepository::replaceByExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@FUN{FoxxRepository::updateByExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@FUN{FoxxRepository::all}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@FUN{FoxxRepository::byExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@FUN{FoxxRepository::firstExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_firstExample
 
 The Manifest File{#UserManualFoxxManifest}
 ==========================================
