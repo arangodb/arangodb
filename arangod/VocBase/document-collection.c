@@ -5001,6 +5001,8 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                             document->base._primaryIndex._nrUsed);
   
   if (idx == NULL) {
+    TRI_DestroyVector(&paths);
+    TRI_DestroyVectorPointer(&fields);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
@@ -5990,6 +5992,8 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   idx = TRI_CreateBitarrayIndex(&document->base, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
   
   if (idx == NULL) {
+    TRI_DestroyVector(&paths);
+    TRI_DestroyVectorPointer(&fields);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
