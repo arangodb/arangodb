@@ -261,11 +261,11 @@ static inline void InitNumber (TRI_json_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitString (TRI_json_t* result, 
-                               size_t length, 
-                               char* value) {
+                               char* value,
+                               size_t length) { 
   result->_type = TRI_JSON_STRING;
-  result->_value._string.length = length + 1;
   result->_value._string.data = value;
+  result->_value._string.length = length + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,11 +273,11 @@ static inline void InitString (TRI_json_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitStringReference (TRI_json_t* result, 
-                                        size_t length, 
-                                        const char* value) {
+                                        const char* value,
+                                        size_t length) {
   result->_type = TRI_JSON_STRING_REFERENCE;
-  result->_value._string.length = length + 1;
   result->_value._string.data = (char*) value;
+  result->_value._string.length = length + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +437,7 @@ TRI_json_t* TRI_CreateString2Json (TRI_memory_zone_t* zone, char* value, size_t 
     return NULL;
   }
 
-  InitString(result, length, value);
+  InitString(result, value, length);
 
   return result;
 }
@@ -463,7 +463,7 @@ TRI_json_t* TRI_CreateString2CopyJson (TRI_memory_zone_t* zone, char const* valu
     return NULL;
   }
 
-  InitString(result, length, TRI_DuplicateString2Z(zone, value, length));
+  InitString(result, TRI_DuplicateString2Z(zone, value, length), length);
 
   if (result->_value._string.data == NULL) {
     TRI_Free(zone, result);
@@ -478,7 +478,7 @@ TRI_json_t* TRI_CreateString2CopyJson (TRI_memory_zone_t* zone, char const* valu
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringJson (TRI_json_t* result, char* value) {
-  InitString(result, strlen(value), value);
+  InitString(result, value, strlen(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +486,7 @@ void TRI_InitStringJson (TRI_json_t* result, char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitString2Json (TRI_json_t* result, char* value, size_t length) {
-  InitString(result, length, value);
+  InitString(result, value, length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,7 +510,7 @@ TRI_json_t* TRI_CreateStringReference2Json (TRI_memory_zone_t* zone, const char*
     return NULL;
   }
 
-  InitStringReference(result, length, value);
+  InitStringReference(result, value, length);
 
   return result;
 }
@@ -520,7 +520,7 @@ TRI_json_t* TRI_CreateStringReference2Json (TRI_memory_zone_t* zone, const char*
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringReferenceJson (TRI_json_t* result, const char* value) {
-  InitStringReference(result, strlen(value), value);
+  InitStringReference(result, value, strlen(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -528,7 +528,7 @@ void TRI_InitStringReferenceJson (TRI_json_t* result, const char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringReference2Json (TRI_json_t* result, const char* value, size_t length) {
-  InitStringReference(result, length, value);
+  InitStringReference(result, value, length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,7 +781,7 @@ void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
 
   // attribute name
   length = strlen(name);
-  InitString(&copy, length, TRI_DuplicateString2Z(zone, name, length));
+  InitString(&copy, TRI_DuplicateString2Z(zone, name, length), length);
   TRI_PushBackVector(&object->_value._objects, &copy);
 
   // attribute value
@@ -809,7 +809,7 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
   length = strlen(name);
 
   // attribute name
-  InitString(&copy, length, TRI_DuplicateString2Z(zone, name, length));
+  InitString(&copy, TRI_DuplicateString2Z(zone, name, length), length);
   TRI_PushBackVector(&object->_value._objects, &copy);
 
   // attribute value
@@ -836,10 +836,10 @@ void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* na
 
   // attribute name
   if (asReference) {
-    InitStringReference(&copy, nameLength, name);
+    InitStringReference(&copy, name, nameLength);
   }
   else {
-    InitString(&copy, nameLength, name);
+    InitString(&copy, name, nameLength);
   }
 
   TRI_PushBackVector(&object->_value._objects, &copy);
