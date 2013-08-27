@@ -109,28 +109,21 @@ Details on FoxxApplication{#UserManualFoxxDetailsApplication}
 
 @copydetails JSF_foxx_application_initializer
 
-@CLEARPAGE
 HTTP Methods
 ------------
 
 @copydetails JSF_foxx_application_get
 
-@CLEARPAGE
 @copydetails JSF_foxx_application_head
 
-@CLEARPAGE
 @copydetails JSF_foxx_application_post
 
-@CLEARPAGE
 @copydetails JSF_foxx_application_put
 
-@CLEARPAGE
 @copydetails JSF_foxx_application_patch
 
-@CLEARPAGE
 @copydetails JSF_foxx_application_delete
 
-@CLEARPAGE
 
 Documenting and Constraining the Routes
 ---------------------------------------
@@ -157,13 +150,10 @@ API by chaining the following methods onto your path definition:
 
 @copydetails JSF_foxx_RequestContext_pathParam
 
-@CLEARPAGE
 @copydetails JSF_foxx_RequestContext_queryParam
 
-@CLEARPAGE
 @copydetails JSF_foxx_RequestContext_errorResponse
 
-@CLEARPAGE
 
 Before and After Hooks
 ----------------------
@@ -175,10 +165,8 @@ example).
 
 @copydetails JSF_foxx_application_before
 
-@CLEARPAGE
 @copydetails JSF_foxx_application_after
 
-@CLEARPAGE
 
 The Request and Response Objects
 --------------------------------
@@ -196,43 +184,30 @@ by the `BaseMiddleware` provided by Foxx.
 The Request Object
 ------------------
 
-Every request object has the following attributes from the underlying Actions, 
-amongst others:
-
-@FUN{request.path}
-
+Every request object has the `path` method from the underlying Actions. 
 This is the complete path as supplied by the user as a String.
 
-@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_request_body
 
-@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_request_rawBody
 
-@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_request_params
 
-@CLEARPAGE
 
 The Response Object
 -------------------
 
-Every response object has the following attributes from the underlying Actions:
-
-@FUN{response.body}
+Every response object has the body attribute from the underlying Actions
+to set the raw body by hand.
 
 You provide your response body as a String here.
 
-@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_response_status
 
-@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_response_set
 
-@CLEARPAGE
 @copydetails JSF_foxx_BaseMiddleware_response_json
 
-@CLEARPAGE
 
 Details on FoxxModel{#UserManualFoxxDetailsModel}
 =================================================
@@ -253,30 +228,20 @@ A Foxx Model can be initialized with an object of attributes and their values.
 
 @copydetails JSF_foxx_model_extend
 
-@CLEARPAGE
 @copydetails JSF_foxx_model_initializer
 
-@CLEARPAGE
 @copydetails JSF_foxx_model_get
 
-@CLEARPAGE
 @copydetails JSF_foxx_model_set
 
-@CLEARPAGE
 @copydetails JSF_foxx_model_has
 
-@CLEARPAGE
-@FUN{FoxxModel::attributes}
+@copydetails JSF_foxx_model_attributes
 
-The attributes property is the internal hash containing the model's state.
-
-@CLEARPAGE
 @copydetails JSF_foxx_model_forDB
 
-@CLEARPAGE
 @copydetails JSF_foxx_model_forClient
 
-@CLEARPAGE
 
 Details on FoxxRepository{#UserManualFoxxDetailsRepository}
 ===========================================================
@@ -295,82 +260,29 @@ In your repository file, export the repository as `repository`.
 
 @copydetails JSF_foxx_repository_initializer
 
-@CLEARPAGE
-@FUN{FoxxRepository::collection}
+@copydetails JSF_foxx_repository_collection
 
-The collection object.
+@copydetails JSF_foxx_repository_prefix
 
-@CLEARPAGE
-@FUN{FoxxRepository::prefix}
+@copydetails JSF_foxx_repository_modelPrototype
 
-The prefix of the application.
+@copydetails JSF_foxx_repository_remove
 
-@CLEARPAGE
-@FUN{FoxxRepository::modelPrototype}
+@copydetails JSF_foxx_repository_replace
 
-The prototype of the according model.
+@copydetails JSF_foxx_repository_update
 
-@CLEARPAGE
-@FUN{FoxxRepository::save}
+@copydetails JSF_foxx_repository_removeByExample
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_replaceByExample
 
-@CLEARPAGE
-@FUN{FoxxRepository::remove}
+@copydetails JSF_foxx_repository_updateByExample
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_all
 
-@CLEARPAGE
-@FUN{FoxxRepository::replace}
+@copydetails JSF_foxx_repository_byExample
 
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::update}
-
-#### Foxx.Repository#update
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::removeByExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::replaceByExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::updateByExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::all}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::byExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
-
-@CLEARPAGE
-@FUN{FoxxRepository::firstExample}
-
-**Not implemented**
-See the documentation of collection (will be delegated to the collection).
+@copydetails JSF_foxx_repository_firstExample
 
 The Manifest File{#UserManualFoxxManifest}
 ==========================================
@@ -577,7 +489,5 @@ one choice now: `underscore`.  Which would set the body of the response to
 you provided, you also have access to all your view helpers.
 
 @copydetails JSF_foxx_TemplateMiddleware_initializer
-@CLEARPAGE
 
 @copydetails JSF_foxx_TemplateMiddleware_response_render
-@CLEARPAGE
