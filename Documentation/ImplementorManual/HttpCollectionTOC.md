@@ -22,3 +22,4 @@ TOC {#HttpCollectionTOC}
       - @ref HttpCollectionUnload "PUT /_api/collection/collection-name/unload"
       - @ref HttpCollectionProperties "PUT /_api/collection/collection-name/properties"
       - @ref HttpCollectionRename "PUT /_api/collection/collection-name/rename"
+      - @ref HttpCollectionRotate "PUT /_api/collection/collection-name/rotate"

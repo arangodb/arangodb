@@ -645,26 +645,24 @@ function CollectionSuite () {
       var f = c1.figures(); 
       assertEqual(0, f.datafiles.count);
 
-      if (c1.rotate) {
-        // rotate() is only present server-side...
-        c1.rotate();
+      // rotate() is only present server-side...
+      c1.rotate();
 
-        // must wait so the synchroniser can catch up
-        require("internal").wait(5);
+      // must wait so the synchroniser can catch up
+      require("internal").wait(5);
 
-        f = c1.figures();
-        assertEqual(1, f.datafiles.count);
+      f = c1.figures();
+      assertEqual(1, f.datafiles.count);
         
-        c1.save({ _key: "test2" });
-        c1.rotate();
+      c1.save({ _key: "test2" });
+      c1.rotate();
 
-        // must wait so the synchroniser can catch up
-        require("internal").wait(5);
+      // must wait so the synchroniser can catch up
+      require("internal").wait(5);
 
-        f = c1.figures();
-        // we may have one or two datafiles, depending on the compaction
-        assertTrue(f.datafiles.count >= 1);
-      }
+      f = c1.figures();
+      // we may have one or two datafiles, depending on the compaction
+      assertTrue(f.datafiles.count >= 1);
 
       c1.unload();
 
