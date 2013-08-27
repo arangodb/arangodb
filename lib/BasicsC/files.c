@@ -843,6 +843,31 @@ bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves data to a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteFile (const char* filename, const char* data, size_t length) {
+  int fd;
+  bool result;
+
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+  if (fd == -1) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  result = TRI_WritePointer(fd, data, length);
+
+  TRI_CLOSE(fd);
+
+  if (! result) {
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fsyncs a file
 ////////////////////////////////////////////////////////////////////////////////
 
