@@ -162,7 +162,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
     if (journal->_full) {
       worked = true;
 
-      LOG_DEBUG("closing full journal '%s'", journal->_filename);
+      LOG_DEBUG("closing full journal '%s'", journal->getName(journal));
 
       TRI_CloseJournalPrimaryCollection(&doc->base, i);
 
@@ -179,7 +179,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
 
     if (journal != NULL) {
       worked = true;
-      LOG_DEBUG("created new journal '%s'", journal->_filename);
+      LOG_DEBUG("created new journal '%s'", journal->getName(journal));
 
       TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
     }
