@@ -368,7 +368,12 @@ The content is a JSON object with the following keys:
 * `name`: Name of the application (Meta information)
 * `version`: Current version of the application (Meta information)
 * `description`: A short description of the application (Meta information)
+* `license`: Short form of the license (MIT, GPL...)
+* `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
 * `thumbnail`: Path to a thumbnail that represents the application (Meta information)
+* `repository`: An object with information about where you can find the repository: `type` and `url`
+* `keywords`: An array of keywords to help people find your Foxx app
+* `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
 * `apps`: Map routes to FoxxApplications
 * `lib`: Base path for all required modules
 * `files`: Deliver files
