@@ -93,15 +93,17 @@ var queryView = Backbone.View.extend({
         // fill select box with # of results    
         var querySize = 1000;
         if (typeof Storage) {
-            if (localStorage.getItem("querySize") > 0) {
-                querySize = parseInt(localStorage.getItem("querySize"), 10);
-            }
+          if (localStorage.getItem("querySize") > 0) {
+            querySize = parseInt(localStorage.getItem("querySize"), 10);
+          }
         }
 
         var sizeBox = $('#querySize');
         sizeBox.empty();
         [ 100, 250, 500, 1000, 2500, 5000 ].forEach(function (value) {
-            sizeBox.append('<option value="' + value + '"' + (querySize === value ? ' selected' : '') + '>' + value + ' results</option>');
+          sizeBox.append('<option value="' + value + '"' + 
+                         (querySize === value ? ' selected' : '') + 
+                         '>' + value + ' results</option>');
         });
 
         var outputEditor = ace.edit("queryOutput");
