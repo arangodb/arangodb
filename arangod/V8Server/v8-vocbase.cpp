@@ -3360,8 +3360,8 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION_PARAMETER(scope, "<endpoint> must be a valid endpoint")
   }
   
-  if ((restrictType.empty() && restrictCollections.size() > 0) ||
-      (! restrictType.empty() && restrictCollections.size() == 0) ||
+  if ((restrictType.empty() && ! restrictCollections.empty()) ||
+      (! restrictType.empty() && restrictCollections.empty()) ||
       (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <restrictCollections> or <restrictType>");
   }
@@ -7846,7 +7846,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, name.c_str(), newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, name, newDoc);
   }
   catch (...) {
   }

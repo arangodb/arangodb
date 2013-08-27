@@ -1932,8 +1932,6 @@ void TRI_InitialiseLogging (bool threaded) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ShutdownLogging (bool clearBuffers) {
-  size_t i, j;
-
   if (! Initialised) {
     return ThreadedLogging;
   }
@@ -1965,6 +1963,8 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
   TRI_UnlockSpin(&OutputPrefixLock);
 
   if (clearBuffers) {
+    size_t i, j;
+
     // cleanup output buffers
     TRI_LockMutex(&BufferLock);
 
