@@ -223,6 +223,7 @@ typedef struct TRI_document_collection_s {
 
   // whether or not there was a request to create a(nother) journal for the collection
   bool                     _journalRequested;
+  bool                     _rotateRequested;
   
   // whether or not any of the indexes may need to be garbage-collected
   // this flag may be modifying when an index is added to a collection
