@@ -32,7 +32,7 @@ dist_man_MANS =
 CLEANUP =
 
 ################################################################################
-### @brief tragets for cleanup of 3rd party libraries
+### @brief targets for cleanup of 3rd party libraries
 ################################################################################
 
 CLEANUP_3RD =
@@ -237,12 +237,17 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/node -type f -print) \
 	$(shell find @srcdir@/js/npm -type f -print) \
 	$(shell find @srcdir@/html -name "*.css" -print) \
+	$(shell find @srcdir@/html -name "*.scss" -print) \
 	$(shell find @srcdir@/html -name "*.gif" -print) \
 	$(shell find @srcdir@/html -name "*.html" -print) \
 	$(shell find @srcdir@/html -name "*.ico" -print) \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.ejs" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print) \
+	$(shell find @srcdir@/html -name "*.svg" -print) \
+	$(shell find @srcdir@/html -name "*.eot" -print) \
+	$(shell find @srcdir@/html -name "*.ttf" -print) \
+	$(shell find @srcdir@/html -name "*.woff" -print) \
 	$(shell find @srcdir@/js/apps -type f -print)
 
 if ENABLE_MRUBY

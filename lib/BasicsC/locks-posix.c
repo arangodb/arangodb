@@ -565,6 +565,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 // memory barrier.
 // -----------------------------------------------------------------------------
 
+#ifdef TRI_SKIPLIST_EX
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically compares and swaps 32bit integers with full memory barrier
@@ -677,6 +678,8 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
     #error No TRI_CompareAndSwapPointer implementation defined
   #endif
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

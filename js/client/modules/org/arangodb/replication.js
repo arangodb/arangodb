@@ -56,7 +56,7 @@ logger.start = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/logger-start", "");
+  var requestResult = db._connection.PUT("/_api/replication/logger-start", "");
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -71,7 +71,7 @@ logger.stop = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/logger-stop", "");
+  var requestResult = db._connection.PUT("/_api/replication/logger-stop", "");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -86,7 +86,7 @@ logger.state = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/logger-state");
+  var requestResult = db._connection.GET("/_api/replication/logger-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -103,10 +103,10 @@ logger.properties = function (config) {
 
   var requestResult;
   if (config === undefined) {
-    requestResult = db._connection.GET("_api/replication/logger-config");
+    requestResult = db._connection.GET("/_api/replication/logger-config");
   }
   else {
-    requestResult = db._connection.PUT("_api/replication/logger-config",
+    requestResult = db._connection.PUT("/_api/replication/logger-config",
       JSON.stringify(config));
   }
 
@@ -129,7 +129,7 @@ applier.start = function (initialTick) {
     append = "?from=" + encodeURIComponent(initialTick);
   }
 
-  var requestResult = db._connection.PUT("_api/replication/applier-start" + append, "");
+  var requestResult = db._connection.PUT("/_api/replication/applier-start" + append, "");
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
@@ -144,7 +144,7 @@ applier.stop = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.PUT("_api/replication/applier-stop", "");
+  var requestResult = db._connection.PUT("/_api/replication/applier-stop", "");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -159,7 +159,7 @@ applier.state = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/applier-state");
+  var requestResult = db._connection.GET("/_api/replication/applier-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -174,7 +174,7 @@ applier.forget = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.DELETE("_api/replication/applier-state");
+  var requestResult = db._connection.DELETE("/_api/replication/applier-state");
   arangosh.checkRequestResult(requestResult);
   
   return requestResult;
@@ -191,10 +191,10 @@ applier.properties = function (config) {
 
   var requestResult;
   if (config === undefined) {
-    requestResult = db._connection.GET("_api/replication/applier-config");
+    requestResult = db._connection.GET("/_api/replication/applier-config");
   }
   else {
-    requestResult = db._connection.PUT("_api/replication/applier-config",
+    requestResult = db._connection.PUT("/_api/replication/applier-config",
       JSON.stringify(config));
   }
 
@@ -226,7 +226,7 @@ var sync = function (config) {
   var db = internal.db;
 
   var body = JSON.stringify(config || { });
-  var requestResult = db._connection.PUT("_api/replication/sync", body);
+  var requestResult = db._connection.PUT("/_api/replication/sync", body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -242,7 +242,7 @@ var serverId = function () {
 
   var db = internal.db;
 
-  var requestResult = db._connection.GET("_api/replication/server-id");
+  var requestResult = db._connection.GET("/_api/replication/server-id");
 
   arangosh.checkRequestResult(requestResult);
 

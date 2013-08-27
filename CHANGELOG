@@ -1,6 +1,40 @@
 v1.4
 ----
 
+* added AQL MINUS function
+
+* added AQL UNION_DISTINCT function (more efficient than `UNIQUE(UNION())`)
+
+* updated mruby to 2013-08-22
+
+* issue #587: Add db._create() in help for startup arangosh
+
+* issue #586: Share a link on installation instructions in the User Manual 
+
+* issue #585: Bison 2.4 missing on Mac for custom build
+
+* issue #584: Web interface images broken in devel
+
+* issue #583: Small documentation update
+
+* issue #581: Parameter binding for attributes
+
+* issue #580: Small improvements (by @guidoreina) 
+
+* issue #577: Missing documentation for collection figures in implementor manual
+
+* issue #576: Get disk usage for collections and graphs
+
+  This extends the result of the REST API for /_api/collection/figures with
+  the attributes `compactors.count`, `compactors.fileSize`, `shapefiles.count`,
+  and `shapefiles.fileSize`.
+
+* issue #575: installing devel version on mac (low prio)
+
+* issue #574: Documentation (POST /_admin/routing/reload)
+
+* issue #558: HTTP cursors, allow count to ignore LIMIT
+
 
 v1.4.0-alpha1 (2013-08-02)
 --------------------------

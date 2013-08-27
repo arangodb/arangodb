@@ -3,6 +3,7 @@ Upgrading ArangoDB{#Upgrading}
 
 - @ref NewFeatures14
 - @ref Upgrading14
+- @BOOK_REF{UpgradingGeneral}
 
 Older Releases:
 

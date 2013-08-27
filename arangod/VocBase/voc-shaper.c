@@ -820,6 +820,47 @@ static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the total size and number of the shape files
+/// this function must be called under the shape collection's lock
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ShapefileStats (TRI_shaper_t* shaper,
+                            size_t* count,
+                            int64_t* totalSize) {
+  voc_shaper_t* s;
+  TRI_vector_pointer_t* files;
+  size_t i;
+
+  s = (voc_shaper_t*) shaper;
+
+  if (s->_collection == NULL) {
+    // shape collection not found
+    return false;
+  }
+
+  *totalSize = 0;
+  *count     = 0;
+
+  files = &s->_collection->base._datafiles;
+  for (i = 0; i < files->_length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) files->_buffer[i];
+
+    *totalSize = *totalSize + (int64_t) df->_maximalSize;
+    *count = *count + 1;
+  }
+  
+  files = &s->_collection->base._journals;
+  for (i = 0; i < files->_length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) files->_buffer[i];
+
+    *totalSize = *totalSize + (int64_t) df->_maximalSize;
+    *count = *count + 1;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of shapes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1053,6 +1094,7 @@ static int InitStep1VocShaper (voc_shaper_t* shaper) {
   shaper->base.lookupShapeId = LookupShapeId;
   shaper->base.numShapes = NumShapes;
   shaper->base.numAttributes = NumAttributes;
+  shaper->base.shapefileStats = ShapefileStats;
 
   res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
                                   TRI_UNKNOWN_MEM_ZONE,

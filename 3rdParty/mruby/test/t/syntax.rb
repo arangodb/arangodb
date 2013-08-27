@@ -1,9 +1,6 @@
 assert('super', '11.3.4') do
-  test = false
-  begin
+  assert_raise NoMethodError do
     super
-  rescue NoMethodError
-    test = true
   end
 
   class SuperFoo
@@ -23,18 +20,14 @@ assert('super', '11.3.4') do
     end
   end
   bar = SuperBar.new
-  test &&= bar.foo
-  test &&= (bar.bar(1,2,3) == [1,2,3])
-  test
+
+  assert_true bar.foo
+  assert_equal [1,2,3], bar.bar(1,2,3)
 end
 
 assert('yield', '11.3.5') do
-  begin
+  assert_raise LocalJumpError do
     yield
-  rescue LocalJumpError
-    true
-  else
-    false
   end
 end
 
@@ -43,5 +36,41 @@ assert('Abbreviated variable assignment', '11.4.2.3.2') do
   b &&= 1
   c = 1
   c += 2
-  a == 1 and b == nil and c == 3
+
+  assert_equal 1, a
+  assert_nil b
+  assert_equal 3, c
+end
+
+assert('Nested const reference') do
+  module Syntax4Const
+    CONST1 = "hello world"
+    class Const2
+      def const1
+        CONST1
+      end
+    end
+  end
+  assert_equal "hello world", Syntax4Const::CONST1
+  assert_equal "hello world", Syntax4Const::Const2.new.const1
+end
+
+assert('Abbreviated variable assignment as returns') do
+  module Syntax4AbbrVarAsgnAsReturns
+    class A
+      def b
+        @c ||= 1
+      end
+    end
+  end
+  assert_equal 1, Syntax4AbbrVarAsgnAsReturns::A.new.b
+end
+
+assert('Splat and mass assignment') do
+  *a = *[1,2,3]
+  b, *c = *[7,8,9]
+
+  assert_equal [1,2,3], a
+  assert_equal 7, b
+  assert_equal [8,9], c
 end

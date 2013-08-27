@@ -1578,6 +1578,7 @@ function resultCursor (req, res, cursor, code, options) {
   var hasCount;
   var hasNext;
   var cursorId;
+  var extra;
 
   if (Array.isArray(cursor)) {
     // performance optimisation: if the value passed in is an array, we can
@@ -1588,31 +1589,43 @@ function resultCursor (req, res, cursor, code, options) {
     hasNext = false;
     cursorId = null;
   }
-  else {
-    // cursor is assumed to be an ArangoCursor
-    hasCount = cursor.hasCount();
-    count = cursor.count();
-    rows = cursor.toArray();
+  else if (typeof cursor === 'object') {
+    if (cursor.getExtra !== undefined) {
+      // cursor is assumed to be an ArangoCursor
+      hasCount = cursor.hasCount();
+      count = cursor.count();
+      rows = cursor.toArray();
 
-    // must come after toArray()
-    hasNext = cursor.hasNext();
-    cursorId = null;
-   
-    if (hasNext) {
-      cursor.persist();
-      cursorId = cursor.id(); 
-      cursor.unuse();
+      // must come after toArray()
+      hasNext = cursor.hasNext();
+      extra = cursor.getExtra();
+
+      if (hasNext) {
+        cursor.persist();
+        cursorId = cursor.id(); 
+        cursor.unuse();
+      }
+      else {
+        cursorId = null;
+        cursor.dispose();
+      }
     }
-    else {
-      cursor.dispose();
+    else if (cursor.hasOwnProperty('docs')) {
+      // cursor is a regular JS object (performance optimisation)
+      hasCount = ((options && options.countRequested) ? true : false);
+      count = cursor.docs.length;
+      rows = cursor.docs;
+      extra = cursor.extra;
+      hasNext = false;
+      cursorId = null;
     }
   }
 
   // do not use cursor after this
 
   var result = { 
-    "result" : rows,
-    "hasMore" : hasNext
+    result : rows,
+    hasMore : hasNext
   };
 
   if (cursorId) {
@@ -1621,6 +1634,10 @@ function resultCursor (req, res, cursor, code, options) {
     
   if (hasCount) {
     result.count = count;
+  }
+
+  if (extra !== undefined && Object.keys(extra).length > 0) {
+    result.extra = extra;
   }
 
   if (code === undefined) {

@@ -1,0 +1,9 @@
+MRuby::GemBox.new do |conf|
+  conf.gem :core => "mruby-sprintf"
+  conf.gem :core => "mruby-print"
+
+  Dir.glob("#{root}/mrbgems/mruby-*") do |x|
+    g = File.basename(x)
+    conf.gem :core => g unless g =~ /^mruby-(print|sprintf)$/
+  end
+end
