@@ -50,6 +50,31 @@ function RepositorySpec () {
       instance = new TestRepository(collection);
 
       assertEqual(instance.test(), "test");
+    },
+
+    testDelegatesToCollection: function () {
+      var arg = function () {};
+
+      [
+        "remove",
+        "replace",
+        "update",
+        "removeByExample",
+        "replaceByExample",
+        "updateByExample",
+        "all",
+        "byExample",
+        "firstExample"
+      ].forEach(function (f) {
+        var called = false;
+        collection = function () {};
+        collection[f] = function (x) {
+          called = (arg === x);
+        };
+        instance = new FoxxRepository(collection);
+        instance[f](arg);
+        assertTrue(called);
+      });
     }
   };
 }
