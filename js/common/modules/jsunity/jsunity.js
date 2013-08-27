@@ -8,10 +8,19 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
+var counter; // crying
 var jsUnity = exports.jsUnity = (function () {
     function fmt(str) {
+        var internal = require("internal");
         var a = Array.prototype.slice.call(arguments, 1);
-        return str.replace(/\?/g, function () { return a.shift(); });
+        return "at assertion #" + counter + ": " + str.replace(/\?/g, function () { 
+          internal.startCaptureMode();
+          internal.print(a.shift());
+
+          var outputWithoutNewline = internal.stopCaptureMode();
+          return outputWithoutNewline.substr(0, outputWithoutNewline.length - 1);
+        });
+      
     }
 
     function hash(v) {
@@ -33,6 +42,7 @@ var jsUnity = exports.jsUnity = (function () {
     
     var defaultAssertions = {
         assertException: function (fn, message) {
+            counter++;
             try {
                 fn instanceof Function && fn();
             } catch (e) {
@@ -44,6 +54,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
 
         assertTrue: function (actual, message) {
+            counter++;
             if (!actual) {
                 throw fmt("?: (?) does not evaluate to true",
                     message || "assertTrue", actual);
@@ -51,6 +62,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertFalse: function (actual, message) {
+            counter++;
             if (actual) {
                 throw fmt("?: (?) does not evaluate to false",
                     message || "assertFalse", actual);
@@ -58,6 +70,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertIdentical: function (expected, actual, message) {
+            counter++;
             if (expected !== actual) {
                 throw fmt("?: (?) is not identical to (?)",
                     message || "assertIdentical", actual, expected);
@@ -65,6 +78,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
 
         assertNotIdentical: function (expected, actual, message) {
+            counter++;
             if (expected === actual) {
                 throw fmt("?: (?) is identical to (?)",
                     message || "assertNotIdentical", actual, expected);
@@ -72,6 +86,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
 
         assertEqual: function (expected, actual, message) {
+            counter++;
             if (hash(expected) != hash(actual)) {
                 throw fmt("?: (?) is not equal to (?)",
                     message || "assertEqual", actual, expected);
@@ -79,6 +94,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertNotEqual: function (expected, actual, message) {
+            counter++;
             if (hash(expected) == hash(actual)) {
                 throw fmt("?: (?) is equal to (?)",
                     message || "assertNotEqual", actual, expected);
@@ -86,6 +102,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertMatch: function (re, actual, message) {
+            counter++;
             if (!re.test(actual)) {
                 throw fmt("?: (?) does not match (?)",
                     message || "assertMatch", actual, re);
@@ -93,6 +110,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertNotMatch: function (re, actual, message) {
+            counter++;
             if (re.test(actual)) {
                 throw fmt("?: (?) matches (?)",
                     message || "assertNotMatch", actual, re);
@@ -100,6 +118,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertTypeOf: function (typ, actual, message) {
+            counter++;
             if (typeof actual !== typ) {
                 throw fmt("?: (?) is not of type (?)",
                     message || "assertTypeOf", actual, typ);
@@ -107,6 +126,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
 
         assertNotTypeOf: function (typ, actual, message) {
+            counter++;
             if (typeof actual === typ) {
                 throw fmt("?: (?) is of type (?)",
                     message || "assertNotTypeOf", actual, typ);
@@ -114,6 +134,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertInstanceOf: function (cls, actual, message) {
+            counter++;
             if (!(actual instanceof cls)) {
                 throw fmt("?: (?) is not an instance of (?)",
                     message || "assertInstanceOf", actual, cls);
@@ -121,6 +142,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
 
         assertNotInstanceOf: function (cls, actual, message) {
+            counter++;
             if (actual instanceof cls) {
                 throw fmt("?: (?) is an instance of (?)",
                     message || "assertNotInstanceOf", actual, cls);
@@ -128,6 +150,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
 
         assertNull: function (actual, message) {
+            counter++;
             if (actual !== null) {
                 throw fmt("?: (?) is not null",
                     message || "assertNull", actual);
@@ -135,6 +158,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertNotNull: function (actual, message) {
+            counter++;
             if (actual === null) {
                 throw fmt("?: (?) is null",
                     message || "assertNotNull", actual);
@@ -142,6 +166,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertUndefined: function (actual, message) {
+            counter++;
             if (actual !== undefined) {
                 throw fmt("?: (?) is not undefined",
                     message || "assertUndefined", actual);
@@ -149,6 +174,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertNotUndefined: function (actual, message) {
+            counter++;
             if (actual === undefined) {
                 throw fmt("?: (?) is undefined",
                     message || "assertNotUndefined", actual);
@@ -156,6 +182,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertNaN: function (actual, message) {
+            counter++;
             if (!isNaN(actual)) {
                 throw fmt("?: (?) is not NaN",
                     message || "assertNaN", actual);
@@ -163,6 +190,7 @@ var jsUnity = exports.jsUnity = (function () {
         },
         
         assertNotNaN: function (actual, message) {
+            counter++;
             if (isNaN(actual)) {
                 throw fmt("?: (?) is NaN",
                     message || "assertNotNaN", actual);
@@ -428,6 +456,8 @@ var jsUnity = exports.jsUnity = (function () {
                 
                 var setUp = getFixtureUtil("setUp");
                 var tearDown = getFixtureUtil("tearDown");
+
+                counter = 0;
 
                 for (var j = 0; j < cnt; j++) {
                     var test = suite.tests[j];
