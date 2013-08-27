@@ -1184,8 +1184,19 @@ function put_api_collection_rename (req, res, collection) {
 ///
 /// If returns an object with the attributes
 ///
-/// - `result`: will be true
+/// - `result`: will be `true` if rotation succeeded
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the collection currently has no journal, `HTTP 500` is returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+///
 /// @EXAMPLES
+///
+/// Rotating a journal:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
 ///     var cn = "products";
@@ -1196,6 +1207,22 @@ function put_api_collection_rename (req, res, collection) {
 ///     var response = logCurlRequest('PUT', url, { });
 ///
 ///     assert(response.code === 200);
+///     db._flushCache();
+///     db._drop("products");
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Rotating without a journal:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
+///     var cn = "products";
+///     var coll = db._create(cn);
+///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///
+///     var response = logCurlRequest('PUT', url, { });
+///
+///     assert(response.code === 400);
 ///     db._flushCache();
 ///     db._drop("products");
 ///
