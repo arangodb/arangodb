@@ -259,7 +259,7 @@ string const& ApplicationServer::getName () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::setupLogging (bool threaded, bool daemon) {
-  TRI_ShutdownLogging();
+  TRI_ShutdownLogging(false);
   TRI_InitialiseLogging(threaded);
 
   Logger::setApplicationName(_logApplicationName);

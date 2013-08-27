@@ -434,9 +434,6 @@ void ArangoServer::buildApplicationServer () {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
-  // dump version details
-  LOGGER_INFO(rest::Version::getVerboseVersionString());
-
   // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
     _developmentMode = true;
@@ -505,6 +502,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // now run arangod
   // .............................................................................
+  
+  // dump version details
+  LOGGER_INFO(rest::Version::getVerboseVersionString());
 
   LOGGER_INFO("using default language '" << languageName << "'");
 
