@@ -120,6 +120,8 @@ var collectionView = Backbone.View.extend({
     var indexType = $('#newIndexType').val();
     var result;
     var postParameter = {};
+    var fields;
+    var unique;
 
     switch(indexType) {
       case 'Cap':
@@ -133,7 +135,7 @@ var collectionView = Backbone.View.extend({
         break;
       case 'Geo':
         //HANDLE ARRAY building
-        var fields = $('#newGeoFields').val();
+        fields = $('#newGeoFields').val();
         var geoJson = self.checkboxToValue('#newGeoJson');
         var constraint = self.checkboxToValue('#newGeoConstraint');
         var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
@@ -146,8 +148,8 @@ var collectionView = Backbone.View.extend({
         };
         break;
       case 'Hash':
-        var fields = $('#newHashFields').val();
-        var unique = self.checkboxToValue('#newHashUnique');
+        fields = $('#newHashFields').val();
+        unique = self.checkboxToValue('#newHashUnique');
         postParameter = {
           type: 'hash',
           fields: self.stringToArray(fields),
@@ -155,7 +157,7 @@ var collectionView = Backbone.View.extend({
         };
         break;
       case 'Fulltext':
-        var fields = ($('#newFulltextFields').val());
+        fields = ($('#newFulltextFields').val());
         var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
         postParameter = {
           type: 'fulltext',
@@ -164,8 +166,8 @@ var collectionView = Backbone.View.extend({
         };
         break;
       case 'Skiplist':
-        var fields = $('#newSkiplistFields').val();
-        var unique = self.checkboxToValue('#newSkiplistUnique');
+        fields = $('#newSkiplistFields').val();
+        unique = self.checkboxToValue('#newSkiplistUnique');
         postParameter = {
           type: 'skiplist',
           fields: self.stringToArray(fields),
@@ -181,7 +183,7 @@ var collectionView = Backbone.View.extend({
       self.resetIndexForms();
     }
     else {
-      //notification for user missing
+      arangoHelper.arangoError("Could not create index");
     }
   },
 
@@ -192,13 +194,13 @@ var collectionView = Backbone.View.extend({
 
   deleteIndex: function (e) {
     var collection = this.myCollection.name;
-    var id = $(e.currentTarget).parent().parent().first().children().first().text();;
+    var id = $(e.currentTarget).parent().parent().first().children().first().text();
     var result = window.arangoCollectionsStore.deleteIndex(collection, id);
     if (result === true) {
       $(e.currentTarget).parent().parent().remove();
     } 
     else {
-      alert("ERROR");
+      arangoHelper.arangoError("Could not delete index");
     }
   },
 
@@ -213,10 +215,12 @@ var collectionView = Backbone.View.extend({
       $.each(this.index.indexes, function(k,v) {
 
         if (v.type === 'primary' || v.type === 'edge') {
-          actionString = '<span class="glyphicon glyphicon-ban-circle" data-original-title="No action"></span>'
+          actionString = '<span class="glyphicon glyphicon-ban-circle" ' +
+                         'data-original-title="No action"></span>';
         }
         else {
-          actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" data-original-title="Delete index"></span>'
+          actionString = '<span class="deleteIndex glyphicon glyphicon-minus-sign" ' +
+                         'data-original-title="Delete index"></span>';
         }
 
         if (v.fields !== undefined) {
