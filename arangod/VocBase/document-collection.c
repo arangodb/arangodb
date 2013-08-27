@@ -604,6 +604,7 @@ static int RotateJournal (TRI_document_collection_t* document) {
 
       datafile = base->_journals._buffer[0];
       datafile->_full = true;
+      document->_journalRequested = true;
     
       TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
       TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -614,6 +615,7 @@ static int RotateJournal (TRI_document_collection_t* document) {
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
   return res;
 }
 
@@ -671,6 +673,7 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
   return NULL;
 }
 
