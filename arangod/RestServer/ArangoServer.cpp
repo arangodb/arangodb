@@ -59,7 +59,6 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/RedirectHandler.h"
 
 #include "Logger/Logger.h"
 #include "Rest/InitialiseRest.h"

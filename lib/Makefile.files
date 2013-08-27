@@ -135,7 +135,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
 	lib/HttpServer/PathHandler.cpp \
-	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
