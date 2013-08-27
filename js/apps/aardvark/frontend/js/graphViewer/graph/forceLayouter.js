@@ -62,7 +62,7 @@ function ForceLayouter(config) {
       } else {
         res += defaultDistance;
       }
-      if (d.target._
+      if (d.target._isCommunity) {
         res += d.target.getDistance(defaultDistance);
       } else {
         res += defaultDistance;
