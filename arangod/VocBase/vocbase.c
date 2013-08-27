@@ -847,7 +847,9 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
       // the replication collection cannot be unloaded manually)
       // (this would make the server hang)
-      init._canUnload = ! TRI_EqualString(name, TRI_COL_NAME_REPLICATION);
+      init._canUnload = ! 
+        (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+         TRI_EqualString(name, TRI_COL_NAME_DATABASES));
     }
   }
 

@@ -113,9 +113,16 @@ function getQueryExplanation (query, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResults (query, bindVars) {
-  var queryResult = internal.AQL_QUERY(query, bindVars, true, 3000);
+  var queryResult = internal.AQL_QUERY(query, bindVars, { 
+    count: true, 
+    batchSize : 3000 
+  });
 
   if (! (queryResult instanceof arangodb.ArangoCursor)) {
+    if (typeof queryResult === 'object' && queryResult.hasOwnProperty('docs')) {
+      return queryResult.docs;
+    }
+
     return queryResult;
   }
 

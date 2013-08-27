@@ -365,30 +365,37 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_TYPE_STRING: {
-      char* escapedString;
-      size_t outLength;
+      size_t length;
 
       if (TRI_AppendCharStringBuffer(buffer, '"') != TRI_ERROR_NO_ERROR) {
         return false;
       }
 
-      escapedString = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE,
-                                            value->_value._string,
-                                            strlen(value->_value._string),
-                                            false,
-                                            &outLength,
-                                            false);
-      if (escapedString == NULL) {
-        return false;
-      }
+      length = strlen(value->_value._string);
 
-      if (TRI_AppendString2StringBuffer(buffer, escapedString, outLength) != TRI_ERROR_NO_ERROR) {
+      if (length > 0) {
+        char* escapedString;
+        size_t outLength;
+
+        escapedString = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE,
+                                              value->_value._string,
+                                              length,
+                                              false,
+                                              &outLength,
+                                              false);
+
+        if (escapedString == NULL) {
+          return false;
+        }
+
+        if (TRI_AppendString2StringBuffer(buffer, escapedString, outLength) != TRI_ERROR_NO_ERROR) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString);
+ 
+          return false;
+        }
+
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString);
-
-        return false;
       }
-
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString);
 
       return (TRI_AppendCharStringBuffer(buffer, '"') == TRI_ERROR_NO_ERROR);
     }
@@ -500,6 +507,10 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     case TRI_AQL_NODE_VALUE: {
       return TRI_ValueStringAql(buffer, &node->_value, node->_value._type);
     }
+    
+    case TRI_AQL_NODE_PARAMETER: {
+      return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
+    }
 
     case TRI_AQL_NODE_ARRAY_ELEMENT: {
       if (! TRI_ValueStringAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
@@ -600,6 +611,18 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       }
 
       return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
+    }
+    
+    case TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS: {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+
+      if (TRI_AppendCharStringBuffer(buffer, '.') != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1));
     }
 
     case TRI_AQL_NODE_INDEXED: {

@@ -525,10 +525,15 @@ function getAllGraphs () {
     graphs = [ ];
 
   gdb.toArray().forEach(function(doc) {
-    var g = new Graph(doc._key);
+    try {
+      var g = new Graph(doc._key);
 
-    if (g._properties !== null) {
-      graphs.push(g._properties);
+      if (g._properties !== null) {
+        graphs.push(g._properties);
+      }
+    }
+    catch (err) {
+      // if there's a problem, we just skip this graph
     }
   });
 

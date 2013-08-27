@@ -682,8 +682,10 @@ function CollectionSuite () {
       c1.load();
 
       var f = c1.figures();
-
       assertEqual(0, f.datafiles.count);
+      assertEqual(0, f.compactors.count);
+      assertEqual(1, f.shapefiles.count);
+      assertTrue(f.shapefiles.fileSize > 0);
       assertEqual(0, f.alive.count);
       assertEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -698,6 +700,9 @@ function CollectionSuite () {
       assertEqual(0, f.datafiles.fileSize);
       assertEqual(1, f.journals.count);
       assertTrue(f.journals.fileSize > 0);
+      assertEqual(0, f.compactors.count);
+      assertEqual(1, f.shapefiles.count);
+      assertTrue(f.shapefiles.fileSize > 0);
       assertEqual(1, f.alive.count);
       assertNotEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -745,6 +750,16 @@ function CollectionSuite () {
       assertEqual(2, f.dead.count);
       assertNotEqual(0, f.dead.size);
       assertEqual(2, f.dead.deletion);
+
+      var attributes = f.attributes.count;
+      var shapes = f.shapes.count;
+
+      c1.save({ b0rk : "abc" });
+
+      f = c1.figures();
+
+      assertEqual(attributes + 1, f.attributes.count);
+      assertEqual(shapes + 1, f.shapes.count);
 
       db._drop(cn);
     },

@@ -32,8 +32,9 @@
 #include "Logger/Logger.h"
 #include "Rest/ConnectionInfo.h"
 #include "Basics/StringUtils.h"
-#include "RestServer/VocbaseContext.h"
+#include "BasicsC/files.h"
 #include "BasicsC/tri-strings.h"
+#include "RestServer/VocbaseContext.h"
 #include "VocBase/auth.h"
 #include "Actions/actions.h"
 
@@ -148,18 +149,26 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 /// @brief check if name and path is not used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VocbaseManager::canAddVocbase (std::string const& name, 
-                                    std::string const& path) {
+int VocbaseManager::canAddVocbase (std::string const& name, 
+                                   std::string const& path,
+                                   bool checkPath) {
+  if (! isValidName(name)) {
+    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+  }
+
+  if (path.empty()) {
+    return TRI_ERROR_ARANGO_DATABASE_PATH_INVALID;
+  }
+
   // loop over all vocbases and check name and path
-  
   READ_LOCKER(_rwLock);
   
   // system vocbase
   if (name == string(_vocbase->_name)) {
-    return false;
+    return TRI_ERROR_ARANGO_DATABASE_NAME_USED;
   }
   if (path == string(_vocbase->_path)) {
-    return false;
+    return TRI_ERROR_ARANGO_DATABASE_PATH_USED;
   }
   
   // user vocbases
@@ -168,14 +177,27 @@ bool VocbaseManager::canAddVocbase (std::string const& name,
     TRI_vocbase_t* vocbase = i->second;
 
     if (name == string(vocbase->_name)) {
-      return false;
+      return TRI_ERROR_ARANGO_DATABASE_NAME_USED;
     }
     if (path == string(vocbase->_path)) {
-      return false;
+      return TRI_ERROR_ARANGO_DATABASE_PATH_USED;
     }
   }
+
+  // check if the path already exists
+  if (checkPath && TRI_ExistsFile(path.c_str())) {
+    return TRI_ERROR_ARANGO_DATABASE_PATH_USED;
+  }
   
-  return true;
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a collection name is valid
+////////////////////////////////////////////////////////////////////////////////
+
+bool VocbaseManager::isValidName (std::string const& name) const {
+  return TRI_IsAllowedCollectionName(false, name.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,10 +360,15 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
 
     std::string::size_type n = up.find(':', 0);
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+      LOGGER_TRACE("invalid authentication data found, cannot extract username/password");
       return false;
     }
+   
+    const string username = up.substr(0, n);
     
-    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, up.substr(0, n).c_str(), up.substr(n + 1).c_str());
+    LOGGER_TRACE("checking authentication for user '" << username << "'"); 
+
+    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, username.c_str(), up.substr(n + 1).c_str());
     
     if (res) {
       WRITE_LOCKER(_rwLock);
@@ -352,8 +379,8 @@ bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase,
         return false;
       }      
       
-      mapIter->second[auth] = up.substr(0, n);
-      request->setUser(up.substr(0, n));
+      mapIter->second[auth] = username;
+      request->setUser(username);
       
       // TODO: create a user object for the VocbaseContext
     }

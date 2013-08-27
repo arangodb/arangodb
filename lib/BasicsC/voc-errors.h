@@ -174,6 +174,19 @@ extern "C" {
 /// - 1227: @LIT{invalid document type}
 ///   Will be raised when there is an attempt to create a document with an
 ///   invalid type.
+/// - 1228: @LIT{database not found}
+///   Will be raised when a non-existing database is accessed.
+/// - 1229: @LIT{database name already used}
+///   Will be raised when a duplicate database name is used.
+/// - 1230: @LIT{database path already used}
+///   Will be raised when a duplicate database path is used.
+/// - 1231: @LIT{database name invalid}
+///   Will be raised when an invalid database name is used.
+/// - 1232: @LIT{database path invalid}
+///   Will be raised when an invalid database path is used.
+/// - 1233: @LIT{operation only allowed in system database}
+///   Will be raised when an operation is requested in a database other than
+///   the system database.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1400: @LIT{no response}
@@ -1217,6 +1230,67 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID                            (1227)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1228: ERROR_ARANGO_DATABASE_NOT_FOUND
+///
+/// database not found
+///
+/// Will be raised when a non-existing database is accessed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATABASE_NOT_FOUND                               (1228)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1229: ERROR_ARANGO_DATABASE_NAME_USED
+///
+/// database name already used
+///
+/// Will be raised when a duplicate database name is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATABASE_NAME_USED                               (1229)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1230: ERROR_ARANGO_DATABASE_PATH_USED
+///
+/// database path already used
+///
+/// Will be raised when a duplicate database path is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATABASE_PATH_USED                               (1230)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1231: ERROR_ARANGO_DATABASE_NAME_INVALID
+///
+/// database name invalid
+///
+/// Will be raised when an invalid database name is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            (1231)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1232: ERROR_ARANGO_DATABASE_PATH_INVALID
+///
+/// database path invalid
+///
+/// Will be raised when an invalid database path is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATABASE_PATH_INVALID                            (1232)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1233: ERROR_ARANGO_USE_SYSTEM_DATABASE
+///
+/// operation only allowed in system database
+///
+/// Will be raised when an operation is requested in a database other than the
+/// system database.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              (1233)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

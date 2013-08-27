@@ -24,3 +24,4 @@ cscope.out
 /test/*.*tmp
 CMakeFiles
 CMakeCache.txt
+build

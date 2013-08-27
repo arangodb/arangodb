@@ -4,9 +4,9 @@
 ** See Copyright Notice in mruby.h
 */
 
-#include "mruby.h"
 #include <stddef.h>
 #include <string.h>
+#include "mruby.h"
 
 /* configuration section */
 /* allocated memory address should be multiple of POOL_ALIGNMENT */
@@ -25,7 +25,7 @@ struct mrb_pool_page {
   size_t offset;
   size_t len;
   void *last;
-  char page[1];
+  char page[];
 };
 
 struct mrb_pool {
@@ -53,7 +53,7 @@ mrb_pool_open(mrb_state *mrb)
 
   if (pool) {
     pool->mrb = mrb;
-    pool->pages = 0;
+    pool->pages = NULL;
   }
 
   return pool;
@@ -81,7 +81,7 @@ page_alloc(mrb_pool *pool, size_t len)
 
   if (len < POOL_PAGE_SIZE)
     len = POOL_PAGE_SIZE;
-  page = (struct mrb_pool_page *)mrb_malloc(pool->mrb, sizeof(struct mrb_pool_page)+len-1);
+  page = (struct mrb_pool_page *)mrb_malloc(pool->mrb, sizeof(struct mrb_pool_page)+len);
   if (page) {
     page->offset = 0;
     page->len = len;
@@ -96,7 +96,7 @@ mrb_pool_alloc(mrb_pool *pool, size_t len)
   struct mrb_pool_page *page;
   size_t n;
 
-  if (!pool) return 0;
+  if (!pool) return NULL;
   len += ALIGN_PADDING(len);
   page = pool->pages;
   while (page) {
@@ -109,7 +109,7 @@ mrb_pool_alloc(mrb_pool *pool, size_t len)
     page = page->next;
   }
   page = page_alloc(pool, len);
-  if (!page) return 0;
+  if (!page) return NULL;
   page->offset = len;
   page->next = pool->pages;
   pool->pages = page;
@@ -118,7 +118,7 @@ mrb_pool_alloc(mrb_pool *pool, size_t len)
   return page->last;
 }
 
-int
+mrb_bool
 mrb_pool_can_realloc(mrb_pool *pool, void *p, size_t len)
 {
   struct mrb_pool_page *page;
@@ -145,7 +145,7 @@ mrb_pool_realloc(mrb_pool *pool, void *p, size_t oldlen, size_t newlen)
   struct mrb_pool_page *page;
   void *np;
 
-  if (!pool) return 0;
+  if (!pool) return NULL;
   oldlen += ALIGN_PADDING(oldlen);
   newlen += ALIGN_PADDING(newlen);
   page = pool->pages;
@@ -171,16 +171,16 @@ mrb_pool_realloc(mrb_pool *pool, void *p, size_t oldlen, size_t newlen)
 
 #ifdef TEST_POOL
 int
-main()
+main(void)
 {
   int i, len = 250;
   mrb_pool *pool;
   void *p;
 
-  pool = mrb_pool_open(0);
+  pool = mrb_pool_open(NULL);
   p = mrb_pool_alloc(pool, len);
   for (i=1; i<20; i++) {
-    printf("%p (len=%d) %d\n", p, len, mrb_pool_can_realloc(pool, p, len*2));
+    printf("%p (len=%d) %ud\n", p, len, mrb_pool_can_realloc(pool, p, len*2));
     p = mrb_pool_realloc(pool, p, len, len*2);
     len *= 2;
   }

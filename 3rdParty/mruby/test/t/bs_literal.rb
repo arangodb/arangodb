@@ -2,37 +2,37 @@
 # Bootstrap test for literals
 
 assert('BS Literal 1') do
-  true == true
+  assert_true true
 end
 
 assert('BS Literal 2') do
-  TrueClass == true.class
+  assert_equal TrueClass, true.class
 end
 
 assert('BS Literal 3') do
-  false == false
+  assert_false false
 end
 
 assert('BS Literal 4') do
-  FalseClass == false.class
+  assert_equal FalseClass, false.class
 end
 
 assert('BS Literal 5') do
-  'nil' == nil.inspect
+  assert_equal 'nil', nil.inspect
 end
 
 assert('BS Literal 6') do
-  NilClass == nil.class
+  assert_equal NilClass, nil.class
 end
 
 assert('BS Literal 7') do
-  Symbol == :sym.class
+  assert_equal Symbol, :sym.class
 end
 
 assert('BS Literal 8') do
-  1234 == 1234
+  assert_equal 1234, 1234
 end
 
 assert('BS Literal 9') do
-  Fixnum == 1234.class
+  assert_equal Fixnum, 1234.class
 end

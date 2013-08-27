@@ -523,8 +523,22 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     info->_journalfileSize += (int64_t) df->_maximalSize;
     ++info->_numberJournalfiles;
   }
+  
+  for (i = 0; i < base->_compactors._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_compactors._buffer[i];
 
+    info->_compactorfileSize += (int64_t) df->_maximalSize;
+    ++info->_numberCompactorfiles;
+  }
+
+  // get information about shape files
+  primary->_shaper->shapefileStats(primary->_shaper, &i, &info->_shapefileSize);
+  info->_numberShapefiles = (TRI_voc_ssize_t) i;
+
+  // get number of registered shapes
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
+
+  // get number of registered attributes
   info->_numberAttributes = (TRI_voc_ssize_t) primary->_shaper->numAttributes(primary->_shaper);
   
   return info;

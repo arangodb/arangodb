@@ -50,6 +50,7 @@ function ArangoStatement (database, data) {
   this._doCount = false;
   this._batchSize = null;
   this._bindVars = {};
+  this._options = undefined;
   
   if (! (data instanceof Object)) {
     throw "ArangoStatement needs initial data";
@@ -63,7 +64,9 @@ function ArangoStatement (database, data) {
   if (data.bindVars instanceof Object) {
     this.bind(data.bindVars);
   }
-
+  if (data.options instanceof Object) {
+    this.setOptions(data.options);
+  }
   if (data.count !== undefined) {
     this.setCount(data.count);
   }
@@ -144,6 +147,14 @@ ArangoStatement.prototype.getBatchSize = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the user options
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoStatement.prototype.getOptions = function () {
+  return this._options;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets query string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,6 +186,14 @@ ArangoStatement.prototype.setBatchSize = function (value) {
   if (batch > 0) {
     this._batchSize = batch;
   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the user options
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoStatement.prototype.setOptions = function (value) {
+  this._options = value;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

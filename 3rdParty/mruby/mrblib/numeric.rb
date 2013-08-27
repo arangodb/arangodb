@@ -5,6 +5,14 @@
 class Integer
 
   ##
+  # Returns the receiver simply.
+  #
+  # ISO 15.2.8.3.14
+  def ceil
+    self
+  end
+
+  ##
   # Calls the given block once for each Integer
   # from +self+ downto +num+.
   #
@@ -19,6 +27,14 @@ class Integer
   end
 
   ##
+  # Returns the receiver simply.
+  #
+  # ISO 15.2.8.3.17
+  def floor
+    self
+  end
+
+  ##
   # Calls the given block +self+ times.
   #
   # ISO 15.2.8.3.22
@@ -28,6 +44,22 @@ class Integer
       block.call(i)
       i += 1
     end
+    self
+  end
+
+  ##
+  # Returns the receiver simply.
+  #
+  # ISO 15.2.8.3.24
+  def round
+    self
+  end
+
+  ##
+  # Returns the receiver simply.
+  #
+  # ISO 15.2.8.3.26
+  def truncate
     self
   end
 
