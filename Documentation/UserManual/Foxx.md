@@ -112,18 +112,29 @@ Details on FoxxApplication{#UserManualFoxxDetailsApplication}
 HTTP Methods
 ------------
 
+### Get
+
 @copydetails JSF_foxx_application_get
+
+### Head
 
 @copydetails JSF_foxx_application_head
 
+### Post
+
 @copydetails JSF_foxx_application_post
+
+### Put
 
 @copydetails JSF_foxx_application_put
 
+### Patch
+
 @copydetails JSF_foxx_application_patch
 
-@copydetails JSF_foxx_application_delete
+### Delete
 
+@copydetails JSF_foxx_application_delete
 
 Documenting and Constraining the Routes
 ---------------------------------------
@@ -148,9 +159,15 @@ view of the route documentation. With the provided information, Foxx will
 generate a nice documentation for you. Furthermore you can describe your 
 API by chaining the following methods onto your path definition:
 
+### Path Param
+
 @copydetails JSF_foxx_RequestContext_pathParam
 
+### Query Param
+
 @copydetails JSF_foxx_RequestContext_queryParam
+
+### Error Response
 
 @copydetails JSF_foxx_RequestContext_errorResponse
 
@@ -163,7 +180,11 @@ after the normal routing process is happening. You could use that for logging
 or to manipulate the request or response (translate it to a certain format for 
 example).
 
+### Before
+
 @copydetails JSF_foxx_application_before
+
+### After
 
 @copydetails JSF_foxx_application_after
 
@@ -187,9 +208,15 @@ The Request Object
 Every request object has the `path` method from the underlying Actions. 
 This is the complete path as supplied by the user as a String.
 
+### Body
+
 @copydetails JSF_foxx_BaseMiddleware_request_body
 
+### Raw Body
+
 @copydetails JSF_foxx_BaseMiddleware_request_rawBody
+
+### Params
 
 @copydetails JSF_foxx_BaseMiddleware_request_params
 
@@ -202,9 +229,15 @@ to set the raw body by hand.
 
 You provide your response body as a String here.
 
+### Status
+
 @copydetails JSF_foxx_BaseMiddleware_response_status
 
+### Set
+
 @copydetails JSF_foxx_BaseMiddleware_response_set
+
+### JSON
 
 @copydetails JSF_foxx_BaseMiddleware_response_json
 
@@ -226,19 +259,35 @@ your model file, export the model as `model`.
 
 A Foxx Model can be initialized with an object of attributes and their values.
 
+### Extend
+
 @copydetails JSF_foxx_model_extend
+
+### Initialize
 
 @copydetails JSF_foxx_model_initializer
 
+### Get
+
 @copydetails JSF_foxx_model_get
+
+### Set
 
 @copydetails JSF_foxx_model_set
 
+### Has
+
 @copydetails JSF_foxx_model_has
+
+### Attributes
 
 @copydetails JSF_foxx_model_attributes
 
+### forDB
+
 @copydetails JSF_foxx_model_forDB
+
+### forClient
 
 @copydetails JSF_foxx_model_forClient
 
@@ -258,29 +307,55 @@ In your repository file, export the repository as `repository`.
     
     exports.repository = TodosRepository;
 
+### Initialize
+
 @copydetails JSF_foxx_repository_initializer
+
+### Collection
 
 @copydetails JSF_foxx_repository_collection
 
+### Prefix
+
 @copydetails JSF_foxx_repository_prefix
+
+### ModelPrototype
 
 @copydetails JSF_foxx_repository_modelPrototype
 
+### Remove
+
 @copydetails JSF_foxx_repository_remove
+
+### Replace
 
 @copydetails JSF_foxx_repository_replace
 
+### Update
+
 @copydetails JSF_foxx_repository_update
+
+### Remove By Example
 
 @copydetails JSF_foxx_repository_removeByExample
 
+### ReplaceByExample
+
 @copydetails JSF_foxx_repository_replaceByExample
+
+### UpdateByExample
 
 @copydetails JSF_foxx_repository_updateByExample
 
+### All
+
 @copydetails JSF_foxx_repository_all
 
+### ByExample
+
 @copydetails JSF_foxx_repository_byExample
+
+### FirstExample
 
 @copydetails JSF_foxx_repository_firstExample
 
@@ -488,6 +563,10 @@ one choice now: `underscore`.  Which would set the body of the response to
 `contentType` to `text/plain` in this case.  In addition to the attributes 
 you provided, you also have access to all your view helpers.
 
+### Initialize
+
 @copydetails JSF_foxx_TemplateMiddleware_initializer
+
+### Render
 
 @copydetails JSF_foxx_TemplateMiddleware_response_render
