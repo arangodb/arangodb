@@ -1,9 +1,15 @@
 v1.4
 ----
 
+* changed compaction to merge small datafiles together (up to 3 datafiles are merged in 
+  a compaction run)
+
+  In the regular case, this should leave less small datafiles stay around on disk and allow
+  using less file descriptors in total.
+
 * added AQL MINUS function
 
-* added AQL UNION_DISTINCT function (more efficient than `UNIQUE(UNION())`)
+* added AQL UNION_DISTINCT function (more efficient than combination of `UNIQUE(UNION())`)
 
 * updated mruby to 2013-08-22
 
