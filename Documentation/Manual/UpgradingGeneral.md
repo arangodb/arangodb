@@ -1,4 +1,4 @@
-General upgrade information {#UpgradingGeneral}
+General Upgrade Information {#UpgradingGeneral}
 ===============================================
 
 @NAVIGATE_UpgradingGeneral
