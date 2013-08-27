@@ -220,6 +220,9 @@ typedef struct TRI_document_collection_s {
   // .............................................................................
 
   TRI_condition_t          _journalsCondition;
+
+  // whether or not there was a request to create a(nother) journal for the collection
+  bool                     _journalRequested;
   
   // whether or not any of the indexes may need to be garbage-collected
   // this flag may be modifying when an index is added to a collection

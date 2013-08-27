@@ -130,10 +130,10 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the journal of a simple collection
+/// @brief checks the journal of a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
+static bool CheckJournalDocumentCollection (TRI_document_collection_t* document) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
   bool worked;
@@ -141,7 +141,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
   size_t n;
 
   worked = false;
-  base = &doc->base.base;
+  base = &document->base.base;
 
   if (base->_state != TRI_COL_STATE_WRITE) {
     return false;
@@ -152,7 +152,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
   // therefore no locking is required to access the _journals
   // .............................................................................
 
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   n = base->_journals._length;
 
@@ -162,9 +162,9 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
     if (journal->_full) {
       worked = true;
 
-      LOG_DEBUG("closing full journal '%s'", journal->_filename);
+      LOG_DEBUG("closing full journal '%s'", journal->getName(journal));
 
-      TRI_CloseJournalPrimaryCollection(&doc->base, i);
+      TRI_CloseJournalPrimaryCollection(&document->base, i);
 
       n = base->_journals._length;
       i = 0;
@@ -174,25 +174,30 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
     }
   }
 
-  if (base->_journals._length == 0) {
-    journal = TRI_CreateJournalDocumentCollection(doc);
+  // create a new journal if we do not have one, AND, if there was a request to create one
+  // (sometimes we don't need a journal, e.g. directly after db._create(collection); when
+  // the collection is still empty)
+  if (base->_journals._length == 0 && 
+      document->_journalRequested) {
+    journal = TRI_CreateJournalDocumentCollection(document);
 
     if (journal != NULL) {
       worked = true;
-      LOG_DEBUG("created new journal '%s'", journal->_filename);
+      document->_journalRequested = false;
+      LOG_DEBUG("created new journal '%s'", journal->getName(journal));
 
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     }
     else {
       // an error occurred when creating the journal file
       LOG_ERROR("could not create journal file");
 
       // we still must wake up the other thread from time to time, otherwise we'll deadlock
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     }
   }
 
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   return worked;
 }
@@ -225,8 +230,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
 
   while (true) {
-    size_t n;
-    size_t i;
+    size_t i, n;
     bool worked;
 
     // keep initial _state value as vocbase->_state might change during sync loop
@@ -262,7 +266,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
       primary = collection->_collection;
 
-      // for simple collection, first sync and then seal
+      // for document collection, first sync and then seal
       type = primary->base._info._type;
 
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {

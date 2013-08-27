@@ -42,6 +42,97 @@ function CompactionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test journals
+////////////////////////////////////////////////////////////////////////////////
+
+    testJournals : function () {
+      var cn = "example";
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+
+      // empty collection
+      var fig = c1.figures();
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(0, fig["journals"]["count"]);
+      assertEqual(0, fig["datafiles"]["count"]);
+      assertEqual(0, fig["compactors"]["count"]);
+
+      c1.save({ "foo": "bar" });
+
+      fig = c1.figures();
+      assertEqual(1, c1.count());
+      assertEqual(1, fig["alive"]["count"]);
+      assertTrue(0 < fig["alive"]["size"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(0, fig["datafiles"]["count"]);
+      assertEqual(0, fig["compactors"]["count"]);
+      
+      c1.rotate();
+      
+      fig = c1.figures();
+      assertEqual(1, c1.count());
+      assertEqual(1, fig["alive"]["count"]);
+      assertTrue(0 < fig["alive"]["size"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(0, fig["journals"]["count"]);
+      assertEqual(1, fig["datafiles"]["count"]);
+      assertEqual(0, fig["compactors"]["count"]);
+      
+      c1.save({ "bar": "baz" });
+
+      fig = c1.figures();
+      assertEqual(2, c1.count());
+      assertEqual(2, fig["alive"]["count"]);
+      assertTrue(0 < fig["alive"]["size"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(1, fig["datafiles"]["count"]);
+      assertEqual(0, fig["compactors"]["count"]);
+
+      c1.rotate();
+      
+      fig = c1.figures();
+      assertEqual(2, c1.count());
+      assertEqual(2, fig["alive"]["count"]);
+      assertTrue(0 < fig["alive"]["size"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(0, fig["journals"]["count"]);
+      assertEqual(2, fig["datafiles"]["count"]);
+      assertEqual(0, fig["compactors"]["count"]);
+
+      c1.truncate();
+      c1.rotate();
+      
+      internal.wait(10);
+      
+      fig = c1.figures();
+      assertEqual(0, c1.count());
+      assertEqual(0, fig["alive"]["count"]);
+      assertEqual(0, fig["alive"]["size"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(0, fig["journals"]["count"]);
+      assertEqual(1, fig["datafiles"]["count"]);
+      assertEqual(0, fig["compactors"]["count"]);
+
+      c1.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test figures after truncate and rotate
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +141,7 @@ function CompactionSuite () {
       var waited;
       var cn = "example";
       var n = 400;
-      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.";
 
       for (var i = 0; i < 5; ++i) {
         payload += payload;
@@ -83,10 +174,9 @@ function CompactionSuite () {
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertTrue(0 < fig["dead"]["count"]);
-      assertTrue(0 < fig["dead"]["count"]);
       assertTrue(0 < fig["dead"]["size"]);
       assertTrue(0 < fig["dead"]["deletion"]);
-      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
       // wait for compactor to run
@@ -132,7 +222,7 @@ function CompactionSuite () {
       var maxWait;
       var cn = "example";
       var n = 400;
-      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.";
 
       for (var i = 0; i < 5; ++i) {
         payload += payload;
@@ -168,7 +258,7 @@ function CompactionSuite () {
       assertTrue(0 < fig["dead"]["count"]);
       assertTrue(0 < fig["dead"]["size"]);
       assertTrue(0 < fig["dead"]["deletion"]);
-      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
       // wait for compactor to run
@@ -191,8 +281,12 @@ function CompactionSuite () {
       assertTrue(0 < fig["dead"]["count"]);
       assertTrue(0 < fig["dead"]["size"]);
       assertTrue(0 < fig["dead"]["deletion"]);
-      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
+
+      c1.save({ "some data": true });
+      fig = c1.figures();
+      assertEqual(1, fig["journals"]["count"]);
 
       internal.db._drop(cn);
     },
@@ -234,7 +328,7 @@ function CompactionSuite () {
       assertEqual(n / 2, fig["dead"]["count"]);
       assertTrue(0 < fig["dead"]["size"]);
       assertTrue(0 < fig["dead"]["deletion"]);
-      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
       // trigger GC
@@ -308,7 +402,7 @@ function CompactionSuite () {
       assertEqual(0, fig["dead"]["count"]);
       assertEqual(0, fig["dead"]["size"]);
       assertEqual(0, fig["dead"]["deletion"]);
-      assertEqual(1, fig["journals"]["count"]);
+      assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
       internal.db._drop(cn);
