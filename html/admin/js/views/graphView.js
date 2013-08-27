@@ -55,6 +55,7 @@ window.graphView = Backbone.View.extend({
       groupByList,
       groupByAttribute,
       label,
+      color,
       config,
       ui,
       width,
@@ -64,6 +65,7 @@ window.graphView = Backbone.View.extend({
     ncol = $("#nodeCollection").val();
     undirected = !!$("#undirected").attr("checked");
     label = $("#nodeLabel").val();
+    color = $("#nodeColor").val();
     randomStart = !!$("#randomStart").attr("checked");
 
     groupByAttribute = [];
@@ -90,6 +92,13 @@ window.graphView = Backbone.View.extend({
         nodeShaper: {
           label: label
         }
+      };
+    }
+    if (color !== undefined && color !== "") {
+      config.nodeShaper = config.nodeShaper || {};
+      config.nodeShaper.color = {
+        type: "attribute",
+        key: color
       };
     }
     width = this.width || $("#content").width();
