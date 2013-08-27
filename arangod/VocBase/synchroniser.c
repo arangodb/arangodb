@@ -184,18 +184,22 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
     if (journal != NULL) {
       worked = true;
       document->_journalRequested = false;
-      LOG_DEBUG("created new journal '%s'", journal->getName(journal));
+      document->_rotateRequested = false;
 
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      LOG_DEBUG("created new journal '%s'", journal->getName(journal));
     }
     else {
       // an error occurred when creating the journal file
       LOG_ERROR("could not create journal file");
-
-      // we still must wake up the other thread from time to time, otherwise we'll deadlock
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     }
   }
+  else if (document->_rotateRequested) {
+    // only a rotate was requested
+    document->_rotateRequested = false;
+  }
+  
+  // always broadcast, otherwise other threads waiting for the broadcast might deadlock!
+  TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
