@@ -1,6 +1,10 @@
 v1.4
 ----
 
+* added AQL MINUS function
+
+* added AQL UNION_DISTINCT function (more efficient than `UNIQUE(UNION())`)
+
 * updated mruby to 2013-08-22
 
 * issue #587: Add db._create() in help for startup arangosh
