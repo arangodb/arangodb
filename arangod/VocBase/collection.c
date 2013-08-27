@@ -345,7 +345,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_InitVectorString(&structure._datafiles, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._indexes, TRI_CORE_MEM_ZONE);
   
-  if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED) != 0) {
+  if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)(\\.dead)?$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
     return structure;
@@ -357,7 +357,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
-    regmatch_t matches[4];
+    regmatch_t matches[5];
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       // file type: (journal|datafile|index|compactor)
@@ -368,11 +368,30 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
       char const* third = file + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
 
+      // isdead?
+      size_t fourthLen = matches[4].rm_eo - matches[4].rm_so;
+
+      // .............................................................................
+      // file is dead
+      // .............................................................................
+    
+      if (fourthLen > 0) {
+        char* filename;
+
+        filename = TRI_Concatenate2File(path, file);
+
+        if (filename != NULL) {
+          LOG_TRACE("removing .dead file '%s'", filename);
+          TRI_UnlinkFile(filename);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+        }
+      }
+
       // .............................................................................
       // file is an index
       // .............................................................................
 
-      if (TRI_EqualString2("index", first, firstLen) && TRI_EqualString2("json", third, thirdLen)) {
+      else if (TRI_EqualString2("index", first, firstLen) && TRI_EqualString2("json", third, thirdLen)) {
         char* filename;
 
         filename = TRI_Concatenate2File(path, file);
@@ -493,7 +512,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   regex_t re;
   size_t i, n;
   
-  if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED) != 0) {
+  if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)(\\.dead)?$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
     return false;
@@ -513,7 +532,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
-    regmatch_t matches[4];
+    regmatch_t matches[5];
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       char const* first = file + matches[1].rm_so;
@@ -521,21 +540,23 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
       char const* third = file + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
+      
+      size_t fourthLen = matches[4].rm_eo - matches[4].rm_so;
         
-      // check for temporary files
+      // check for temporary & dead files
 
-      if (TRI_EqualString2("temp", first, firstLen)) {
+      if (fourthLen > 0 || TRI_EqualString2("temp", first, firstLen)) {
         // found a temporary file. we can delete it!
         char* filename;
 
         filename = TRI_Concatenate2File(collection->_directory, file);
 
-        LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
+        LOG_TRACE("found temporary file '%s', which is probably a left-over. deleting it", filename);
         TRI_UnlinkFile(filename);
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
         continue;
       }
-
+      
       // .............................................................................
       // file is an index, just store the filename
       // .............................................................................
