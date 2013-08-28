@@ -9,7 +9,7 @@ HTML and PDF versions of the manual can be found
 
 ArangoDB is a universal open-source database with a flexible data model for
 documents, graphs, and key-values. You can easily build high performance
-applications using a convenient sql-like query language or JavaScript/Ruby
+applications using a convenient AQL-like query language or JavaScript/Ruby
 extensions.  It focuses on durability of the data taking advantage of new
 technologies like SSD, support for graph and geo algorithms needed in social
 networks, ease of use for the developer and minimal effort to operate for the
