@@ -659,7 +659,7 @@ int ArangoServer::startupServer () {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
 
-  LOGGER_INFO("ArangoDB (version " << TRI_VERSION << ") is ready for business. Have fun!");
+  LOGGER_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
   _applicationServer->wait();
 

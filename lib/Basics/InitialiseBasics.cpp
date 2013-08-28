@@ -52,9 +52,6 @@ namespace triagens {
       random.random();
       Random::selectVersion(v);
 
-      string revision = "$Revision: BASICS " TRI_VERSION " (c) triAGENS GmbH $";
-      LOGGER_TRACE(revision);
-
 #ifdef TRI_BROKEN_CXA_GUARD
       pthread_cond_t cond;
       pthread_cond_init(&cond, 0);
