@@ -38,4 +38,6 @@ $ARANGOD \
     --database.directory "$DATABASE" \
     --javascript.startup-directory "$STARTUPPATH" \
     --javascript.modules-path "$MODULESPATH" \
+    --javascript.package-path "$PACKAGEPATH" \
+    --javascript.app-path "$APPPATH" \
     --javascript.script "$SCRIPT"
