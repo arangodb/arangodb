@@ -2925,7 +2925,8 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
+                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
       }
     },
 
@@ -2942,7 +2943,8 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
+                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
       }
     },
 
@@ -2959,7 +2961,8 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
+                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
       }
     },
 
@@ -2976,7 +2979,8 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
+                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
       }
     },
 
@@ -2994,7 +2998,8 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
+                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
       }
     }
 

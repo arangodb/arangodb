@@ -55,6 +55,12 @@ var Model,
 
 Model = function (attributes) {
   'use strict';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_attributes
+/// @brief The attributes property is the internal hash containing the model's state.
+////////////////////////////////////////////////////////////////////////////////
+
   this.attributes = attributes || {};
 };
 

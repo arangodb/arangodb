@@ -29,12 +29,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-* flags example format:
+* config example format:
 * {
 *   shape: {
 *     type: EdgeShaper.shapes.ARROW
 *   }
-*   label: "key" \\ function(node)
+*   label: "key" \\ function(edge)
 *   actions: {
 *     click: function(edge)
 *   }
@@ -43,7 +43,7 @@
 *
 */
 
-function EdgeShaper(parent, flags, idfunc) {
+function EdgeShaper(parent, config, idfunc) {
   "use strict";
   
   var self = this,
@@ -332,8 +332,8 @@ function EdgeShaper(parent, flags, idfunc) {
     toplevelSVG = d3.select(toplevelSVG[0][0].ownerSVGElement);
   }
   
-  if (flags === undefined) {
-    flags = {
+  if (config === undefined) {
+    config = {
       color: {
         type: "single",
         stroke: "#686766"
@@ -341,14 +341,14 @@ function EdgeShaper(parent, flags, idfunc) {
     };
   }
   
-  if (flags.color === undefined) {
-    flags.color = {
+  if (config.color === undefined) {
+    config.color = {
       type: "single",
       stroke: "#686766"
     };
   }
 
-  parseConfig(flags);
+  parseConfig(config);
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;

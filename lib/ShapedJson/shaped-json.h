@@ -234,15 +234,15 @@ typedef uint64_t TRI_shape_size_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_SHAPE_ILLEGAL = 0,
-  TRI_SHAPE_NULL = 1,
-  TRI_SHAPE_BOOLEAN = 2,
-  TRI_SHAPE_NUMBER = 3,
-  TRI_SHAPE_SHORT_STRING = 4,
-  TRI_SHAPE_LONG_STRING = 5,
-  TRI_SHAPE_ARRAY = 6,
-  TRI_SHAPE_LIST = 7,
-  TRI_SHAPE_HOMOGENEOUS_LIST = 8,
+  TRI_SHAPE_ILLEGAL                = 0,
+  TRI_SHAPE_NULL                   = 1,
+  TRI_SHAPE_BOOLEAN                = 2,
+  TRI_SHAPE_NUMBER                 = 3,
+  TRI_SHAPE_SHORT_STRING           = 4,
+  TRI_SHAPE_LONG_STRING            = 5,
+  TRI_SHAPE_ARRAY                  = 6,
+  TRI_SHAPE_LIST                   = 7,
+  TRI_SHAPE_HOMOGENEOUS_LIST       = 8,
   TRI_SHAPE_HOMOGENEOUS_SIZED_LIST = 9
 }
 TRI_shape_type_e;
@@ -288,10 +288,10 @@ typedef uint32_t TRI_shape_length_list_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shape_s {
-  TRI_shape_sid_t _sid;
-  TRI_shape_type_t _type;
-  TRI_shape_size_t _size; // total size of the shape
-  TRI_shape_size_t _dataSize; // in case of fixed sized shaped or TRI_SHAPE_SIZE_VARIABLE
+  TRI_shape_sid_t    _sid;
+  TRI_shape_type_t   _type;
+  TRI_shape_size_t   _size;     // total size of the shape
+  TRI_shape_size_t   _dataSize; // in case of fixed sized shaped or TRI_SHAPE_SIZE_VARIABLE
 }
 TRI_shape_t;
 
@@ -300,14 +300,13 @@ TRI_shape_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shape_value_s {
-  TRI_shape_aid_t _aid;        // attribute identifier
+  TRI_shape_aid_t    _aid;         // attribute identifier
+  TRI_shape_sid_t    _sid;         // shape identifier of the attribute
+  TRI_shape_type_t   _type;        // type of the attribute
+  bool               _fixedSized;  // true of all element of this shaped have the same size
+  TRI_shape_size_t   _size;        // size of the data block
 
-  TRI_shape_sid_t _sid;        // shape identifier of the attribute
-  TRI_shape_type_t _type;      // type of the attribute
-  bool _fixedSized;            // true of all element of this shaped have the same size
-  TRI_shape_size_t _size;      // size of the data block
-
-  char* _value;
+  char*              _value;
 }
 TRI_shape_value_t;
 

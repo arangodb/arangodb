@@ -1,9 +1,63 @@
 v1.4
 ----
 
+* changed journal file creation behavior
+
+  Previously, a journal file for a collection was always created when a collection was
+  created. When a journal filled up and became full, the current journal was made a
+  datafile, and a new (empty) journal was created automatically. There weren't many
+  intended situations when a collection did not have at least one journal.
+
+  This is changed now as follows:
+  - when a collection is created, no journal file will be created automatically
+  - when there is a write into a collection without a journal, the journal will be
+    created lazily
+  - when there is a write into a collection with a full journal, a new journal will
+    be created automatically
+
+  From the end user perspective, nothing should have changed, except that there is now
+  less disk usage for empty collections. Disk usage of infrequently updated collections 
+  might also be reduced significantly by running the `rotate()` method of a collection, 
+  and not writing into a collection subsequently.
+
+* added method `collection.rotate()`
+
+  This allows premature rotation of a collection's current journal file into a (read-only)
+  datafile. The purpose of using `rotate()` is to prematurely allow compaction (which is 
+  performed on datafiles only) on data, even if the journal was not filled up completely.
+
+  Using `rotate()` may make sense in the following scenario:
+
+      c = db._create("test");
+      for (i = 0; i < 1000; ++i) {
+        c.save(...); // insert lots of data here
+      }
+
+      ...
+      c.truncate(); // collection is now empty
+      // only data in datafiles will be compacted by following compaction runs
+      // all data in the current journal would not be compacted
+
+      // calling rotate will make the current journal a datafile, and thus make it
+      // eligible for compaction
+      c.rotate(); 
+
+  Using `rotate()` may also be useful when data in a collection is known to not change
+  in the immediate future. After having completed all write operations on a collection,
+  performing a `rotate()` will reduce the size of the current journal to the actually
+  required size (remember that journals are pre-allocated with a specific size) before
+  making the journal a datafile. Thus `rotate()` may cause disk space savings, even if
+  the datafiles does not qualify for compaction after rotation.
+
+* changed compaction to merge small datafiles together (up to 3 datafiles are merged in 
+  a compaction run)
+
+  In the regular case, this should leave less small datafiles stay around on disk and allow
+  using less file descriptors in total.
+
 * added AQL MINUS function
 
-* added AQL UNION_DISTINCT function (more efficient than `UNIQUE(UNION())`)
+* added AQL UNION_DISTINCT function (more efficient than combination of `UNIQUE(UNION())`)
 
 * updated mruby to 2013-08-22
 
