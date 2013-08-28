@@ -41,7 +41,7 @@ ArangoDB's User Manuals {#ArangoDBUserManual}
 
 - also see the @ref Glossary
 
-- @EXTREF{arangodb_1.4_shell_reference_card.pdf,Cheat Sheet} 
+- @EXTREF{shell_reference_card.pdf,Cheat Sheet} 
 
 ArangoDB's Administrator Manuals {#ArangoDBAdminManual}
 =======================================================
