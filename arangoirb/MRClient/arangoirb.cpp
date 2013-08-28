@@ -380,7 +380,7 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|_|_|  |_.__/ %s\n", g, r, z);
     printf("%s                       |___/      %s              %s\n", g, r, z);
 
-    cout << endl << "Welcome to arangosh " << TRI_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
 #ifdef TRI_V8_VERSION
     cout << "Using MRUBY " << TRI_MRUBY_VERSION << " engine. Copyright (c) 2012 mruby developers." << endl;

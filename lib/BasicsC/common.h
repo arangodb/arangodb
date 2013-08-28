@@ -43,6 +43,13 @@
 #include "BasicsC/application-exit.h"
 
 #include "build.h"
+
+#ifdef _DEBUG
+#define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "-DEBUG]"
+#else
+#define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "]"
+#endif
+
 #undef TRI_WITHIN_COMMON
 
 ////////////////////////////////////////////////////////////////////////////////

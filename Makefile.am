@@ -279,12 +279,7 @@ install-data-local:
 ################################################################################
 
 build.h: configure.ac
-	@echo '#ifdef _DEBUG'                                                     > build.h
-	@echo '#define TRI_VERSION "@PACKAGE_VERSION@ [" TRI_PLATFORM "-DEBUG]"' >> build.h
-	@echo '#else'                                                            >> build.h
-	@echo '#define TRI_VERSION "@PACKAGE_VERSION@ [" TRI_PLATFORM "]"'       >> build.h
-	@echo '#endif'                                                           >> build.h
-	@echo ''                                                                 >> build.h
+	@echo '#define TRI_VERSION "@PACKAGE_VERSION@"' > build.h
 
 ################################################################################
 ### @brief source files

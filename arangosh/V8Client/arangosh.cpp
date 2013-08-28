@@ -1754,7 +1754,7 @@ int main (int argc, char* argv[]) {
 
 #endif
 
-    cout << endl << "Welcome to arangosh " << TRI_VERSION << ". Copyright (c) triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH" << endl;
 
     ostringstream info;
 

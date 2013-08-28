@@ -570,8 +570,6 @@ void ApplicationServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::start () {
-  LOGGER_DEBUG("ApplicationServer version " << TRI_VERSION);
-
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
