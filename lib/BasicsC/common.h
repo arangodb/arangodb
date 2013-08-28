@@ -41,6 +41,8 @@
 #include "BasicsC/operating-system.h"
 #include "BasicsC/local-configuration.h"
 #include "BasicsC/application-exit.h"
+
+#include "build.h"
 #undef TRI_WITHIN_COMMON
 
 ////////////////////////////////////////////////////////////////////////////////

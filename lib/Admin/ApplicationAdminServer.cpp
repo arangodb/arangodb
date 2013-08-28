@@ -27,7 +27,7 @@
 
 #include "ApplicationAdminServer.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Admin/RestAdminLogHandler.h"
 #include "Admin/RestHandlerCreator.h"
@@ -142,7 +142,7 @@ void ApplicationAdminServer::allowAdminDirectory (string const& adminDirectory) 
 
 void ApplicationAdminServer::allowVersion () {
   _allowVersion = true;
-  _version = TRIAGENS_VERSION;
+  _version = TRI_VERSION;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
