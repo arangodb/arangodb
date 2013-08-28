@@ -35,7 +35,6 @@
 #include "BasicsC/random.h"
 #include "BasicsC/socket-utils.h"
 
-#include "build.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -63,7 +62,7 @@ void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseProcess(argc, argv);
   TRI_InitialiseSockets();
 
-  LOG_TRACE("%s", "$Revision: BASICS-C " TRIAGENS_VERSION " (c) triAGENS GmbH $");
+  LOG_TRACE("%s", "$Revision: BASICS-C " TRI_VERSION " (c) triAGENS GmbH $");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -27,7 +27,8 @@
 
 #include "RestReplicationHandler.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
+
 #include "Basics/JsonHelper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"

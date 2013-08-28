@@ -31,11 +31,12 @@
 #include "BasicsC/win-utils.h"
 #endif
 
-#include "build.h"
+#include "BasicsC/common.h"
 #include "Basics/Common.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/json.h"
 #include "HttpServer/ApplicationEndpointServer.h"
+
 
 #include <v8.h>
 #include <openssl/ssl.h>
@@ -80,7 +81,7 @@ void Version::initialise () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getServerVersion () {
-  return std::string(TRIAGENS_VERSION);
+  return std::string(TRI_VERSION);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

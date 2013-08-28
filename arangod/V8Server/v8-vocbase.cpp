@@ -27,7 +27,7 @@
 
 #include "v8-vocbase.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
@@ -7540,7 +7540,7 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  return scope.Close(v8::String::New(TRIAGENS_VERSION));
+  return scope.Close(v8::String::New(TRI_VERSION));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

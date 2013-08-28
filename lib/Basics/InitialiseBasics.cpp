@@ -39,7 +39,6 @@
 #include <pthread.h>
 #endif
 
-#include <build.h>
 
 namespace triagens {
   namespace basics {
@@ -53,7 +52,7 @@ namespace triagens {
       random.random();
       Random::selectVersion(v);
 
-      string revision = "$Revision: BASICS " TRIAGENS_VERSION " (c) triAGENS GmbH $";
+      string revision = "$Revision: BASICS " TRI_VERSION " (c) triAGENS GmbH $";
       LOGGER_TRACE(revision);
 
 #ifdef TRI_BROKEN_CXA_GUARD

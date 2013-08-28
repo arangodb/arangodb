@@ -1,5 +1,6 @@
-#ifdef _WIN32
-  #include "build_win.h"
+#ifdef _DEBUG
+#define TRI_VERSION "1.4.devel [" TRI_PLATFORM "-DEBUG]"
 #else
-  #include "build_posix.h"  
-#endif  
+#define TRI_VERSION "1.4.devel [" TRI_PLATFORM "]"
+#endif
+

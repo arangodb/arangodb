@@ -49,7 +49,6 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8Client/V8ClientConnection.h"
 
-#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;
