@@ -38,6 +38,7 @@
 #include "Basics/Common.h"
 
 #include "BasicsC/string-buffer.h"
+#include "Zip/zip.h"
 
 // -----------------------------------------------------------------------------
 // string buffer with formatting routines
@@ -140,6 +141,88 @@ namespace triagens {
 /// @addtogroup Strings
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compress the buffer using deflate
+////////////////////////////////////////////////////////////////////////////////
+
+        int deflate (size_t bufferSize) {
+          return TRI_DeflateStringBuffer(&_buffer, bufferSize);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uncompress the buffer into out, using zlib-inflate
+////////////////////////////////////////////////////////////////////////////////
+
+        int inflate (std::stringstream& out, 
+                     size_t bufferSize = 16384) {
+          z_stream strm;
+
+          strm.zalloc   = Z_NULL;
+          strm.zfree    = Z_NULL;
+          strm.opaque   = Z_NULL;
+          strm.avail_in = 0;
+          strm.next_in  = Z_NULL;
+
+          int res = inflateInit(&strm);
+
+          if (res != Z_OK) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          char* buffer = new char[bufferSize];
+
+          if (buffer == 0) {
+            (void) inflateEnd(&strm);
+
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          strm.avail_in = (int) this->length();
+          strm.next_in = (unsigned char*) this->c_str();
+
+          do {
+            if (strm.avail_in == 0) {
+              break;
+            }
+
+            do {
+              strm.avail_out = bufferSize;
+              strm.next_out  = (unsigned char*) buffer;
+
+              res = ::inflate(&strm, Z_NO_FLUSH);
+              assert(res != Z_STREAM_ERROR);  
+
+              switch (res) {
+                case Z_NEED_DICT: {
+                  res = Z_DATA_ERROR;     
+                }
+                // fall-through intentional
+
+                case Z_DATA_ERROR:
+                case Z_MEM_ERROR: {
+                  (void) inflateEnd(&strm);
+                  delete[] buffer;
+
+                  return TRI_ERROR_INTERNAL;
+                }
+              }
+
+              out.write(buffer, bufferSize - strm.avail_out);
+            } 
+            while (strm.avail_out == 0);
+          } 
+          while (res != Z_STREAM_END);
+          
+          (void) inflateEnd(&strm);
+          delete[] buffer;
+
+          if (res != Z_STREAM_END) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          return TRI_ERROR_INTERNAL; 
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the low level buffer

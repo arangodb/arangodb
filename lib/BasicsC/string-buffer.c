@@ -28,6 +28,7 @@
 #include "string-buffer.h"
 #include <stdlib.h>
 #include "BasicsC/conversions.h"
+#include "Zip/zip.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -234,6 +235,94 @@ void  TRI_FreeStringBuffer (TRI_memory_zone_t* zone, TRI_string_buffer_t * self)
 /// @addtogroup Strings
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compress the string buffer using deflate
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DeflateStringBuffer (TRI_string_buffer_t* self, 
+                             size_t bufferSize) {
+  TRI_string_buffer_t deflated;
+  const char* ptr;
+  const char* end;
+  char* buffer;
+  int res;
+
+  z_stream strm;
+  strm.zalloc = Z_NULL;
+  strm.zfree  = Z_NULL;
+  strm.opaque = Z_NULL;
+
+  // initialise deflate procedure
+  res = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+
+  if (res != Z_OK) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+   
+  buffer = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+
+  if (buffer == NULL) {
+    (void) deflateEnd(&strm);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // we'll use this buffer for the output
+  TRI_InitStringBuffer(&deflated, TRI_UNKNOWN_MEM_ZONE);
+
+  ptr = TRI_BeginStringBuffer(self);
+  end = ptr + TRI_LengthStringBuffer(self);
+
+  while (ptr < end) {
+    int flush;
+
+    strm.next_in = (unsigned char*) ptr;
+
+    if (end - ptr > (int) bufferSize) {
+      strm.avail_in = (int) bufferSize;
+      flush = Z_NO_FLUSH;
+    }
+    else {
+      strm.avail_in = (end - ptr);
+      flush = Z_FINISH;
+    }
+    ptr += strm.avail_in;
+
+    do {
+      strm.avail_out = (int) bufferSize;
+      strm.next_out = (unsigned char*) buffer;
+      res = deflate(&strm, flush);
+
+      if (res == Z_STREAM_ERROR) {
+        (void) deflateEnd(&strm);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+        TRI_DestroyStringBuffer(&deflated);
+
+        return TRI_ERROR_INTERNAL; 
+      }
+              
+      if (TRI_AppendString2StringBuffer(&deflated, (char*) buffer, bufferSize - strm.avail_out) != TRI_ERROR_NO_ERROR) {
+        (void) deflateEnd(&strm);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+        TRI_DestroyStringBuffer(&deflated);
+
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    } 
+    while (strm.avail_out == 0);
+  } 
+
+  // deflate successful
+  (void) deflateEnd(&strm);
+
+  TRI_SwapStringBuffer(self, &deflated);
+  TRI_DestroyStringBuffer(&deflated);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure the string buffer has a specific capacity

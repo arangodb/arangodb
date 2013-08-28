@@ -239,8 +239,9 @@ namespace triagens {
       _writeBuffer.appendText("\r\n");
 
       _writeBuffer.appendText("Connection: Keep-Alive\r\n");
-      _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
-
+      _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
+      _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
+      
       // do basic authorization
       if (! _pathToBasicAuth.empty()) {
         string foundPrefix;
@@ -365,7 +366,15 @@ namespace triagens {
       }
 
       if (_readBuffer.length() >= _result->getContentLength()) {
-        _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
+        if (_result->isDeflated()) {
+          // body is compressed using deflate. inflate it
+          _readBuffer.inflate(_result->getBody());
+        }
+        else {
+          // body is not compressed
+          _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
+        }
+
         _readBuffer.erase_front(_result->getContentLength());
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
