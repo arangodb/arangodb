@@ -1,6 +1,6 @@
-unix> curl --header 'If-None-Match:"31474087"' --dump - http://localhost:8529/_api/document/products/31474087
+unix> curl --header 'If-None-Match:"31343015"' --dump - http://localhost:8529/_api/document/products/31343015
 
 HTTP/1.1 304 Not Modified
 content-type: text/plain; charset=utf-8
-etag: "31474087"
+etag: "31343015"
 
