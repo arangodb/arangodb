@@ -349,7 +349,10 @@ log_message_t;
 /// @brief stores output in a buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* text, size_t length) {
+static void StoreOutput (TRI_log_level_e level, 
+                         time_t timestamp, 
+                         char const* text, 
+                         size_t length) {
   TRI_log_buffer_t* buf;
   size_t pos;
   size_t cur;
@@ -932,7 +935,7 @@ static void CloseLogging (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR () {
-  TRI_ShutdownLogging();
+  TRI_ShutdownLogging(true);
   TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
 }
 
@@ -1332,7 +1335,9 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
 
       buf = BufferOutput[i][cur];
 
-      if (buf._lid >= start && buf._text != NULL && *buf._text != '\0') {
+      if (buf._lid >= start && 
+          buf._text != NULL && 
+          *buf._text != '\0') {
         buf._text = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buf._text);
 
         if (buf._text != NULL) {
@@ -1926,13 +1931,11 @@ void TRI_InitialiseLogging (bool threaded) {
 /// @brief shut downs the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ShutdownLogging () {
-  size_t i, j;
-
+bool TRI_ShutdownLogging (bool clearBuffers) {
   if (! Initialised) {
     return ThreadedLogging;
   }
-  
+ 
   Initialised = false;
 
   // logging is now inactive (this will terminate the logging thread)
@@ -1959,19 +1962,24 @@ bool TRI_ShutdownLogging () {
 
   TRI_UnlockSpin(&OutputPrefixLock);
 
-  // cleanup output buffers
-  TRI_LockMutex(&BufferLock);
+  if (clearBuffers) {
+    size_t i, j;
 
-  for (i = 0; i < OUTPUT_LOG_LEVELS; i++) {
-    for (j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
-      if (BufferOutput[i][j]._text != NULL) {
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, BufferOutput[i][j]._text);
-        BufferOutput[i][j]._text = NULL;
+    // cleanup output buffers
+    TRI_LockMutex(&BufferLock);
+
+    for (i = 0; i < OUTPUT_LOG_LEVELS; i++) {
+      for (j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
+        if (BufferOutput[i][j]._text != NULL) {
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, BufferOutput[i][j]._text);
+          BufferOutput[i][j]._text = NULL;
+        }
       }
     }
+  
+    TRI_UnlockMutex(&BufferLock);
   }
 
-  TRI_UnlockMutex(&BufferLock);
 
   // cleanup locks
   TRI_DestroySpin(&OutputPrefixLock);

@@ -1528,8 +1528,8 @@ void RestReplicationHandler::handleCommandSync () {
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if ((restrictType.empty() && restrictCollections.size() > 0) ||
-      (! restrictType.empty() && restrictCollections.size() == 0) ||
+  if ((restrictType.empty() && ! restrictCollections.empty()) ||
+      (! restrictType.empty() && restrictCollections.empty()) ||
       (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
     return;

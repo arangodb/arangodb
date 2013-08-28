@@ -14,6 +14,7 @@ TOC {#HandlingCollectionsTOC}
       - @ref HandlingCollectionsLoad "collection.load"
       - @ref HandlingCollectionsUnload "collection.unload"
       - @ref HandlingCollectionsUnload "collection.rename"
+      - @ref HandlingCollectionsRotate "collection.rotate"
       - @ref HandlingCollectionsTruncate "collection.truncate"
     - @ref HandlingCollectionsDatabaseMethods
       - @ref HandlingCollectionsRead "db._collection"

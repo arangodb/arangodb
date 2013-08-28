@@ -1484,18 +1484,40 @@ function resultUnsupported (req, res, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function for handling redirects 
+////////////////////////////////////////////////////////////////////////////////
+
+function handleRedirect (req, res, destination, headers) {
+  res.contentType = "text/html";
+  res.body = "<html><head><title>Moved</title>"
+    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + destination
+    + "\">"
+    + destination
+    + "</a>.</p></body></html>";
+
+  if (headers !== undefined) {
+    res.headers = headers._shallowCopy;
+  }
+  else {
+    res.headers = {};
+  }
+
+  res.headers.location = destination;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a permanently redirect
 ///
 /// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The function generates an error response.
+/// The function generates a redirect response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
-  res.contentType = "text/html";
 
   if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
     if (req.headers.hasOwnProperty('host')) {
@@ -1514,21 +1536,7 @@ function resultPermanentRedirect (req, res, destination, headers) {
     }
   }
 
-  res.body = "<html><head><title>Moved</title>"
-    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-    + destination
-    + "\">"
-    + destination
-    + "</a>.</p></body></html>";
-
-  if (headers !== undefined) {
-    res.headers = headers._shallowCopy;
-  }
-  else {
-    res.headers = {};
-  }
-
-  res.headers.location = destination;
+  handleRedirect(req, res, destination, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1536,34 +1544,19 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ///
 /// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The function generates an error response.
+/// The function generates a redirect response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
-  res.contentType = "text/html";
-
-  res.body = "<html><head><title>Moved</title>"
-    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-    + destination
-    + "\">"
-    + destination
-    + "</a>.</p></body></html>";
-
-  if (headers !== undefined) {
-    res.headers = headers._shallowCopy;
-  }
-  else {
-    res.headers = {};
-  }
-
-  res.headers.location = destination;
+  
+  handleRedirect(req, res, destination, headers);
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      ArangoDB specific responses
+// --SECTION--                                       ArangoDB specific responses
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

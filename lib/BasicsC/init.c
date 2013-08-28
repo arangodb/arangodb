@@ -75,7 +75,7 @@ void TRI_ShutdownC () {
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();
-  TRI_ShutdownLogging();
+  TRI_ShutdownLogging(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
   TRI_ShutdownError();
