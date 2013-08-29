@@ -279,7 +279,7 @@ static bool ContainsNonAscii (const char* src, size_t len) {
     len -= n;
   }
 
-#if TRI_BITS == 54
+#if TRI_BITS == 64
   typedef uint64_t word;
   const uint64_t mask = 0x8080808080808080ll;
 #else
