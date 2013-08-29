@@ -178,30 +178,6 @@ int InitialSyncer::run (string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparator to sort collections
-/// sort order is by collection type first (vertices before edges, this is
-/// because edges depend on vertices being there), then name 
-////////////////////////////////////////////////////////////////////////////////
-
-int InitialSyncer::sortCollections (const void* l, const void* r) {
-  TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
-  TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
-
-  int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
-  int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
-
-
-  if (leftType != rightType) {
-    return leftType - rightType;
-  }
-
-  string leftName  = JsonHelper::getStringValue(left,  "name", "");
-  string rightName = JsonHelper::getStringValue(right, "name", "");
-
-  return strcmp(leftName.c_str(), rightName.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -652,13 +628,6 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  const size_t n = collections->_value._objects._length;
-
-  if (n > 1) {
-    // sort by collection type (vertices before edges), then name
-    qsort(collections->_value._objects._buffer, n, sizeof(TRI_json_t), &sortCollections);
-  }
-
   int res;
   
   // STEP 1: validate collection declarations from master

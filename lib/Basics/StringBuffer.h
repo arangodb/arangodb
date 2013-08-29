@@ -352,6 +352,21 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the buffer content
+////////////////////////////////////////////////////////////////////////////////
+
+        void set (TRI_string_buffer_t const* other) {
+          if (_buffer._buffer != 0) {
+            TRI_Free(_buffer._memoryZone, _buffer._buffer);
+          }
+
+          _buffer._memoryZone = other->_memoryZone;
+          _buffer._buffer     = other->_buffer;
+          _buffer._current    = other->_current;
+          _buffer._len        = other->_len;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

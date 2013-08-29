@@ -254,6 +254,30 @@ BAD_CALL:
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator to sort collections
+/// sort order is by collection type first (vertices before edges, this is
+/// because edges depend on vertices being there), then name 
+////////////////////////////////////////////////////////////////////////////////
+
+int RestReplicationHandler::sortCollections (const void* l, 
+                                             const void* r) {
+  TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
+  TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
+
+  int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
+  int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
+  
+  if (leftType != rightType) {
+    return leftType - rightType;
+  }
+
+  string leftName  = JsonHelper::getStringValue(left,  "name", "");
+  string rightName = JsonHelper::getStringValue(right, "name", "");
+
+  return strcasecmp(leftName.c_str(), rightName.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1036,7 +1060,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
     if (length > 0) {
       // transfer ownership of the buffer contents
-      _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
+      _response->body().set(dump._buffer);
+      
       // avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
@@ -1069,6 +1094,8 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// - `indexes`: a list of the indexes of a the collection. Primary indexes and edges indexes
 ///    are not included in this list.
+///
+/// `tick`: the system-wide tick value at the start of the dump
 ///
 /// The `state` attribute contains the current state of the replication logger. It
 /// contains the following sub-attributes:
@@ -1176,6 +1203,17 @@ void RestReplicationHandler::handleCommandInventory () {
     return;
   }
 
+  assert(JsonHelper::isList(collections));
+ 
+  // sort collections by type, then name 
+  const size_t n = collections->_value._objects._length;
+
+  if (n > 1) {
+    // sort by collection type (vertices before edges), then name
+    qsort(collections->_value._objects._buffer, n, sizeof(TRI_json_t), &sortCollections);
+  }
+
+
   TRI_replication_logger_state_t state;
 
   int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
@@ -1190,10 +1228,13 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_json_t json;
   
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+  
+  char* tickString = TRI_StringUInt64(tick);
 
   // add collections data
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state)); 
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
   
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -1217,6 +1258,9 @@ void RestReplicationHandler::handleCommandInventory () {
 ///
 /// @RESTQUERYPARAM{chunkSize,number,optional}
 /// Approximate maximum size of the returned result.
+///
+/// @RESTQUERYPARAM{ticks,boolean,optional}
+/// Whether or not to include tick values in the dump. Default value is `true`.
 ///
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
@@ -1336,16 +1380,20 @@ void RestReplicationHandler::handleCommandDump () {
   // determine start tick for dump
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
+  bool withTicks           = true;
+
   bool found;
   char const* value;
   
   value = _request->value("from", found);
+
   if (found) {
     tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 
   // determine end tick for dump
   value = _request->value("to", found);
+
   if (found) {
     tickEnd = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
@@ -1355,6 +1403,12 @@ void RestReplicationHandler::handleCommandDump () {
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
+  }
+
+  value = _request->value("ticks", found);
+
+  if (found) {
+    withTicks = StringUtils::boolean(value);
   }
   
   const uint64_t chunkSize = determineChunkSize(); 
@@ -1391,7 +1445,7 @@ void RestReplicationHandler::handleCommandDump () {
     return;
   }
 
-  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize);
+  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks);
   
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 
@@ -1418,7 +1472,8 @@ void RestReplicationHandler::handleCommandDump () {
                          StringUtils::itoa(dump._lastFoundTick));
     
     // transfer ownership of the buffer contents
-    _response->body().appendText(TRI_BeginStringBuffer(dump._buffer), length);
+    _response->body().set(dump._buffer);
+    
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
   }
