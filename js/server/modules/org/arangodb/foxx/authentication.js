@@ -142,7 +142,7 @@ function encodePassword (password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function FoxxUsers (applicationContext, options) {
+function Users (applicationContext, options) {
   'use strict';
 
   this._options = options || { };
@@ -173,7 +173,7 @@ function FoxxUsers (applicationContext, options) {
 /// @brief returns the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.storage = function () {
+Users.prototype.storage = function () {
   'use strict';
 
   if (this._collection === null) {
@@ -191,7 +191,7 @@ FoxxUsers.prototype.storage = function () {
 /// @brief validate a user identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype._validateIdentifier = function (identifier, allowObject) {
+Users.prototype._validateIdentifier = function (identifier, allowObject) {
   'use strict';
 
   if (allowObject) {
@@ -228,7 +228,7 @@ FoxxUsers.prototype._validateIdentifier = function (identifier, allowObject) {
 /// @brief sets up the users collection
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.setup = function (options) {
+Users.prototype.setup = function (options) {
   'use strict';
 
   var journalSize;
@@ -252,7 +252,7 @@ FoxxUsers.prototype.setup = function (options) {
 /// @brief tears down the users collection
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.teardown = function () {
+Users.prototype.teardown = function () {
   'use strict';
 
   var c = db._collection(this._collectionName);
@@ -266,7 +266,7 @@ FoxxUsers.prototype.teardown = function () {
 /// @brief flushes all users
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.flush = function () {
+Users.prototype.flush = function () {
   'use strict';
  
   this.storage().truncate();
@@ -276,7 +276,7 @@ FoxxUsers.prototype.flush = function () {
 /// @brief add a user
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.add = function (identifier, password, active, data) {
+Users.prototype.add = function (identifier, password, active, data) {
   'use strict';
  
   var c = this.storage();
@@ -289,11 +289,14 @@ FoxxUsers.prototype.add = function (identifier, password, active, data) {
   if (active !== undefined && typeof active !== "boolean") {
     throw new TypeError("invalid type for 'active'");
   }
+  if (active === undefined) {
+    active = true;
+  }
 
   var user = {
     identifier: identifier,
     password:   encodePassword(password),
-    active:     active || true,
+    active:     active,
     data:       data || { }
   };
 
@@ -327,7 +330,7 @@ FoxxUsers.prototype.add = function (identifier, password, active, data) {
 /// @brief update a user
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.updateData = function (identifier, data) {
+Users.prototype.updateData = function (identifier, data) {
   'use strict';
 
   var c = this.storage();
@@ -360,7 +363,7 @@ FoxxUsers.prototype.updateData = function (identifier, data) {
 /// @brief set activity flag
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.setActive = function (identifier, active) {
+Users.prototype.setActive = function (identifier, active) {
   'use strict';
  
   var c = this.storage();
@@ -384,7 +387,7 @@ FoxxUsers.prototype.setActive = function (identifier, active) {
 /// @brief set password
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.setPassword = function (identifier, password) {
+Users.prototype.setPassword = function (identifier, password) {
   'use strict';
  
   var c = this.storage();
@@ -411,7 +414,7 @@ FoxxUsers.prototype.setPassword = function (identifier, password) {
 /// @brief remove a user
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.remove = function (identifier) {
+Users.prototype.remove = function (identifier) {
   'use strict';
  
   var c = this.storage();
@@ -436,7 +439,7 @@ FoxxUsers.prototype.remove = function (identifier) {
 /// @brief returns a user
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.get = function (identifier) {
+Users.prototype.get = function (identifier) {
   'use strict';
  
   var c = this.storage();
@@ -457,7 +460,7 @@ FoxxUsers.prototype.get = function (identifier) {
 /// @brief check whether a user is valid 
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxUsers.prototype.isValid = function (identifier, password) {
+Users.prototype.isValid = function (identifier, password) {
   'use strict';
  
   var c = this.storage();
@@ -503,7 +506,7 @@ FoxxUsers.prototype.isValid = function (identifier, password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
   
-function FoxxSessions (applicationContext, options) {
+function Sessions (applicationContext, options) {
   'use strict';
 
   this._applicationContext = applicationContext;
@@ -539,7 +542,7 @@ function FoxxSessions (applicationContext, options) {
 /// @brief create a session object from a document
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype._toObject = function (session) {
+Sessions.prototype._toObject = function (session) {
   var that = this;
 
   return {
@@ -594,7 +597,7 @@ FoxxSessions.prototype._toObject = function (session) {
 /// @brief sets up the sessions
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.setup = function (options) {
+Sessions.prototype.setup = function (options) {
   'use strict';
   
   var journalSize;
@@ -618,7 +621,7 @@ FoxxSessions.prototype.setup = function (options) {
 /// @brief tears down the sessions
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.teardown = function () {
+Sessions.prototype.teardown = function () {
   'use strict';
   
   var c = db._collection(this._collectionName);
@@ -632,7 +635,7 @@ FoxxSessions.prototype.teardown = function () {
 /// @brief return the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.storage = function () {
+Sessions.prototype.storage = function () {
   'use strict';
 
   if (this._collection === null) {
@@ -650,7 +653,7 @@ FoxxSessions.prototype.storage = function () {
 /// @brief generate a new session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.generate = function (identifier, data) {
+Sessions.prototype.generate = function (identifier, data) {
   'use strict';
 
   if (typeof identifier !== "string" || identifier.length === 0) {
@@ -700,7 +703,7 @@ FoxxSessions.prototype.generate = function (identifier, data) {
 /// @brief update a session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.update = function (token, data) {
+Sessions.prototype.update = function (token, data) {
   'use strict';
       
   this.storage().update(token, { 
@@ -713,7 +716,7 @@ FoxxSessions.prototype.update = function (token, data) {
 /// @brief terminate a session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.terminate = function (token) {
+Sessions.prototype.terminate = function (token) {
   'use strict';
 
   try {
@@ -728,7 +731,7 @@ FoxxSessions.prototype.terminate = function (token) {
 /// @brief get an existing session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxSessions.prototype.get = function (token) {
+Sessions.prototype.get = function (token) {
   'use strict';
 
   var storage = this.storage();
@@ -782,7 +785,7 @@ FoxxSessions.prototype.get = function (token) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function FoxxCookieAuthentication (applicationContext, options) {
+function CookieAuthentication (applicationContext, options) {
   'use strict';
 
   options = options || { };
@@ -819,7 +822,7 @@ function FoxxCookieAuthentication (applicationContext, options) {
 /// @brief get a cookie from the request
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.getTokenFromRequest = function (req) {
+CookieAuthentication.prototype.getTokenFromRequest = function (req) {
   'use strict';
 
   if (! req.hasOwnProperty("cookies")) {
@@ -837,7 +840,7 @@ FoxxCookieAuthentication.prototype.getTokenFromRequest = function (req) {
 /// @brief register a cookie in the request
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.setCookie = function (res, value) {
+CookieAuthentication.prototype.setCookie = function (res, value) {
   'use strict';
   
   var name = this._options.name;
@@ -875,7 +878,7 @@ FoxxCookieAuthentication.prototype.setCookie = function (res, value) {
 /// @brief check whether the request contains authentication data
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.getAuthenticationData = function (req) {
+CookieAuthentication.prototype.getAuthenticationData = function (req) {
   'use strict';
 
   var token = this.getTokenFromRequest(req);
@@ -893,7 +896,7 @@ FoxxCookieAuthentication.prototype.getAuthenticationData = function (req) {
 /// @brief generate authentication data
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.beginSession = function (req, res, token, identifier, data) {
+CookieAuthentication.prototype.beginSession = function (req, res, token, identifier, data) {
   'use strict';
  
   this.setCookie(res, token);
@@ -903,7 +906,7 @@ FoxxCookieAuthentication.prototype.beginSession = function (req, res, token, ide
 /// @brief delete authentication data
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.endSession = function (req, res) {
+CookieAuthentication.prototype.endSession = function (req, res) {
   'use strict';
 
   this.setCookie(res, "");
@@ -913,7 +916,7 @@ FoxxCookieAuthentication.prototype.endSession = function (req, res) {
 /// @brief update authentication data
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.updateSession = function (req, res, session) {
+CookieAuthentication.prototype.updateSession = function (req, res, session) {
   'use strict';
 
   // update the cookie (expire date)
@@ -924,7 +927,7 @@ FoxxCookieAuthentication.prototype.updateSession = function (req, res, session) 
 /// @brief check whether the authentication handler is responsible
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxCookieAuthentication.prototype.isResponsible = function (req) {
+CookieAuthentication.prototype.isResponsible = function (req) {
   'use strict';
 
   return true;
@@ -951,7 +954,7 @@ FoxxCookieAuthentication.prototype.isResponsible = function (req) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function FoxxAuthentication (applicationContext, sessions, authenticators) {
+function Authentication (applicationContext, sessions, authenticators) {
   'use strict';
 
   this._applicationContext = applicationContext;
@@ -981,7 +984,7 @@ function FoxxAuthentication (applicationContext, sessions, authenticators) {
 /// @brief runs the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxAuthentication.prototype.authenticate = function (req) {
+Authentication.prototype.authenticate = function (req) {
   'use strict';
 
   var i, n = this._authenticators.length;
@@ -1009,7 +1012,7 @@ FoxxAuthentication.prototype.authenticate = function (req) {
 /// @brief begin a session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxAuthentication.prototype.beginSession = function (req, res, identifier, data) {
+Authentication.prototype.beginSession = function (req, res, identifier, data) {
   'use strict';
 
   var session = this._sessions.generate(identifier, data);
@@ -1031,7 +1034,7 @@ FoxxAuthentication.prototype.beginSession = function (req, res, identifier, data
 /// @brief terminate a session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxAuthentication.prototype.endSession = function (req, res, token) {
+Authentication.prototype.endSession = function (req, res, token) {
   'use strict';
 
   var i, n = this._authenticators.length;
@@ -1052,7 +1055,7 @@ FoxxAuthentication.prototype.endSession = function (req, res, token) {
 /// @brief update a session
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxAuthentication.prototype.updateSession = function (req, res, session) {
+Authentication.prototype.updateSession = function (req, res, session) {
   'use strict';
 
   var i, n = this._authenticators.length;
@@ -1074,6 +1077,32 @@ FoxxAuthentication.prototype.updateSession = function (req, res, session) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     custom errors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Foxx
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+function UnauthorizedError (message) {
+  'use strict';
+  this.message = message || "Unauthorized";
+  this.statusCode = 401;
+}
+
+// http://stackoverflow.com/questions/783818/how-do-i-create-a-custom-error-in-javascript
+UnauthorizedError.prototype = new Error();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
@@ -1082,10 +1111,11 @@ FoxxAuthentication.prototype.updateSession = function (req, res, session) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.FoxxUsers                = FoxxUsers;
-exports.FoxxSessions             = FoxxSessions;
-exports.FoxxCookieAuthentication = FoxxCookieAuthentication;
-exports.FoxxAuthentication       = FoxxAuthentication;
+exports.Users                = Users;
+exports.Sessions             = Sessions;
+exports.CookieAuthentication = CookieAuthentication;
+exports.Authentication       = Authentication;
+exports.UnauthorizedError    = UnauthorizedError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
