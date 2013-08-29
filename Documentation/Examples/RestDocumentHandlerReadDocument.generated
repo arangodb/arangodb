@@ -1,13 +1,13 @@
-unix> curl --dump - http://localhost:8529/_api/document/products/30163367
+unix> curl --dump - http://localhost:8529/_api/document/products/30032295
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "30163367"
+etag: "30032295"
 
 { 
   "hello" : "world", 
-  "_id" : "products/30163367", 
-  "_rev" : "30163367", 
-  "_key" : "30163367" 
+  "_id" : "products/30032295", 
+  "_rev" : "30032295", 
+  "_key" : "30032295" 
 }
 

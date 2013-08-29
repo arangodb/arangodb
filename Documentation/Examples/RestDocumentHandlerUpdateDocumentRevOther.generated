@@ -1,4 +1,4 @@
-unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/42287527?rev=42746279
+unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products/42418599?rev=42746279
 {"other":"content"}
 
 HTTP/1.1 412 Precondition Failed
@@ -9,8 +9,8 @@ content-type: application/json; charset=utf-8
   "code" : 412, 
   "errorNum" : 1200, 
   "errorMessage" : "precondition failed", 
-  "_id" : "products/42287527", 
-  "_rev" : "42287527", 
-  "_key" : "42287527" 
+  "_id" : "products/42418599", 
+  "_rev" : "42418599", 
+  "_key" : "42418599" 
 }
 
