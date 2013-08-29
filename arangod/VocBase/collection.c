@@ -1417,7 +1417,7 @@ int TRI_LoadCollectionInfo (char const* path,
 
     if (value->_type == TRI_JSON_NUMBER) {
       if (TRI_EqualString(key->_value._string.data, "version")) {
-        parameter->_version = value->_value._number;
+        parameter->_version = (TRI_col_version_t) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "type")) {
         parameter->_type = value->_value._number;
@@ -1426,7 +1426,7 @@ int TRI_LoadCollectionInfo (char const* path,
         parameter->_cid = (TRI_voc_cid_t) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
-        parameter->_maximalSize = value->_value._number;
+        parameter->_maximalSize = (TRI_voc_size_t) value->_value._number;
       }
     }
     else if (TRI_IsStringJson(value)) {

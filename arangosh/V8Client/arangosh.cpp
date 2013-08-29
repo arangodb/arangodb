@@ -1684,10 +1684,8 @@ int main (int argc, char* argv[]) {
       int redColour     = FOREGROUND_RED | FOREGROUND_INTENSITY;
       int defaultColour = 0;
       CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
-      bool ok;
 
-      ok = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo);
-      if (ok) {
+      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo) != 0) {
         defaultColour = csbiInfo.wAttributes;
       }
 

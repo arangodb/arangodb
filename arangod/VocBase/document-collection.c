@@ -4110,7 +4110,7 @@ static int ComparePidName (void const* left, void const* right) {
   pid_name_t const* l = left;
   pid_name_t const* r = right;
 
-  return l->_pid - r->_pid;
+  return (int) (l->_pid - r->_pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
