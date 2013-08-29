@@ -27,7 +27,7 @@
 
 #include "v8-vocbase.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
@@ -3360,8 +3360,8 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION_PARAMETER(scope, "<endpoint> must be a valid endpoint")
   }
   
-  if ((restrictType.empty() && restrictCollections.size() > 0) ||
-      (! restrictType.empty() && restrictCollections.size() == 0) ||
+  if ((restrictType.empty() && ! restrictCollections.empty()) ||
+      (! restrictType.empty() && restrictCollections.empty()) ||
       (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <restrictCollections> or <restrictType>");
   }
@@ -6268,9 +6268,9 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 /// @FUN{@FA{collection}.rotate()}
 ///
 /// Rotates the current journal of a collection (i.e. makes the journal a 
-/// datafile and creates a new, empty datafile).
-/// This function is used during testing to force certain states and 
-/// conditions. It is not intended to be used publicly
+/// read-only datafile). The purpose of the rotation is to include the
+/// datafile in a following compaction run and perform earlier garbage 
+/// collection.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
@@ -7540,7 +7540,7 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  return scope.Close(v8::String::New(TRIAGENS_VERSION));
+  return scope.Close(v8::String::New(TRI_VERSION));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7846,7 +7846,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   try {
-    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, name.c_str(), newDoc);
+    result = saveToCollection(vocbase, TRI_COL_NAME_DATABASES, name, newDoc);
   }
   catch (...) {
   }
@@ -8670,7 +8670,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
   TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
-  TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol, true);
+  TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(rt, "truncate", JS_TruncateVocbaseCol);

@@ -17,7 +17,7 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ### @brief source to build before compile
 ################################################################################
 
-BUILT_SOURCES = build_posix.h
+BUILT_SOURCES = build.h
 
 ################################################################################
 ### @brief man pages to install
@@ -278,14 +278,8 @@ install-data-local:
 ### @brief version number
 ################################################################################
 
-build_posix.h: configure.ac
-	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build_posix.h
-
-################################################################################
-### @brief local modifications
-################################################################################
-
--include Installation/Makefile.local
+build.h: configure.ac
+	@echo '#define TRI_VERSION "@PACKAGE_VERSION@"' > build.h
 
 ################################################################################
 ### @brief source files
@@ -369,7 +363,7 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: \
-	build_posix.h \
+	build.h \
 	@top_srcdir@/js/common/bootstrap/errors.js \
 	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
 

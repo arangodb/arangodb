@@ -31,7 +31,7 @@
 
 #include "v8-utils.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include <fstream>
 #include <locale>
@@ -2737,7 +2737,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(packages));
   TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
-  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));
+  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRI_VERSION));
 
   TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));

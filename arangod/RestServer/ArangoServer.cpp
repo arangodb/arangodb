@@ -29,6 +29,8 @@
 
 #include <v8.h>
 
+#include "BasicsC/common.h"
+
 #ifdef TRI_ENABLE_MRUBY
 #include "mruby.h"
 #include "mruby/compile.h"
@@ -36,8 +38,6 @@
 #include "mruby/proc.h"
 #include "mruby/variable.h"
 #endif
-
-#include "build.h"
 
 #include "Utils/DocumentWrapper.h"
 
@@ -302,7 +302,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->addFeature(_applicationAdminServer);
 
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("arango", TRIAGENS_VERSION);
+  _applicationAdminServer->allowVersion("arango", TRI_VERSION);
   _applicationAdminServer->allowAdminDirectory(); // might be changed later
 
   // .............................................................................
@@ -434,9 +434,6 @@ void ArangoServer::buildApplicationServer () {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
-  // dump version details
-  LOGGER_INFO(rest::Version::getVerboseVersionString());
-
   // configure v8
   if (_applicationServer->programOptions().has("development-mode")) {
     _developmentMode = true;
@@ -505,6 +502,9 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // now run arangod
   // .............................................................................
+  
+  // dump version details
+  LOGGER_INFO(rest::Version::getVerboseVersionString());
 
   LOGGER_INFO("using default language '" << languageName << "'");
 
@@ -659,7 +659,7 @@ int ArangoServer::startupServer () {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
 
-  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
+  LOGGER_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
   _applicationServer->wait();
 

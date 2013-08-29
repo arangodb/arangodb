@@ -604,6 +604,8 @@ static int RotateJournal (TRI_document_collection_t* document) {
 
       datafile = base->_journals._buffer[0];
       datafile->_full = true;
+
+      document->_rotateRequested = true;
     
       TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
       TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -614,6 +616,7 @@ static int RotateJournal (TRI_document_collection_t* document) {
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
   return res;
 }
 
@@ -663,12 +666,15 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       }
     }
 
+    document->_journalRequested = true;
+
     TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
   return NULL;
 }
 
@@ -2807,6 +2813,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->base.update            = UpdateShapedJson;
   document->base.remove            = RemoveShapedJson;
 
+  // we do not require an initial journal
+  document->_journalRequested      = false;
+  document->_rotateRequested      = false;
   document->cleanupIndexes         = CleanupIndexes;
 
   return true;

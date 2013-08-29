@@ -59,8 +59,6 @@
 #include "V8Client/ImportHelper.h"
 #include "V8Client/V8ClientConnection.h"
 
-#include "build.h"
-
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
@@ -1756,7 +1754,7 @@ int main (int argc, char* argv[]) {
 
 #endif
 
-    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH" << endl;
 
     ostringstream info;
 

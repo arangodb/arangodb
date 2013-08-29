@@ -27,7 +27,7 @@
 
 #include "VocbaseContext.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "BasicsC/tri-strings.h"
 #include "VocBase/auth.h"
