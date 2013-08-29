@@ -1080,6 +1080,11 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///
 /// @RESTHEADER{GET /_api/replication/inventory,returns an inventory of collections and indexes}
 ///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{includeSystem,boolean,optional}
+/// Include system collections in the result. The default value is `false`.
+///
 /// @RESTDESCRIPTION
 /// Returns the list of collections and indexes available on the server. This
 /// list can be used by replication clients to initiate an initial sync with the
@@ -1195,8 +1200,20 @@ void RestReplicationHandler::handleCommandInventory () {
 
   TRI_voc_tick_t tick = TRI_CurrentTickVocBase();
   
-  // collections
-  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, NULL);
+  // include system collections?
+  bool includeSystem = false;
+  bool found;
+  const char* value = _request->value("includeSystem", found);
+
+  if (found) {
+    includeSystem = StringUtils::boolean(value);
+  }
+
+  // register filter function
+  bool (*filter)(TRI_vocbase_col_t*, void*) = includeSystem ? 0 : &filterCollection;
+
+  // collections and indexes
+  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, filter, NULL);
 
   if (collections == 0) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);

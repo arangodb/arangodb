@@ -421,8 +421,11 @@ static int DumpCollection (ofstream& outFile,
 static int GetInventory (string& errorMsg) {
   map<string, string> headers;
 
+  const string url = "/_api/replication/inventory?includeSystem=" + 
+                     string(IncludeSystemCollections ? "true" : "false");
+
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
-                                               "/_api/replication/inventory",
+                                               url,
                                                0, 
                                                0,  
                                                headers); 
@@ -448,6 +451,7 @@ static int GetInventory (string& errorMsg) {
 
 
   const string& data = response->getBody().str();
+
     
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
   delete response;
