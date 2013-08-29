@@ -1165,6 +1165,83 @@ function put_api_collection_rename (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rotates the journal of a collection
+///
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/rotate,rotates the journal of a collection}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{collection-name,string,required}
+///
+/// @RESTDESCRIPTION
+/// Rotates the journal of a collection. The current journal of the collection will be closed 
+/// and made a read-only datafile. The purpose of the rotate method is to make the data in
+/// the file available for compaction (compaction is only performed for read-only datafiles, and
+/// not for journals).
+///
+/// Saving new data in the collection subsequently will create a new journal file 
+/// automatically if there is no current journal.
+///
+/// If returns an object with the attributes
+///
+/// - `result`: will be `true` if rotation succeeded
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the collection currently has no journal, `HTTP 500` is returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+///
+/// @EXAMPLES
+///
+/// Rotating a journal:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
+///     var cn = "products";
+///     var coll = db._create(cn);
+///     coll.save({ "test" : true });
+///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///
+///     var response = logCurlRequest('PUT', url, { });
+///
+///     assert(response.code === 200);
+///     db._flushCache();
+///     db._drop("products");
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Rotating without a journal:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
+///     var cn = "products";
+///     var coll = db._create(cn);
+///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///
+///     var response = logCurlRequest('PUT', url, { });
+///
+///     assert(response.code === 400);
+///     db._flushCache();
+///     db._drop("products");
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+function put_api_collection_rotate (req, res, collection) {
+  try {
+    collection.rotate();
+
+    actions.resultOk(req, res, actions.HTTP_OK, { result: true });
+  }
+  catch (err) {
+    actions.resultException(req, res, err, undefined, false);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1199,6 +1276,9 @@ function put_api_collection (req, res) {
   }
   else if (sub === "rename") {
     put_api_collection_rename(req, res, collection);
+  }
+  else if (sub === "rotate") {
+    put_api_collection_rotate(req, res, collection);
   }
   else {
     actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,

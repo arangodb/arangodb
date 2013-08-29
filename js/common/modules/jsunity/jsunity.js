@@ -457,10 +457,10 @@ var jsUnity = exports.jsUnity = (function () {
                 var setUp = getFixtureUtil("setUp");
                 var tearDown = getFixtureUtil("tearDown");
 
-                counter = 0;
-
                 for (var j = 0; j < cnt; j++) {
                     var test = suite.tests[j];
+                    
+                    counter = 0;
     
                     try {
                         setUp(test.name);

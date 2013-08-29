@@ -104,3 +104,7 @@ Modifying a Collection {#HttpCollectionChanging}
 @CLEARPAGE
 @anchor HttpCollectionRename
 @copydetails JSF_put_api_collection_rename
+
+@CLEARPAGE
+@anchor HttpCollectionRotate
+@copydetails JSF_put_api_collection_rotate
