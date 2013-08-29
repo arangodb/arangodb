@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief arango dump tool
+/// @brief arango restore tool
 ///
 /// @file
 ///
@@ -102,16 +102,22 @@ static vector<string> Collections;
 static bool IncludeSystemCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output directory 
+/// @brief input directory 
 ////////////////////////////////////////////////////////////////////////////////
 
-static string OutputDirectory;
+static string InputDirectory;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief overwrite output directory
+/// @brief import data
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Overwrite = false;
+static bool ImportData = true;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief import structure
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ImportStructure = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief progress
@@ -120,28 +126,10 @@ static bool Overwrite = false;
 static bool Progress = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save meta data
+/// @brief overwrite collections if they exist
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DumpStructure = true;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save data
-////////////////////////////////////////////////////////////////////////////////
-
-static bool DumpData = true;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief first tick to be included in data dump
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TickStart = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief last tick to be included in data dump
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TickEnd = 0;
+static bool Overwrite = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -166,14 +154,12 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
     ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
-    ("dump-structure", &DumpStructure, "dump collection structure")
-    ("dump-data", &DumpData, "dump collection data")
+    ("import-data", &ImportData, "import data into collection")
+    ("create-collection", &ImportStructure, "create collection structure")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
-    ("output-directory", &OutputDirectory, "output directory")
-    ("overwrite", &Overwrite, "overwrite data in output directory")
+    ("input-directory", &InputDirectory, "output directory")
+    ("overwrite", &Overwrite, "overwrite collections if they exist")
     ("progress", &Progress, "show progress")
-    ("tick-start", &TickStart, "only include data after this tick")
-    ("tick-end", &TickEnd, "last tick to be included in data dump")
   ;
 
   BaseClient.setupGeneral(description);
@@ -183,7 +169,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
 
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv, "arangodump.conf");
+  BaseClient.parse(options, description, argc, argv, "arangorestore.conf");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,15 +189,15 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangodumpEntryFunction ();
-static void arangodumpExitFunction (int, void*);
+static void arangorestoreEntryFunction ();
+static void arangorestoreExitFunction (int, void*);
 
 #ifdef _WIN32
 
 // .............................................................................
 // Call this function to do various initialistions for windows only
 // .............................................................................
-void arangodumpEntryFunction () {
+void arangorestoreEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -241,7 +227,7 @@ void arangodumpEntryFunction () {
 
 }
 
-static void arangodumpExitFunction (int exitCode, void* data) {
+static void arangorestoreExitFunction (int exitCode, void* data) {
   int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
@@ -258,10 +244,10 @@ static void arangodumpExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangodumpEntryFunction () {
+static void arangorestoreEntryFunction () {
 }
 
-static void arangodumpExitFunction (int exitCode, void* data) {
+static void arangorestoreExitFunction (int exitCode, void* data) {
 }
 
 #endif
@@ -316,126 +302,22 @@ static string GetVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump a single collection
+/// @brief send the request to re-create a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DumpCollection (ofstream& outFile,
-                           const string& cid,
-                           const string& name,
-                           TRI_json_t const* parameters,
-                           const uint64_t maxTick,
-                           string& errorMsg) {
-
-  const string baseUrl = "/_api/replication/dump?collection=" + cid + 
-                         "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false";
-    
+static int SendRestoreCollection (TRI_json_t* const json, 
+                                  string& errorMsg) {
   map<string, string> headers;
 
-  uint64_t fromTick = TickStart;
+  const string url = "/_api/replication/restore-collection?overwrite=" + 
+                     string(Overwrite ? "true" : "false");
 
-  while (1) {
-    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
-  
-    if (maxTick > 0) {
-      url += "&to=" + StringUtils::itoa(maxTick);
-    }
+  const string body = JsonHelper::toString(json);
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
-                                                 url,
-                                                 0, 
-                                                 0,  
-                                                 headers); 
-
-    if (response == 0 || ! response->isComplete()) {
-      errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-      if (response != 0) {
-        delete response;
-      }
-
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (response->wasHttpError()) {
-      errorMsg = "got invalid response from server: HTTP " + 
-                 StringUtils::itoa(response->getHttpReturnCode()) + 
-                 ": " + response->getHttpReturnMessage();
-      
-      delete response;
-
-      return TRI_ERROR_INTERNAL;
-    }
-
-    int res;
-    bool checkMore = false;
-    bool found;
-    uint64_t tick;
-
-    // TODO: fix hard-coded headers
-    string header = response->getHeaderField("x-arango-replication-checkmore", found);
-
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-      res = TRI_ERROR_NO_ERROR;
-   
-      if (checkMore) { 
-        // TODO: fix hard-coded headers
-        header = response->getHeaderField("x-arango-replication-lastincluded", found);
-
-        if (found) {
-          tick = StringUtils::uint64(header);
-
-          if (tick > fromTick) {
-            fromTick = tick;
-          }
-          else {
-            // we got the same tick again, this indicates we're at the end
-            checkMore = false;
-          }
-        }
-      }
-    }
-
-    if (! found) {
-      errorMsg = "got invalid response server: required header is missing";
-      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-      
-    if (res == TRI_ERROR_NO_ERROR) {
-      outFile << response->getBody().str();
-    }
-
-    delete response;
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    if (! checkMore || fromTick == 0) {
-      // done
-      return res;
-    }
-  }
-
-  assert(false);
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the collection inventory from server
-////////////////////////////////////////////////////////////////////////////////
-
-static int GetInventory (string& errorMsg) {
-  map<string, string> headers;
-
-  const string url = "/_api/replication/inventory?includeSystem=" + 
-                     string(IncludeSystemCollections ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
                                                url,
-                                               0, 
-                                               0,  
+                                               body.c_str(), 
+                                               body.size(),  
                                                headers); 
 
   if (response == 0 || ! response->isComplete()) {
@@ -447,170 +329,142 @@ static int GetInventory (string& errorMsg) {
 
     return TRI_ERROR_INTERNAL;
   }
- 
-  if (! response->isComplete() || response->wasHttpError()) {
+
+  if (response->wasHttpError()) {
+    // TODO: include "real" error message
     errorMsg = "got invalid response from server: HTTP " + 
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
+               StringUtils::itoa(response->getHttpReturnCode()) + 
+               ": " + response->getHttpReturnMessage();
+      
     delete response;
-    
-    return TRI_ERROR_INTERNAL;
-  }
-
-
-  const string& data = response->getBody().str();
-
-    
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
-  delete response;
-
-  if (! JsonHelper::isArray(json)) {
-    if (json != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-
-    errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getArrayElement(json, "collections");
+  return TRI_ERROR_NO_ERROR;
+}
 
-  if (! JsonHelper::isList(collections)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    errorMsg = "got malformed JSON response from server";
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process all files from the input directory
+////////////////////////////////////////////////////////////////////////////////
 
-    return TRI_ERROR_INTERNAL;
-  }
-
-  const string tickString = JsonHelper::getStringValue(json, "tick", "");
-
-  if (tickString == "") {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    errorMsg = "got malformed JSON response from server";
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  cout << "Last tick provided by server is: " << tickString << endl;
-
-  // read the server's max tick value
-  uint64_t maxTick = StringUtils::uint64(tickString);
-
-  // check if the user specific a max tick value
-  if (TickEnd > 0 && maxTick > TickEnd) {
-    maxTick = TickEnd;
-  }
-
+static int ProcessInputDirectory (string& errorMsg) {
   // create a lookup table for collections
   map<string, bool> restrictList;
   for (size_t i = 0; i < Collections.size(); ++i) {
     restrictList.insert(pair<string, bool>(Collections[i], true));
   }
 
-  // iterate over collections
-  const size_t n = collections->_value._objects._length;
+  const vector<string> files = FileUtils::listFiles(InputDirectory);
+  const size_t n = files.size();
 
+  // TODO: externalise file extension
+  const string suffix = string(".structure.json");
+
+  // loop over all files in InputDirectory, and look for all structure.json files
   for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
+    const size_t nameLength = files[i].size();
 
-    if (! JsonHelper::isArray(collection)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      errorMsg = "got malformed JSON response from server";
-
-      return TRI_ERROR_INTERNAL;
-    }
-
-    TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
-
-    if (! JsonHelper::isArray(parameters)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      errorMsg = "got malformed JSON response from server";
-
-      return TRI_ERROR_INTERNAL;
-    }
-
-    const string cid   = JsonHelper::getStringValue(parameters, "cid", "");
-    const string name  = JsonHelper::getStringValue(parameters, "name", "");
-    const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
-
-    if (cid == "" || name == "") {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      errorMsg = "got malformed JSON response from server";
-
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (deleted) {
+    if (nameLength <= suffix.size() ||
+        files[i].substr(files[i].size() - suffix.size()) != suffix) {
+      // some other file
       continue;
     }
 
+    // found a structure.json file
+
+    const string name = files[i].substr(0, files[i].size() - suffix.size());
+    
     if (name[0] == '_' && ! IncludeSystemCollections) {
       continue;
     }
-
+    
     if (restrictList.size() > 0 &&
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
     }
 
-    // found a collection!
-    if (Progress) {
-      cout << "Processing collection '" << name << "'..." << endl;
-    }
+    const string fqn  = InputDirectory + TRI_DIR_SEPARATOR_STR + files[i];
 
-    // now save the collection meta data and/or the actual data
-    string fileName;
-    ofstream outFile;
+    TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, fqn.c_str(), 0);
 
-    if (DumpStructure) {
-      // save meta data
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
+    if (! JsonHelper::isArray(json)) {
+      errorMsg = "could not read collection structure file '" + name + "'";
 
-      outFile.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
-
-      if (! outFile.is_open()) {
-        errorMsg = "cannot write to file '" + fileName + "'";
+      if (json != 0) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-        return TRI_ERROR_INTERNAL;
       }
 
-      outFile << JsonHelper::toString(collection);
-
-      outFile.close();
+      return TRI_ERROR_INTERNAL;
     }
 
+    TRI_json_t const* parameters = JsonHelper::getArrayElement(json, "parameters");
 
-    if (DumpData) {
-      // save the actual data
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+    if (! JsonHelper::isArray(parameters)) {
+      errorMsg = "invalid collection structure file '" + name + "'";
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-      outFile.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
+      return TRI_ERROR_INTERNAL;
+    }
 
-      if (! outFile.is_open()) {
-        errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    const string cid   = JsonHelper::getStringValue(parameters, "cid", "");
+    const string cname = JsonHelper::getStringValue(parameters, "name", "");
 
-        return TRI_ERROR_INTERNAL;
-      }
+    if (cname != name) {
+      errorMsg = "collection name mismatch in collection structure file '" + name + "'";
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-      int res = DumpCollection(outFile, cid, name, parameters, maxTick, errorMsg); 
+      return TRI_ERROR_INTERNAL;
+    }
 
-      outFile.close();
+    // TODO: remove this line
+    cout << "FOUND FILE " << files[i] << "\n";
+
+    if (ImportStructure) {
+      // re-create collection
+      int res = SendRestoreCollection(json, errorMsg);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "cannot write to file '" + fileName + "'";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_INTERNAL;
       }
     }
+
+    if (ImportData) {
+      // import data. check if we have a datafile
+      // TODO: externalise file extension
+      const string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+
+      if (TRI_ExistsFile(datafile.c_str())) {
+        // found a datafile
+
+        ifstream ifs;
+  
+        ifs.open(datafile.c_str(), ifstream::in | ifstream::binary);
+
+        if (! ifs.is_open()) {
+          errorMsg = "cannot open collection data file '" + datafile + "'";
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+          return TRI_ERROR_INTERNAL;
+        }
+
+        while (ifs.good()) {
+          string line;
+
+          std::getline(ifs, line, '\n');
+
+          // std::cout << "FOUND LINE: " << line << "\n";
+        }
+
+        ifs.close();
+      }
+    }
+        
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
-
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -622,19 +476,19 @@ static int GetInventory (string& errorMsg) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangodumpEntryFunction();
+  arangorestoreEntryFunction();
 
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
 
   TRI_InitialiseLogging(false);
-  
+
   // .............................................................................
   // set defaults
   // .............................................................................
 
   int err = 0;
-  OutputDirectory = FileUtils::currentDirectory(&err).append(TRI_DIR_SEPARATOR_STR).append("dump");
+  InputDirectory = FileUtils::currentDirectory(&err).append(TRI_DIR_SEPARATOR_STR).append("dump");
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 
   // .............................................................................
@@ -648,42 +502,13 @@ int main (int argc, char* argv[]) {
     ChunkSize = 1024 * 128;
   }
 
-  if (! DumpStructure && ! DumpData) {
-    cerr << "must specify either --dump-structure or --dump-data" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-
-  if (TickStart < TickEnd) {
-    cerr << "invalid values for --tick-start or --tick-end" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-
   // .............................................................................
-  // create output directory
+  // check input directory
   // .............................................................................
 
-  bool isDirectory = false;
-  if (OutputDirectory != "") {
-    isDirectory = TRI_IsDirectory(OutputDirectory.c_str());
-  }
-
-  if (OutputDirectory == "" ||
-      (TRI_ExistsFile(OutputDirectory.c_str()) && ! isDirectory)) {
-    cerr << "cannot write to output directory '" << OutputDirectory << "'" << endl;
+  if (InputDirectory == "" || ! TRI_IsDirectory(InputDirectory.c_str())) {
+    cerr << "input directory '" << InputDirectory << "' does not exist" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-
-  if (isDirectory && ! Overwrite) {
-    cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-  else if (! isDirectory) {
-    int res = TRI_CreateDirectory(OutputDirectory.c_str());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-    }
   }
 
   // .............................................................................
@@ -730,17 +555,19 @@ int main (int argc, char* argv[]) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
   }
 
+#if 0
   string errorMsg = "";
-  int res = GetInventory(errorMsg);
+  int res = ProcessInputDirectory(errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     cerr << errorMsg << endl;
     ret = EXIT_FAILURE;
   }
+#endif
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangodumpExitFunction(ret, NULL);
+  arangorestoreExitFunction(ret, NULL);
 
   return ret;
 }
