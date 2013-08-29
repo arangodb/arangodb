@@ -33,9 +33,11 @@ var RequestContext,
   extend = require("underscore").extend,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
-  createBubbleWrap;
+  UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
+  createErrorBubbleWrap,
+  addCheck;
 
-createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
+createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
   'use strict';
   if (is.notExisty(errorHandler)) {
     errorHandler = function () {
@@ -53,6 +55,17 @@ createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
       } else {
         throw e;
       }
+    }
+  };
+};
+
+addCheck = function (handler, check, ErrorClass) {
+  'use strict';
+  return function (req, res) {
+    if (check(req)) {
+      handler(req, res);
+    } else {
+      throw new ErrorClass();
     }
   };
 };
@@ -270,8 +283,35 @@ extend(RequestContext.prototype, {
   errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
     var handler = this.route.action.callback;
-    this.route.action.callback = createBubbleWrap(handler, errorClass, code, reason, errorHandler);
+    this.route.action.callback = createErrorBubbleWrap(handler, errorClass, code, reason, errorHandler);
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
+    return this;
+  },
+
+  // TODO: Documentation
+
+  onlyIf: function (check, ErrorClass) {
+    'use strict';
+    var handler = this.route.action.callback;
+    this.route.action.callback = addCheck(handler, check, ErrorClass);
+    return this;
+  },
+
+  onlyIfAuthenticated: function (code, reason) {
+    'use strict';
+    var handler = this.route.action.callback,
+      check = function(req) { return (req.user && req.currentSession); };
+
+    if (is.notExisty(code)) {
+      code = 401;
+    }
+    if (is.notExisty(reason)) {
+      reason = "Not authorized";
+    }
+
+    this.onlyIf(check, UnauthorizedError);
+    this.errorResponse(UnauthorizedError, code, reason);
+
     return this;
   }
 });

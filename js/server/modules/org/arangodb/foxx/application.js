@@ -32,9 +32,45 @@ var Application,
   RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  extend = require("underscore").extend,
+  _ = require("underscore"),
+  extend = _.extend,
   is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals");
+  internal = require("org/arangodb/foxx/internals"),
+  defaultsFor = {};
+
+defaultsFor.login = {
+  usernameField: "username",
+  passwordField: "password",
+
+  onSuccess: function (req, res) {
+    res.json({
+      user: req.user.identifier,
+      key: req.currentSession._key
+    });
+  },
+
+  onError: function (req, res) {
+    res.status(401);
+    res.json({
+      error: "Username or Password was wrong"
+    });
+  }
+};
+
+defaultsFor.logout = {
+  onSuccess: function (req, res) {
+    res.json({
+      notice: "Logged out!",
+    });
+  },
+
+  onError: function (req, res) {
+    res.status(401);
+    res.json({
+      error: "No session was found"
+    });
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Application
@@ -386,6 +422,98 @@ extend(Application.prototype, {
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
+      }
+    });
+  },
+
+  // TODO: Documentation
+
+  activateAuthentication: function (opts) {
+    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+      sessions,
+      cookieAuth,
+      app = this,
+      applicationContext = this.applicationContext,
+      options = opts || {};
+
+    if (options.type !== "cookie") {
+      throw new Error("Currently only the following auth types are supported: cookie");
+    }
+    if (is.falsy(options.cookieLifetime)) {
+      throw new Error("Please provide the cookieLifetime");
+    }
+    if (is.falsy(options.cookieName)) {
+      throw new Error("Please provide the cookieName");
+    }
+    if (is.falsy(options.sessionLifetime)) {
+      throw new Error("Please provide the sessionLifetime");
+    }
+
+    sessions = new foxxAuthentication.Sessions(this.applicationContext, {
+      lifetime: options.sessionLifetime
+    });
+
+    cookieAuth = new foxxAuthentication.CookieAuthentication(this.applicationContext, {
+      lifetime: options.cookieLifetime,
+      name: options.cookieName
+    });
+
+    this.auth = new foxxAuthentication.Authentication(this.applicationContext, sessions, cookieAuth);
+
+    this.before("/*", function (req, res) {
+      var users = new foxxAuthentication.Users(applicationContext),
+        authResult = app.auth.authenticate(req);
+
+      if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
+        req.currentSession = authResult.session;
+        req.user = users.get(authResult.session.identifier);
+      } else {
+        req.currentSession = null;
+        req.user = null;
+      }
+    });
+
+    this.after("/*", function (req, res) {
+      var session = req.currentSession;
+
+      if (is.existy(session)) {
+        session.update();
+      }
+    });
+  },
+
+  login: function (route, opts) {
+    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+      auth = this.auth,
+      users = new foxxAuthentication.Users(this.applicationContext),
+      options = _.defaults(opts || {}, defaultsFor.login);
+
+    this.post(route, function (req, res) {
+      var username = req.body()[options.usernameField],
+        password = req.body()[options.passwordField];
+
+      if (users.isValid(username, password)) {
+        req.currentSession = auth.beginSession(req, res, username, {});
+        req.user = users.get(req.currentSession.identifier);
+        options.onSuccess(req, res);
+      } else {
+        options.onError(req, res);
+      }
+    });
+  },
+
+  logout: function (route, opts) {
+    var auth = this.auth,
+      options = _.defaults(opts || {}, defaultsFor.logout);
+
+    this.post(route, function (req, res) {
+      if (is.existy(req.currentSession)) {
+        auth.endSession(req, res, req.currentSession._key);
+        req.user = null;
+        req.currentSession = null;
+        options.onSuccess(req, res);
+      } else {
+        options.onError(req, res);
       }
     });
   }
