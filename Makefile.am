@@ -236,18 +236,6 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/client -name "*.js" -print) \
 	$(shell find @srcdir@/js/node -type f -print) \
 	$(shell find @srcdir@/js/npm -type f -print) \
-	$(shell find @srcdir@/js/apps -name "*.css" -print) \
-	$(shell find @srcdir@/js/apps -name "*.scss" -print) \
-	$(shell find @srcdir@/js/apps -name "*.gif" -print) \
-	$(shell find @srcdir@/js/apps -name "*.html" -print) \
-	$(shell find @srcdir@/js/apps -name "*.ico" -print) \
-	$(shell find @srcdir@/js/apps -name "*.js" -print) \
-	$(shell find @srcdir@/js/apps -name "*.ejs" -print) \
-	$(shell find @srcdir@/js/apps -name "*.png" -print) \
-	$(shell find @srcdir@/js/apps -name "*.svg" -print) \
-	$(shell find @srcdir@/js/apps -name "*.eot" -print) \
-	$(shell find @srcdir@/js/apps -name "*.ttf" -print) \
-	$(shell find @srcdir@/js/apps -name "*.woff" -print) \
 	$(shell find @srcdir@/js/apps -type f -print)
 
 if ENABLE_MRUBY
