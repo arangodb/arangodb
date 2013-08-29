@@ -1,6 +1,27 @@
 v1.4
 ----
 
+* made the web interface a Foxx application
+
+  This change caused the files for the web interface to be moved from `html/admin` to
+  `js/apps/aardvark` in the file system.
+
+  The base URL for the admin interface changed from `_admin/html/index.html` to
+  `_admin/aardvark/index.html`.
+
+  The "old" redirection to `_admin/html/index.html` will now produce a 404 error. 
+  
+  When starting ArangoDB with the `--upgrade` option, this will automatically be remedied 
+  by putting in a redirection from `/` to `/_admin/aardvark/index.html`, and from 
+  `/_admin/html/index.html` to `/_admin/aardvark/index.html`.
+
+  This also obsoletes the following configuration options:
+  - `--server.admin-directory`
+  - `--server.disable-admin-interface`
+
+  when using these now obsolete options when the server is started, no error is produced
+  for downwards-compatibility.
+
 * changed journal file creation behavior
 
   Previously, a journal file for a collection was always created when a collection was

@@ -305,14 +305,12 @@
     });
     
     // create the default route in the _routing collection
-    addTask("insertDefaultRouteJsApps", "insert default route for the admin interface", function () {
+    addTask("insertRedirectionToJsApps", "insert default route for the admin interface", function () {
       var routing = getCollection("_routing");
 
       if (! routing) {
         return false;
       }
-
-      var mustReplace = false;
 
       // first, check for "old" redirects
       routing.toArray().forEach(function (doc) {
@@ -324,10 +322,10 @@
         }
       });
 
-      if (mustReplace || routing.count() === 0) {
-        // only add route if no other route has been defined
+      // add redirections to new location
+      [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
         routing.save({
-          url: "/",
+          url: src,
           action: {
             "do": "org/arangodb/actions/redirectRequest",
             options: {
@@ -337,7 +335,7 @@
           },
           priority: -1000000
         });
-      }
+      });
 
       return true;
     });
