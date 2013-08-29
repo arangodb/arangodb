@@ -30,6 +30,7 @@
 
 #include <sstream>
 
+#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
@@ -80,6 +81,11 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   }
 
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+
+  if (_client == 0) {
+    throw "out of memory";
+  }
+
   _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
@@ -95,7 +101,6 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _lastHttpReturnCode = result->getHttpReturnCode();
 
     if (result->getHttpReturnCode() == HttpResponse::OK) {
-
       // default value
       _version = "arango";
 
@@ -103,23 +108,13 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
 
       if (json) {
+        // look up "server" value
+        const string server = JsonHelper::getStringValue(json, "server", "");
 
-        // look up "server" value (this returns a pointer, not a copy)
-        TRI_json_t* server = TRI_LookupArrayJson(json, "server");
-
-        if (TRI_IsStringJson(server)) {
-          // "server" value is a string and content is "arango"
-          if (TRI_EqualString(server->_value._string.data, "arango")) {
-            // look up "version" value (this returns a pointer, not a copy)
-            TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
-
-            if (TRI_IsStringJson(vs)) {
-              // "version" value is a string
-              _version = string(vs->_value._string.data, vs->_value._string.length - 1);
-            }
-          }
-
-          // must not free server and vs, they are contained in the "json" variable and freed below
+        // "server" value is a string and content is "arango"
+        if (server == "arango") {
+          // look up "version" value
+          _version = JsonHelper::getStringValue(json, "version", "");
         }
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -129,6 +124,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       // initial request for /_api/version return some non-HTTP 200 response.
       // now set up an error message
       _lastErrorMessage = _client->getErrorMessage();
+
       if (result) {
         _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
       }
