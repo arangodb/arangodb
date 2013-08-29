@@ -334,7 +334,7 @@ static void fullSetAttributeWeight (voc_shaper_t* shaper) {
   startWeight = 0;
 
   for (j = 0; j < shaper->_sortedAttributes._length; ++j) {
-    item = (attribute_weight_t*)(TRI_AtVectorPointer(&(shaper->_sortedAttributes), j));
+    item = (attribute_weight_t*) TRI_AtVectorPointer(&(shaper->_sortedAttributes), j);
     item->_weight = startWeight;
     startWeight += 100;
   }

@@ -53,7 +53,7 @@ static int LidCompareAsc (void const* l, void const* r) {
   TRI_log_buffer_t const* left = (TRI_log_buffer_t const*) l;
   TRI_log_buffer_t const* right = (TRI_log_buffer_t const*) r;
 
-  return ((int64_t) left->_lid) - ((int64_t) right->_lid);
+  return (int) (((int64_t) left->_lid) - ((int64_t) right->_lid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +64,7 @@ static int LidCompareDesc (void const* l, void const* r) {
   TRI_log_buffer_t const* left = (TRI_log_buffer_t const*) l;
   TRI_log_buffer_t const* right = (TRI_log_buffer_t const*) r;
 
-  return ((int64_t) right->_lid) - ((int64_t) left->_lid);
+  return (int) (((int64_t) right->_lid) - ((int64_t) left->_lid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
