@@ -132,10 +132,13 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief exclude a collection from replication?
+/// @brief comparator to sort collections
+/// sort order is by collection type first (vertices before edges, this is
+/// because edges depend on vertices being there), then name 
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool excludeCollection (const char*);
+        static int sortCollections (const void*,
+                                    const void*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
