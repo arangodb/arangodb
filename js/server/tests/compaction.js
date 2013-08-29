@@ -172,6 +172,7 @@ function CompactionSuite () {
       c1.rotate();
 
       var fig = c1.figures();
+      internal.wait(5);
 
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
