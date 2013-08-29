@@ -305,7 +305,7 @@
     });
     
     // create the default route in the _routing collection
-    addTask("insertRedirectionToJsApps", "insert default route for the admin interface", function () {
+    addTask("insertRedirectionToJsApps", "insert default route for admin interface", function () {
       var routing = getCollection("_routing");
 
       if (! routing) {
@@ -318,7 +318,6 @@
         if (doc.url === '/' && doc.action.options.destination === '/_admin/html/index.html') {
           // remove old, non-working redirect
           routing.remove(doc);
-          mustReplace = true;
         }
       });
 
