@@ -189,7 +189,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void* arangoimpResourcesAllocated = NULL;
 static void arangoimpEntryFunction ();
 static void arangoimpExitFunction (int, void*);
 
