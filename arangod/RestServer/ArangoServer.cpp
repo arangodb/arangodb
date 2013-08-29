@@ -303,7 +303,6 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("arango", TRI_VERSION);
-  _applicationAdminServer->allowAdminDirectory(); // might be changed later
 
   // .............................................................................
   // define server options
@@ -384,11 +383,8 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
-  bool disableAdminInterface = false;
-
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
-    ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
     ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
@@ -462,14 +458,6 @@ void ArangoServer::buildApplicationServer () {
   if (optionNonceHashSize > 0) {
     LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );
     Nonce::create(optionNonceHashSize);
-  }
-
-  // .............................................................................
-  // disable access to the HTML admin interface
-  // .............................................................................
-
-  if (disableAdminInterface) {
-    _applicationAdminServer->allowAdminDirectory(false);
   }
 
   if (disableStatistics) {
@@ -590,7 +578,6 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
-  _applicationV8->setAdminDirectory(_applicationAdminServer->adminDirectory());
 
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
@@ -703,7 +690,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setAdminDirectory(_applicationAdminServer->adminDirectory());
   _applicationV8->setConcurrency(1);
 
   if (_applicationServer->programOptions().has("upgrade")) {
