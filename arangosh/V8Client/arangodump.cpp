@@ -134,6 +134,18 @@ static bool DumpStructure = true;
 static bool DumpData = true;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief first tick to be included in data dump
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TickStart = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last tick to be included in data dump
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TickEnd = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -156,12 +168,14 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("collection", &Collections, "restrict to collection name (can specify multiple times)")
     ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
+    ("dump-structure", &DumpStructure, "dump collection structure")
+    ("dump-data", &DumpData, "dump collection data")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
     ("output-directory", &OutputDirectory, "output directory")
     ("overwrite", &Overwrite, "overwrite data in output directory")
     ("progress", &Progress, "show progress")
-    ("dump-structure", &DumpStructure, "dump collection structure")
-    ("dump-data", &DumpData, "dump collection data")
+    ("tick-start", &TickStart, "first tick to be included in data dump")
+    ("tick-end", &TickEnd, "last tick to be included in data dump")
   ;
 
   BaseClient.setupGeneral(description);
@@ -186,7 +200,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @addtogroup arangoimp
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -312,19 +325,19 @@ static int DumpCollection (ofstream& outFile,
                            const string& cid,
                            const string& name,
                            TRI_json_t const* parameters,
-                           uint64_t maxTick,
+                           const uint64_t maxTick,
                            string& errorMsg) {
   const string baseUrl = "/_api/replication/dump?collection=" + cid + 
                          "&chunkSize=" + StringUtils::itoa(ChunkSize) +
                          "&ticks=false";
-
+    
   map<string, string> headers;
 
-  uint64_t fromTick = 0;
+  uint64_t fromTick = TickStart;
 
   while (1) {
     string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
-
+  
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
     }
@@ -484,8 +497,15 @@ static int GetInventory (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
+  cout << "Last tick provided by server is: " << tickString << endl;
+
+  // read the server's max tick value
   uint64_t maxTick = StringUtils::uint64(tickString);
 
+  // check if the user specific a max tick value
+  if (TickEnd > 0 && maxTick > TickEnd) {
+    maxTick = TickEnd;
+  }
 
   // create a lookup table for collections
   map<string, bool> restrictList;
@@ -635,6 +655,11 @@ int main (int argc, char* argv[]) {
 
   if (! DumpStructure && ! DumpData) {
     cerr << "must specify either --dump-structure or --dump-data" << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+  }
+
+  if (TickStart < TickEnd) {
+    cerr << "invalid values for --tick-start or --tick-end" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 

@@ -1069,6 +1069,13 @@ ArangoCollection.prototype.save = function (from, to, data, waitForSync) {
   }
 
   url = this._appendSyncParameter(url, waitForSync);
+  
+  if (data === undefined || typeof data !== 'object') {
+    throw new ArangoError({
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+    });
+  }
 
   var requestResult = this._database._connection.POST(url, JSON.stringify(data));
 
