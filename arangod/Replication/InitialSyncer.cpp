@@ -69,6 +69,9 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
   _restrictCollections(restrictCollections),
   _restrictType(restrictType),
   _processedCollections(),
+  _batchId(0),
+  _batchUpdateTime(0),
+  _batchTtl(180),
   _chunkSize(),
   _verbose(verbose) {
   
@@ -87,6 +90,9 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 InitialSyncer::~InitialSyncer () {
+  if (_batchId > 0) {
+    sendFinishBatch();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,10 +127,16 @@ int InitialSyncer::run (string& errorMsg) {
     return res;
   }
 
+  res = sendStartBatch(errorMsg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+
   map<string, string> headers;
-  static const string url = BaseUrl + 
-                            "/inventory" + 
-                            "?serverId=" + _localServerIdString;
+
+  const string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
 
   // send request
   const string progress = "fetching master inventory from " + url;
@@ -143,6 +155,8 @@ int InitialSyncer::run (string& errorMsg) {
     if (response != 0) {
       delete response;
     }
+
+    sendFinishBatch();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
@@ -173,6 +187,8 @@ int InitialSyncer::run (string& errorMsg) {
   }
 
   delete response;
+  
+  sendFinishBatch();
 
   return res;
 }
@@ -189,6 +205,173 @@ int InitialSyncer::run (string& errorMsg) {
 /// @addtogroup Replication
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a "start batch" command
+////////////////////////////////////////////////////////////////////////////////
+  
+int InitialSyncer::sendStartBatch (string& errorMsg) {
+  _batchId = 0;
+
+  const map<string, string> headers;
+
+  const string url = BaseUrl + "/batch";
+  const string body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}"; 
+
+  // send request
+  const string progress = "send batch start command to url " + url;
+  setProgress(progress.c_str());
+
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_POST, 
+                                                url,
+                                                body.c_str(), 
+                                                body.size(),  
+                                                headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+  
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+               ": " + response->getHttpReturnMessage();
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, response->getBody().str().c_str());
+
+    if (json == 0) {
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+    else {
+      const string id = JsonHelper::getStringValue(json, "id", "");
+
+      if (id == "") {
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+      else {
+        _batchId = StringUtils::uint64(id);
+        _batchUpdateTime = TRI_microtime();
+      }
+
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    }
+  }
+
+  delete response;
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send an "extend batch" command
+////////////////////////////////////////////////////////////////////////////////
+  
+int InitialSyncer::sendExtendBatch () {
+  if (_batchId == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  double now = TRI_microtime();
+
+  if (now <= _batchUpdateTime + _batchTtl - 60) {
+    // no need to extend the batch yet
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  const map<string, string> headers;
+
+  const string url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
+  const string body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}"; 
+
+  // send request
+  const string progress = "send batch start command to url " + url;
+  setProgress(progress.c_str());
+
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT, 
+                                                url,
+                                                body.c_str(), 
+                                                body.size(),  
+                                                headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+  
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+  }
+  else {
+    _batchUpdateTime = TRI_microtime();
+  }
+
+  delete response;
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a "finish batch" command
+////////////////////////////////////////////////////////////////////////////////
+  
+int InitialSyncer::sendFinishBatch () {
+  if (_batchId == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  const map<string, string> headers;
+  const string url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
+
+  // send request
+  const string progress = "send batch finish command to url " + url;
+  setProgress(progress.c_str());
+
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_DELETE, 
+                                                url,
+                                                0, 
+                                                0,
+                                                headers); 
+
+  if (response == 0 || ! response->isComplete()) {
+    if (response != 0) {
+      delete response;
+    }
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+  
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+  }
+  else {
+    _batchId = 0;
+    _batchUpdateTime = 0;
+  }
+
+  delete response;
+
+  return res;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump
@@ -296,6 +479,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
                                          const string& collectionName,
                                          TRI_voc_tick_t maxTick,
                                          string& errorMsg) {
+
   const string cid = StringUtils::itoa(trxCollection->_cid);
 
   const string baseUrl = BaseUrl + 
@@ -308,8 +492,9 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
   int batch = 1;
 
   while (1) {
-    string url = baseUrl + 
-                 "&from=" + StringUtils::itoa(fromTick);
+    sendExtendBatch();
+
+    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -412,6 +597,8 @@ int InitialSyncer::handleCollectionInitial (TRI_json_t const* parameters,
                                             TRI_json_t const* indexes,
                                             string& errorMsg,
                                             sync_phase_e phase) {
+
+  sendExtendBatch();
 
   const string masterName = JsonHelper::getStringValue(parameters, "name", "");
 

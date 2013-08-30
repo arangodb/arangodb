@@ -101,6 +101,16 @@ static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compaction blocker entry
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct compaction_blocker_s {
+  TRI_voc_tick_t  _id;
+  double          _expires;
+}
+compaction_blocker_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction state
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -986,6 +996,67 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief try to write-lock the compaction
+/// returns true if lock acquisition was successful. the caller is responsible
+/// to free the write lock eventually
+////////////////////////////////////////////////////////////////////////////////
+
+static bool TryLockCompaction (TRI_vocbase_t* vocbase) { 
+  return TRI_TryWriteLockReadWriteLock(&vocbase->_compactionBlockers._lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-lock the compaction
+////////////////////////////////////////////////////////////////////////////////
+
+static void LockCompaction (TRI_vocbase_t* vocbase) { 
+  TRI_WriteLockReadWriteLock(&vocbase->_compactionBlockers._lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-unlock the compaction
+////////////////////////////////////////////////////////////////////////////////
+ 
+static void UnlockCompaction (TRI_vocbase_t* vocbase) { 
+  TRI_WriteUnlockReadWriteLock(&vocbase->_compactionBlockers._lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomic check and lock for running the compaction
+/// if this function returns true, it has acquired a write-lock on the 
+/// compactionBlockers structure, which the caller must free eventually
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
+  double now;
+  size_t i, n;
+
+  now = TRI_microtime();
+ 
+  // check if we can acquire the write lock instantly
+  if (! TryLockCompaction(vocbase)) {
+    // couldn't acquire the write lock
+    return false;
+  }
+
+  // we are now holding the write lock
+
+  // check if we have a still-valid compaction blocker
+  n = vocbase->_compactionBlockers._data._length;
+  for (i = 0; i < n; ++i) {
+    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+
+    if (blocker->_expires > now) {
+      // found a compaction blocker. unlock and return
+      UnlockCompaction(vocbase);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -999,95 +1070,285 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the compaction blockers structure
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitCompactorVocBase (TRI_vocbase_t* vocbase) {
+  TRI_InitReadWriteLock(&vocbase->_compactionBlockers._lock);
+  TRI_InitVector(&vocbase->_compactionBlockers._data, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_blocker_t));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the compaction blockers structure
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyCompactorVocBase (TRI_vocbase_t* vocbase) {
+  TRI_DestroyVector(&vocbase->_compactionBlockers._data);
+  TRI_DestroyReadWriteLock(&vocbase->_compactionBlockers._lock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove data of expired compaction blockers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
+  double now;
+  size_t i, n;
+
+  now = TRI_microtime();
+  
+  // check if we can instantly acquire the lock
+  if (! TryLockCompaction(vocbase)) {
+    // couldn't acquire lock
+    return false;
+  }
+
+  // we are now holding the write lock
+
+  n = vocbase->_compactionBlockers._data._length;
+ 
+  i = 0;
+  while (i < n) {
+    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+
+    if (blocker->_expires < now) {
+      TRI_RemoveVector(&vocbase->_compactionBlockers._data, i);
+      n--;
+    }
+    else {
+      i++;
+    }
+  }
+
+  UnlockCompaction(vocbase);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a compaction blocker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InsertBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
+                                       double lifetime,
+                                       TRI_voc_tick_t* id) {
+  compaction_blocker_t blocker;
+  int res;
+
+  if (lifetime <= 0.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  blocker._id      = TRI_NewTickVocBase();
+  blocker._expires = TRI_microtime() + lifetime;
+
+  LockCompaction(vocbase);
+
+  res = TRI_PushBackVector(&vocbase->_compactionBlockers._data, &blocker);
+
+  UnlockCompaction(vocbase);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  *id = blocker._id;
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief touch an existing compaction blocker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_TouchBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
+                                      TRI_voc_tick_t id,
+                                      double lifetime) {
+  size_t i, n;
+  bool found;
+
+  found = false;
+  
+  if (lifetime <= 0.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  
+  LockCompaction(vocbase);
+
+  n = vocbase->_compactionBlockers._data._length;
+
+  for (i = 0; i < n; ++i) {
+    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+
+    if (blocker->_id == id) {
+      blocker->_expires = TRI_microtime() + lifetime;
+      found = true;
+      break;
+    }
+  }
+
+  UnlockCompaction(vocbase);  
+
+  if (! found) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically check-and-lock the compactor
+/// if the function returns true, then a write-lock on the compactor was
+/// acquired, which must eventually be freed by the caller
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CheckAndLockCompactorVocBase (TRI_vocbase_t* vocbase) {
+  return TryLockCompaction(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock the compactor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UnlockCompactorVocBase (TRI_vocbase_t* vocbase) {
+  UnlockCompaction(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove an existing compaction blocker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
+                                       TRI_voc_tick_t id) {
+  size_t i, n;
+  bool found;
+
+  found = false;
+
+  LockCompaction(vocbase);  
+
+  n = vocbase->_compactionBlockers._data._length;
+
+  for (i = 0; i < n; ++i) {
+    compaction_blocker_t* blocker = TRI_AtVector(&vocbase->_compactionBlockers._data, i);
+
+    if (blocker->_id == id) {
+      TRI_RemoveVector(&vocbase->_compactionBlockers._data, i);
+      found = true;
+      break;
+    }
+  }
+  
+  UnlockCompaction(vocbase);  
+  
+  if (! found) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compactor event loop
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CompactorVocBase (void* data) {
-  TRI_vocbase_t* vocbase = data;
+  TRI_vocbase_t* vocbase;
   TRI_vector_pointer_t collections;
 
+  vocbase = data;
   assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
-    TRI_col_type_e type;
-    size_t i, n;
     int state;
-    bool worked;
     
     // keep initial _state value as vocbase->_state might change during compaction loop
     state = vocbase->_state;
+      
+    // check if compaction is currently disallowed
+    if (CheckAndLockCompaction(vocbase)) {
+      // compaction is currently allowed
+      size_t i, n;
 
-    // copy all collections
-    TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-    TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
-    TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+      // copy all collections
+      TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+      TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+      TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    n = collections._length;
+      n = collections._length;
 
-    for (i = 0;  i < n;  ++i) {
-      TRI_vocbase_col_t* collection;
-      TRI_primary_collection_t* primary;
-      bool doCompact;
+      for (i = 0;  i < n;  ++i) {
+        TRI_vocbase_col_t* collection;
+        TRI_primary_collection_t* primary;
+        TRI_col_type_e type;
+        bool doCompact;
+        bool worked;
+      
+        collection = collections._buffer[i];
 
-      collection = collections._buffer[i];
+        if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+          // if we can't acquire the read lock instantly, we continue directly
+          // we don't want to stall here for too long
+          continue;
+        }
 
-      if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-        // if we can't acquire the read lock instantly, we continue directly
-        // we don't want to stall here for too long
-        continue;
-      }
+        primary = collection->_collection;
 
-      primary = collection->_collection;
+        if (primary == NULL) {
+          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+          continue;
+        }
 
-      if (primary == NULL) {
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-        continue;
-      }
+        worked    = false;
+        doCompact = primary->base._info._doCompact;
+        type      = primary->base._info._type;
 
-      worked    = false;
-      doCompact = primary->base._info._doCompact;
-      type      = primary->base._info._type;
+        // for document collection, compactify datafiles
+        if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+          if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
+            TRI_barrier_t* ce;
+            
+            // check whether someone else holds a read-lock on the compaction lock
+            if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
+              // someone else is holding the compactor lock, we'll not compact
+              TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+              continue;
+            }
 
-      // for document collection, compactify datafiles
-      if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-        if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
-          TRI_barrier_t* ce;
+            ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
+
+            if (ce == NULL) {
+              // out of memory
+              LOG_WARNING("out of memory when trying to create a barrier element");
+            }
+            else {
+              worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
+
+              TRI_FreeBarrier(ce);
+            }
           
-          // check whether someone else holds a read-lock on the compaction lock
-          if (! TRI_TryWriteLockReadWriteLock(&primary->_compactionLock)) {
-            // someone else is holding the compactor lock, we'll not compact
-            TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-            continue;
+            // read-unlock the compaction lock
+            TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
           }
+        }
 
-          ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-          if (ce == NULL) {
-            // out of memory
-            LOG_WARNING("out of memory when trying to create a barrier element");
-          }
-          else {
-            worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
-
-            TRI_FreeBarrier(ce);
-          }
-        
-          // read-unlock the compaction lock
-          TRI_WriteUnlockReadWriteLock(&primary->_compactionLock);
+        if (worked) {
+          // signal the cleanup thread that we worked and that it can now wake up
+          TRI_LockCondition(&vocbase->_cleanupCondition);
+          TRI_SignalCondition(&vocbase->_cleanupCondition);
+          TRI_UnlockCondition(&vocbase->_cleanupCondition);
         }
       }
 
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      if (worked) {
-        // signal the cleanup thread that we worked and that it can now wake up
-        TRI_LockCondition(&vocbase->_cleanupCondition);
-        TRI_SignalCondition(&vocbase->_cleanupCondition);
-        TRI_UnlockCondition(&vocbase->_cleanupCondition);
-      }
+      UnlockCompaction(vocbase);
     }
+
 
     if (vocbase->_state == 1) {
       // only sleep while server is still running
