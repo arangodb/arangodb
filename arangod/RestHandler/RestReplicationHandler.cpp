@@ -36,6 +36,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/replication-logger.h"
@@ -122,7 +123,7 @@ Handler::status_e RestReplicationHandler::execute() {
 
   const size_t len = suffix.size();
 
-  if (len == 1) {
+  if (len >= 1) {
     const string& command = suffix[0];
 
     if (command == "logger-start") {
@@ -159,6 +160,9 @@ Handler::status_e RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandLoggerFollow(); 
+    }
+    else if (command == "batch") {
+      handleCommandBatch();
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
@@ -798,6 +802,177 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump batch command
+///
+/// @RESTHEADER{POST /_api/replication/batch,creates a new dump batch}
+///
+/// @RESTDESCRIPTION
+/// Creates a new dump batch and returns the batch's id.
+///
+/// The body of the request must be a JSON hash with the following attributes:
+///
+/// - `ttl`: the time-to-live for the new batch (in seconds)
+///
+/// The response is a JSON hash with the following attributes:
+///
+/// - `id`: the id of the batch
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the batch was created successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the ttl value is invalid.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump batch command
+///
+/// @RESTHEADER{PUT /_api/replication/`id`,prolongs an existing dump batch}
+///
+/// @RESTURLPARAM{id,string,required}
+/// The id of the batch.
+///
+/// @RESTDESCRIPTION
+/// Extends the ttl of an existing dump batch, using the batch's id and 
+/// the provided ttl value.
+///
+/// The body of the request must be a JSON hash with the following attributes:
+///
+/// - `ttl`: the time-to-live for the batch (in seconds)
+///
+/// If the batch's ttl can be extended successully, the response is empty.
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the batch's ttl was extended successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the ttl value is invalid or the batch was not found.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle a dump batch command
+///
+/// @RESTHEADER{DELETE /_api/replication/`id`,deletes an existing dump batch}
+///
+/// @RESTURLPARAM{id,string,required}
+/// The id of the batch.
+///
+/// @RESTDESCRIPTION
+/// Deletes the existing dump batch, allowing compaction and cleanup to resume.
+///   
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the batch was deleted successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the batch was not found.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandBatch () {
+  // extract the request type
+  const HttpRequest::HttpRequestType type = _request->requestType();
+  vector<string> const& suffix = _request->suffix();
+  const size_t len = suffix.size();
+
+  assert(len >= 1);
+
+  if (type == HttpRequest::HTTP_REQUEST_POST) {
+    // create a new blocker
+    
+    TRI_json_t* input = _request->toJson(0);
+
+    if (input == 0) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
+
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
+
+    TRI_voc_tick_t id;
+    int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateError(HttpResponse::BAD, res);
+    }
+
+    TRI_json_t json;
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) id)));
+  
+    generateResult(&json);
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+    // extend an existing blocker
+    TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
+  
+    TRI_json_t* input = _request->toJson(0);
+
+    if (input == 0) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double expires = JsonHelper::getNumericValue<double>(input, "ttl", 0);
+    
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, input);
+    
+    // now extend the blocker
+    int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      generateError(HttpResponse::BAD, res);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+    // delete an existing blocker
+    TRI_voc_tick_t id = (TRI_voc_tick_t) StringUtils::uint64(suffix[1]);
+
+    int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _response = createResponse(HttpResponse::NO_CONTENT);
+    }
+    else {
+      generateError(HttpResponse::BAD, res);
+    }
+    return;
+  }
+
+  // we get here if anything above is invalid
+  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns ranged data from the replication log
 ///
 /// @RESTHEADER{GET /_api/replication/logger-follow,returns recent log entries from the replication log}
@@ -1281,7 +1456,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   if (json == 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
+                  "invalid JSON");
     return;
   }
 

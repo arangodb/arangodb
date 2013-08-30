@@ -31,6 +31,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "VocBase/barrier.h"
+#include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shadow-data.h"
 
@@ -230,12 +231,10 @@ void TRI_CleanupVocBase (void* data) {
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
-    size_t n;
-    size_t i;
-    TRI_col_type_e type;
-    // keep initial _state value as vocbase->_state might change during compaction loop
-    int state = vocbase->_state;
-
+    int state;
+    
+    // keep initial _state value as vocbase->_state might change during cleanup loop
+    state = vocbase->_state;
 
     ++iterations;
 
@@ -246,46 +245,54 @@ void TRI_CleanupVocBase (void* data) {
       CleanupShadows(vocbase, true);
     }
 
-    // copy all collections
-    TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-    TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
-    TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+    // check if we can get the compactor lock exclusively
+    if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
+      size_t i, n;
+      TRI_col_type_e type;
 
-    n = collections._length;
+      // copy all collections
+      TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+      TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
+      TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    for (i = 0;  i < n;  ++i) {
-      TRI_vocbase_col_t* collection;
-      TRI_primary_collection_t* primary;
+      n = collections._length;
 
-      collection = collections._buffer[i];
+      for (i = 0;  i < n;  ++i) {
+        TRI_vocbase_col_t* collection;
+        TRI_primary_collection_t* primary;
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+        collection = collections._buffer[i];
 
-      primary = collection->_collection;
+        TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-      if (primary == NULL) {
-        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-        continue;
-      }
+        primary = collection->_collection;
 
-      type = primary->base._info._type;
-
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      // we're the only ones that can unload the collection, so using
-      // the collection pointer outside the lock is ok
-
-      // maybe cleanup indexes, unload the collection or some datafiles
-      if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-        TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-
-        // clean indexes?
-        if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
-          document->cleanupIndexes(document);
+        if (primary == NULL) {
+          TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+          continue;
         }
 
-        CleanupDocumentCollection(document);
+        type = primary->base._info._type;
+
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+        // we're the only ones that can unload the collection, so using
+        // the collection pointer outside the lock is ok
+
+        // maybe cleanup indexes, unload the collection or some datafiles
+        if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+          TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+
+          // clean indexes?
+          if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
+            document->cleanupIndexes(document);
+          }
+
+          CleanupDocumentCollection(document);
+        }
       }
+
+      TRI_UnlockCompactorVocBase(vocbase);
     }
 
     if (vocbase->_state >= 1) {
@@ -293,6 +300,9 @@ void TRI_CleanupVocBase (void* data) {
       if (iterations % CLEANUP_SHADOW_ITERATIONS == 0) {
         CleanupShadows(vocbase, false);
       }
+
+      // clean up expired compactor locks
+      TRI_CleanupCompactorVocBase(vocbase);
 
       TRI_LockCondition(&vocbase->_cleanupCondition);
       TRI_TimedWaitCondition(&vocbase->_cleanupCondition, (uint64_t) CLEANUP_INTERVAL);

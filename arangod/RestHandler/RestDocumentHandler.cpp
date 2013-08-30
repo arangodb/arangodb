@@ -468,7 +468,7 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// The handle of the document.
 ///
 /// @RESTHEADERPARAMETERS
 ///

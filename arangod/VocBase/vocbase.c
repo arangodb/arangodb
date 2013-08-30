@@ -1542,7 +1542,13 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   ApplyDefaults(vocbase, defaults);
   
   // init AQL functions
-  vocbase->_functions = TRI_InitialiseFunctionsAql();
+  vocbase->_functions = TRI_CreateFunctionsAql();
+
+  if (vocbase->_functions == NULL) {
+    LOG_FATAL_AND_EXIT("cannot create AQL functions");
+  }
+
+  TRI_InitCompactorVocBase(vocbase);
 
   // init collections
   TRI_InitVectorPointer(&vocbase->_collections, TRI_UNKNOWN_MEM_ZONE);
@@ -1632,6 +1638,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   res = ScanPath(vocbase, vocbase->_path, iterateMarkers);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeFunctionsAql(vocbase->_functions);
+    TRI_DestroyCompactorVocBase(vocbase);
     TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
     TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
     TRI_DestroyVectorPointer(&vocbase->_collections);
@@ -1818,6 +1826,8 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   TRI_DestroyVectorPointer(&vocbase->_collections);
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
+
+  TRI_DestroyCompactorVocBase(vocbase);
 
   // free AQL functions
   TRI_FreeFunctionsAql(vocbase->_functions);
