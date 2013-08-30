@@ -2104,12 +2104,17 @@ function GROUP (value, sortFunction, groupFunction, into) {
     return [ ];
   }
 
-  SORT(value, sortFunction);
+  var augmented = [ ], i;
+  for (i = 0; i < n; ++i) {
+    augmented.push([ i, value[i] ]);
+  }
 
-  var result = [ ], currentGroup, oldGroup, i;
+  SORT(augmented, sortFunction);
+
+  var result = [ ], currentGroup, oldGroup;
   
   for (i = 0; i < n; ++i) {
-    var row = value[i];
+    var row = augmented[i][1];
     var groupValue = groupFunction(row);
 
     if (RELATIONAL_UNEQUAL(oldGroup, groupValue)) {

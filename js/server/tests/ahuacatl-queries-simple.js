@@ -945,6 +945,90 @@ function ahuacatlQuerySimpleTestSuite () {
 
       actual = getQueryResults("FOR i IN [ 1 ] RETURN { a: -1 -3, b: 2 - 0 }");
       assertEqual([ { a: -4, b: 2 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stable sort after COLLECT
+////////////////////////////////////////////////////////////////////////////////
+    
+    testStableSort1: function () {
+      var data = [ 
+        { "city" : "london", "order" : 4 }, 
+        { "city" : "paris", "order" : 4 }, 
+        { "city" : "london", "order" : 2 }, 
+        { "city" : "paris", "order" : 3 }, 
+        { "city" : "new york", "order" : 2 }, 
+        { "city" : "london", "order" : 3 }, 
+        { "city" : "new york", "order" : 4 }, 
+        { "city" : "new york", "order" : 3 }, 
+        { "city" : "paris", "order" : 1 }, 
+        { "city" : "new york", "order" : 1 }, 
+        { "city" : "paris", "order" : 2 }, 
+        { "city" : "london", "order" : 1 }
+      ];
+
+      var actual, expected;
+
+      expected = [ 
+        { "city" : "london", "orders" : [ 4, 3, 2, 1 ] }, 
+        { "city" : "new york", "orders" : [ 4, 3, 2, 1 ] }, 
+        { "city" : "paris", "orders" : [ 4, 3, 2, 1 ] } 
+      ];
+
+      actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.order DESC COLLECT city = value.city INTO orders RETURN { city: city, orders: orders[*].value.order }");
+      assertEqual(expected, actual);
+      
+      expected = [ 
+        { "city" : "london", "orders" : [ 1, 2, 3, 4 ] }, 
+        { "city" : "new york", "orders" : [ 1, 2, 3, 4 ] }, 
+        { "city" : "paris", "orders" : [ 1, 2, 3, 4 ] } 
+      ];
+
+      actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.order ASC COLLECT city = value.city INTO orders RETURN { city: city, orders: orders[*].value.order }");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stable sort after COLLECT
+////////////////////////////////////////////////////////////////////////////////
+    
+    testStableSort2: function () {
+      var data = [ 
+        { "city" : "london", "order" : 4 }, 
+        { "city" : "paris", "order" : 4 }, 
+        { "city" : "london", "order" : 2 }, 
+        { "city" : "paris", "order" : 3 }, 
+        { "city" : "new york", "order" : 2 }, 
+        { "city" : "london", "order" : 3 }, 
+        { "city" : "new york", "order" : 4 }, 
+        { "city" : "new york", "order" : 3 }, 
+        { "city" : "paris", "order" : 1 }, 
+        { "city" : "new york", "order" : 1 }, 
+        { "city" : "paris", "order" : 2 }, 
+        { "city" : "london", "order" : 1 }
+      ];
+
+      var actual, expected;
+
+      expected = [ 
+        { "order" : 1, "cities" : [ "paris", "new york", "london" ] }, 
+        { "order" : 2, "cities" : [ "paris", "new york", "london" ] }, 
+        { "order" : 3, "cities" : [ "paris", "new york", "london" ] }, 
+        { "order" : 4, "cities" : [ "paris", "new york", "london" ] } 
+      ];
+
+      actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city DESC COLLECT order = value.order INTO cities RETURN { order: order, cities: cities[*].value.city }");
+      assertEqual(expected, actual);
+      
+      expected = [ 
+        { "order" : 4, "cities" : [ "london", "new york", "paris" ] }, 
+        { "order" : 3, "cities" : [ "london", "new york", "paris" ] }, 
+        { "order" : 2, "cities" : [ "london", "new york", "paris" ] }, 
+        { "order" : 1, "cities" : [ "london", "new york", "paris" ] } 
+      ];
+
+      actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city ASC COLLECT order = value.order INTO cities SORT order DESC RETURN { order: order, cities: cities[*].value.city }");
+      assertEqual(expected, actual);
     }
 
   };
