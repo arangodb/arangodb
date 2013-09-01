@@ -553,7 +553,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 
 
 
-
+#ifdef TRI_SKIPLIST_EX
 
 // -----------------------------------------------------------------------------
 // COMPARE & SWAP operations below for MAC and GNUC
@@ -677,6 +677,8 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
     #error No TRI_CompareAndSwapPointer implementation defined
   #endif
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -38,6 +38,7 @@
 #include "VocBase/index.h"
 #include "VocBase/transaction.h"
 
+#ifdef TRI_SKIPLIST_EX
 
 
 // -----------------------------------------------------------------------------
@@ -994,6 +995,8 @@ static int ExciseNodeSwapPointersUndo(linked_list_node_t* nodeToExcise, linked_l
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 // Local Variables:
 // mode: outline-minor

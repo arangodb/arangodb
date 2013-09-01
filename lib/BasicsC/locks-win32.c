@@ -900,6 +900,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 }
 
 
+#ifdef TRI_SKIPLIST_EX
 
 // -----------------------------------------------------------------------------
 // COMPARE & SWAP operations below for windows
@@ -966,6 +967,7 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
   return ( InterlockedCompareExchangePointer(theValue, oldValue, oldValue) == oldValue );
 }
 
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
