@@ -56,14 +56,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
-                                        auth_fptr checkAuthentication,
                                         flush_fptr flushAuthentication,
                                         context_fptr setContext)
   : _authenticationRealm(authenticationRealm),
-    _checkAuthentication(checkAuthentication),
     _setContext(setContext),
     _flushAuthentication(flushAuthentication),
-    _requireAuthentication(true),
     _notFound(0) {
 }
 
@@ -73,10 +70,8 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
-    _checkAuthentication(that._checkAuthentication),
     _setContext(that._setContext),
     _flushAuthentication(that._flushAuthentication),
-    _requireAuthentication(that._requireAuthentication),
     _constructors(that._constructors),
     _datas(that._datas),
     _prefixes(that._prefixes),
@@ -90,10 +85,8 @@ HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
 HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& that) {
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm,
-    _checkAuthentication = that._checkAuthentication,
     _setContext = that._setContext,
     _flushAuthentication = that._flushAuthentication,
-    _requireAuthentication = that._requireAuthentication;
     _constructors = that._constructors;
     _datas = that._datas;
     _prefixes = that._prefixes;
@@ -134,14 +127,6 @@ void HttpHandlerFactory::flushAuthentication () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief require authentication
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpHandlerFactory::setRequireAuthentication (bool value) {
-  _requireAuthentication = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -162,7 +147,9 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   RequestContext* rc = request->getRequestContext();
 
   if (! rc) {
-    setRequestContext(request);
+    if (! setRequestContext(request)) {
+      return false;
+    }
   }
 
   return rc->authenticate();

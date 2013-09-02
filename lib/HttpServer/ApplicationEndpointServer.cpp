@@ -81,7 +81,6 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationScheduler* applicationScheduler,
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
-                                                      HttpHandlerFactory::auth_fptr checkAuthentication,
                                                       HttpHandlerFactory::flush_fptr flushAuthentication,
                                                       HttpHandlerFactory::context_fptr setContext)
   : ApplicationFeature("EndpointServer"),
@@ -89,7 +88,6 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
-    _checkAuthentication(checkAuthentication),
     _setContext(setContext),
     _flushAuthentication(flushAuthentication),
     _handlerFactory(0),
@@ -97,7 +95,6 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _endpointList(),
     _httpPort(),
     _endpoints(),
-    _disableAuthentication(false),
     _keepAliveTimeout(300.0),
     _backlogSize(10),
     _httpsKeyfile(),
@@ -152,13 +149,6 @@ bool ApplicationEndpointServer::buildServers () {
   assert(_applicationScheduler->scheduler() != 0);
 
   EndpointServer* server;
-
-  // turn off authentication
-  if (_disableAuthentication) {
-    _handlerFactory->setRequireAuthentication(false);
-    LOGGER_INFO("Authentication is turned off");
-  }
-
 
   // unencrypted endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
@@ -222,7 +212,6 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
     ("server.backlog-size", &_backlogSize, "listen backlog size")
   ;
@@ -275,7 +264,8 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 
     assert(endpoint);
 
-    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
+    bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint, true);
+
     if (! ok) {
       LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
     }
@@ -285,7 +275,11 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   return true;
 }
 
- bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
@@ -295,22 +289,24 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 
   Endpoint* endpoint = Endpoint::serverFactory(newEndpoint, _backlogSize);
 
-  if (endpoint == 0) {
+  if (endpoint != 0) {
+    ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint, false);
+
+    if (ok) {
+      _endpoints.push_back(newEndpoint);
+    }
+  }
+  else {
+    ok = false;
+  }
+
+  if (! ok) {
     LOGGER_WARNING("Could not add endpoint '" << newEndpoint << "'");
     return false;
   }
-
-  ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
-  if (ok) {
-    _endpoints.push_back(newEndpoint);
-  }
-  else {
-    LOGGER_WARNING("Could not add endpoint '" << newEndpoint << "'");
-  }
   
   return ok;
- }
- 
+}
  
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -321,7 +317,6 @@ bool ApplicationEndpointServer::prepare () {
   _endpointList.dump();
 
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
-                                           _checkAuthentication, 
                                            _flushAuthentication, 
                                            _setContext);
 

@@ -97,10 +97,18 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a pointer to the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* getJson () const {
+          return _json;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool isArrayDocument () {
+        bool isArrayDocument () const {
           return JsonHelper::isArray(_json);
         }
 
@@ -108,7 +116,7 @@ namespace triagens {
 /// @brief returns then value of a boolean attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool getBooleanValue (string const& name, bool defaultValue) {
+        bool getBooleanValue (string const& name, bool defaultValue) const {
           return JsonHelper::getBooleanValue(_json, name.c_str(), defaultValue);
         }
 
@@ -116,7 +124,7 @@ namespace triagens {
 /// @brief returns then value of a numeric attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-        template<typename T> T getNumericValue (string const& name, T defaultValue) {
+        template<typename T> T getNumericValue (string const& name, T defaultValue) const {
           return JsonHelper::getNumericValue<T>(_json, name.c_str(), defaultValue);
         }
 
@@ -124,7 +132,7 @@ namespace triagens {
 /// @brief returns then value of a string attribute or a default value
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getStringValue (string const& name, string const& defaultValue) {
+        string getStringValue (string const& name, string const& defaultValue) const {
           return JsonHelper::getStringValue(_json, name.c_str(), defaultValue);
         }
         

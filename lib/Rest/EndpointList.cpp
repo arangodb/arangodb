@@ -59,7 +59,7 @@ EndpointList::EndpointList () :
 EndpointList::~EndpointList () {
   for (map<string, ListType>::iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      delete *i2;
+      delete (*i2).first;
     }
 
     (*i).second.clear();
@@ -102,7 +102,7 @@ size_t EndpointList::count (const Endpoint::ProtocolType protocol,
 void EndpointList::dump () const {
   for (map<string, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      LOGGER_INFO("using endpoint '" << (*i2)->getSpecification() << "' for " << (*i).first << " requests");
+      LOGGER_INFO("using endpoint '" << (*i2).first->getSpecification() << "' for " << (*i).first << " requests");
     }
   }
 }
@@ -117,8 +117,8 @@ EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType 
   map<string, EndpointList::ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
 
   if (i != _lists.end()) {
-    for (ListType::const_iterator i2 = i->second.begin(); i2 != i->second.end(); ++i2) {
-      result.insert(*i2);
+    for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
+      result.insert(pair<Endpoint*, bool>((*i2).first, (*i2).second));
     }
   }
 
@@ -130,9 +130,11 @@ EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EndpointList::addEndpoint (const Endpoint::ProtocolType protocol,
-                                const Endpoint::EncryptionType encryption, Endpoint* endpoint) {
+                                const Endpoint::EncryptionType encryption, 
+                                Endpoint* endpoint,
+                                bool isSystem) {
 
-  _lists[getKey(protocol, encryption)].insert(endpoint);
+  _lists[getKey(protocol, encryption)].insert(pair<Endpoint*, bool>(endpoint, isSystem));
 
   return true;
 }

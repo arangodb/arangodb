@@ -46,6 +46,7 @@
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Replication/InitialSyncer.h"
+#include "Rest/SslInterface.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
@@ -86,6 +87,7 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
+using namespace triagens::rest;
 
 
 // -----------------------------------------------------------------------------
@@ -7666,7 +7668,7 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
   }
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 2> trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -7685,14 +7687,14 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
 
     TRI_doc_mptr_t document;
 
-    if (key.empty()) {
-      res = trx.createDocument(0, &document, shaped, true);
-    }
-    else {
-      res = trx.createDocument((const TRI_voc_key_t) key.c_str(), &document, shaped, true);
+    res = trx.read(&document, key.c_str());
+
+    if (res == TRI_ERROR_NO_ERROR && document._key != 0 && document._data != 0) {
+      // previous version of document exists. delete it first
+      trx.deleteDocument(key.c_str(), TRI_DOC_UPDATE_LAST_WRITE, false, 0, 0);
     }
 
-    res = trx.finish(res);
+    res = trx.createDocument((const TRI_voc_key_t) key.c_str(), &document, shaped, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
@@ -7705,6 +7707,12 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
     result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
     result->Set(v8g->_RevKey, V8RevisionId(document._rid));
     result->Set(v8g->_KeyKey, v8::String::New(document._key));
+    
+    res = trx.finish(res);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+    }
 
     // return OK
     return scope.Close(result);
@@ -7876,82 +7884,83 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "ADD_ENDPOINT(<endpoint>)");
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "ADD_ENDPOINT(<endpoint>, <names>)");
   }
 
   TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
-  if (!vocbase->_isSystem) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "current database is not the system database");
+  if (! vocbase->_isSystem) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
+  // TODO:check endpoint string
   string endpoint = TRI_ObjectToString(argv[0]);
 
-  // check endpoint string
-  bool ok = VocbaseManager::manager.addEndpoint(endpoint);
+  // validate and register dbNames
+  vector<string> dbNames;
 
-  if (!ok) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot open endpoint");
+  if (argv.Length() > 1) {
+    if (! argv[1]->IsArray()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<names> must be a list");
+    }
+
+    v8::Handle<v8::Array> list = v8::Handle<v8::Array>::Cast(argv[1]);
+
+    const uint32_t n = list->Length();
+    for (uint32_t i = 0; i < n; ++i) {
+      v8::Handle<v8::Value> name = list->Get(i);
+
+      if (name->IsString()) {
+        dbNames.push_back(TRI_ObjectToString(name));
+      }
+      else {
+        TRI_V8_EXCEPTION_PARAMETER(scope, "<names> must be a list of strings");
+      }
+    }
+  }
+
+  bool ok = VocbaseManager::manager.addEndpoint(endpoint, dbNames);
+
+  if (! ok) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "invalid endpoint");
   }
 
   v8::Local<v8::String> keyEndpoint = v8::String::New("endpoint");
+  v8::Local<v8::String> keyDbNames  = v8::String::New("dbNames");
 
   // add endpoint document
   v8::Handle<v8::Object> newDoc = v8::Object::New();
-  newDoc->Set(keyEndpoint, TRI_V8_SYMBOL(endpoint.c_str()));
+  newDoc->Set(keyEndpoint, TRI_V8_STRING(endpoint.c_str()));
+  newDoc->Set(keyDbNames, argv[1]);
+
+  // create md5 of endpoint
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslMD5(endpoint.c_str(), endpoint.size(), hash, hashLen);
+
+  if (hash == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
   
-  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, "", newDoc);
-}
+  delete[] hash;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a new prefix to database mapping
-///
-/// @FUN{ADD_PREFIX}
-///
-/// Returns the document id, the revision and the key.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_AddPrefixMapping (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "ADD_PREFIX(<prefix>, <database name>)");
+  if (hex == 0) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  const string key(hex, hexLen);
 
-  if (!vocbase->_isSystem) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "current database is not the system database");
-  }
+  delete[] hex;
 
-  string prefix = TRI_ObjectToString(argv[0]);
-  string databaseName = TRI_ObjectToString(argv[1]);
-
-  v8::Local<v8::String> keyPrefix = v8::String::New("prefix");
-  v8::Local<v8::String> keyDatabase = v8::String::New("database");
-
-  // add endpoint document
-  v8::Handle<v8::Object> newDoc = v8::Object::New();
-  newDoc->Set(keyPrefix, TRI_V8_SYMBOL(prefix.c_str()));
-  newDoc->Set(keyDatabase, TRI_V8_SYMBOL(databaseName.c_str()));
-  
-  v8::TryCatch tryCatch;
-  v8::Handle<v8::Value> result;
-
-  try {
-    result = saveToCollection(vocbase, TRI_COL_NAME_PREFIXES, "", newDoc);
-  }
-  catch (...) {
-  }
-
-  if (tryCatch.HasCaught()) {
-    return scope.Close(v8::ThrowException(tryCatch.Exception()));
-  }
-  
-  VocbaseManager::manager.addPrefixMapping(prefix, databaseName);
-  
-  return scope.Close(result);
+  return saveToCollection(vocbase, TRI_COL_NAME_ENDPOINTS, key.c_str(), newDoc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8754,7 +8763,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SHOW_DATABASES", JS_ListVocbases);  
   TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase);
   TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint);
-  TRI_AddGlobalFunctionVocbase(context, "ADD_PREFIX", JS_AddPrefixMapping);
   
   // .............................................................................
   // create global variables

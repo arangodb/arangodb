@@ -78,6 +78,18 @@ TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string element, or a default it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+        
+std::string JsonHelper::getStringValue (TRI_json_t const* json, 
+                                        const std::string& defaultValue) {
+  if (isString(json)) {
+    return string(json->_value._string.data, json->_value._string.length - 1);
+  }
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
         

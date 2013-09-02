@@ -71,6 +71,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _prefix(),
     _suffix(),
     _version(HTTP_UNKNOWN),
+    _dbName(),
     _user(),
     _requestContext(0) {
 
@@ -102,6 +103,7 @@ HttpRequest::HttpRequest ()
     _prefix(),
     _suffix(),
     _version(HTTP_UNKNOWN),
+    _dbName(),
     _user(),
     _requestContext(0) {
 }
@@ -584,10 +586,18 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the database name
+////////////////////////////////////////////////////////////////////////////////
+
+string const& HttpRequest::dbName () const {
+  return _dbName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpRequest::user () {
+string const& HttpRequest::user () const {
   return _user;
 }
 
@@ -806,6 +816,29 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           }
 
           pathEnd = f;
+
+          // look for database name in URL
+          if (pathEnd - pathBegin >= 5) {
+            char* q = pathBegin;
+
+            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
+              // request contains database name
+              q += 5;
+              pathBegin = q;
+
+              // read until end of database name
+              while (*q != '\0') {
+                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
+                  break;
+                }
+                ++q;
+              }
+              
+              _dbName = string(pathBegin, q - pathBegin);
+
+              pathBegin = q;
+            }
+          }
 
           // no space, question mark or end-of-line
           if (f == valueEnd) {

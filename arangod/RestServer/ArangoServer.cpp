@@ -191,6 +191,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
     _authenticateSystemOnly(false),
+    _disableAuthentication(false),
     _dispatcherThreads(8),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
@@ -198,7 +199,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _developmentMode(false),
     _forceSyncProperties(true),
     _forceSyncShapes(true),
-    _multipleDatabases(false),
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnCompacted(true),
@@ -385,7 +385,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
-    ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
@@ -412,7 +411,6 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
                                                              "arangodb",
-                                                             TRI_CheckAuthenticationAuthInfo,
                                                              TRI_FlushAuthenticationAuthInfo,
                                                              VocbaseManager::setRequestContext);
   _applicationServer->addFeature(_applicationEndpointServer);
@@ -642,8 +640,11 @@ int ArangoServer::startupServer () {
 
   // if the authentication info could not be loaded, but authentication is turned on,
   // then we refuse to start
-  if (! _vocbase->_authInfoLoaded && ! _applicationEndpointServer->isAuthenticationDisabled()) {
+  if (! _vocbase->_authInfoLoaded && ! _disableAuthentication) {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
+  }
+  if (_disableAuthentication) {
+    LOGGER_INFO("Authentication is turned off");
   }
 
   LOGGER_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
@@ -1201,28 +1202,51 @@ bool ArangoServer::loadUserDatabases (TRI_vocbase_defaults_t *data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a tcp endpoint
+/// @brief add an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool handleEnpoint (TRI_doc_mptr_t const* document, 
-        TRI_primary_collection_t* primary, void*) {
+                           TRI_primary_collection_t* primary, 
+                           void*) {
   
   DocumentWrapper doc(document, primary);
   
-  if (!doc.isArrayDocument()) {
+  if (! doc.isArrayDocument()) {
     // wrong document type
     return true;
   }
   
   string endpoint = doc.getStringValue("endpoint", "");
+
   if (endpoint == "") {
     // endpoint string not found
-    LOG_ERROR("Endpoint string not found!");
+    LOG_WARNING("invalid endpoint specification found");
     return true;
   }
 
-  VocbaseManager::manager.addEndpoint(endpoint);
-  
+  TRI_json_t const* json = doc.getJson();
+
+  vector<std::string> dbNames;
+
+  if (JsonHelper::isList(json)) {
+    for (size_t i = 0; i < json->_value._objects._length; ++i) {
+      TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+
+      if (JsonHelper::isString(e)) {
+        const string dbName = JsonHelper::getStringValue(e, "");
+
+        if (! dbName.empty()) {
+          dbNames.push_back(dbName);
+        }
+      }
+    }
+  }
+  else {
+    dbNames.push_back(TRI_VOC_SYSTEM_DATABASE);
+  }
+
+  VocbaseManager::manager.addEndpoint(endpoint, dbNames);
+ 
   return true;
 }
 
@@ -1272,80 +1296,6 @@ bool ArangoServer::loadEndpoints () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a tcp endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static bool handlePrefixMapping (TRI_doc_mptr_t const* document, 
-        TRI_primary_collection_t* primary, void* data) {
-  
-  DocumentWrapper doc(document, primary);
-  
-  if (!doc.isArrayDocument()) {
-    // wrong document type
-    return true;
-  }
-  
-  string prefix = doc.getStringValue("prefix", "");
-  if (prefix == "") {
-    LOG_ERROR("Prefix string not found!");
-    return true;
-  }
-
-  string database = doc.getStringValue("database", "");
-  if (database == "") {
-    LOG_ERROR("Database string not found!");
-    return true;
-  }
-
-  VocbaseManager::manager.addPrefixMapping(prefix, database);
-  
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start server endpoints found in collection '_endpoints'
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoServer::loadPrefixMappings () {
-  TRI_vocbase_col_t* collection;
-  TRI_primary_collection_t* primary;
-
-  collection = TRI_LookupCollectionByNameVocBase(_vocbase, TRI_COL_NAME_PREFIXES);
-
-  if (collection == NULL) {
-    // collection '_prefixes' not found
-    return false;
-  }
-
-  TRI_UseCollectionVocBase(_vocbase, collection);
-
-  primary = collection->_collection;
-
-  if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' cannot be loaded");
-  }
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
-    TRI_ReleaseCollectionVocBase(_vocbase, collection);
-    LOG_FATAL_AND_EXIT("collection '" TRI_COL_NAME_PREFIXES "' has an unknown collection type");
-  }
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-    
-  TRI_DocumentIteratorPrimaryCollection(primary, 0, handlePrefixMapping);
-
-  // .............................................................................
-  // outside a read transaction
-  // .............................................................................
-
-  TRI_ReleaseCollectionVocBase(_vocbase, collection);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1361,7 +1311,7 @@ void ArangoServer::openDatabases () {
   defaults.defaultWaitForSync            = _defaultWaitForSync;
   defaults.forceSyncShapes               = _forceSyncShapes;
   defaults.forceSyncProperties           = _forceSyncProperties;
-  defaults.requireAuthentication         = ! _applicationEndpointServer->isAuthenticationDisabled();
+  defaults.requireAuthentication         = ! _disableAuthentication;
   defaults.authenticateSystemOnly        = _authenticateSystemOnly;
   
   // store these settings as initial system defaults
@@ -1378,14 +1328,13 @@ void ArangoServer::openDatabases () {
   LOGGER_INFO("loaded database '" TRI_VOC_SYSTEM_DATABASE "' from '" << _databasePath << "'");    
   
   // first database is the system database
-  _vocbase->_isSystem = _multipleDatabases;
+  _vocbase->_isSystem = true;
   
   VocbaseManager::manager.addSystemVocbase(_vocbase);
   
   if (_vocbase->_isSystem) {
     loadUserDatabases(&defaults);
     loadEndpoints();
-    loadPrefixMappings();
   }
 }
 
