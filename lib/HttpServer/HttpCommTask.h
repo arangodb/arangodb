@@ -463,11 +463,11 @@ namespace triagens {
             // authenticate
             // .............................................................................
 
-            bool auth = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
+            HttpResponse::HttpResponseCode authResult = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
 
             // authenticated
             // or an HTTP OPTIONS request. OPTIONS requests currently go unauthenticated
-            if (auth || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
+            if (authResult == HttpResponse::OK || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
 
               // handle HTTP OPTIONS requests directly
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
@@ -539,6 +539,14 @@ namespace triagens {
               }
             }
 
+            // not found 
+            else if (authResult == HttpResponse::NOT_FOUND) {
+              HttpResponse response(HttpResponse::NOT_FOUND);
+
+              this->handleResponse(&response);
+              this->resetState();
+            }
+            
             // not authenticated
             else {
               const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";

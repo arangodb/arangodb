@@ -52,7 +52,14 @@ namespace triagens {
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, 
                                         double requestTimeout, 
                                         bool warn) :
-      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
+      SimpleClient(connection, requestTimeout, warn), 
+      _locationRewriter(),
+      _result(0), 
+      _maxPacketSize(128 * 1024 * 1024) {
+
+      // waiting for C++11...
+      _locationRewriter.func = 0;
+      _locationRewriter.data = 0;
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -73,8 +80,8 @@ namespace triagens {
       _result = new SimpleHttpResult;
       _errorMessage = "";
 
-      // set body to all connections
-      setRequest(method, location, body, bodyLength, headerFields);
+      // set body 
+      setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;

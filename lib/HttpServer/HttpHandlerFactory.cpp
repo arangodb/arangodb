@@ -143,13 +143,17 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 /// disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
+HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   RequestContext* rc = request->getRequestContext();
 
   if (! rc) {
     if (! setRequestContext(request)) {
-      return false;
+      return HttpResponse::NOT_FOUND;
     }
+  }
+
+  if (! rc) {
+    return HttpResponse::NOT_FOUND;
   }
 
   return rc->authenticate();

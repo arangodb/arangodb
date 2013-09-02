@@ -30,6 +30,7 @@
 
 #include "Rest/RequestUser.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 
 namespace triagens {
   namespace rest {
@@ -97,7 +98,7 @@ namespace triagens {
 /// @brief authenticate user
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool authenticate () = 0;
+        virtual HttpResponse::HttpResponseCode authenticate () = 0;
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -290,6 +290,7 @@ int main (int argc, char* argv[]) {
         (unsigned long) BatchSize,
         &operationsCounter,
         endpoint,
+        BaseClient.databaseName(),
         BaseClient.username(),
         BaseClient.password(),
         BaseClient.requestTimeout(),
@@ -348,7 +349,7 @@ int main (int argc, char* argv[]) {
 
   cout << endl;
   cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
-  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", collection: '" << Collection << "'" << endl;
+  cout << "Test case: " << TestCase << ", complexity: " << Complexity << ", database: '" << BaseClient.databaseName() << "', collection: '" << Collection << "'" << endl;
   cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
   cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
   cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;

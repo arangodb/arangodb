@@ -30,6 +30,7 @@
 
 #include "VocBase/vocbase.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 #include <map>
 #include <string>
@@ -127,7 +128,7 @@ namespace triagens {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool authenticate ();
+        rest::HttpResponse::HttpResponseCode authenticate ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

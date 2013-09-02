@@ -78,6 +78,7 @@ namespace triagens {
                          const unsigned long batchSize,
                          BenchmarkCounter<unsigned long>* operationsCounter,
                          Endpoint* endpoint,
+                         const string& databaseName,
                          const string& username,
                          const string& password,
                          double requestTimeout,
@@ -91,6 +92,7 @@ namespace triagens {
             _warningCount(0),
             _operationsCounter(operationsCounter),
             _endpoint(endpoint),
+            _databaseName(databaseName),
             _username(username),
             _password(password),
             _requestTimeout(requestTimeout),
@@ -146,6 +148,13 @@ namespace triagens {
           }
 
           _client = new SimpleHttpClient(_connection, 10.0, true);
+
+          if (_client == 0) {
+            LOGGER_FATAL_AND_EXIT("out of memory");
+          }
+  
+          _client->setLocationRewriter(this, &rewriteLocation);
+          
           _client->setUserNamePassword("/", _username, _password);
 
           // test the connection
@@ -212,6 +221,28 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+        static string rewriteLocation (void* data, const string& location) {
+          BenchmarkThread* t = static_cast<BenchmarkThread*>(data);
+
+          assert(t != 0);
+
+          if (location.substr(0, 5) == "/_db/") {
+            // location already contains /_db/
+            return location;
+          }
+
+          if (location[0] == '/') {
+            return "/_db/" + t->_databaseName + location;
+          }
+          else {
+            return "/_db/" + t->_databaseName + "/" + location;
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a batch request with numOperations parts
@@ -443,6 +474,12 @@ namespace triagens {
         Endpoint* _endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief database name
+////////////////////////////////////////////////////////////////////////////////
+
+        const string _databaseName;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP username
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -470,7 +507,7 @@ namespace triagens {
 /// @brief underlying client
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::httpclient::SimpleClient* _client;
+        triagens::httpclient::SimpleHttpClient* _client;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection to the server
