@@ -49,6 +49,18 @@
   var userManager = require("org/arangodb/users");
   var db = internal.db;
 
+  var logger = {
+    info: function (msg) {
+      console.log("In database '%s': %s", db._name(), msg);
+    },
+    error: function (msg) {
+      console.error("In database '%s': %s", db._name(), msg);
+    },
+    log: function (msg) {
+      this.info(msg);
+    }
+  };
+
   // path to the VERSION file
   var versionFile = internal.db._path() + "/VERSION";
 
@@ -114,7 +126,7 @@
       }
     }
     
-    console.log("Starting upgrade from version " + (lastVersion || "unknown") 
+    logger.log("Starting upgrade from version " + (lastVersion || "unknown") 
                 + " to " + internal.db._version());
 
     // --------------------------------------------------------------------------
@@ -278,13 +290,13 @@
 
                 if (isEdge) {
                   collection.setAttribute("type", 3);
-                  console.log("made collection '" + collection.name() + " an edge collection");
+                  logger.log("made collection '" + collection.name() + " an edge collection");
                 }
               }
               collection.setAttribute("version", 2);
             }
             catch (e) {
-              console.error("could not upgrade collection '" + collection.name() + "'");
+              logger.error("could not upgrade collection '" + collection.name() + "'");
               return false;
             }
           }
@@ -360,13 +372,13 @@
             }
             else {
               // fail
-              console.error("could not upgrade collection datafiles for '"
+              logger.error("could not upgrade collection datafiles for '"
                             + collection.name() + "'");
               return false;
             }
           }
           catch (e) {
-            console.error("could not upgrade collection datafiles for '" 
+            logger.error("could not upgrade collection datafiles for '" 
                           + collection.name() + "'");
             return false;
           }
@@ -488,7 +500,7 @@
 
 
     // loop through all tasks and execute them
-    console.log("Found " + allTasks.length + " defined task(s), "
+    logger.log("Found " + allTasks.length + " defined task(s), "
                 + activeTasks.length + " task(s) to run");
 
     var taskNumber = 0;
@@ -498,7 +510,7 @@
       if (activeTasks.hasOwnProperty(i)) {
         var task = activeTasks[i];
 
-        console.log("Executing task #" + (++taskNumber) 
+        logger.log("Executing task #" + (++taskNumber) 
                     + " (" + task.name + "): " + task.description);
 
         // assume failure
@@ -509,7 +521,7 @@
           result = task.code();
         }
         catch (e) {
-          console.error("caught exception: %s", e);
+          logger.error("caught exception: %s", e);
         }
 
         if (result) {
@@ -521,11 +533,11 @@
             versionFile,
             JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
-          console.log("Task successful");
+          logger.log("Task successful");
         }
         else {
-          console.error("Task failed. Aborting upgrade procedure.");
-          console.error("Please fix the problem and try starting the server again.");
+          logger.error("Task failed. Aborting upgrade procedure.");
+          logger.error("Please fix the problem and try starting the server again.");
           return false;
         }
       }
@@ -536,7 +548,7 @@
       versionFile,
       JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
-    console.log("Upgrade successfully finished");
+    logger.log("Upgrade successfully finished");
 
     // successfully finished
     return true;
@@ -548,14 +560,14 @@
 
   if (! currentServerVersion) {
     // server version is invalid for some reason
-    console.error("Unexpected ArangoDB server version: " + internal.db._version());
+    logger.error("Unexpected ArangoDB server version: " + internal.db._version());
     return false;
   }
   
   var currentVersion = parseFloat(currentServerVersion[1]);
   
   if (! fs.exists(versionFile)) {
-    console.info("No version information file found in database directory.");
+    logger.info("No version information file found in database directory.");
     return runUpgrade(currentVersion);
   }
 
@@ -569,7 +581,7 @@
   }
   
   if (lastVersion === null) {
-    console.info("No VERSION file found in database directory.");
+    logger.info("No VERSION file found in database directory.");
     return runUpgrade(currentVersion);
   }
 
@@ -583,10 +595,10 @@
 
   if (lastVersion > currentVersion) {
     // downgrade??
-    console.error("Database directory version (" + lastVersion 
+    logger.error("Database directory version (" + lastVersion 
                   + ") is higher than server version (" + currentVersion + ").");
 
-    console.error("It seems like you are running ArangoDB on a database directory"
+    logger.error("It seems like you are running ArangoDB on a database directory"
                   + " that was created with a newer version of ArangoDB. Maybe this"
                   +" is what you wanted but it is not supported by ArangoDB.");
 
@@ -600,10 +612,10 @@
       return runUpgrade(currentVersion);
     }
 
-    console.error("Database directory version (" + lastVersion
+    logger.error("Database directory version (" + lastVersion
                   + ") is lower than server version (" + currentVersion + ").");
 
-    console.error("It seems like you have upgraded the ArangoDB binary. If this is"
+    logger.error("It seems like you have upgraded the ArangoDB binary. If this is"
                   +" what you wanted to do, please restart with the --upgrade option"
                   +" to upgrade the data in the database directory.");
 

@@ -7163,15 +7163,16 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
   result->Set(j++, v8::String::New("_drop()"));
+  result->Set(j++, v8::String::New("_executeTransaction()"));
   result->Set(j++, v8::String::New("_exists()"));
+  result->Set(j++, v8::String::New("_isSystem()"));
+  result->Set(j++, v8::String::New("_name()"));
+  result->Set(j++, v8::String::New("_path()"));
   result->Set(j++, v8::String::New("_query()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
   result->Set(j++, v8::String::New("_version()"));
-  result->Set(j++, v8::String::New("_path()"));
-  result->Set(j++, v8::String::New("_name()"));
-  result->Set(j++, v8::String::New("_isSystem()"));
 
   return scope.Close(result);
 }
@@ -7181,15 +7182,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{db._create(@FA{collection-name})}
 ///
-/// Creates a new collection named @FA{collection-name}.
+/// Creates a new document collection named @FA{collection-name}.
 /// If the collection name already exists or if the name format is invalid, an
 /// error is thrown. For more information on valid collection names please refer
 /// to @ref NamingConventions.
-///
-/// The type of the collection is automatically determined by the object that
-/// @FA{_create} is invoked with:
-/// - if invoked on @LIT{db}, a document collection will be created
-/// - if invoked on @LIT{edges}, an edge collection will be created
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
 ///
@@ -7625,7 +7621,7 @@ static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of database names
 ///
-/// @FUN{SHOW_DATABASES}
+/// @FUN{LIST_DATABASES}
 ///
 /// Returns the list of database names
 ////////////////////////////////////////////////////////////////////////////////
@@ -7634,7 +7630,7 @@ static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() > 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "SHOW_DATABASES()");
+    TRI_V8_EXCEPTION_USAGE(scope, "LIST_DATABASES()");
   }
   
   vector<TRI_vocbase_t*> vocbases = VocbaseManager::manager.vocbases();
@@ -7642,7 +7638,8 @@ static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
   v8::Handle<v8::Array> result = v8::Array::New();
   
   // add database names
-  for (uint32_t i = 0;  i < vocbases.size();  ++i) {    
+  const uint32_t n = (uint32_t) vocbases.size();
+  for (uint32_t i = 0;  i < n;  ++i) {    
     result->Set(i, v8::String::New(vocbases.at(i)->_name));
   }
   
@@ -7742,8 +7739,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  string name = TRI_ObjectToString(argv[0]);
-  string path = TRI_ObjectToString(argv[1]);
+  const string name = TRI_ObjectToString(argv[0]);
+  const string path = TRI_ObjectToString(argv[1]);
 
   int res = VocbaseManager::manager.canAddVocbase(name, path, true);
 
@@ -7827,11 +7824,12 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     userVocbase = 0;
 
     // return with error
-    TRI_V8_EXCEPTION_INTERNAL(scope, "Database version check failed for '" + string(userVocbase->_path) + 
-                                     "'. Please insert database manually and restart with the --upgrade option.");
+    TRI_V8_EXCEPTION_INTERNAL(scope, 
+                              "Database version check failed for '" + name + "'. " + 
+                              "Please insert database manually and restart with the --upgrade option.");
   }
 
-  LOGGER_INFO("database version check passed for " + string(userVocbase->_path));
+  LOGGER_INFO("database version check passed for '" << name << "'");
 
   VocbaseManager::manager.initializeFoxx(userVocbase, v8::Context::GetCurrent());
 
@@ -8589,13 +8587,13 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(rt, "_document", JS_DocumentVocbase);
   TRI_AddMethodVocbase(rt, "_exists", JS_ExistsVocbase);
+  TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemVocbase);
+  TRI_AddMethodVocbase(rt, "_name", JS_NameVocbase);
+  TRI_AddMethodVocbase(rt, "_path", JS_PathVocbase);
   TRI_AddMethodVocbase(rt, "_remove", JS_RemoveVocbase);
   TRI_AddMethodVocbase(rt, "_replace", JS_ReplaceVocbase);
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
   TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
-  TRI_AddMethodVocbase(rt, "_path", JS_PathVocbase);
-  TRI_AddMethodVocbase(rt, "_name", JS_NameVocbase);
-  TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemVocbase);
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
@@ -8760,8 +8758,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
   
   TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase);  
-  TRI_AddGlobalFunctionVocbase(context, "SHOW_DATABASES", JS_ListVocbases);  
-  TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase);
+  TRI_AddGlobalFunctionVocbase(context, "LIST_DATABASES", JS_ListVocbases, true);  
+  TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase, true);
   TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint);
   
   // .............................................................................
