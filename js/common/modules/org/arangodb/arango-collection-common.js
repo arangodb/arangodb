@@ -129,6 +129,7 @@ ArangoCollection.TYPE_EDGE = 3;
 ArangoCollection.prototype._PRINT = function (context) {
   var status = "unknown";
   var type = "unknown";
+  var name = this.name();
 
   switch (this.status()) {
     case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
@@ -153,7 +154,7 @@ ArangoCollection.prototype._PRINT = function (context) {
   if (useColor) { context.output += colors.COLOR_RESET; }
   context.output += ", \"";
   if (useColor) { context.output += colors.COLOR_STRING; }
-  context.output += this.name();
+  context.output += name ? name : "unknown";
   if (useColor) { context.output += colors.COLOR_RESET; }
   context.output += "\" (type " + type + ", status " + status + ")]";
 };
