@@ -243,7 +243,7 @@ ArangoDatabase.prototype._help = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype.toString = function () {  
-  return "[object ArangoDatabase]";
+  return "[object ArangoDatabase '" + this._name() + "']";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -852,11 +852,17 @@ ArangoDatabase.prototype._listDatabases = function () {
 ArangoDatabase.prototype._useDatabase = function (name) {
   var old = this._connection.getDatabaseName();
 
+  // no change
+  if (name === old) {
+    return true;
+  }
+
   this._connection.setDatabaseName(name);
 
   try {
     // re-query properties
     this._queryProperties(true);
+    this._flushCache();
   }
   catch (err) {
     this._connection.setDatabaseName(old);
