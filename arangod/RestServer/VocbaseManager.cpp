@@ -138,8 +138,9 @@ void VocbaseManager::closeUserVocbases () {
   
   std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();  
   for (; i != _vocbases.end(); ++i) {
-    TRI_vocbase_t* vocbase = i->second;
-    TRI_DestroyVocBase(vocbase);
+    TRI_vocbase_t* vocbase = (*i).second;
+
+    TRI_DestroyVocBase(vocbase, 0);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
   }
   
@@ -147,7 +148,7 @@ void VocbaseManager::closeUserVocbases () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look vocbase by name
+/// @brief look up vocbase by name
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
@@ -217,6 +218,53 @@ int VocbaseManager::canAddVocbase (std::string const& name,
 
 bool VocbaseManager::isValidName (std::string const& name) const {
   return TRI_IsAllowedCollectionName(false, name.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a vocbase by name
+////////////////////////////////////////////////////////////////////////////////
+
+int VocbaseManager::deleteVocbase (string const& name) {
+  if (name == TRI_VOC_SYSTEM_DATABASE) {
+    // cannot delete _system database
+    return TRI_ERROR_FORBIDDEN; 
+  }
+ 
+  TRI_vocbase_t* vocbase = 0;
+
+  { 
+    WRITE_LOCKER(_rwLock);
+
+    map<string, TRI_vocbase_s*>::iterator find = _vocbases.find(name);
+    if (find == _vocbases.end()) {
+      // database does not exist
+      return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    }
+  
+    // ok, we found it
+    vocbase = (*find).second;
+
+    // remove from the list
+    _vocbases.erase(name);
+  }  
+
+  assert(vocbase != 0);
+  
+  const string path = string(vocbase->_path);
+  LOGGER_INFO("removing database '" << name << "', path '" << path << "'");
+
+  // destroy the vocbase, but not its collections 
+  // there might be JavaScript objects referencing the collections somehow,
+  // so we must not free them yet
+  // putting the collections in this vector will allow us freeing them later
+  TRI_DestroyVocBase(vocbase, _freeCollections);
+  // same for the vocbase
+  _freeVocbases.push_back(vocbase);
+
+  // ok, now delete the data in the file system
+  int res = TRI_RemoveDirectory(path.c_str());
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

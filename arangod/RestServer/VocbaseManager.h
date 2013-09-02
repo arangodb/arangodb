@@ -40,8 +40,11 @@
 #include "VocBase/vocbase.h"
 #include <map>
 #include <string>
+#include <vector>
 
 #include "v8.h"
+
+struct TRI_vector_pointer_s;
 
 namespace triagens {
   namespace rest {
@@ -79,8 +82,30 @@ namespace triagens {
           _rwLock(), 
           _authCache(), 
           _startupLoader(0), 
-          _endpointServer(0) {
+          _endpointServer(0),
+          _freeCollections(0),
+          _freeVocbases() {
+
+          // allocate some space for collection pointers that we need to remove later
+          _freeCollections = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+
+          if (_freeCollections != 0) {
+            TRI_InitVectorPointer(_freeCollections, TRI_UNKNOWN_MEM_ZONE);
+          }
         };
+
+        ~VocbaseManager () {
+          // if we have buffered some collections, we must now free them
+          if (_freeCollections != 0) {
+            TRI_FreeCollectionsVocBase(_freeCollections);
+            TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, _freeCollections);
+          }
+          
+          // on shutdown, we'll free all vocbases we had collected
+          for (size_t i = 0; i < _freeVocbases.size(); ++i) {
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, _freeVocbases[i]);
+          }
+        }
 
         VocbaseManager (const VocbaseManager&);
         VocbaseManager& operator= (const VocbaseManager&);
@@ -157,6 +182,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isValidName (std::string const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a vocbase by name
+////////////////////////////////////////////////////////////////////////////////
+
+        int deleteVocbase (string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the startup loader
@@ -310,6 +341,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::rest::ApplicationEndpointServer* _endpointServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a vector of collections that we own and must free at the end
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_vector_pointer_s* _freeCollections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a vector of vocbases that we own and must free at the end
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<TRI_vocbase_s*> _freeVocbases;
         
     };
   }

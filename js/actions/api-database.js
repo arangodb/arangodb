@@ -82,6 +82,17 @@ function post_api_database (req, res) {
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
 
+function delete_api_database (req, res) {
+  if (req.suffix.length !== 1) { 
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  
+  var result = arangodb.db._deleteDatabase(req.suffix[0]);
+
+  actions.resultOk(req, res, actions.HTTP_OK, { result : result });
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a database request
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +108,9 @@ actions.defineHttp({
       }
       else if (req.requestType === actions.POST) {
         post_api_database(req, res);
+      }
+      else if (req.requestType === actions.DELETE) {
+        delete_api_database(req, res);
       }
       else {
         actions.resultUnsupported(req, res);

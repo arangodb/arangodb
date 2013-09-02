@@ -243,7 +243,7 @@ ArangoDatabase.prototype._help = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype.toString = function () {  
-  return "[object ArangoDatabase '" + this._name() + "']";
+  return "[object ArangoDatabase \"" + this._name() + "\"]";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,9 +263,8 @@ ArangoDatabase.prototype.toString = function () {
 /// @brief return all collections from the database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._collections = function (excludeSystem) {
-  var append = (excludeSystem ? "?excludeSystem=true" : "");
-  var requestResult = this._connection.GET(this._collectionurl() + append);
+ArangoDatabase.prototype._collections = function () {
+  var requestResult = this._connection.GET(this._collectionurl());
 
   arangosh.checkRequestResult(requestResult);
 
@@ -819,6 +818,22 @@ ArangoDatabase.prototype._createDatabase = function (name, path, options) {
   };
   
   var requestResult = this._connection.POST("/_api/database", JSON.stringify(data));
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+  
+  return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop an existing database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._dropDatabase = function (name) {
+  var requestResult = this._connection.DELETE("/_api/database/" + encodeURIComponent(name));
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);

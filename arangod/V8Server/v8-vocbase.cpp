@@ -844,19 +844,6 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a vocbase from a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_t* UnwrapVocBase (v8::Handle<v8::Object> vocbaseObject) {  
-  if (false) {
-    return TRI_UnwrapClass<TRI_vocbase_t>(vocbaseObject, WRP_VOCBASE_TYPE);
-  }
-  else {
-    return GetContextVocBase();  
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document and returns it
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -888,7 +875,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._document()
-    vocbase = UnwrapVocBase(argv.Holder());
+    vocbase = GetContextVocBase();
   }
 
   assert(vocbase);
@@ -994,7 +981,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._exists()
-    vocbase = UnwrapVocBase(argv.Holder());
+    vocbase = GetContextVocBase();
   }
 
   assert(vocbase);
@@ -1097,8 +1084,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._replace()
-    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-    vocbase = UnwrapVocBase(argv.Holder());
+    vocbase = GetContextVocBase();
   }
 
   assert(vocbase);
@@ -1396,8 +1382,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._update()
-    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-    vocbase = UnwrapVocBase(argv.Holder());
+    vocbase = GetContextVocBase();
   }
 
   assert(vocbase);
@@ -1517,7 +1502,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._remove()
-    vocbase = UnwrapVocBase(argv.Holder());
+    vocbase = GetContextVocBase();
   }
 
   assert(vocbase);
@@ -1565,8 +1550,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_type_e collectionType) {
   v8::HandleScope scope;
 
-  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -4555,7 +4539,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot count documents");
+    TRI_V8_EXCEPTION(scope, res);
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -5895,6 +5879,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
   // if we wouldn't do this, we would risk other threads modifying the name while
   // we're reading it
   char* name = TRI_GetCollectionNameByIdVocBase(collection->_vocbase, collection->_cid);
+
   if (name == 0) {
     return scope.Close(v8::Undefined());
   }
@@ -6919,8 +6904,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> holder = info.Holder()->ToObject();
-  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(holder, WRP_VOCBASE_TYPE);
-  TRI_vocbase_t* vocbase = UnwrapVocBase(holder);
+  TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -7027,7 +7011,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -7081,8 +7065,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -7091,10 +7074,10 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   bool error = false;
-  uint32_t n = (uint32_t) colls._length;
   // already create an array of the correct size
-  v8::Handle<v8::Array> result = v8::Array::New(n);
+  v8::Handle<v8::Array> result = v8::Array::New();
 
+  uint32_t n = (uint32_t) colls._length;
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
@@ -7104,7 +7087,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
       error = true;
       break;
     }
-    
+
     result->Set(i, c);
   }
 
@@ -7124,8 +7107,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  // TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == 0) {
     return scope.Close(v8::Array::New());
@@ -7158,20 +7140,24 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_collection()"));
   result->Set(j++, v8::String::New("_collections()"));
   result->Set(j++, v8::String::New("_create()"));
+  result->Set(j++, v8::String::New("_createDatabase()"));
   result->Set(j++, v8::String::New("_createDocumentCollection()"));
   result->Set(j++, v8::String::New("_createEdgeCollection()"));
   result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
   result->Set(j++, v8::String::New("_drop()"));
+  result->Set(j++, v8::String::New("_dropDatabase()"));
   result->Set(j++, v8::String::New("_executeTransaction()"));
   result->Set(j++, v8::String::New("_exists()"));
   result->Set(j++, v8::String::New("_isSystem()"));
+  result->Set(j++, v8::String::New("_listDatabases()"));
   result->Set(j++, v8::String::New("_name()"));
   result->Set(j++, v8::String::New("_path()"));
   result->Set(j++, v8::String::New("_query()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
+  result->Set(j++, v8::String::New("_useDatabase()"));
   result->Set(j++, v8::String::New("_version()"));
 
   return scope.Close(result);
@@ -7552,7 +7538,7 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_PathVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
   
   return scope.Close(v8::String::New(vocbase->_path));
 }
@@ -7568,7 +7554,7 @@ static v8::Handle<v8::Value> JS_PathVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
   
   return scope.Close(v8::String::New(vocbase->_name));
 }
@@ -7584,7 +7570,7 @@ static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_IsSystemVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
   
   return scope.Close(v8::Boolean::New(vocbase->_isSystem));
 }
@@ -7708,14 +7694,14 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
     res = trx.finish(res);
     
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document");
+      TRI_V8_EXCEPTION(scope, res);
     }
 
     // return OK
     return scope.Close(result);
   }
   
-  TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document into collection");
+  TRI_V8_EXCEPTION(scope, res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7733,7 +7719,11 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<name>, <path>, <options>)");
   }
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+ 
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
 
   if (! vocbase->_isSystem) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
@@ -7827,7 +7817,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   if (! vocbaseOk) {
     VocbaseManager::manager.unlockCreation();
     // unload vocbase
-    TRI_DestroyVocBase(userVocbase);
+    TRI_DestroyVocBase(userVocbase, 0);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
     userVocbase = 0;
 
@@ -7869,7 +7859,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
     VocbaseManager::manager.unlockCreation();
 
     // unload vocbase
-    TRI_DestroyVocBase(userVocbase);
+    TRI_DestroyVocBase(userVocbase, 0);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
     userVocbase = 0;
     
@@ -7880,6 +7870,73 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   VocbaseManager::manager.unlockCreation();
   
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete an existing database
+///
+/// @FUN{DELETE_DATABASE}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DeleteUserVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "DELETE_DATABASE(<name>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  if (! vocbase->_isSystem) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+  }
+  
+  const string name = TRI_ObjectToString(argv[0]);
+
+  // exclusive lock start
+  // ---------------------------------------------------------
+
+  VocbaseManager::manager.lockCreation();
+
+  int res = VocbaseManager::manager.deleteVocbase(name);
+
+  if (res == TRI_ERROR_NO_ERROR) { 
+    TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_DATABASES);
+
+    if (col == 0) {
+      VocbaseManager::manager.unlockCreation();
+      TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    }
+
+    CollectionNameResolver resolver(col->_vocbase);
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+
+    res = trx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      VocbaseManager::manager.unlockCreation();
+      TRI_V8_EXCEPTION(scope, res);
+    }
+
+    trx.deleteDocument(name.c_str(), TRI_DOC_UPDATE_LAST_WRITE, false, 0, 0);
+    
+    res = trx.finish(res);
+  }
+
+  VocbaseManager::manager.unlockCreation();
+  
+  // exclusive lock end
+  // ---------------------------------------------------------
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7897,7 +7954,11 @@ static v8::Handle<v8::Value> JS_AddEndpoint (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "ADD_ENDPOINT(<endpoint>, <names>)");
   }
 
-  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  
+  if (vocbase == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
 
   if (! vocbase->_isSystem) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
@@ -8765,13 +8826,14 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FORMAT_DATETIME", JS_formatDatetime);
   TRI_AddGlobalFunctionVocbase(context, "PARSE_DATETIME", JS_parseDatetime);
 
-  TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
-  TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
+  TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
+  TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   
-  TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase);  
+  TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase, true);  
   TRI_AddGlobalFunctionVocbase(context, "LIST_DATABASES", JS_ListVocbases, true);  
   TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase, true);
-  TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint);
+  TRI_AddGlobalFunctionVocbase(context, "DELETE_DATABASE", JS_DeleteUserVocbase, true);
+  TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint, true);
   
   // .............................................................................
   // create global variables

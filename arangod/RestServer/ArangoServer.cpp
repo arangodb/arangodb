@@ -1346,7 +1346,7 @@ void ArangoServer::openDatabases () {
 
 void ArangoServer::closeDatabases () {
   TRI_CleanupActions();
-  TRI_DestroyVocBase(_vocbase);
+  TRI_DestroyVocBase(_vocbase, 0);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
   
