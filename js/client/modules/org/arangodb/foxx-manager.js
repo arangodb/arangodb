@@ -540,11 +540,12 @@ function cmdUsage () {
   var fm = "foxx-manager";
 
   printf("Example usage:\n");
-  printf("%s install <foxx> <mount-point>\n", fm);
-  printf("%s uninstall <mount-point>\n\n", fm);
+  printf(" %s install <foxx> <mount-point>\n", fm);
+  printf(" %s uninstall <mount-point>\n\n", fm);
 
   printf("Further help:\n");
-  printf("%s help\n", fm);
+  printf(" %s help   for the list of foxx-manager commands\n", fm);
+  printf(" %s --help for the list of options\n", fm);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1329,6 +1330,10 @@ exports.help = function () {
       arangodb.printf(" %s %s\n", name.substr(0, 20), commands[c]);
     }
   }
+
+  arangodb.print();
+  arangodb.print("use foxx-manager --help to show a list of global options"); 
+
   // additional newline
   arangodb.print();
 };

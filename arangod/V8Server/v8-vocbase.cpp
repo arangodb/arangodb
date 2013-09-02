@@ -7742,9 +7742,14 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   const string name = TRI_ObjectToString(argv[0]);
   const string path = TRI_ObjectToString(argv[1]);
 
+  // we need a lock around the checks and the actual creation, otherwise the
+  // same database might be created multiple times
+  VocbaseManager::manager.lockCreation();
+
   int res = VocbaseManager::manager.canAddVocbase(name, path, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    VocbaseManager::manager.unlockCreation();
     TRI_V8_EXCEPTION(scope, res);
   }
 
@@ -7804,6 +7809,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   res = TRI_CreateDirectory(path.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
+    VocbaseManager::manager.unlockCreation();
     TRI_V8_EXCEPTION(scope, res);
   }
 
@@ -7812,12 +7818,14 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   TRI_vocbase_t* userVocbase = TRI_OpenVocBase(path.c_str(), name.c_str(), &defaults);
 
   if (! userVocbase) {
+    VocbaseManager::manager.unlockCreation();
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot load database from path '" + path + "'");
   }
 
   bool vocbaseOk = VocbaseManager::manager.runVersionCheck(userVocbase, v8::Context::GetCurrent());
 
   if (! vocbaseOk) {
+    VocbaseManager::manager.unlockCreation();
     // unload vocbase
     TRI_DestroyVocBase(userVocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
@@ -7858,6 +7866,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   }
 
   if (tryCatch.HasCaught()) {
+    VocbaseManager::manager.unlockCreation();
+
     // unload vocbase
     TRI_DestroyVocBase(userVocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, userVocbase);
@@ -7867,6 +7877,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   }
   
   VocbaseManager::manager.addUserVocbase(userVocbase);
+  VocbaseManager::manager.unlockCreation();
   
   return scope.Close(result);
 }

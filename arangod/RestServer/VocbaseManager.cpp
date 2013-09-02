@@ -99,6 +99,22 @@ void VocbaseManager::addSystemVocbase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief grab an exclusive lock for creation
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseManager::lockCreation () {
+  _creationLock.lock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release the exclusive lock for creation
+////////////////////////////////////////////////////////////////////////////////
+
+void VocbaseManager::unlockCreation () {
+  _creationLock.unlock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add user vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -431,7 +447,6 @@ bool VocbaseManager::reloadAuthInfo (TRI_vocbase_t* vocbase) {
     if (mapIter != _authCache.end()) {
       mapIter->second.clear();
     }
-
   }
   
   return TRI_ReloadAuthInfo(vocbase);
@@ -445,6 +460,8 @@ vector<TRI_vocbase_t*> VocbaseManager::vocbases () {
   vector<TRI_vocbase_t*> result;
   result.push_back(_vocbase);
   
+  READ_LOCKER(_rwLock);
+
   std::map<std::string, TRI_vocbase_t*>::iterator i = _vocbases.begin();  
   
   for (; i != _vocbases.end(); ++i) {
