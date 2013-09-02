@@ -787,17 +787,19 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
       // but for all vocbases
       
       bool ok = VocbaseManager::manager.runVersionCheck(*vocbaseIterator, context->_context);
+
+      const string name = string((*vocbaseIterator)->_name);
       
-      if (!ok) {
+      if (! ok) {
         if (_performUpgrade) {
-          LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" + string((*vocbaseIterator)->_path) + "'. Please inspect the logs from the upgrade procedure");
+          LOGGER_FATAL_AND_EXIT("Database upgrade failed for '" + name + "'. Please inspect the logs from the upgrade procedure");
         }
         else {
-          LOGGER_FATAL_AND_EXIT("Database version check failed for '" + string((*vocbaseIterator)->_path) + "'. Please start the server with the --upgrade option");
+          LOGGER_FATAL_AND_EXIT("Database version check failed for '" + name + "'. Please start the server with the --upgrade option");
         }
       }
 
-      LOGGER_DEBUG("database version check passed for " + string((*vocbaseIterator)->_path));
+      LOGGER_DEBUG("database version check passed for '" + name + "'");
     }
   }
 

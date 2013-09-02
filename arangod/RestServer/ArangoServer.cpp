@@ -385,6 +385,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
   ;
@@ -643,6 +644,7 @@ int ArangoServer::startupServer () {
   if (! _vocbase->_authInfoLoaded && ! _disableAuthentication) {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
+
   if (_disableAuthentication) {
     LOGGER_INFO("Authentication is turned off");
   }
