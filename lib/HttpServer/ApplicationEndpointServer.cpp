@@ -438,7 +438,7 @@ bool ApplicationEndpointServer::createSslContext () {
   }
 
   // set options
-  SSL_CTX_set_options(_sslContext, _sslOptions);
+  SSL_CTX_set_options(_sslContext, (long) _sslOptions);
   LOGGER_INFO("using SSL options: " << _sslOptions);
 
   if (_sslCipherList.size() > 0) {
