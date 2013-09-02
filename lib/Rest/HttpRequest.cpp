@@ -71,7 +71,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info, char const* header, size_t
     _prefix(),
     _suffix(),
     _version(HTTP_UNKNOWN),
-    _dbName(),
+    _databaseName(),
     _user(),
     _requestContext(0) {
 
@@ -103,7 +103,7 @@ HttpRequest::HttpRequest ()
     _prefix(),
     _suffix(),
     _version(HTTP_UNKNOWN),
-    _dbName(),
+    _databaseName(),
     _user(),
     _requestContext(0) {
 }
@@ -589,8 +589,8 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 /// @brief returns the database name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpRequest::dbName () const {
-  return _dbName;
+string const& HttpRequest::databaseName () const {
+  return _databaseName;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -834,7 +834,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                 ++q;
               }
               
-              _dbName = string(pathBegin, q - pathBegin);
+              _databaseName = string(pathBegin, q - pathBegin);
 
               pathBegin = q;
             }

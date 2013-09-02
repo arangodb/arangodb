@@ -32,6 +32,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Rest/HttpResponse.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -183,7 +184,7 @@ namespace triagens {
 /// @brief authenticates a new request, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool authenticateRequest (HttpRequest * request);
+        virtual HttpResponse::HttpResponseCode authenticateRequest (HttpRequest * request);
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method

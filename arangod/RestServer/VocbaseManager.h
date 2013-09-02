@@ -32,10 +32,11 @@
   #include "BasicsC/win-utils.h"
 #endif
 
-#include "VocBase/vocbase.h"
-#include "Rest/HttpRequest.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "VocBase/vocbase.h"
 #include <map>
 #include <string>
 
@@ -182,8 +183,8 @@ namespace triagens {
 /// @brief authenticate a request
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool authenticate (TRI_vocbase_t*, 
-                           triagens::rest::HttpRequest*);
+        rest::HttpResponse::HttpResponseCode authenticate (TRI_vocbase_t*, 
+                                                           triagens::rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload auth info

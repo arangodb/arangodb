@@ -386,6 +386,7 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
 
 static V8ClientConnection* CreateConnection () {
   return new V8ClientConnection(BaseClient.endpointServer(),
+                                BaseClient.databaseName(),
                                 BaseClient.username(),
                                 BaseClient.password(),
                                 BaseClient.requestTimeout(),
@@ -554,22 +555,24 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
-  if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>[, <username>, <password>])");
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "reconnect(<endpoint>, <databasename>, [, <username>, <password>])");
   }
 
   string definition = TRI_ObjectToString(argv[0]);
 
+  string databaseName = TRI_ObjectToString(argv[1]);
+
   string username;
-  if (argv.Length() < 2) {
+  if (argv.Length() < 3) {
     username = BaseClient.username();
   }
   else {
-    username = TRI_ObjectToString(argv[1]);
+    username = TRI_ObjectToString(argv[2]);
   }
 
   string password;
-  if (argv.Length() < 3) {
+  if (argv.Length() < 4) {
     cout << "Please specify a password: " << flush;
 
     // now prompt for it
@@ -584,16 +587,18 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
     cout << "\n";
   }
   else {
-    password = TRI_ObjectToString(argv[2]);
+    password = TRI_ObjectToString(argv[3]);
   }
 
-  const string oldDefinition = BaseClient.endpointString();
-  const string oldUsername   = BaseClient.username();
-  const string oldPassword   = BaseClient.password();
+  const string oldDefinition   = BaseClient.endpointString();
+  const string oldDatabaseName = BaseClient.databaseName();
+  const string oldUsername     = BaseClient.username();
+  const string oldPassword     = BaseClient.password();
   
   delete connection;
 
   BaseClient.setEndpointString(definition);
+  BaseClient.setDatabaseName(databaseName);
   BaseClient.setUsername(username);
   BaseClient.setPassword(password);
 
@@ -601,6 +606,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   BaseClient.createEndpoint();
   if (BaseClient.endpointServer() == 0) {
     BaseClient.setEndpointString(oldDefinition);
+    BaseClient.setDatabaseName(oldDatabaseName);
     BaseClient.setUsername(oldUsername);
     BaseClient.setPassword(oldPassword);
     BaseClient.createEndpoint();
@@ -644,6 +650,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
     // rollback
     BaseClient.setEndpointString(oldDefinition);
+    BaseClient.setDatabaseName(oldDatabaseName);
     BaseClient.setUsername(oldUsername);
     BaseClient.setPassword(oldPassword);
     BaseClient.createEndpoint();
@@ -1174,6 +1181,50 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getDatabaseName"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_getDatabaseName (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getDatabaseName()");
+  }
+
+  return scope.Close(v8::String::New(connection->getDatabaseName().c_str()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "setDatabaseName"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "setDatabaseName(<name>)");
+  }
+
+  connection->setDatabaseName(TRI_ObjectToString(argv[0]));
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1646,6 +1697,8 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("reconnect", v8::FunctionTemplate::New(ClientConnection_reconnect));
     connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
     connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
+    connection_proto->Set("getDatabaseName", v8::FunctionTemplate::New(ClientConnection_getDatabaseName));
+    connection_proto->Set("setDatabaseName", v8::FunctionTemplate::New(ClientConnection_setDatabaseName));
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
 
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();

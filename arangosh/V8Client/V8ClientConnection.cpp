@@ -61,6 +61,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
+                                        string databaseName,
                                         const string& username,
                                         const string& password,
                                         double requestTimeout,
@@ -68,6 +69,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         size_t numRetries,
                                         bool warn)
   : _connection(0),
+    _databaseName(databaseName),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
@@ -83,8 +85,10 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   if (_client == 0) {
-    throw "out of memory";
+    LOGGER_FATAL_AND_EXIT("out of memory");
   }
+
+  _client->setLocationRewriter(this, &rewriteLocation);
 
   _client->setUserNamePassword("/", username, password);
 
@@ -168,11 +172,49 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+string V8ClientConnection::rewriteLocation (void* data, const string& location) {
+  V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
+
+  assert(c != 0);
+
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + c->_databaseName + location;
+  }
+  else {
+    return "/_db/" + c->_databaseName + "/" + location;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if it is connected
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8ClientConnection::isConnected () {
   return _connection->isConnected();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current database name
+////////////////////////////////////////////////////////////////////////////////
+
+const string& V8ClientConnection::getDatabaseName () {
+  return _databaseName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current database name
+////////////////////////////////////////////////////////////////////////////////
+
+void V8ClientConnection::setDatabaseName (const string& databaseName) {
+  _databaseName = databaseName;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

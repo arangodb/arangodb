@@ -258,12 +258,12 @@ void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseManager::addEndpoint (std::string const& name,
-                                  std::vector<std::string> const& dbNames) {
+                                  std::vector<std::string> const& databaseNames) {
   
   if (_endpointServer) {
     {
       WRITE_LOCKER(_rwLock);
-      _endpoints[name] = dbNames;
+      _endpoints[name] = databaseNames;
     }
 
     return _endpointServer->addEndpoint(name);
@@ -280,7 +280,7 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpR
   TRI_vocbase_t* vocbase = 0;
 
   // get database name from request
-  string requestedName = request->dbName();
+  string requestedName = request->databaseName();
  
   if (requestedName.empty()) {
     // no name set in request, use system database name as a fallback
@@ -321,9 +321,9 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpR
   }
 
   // we have a user-defined mapping for the endpoint
-  const vector<string>& dbNames = (*it2).second;
+  const vector<string>& databaseNames = (*it2).second;
 
-  if (dbNames.size() == 0) {
+  if (databaseNames.size() == 0) {
     // list of database names is specified but empty. this means no-one will get access
     return 0;
   }
@@ -331,7 +331,7 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpR
   // finally check if the requested database is in the list of allowed databases for the endpoint
   vector<string>::const_iterator it3;
 
-  for (it3 = dbNames.begin(); it3 != dbNames.end(); ++it3) {
+  for (it3 = databaseNames.begin(); it3 != databaseNames.end(); ++it3) {
     if (requestedName == *it3) {
       return vocbase;
     }
@@ -345,80 +345,76 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpR
 /// @brief authenticate a request
 ////////////////////////////////////////////////////////////////////////////////
         
-bool VocbaseManager::authenticate (TRI_vocbase_t* vocbase, 
-                                   triagens::rest::HttpRequest* request) {
-  
-  if (! vocbase) {
-    // unknown vocbase
-     return false;
-  }
+HttpResponse::HttpResponseCode VocbaseManager::authenticate (TRI_vocbase_t* vocbase, 
+                                                             triagens::rest::HttpRequest* request) {
+ 
+  assert(vocbase != 0); 
 
   std::map<TRI_vocbase_t*, std::map<std::string, std::string> >::iterator mapIter;
   
   bool found;
   char const* auth = request->header("authorization", found);
-
-  if (found) {
-    if (! TRI_CaseEqualString2(auth, "basic ", 6)) {
-      return false;
-    }
-
-    auth += 6;
-
-    while (*auth == ' ') {
-      ++auth;
-    }
-
-    {
-      READ_LOCKER(_rwLock);
-      
-      mapIter = _authCache.find(vocbase);
-      if (mapIter == _authCache.end()) {
-        // unknown vocbase
-        return false;
-      }      
-
-      map<string,string>::iterator i = mapIter->second.find(auth);
-
-      if (i != mapIter->second.end()) {
-        request->setUser(i->second);
-        return true;
-      }
-    }
-
-    string up = StringUtils::decodeBase64(auth);    
-
-    std::string::size_type n = up.find(':', 0);
-    if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOGGER_TRACE("invalid authentication data found, cannot extract username/password");
-      return false;
-    }
-   
-    const string username = up.substr(0, n);
-    
-    LOGGER_TRACE("checking authentication for user '" << username << "'"); 
-
-    bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, username.c_str(), up.substr(n + 1).c_str());
-    
-    if (res) {
-      WRITE_LOCKER(_rwLock);
-
-      mapIter = _authCache.find(vocbase);
-      if (mapIter == _authCache.end()) {
-        // unknown vocbase
-        return false;
-      }      
-      
-      mapIter->second[auth] = username;
-      request->setUser(username);
-      
-      // TODO: create a user object for the VocbaseContext
-    }
-
-    return res;
+  
+  if (! found || ! TRI_CaseEqualString2(auth, "basic ", 6)) {
+    return HttpResponse::UNAUTHORIZED;
   }
 
-  return false;  
+  // skip over "basic "
+  auth += 6;
+
+  while (*auth == ' ') {
+    ++auth;
+  }
+
+  {
+    READ_LOCKER(_rwLock);
+
+    mapIter = _authCache.find(vocbase);
+    if (mapIter == _authCache.end()) {
+      // unknown vocbase
+      return HttpResponse::NOT_FOUND;
+    }      
+
+    map<string, string>::iterator i = mapIter->second.find(auth);
+
+    if (i != mapIter->second.end()) {
+      request->setUser(i->second);
+      return HttpResponse::OK;
+    }
+  }
+
+  string up = StringUtils::decodeBase64(auth);    
+
+  std::string::size_type n = up.find(':', 0);
+  if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+    LOGGER_TRACE("invalid authentication data found, cannot extract username/password");
+
+    return HttpResponse::BAD;
+  }
+   
+  const string username = up.substr(0, n);
+    
+  LOGGER_TRACE("checking authentication for user '" << username << "'"); 
+
+  bool res = TRI_CheckAuthenticationAuthInfo2(vocbase, username.c_str(), up.substr(n + 1).c_str());
+    
+  if (! res) {
+    return HttpResponse::UNAUTHORIZED;
+  }
+
+  WRITE_LOCKER(_rwLock);
+
+  mapIter = _authCache.find(vocbase);
+  if (mapIter == _authCache.end()) {
+    // unknown vocbase
+    return HttpResponse::UNAUTHORIZED;
+  }      
+
+  mapIter->second[auth] = username;
+  request->setUser(username);
+
+  // TODO: create a user object for the VocbaseContext
+  return HttpResponse::OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

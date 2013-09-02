@@ -1113,10 +1113,10 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
     return true;
   }
 
-  string dbName = doc.getStringValue("name", "");
-  string dbPath = doc.getStringValue("path", "");
+  string databaseName = doc.getStringValue("name", "");
+  string databasePath = doc.getStringValue("path", "");
 
-  int res = VocbaseManager::manager.canAddVocbase(dbName, dbPath, false);
+  int res = VocbaseManager::manager.canAddVocbase(databaseName, databasePath, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOGGER_ERROR("cannot load database: " << string(TRI_errno_string(res)));
@@ -1146,15 +1146,15 @@ static bool handleUserDatabase (TRI_doc_mptr_t const* document,
           systemDefaults->authenticateSystemOnly);
   
   // open/load database
-  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(dbPath.c_str(), dbName.c_str(), &defaults);
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(databasePath.c_str(), databaseName.c_str(), &defaults);
   
   if (userVocbase) {
     VocbaseManager::manager.addUserVocbase(userVocbase);
 
-    LOGGER_INFO("loaded database '" << dbName << "' from '" << dbPath << "'");
+    LOGGER_INFO("loaded database '" << databaseName << "' from '" << databasePath << "'");
   }
   else {
-    LOGGER_ERROR("unable to load database '" << dbName << "' from '" << dbPath << "'");
+    LOGGER_ERROR("unable to load database '" << databaseName << "' from '" << databasePath << "'");
   }
 
   return true;
@@ -1228,26 +1228,26 @@ static bool handleEnpoint (TRI_doc_mptr_t const* document,
 
   TRI_json_t const* json = doc.getJson();
 
-  vector<std::string> dbNames;
+  vector<std::string> databaseNames;
 
   if (JsonHelper::isList(json)) {
     for (size_t i = 0; i < json->_value._objects._length; ++i) {
       TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
 
       if (JsonHelper::isString(e)) {
-        const string dbName = JsonHelper::getStringValue(e, "");
+        const string databaseName = JsonHelper::getStringValue(e, "");
 
-        if (! dbName.empty()) {
-          dbNames.push_back(dbName);
+        if (! databaseName.empty()) {
+          databaseNames.push_back(databaseName);
         }
       }
     }
   }
   else {
-    dbNames.push_back(TRI_VOC_SYSTEM_DATABASE);
+    databaseNames.push_back(TRI_VOC_SYSTEM_DATABASE);
   }
 
-  VocbaseManager::manager.addEndpoint(endpoint, dbNames);
+  VocbaseManager::manager.addEndpoint(endpoint, databaseNames);
  
   return true;
 }

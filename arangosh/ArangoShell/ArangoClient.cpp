@@ -105,6 +105,7 @@ ArangoClient::ArangoClient ()
     _disableAuthentication(false),
     _endpointString(),
     _endpointServer(0),
+    _databaseName("_system"),
     _username("root"),
     _password(""),
     _hasPassword(false),
@@ -233,7 +234,8 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
   ProgramOptionsDescription clientOptions("CLIENT options");
 
   clientOptions
-    ("server.disable-authentication", &_disableAuthentication, "disable authentication")
+    ("server.database", &_databaseName, "database name to use when connecting")
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication (will disable password prompt)")
     ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
     ("server.username", &_username, "username to use when connecting")
     ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
@@ -676,6 +678,14 @@ Endpoint* ArangoClient::endpointServer() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief database name
+////////////////////////////////////////////////////////////////////////////////
+
+string const& ArangoClient::databaseName () const {
+  return _databaseName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief user to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -689,6 +699,14 @@ string const& ArangoClient::username () const {
 
 string const& ArangoClient::password () const {
   return _password;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set database name
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::setDatabaseName (string const& databaseName) {
+  _databaseName = databaseName;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

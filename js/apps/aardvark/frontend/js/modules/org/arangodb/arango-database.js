@@ -263,8 +263,9 @@ ArangoDatabase.prototype.toString = function () {
 /// @brief return all collections from the database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._collections = function () {
-  var requestResult = this._connection.GET(this._collectionurl());
+ArangoDatabase.prototype._collections = function (excludeSystem) {
+  var append = (excludeSystem ? "?excludeSystem=true" : "");
+  var requestResult = this._connection.GET(this._collectionurl() + append);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -452,8 +453,8 @@ ArangoDatabase.prototype._flushCache = function () {
 /// @brief query the database properties
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._queryProperties = function () {
-  if (this._properties === null) {
+ArangoDatabase.prototype._queryProperties = function (force) {
+  if (force || this._properties === null) {
     var requestResult = this._connection.GET("/_api/current-database");
 
     arangosh.checkRequestResult(requestResult);
@@ -842,6 +843,37 @@ ArangoDatabase.prototype._listDatabases = function () {
   arangosh.checkRequestResult(requestResult);
   
   return requestResult.result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses a database
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._useDatabase = function (name) {
+  var old = this._connection.getDatabaseName();
+
+  this._connection.setDatabaseName(name);
+
+  try {
+    // re-query properties
+    this._queryProperties(true);
+  }
+  catch (err) {
+    this._connection.setDatabaseName(old);
+   
+    if (err.hasOwnProperty("errorNum")) {
+      throw err;
+    }
+
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "cannot use database '" + name + "'"
+    });
+  }
+
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
