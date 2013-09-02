@@ -64,13 +64,16 @@ VocbaseManager VocbaseManager::manager;
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VocbaseManager::setRequestContext(triagens::rest::HttpRequest* request) {
-  TRI_vocbase_t* vb = VocbaseManager::manager.lookupVocbaseByHttpRequest(request);
-  
-  triagens::arango::VocbaseContext* vc = new triagens::arango::VocbaseContext(request, &VocbaseManager::manager);
-  
-  vc->setVocbase(vb);
-  
-  request->addRequestContext(vc);
+  TRI_vocbase_t* vocbase = VocbaseManager::manager.lookupVocbaseByHttpRequest(request);
+
+  if (vocbase == 0) {
+    // invalid database name specified, database not found etc.
+    return false;
+  }
+
+  triagens::arango::VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, &VocbaseManager::manager);
+  ctx->setVocbase(vocbase);
+  request->addRequestContext(ctx);
   
   return true;
 }
@@ -254,9 +257,15 @@ void VocbaseManager::initializeFoxx (TRI_vocbase_t* vocbase,
 /// @brief add an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VocbaseManager::addEndpoint (std::string const& name) {
+bool VocbaseManager::addEndpoint (std::string const& name,
+                                  std::vector<std::string> const& dbNames) {
   
   if (_endpointServer) {
+    {
+      WRITE_LOCKER(_rwLock);
+      _endpoints[name] = dbNames;
+    }
+
     return _endpointServer->addEndpoint(name);
   }
   
@@ -267,48 +276,69 @@ bool VocbaseManager::addEndpoint (std::string const& name) {
 /// @brief look up vocbase by http request
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (
-                                        triagens::rest::HttpRequest* request) {
-  ConnectionInfo ci = request->connectionInfo();
+TRI_vocbase_t* VocbaseManager::lookupVocbaseByHttpRequest (triagens::rest::HttpRequest* request) {
+  TRI_vocbase_t* vocbase = 0;
 
-  string prefix = (ci.serverPort > 0) 
-          ? "tcp://" + triagens::basics::StringUtils::tolower(ci.serverAddress) 
-          + ":" + basics::StringUtils::itoa(ci.serverPort)
-          : "unix:///localhost";
-
-  return lookupVocbaseByPrefix(prefix);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief look vocbase by prefix
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* VocbaseManager::lookupVocbaseByPrefix (std::string const& prefix) {
-  READ_LOCKER(_rwLock);
-  map<string, TRI_vocbase_s*>::iterator find = _prefix2Vocbases.find(prefix);
-  if (find != _prefix2Vocbases.end()) {
-    return find->second;
+  // get database name from request
+  string requestedName = request->dbName();
+ 
+  if (requestedName.empty()) {
+    // no name set in request, use system database name as a fallback
+    requestedName = TRI_VOC_SYSTEM_DATABASE;
+    vocbase = _vocbase;
   }
-  
-  // return default
-  return _vocbase;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add prefix to database mapping
-////////////////////////////////////////////////////////////////////////////////
-
-void VocbaseManager::addPrefixMapping (std::string const& prefix, 
-                                       std::string const& name) {  
-  TRI_vocbase_t* vocbase = lookupVocbaseByName(name);
-  
-  if (vocbase) {
-    LOGGER_INFO("added prefix mapping '" << prefix << "' -> '" << name << "'");    
+  else if (requestedName == TRI_VOC_SYSTEM_DATABASE) {
+    vocbase = _vocbase;
+  }
+ 
+  READ_LOCKER(_rwLock);
     
-    WRITE_LOCKER(_rwLock);
-    _prefix2Vocbases[triagens::basics::StringUtils::tolower(prefix)] = vocbase;    
-  }  
-  
+  // check if we have a database with the requested name  
+  // this only needs to be done for non-system databases
+  if (vocbase == 0) {
+    map<string, TRI_vocbase_t*>::iterator it = _vocbases.find(requestedName);
+
+    if (it == _vocbases.end()) {
+      // requested database does not exist
+      return 0;
+    }
+
+    vocbase = (*it).second;
+  }
+
+  assert(vocbase != 0);
+
+  // check if we have an endpoint
+  ConnectionInfo ci = request->connectionInfo();
+ 
+  const string& endpoint = ci.endpoint;
+
+  map<string, vector<string> >::const_iterator it2 = _endpoints.find(endpoint);
+
+  if (it2 == _endpoints.end()) {
+    // no user mapping entered for the endpoint. return the requested database
+    return vocbase;  
+  }
+
+  // we have a user-defined mapping for the endpoint
+  const vector<string>& dbNames = (*it2).second;
+
+  if (dbNames.size() == 0) {
+    // list of database names is specified but empty. this means no-one will get access
+    return 0;
+  }
+    
+  // finally check if the requested database is in the list of allowed databases for the endpoint
+  vector<string>::const_iterator it3;
+
+  for (it3 = dbNames.begin(); it3 != dbNames.end(); ++it3) {
+    if (requestedName == *it3) {
+      return vocbase;
+    }
+  }
+
+  // requested database not available for the endpoint
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
