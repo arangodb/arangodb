@@ -297,14 +297,16 @@ int main (int argc, char* argv[]) {
                                             false);
 
   if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
-    cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
+    cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification() 
+         << "', database: '" << BaseClient.databaseName() << "'" << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   // successfully connected
   cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-       << "' Version " << ClientConnection->getVersion() << endl;
+       << "', version " << ClientConnection->getVersion() << ", database: '" 
+       << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
 
   cout << "----------------------------------------" << endl;
   cout << "database:         " << BaseClient.databaseName() << endl;

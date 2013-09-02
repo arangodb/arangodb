@@ -9,6 +9,8 @@ ArangoDB database server. Foxx applications can be installed and
 uninstalled.
 More specific instructions are displayed when the program is invoked.
 OPTIONS
+OPTION "--server.database <string>"
+database name to use when connection (default: "_system") ENDOPTION
 OPTION "--server.disable-authentication <boolean>"
 disable the password prompt when connecting to the server ENDOPTION
 EXAMPLES

@@ -531,7 +531,8 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-         << "' Version " << connection->getVersion() << endl;
+         << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName() 
+         << "', username: '" << BaseClient.username() << "'" << endl;
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
@@ -619,7 +620,8 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-         << "' version " << newConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
+         << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+         << "', username: '" << BaseClient.username() << "'" << endl;
 
     argv.Holder()->SetInternalField(SLOT_CLASS, v8::External::New(newConnection));
 
@@ -1282,6 +1284,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   cout << endl;
 
   while (true) {
+
     // gc
     v8::V8::LowMemoryNotification();
     while (! v8::V8::IdleNotification()) {
@@ -1829,11 +1832,14 @@ int main (int argc, char* argv[]) {
 
     if (useServer) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
-        cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-             << "' version " << ClientConnection->getVersion() << ", username: '" << BaseClient.username() << "'" << endl;
+        cout << "Connected to ArangoDB '" << BaseClient.endpointString()
+             << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+             << "', username: '" << BaseClient.username() << "'" << endl;
       }
       else {
-        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "', username: '" << BaseClient.username() << "'" << endl;
+        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
+             << "', database: '" << BaseClient.databaseName() 
+             << "', username: '" << BaseClient.username() << "'" << endl;
         if (ClientConnection->getErrorMessage() != "") {
           cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
         }

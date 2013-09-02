@@ -719,7 +719,8 @@ int main (int argc, char* argv[]) {
   const string version = GetVersion();
 
   if (! Connection->isConnected()) {
-    cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
+    cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
+         << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
@@ -727,7 +728,9 @@ int main (int argc, char* argv[]) {
   // successfully connected
 
   if (Progress) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
+    cout << "Connected to ArangoDB '" << BaseClient.endpointString() 
+          << "', database: '" << BaseClient.databaseName() << "', username: '" 
+          << BaseClient.username() << "'" << endl;
   }
 
   string errorMsg = "";

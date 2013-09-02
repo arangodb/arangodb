@@ -19,6 +19,8 @@ read configuration from file <string>
 set the log level (possible values: "fatal", "error", "warning", "info", "debug", "trace") 
 .IP "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port 
+.IP "--server.database <string>"
+database name to use when connection (default: "_system")
 .IP "--server.username <string>"
 username to use when connecting (default "root") 
 .IP "--server.password <string>"
@@ -51,4 +53,4 @@ starts arangosh connecting to a specific server using an SSL connection
 
 
 .SH AUTHOR
-	    Copyright 2012, triAGENS GmbH, Cologne, Germany
+	    Copyright triAGENS GmbH, Cologne, Germany
