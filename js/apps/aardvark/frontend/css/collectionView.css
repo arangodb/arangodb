@@ -52,8 +52,7 @@
 }
 
 #change-collection .glyphicon-ban-circle:hover {
-  cursor: default;
-  float: right;
+  cursor: default !important;
 }
 
 #change-collection #collectionEditIndexTable {
@@ -83,4 +82,12 @@
   font-size: 14px;
   font-weight: 400;
   color: black;
+}
+
+#newIndexView select {
+  margin-left: -10px;
+}
+
+#newIndexView input[type='checkbox'] {
+  margin-left: -20px;
 }

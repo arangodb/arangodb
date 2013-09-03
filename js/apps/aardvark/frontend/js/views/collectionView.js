@@ -20,7 +20,7 @@ var collectionView = Backbone.View.extend({
     this.fillModal();
 
     $('.modalTooltips, .glyphicon-info-sign').tooltip({
-      placement: "top"
+      placement: "left"
     });
 
     $('#collectionTab a').click(function (e) {
