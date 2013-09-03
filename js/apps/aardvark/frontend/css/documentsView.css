@@ -187,7 +187,7 @@ table.dataTable thead th {
 }
 
 #documentsTableID.dataTable thead tr {
-	border-bottom:1px solid #686766;
+  border-bottom: 1px solid #C2C2C2;
 }
 
 #documentsTableID tbody {

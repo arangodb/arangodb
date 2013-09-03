@@ -12,10 +12,11 @@
 
     <div class="tab-content" id="tab-content-collection-edit">
       <div class="tab-pane active" id="main">
-        <table>
+        <table id="collectionEditTable">
           <tr>
             <th class="collectionTh">Name:</th>
             <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
+            <th/>
           </tr>
           <tr id="collectionSizeBox" style="display:none">
             <th class="collectionTh">Journal size:</th>
@@ -45,6 +46,7 @@
             <th class="collectionTh">
               <div id="change-collection-type" class="modal-text"/>
             </th>
+            <th/>
           </tr>
 
           <tr>
@@ -73,11 +75,11 @@
 
         <div id="newIndexView" style="display:none">
           <span class="glyphicon glyphicon-remove-circle" data-original-title="Abort"></span>
-          <a class="arangoHeader">Add Index:</a>
+          <a id="newIndexHeader" class="arangoHeader">Add Index:</a>
           <table>
             <tr>
-              <th class="collectionTh">Type:</th>
-              <th>
+              <th class="collectionTh thBorderBottom">Type:</th>
+              <th class="thBorderBottom">
                 <select id="newIndexType">
                   <option value="Cap">Cap Constraints</option>
                   <option value="Geo">Geo Index</option>
@@ -86,6 +88,7 @@
                   <option value="Skiplist">Skip-List Index</option>
                 </select>
               </th>
+              <th class="thBorderBottom" style="width: 18px"/>
             </tr>
           </table>
 

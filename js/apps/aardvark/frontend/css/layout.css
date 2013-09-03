@@ -44,6 +44,10 @@
   font-size: 16px;
 }
 
+.arangoHeader {
+  font-weight: 400;
+}
+
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
 	background: #788f3d;
 }

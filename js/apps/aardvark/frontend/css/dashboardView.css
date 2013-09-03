@@ -11,7 +11,7 @@
 }
 */
 .dashboardContent {
-  padding-bottom: 20px !important;
+  padding-bottom: 16px !important;
   padding-top: 10px !important;
   margin-bottom: 10px !important;
 }
@@ -462,6 +462,7 @@ li:hover h6, li.hover h6 {
 
 #detailGraphPadding {
   margin-top: -11px !important;
+  margin-bottom: 5px;
 }
 
 .dashboardContent .arangoTab {
