@@ -82,6 +82,10 @@
   background-color: #FFFFFF !important;
 }
 
+.statSingleClient h6 {
+  opacity: 1 !important;
+}
+
 .statClient {
   float: left;
   height: 100px;
@@ -117,17 +121,17 @@
 }
 
 .svgClass {
-  margin-top: 20px !important;
+  margin-top: 23px !important;
   padding-top: 0 !important;
   /*height: 140px;*/
   height: 155px;
-  width: 305px;
+  width: 300px;
 }
 
 .svgDetailClass {
   margin-top: 0 !important;
   padding-top: 0 !important;
-  height: 400px;
+  height: 420px;
   width: 100%;
 }
 
@@ -499,4 +503,8 @@ li:hover h6, li.hover h6 {
 
 #dbThumbnailsIn {
   margin-left: -7px;
+}
+
+.nvd3 .nv-axis path {
+  stroke: #BFBFBF;
 }
