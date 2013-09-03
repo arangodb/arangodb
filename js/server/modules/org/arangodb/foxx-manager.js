@@ -407,7 +407,8 @@ function mountAalApp (app, mount, options) {
   var prefix = options.collectionPrefix;
 
   if (prefix === undefined) {
-    prefix = prefixFromMount(mount);
+    options = _.clone(options);
+    options.collectionPrefix = prefix = prefixFromMount(mount);
   }
 
   // .............................................................................
@@ -422,7 +423,6 @@ function mountAalApp (app, mount, options) {
     author: app._manifest.author,
     mount: mount,
     active: true,
-    collectionPrefix: prefix,
     isSystem: app._manifest.isSystem || false,
     options: options
   };
@@ -452,11 +452,11 @@ function routingAalApp (app, mount, options) {
     }
 
     // compute the collection prefix
-    if (options.prefix === undefined) {
+    if (options.collectionPrefix === undefined) {
       prefix = prefixFromMount(mount);
     }
     else {
-      prefix = options.prefix;
+      prefix = options.collectionPrefix;
     }
 
     var defaultDocument = "index.html";
@@ -476,12 +476,12 @@ function routingAalApp (app, mount, options) {
       foxx: true,
 
       appContext: {
-        name: app._name,                        // app name
-        version: app._version,                  // app version
-        appId: app._id,                         // app identifier
-        mount: mount,                           // global mount
-        options: options,                       // options
-        collectionPrefix: prefix                // collection prefix
+        name: app._name,         // app name
+        version: app._version,   // app version
+        appId: app._id,          // app identifier
+        mount: mount,            // global mount
+        options: options,        // options
+        collectionPrefix: prefix // collection prefix
       }
     };
 
@@ -765,7 +765,7 @@ exports.setup = function (mount) {
   var doc = mountFromId(mount);
   var app = appFromAppId(doc.app);
 
-  setupApp(app, mount, doc.collectionPrefix);
+  setupApp(app, mount, doc.options.collectionPrefix);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -794,7 +794,7 @@ exports.teardown = function (mount) {
     appId = doc.app;
     var app = appFromAppId(appId);
 
-    teardownApp(app, mount, doc.collectionPrefix);
+    teardownApp(app, mount, doc.options.collectionPrefix);
   }
   catch (err) {
     console.error("Teardown not possible for mount '%s': %s", mount, String(err));
@@ -831,7 +831,7 @@ exports.unmount = function (mount) {
 
   executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
-  return { appId: doc.app, mount: doc.mount, collectionPrefix: doc.collectionPrefix };
+  return { appId: doc.app, mount: doc.mount, options: doc.options };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1002,7 +1002,6 @@ exports.appRoutes = function () {
     var appId = doc.app;
     var mount = doc.mount;
     var options = doc.options || { };
-    options.collectionPrefix = doc.collectionPrefix || undefined;
 
     try {
       var app = module.createApp(appId, options || {});
@@ -1056,7 +1055,7 @@ exports.developmentRoutes = function () {
         var appId = "dev:" + mf.name + ":" + files[j];
         var mount = "/dev/" + files[j];
         var options = {
-          prefix : prefixFromMount(mount)
+          collectionPrefix : prefixFromMount(mount)
         };
 
         var app = module.createApp(appId, options);
@@ -1065,7 +1064,7 @@ exports.developmentRoutes = function () {
           throw new Error("Cannot find application '" + appId + "'");
         }
 
-        setupApp(app, mount, options.prefix);
+        setupApp(app, mount, options.collectionPrefix);
 
         var r = routingAalApp(app, mount, options);
 
@@ -1086,7 +1085,7 @@ exports.developmentRoutes = function () {
           author: app._manifest.author,
           mount: mount,
           active: true,
-          collectionPrefix: options.prefix,
+          collectionPrefix: options.collectionPrefix,
           isSystem: app._manifest.isSystem || false,
           options: options
         };
