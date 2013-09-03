@@ -302,7 +302,18 @@ var dashboardView = Backbone.View.extend({
     }
   },
 
+  checkMaxValue: function (identifier) {
+    var maxValue = 0;
+    $.each(this.seriesData[identifier].values, function (k,v) {
+      if (v.y > maxValue) {
+        maxValue = v.y;
+      }
+    });
+    this.seriesData[identifier].max = maxValue;
+  },
+
   getMaxValue : function (identifier) {
+    this.checkMaxValue(identifier);
     var max = this.seriesData[identifier].max || 1;
 
     var i = 0, n = this.units.length;
