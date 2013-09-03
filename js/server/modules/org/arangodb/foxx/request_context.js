@@ -59,14 +59,11 @@ createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandle
   };
 };
 
-addCheck = function (handler, check, ErrorClass) {
+addCheck = function (handler, check) {
   'use strict';
   return function (req, res) {
-    if (check(req)) {
-      handler(req, res);
-    } else {
-      throw new ErrorClass();
-    }
+    check(req);
+    handler(req, res);
   };
 };
 
@@ -291,11 +288,10 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_onlyIf
 /// @brief Only let the request get through if a condition holds
 ///
-/// @FUN{FoxxApplication::onlyIf(@FA{check}, @FA{ErrorClass})}
+/// @FUN{FoxxApplication::onlyIf(@FA{check})}
 ///
-/// Provide it with a function that returns true or false. It will be called before
-/// the request is processed. If it returns false, an error of the ErrorClass will
-/// will be raised. Provide an `errorResponse` to define the behaviour in this case.
+/// Provide it with a function that throws an exception if the normal processing should
+/// not be executed. Provide an `errorResponse` to define the behavior in this case.
 /// This can be used for authentication or authorization for example.
 ///
 /// @EXAMPLES
@@ -303,13 +299,13 @@ extend(RequestContext.prototype, {
 /// @code
 ///     app.get("/foxx", function {
 ///       // Do something
-///     }).onlyIf(aFunction, ErrorClass).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+///     }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check, ErrorClass) {
     'use strict';
     var handler = this.route.action.callback;
-    this.route.action.callback = addCheck(handler, check, ErrorClass);
+    this.route.action.callback = addCheck(handler, check);
     return this;
   },
 
@@ -335,7 +331,13 @@ extend(RequestContext.prototype, {
   onlyIfAuthenticated: function (code, reason) {
     'use strict';
     var handler = this.route.action.callback,
-      check = function(req) { return (req.user && req.currentSession); };
+      check;
+
+    check = function(req) {
+      if (!(req.user && req.currentSession)) {
+        throw new UnauthorizedError();
+      }
+    };
 
     if (is.notExisty(code)) {
       code = 401;
@@ -344,7 +346,7 @@ extend(RequestContext.prototype, {
       reason = "Not authorized";
     }
 
-    this.onlyIf(check, UnauthorizedError);
+    this.onlyIf(check);
     this.errorResponse(UnauthorizedError, code, reason);
 
     return this;
