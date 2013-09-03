@@ -125,7 +125,7 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
   if (value == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
 
-    return NULL;
+    return false;
   }
 
   TRI_PushBackVectorPointer(&context->_parser->_stack, (void*) value);

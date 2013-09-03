@@ -29,6 +29,8 @@
 
 #include <v8.h>
 
+#include "BasicsC/common.h"
+
 #ifdef TRI_ENABLE_MRUBY
 #include "mruby.h"
 #include "mruby/compile.h"
@@ -36,8 +38,6 @@
 #include "mruby/proc.h"
 #include "mruby/variable.h"
 #endif
-
-#include "build.h"
 
 #include "Utils/DocumentWrapper.h"
 
@@ -302,8 +302,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->addFeature(_applicationAdminServer);
 
   _applicationAdminServer->allowLogViewer();
-  _applicationAdminServer->allowVersion("arango", TRIAGENS_VERSION);
-  _applicationAdminServer->allowAdminDirectory(); // might be changed later
+  _applicationAdminServer->allowVersion("arango", TRI_VERSION);
 
   // .............................................................................
   // define server options
@@ -384,11 +383,8 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
-  bool disableAdminInterface = false;
-
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
-    ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
     ("server.multiple-databases", &_multipleDatabases, "start in multiple database mode")
     ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
@@ -462,14 +458,6 @@ void ArangoServer::buildApplicationServer () {
   if (optionNonceHashSize > 0) {
     LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );
     Nonce::create(optionNonceHashSize);
-  }
-
-  // .............................................................................
-  // disable access to the HTML admin interface
-  // .............................................................................
-
-  if (disableAdminInterface) {
-    _applicationAdminServer->allowAdminDirectory(false);
   }
 
   if (disableStatistics) {
@@ -590,7 +578,6 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
-  _applicationV8->setAdminDirectory(_applicationAdminServer->adminDirectory());
 
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
@@ -659,7 +646,7 @@ int ArangoServer::startupServer () {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
 
-  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
+  LOGGER_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
   _applicationServer->wait();
 
@@ -703,7 +690,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setAdminDirectory(_applicationAdminServer->adminDirectory());
   _applicationV8->setConcurrency(1);
 
   if (_applicationServer->programOptions().has("upgrade")) {

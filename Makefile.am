@@ -17,7 +17,7 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ### @brief source to build before compile
 ################################################################################
 
-BUILT_SOURCES = build_posix.h
+BUILT_SOURCES = build.h
 
 ################################################################################
 ### @brief man pages to install
@@ -236,18 +236,6 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/client -name "*.js" -print) \
 	$(shell find @srcdir@/js/node -type f -print) \
 	$(shell find @srcdir@/js/npm -type f -print) \
-	$(shell find @srcdir@/html -name "*.css" -print) \
-	$(shell find @srcdir@/html -name "*.scss" -print) \
-	$(shell find @srcdir@/html -name "*.gif" -print) \
-	$(shell find @srcdir@/html -name "*.html" -print) \
-	$(shell find @srcdir@/html -name "*.ico" -print) \
-	$(shell find @srcdir@/html -name "*.js" -print) \
-	$(shell find @srcdir@/html -name "*.ejs" -print) \
-	$(shell find @srcdir@/html -name "*.png" -print) \
-	$(shell find @srcdir@/html -name "*.svg" -print) \
-	$(shell find @srcdir@/html -name "*.eot" -print) \
-	$(shell find @srcdir@/html -name "*.ttf" -print) \
-	$(shell find @srcdir@/html -name "*.woff" -print) \
 	$(shell find @srcdir@/js/apps -type f -print)
 
 if ENABLE_MRUBY
@@ -278,14 +266,8 @@ install-data-local:
 ### @brief version number
 ################################################################################
 
-build_posix.h: configure.ac
-	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build_posix.h
-
-################################################################################
-### @brief local modifications
-################################################################################
-
--include Installation/Makefile.local
+build.h: configure.ac
+	@echo '#define TRI_VERSION "@PACKAGE_VERSION@"' > build.h
 
 ################################################################################
 ### @brief source files
@@ -369,7 +351,7 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: \
-	build_posix.h \
+	build.h \
 	@top_srcdir@/js/common/bootstrap/errors.js \
 	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
 

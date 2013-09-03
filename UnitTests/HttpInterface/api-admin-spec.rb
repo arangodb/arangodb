@@ -135,7 +135,7 @@ describe ArangoDB do
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
-          e.response.header['location'].should =~ /^https?:\/\/.*\/_admin\/html\/index.html$/
+          e.response.header['location'].should =~ /^https?:\/\/.*\/_admin\/aardvark\/index.html$/
         end
       end
 
@@ -146,7 +146,7 @@ describe ArangoDB do
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
-          e.response.header['location'].should =~ /^\/_admin\/html\/index.html$/
+          e.response.header['location'].should =~ /\/_admin\/aardvark\/index.html$/
         end
       end
 
@@ -157,7 +157,7 @@ describe ArangoDB do
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
           e.response.code.should eq("301")
-          e.response.header['location'].should =~ /^\/_admin\/html\/index.html$/
+          e.response.header['location'].should =~ /\/_admin\/aardvark\/index.html$/
         end
       end
       

@@ -374,6 +374,12 @@ typedef struct TRI_vocbase_s {
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 
+  struct {
+    TRI_read_write_lock_t _lock;
+    TRI_vector_t          _data;
+  }
+  _compactionBlockers;
+
   TRI_condition_t            _cleanupCondition;
   TRI_condition_t            _syncWaitersCondition;
   int64_t                    _syncWaiters;

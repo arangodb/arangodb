@@ -27,7 +27,7 @@
 
 #include "RestServer/VocbaseManager.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Logger/Logger.h"
 #include "Rest/ConnectionInfo.h"

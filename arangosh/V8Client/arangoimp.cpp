@@ -49,7 +49,6 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8Client/V8ClientConnection.h"
 
-#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -63,7 +62,7 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -136,7 +135,7 @@ static bool Progress = false;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,7 +180,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup arangoimp
+/// @addtogroup Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -190,7 +189,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void* arangoimpResourcesAllocated = NULL;
 static void arangoimpEntryFunction ();
 static void arangoimpExitFunction (int, void*);
 

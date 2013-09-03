@@ -51,7 +51,6 @@
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
 
-#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;

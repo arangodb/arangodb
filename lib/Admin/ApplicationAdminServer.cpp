@@ -27,7 +27,7 @@
 
 #include "ApplicationAdminServer.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Admin/RestAdminLogHandler.h"
 #include "Admin/RestHandlerCreator.h"
@@ -42,6 +42,28 @@ using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup RestServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variables to hold legacy options (unused, but kept here so that
+/// starting the server with deprecated options doesn't fail
+////////////////////////////////////////////////////////////////////////////////
+
+static string UnusedAdminDirectory;
+
+static bool UnusedDisableAdminInterface;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -59,9 +81,7 @@ using namespace triagens::admin;
 ApplicationAdminServer::ApplicationAdminServer ()
   : ApplicationFeature("admin"),
     _allowLogViewer(false),
-    _allowAdminDirectory(false),
     _allowVersion(false),
-    _adminDirectory(),
     _pathOptions(0),
     _name(),
     _version(),
@@ -112,37 +132,12 @@ void ApplicationAdminServer::allowLogViewer () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows for a webadmin directory
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowAdminDirectory () {
-  _allowAdminDirectory = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allows or disallows webadmin directory
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowAdminDirectory (bool value) {
-  _allowAdminDirectory = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allows for a webadmin directory
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowAdminDirectory (string const& adminDirectory) {
-  _allowAdminDirectory = true;
-  _adminDirectory = adminDirectory;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief allows for a version handler using the default version
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationAdminServer::allowVersion () {
   _allowVersion = true;
-  _version = TRIAGENS_VERSION;
+  _version = TRI_VERSION;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,22 +202,6 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   if (_allowLogViewer) {
     factory->addHandler(prefix + "/log", RestHandlerCreator<RestAdminLogHandler>::createNoData, 0);
   }
-
-  // .............................................................................
-  // add a web-admin directory
-  // .............................................................................
-
-  if (_allowAdminDirectory) {
-    LOGGER_DEBUG("using JavaScript front-end path '" << _adminDirectory << "'");
-
-    reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = _adminDirectory;
-    reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
-    reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
-    reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
-    reinterpret_cast<PathHandler::Options*>(_pathOptions)->cacheMaxAge = 86400;
-
-    factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,11 +222,11 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  if (_allowAdminDirectory) {
-    options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-      ("server.admin-directory", &_adminDirectory, "directory containing the ADMIN front-end")
-    ;
-  }
+  // deprecated
+  options[ApplicationServer::OPTIONS_HIDDEN]
+    ("server.admin-directory", &UnusedAdminDirectory, "directory containing the ADMIN front-end (deprecated)")
+    ("server.disable-admin-interface", &UnusedDisableAdminInterface, "turn off the HTML admin interface (deprecated)")
+  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,10 +234,22 @@ void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDes
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationAdminServer::prepare () {
-  if (_allowAdminDirectory && _adminDirectory.empty()) {
-    LOGGER_FATAL_AND_EXIT("you must specify an admin directory, giving up!");
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationAdminServer::parsePhase2 (ProgramOptions& options) {
+  if (options.has("server.admin-directory")) {
+    LOGGER_WARNING("usage of obsolete option --server.admin-directory");
   }
 
+  if (options.has("server.disable-admin-interface")) {
+    LOGGER_WARNING("usage of obsolete option --server.disable-admin-interface");
+  }
+  
   return true;
 }
 
