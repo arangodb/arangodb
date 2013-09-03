@@ -238,3 +238,13 @@
 .modal-body input[type='checkbox'] {
   margin-bottom: 10px;
 }
+
+#add-collection .glyphicon-info-sign {
+  top: 2px !important;
+  position: relative;
+  margin-left: 20px !important;
+}
+
+#add-collection .accordion {
+  margin-top: 10px;
+}

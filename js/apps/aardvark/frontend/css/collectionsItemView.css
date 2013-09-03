@@ -75,6 +75,10 @@
   cursor: default !important;
 }
 
+.span3 .badge-success {
+  font-weight: 300;
+}
+
 .badge, .label, .btn {
   text-shadow: none !important;
 }
