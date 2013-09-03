@@ -494,7 +494,7 @@ li:hover h6, li.hover h6 {
 }
 
 .arangoSubHeader {
-  font-weight: 400px;
+  font-weight: 400;
   color: black;
   margin-top: 5px;
   padding-left: 7px;
@@ -507,4 +507,10 @@ li:hover h6, li.hover h6 {
 
 .nvd3 .nv-axis path {
   stroke: #BFBFBF;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+   .svgClass{margin-top: 35px !important;}
+   .statSingleClient{margin-top: 11.5px !important;}
+   #detailReplication{margin-top: 2.5px !important;}
 }
