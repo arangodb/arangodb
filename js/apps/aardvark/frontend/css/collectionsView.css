@@ -232,11 +232,13 @@ border-top: 0;
 
 #collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header {
   font-size: 13px;
+  font-weight: 400;
   color: black;
 }
 
 #collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label{
   color: black;
+  font-weight: 300;
 }
 
 #collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
