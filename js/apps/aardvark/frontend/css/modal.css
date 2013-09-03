@@ -223,3 +223,7 @@
 .modal table tr {
   border-bottom: 1px solid #F7F3F2 !important;
 }
+
+#add-collection table tr {
+  border-bottom: 0 !important;
+}
