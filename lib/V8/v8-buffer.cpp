@@ -279,7 +279,7 @@ static bool ContainsNonAscii (const char* src, size_t len) {
     len -= n;
   }
 
-#if TRI_BITS == 54
+#if TRI_BITS == 64
   typedef uint64_t word;
   const uint64_t mask = 0x8080808080808080ll;
 #else
@@ -763,7 +763,7 @@ V8Buffer::~V8Buffer() {
 V8Buffer::V8Buffer (v8::Isolate* isolate,
                     v8::Handle<v8::Object> wrapper,
                     size_t length)
-  : V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID>(isolate, this, 0, wrapper),
+  : V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID>(isolate, this, 0, wrapper), // TODO: warning C4355: 'this' : used in base member initializer list
     _length(0),
     _callback(0) {
   replace(NULL, length, NULL, NULL);

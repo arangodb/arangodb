@@ -104,7 +104,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _cafile(),
     _sslProtocol(HttpsServer::TLS_V1),
     _sslCache(false),
-    _sslOptions((uint64_t) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
+    _sslOptions((long) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
     _sslCipherList(""),
     _sslContext(0),
     _rctx() {
@@ -438,7 +438,7 @@ bool ApplicationEndpointServer::createSslContext () {
   }
 
   // set options
-  SSL_CTX_set_options(_sslContext, _sslOptions);
+  SSL_CTX_set_options(_sslContext, (long) _sslOptions);
   LOGGER_INFO("using SSL options: " << _sslOptions);
 
   if (_sslCipherList.size() > 0) {

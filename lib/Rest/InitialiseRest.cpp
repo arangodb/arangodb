@@ -38,7 +38,7 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Basics/InitialiseBasics.h"
 #include "Logger/Logger.h"
@@ -119,23 +119,10 @@ namespace triagens {
       TRI_InitialiseUrl();
       TRI_InitialiseStatistics();
 
-      string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";
-      LOGGER_TRACE(revision);
-
       SSL_library_init();
       SSL_load_error_strings();
       OpenSSL_add_all_algorithms();
       ERR_load_crypto_strings();
-
-#ifdef TRI_OPENSSL_VERSION
-      revision = "$Revision: OPENSSL " TRI_OPENSSL_VERSION " $";
-      LOGGER_TRACE(revision);
-#endif
-
-#ifdef TRI_LIBEV_VERSION
-      revision = "$Revision: LIBEV " TRI_LIBEV_VERSION " $";
-      LOGGER_TRACE(revision);
-#endif
 
 #ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();

@@ -115,6 +115,8 @@ Application = function (context, options) {
 };
 
 extend(Application.prototype, {
+  currentPriority: 0,
+
   collection: function (name) {
     'use strict';
     var collection, cname, prefix;
@@ -335,24 +337,20 @@ extend(Application.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  before: function (path, func, options) {
+  before: function (path, func) {
     'use strict';
     if (is.notExisty(func)) {
       func = path;
       path = "/*";
     }
 
-    options = options || {};
-
     this.routingInfo.middleware.push({
-      priority: options.priority || 1,
+      priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) {
-          var result = func(req, res, opts);
-          if (result || !options.honorResult) {
-            next();
-          }
+          func(req, res, opts);
+          next();
         }
       }
     });
@@ -384,7 +382,7 @@ extend(Application.prototype, {
     }
 
     this.routingInfo.middleware.push({
-      priority: 2,
+      priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }

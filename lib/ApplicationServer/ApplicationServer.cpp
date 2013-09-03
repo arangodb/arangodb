@@ -31,6 +31,8 @@
 
 #include "ApplicationServer.h"
 
+#include "BasicsC/common.h"
+
 #ifdef TRI_HAVE_POSIX_PWD_GRP
 #include <pwd.h>
 #include <grp.h>
@@ -43,8 +45,6 @@
 #include "Basics/delete_object.h"
 #include "BasicsC/conversions.h"
 #include "Logger/Logger.h"
-
-#include "build.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -570,8 +570,6 @@ void ApplicationServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::start () {
-  LOGGER_DEBUG("ApplicationServer version " << TRIAGENS_VERSION);
-
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);

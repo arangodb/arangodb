@@ -305,27 +305,36 @@
     });
     
     // create the default route in the _routing collection
-    addTask("insertDefaultRoute", "insert default route for the admin interface", function () {
+    addTask("insertRedirectionToJsApps", "insert default route for admin interface", function () {
       var routing = getCollection("_routing");
 
       if (! routing) {
         return false;
       }
 
-      if (routing.count() === 0) {
-        // only add route if no other route has been defined
+      // first, check for "old" redirects
+      routing.toArray().forEach(function (doc) {
+        // check for a specific redirect
+        if (doc.url === '/' && doc.action.options.destination === '/_admin/html/index.html') {
+          // remove old, non-working redirect
+          routing.remove(doc);
+        }
+      });
+
+      // add redirections to new location
+      [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
         routing.save({
-          url: "/",
+          url: src,
           action: {
             "do": "org/arangodb/actions/redirectRequest",
             options: {
               permanently: true,
-              destination: "/_admin/html/index.html"
+              destination: "/_admin/aardvark/index.html"
             }
           },
           priority: -1000000
         });
-      }
+      });
 
       return true;
     });

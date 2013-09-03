@@ -27,7 +27,7 @@
 
 #include "v8-vocbase.h"
 
-#include "build.h"
+#include "BasicsC/common.h"
 
 #include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
@@ -4496,7 +4496,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
     o->Set(v8::String::New("position"), v8::Number::New(entry->_position));
     o->Set(v8::String::New("size"), v8::Number::New(entry->_size));
-    o->Set(v8::String::New("tick"), v8::Number::New(entry->_tick));
+    o->Set(v8::String::New("tick"), V8TickId(entry->_tick));
     o->Set(v8::String::New("type"), v8::Number::New((int) entry->_type));
     o->Set(v8::String::New("status"), v8::Number::New((int) entry->_status));
 
@@ -5733,15 +5733,15 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> alive = v8::Object::New();
 
   result->Set(v8::String::New("alive"), alive);
-  alive->Set(v8::String::New("count"), v8::Number::New(info->_numberAlive));
-  alive->Set(v8::String::New("size"), v8::Number::New(info->_sizeAlive));
+  alive->Set(v8::String::New("count"), v8::Number::New((double) info->_numberAlive));
+  alive->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeAlive));
 
   v8::Handle<v8::Object> dead = v8::Object::New();
 
   result->Set(v8::String::New("dead"), dead);
-  dead->Set(v8::String::New("count"), v8::Number::New(info->_numberDead));
-  dead->Set(v8::String::New("size"), v8::Number::New(info->_sizeDead));
-  dead->Set(v8::String::New("deletion"), v8::Number::New(info->_numberDeletion));
+  dead->Set(v8::String::New("count"), v8::Number::New((double) info->_numberDead));
+  dead->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeDead));
+  dead->Set(v8::String::New("deletion"), v8::Number::New((double) info->_numberDeletion));
 
   // datafile info
   v8::Handle<v8::Object> dfs = v8::Object::New();
@@ -6761,7 +6761,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
   }
 
   string path = TRI_ObjectToString(argv[0]);
-  size_t size = TRI_ObjectToDouble(argv[1]);
+  size_t size = (size_t) TRI_ObjectToInt64(argv[1]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -7540,7 +7540,7 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  return scope.Close(v8::String::New(TRIAGENS_VERSION));
+  return scope.Close(v8::String::New(TRI_VERSION));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8518,7 +8518,6 @@ int32_t TRI_GetVocBaseColType () {
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                           TRI_vocbase_t* vocbase,
-                          const string& adminDirectory,
                           const size_t threadNumber) {
   v8::HandleScope scope;
 
@@ -8772,7 +8771,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
-  context->Global()->Set(TRI_V8_SYMBOL("ADMIN_DIRECTORY"), v8::String::New(adminDirectory.c_str(), adminDirectory.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -59,8 +59,6 @@
 #include "V8Client/ImportHelper.h"
 #include "V8Client/V8ClientConnection.h"
 
-#include "build.h"
-
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
@@ -1686,10 +1684,8 @@ int main (int argc, char* argv[]) {
       int redColour     = FOREGROUND_RED | FOREGROUND_INTENSITY;
       int defaultColour = 0;
       CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
-      bool ok;
 
-      ok = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo);
-      if (ok) {
+      if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo) != 0) {
         defaultColour = csbiInfo.wAttributes;
       }
 
@@ -1756,7 +1752,7 @@ int main (int argc, char* argv[]) {
 
 #endif
 
-    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH" << endl;
 
     ostringstream info;
 
