@@ -88,7 +88,7 @@ var collectionView = Backbone.View.extend({
       );
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
-      //
+      $('#tab-content-collection-edit tab-pane').css("border-top",0);
     }
     else if (this.myCollection.status === 'loaded') {
       $('#colFooter').prepend(
