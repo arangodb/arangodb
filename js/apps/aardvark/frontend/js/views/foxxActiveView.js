@@ -8,17 +8,12 @@ window.FoxxActiveView = Backbone.View.extend({
 
   events: {
     'click .glyphicon-edit' : 'editFoxx',
-    'click #foxxToggle'     : 'toggleDropdown',
     'click'                 : 'showDocu'
   },
 
   initialize: function(){
     this._show = true;
     _.bindAll(this, 'render');
-  },
-
-  toggleDropdown: function () {
-    $('#foxxDropdownOut').slideToggle(200);
   },
 
   toggle: function(type, shouldShow) {
