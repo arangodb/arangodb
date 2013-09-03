@@ -35,6 +35,7 @@
   float:right;
   margin-top: 18px !important;
   margin-right: 10px !important;
+  z-index: 9999 !important;
 }
 
 .db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
@@ -73,6 +74,7 @@
 
 .statSingleClient {
   height: 400px;
+  padding-bottom: 8px;
   width: auto !important;
   margin-top: 11px;
   margin-left: 5px !important;
@@ -373,8 +375,11 @@ li:hover h6, li.hover h6 {
   background-color: #FFFFFF;
 }
 
+#leftReplicationDiv, #rightReplicationDiv {
+  padding: 20px !important;
+}
+
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
-  padding-left: 5px;
 }
 
 #leftReplicationDiv table, #rightReplicationDiv table {
@@ -394,6 +399,10 @@ li:hover h6, li.hover h6 {
   border-bottom: 1px solid #F7F3F2;
   padding-top: 3px;
   padding-bottom: 3px;
+}
+
+#leftReplicationDiv table tr:last-child, #rightReplicationDiv table tr:last-child {
+  border-bottom: 0;
 }
 
 #leftReplicationDiv tbody, #rightReplicationDiv tbody {
@@ -512,7 +521,6 @@ li:hover h6, li.hover h6 {
   font-weight: 400;
   color: black;
   margin-top: 5px;
-  padding-left: 7px;
   font-size: 15px;
 }
 
