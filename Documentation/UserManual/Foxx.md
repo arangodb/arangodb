@@ -171,6 +171,13 @@ API by chaining the following methods onto your path definition:
 
 @copydetails JSF_foxx_RequestContext_errorResponse
 
+### onlyIf
+
+@copydetails JSF_foxx_RequestContext_onlyIf
+
+### onlyIfAuthenticated
+
+@copydetails JSF_foxx_RequestContext_onlyIfAuthenticated
 
 Before and After Hooks
 ----------------------
@@ -541,6 +548,25 @@ Use it by calling:
 In both forms you can give a default format as a second parameter, if no 
 format could be determined. If you give no `defaultFormat` this case will be 
 handled as an error.
+
+Authentication
+--------------
+
+We built an authentication system you can use in your Foxx application (but you can of course roll your own if you want). Currently we only support cookie-based authentication, but we will add the possibility to use Auth Tokens and external OAuth providers in the near future. To use the authentication in your app, first activate it:
+
+@copydetails JSF_foxx_application_activateAuthentication
+
+### Adding a login route
+
+@copydetails JSF_foxx_application_login
+
+### Adding a logout route
+
+@copydetails JSF_foxx_application_logout
+
+### Restricting routes
+
+To restrict routes, see the documentation for Documenting and Restraining the routes.
 
 Optional Functionality: TemplateMiddleware
 ------------------------------------------

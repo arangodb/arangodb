@@ -426,8 +426,32 @@ extend(Application.prototype, {
     });
   },
 
-  // TODO: Documentation
-
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_application_activateAuthentication
+/// @brief Activate authentication for this app
+///
+/// @FUN{FoxxApplication::activateAuthentication(@FA{opts})}
+///
+/// To activate authentication for this authentication, first call this function.
+/// Provide the following arguments:
+///
+/// * `type`: Currently we only support `cookie`, but this will change in the future.
+/// * `cookieLifetime`: An integer. Lifetime of cookies in seconds.
+/// * `cookieName`: A string used as the name of the cookie.
+/// * `sessionLifetime`: An integer. Lifetime of sessions in seconds.
+///
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.activateAuthentication({
+///       type: "cookie",
+///       cookieLifetime: 360000,
+///       cookieName: "my_cookie",
+///       sessionLifetime: 400,
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     var foxxAuthentication = require("org/arangodb/foxx/authentication"),
       sessions,
@@ -482,6 +506,37 @@ extend(Application.prototype, {
     });
   },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_application_login
+/// @brief Add a login handler
+///
+/// @FUN{FoxxApplication::login(@FA{path}, @FA{opts})}
+///
+/// Add a route for the login. You can provide further customizations via the
+/// the options:
+///
+/// `usernameField` and `passwordField` can be used to adjust the expected attributes
+/// in the `post` request. They default to `username` and `password`.
+/// `onSuccess` is a function that you can define to do something if the login was
+/// successful. This includes sending a response to the user. This defaults to a
+/// function that returns a JSON with `user` set to the identifier of the user and
+/// `key` set to the session key.
+/// `onError` is a function that you can define to do something if the login did not
+/// work. This includes sending a response to the user. This defaults to a function
+/// that sets the response to 401 and returns a JSON with `error` set to
+/// "Username or Password was wrong".
+/// Both `onSuccess` and `onError` should take request and result as arguments.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.login('/login', {
+///       onSuccess: function (req, res) {
+///         res.json({"success": true});
+///       }
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
     var foxxAuthentication = require("org/arangodb/foxx/authentication"),
       auth = this.auth,
@@ -502,6 +557,35 @@ extend(Application.prototype, {
     });
   },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_application_logout
+/// @brief Add a logout handler
+///
+/// @FUN{FoxxApplication::logout(@FA{path}, @FA{opts})}
+///
+/// This works pretty similar to the logout function and adds a path to your
+/// app for the logout functionality. You can customize it with a custom `onSuccess`
+/// and `onError` function:
+/// `onSuccess` is a function that you can define to do something if the logout was
+/// successful. This includes sending a response to the user. This defaults to a
+/// function that returns a JSON with `message` set to "logged out".
+/// `onError` is a function that you can define to do something if the logout did not
+/// work. This includes sending a response to the user. This defaults to a function
+/// that sets the response to 401 and returns a JSON with `error` set to
+/// "No session was found".
+/// Both `onSuccess` and `onError` should take request and result as arguments.
+///
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.logout('/logout', {
+///       onSuccess: function (req, res) {
+///         res.json({"message": "Bye, Bye"});
+///       }
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
     var auth = this.auth,
       options = _.defaults(opts || {}, defaultsFor.logout);
