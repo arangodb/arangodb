@@ -84,6 +84,7 @@
 
 .statSingleClient h6 {
   opacity: 1 !important;
+  padding-left: 4px;
 }
 
 .statClient {
@@ -94,6 +95,10 @@
   margin-bottom: 10px !important;
   margin-top: 5px !important;
   background-color: #FFFFFF !important;
+}
+
+#detailGraph .boxHeader {
+  padding-top: 5px;
 }
 
 #detailGraphChart {
@@ -515,3 +520,4 @@ li:hover h6, li.hover h6 {
    .statSingleClient{margin-top: 10.5px !important;}
    #detailReplication{margin-top: 1.5px !important;}
 }
+
