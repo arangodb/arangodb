@@ -20,8 +20,8 @@ var collectionsView = Backbone.View.extend({
     var searchOptions = this.collection.searchOptions;
 
     $('#collectionsThumbnailsIn', this.el).append(
-      '<li class="span3"><a href="#new" class="add"><img id="newCollection"'+
-      'src="img/plus_icon.png" class="pull-left" />Add Collection</a></li>'
+      '<li class="span3"><a href="#new" class="add">'+
+      '<span id="newCollection" class="pull-left glyphicon glyphicon-plus-sign" />Add Collection</a></li>'
     );
 
     this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
