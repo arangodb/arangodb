@@ -135,6 +135,6 @@ background-color: none !important;
 
 #logTableID thead th, #infoTableID thead th, #debugTableID thead th, #critTableID thead th, #warnTableID thead th {
   border-top: 2px solid #888888;
-  border-bottom: 1px solid #888888;
+  border-bottom: 1px solid #C2C2C2;
   background-color: #FFFFFF !important;
 }

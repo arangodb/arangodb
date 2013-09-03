@@ -3,6 +3,11 @@
   text-align:left;
 }
 
+.collectionTh input, .collectionTh select, .collectionTh textarea,
+.modal-body input, .modal-body select, .modal-body textarea {
+  margin-top: 10px;
+}
+
 .collectinInfoTable {
   width: 200px !important;
   max-width: 200px !important;
@@ -32,10 +37,6 @@
 
 .modal-body .icon-info-sign:hover {
   opacity: 1;
-}
-
-.modal-body table {
-  margin-left: 15px;
 }
 
 .modal-body .accordion-inner {
@@ -171,6 +172,8 @@
   background-color: #686766;
   border-bottom: 0 !important;
   padding-top: 4px;
+  padding-left: 5px;
+  padding-right: 10px;
 }
 
 .modal-header .arangoHeader {
@@ -220,10 +223,18 @@
   top: 12.1% !important;
 }
 
-.modal table tr {
+.modal table tr, .thBorderBottom {
   border-bottom: 1px solid #F7F3F2 !important;
+}
+
+.modal table tr:last-child {
+  border-bottom: 0 !important;
 }
 
 #add-collection table tr {
   border-bottom: 0 !important;
+}
+
+.modal-body input[type='checkbox'] {
+  margin-bottom: 10px;
 }
