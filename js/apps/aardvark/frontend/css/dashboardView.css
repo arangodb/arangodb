@@ -32,9 +32,11 @@
 }
 
 .group-close, .group-open {
+  opacity: 0 !important;
   float:right;
   margin-top: 18px !important;
   margin-right: 10px !important;
+  z-index: 9999 !important;
 }
 
 .db-zoom, .db-minimize, .db-hide, .db-info, #detailReplicationMinimize{
@@ -73,6 +75,7 @@
 
 .statSingleClient {
   height: 400px;
+  padding-bottom: 8px;
   width: auto !important;
   margin-top: 11px;
   margin-left: 5px !important;
@@ -138,6 +141,7 @@
   padding-top: 0 !important;
   height: 420px;
   width: 99%;
+  overflow: visible;
 }
 
 li:hover  i, li.hover i,
@@ -253,11 +257,17 @@ li:hover h6, li.hover h6 {
 }
 
 /*Dashboard Checkbox*/
-#dashboardDropdownOut input[type=checkbox].css-checkbox, #transparentHeader input[type=checkbox].css-checkbox, #collectionsDropdown input[type=checkbox].css-checkbox {
+#dashboardDropdownOut input[type=checkbox].css-checkbox,
+#transparentHeader input[type=checkbox].css-checkbox,
+#collectionsDropdown input[type=checkbox].css-checkbox,
+#foxxDropdown input[type=checkbox].css-checkbox {
   display:none;
 }
 
-#dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label, #transparentHeader input[type=checkbox].css-checkbox + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
+#dashboardDropdownOut input[type=checkbox].css-checkbox + label.css-label,
+#transparentHeader input[type=checkbox].css-checkbox + label.css-label, 
+#foxxDropdownOut input[type=checkbox].css-checkbox + label.css-label, 
+#collectionsDropdown input[type=checkbox].css-checkbox + label.css-label {
   padding-left:20px;
   margin-top: 0px;
   height:15px;
@@ -269,7 +279,10 @@ li:hover h6, li.hover h6 {
   cursor:pointer;
 }
 
-#dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label, #transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label, #collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+#dashboardDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
+#transparentHeader input[type=checkbox].css-checkbox:checked + label.css-label,
+#foxxDropdownOut input[type=checkbox].css-checkbox:checked + label.css-label,
+#collectionsDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
   background-position: 0 -15px;
 }
 
@@ -373,8 +386,11 @@ li:hover h6, li.hover h6 {
   background-color: #FFFFFF;
 }
 
+#leftReplicationDiv, #rightReplicationDiv {
+  padding: 20px !important;
+}
+
 #leftReplicationDiv h4, #rightReplicationDiv h4 {
-  padding-left: 5px;
 }
 
 #leftReplicationDiv table, #rightReplicationDiv table {
@@ -394,6 +410,10 @@ li:hover h6, li.hover h6 {
   border-bottom: 1px solid #F7F3F2;
   padding-top: 3px;
   padding-bottom: 3px;
+}
+
+#leftReplicationDiv table tr:last-child, #rightReplicationDiv table tr:last-child {
+  border-bottom: 0;
 }
 
 #leftReplicationDiv tbody, #rightReplicationDiv tbody {
@@ -512,7 +532,6 @@ li:hover h6, li.hover h6 {
   font-weight: 400;
   color: black;
   margin-top: 5px;
-  padding-left: 7px;
   font-size: 15px;
 }
 
@@ -534,4 +553,13 @@ li:hover h6, li.hover h6 {
    .svgClass{margin-top: 35px !important;}
    .statSingleClient{margin-top: 10.5px !important;}
    #detailReplication{margin-top: 1.5px !important;}
+}
+
+.nvd3 .nv-axis .nv-axisMaxMin text {
+  font-weight: 400;
+  font-size: 12px !important;
+}
+
+.nvd3 .nv-wrap .nv-axis:last-child {
+  visibility: hidden !important;
 }

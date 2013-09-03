@@ -59,14 +59,11 @@ createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandle
   };
 };
 
-addCheck = function (handler, check, ErrorClass) {
+addCheck = function (handler, check) {
   'use strict';
   return function (req, res) {
-    if (check(req)) {
-      handler(req, res);
-    } else {
-      throw new ErrorClass();
-    }
+    check(req);
+    handler(req, res);
   };
 };
 
@@ -279,7 +276,6 @@ extend(RequestContext.prototype, {
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-
   errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
     var handler = this.route.action.callback;
@@ -288,19 +284,60 @@ extend(RequestContext.prototype, {
     return this;
   },
 
-  // TODO: Documentation
-
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_onlyIf
+/// @brief Only let the request get through if a condition holds
+///
+/// @FUN{FoxxApplication::onlyIf(@FA{check})}
+///
+/// Provide it with a function that throws an exception if the normal processing should
+/// not be executed. Provide an `errorResponse` to define the behavior in this case.
+/// This can be used for authentication or authorization for example.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       // Do something
+///     }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check, ErrorClass) {
     'use strict';
     var handler = this.route.action.callback;
-    this.route.action.callback = addCheck(handler, check, ErrorClass);
+    this.route.action.callback = addCheck(handler, check);
     return this;
   },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_onlyIfAuthenticated
+/// @brief Only let the request get through if the user is logged in
+///
+/// @FUN{FoxxApplication::onlyIf(@FA{code}, @FA{reason})}
+///
+/// Please activate authentification for this app if you want to use this function.
+/// If the user is logged in, it will do nothing. Otherwise it will respond with
+/// the status code and the reason you provided (the route handler won't be called).
+/// This will also add the according documentation for this route.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       // Do something
+///     }).onlyIfAuthenticated(401, "You need to be authenticated");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
     'use strict';
     var handler = this.route.action.callback,
-      check = function(req) { return (req.user && req.currentSession); };
+      check;
+
+    check = function(req) {
+      if (!(req.user && req.currentSession)) {
+        throw new UnauthorizedError();
+      }
+    };
 
     if (is.notExisty(code)) {
       code = 401;
@@ -309,7 +346,7 @@ extend(RequestContext.prototype, {
       reason = "Not authorized";
     }
 
-    this.onlyIf(check, UnauthorizedError);
+    this.onlyIf(check);
     this.errorResponse(UnauthorizedError, code, reason);
 
     return this;
