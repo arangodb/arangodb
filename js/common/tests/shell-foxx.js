@@ -10,7 +10,8 @@ fakeContext = {
   foxxes: [],
   comments: [],
   clearComments: function () {},
-  comment: function () {}
+  comment: function () {},
+  collectionName: function () {}
 };
 
 function CreateFoxxApplicationSpec () {
@@ -527,11 +528,110 @@ function HelperFunctionSpec () {
   };
 }
 
+function SetupAuthorization () {
+  var app;
+
+  return {
+    testWorksWithAllParameters: function () {
+      var err;
+
+      app = new FoxxApplication(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieLifetime: 360000,
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testRefusesUnknownAuthTypes: function () {
+      var err;
+
+      app = new FoxxApplication(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "brainwave",
+          cookieLifetime: 360000,
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Currently only the following auth types are supported: cookie");
+    },
+
+    testRefusesMissingCookieLifetime: function () {
+      var err;
+
+      app = new FoxxApplication(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the cookieLifetime");
+    },
+
+    testRefusesMissingCookieName: function () {
+      var err;
+
+      app = new FoxxApplication(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieLifetime: 360000,
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the cookieName");
+    },
+
+    testRefusesMissingSessionLifetime: function () {
+      var err;
+
+      app = new FoxxApplication(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieName: "mycookie",
+          cookieLifetime: 360000
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the sessionLifetime");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
 jsunity.run(HelperFunctionSpec);
+jsunity.run(SetupAuthorization);
 
 return jsunity.done();
