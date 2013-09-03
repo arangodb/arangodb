@@ -279,7 +279,6 @@ extend(RequestContext.prototype, {
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-
   errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
     var handler = this.route.action.callback;
@@ -288,8 +287,25 @@ extend(RequestContext.prototype, {
     return this;
   },
 
-  // TODO: Documentation
-
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_onlyIf
+/// @brief Only let the request get through if a condition holds
+///
+/// @FUN{FoxxApplication::onlyIf(@FA{check}, @FA{ErrorClass})}
+///
+/// Provide it with a function that returns true or false. It will be called before
+/// the request is processed. If it returns false, an error of the ErrorClass will
+/// will be raised. Provide an `errorResponse` to define the behaviour in this case.
+/// This can be used for authentication or authorization for example.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       // Do something
+///     }).onlyIf(aFunction, ErrorClass).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check, ErrorClass) {
     'use strict';
     var handler = this.route.action.callback;
@@ -297,6 +313,25 @@ extend(RequestContext.prototype, {
     return this;
   },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_onlyIfAuthenticated
+/// @brief Only let the request get through if the user is logged in
+///
+/// @FUN{FoxxApplication::onlyIf(@FA{code}, @FA{reason})}
+///
+/// Please activate authentification for this app if you want to use this function.
+/// If the user is logged in, it will do nothing. Otherwise it will respond with
+/// the status code and the reason you provided (the route handler won't be called).
+/// This will also add the according documentation for this route.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       // Do something
+///     }).onlyIfAuthenticated(401, "You need to be authenticated");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
     'use strict';
     var handler = this.route.action.callback,
