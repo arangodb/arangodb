@@ -88,7 +88,7 @@
 
 .statClient {
   float: left;
-  height: 100px;
+  height: 101px;
   width: 230px;
   margin-left: 13px !important;
   margin-bottom: 10px !important;
@@ -132,7 +132,7 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
   height: 420px;
-  width: 100%;
+  width: 99%;
 }
 
 li:hover  i, li.hover i,
