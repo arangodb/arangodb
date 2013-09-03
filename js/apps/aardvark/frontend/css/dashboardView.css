@@ -511,6 +511,6 @@ li:hover h6, li.hover h6 {
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
    .svgClass{margin-top: 35px !important;}
-   .statSingleClient{margin-top: 11.5px !important;}
-   #detailReplication{margin-top: 2.5px !important;}
+   .statSingleClient{margin-top: 10.5px !important;}
+   #detailReplication{margin-top: 1.5px !important;}
 }
