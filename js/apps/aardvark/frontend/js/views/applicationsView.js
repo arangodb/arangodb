@@ -10,7 +10,8 @@ window.ApplicationsView = Backbone.View.extend({
     "click .toggle-icon": "toggleView",
     "click #checkDevel": "toggleDevel",
     "click #checkActive": "toggleActive",
-    "click #checkInactive": "toggleInactive"
+    "click #checkInactive": "toggleInactive",
+    "click #foxxToggle": "slideToggle"
   },
   
   toggleDevel: function() {
@@ -36,7 +37,12 @@ window.ApplicationsView = Backbone.View.extend({
       v.toggle("inactive", self._showInactive);
     });
   },
-  
+
+  slideToggle: function() {
+    console.log("toggled");
+    $('#foxxDropdownOut').slideToggle(200);
+  },
+
   toggleView: function(event) {
     var target = $(event.currentTarget);
     var type = target.attr("id");
