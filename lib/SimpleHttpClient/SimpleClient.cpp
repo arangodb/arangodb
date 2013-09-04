@@ -100,8 +100,8 @@ namespace triagens {
       struct timeval tv;
       gettimeofday(&tv, 0);
 
-      double sec = tv.tv_sec; // seconds
-      double usc = tv.tv_usec; // microseconds
+      double sec = (double) tv.tv_sec; // seconds
+      double usc = (double) tv.tv_usec; // microseconds
 
       return sec + usc / 1000000.0;
     }

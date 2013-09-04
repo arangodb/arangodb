@@ -98,12 +98,6 @@ namespace triagens {
 
       virtual const char* payload (size_t*, const int, const size_t, const size_t, bool*) = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the HTTP headers for the oepration to execute
-////////////////////////////////////////////////////////////////////////////////
-
-      virtual const map<string, string>& headers () = 0;
-
     };
   }
 }
