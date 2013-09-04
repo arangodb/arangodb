@@ -1,11 +1,11 @@
 require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
-  transform = require("org/arangodb/foxx/transformer").transform,
-  Transformer = require("org/arangodb/foxx/transformer").Transformer;
+  preprocess = require("org/arangodb/foxx/preprocessor").preprocess,
+  Preprocessor = require("org/arangodb/foxx/preprocessor").Preprocessor;
 
-// High Level Spec Suite for the transform Function
-function TransformSpec () {
+// High Level Spec Suite for the preprocess Function
+function PreprocessSpec () {
   var testFileWithoutJSDoc, testFileWithJSDoc, testFileWithJSDocTransformed;
 
   return {
@@ -40,18 +40,18 @@ function TransformSpec () {
     },
 
     testDoesntChangeFileWithoutJSDocComments: function () {
-      assertEqual(transform(testFileWithoutJSDoc), testFileWithoutJSDoc);
+      assertEqual(preprocess(testFileWithoutJSDoc), testFileWithoutJSDoc);
     },
 
     testTransformsFileWithJSDocComments: function () {
-      assertEqual(transform(testFileWithJSDoc), testFileWithJSDocTransformed);
+      assertEqual(preprocess(testFileWithJSDoc), testFileWithJSDocTransformed);
     }
   };
 }
 
 // Low level Spec Suite for the Transform prototype
-function TransformerSpec () {
-  var i, result, testFileWithSingleJSDoc, testFileWithJSDocAndMultiline, transformedLineOne;
+function PreprocessorSpec () {
+  var i, result, testFileWithSingleJSDoc, testFileWithJSDocAndMultiline, processedLineOne;
 
   return {
     setUp: function () {
@@ -64,7 +64,7 @@ function TransformerSpec () {
         "}());"
       ].join("\n");
 
-      transformedLineOne = [
+      processedLineOne = [
         "(function() {",
         "applicationContext.comment(\"long description\");",
         "   * test",
@@ -96,67 +96,67 @@ function TransformerSpec () {
     },
 
     testSearchForFirstJSDocStart: function () {
-      transformer = new Transformer(testFileWithSingleJSDoc);
+      processer = new Preprocessor(testFileWithSingleJSDoc);
 
       for (i = 0; i < 1; i++) {
-        transformer.searchNext();
+        processer.searchNext();
       }
 
-      assertEqual(transformer.getCurrentLineNumber(), 1);
+      assertEqual(processer.getCurrentLineNumber(), 1);
     },
 
     testContinueInJSDoc: function () {
-      transformer = new Transformer(testFileWithSingleJSDoc);
+      processer = new Preprocessor(testFileWithSingleJSDoc);
 
       for (i = 0; i < 2; i++) {
-        transformer.searchNext();
+        processer.searchNext();
       }
 
-      assertEqual(transformer.getCurrentLineNumber(), 2);
+      assertEqual(processer.getCurrentLineNumber(), 2);
     },
 
     testStopAtTheEndOfJSDoc: function () {
-      transformer = new Transformer(testFileWithSingleJSDoc);
+      processer = new Preprocessor(testFileWithSingleJSDoc);
 
       for (i = 0; i < 4; i++) {
-        transformer.searchNext();
+        processer.searchNext();
       }
 
-      assertUndefined(transformer.getCurrentLineNumber());
+      assertUndefined(processer.getCurrentLineNumber());
     },
 
     testDoNotIncludeNormalMultiline: function () {
-      transformer = new Transformer(testFileWithMultiline);
+      processer = new Preprocessor(testFileWithMultiline);
 
       for (i = 0; i < 1; i++) {
-        transformer.searchNext();
+        processer.searchNext();
       }
 
-      assertUndefined(transformer.getCurrentLineNumber());
+      assertUndefined(processer.getCurrentLineNumber());
     },
 
     testDoNotIncludeNonJSDocComments: function () {
-      transformer = new Transformer(testFileWithJSDocAndMultiline);
+      processer = new Preprocessor(testFileWithJSDocAndMultiline);
 
       for (i = 0; i < 4; i++) {
-        transformer.searchNext();
+        processer.searchNext();
       }
 
-      assertUndefined(transformer.getCurrentLineNumber());
+      assertUndefined(processer.getCurrentLineNumber());
     },
 
     testConvertLine: function () {
-      transformer = new Transformer(testFileWithSingleJSDoc);
+      processer = new Preprocessor(testFileWithSingleJSDoc);
 
-      transformer.searchNext();
-      transformer.convertLine();
+      processer.searchNext();
+      processer.convertLine();
 
-      assertEqual(transformer.result(), transformedLineOne);
+      assertEqual(processer.result(), processedLineOne);
     }
   };
 }
 
-jsunity.run(TransformSpec);
-jsunity.run(TransformerSpec);
+jsunity.run(PreprocessSpec);
+jsunity.run(PreprocessorSpec);
 
 return jsunity.done();
