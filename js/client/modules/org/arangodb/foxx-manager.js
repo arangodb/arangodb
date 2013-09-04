@@ -983,7 +983,7 @@ exports.listJson = function (showPrefix) {
     };
 
     if (showPrefix) {
-      res.collectionPrefix = doc.collectionPrefix;
+      res.collectionPrefix = doc.options.collectionPrefix;
     }
 
     result.push(res);

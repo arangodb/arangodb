@@ -44,6 +44,10 @@
   font-size: 16px;
 }
 
+.arangoHeader {
+  font-weight: 400;
+}
+
 .navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
 	background: #788f3d;
 }
@@ -280,4 +284,19 @@ button {
 
 .arangoicon:hover {
   cursor: pointer !important;
+}
+
+.accordion-group {
+  border: 0;
+}
+
+.accordion-inner {
+  border-top: 0;
+}
+
+.accordion-heading a {
+  border: 1px solid #cccccc;
+  color: black;
+  width: 397px !important;
+  font-weight: 400;
 }

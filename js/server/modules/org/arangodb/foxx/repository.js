@@ -45,14 +45,14 @@ var Repository,
 /// Create a new instance of Repository
 ///
 /// A Foxx Repository is always initialized with a collection object. You can
-/// your collection object by asking your Foxx application for it via the
+/// your collection object by asking your Foxx.Controller for it via the
 /// `collection` method that takes the name of the collection (and will prepend
 /// the prefix of your application). It also takes two optional arguments:
 ///
 /// 1. Model: The prototype of a model. If you do not provide it, it will default
 /// to Foxx.Model
 /// 2. Prefix: You can provide the prefix of the application if you need it in
-/// your Repository (for some AQL queries probably). Get it from the Foxx application
+/// your Repository (for some AQL queries probably). Get it from the Foxx.Controller
 /// via the `collectionPrefix` attribute.
 ///
 /// @EXAMPLES

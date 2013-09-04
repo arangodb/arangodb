@@ -1,7 +1,7 @@
 require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
-  FoxxApplication = require("org/arangodb/foxx").Application,
+  FoxxController = require("org/arangodb/foxx").Controller,
   db = require("org/arangodb").db,
   fakeContext;
 
@@ -10,13 +10,14 @@ fakeContext = {
   foxxes: [],
   comments: [],
   clearComments: function () {},
-  comment: function () {}
+  comment: function () {},
+  collectionName: function () {}
 };
 
-function CreateFoxxApplicationSpec () {
+function CreateFoxxControllerSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new FoxxApplication(fakeContext),
+      var app = new FoxxController(fakeContext),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -24,7 +25,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new FoxxApplication(fakeContext, {urlPrefix: "/wiese"}),
+      var app = new FoxxController(fakeContext, {urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -32,7 +33,7 @@ function CreateFoxxApplicationSpec () {
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new FoxxApplication(fakeContext),
+      var app = new FoxxController(fakeContext),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
@@ -42,12 +43,12 @@ function CreateFoxxApplicationSpec () {
   };
 }
 
-function SetRoutesFoxxApplicationSpec () {
+function SetRoutesFoxxControllerSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new FoxxApplication(fakeContext);
+      app = new FoxxController(fakeContext);
     },
 
     testSettingRoutes: function () {
@@ -172,7 +173,7 @@ function DocumentationAndConstraintsSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication(fakeContext);
+      app = new FoxxController(fakeContext);
       routes = app.routingInfo.routes;
     },
 
@@ -355,12 +356,12 @@ function DocumentationAndConstraintsSpec () {
   };
 }
 
-function AddMiddlewareFoxxApplicationSpec () {
+function AddMiddlewareFoxxControllerSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new FoxxApplication(fakeContext);
+      app = new FoxxController(fakeContext);
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -430,7 +431,7 @@ function CommentDrivenDocumentationSpec () {
 
   return {
     setUp: function () {
-      app = new FoxxApplication(fakeContext);
+      app = new FoxxController(fakeContext);
       routingInfo = app.routingInfo;
       noop = function () {};
     },
@@ -503,7 +504,7 @@ function HelperFunctionSpec () {
   return {
     setUp: function () {
       fakeContext.collectionPrefix = "fancy";
-      app = new FoxxApplication(fakeContext);
+      app = new FoxxController(fakeContext);
     },
 
     testGetACollection: function () {
@@ -527,11 +528,110 @@ function HelperFunctionSpec () {
   };
 }
 
-jsunity.run(CreateFoxxApplicationSpec);
-jsunity.run(SetRoutesFoxxApplicationSpec);
+function SetupAuthorization () {
+  var app;
+
+  return {
+    testWorksWithAllParameters: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieLifetime: 360000,
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testRefusesUnknownAuthTypes: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "brainwave",
+          cookieLifetime: 360000,
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Currently only the following auth types are supported: cookie");
+    },
+
+    testRefusesMissingCookieLifetime: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieName: "mycookie",
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the cookieLifetime");
+    },
+
+    testRefusesMissingCookieName: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieLifetime: 360000,
+          sessionLifetime: 600
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the cookieName");
+    },
+
+    testRefusesMissingSessionLifetime: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateAuthentication({
+          type: "cookie",
+          cookieName: "mycookie",
+          cookieLifetime: 360000
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, "Please provide the sessionLifetime");
+    }
+  };
+}
+
+jsunity.run(CreateFoxxControllerSpec);
+jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
-jsunity.run(AddMiddlewareFoxxApplicationSpec);
+jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
 jsunity.run(HelperFunctionSpec);
+jsunity.run(SetupAuthorization);
 
 return jsunity.done();

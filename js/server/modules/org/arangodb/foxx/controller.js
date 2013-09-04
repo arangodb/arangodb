@@ -2,7 +2,7 @@
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx application
+/// @brief Foxx Controller
 ///
 /// @file
 ///
@@ -28,25 +28,61 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Application,
+var Controller,
   RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  extend = require("underscore").extend,
+  _ = require("underscore"),
+  extend = _.extend,
   is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals");
+  internal = require("org/arangodb/foxx/internals"),
+  defaultsFor = {};
+
+defaultsFor.login = {
+  usernameField: "username",
+  passwordField: "password",
+
+  onSuccess: function (req, res) {
+    res.json({
+      user: req.user.identifier,
+      key: req.currentSession._key
+    });
+  },
+
+  onError: function (req, res) {
+    res.status(401);
+    res.json({
+      error: "Username or Password was wrong"
+    });
+  }
+};
+
+defaultsFor.logout = {
+  onSuccess: function (req, res) {
+    res.json({
+      notice: "Logged out!",
+    });
+  },
+
+  onError: function (req, res) {
+    res.status(401);
+    res.json({
+      error: "No session was found"
+    });
+  }
+};
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Application
+// --SECTION--                                                       Controller
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_initializer
-/// @brief Create a new Application
+/// @fn JSF_foxx_controller_initializer
+/// @brief Create a new Controller
 ///
-/// @FUN{new FoxxApplication(@FA{applicationContext}, @FA{options})}
+/// @FUN{new FoxxController(@FA{applicationContext}, @FA{options})}
 ///
-/// This creates a new Application. The first argument is the application
+/// This creates a new Controller. The first argument is the controller
 /// context available in the variable `applicationContext`. The second one is an
 /// options array with the following attributes:
 ///
@@ -55,13 +91,13 @@ var Application,
 /// @EXAMPLES
 ///
 /// @code
-///     app = new Application(applicationContext, {
+///     app = new Controller(applicationContext, {
 ///       urlPrefix: "/meadow"
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-Application = function (context, options) {
+Controller = function (context, options) {
   'use strict';
   var urlPrefix, baseMiddleware;
 
@@ -114,7 +150,7 @@ Application = function (context, options) {
   this.applicationContext = context;
 };
 
-extend(Application.prototype, {
+extend(Controller.prototype, {
   currentPriority: 0,
 
   collection: function (name) {
@@ -137,7 +173,7 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_handleRequest
+/// @fn JSF_foxx_controller_handleRequest
 /// @brief Handle a request
 ///
 /// The `handleRequest` method is the raw way to create a new route. You
@@ -170,10 +206,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_head
+/// @fn JSF_foxx_controller_head
 /// @brief Handle a `head` request
 ///
-/// @FUN{FoxxApplication::head(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::head(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `head`.  You have to give a
 /// function as @FA{callback}. It will get a request and response object as its
@@ -186,10 +222,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_get
+/// @fn JSF_foxx_controller_get
 /// @brief Manage a `get` request
 ///
-/// @FUN{FoxxApplication::get(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::get(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `get`.
 ///
@@ -213,10 +249,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_post
+/// @fn JSF_foxx_controller_post
 /// @brief Tackle a `post` request
 ///
-/// @FUN{FoxxApplication::post(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::post(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `post`.  See above for the
 /// arguments you can give.
@@ -236,10 +272,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_put
+/// @fn JSF_foxx_controller_put
 /// @brief Sort out a `put` request
 ///
-/// @FUN{FoxxApplication::put(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::put(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `put`.  See above for the arguments
 /// you can give.
@@ -259,10 +295,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_patch
+/// @fn JSF_foxx_controller_patch
 /// @brief Take charge of a `patch` request
 ///
-/// @FUN{FoxxApplication::patch(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::patch(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `patch`.  See above for the
 /// arguments you can give.
@@ -282,10 +318,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_delete
+/// @fn JSF_foxx_controller_delete
 /// @brief Respond to a `delete` request
 ///
-/// @FUN{FoxxApplication::delete(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::delete(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `delete`.  See above for the
 /// arguments you can give.
@@ -318,10 +354,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_before
+/// @fn JSF_foxx_controller_before
 /// @brief Before
 ///
-/// @FUN{FoxxApplication::before(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::before(@FA{path}, @FA{callback})}
 ///
 /// The before function takes a @FA{path} on which it should watch and a
 /// function that it should execute before the routing takes place. If you do
@@ -357,10 +393,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_after
+/// @fn JSF_foxx_controller_after
 /// @brief After
 ///
-/// @FUN{FoxxApplication::after(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::after(@FA{path}, @FA{callback})}
 ///
 /// This works pretty similar to the before function.  But it acts after the
 /// execution of the handlers (Big surprise, I suppose).
@@ -388,10 +424,186 @@ extend(Application.prototype, {
         callback: function (req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_activateAuthentication
+/// @brief Activate authentication for this app
+///
+/// @FUN{FoxxController::activateAuthentication(@FA{opts})}
+///
+/// To activate authentication for this authentication, first call this function.
+/// Provide the following arguments:
+///
+/// * `type`: Currently we only support `cookie`, but this will change in the future.
+/// * `cookieLifetime`: An integer. Lifetime of cookies in seconds.
+/// * `cookieName`: A string used as the name of the cookie.
+/// * `sessionLifetime`: An integer. Lifetime of sessions in seconds.
+///
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.activateAuthentication({
+///       type: "cookie",
+///       cookieLifetime: 360000,
+///       cookieName: "my_cookie",
+///       sessionLifetime: 400,
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  activateAuthentication: function (opts) {
+    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+      sessions,
+      cookieAuth,
+      app = this,
+      applicationContext = this.applicationContext,
+      options = opts || {};
+
+    if (options.type !== "cookie") {
+      throw new Error("Currently only the following auth types are supported: cookie");
+    }
+    if (is.falsy(options.cookieLifetime)) {
+      throw new Error("Please provide the cookieLifetime");
+    }
+    if (is.falsy(options.cookieName)) {
+      throw new Error("Please provide the cookieName");
+    }
+    if (is.falsy(options.sessionLifetime)) {
+      throw new Error("Please provide the sessionLifetime");
+    }
+
+    sessions = new foxxAuthentication.Sessions(this.applicationContext, {
+      lifetime: options.sessionLifetime
+    });
+
+    cookieAuth = new foxxAuthentication.CookieAuthentication(this.applicationContext, {
+      lifetime: options.cookieLifetime,
+      name: options.cookieName
+    });
+
+    this.auth = new foxxAuthentication.Authentication(this.applicationContext, sessions, cookieAuth);
+
+    this.before("/*", function (req, res) {
+      var users = new foxxAuthentication.Users(applicationContext),
+        authResult = app.auth.authenticate(req);
+
+      if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
+        req.currentSession = authResult.session;
+        req.user = users.get(authResult.session.identifier);
+      } else {
+        req.currentSession = null;
+        req.user = null;
+      }
+    });
+
+    this.after("/*", function (req, res) {
+      var session = req.currentSession;
+
+      if (is.existy(session)) {
+        session.update();
+      }
+    });
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_login
+/// @brief Add a login handler
+///
+/// @FUN{FoxxController::login(@FA{path}, @FA{opts})}
+///
+/// Add a route for the login. You can provide further customizations via the
+/// the options:
+///
+/// `usernameField` and `passwordField` can be used to adjust the expected attributes
+/// in the `post` request. They default to `username` and `password`.
+/// `onSuccess` is a function that you can define to do something if the login was
+/// successful. This includes sending a response to the user. This defaults to a
+/// function that returns a JSON with `user` set to the identifier of the user and
+/// `key` set to the session key.
+/// `onError` is a function that you can define to do something if the login did not
+/// work. This includes sending a response to the user. This defaults to a function
+/// that sets the response to 401 and returns a JSON with `error` set to
+/// "Username or Password was wrong".
+/// Both `onSuccess` and `onError` should take request and result as arguments.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.login('/login', {
+///       onSuccess: function (req, res) {
+///         res.json({"success": true});
+///       }
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  login: function (route, opts) {
+    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+      auth = this.auth,
+      users = new foxxAuthentication.Users(this.applicationContext),
+      options = _.defaults(opts || {}, defaultsFor.login);
+
+    this.post(route, function (req, res) {
+      var username = req.body()[options.usernameField],
+        password = req.body()[options.passwordField];
+
+      if (users.isValid(username, password)) {
+        req.currentSession = auth.beginSession(req, res, username, {});
+        req.user = users.get(req.currentSession.identifier);
+        options.onSuccess(req, res);
+      } else {
+        options.onError(req, res);
+      }
+    });
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_logout
+/// @brief Add a logout handler
+///
+/// @FUN{FoxxController::logout(@FA{path}, @FA{opts})}
+///
+/// This works pretty similar to the logout function and adds a path to your
+/// app for the logout functionality. You can customize it with a custom `onSuccess`
+/// and `onError` function:
+/// `onSuccess` is a function that you can define to do something if the logout was
+/// successful. This includes sending a response to the user. This defaults to a
+/// function that returns a JSON with `message` set to "logged out".
+/// `onError` is a function that you can define to do something if the logout did not
+/// work. This includes sending a response to the user. This defaults to a function
+/// that sets the response to 401 and returns a JSON with `error` set to
+/// "No session was found".
+/// Both `onSuccess` and `onError` should take request and result as arguments.
+///
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.logout('/logout', {
+///       onSuccess: function (req, res) {
+///         res.json({"message": "Bye, Bye"});
+///       }
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  logout: function (route, opts) {
+    var auth = this.auth,
+      options = _.defaults(opts || {}, defaultsFor.logout);
+
+    this.post(route, function (req, res) {
+      if (is.existy(req.currentSession)) {
+        auth.endSession(req, res, req.currentSession._key);
+        req.user = null;
+        req.currentSession = null;
+        options.onSuccess(req, res);
+      } else {
+        options.onError(req, res);
+      }
+    });
   }
 });
 
-exports.Application = Application;
+exports.Controller = Controller;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

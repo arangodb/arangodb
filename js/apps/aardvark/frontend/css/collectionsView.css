@@ -11,7 +11,8 @@
 
 #newCollection {
   margin-left: 22px;
-  margin-top: 2px;
+  font-size: 25px;
+  margin-top: -3px;
   margin-right: 10px;
 }
 
@@ -33,7 +34,7 @@
   padding-left: 0px;
   padding-right: 0px;
   padding-bottom: 5px;
-  padding-top: 33px;
+  padding-top: 40px;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
@@ -72,7 +73,7 @@
   margin-top: 3px;
   padding: 2px;
   vertical-align: middle;
-  width:213px !important;
+  width:207px !important;
   border-radius: 0px 0px 0px 0px !important;
 }
 
@@ -231,11 +232,13 @@ border-top: 0;
 
 #collectionsDropdown .nav-header, #dashboardDropdown .nav-header, #foxxDropdown .nav-header {
   font-size: 13px;
+  font-weight: 400;
   color: black;
 }
 
 #collectionsDropdown label, #dashboardDropdown label, #foxxDropdown label{
   color: black;
+  font-weight: 300;
 }
 
 #collectionsDropdown ul, #dashboardDropdown ul, #foxxDropdown ul{
@@ -284,4 +287,8 @@ border-top: 0;
 #collectionsThumbnailsIn {
   background-color: none;
   margin-left: -7px;
+}
+
+#arangoCollectionsContainer {
+  padding-bottom: 0 !important;
 }

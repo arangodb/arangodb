@@ -1,5 +1,5 @@
 .foxxList {
-  padding-top: 30px;
+  padding-top: 25px;
 }
 
 .foxxList i:hover {
@@ -49,6 +49,7 @@
 }
 
 li.applicationList {
+  width: auto !important;
   margin-left: -17px;
   background-color: transparent;
   border: none;
@@ -61,8 +62,6 @@ li.applicationList {
   height: 36px !important;
   text-align: center;
   padding: 1px 0px;
-  margin-left: 5px;
-  margin-right: 5px;
 }
 
 .toggle-icon {
@@ -73,11 +72,16 @@ li.applicationList {
   background-color: #686766;
   opacity: 1;
   margin-left: 12px;
-  margin-right: 5px;
+  margin-right: -2px;
+  width: auto;
+}
+
+.foxxList i {
+  visibility: hidden;
 }
 
 .applicationList {
-  width: 100%;
+  width: 100% !important;
   padding-left: 10px;
   margin-bottom: 0px !important;
 }

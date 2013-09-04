@@ -10,7 +10,7 @@ window.arangoDocuments = Backbone.Collection.extend({
       offset: 0,
 
       url: '/_api/documents',
-      model: arangoDocument,
+      model: arangoDocumentModel,
       getFirstDocuments: function () {
         if (this.currentPage !== 1) {
           var link = window.location.hash.split("/");
@@ -80,6 +80,7 @@ window.arangoDocuments = Backbone.Collection.extend({
             self.clearDocuments();
             if (self.documentsCount !== 0) {
               $.each(data.result, function(k, v) {
+                //ERROR HERE
                 window.arangoDocumentsStore.add({
                   "id": v._id,
                   "rev": v._rev,

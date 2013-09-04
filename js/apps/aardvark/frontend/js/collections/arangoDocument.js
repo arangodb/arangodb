@@ -1,8 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, window, arangoDocument, $, arangoHelper */
+
 window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
-  model: arangoDocument,
+  model: arangoDocumentModel,
   collectionInfo: {},
   deleteEdge: function (colid, docid) {
     var returnval = false;
