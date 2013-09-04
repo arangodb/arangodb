@@ -14,9 +14,9 @@ window.Foxx = Backbone.Model.extend({
     'use strict';
 
     if (this.get("_key")) {
-      return "../aardvark/foxxes/" + this.get("_key");
+      return "/_admin/aardvark/foxxes/" + this.get("_key");
     }
-    return "../aardvark/foxxes/install";
+    return "/_admin/aardvark/foxxes/install";
   },
   
   isNew: function() {

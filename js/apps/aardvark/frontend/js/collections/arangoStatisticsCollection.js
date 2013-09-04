@@ -2,5 +2,5 @@
 /*global require, exports, Backbone, window */
 window.StatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
-  url: "../statistics"
+  url: "/_admin/statistics"
 });

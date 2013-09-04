@@ -317,7 +317,7 @@
     });
     
     // create the default route in the _routing collection
-    addTask("insertRedirectionToJsApps", "insert default route for admin interface", function () {
+    addTask("insertRedirectionForAllAdminInterfaces", "insert default route for admin interface", function () {
       var routing = getCollection("_routing");
 
       if (! routing) {
@@ -326,10 +326,13 @@
 
       // first, check for "old" redirects
       routing.toArray().forEach(function (doc) {
-        // check for a specific redirect
-        if (doc.url === '/' && doc.action.options.destination === '/_admin/html/index.html') {
-          // remove old, non-working redirect
-          routing.remove(doc);
+        // check for specific redirects
+        if (doc.url && doc.action && doc.action.options && doc.action.options.destination) {
+          if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) && 
+              doc.action.options.destination.match(/_admin\/(html|aardvark)/)) {
+            // remove old, non-working redirect
+            routing.remove(doc);
+          }
         }
       });
 
@@ -341,7 +344,7 @@
             "do": "org/arangodb/actions/redirectRequest",
             options: {
               permanently: true,
-              destination: "/_admin/aardvark/index.html"
+              destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
             }
           },
           priority: -1000000

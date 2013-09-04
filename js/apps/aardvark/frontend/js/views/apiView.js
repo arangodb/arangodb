@@ -10,8 +10,7 @@ window.apiView = Backbone.View.extend({
 
   initialize: function() {
     this.swaggerUi = new SwaggerUi({
-        discoveryUrl:"api-docs.json",
-
+        discoveryUrl: "api-docs.json",
         apiKey: false,
         dom_id:"swagger-ui-container",
         supportHeaderParams: true,

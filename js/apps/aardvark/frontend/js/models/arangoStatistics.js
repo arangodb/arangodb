@@ -7,6 +7,6 @@ window.Statistics = Backbone.Model.extend({
   url: function() {
     'use strict';
 
-    return "../statistics";
+    return "/_admin/statistics";
   }
 });

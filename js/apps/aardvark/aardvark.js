@@ -115,7 +115,7 @@ controller.get('/foxxes', function (req, res) {
 // .............................................................................
   
 controller.get('/docus', function (req, res) {
-  res.json(docus.list("http://" + req.headers.host + req.path + "/"));
+  res.json(docus.list(req.protocol + "://" + req.headers.host + "/_db/" + req.database + req.path + "/"));
 }).summary("List documentation of all foxxes.")
   .notes("This function simply returns the list of all running"
        + " foxxes and supplies the paths for the swagger documentation");
@@ -125,9 +125,9 @@ controller.get('/docus', function (req, res) {
 // .............................................................................
   
 controller.get("/docu/:key",function (req, res) {
-  var subPath = req.path.substr(0,req.path.lastIndexOf("[")-1),
+  var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
     key = req.params("key"),
-    path = "http://" + req.headers.host + subPath + "/" + key + "/";
+    path = req.protocol + "://" + req.headers.host + "/_db/" + req.database + subPath + "/" + key + "/";
   res.json(docus.listOne(path, key));
 }).summary("List documentation of all foxxes.")
   .notes("This function simply returns one specific"

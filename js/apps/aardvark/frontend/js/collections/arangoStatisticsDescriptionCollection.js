@@ -2,7 +2,7 @@
 /*global require, exports, Backbone, window */
 window.StatisticsDescription = Backbone.Collection.extend({
   model: window.StatisticsDescription,
-  url: "../statistics-description",
+  url: "/_admin/statistics-description",
   parse: function(response) {
     return response;
   }
