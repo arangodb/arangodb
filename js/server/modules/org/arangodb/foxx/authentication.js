@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, regexp: true, plusplus: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,34 +28,41 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var db = require("org/arangodb").db;
-var crypto = require("org/arangodb/crypto");
-var internal = require("internal");
-var is = require("org/arangodb/is");
-var _ = require("underscore");
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
-
-var defaultsFor = {},
+var arangodb = require("org/arangodb"),
+  db = require("org/arangodb").db,
+  crypto = require("org/arangodb/crypto"),
+  internal = require("internal"),
+  is = require("org/arangodb/is"),
+  _ = require("underscore"),
+  errors = require("internal").errors,
+  defaultsFor = {},
   checkAuthenticationOptions,
   createStandardLoginHandler,
   createStandardLogoutHandler,
   createAuthenticationMiddleware,
   createSessionUpdateMiddleware,
-  createAuthObject;
+  createAuthObject,
+  generateToken,
+  cloneDocument,
+  checkPassword,
+  encodePassword,
+  Users,
+  Sessions,
+  CookieAuthentication,
+  Authentication,
+  UnauthorizedError;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
 
 createAuthenticationMiddleware = function (auth, applicationContext) {
   'use strict';
-  var foxxAuthentication = require("org/arangodb/foxx/authentication");
-
   return function (req, res) {
-    var users = new foxxAuthentication.Users(applicationContext),
+    var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
 
-    if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
+    if (authResult.errorNum === errors.ERROR_NO_ERROR) {
       req.currentSession = authResult.session;
       req.user = users.get(authResult.session.identifier);
     } else {
@@ -78,24 +85,23 @@ createSessionUpdateMiddleware = function () {
 
 createAuthObject = function (applicationContext, opts) {
   'use strict';
-  var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-    sessions,
+  var sessions,
     cookieAuth,
     auth,
     options = opts || {};
 
   checkAuthenticationOptions(options);
 
-  sessions = new foxxAuthentication.Sessions(applicationContext, {
+  sessions = new Sessions(applicationContext, {
     lifetime: options.sessionLifetime
   });
 
-  cookieAuth = new foxxAuthentication.CookieAuthentication(applicationContext, {
+  cookieAuth = new CookieAuthentication(applicationContext, {
     lifetime: options.cookieLifetime,
     name: options.cookieName
   });
 
-  auth = new foxxAuthentication.Authentication(applicationContext, sessions, cookieAuth);
+  auth = new Authentication(applicationContext, sessions, cookieAuth);
 
   return auth;
 };
@@ -197,17 +203,17 @@ createStandardLogoutHandler = function (auth, opts) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function generateToken () {
+generateToken = function () {
   'use strict';
 
   return internal.genRandomAlphaNumbers(32);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deep-copies a document
 ////////////////////////////////////////////////////////////////////////////////
 
-function cloneDocument (obj) {
+cloneDocument = function (obj) {
   "use strict";
 
   if (obj === null || typeof(obj) !== "object") {
@@ -231,26 +237,26 @@ function cloneDocument (obj) {
   }
 
   return copy;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the plain text password matches the encoded one
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkPassword (plain, encoded) {
+checkPassword = function (plain, encoded) {
   'use strict';
 
   var salted = encoded.substr(3, 8) + plain;
   var hex = crypto.sha256(salted);
 
   return (encoded.substr(12) === hex);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encodes a password
 ////////////////////////////////////////////////////////////////////////////////
 
-function encodePassword (password) {
+encodePassword = function (password) {
   'use strict';
 
   var salt;
@@ -270,7 +276,7 @@ function encodePassword (password) {
   encoded = "$1$" + salt + "$" + crypto.sha256(salt + password);
    
   return encoded;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -293,7 +299,7 @@ function encodePassword (password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function Users (applicationContext, options) {
+Users = function (applicationContext, options) {
   'use strict';
 
   this._options = options || { };
@@ -305,7 +311,7 @@ function Users (applicationContext, options) {
   else {
     this._collectionName = applicationContext.collectionName("users");
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -657,7 +663,7 @@ Users.prototype.isValid = function (identifier, password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
   
-function Sessions (applicationContext, options) {
+Sessions = function (applicationContext, options) {
   'use strict';
 
   this._applicationContext = applicationContext;
@@ -674,7 +680,7 @@ function Sessions (applicationContext, options) {
   else {
     this._collectionName = applicationContext.collectionName("sessions");
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -694,6 +700,7 @@ function Sessions (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype._toObject = function (session) {
+  'use strict';
   var that = this;
 
   return {
@@ -936,7 +943,7 @@ Sessions.prototype.get = function (token) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function CookieAuthentication (applicationContext, options) {
+CookieAuthentication = function (applicationContext, options) {
   'use strict';
 
   options = options || { };
@@ -954,7 +961,7 @@ function CookieAuthentication (applicationContext, options) {
   
   this._collectionName = applicationContext.collectionName("sessions");
   this._collection = null;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1105,7 +1112,7 @@ CookieAuthentication.prototype.isResponsible = function (req) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function Authentication (applicationContext, sessions, authenticators) {
+Authentication = function (applicationContext, sessions, authenticators) {
   'use strict';
 
   this._applicationContext = applicationContext;
@@ -1116,7 +1123,7 @@ function Authentication (applicationContext, sessions, authenticators) {
   }
 
   this._authenticators = authenticators;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1240,11 +1247,11 @@ Authentication.prototype.updateSession = function (req, res, session) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function UnauthorizedError (message) {
+UnauthorizedError = function (message) {
   'use strict';
   this.message = message || "Unauthorized";
   this.statusCode = 401;
-}
+};
 
 // http://stackoverflow.com/questions/783818/how-do-i-create-a-custom-error-in-javascript
 UnauthorizedError.prototype = new Error();
