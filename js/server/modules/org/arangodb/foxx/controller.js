@@ -35,42 +35,7 @@ var Controller,
   _ = require("underscore"),
   extend = _.extend,
   is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals"),
-  defaultsFor = {};
-
-defaultsFor.login = {
-  usernameField: "username",
-  passwordField: "password",
-
-  onSuccess: function (req, res) {
-    res.json({
-      user: req.user.identifier,
-      key: req.currentSession._key
-    });
-  },
-
-  onError: function (req, res) {
-    res.status(401);
-    res.json({
-      error: "Username or Password was wrong"
-    });
-  }
-};
-
-defaultsFor.logout = {
-  onSuccess: function (req, res) {
-    res.json({
-      notice: "Logged out!",
-    });
-  },
-
-  onError: function (req, res) {
-    res.status(401);
-    res.json({
-      error: "No session was found"
-    });
-  }
-};
+  internal = require("org/arangodb/foxx/internals");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Controller
@@ -427,6 +392,31 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getUsers
+/// @brief Get the users of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getUsers: function () {
+    'use strict';
+    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+      users = new foxxAuthentication.Users(this.applicationContext);
+
+    return users;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getAuth
+/// @brief Get the auth object of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getAuth: function () {
+    'use strict';
+    if (is.notExisty(this.auth)) {
+      throw new Error("Setup authentication first");
+    }
+
+    return this.auth;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_controller_activateAuthentication
 /// @brief Activate authentication for this app
 ///
@@ -453,57 +443,12 @@ extend(Controller.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
-    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-      sessions,
-      cookieAuth,
-      app = this,
-      applicationContext = this.applicationContext,
-      options = opts || {};
+    'use strict';
+    var authentication = require("org/arangodb/foxx/authentication");
 
-    if (options.type !== "cookie") {
-      throw new Error("Currently only the following auth types are supported: cookie");
-    }
-    if (is.falsy(options.cookieLifetime)) {
-      throw new Error("Please provide the cookieLifetime");
-    }
-    if (is.falsy(options.cookieName)) {
-      throw new Error("Please provide the cookieName");
-    }
-    if (is.falsy(options.sessionLifetime)) {
-      throw new Error("Please provide the sessionLifetime");
-    }
-
-    sessions = new foxxAuthentication.Sessions(this.applicationContext, {
-      lifetime: options.sessionLifetime
-    });
-
-    cookieAuth = new foxxAuthentication.CookieAuthentication(this.applicationContext, {
-      lifetime: options.cookieLifetime,
-      name: options.cookieName
-    });
-
-    this.auth = new foxxAuthentication.Authentication(this.applicationContext, sessions, cookieAuth);
-
-    this.before("/*", function (req, res) {
-      var users = new foxxAuthentication.Users(applicationContext),
-        authResult = app.auth.authenticate(req);
-
-      if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
-        req.currentSession = authResult.session;
-        req.user = users.get(authResult.session.identifier);
-      } else {
-        req.currentSession = null;
-        req.user = null;
-      }
-    });
-
-    this.after("/*", function (req, res) {
-      var session = req.currentSession;
-
-      if (is.existy(session)) {
-        session.update();
-      }
-    });
+    this.auth = authentication.createAuthObject(this.applicationContext, opts);
+    this.before("/*", authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
+    this.after("/*", authentication.createSessionUpdateMiddleware());
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -538,23 +483,9 @@ extend(Controller.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
-    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-      auth = this.auth,
-      users = new foxxAuthentication.Users(this.applicationContext),
-      options = _.defaults(opts || {}, defaultsFor.login);
-
-    this.post(route, function (req, res) {
-      var username = req.body()[options.usernameField],
-        password = req.body()[options.passwordField];
-
-      if (users.isValid(username, password)) {
-        req.currentSession = auth.beginSession(req, res, username, {});
-        req.user = users.get(req.currentSession.identifier);
-        options.onSuccess(req, res);
-      } else {
-        options.onError(req, res);
-      }
-    });
+    'use strict';
+    var authentication = require("org/arangodb/foxx/authentication");
+    this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,19 +518,9 @@ extend(Controller.prototype, {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
-    var auth = this.auth,
-      options = _.defaults(opts || {}, defaultsFor.logout);
-
-    this.post(route, function (req, res) {
-      if (is.existy(req.currentSession)) {
-        auth.endSession(req, res, req.currentSession._key);
-        req.user = null;
-        req.currentSession = null;
-        options.onSuccess(req, res);
-      } else {
-        options.onError(req, res);
-      }
-    });
+    'use strict';
+    var authentication = require("org/arangodb/foxx/authentication");
+    this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
   }
 });
 

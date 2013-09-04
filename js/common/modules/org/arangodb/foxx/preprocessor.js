@@ -2,7 +2,7 @@
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx application
+/// @brief Foxx Preprocessor
 ///
 /// @file
 ///
@@ -28,8 +28,8 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Transformer,
-  transform,
+var Preprocessor,
+  preprocess,
   ArrayIterator,
   extend = require("underscore").extend;
 
@@ -74,13 +74,13 @@ extend(ArrayIterator.prototype, {
   }
 });
 
-Transformer = function (input) {
+Preprocessor = function (input) {
   'use strict';
   this.iterator = new ArrayIterator(input.split("\n"));
   this.inJSDoc = false;
 };
 
-extend(Transformer.prototype, {
+extend(Preprocessor.prototype, {
   result: function () {
     'use strict';
     return this.iterator.entireString();
@@ -140,17 +140,17 @@ extend(Transformer.prototype, {
   }
 });
 
-transform = function (input) {
+preprocess = function (input) {
   'use strict';
-  var transformer = new Transformer(input);
-  return transformer.convert().result();
+  var processer = new Preprocessor(input);
+  return processer.convert().result();
 };
 
-// Only Exported for Tests, please use `transform`
-exports.Transformer = Transformer;
+// Only Exported for Tests, please use `process`
+exports.Preprocessor = Preprocessor;
 
-// transform(str) returns the transformed String
-exports.transform = transform;
+// process(str) returns the processed String
+exports.preprocess = preprocess;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
