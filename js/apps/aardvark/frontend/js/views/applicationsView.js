@@ -39,7 +39,6 @@ window.ApplicationsView = Backbone.View.extend({
   },
 
   slideToggle: function() {
-    console.log("toggled");
     $('#foxxDropdownOut').slideToggle(200);
   },
 

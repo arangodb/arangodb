@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, window, Backbone, arangoDocument, _, $*/
+/*global require, exports, window, Backbone, arangoDocumentModel, _, $*/
 
 window.arangoDocuments = Backbone.Collection.extend({
       currentPage: 1,
