@@ -52,7 +52,10 @@ namespace triagens {
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, 
                                         double requestTimeout, 
                                         bool warn) :
-      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
+      SimpleClient(connection, requestTimeout, warn), 
+      _result(0), 
+      _maxPacketSize(128 * 1024 * 1024),
+      _keepAlive(true) {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -238,7 +241,12 @@ namespace triagens {
       _writeBuffer.appendText(hostname);
       _writeBuffer.appendText("\r\n");
 
-      _writeBuffer.appendText("Connection: Keep-Alive\r\n");
+      if (_keepAlive) {
+        _writeBuffer.appendText("Connection: Keep-Alive\r\n");
+      }
+      else {
+        _writeBuffer.appendText("Connection: Close\r\n");
+      }
       _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
       _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
       

@@ -86,10 +86,6 @@ struct VersionTest : public BenchmarkOperation {
     return payload;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,10 +198,6 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,10 +313,6 @@ struct DocumentCrudTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,10 +430,6 @@ struct EdgeCrudTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,10 +533,6 @@ struct SkiplistTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,10 +636,6 @@ struct HashTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -725,11 +701,6 @@ struct DocumentCreationTest : public BenchmarkOperation {
     *mustFree = false;
     *length = _length;
     return (const char*) _buffer->_buffer;
-  }
-
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
   }
 
   string _url;
@@ -809,11 +780,6 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
     *mustFree = true;
     return (const char*) data;
-  }
-
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
   }
 
   static BenchmarkCounter<uint64_t>* _counter;
@@ -928,11 +894,6 @@ struct TransactionAqlTest : public BenchmarkOperation {
     return (const char*) ptr;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
   string _c1;
   string _c2;
   string _c3;
@@ -991,11 +952,6 @@ struct TransactionCountTest : public BenchmarkOperation {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return (const char*) ptr;
-  }
-
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
   }
 
 };
@@ -1082,11 +1038,6 @@ struct TransactionMultiTest : public BenchmarkOperation {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return (const char*) ptr;
-  }
-
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
   }
 
   string _c1;

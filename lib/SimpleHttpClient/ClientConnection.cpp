@@ -182,6 +182,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   }
 
   int res = select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv);
+
   if (res > 0) {
     return true;
   }
@@ -217,6 +218,10 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
   int status = ::send(_socket.fileHandle, buffer, length, MSG_NOSIGNAL);
 #endif
 
+  if (status < 0) {
+    TRI_set_errno(errno);
+    return false;
+  }
 
   *bytesWritten = status;
 

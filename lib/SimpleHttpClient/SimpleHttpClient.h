@@ -97,6 +97,14 @@ namespace triagens {
 
       virtual void reset ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enable or disable keep-alive
+////////////////////////////////////////////////////////////////////////////////
+
+      void setKeepAlive (bool value) {
+        _keepAlive = value;
+      }
+
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +163,8 @@ namespace triagens {
       std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
 
       const size_t _maxPacketSize;
+
+      bool _keepAlive;
       
       rest::HttpRequest::HttpRequestType _method;
 
