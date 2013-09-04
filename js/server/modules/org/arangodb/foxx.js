@@ -28,11 +28,11 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Application = require("org/arangodb/foxx/application").Application,
+var Controller = require("org/arangodb/foxx/controller").Controller,
   Model = require("org/arangodb/foxx/model").Model,
   Repository = require("org/arangodb/foxx/repository").Repository;
 
-exports.Application = Application;
+exports.Controller = Controller;
 exports.Model = Model;
 exports.Repository = Repository;
 

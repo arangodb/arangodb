@@ -9,7 +9,7 @@ Foxx: Build APIs and simple web applications in ArangoDB{#UserManualFoxxIntro}
 
 Foxx is an easy way to create APIs and simple web applications from within 
 ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If 
-FoxxApplication is Sinatra, @ref UserManualActions are the corresponding `Rack`. 
+Foxx is Sinatra, @ref UserManualActions are the corresponding `Rack`. 
 They provide all the HTTP goodness.
 
 If you just want to install an existiting application, please use the 
@@ -36,7 +36,7 @@ After that, create a sub-directory `my_app` in the `apps` directory and
 save the following content in a file named `app.js` there:
 
     var Foxx = require("org/arangodb/foxx");
-    var app = new Foxx.Application(applicationContext);
+    var app = new Foxx.Controller(applicationContext);
     
     app.get("/meadow", function(req, res) {
       res.set("Content-Type", "text/plain");
@@ -104,37 +104,37 @@ If you do not redefine it, all requests that go to the root of your
 application will be redirected to `index.html`.
 
 
-Details on FoxxApplication{#UserManualFoxxDetailsApplication}
+Details on FoxxController{#UserManualFoxxDetailsController}
 =============================================================
 
-@copydetails JSF_foxx_application_initializer
+@copydetails JSF_foxx_controller_initializer
 
 HTTP Methods
 ------------
 
 ### Get
 
-@copydetails JSF_foxx_application_get
+@copydetails JSF_foxx_controller_get
 
 ### Head
 
-@copydetails JSF_foxx_application_head
+@copydetails JSF_foxx_controller_head
 
 ### Post
 
-@copydetails JSF_foxx_application_post
+@copydetails JSF_foxx_controller_post
 
 ### Put
 
-@copydetails JSF_foxx_application_put
+@copydetails JSF_foxx_controller_put
 
 ### Patch
 
-@copydetails JSF_foxx_application_patch
+@copydetails JSF_foxx_controller_patch
 
 ### Delete
 
-@copydetails JSF_foxx_application_delete
+@copydetails JSF_foxx_controller_delete
 
 Documenting and Constraining the Routes
 ---------------------------------------
@@ -189,17 +189,17 @@ example).
 
 ### Before
 
-@copydetails JSF_foxx_application_before
+@copydetails JSF_foxx_controller_before
 
 ### After
 
-@copydetails JSF_foxx_application_after
+@copydetails JSF_foxx_controller_after
 
 
 The Request and Response Objects
 --------------------------------
 
-When you have created your FoxxApplication you can now define routes on it. 
+When you have created your FoxxController you can now define routes on it. 
 You provide each with a function that will handle the request. It gets two 
 arguments (four, to be honest. But the other two are not relevant for now):
 
@@ -381,7 +381,7 @@ The content is a JSON object with the following keys:
 * `repository`: An object with information about where you can find the repository: `type` and `url`
 * `keywords`: An array of keywords to help people find your Foxx app
 * `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
-* `apps`: Map routes to FoxxApplications
+* `apps`: Map routes to FoxxControllers
 * `lib`: Base path for all required modules
 * `files`: Deliver files
 * `assets`: Deliver pre-processed files
@@ -437,9 +437,9 @@ collections you have created.
 * The `key` is the route you want to mount at
 
 * The `value` is the path to the JavaScript file containing the
-  `FoxxApplication` you want to mount
+  `FoxxController` you want to mount
 
-You can add multiple applications in one manifest this way.
+You can add multiple controllers in one manifest this way.
 
 The `files`
 ------------
@@ -499,17 +499,17 @@ We will offer the option to process all assets at once and write the files
 to disk for production with the option to run `Uglify2.js` and similar 
 tools in order to compress them.
 
-Controlling Access to Foxx Applications
+Controlling Access to Foxx Controllers
 ---------------------------------------
 
-At the moment, access to Foxx applications is controlled by the regular 
+At the moment, access to Foxx.Controllers is controlled by the regular 
 authentication mechanisms present in ArangoDB.  The server can be run with 
 or without HTTP authentication.
 
-If authentication is turned off, all Foxx applications and routes will be 
+If authentication is turned off, all Foxx.Controllers and routes will be 
 callable by everyone with access to the server.  If authentication is turned on, 
 then every access to the server is authenticated via HTTP authentication. This 
-includes Foxx applications and routes. The global authentication can be toggled 
+includes Foxx.Controllers and routes. The global authentication can be toggled 
 via the configuration option @ref CommandLineArangoDisableAuthentication 
 "server.disable-authentication".
 
@@ -554,15 +554,15 @@ Authentication
 
 We built an authentication system you can use in your Foxx application (but you can of course roll your own if you want). Currently we only support cookie-based authentication, but we will add the possibility to use Auth Tokens and external OAuth providers in the near future. To use the authentication in your app, first activate it:
 
-@copydetails JSF_foxx_application_activateAuthentication
+@copydetails JSF_foxx_controller_activateAuthentication
 
 ### Adding a login route
 
-@copydetails JSF_foxx_application_login
+@copydetails JSF_foxx_controller_login
 
 ### Adding a logout route
 
-@copydetails JSF_foxx_application_logout
+@copydetails JSF_foxx_controller_logout
 
 ### Restricting routes
 
@@ -575,7 +575,7 @@ To use this plugin, please require it first:
 
   TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
 
-The `TemplateMiddleware` can be used to give a Foxx.Application the capability 
+The `TemplateMiddleware` can be used to give a Foxx.Controller the capability 
 of using templates. Currently you can only use Underscore Templates.  It 
 expects documents in the following form in this collection:
 
@@ -590,7 +590,7 @@ The `content` is the string that will be rendered by the template processor.
 The `contentType` is the type of content that results from this call. And with 
 the `templateLanguage` you can choose your template processor. There is only 
 one choice now: `underscore`.  Which would set the body of the response to 
-`hello Application` with the template defined above. It will also set the 
+`hello Controller` with the template defined above. It will also set the 
 `contentType` to `text/plain` in this case.  In addition to the attributes 
 you provided, you also have access to all your view helpers.
 

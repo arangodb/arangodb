@@ -167,7 +167,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_queryParam
 /// @brief Describe a Query Parameter
 ///
-/// @FUN{FoxxApplication::queryParam(@FA{id}, @FA{options})}
+/// @FUN{FoxxController::queryParam(@FA{id}, @FA{options})}
 ///
 /// Describe a query parameter:
 ///
@@ -211,7 +211,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
-/// @FUN{FoxxApplication::summary(@FA{description})}
+/// @FUN{FoxxController::summary(@FA{description})}
 ///
 /// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
@@ -230,7 +230,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_notes
 /// @brief Set the notes for this route in the documentation
 ///
-/// @FUN{FoxxApplication::notes(@FA{description})}
+/// @FUN{FoxxController::notes(@FA{description})}
 ///
 /// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_errorResponse
 /// @brief Define an error response
 ///
-/// @FUN{FoxxApplication::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+/// @FUN{FoxxController::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
 ///
 /// Define a reaction to a thrown error for this route: If your handler throws an error
 /// of the defined errorClass, it will be caught and the response will have the given
@@ -288,7 +288,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_onlyIf
 /// @brief Only let the request get through if a condition holds
 ///
-/// @FUN{FoxxApplication::onlyIf(@FA{check})}
+/// @FUN{FoxxController::onlyIf(@FA{check})}
 ///
 /// Provide it with a function that throws an exception if the normal processing should
 /// not be executed. Provide an `errorResponse` to define the behavior in this case.
@@ -313,7 +313,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_onlyIfAuthenticated
 /// @brief Only let the request get through if the user is logged in
 ///
-/// @FUN{FoxxApplication::onlyIf(@FA{code}, @FA{reason})}
+/// @FUN{FoxxController::onlyIf(@FA{code}, @FA{reason})}
 ///
 /// Please activate authentification for this app if you want to use this function.
 /// If the user is logged in, it will do nothing. Otherwise it will respond with
