@@ -164,7 +164,63 @@ function SetRoutesFoxxControllerSpec () {
       }
       assertEqual(error, new Error("URL has to be a String"));
       assertEqual(routes.length, 0);
-    }
+    },
+
+    testAddALoginRoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.activateAuthentication({
+        type: "cookie",
+        cookieLifetime: 360000,
+        cookieName: "my_cookie",
+        sessionLifetime: 400
+      });
+      app.login('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
+      assertEqual(routes[0].url.methods, ["post"]);
+    },
+
+    testRefuseLoginWhenAuthIsNotSetUp: function () {
+      var myFunc = function () {},
+        error;
+
+      try {
+        app.login('/simple/route', myFunc);
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, new Error("Setup authentication first"));
+    },
+
+    testAddALogoutRoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.activateAuthentication({
+        type: "cookie",
+        cookieLifetime: 360000,
+        cookieName: "my_cookie",
+        sessionLifetime: 400
+      });
+      app.logout('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
+      assertEqual(routes[0].url.methods, ["post"]);
+    },
+
+    testRefuseLogoutWhenAuthIsNotSetUp: function () {
+      var myFunc = function () {},
+        error;
+
+      try {
+        app.logout('/simple/route', myFunc);
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, new Error("Setup authentication first"));
+    },
   };
 }
 
