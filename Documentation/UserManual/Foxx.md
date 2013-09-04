@@ -51,7 +51,7 @@ following content:
       "name": "my_app",
       "version": "0.0.1",
       "author": "me and myself",
-      "apps": {
+      "controllers": {
         "/": "app.js"
       }
     }
@@ -381,7 +381,7 @@ The content is a JSON object with the following keys:
 * `repository`: An object with information about where you can find the repository: `type` and `url`
 * `keywords`: An array of keywords to help people find your Foxx app
 * `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
-* `apps`: Map routes to FoxxControllers
+* `controllers`: Map routes to FoxxControllers
 * `lib`: Base path for all required modules
 * `files`: Deliver files
 * `assets`: Deliver pre-processed files
@@ -431,7 +431,7 @@ script to create all collections your application needs and fill them with
 initial data if you want to. Use the `teardown` script to remove all 
 collections you have created.
 
-`apps` is an object that matches routes to files
+`controllers` is an object that matches routes to files
 ------------------------------------------------
 
 * The `key` is the route you want to mount at
