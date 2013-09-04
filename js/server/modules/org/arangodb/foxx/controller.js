@@ -2,7 +2,7 @@
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx application
+/// @brief Foxx Controller
 ///
 /// @file
 ///
@@ -28,7 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Application,
+var Controller,
   RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
@@ -73,16 +73,16 @@ defaultsFor.logout = {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Application
+// --SECTION--                                                       Controller
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_initializer
-/// @brief Create a new Application
+/// @fn JSF_foxx_controller_initializer
+/// @brief Create a new Controller
 ///
-/// @FUN{new FoxxApplication(@FA{applicationContext}, @FA{options})}
+/// @FUN{new FoxxController(@FA{applicationContext}, @FA{options})}
 ///
-/// This creates a new Application. The first argument is the application
+/// This creates a new Controller. The first argument is the controller
 /// context available in the variable `applicationContext`. The second one is an
 /// options array with the following attributes:
 ///
@@ -91,13 +91,13 @@ defaultsFor.logout = {
 /// @EXAMPLES
 ///
 /// @code
-///     app = new Application(applicationContext, {
+///     app = new Controller(applicationContext, {
 ///       urlPrefix: "/meadow"
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-Application = function (context, options) {
+Controller = function (context, options) {
   'use strict';
   var urlPrefix, baseMiddleware;
 
@@ -150,7 +150,7 @@ Application = function (context, options) {
   this.applicationContext = context;
 };
 
-extend(Application.prototype, {
+extend(Controller.prototype, {
   currentPriority: 0,
 
   collection: function (name) {
@@ -173,7 +173,7 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_handleRequest
+/// @fn JSF_foxx_controller_handleRequest
 /// @brief Handle a request
 ///
 /// The `handleRequest` method is the raw way to create a new route. You
@@ -206,10 +206,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_head
+/// @fn JSF_foxx_controller_head
 /// @brief Handle a `head` request
 ///
-/// @FUN{FoxxApplication::head(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::head(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `head`.  You have to give a
 /// function as @FA{callback}. It will get a request and response object as its
@@ -222,10 +222,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_get
+/// @fn JSF_foxx_controller_get
 /// @brief Manage a `get` request
 ///
-/// @FUN{FoxxApplication::get(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::get(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `get`.
 ///
@@ -249,10 +249,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_post
+/// @fn JSF_foxx_controller_post
 /// @brief Tackle a `post` request
 ///
-/// @FUN{FoxxApplication::post(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::post(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `post`.  See above for the
 /// arguments you can give.
@@ -272,10 +272,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_put
+/// @fn JSF_foxx_controller_put
 /// @brief Sort out a `put` request
 ///
-/// @FUN{FoxxApplication::put(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::put(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `put`.  See above for the arguments
 /// you can give.
@@ -295,10 +295,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_patch
+/// @fn JSF_foxx_controller_patch
 /// @brief Take charge of a `patch` request
 ///
-/// @FUN{FoxxApplication::patch(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::patch(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `patch`.  See above for the
 /// arguments you can give.
@@ -318,10 +318,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_delete
+/// @fn JSF_foxx_controller_delete
 /// @brief Respond to a `delete` request
 ///
-/// @FUN{FoxxApplication::delete(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::delete(@FA{path}, @FA{callback})}
 ///
 /// This handles requests from the HTTP verb `delete`.  See above for the
 /// arguments you can give.
@@ -354,10 +354,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_before
+/// @fn JSF_foxx_controller_before
 /// @brief Before
 ///
-/// @FUN{FoxxApplication::before(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::before(@FA{path}, @FA{callback})}
 ///
 /// The before function takes a @FA{path} on which it should watch and a
 /// function that it should execute before the routing takes place. If you do
@@ -393,10 +393,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_after
+/// @fn JSF_foxx_controller_after
 /// @brief After
 ///
-/// @FUN{FoxxApplication::after(@FA{path}, @FA{callback})}
+/// @FUN{FoxxController::after(@FA{path}, @FA{callback})}
 ///
 /// This works pretty similar to the before function.  But it acts after the
 /// execution of the handlers (Big surprise, I suppose).
@@ -427,10 +427,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_activateAuthentication
+/// @fn JSF_foxx_controller_activateAuthentication
 /// @brief Activate authentication for this app
 ///
-/// @FUN{FoxxApplication::activateAuthentication(@FA{opts})}
+/// @FUN{FoxxController::activateAuthentication(@FA{opts})}
 ///
 /// To activate authentication for this authentication, first call this function.
 /// Provide the following arguments:
@@ -507,10 +507,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_login
+/// @fn JSF_foxx_controller_login
 /// @brief Add a login handler
 ///
-/// @FUN{FoxxApplication::login(@FA{path}, @FA{opts})}
+/// @FUN{FoxxController::login(@FA{path}, @FA{opts})}
 ///
 /// Add a route for the login. You can provide further customizations via the
 /// the options:
@@ -558,10 +558,10 @@ extend(Application.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_application_logout
+/// @fn JSF_foxx_controller_logout
 /// @brief Add a logout handler
 ///
-/// @FUN{FoxxApplication::logout(@FA{path}, @FA{opts})}
+/// @FUN{FoxxController::logout(@FA{path}, @FA{opts})}
 ///
 /// This works pretty similar to the logout function and adds a path to your
 /// app for the logout functionality. You can customize it with a custom `onSuccess`
@@ -603,7 +603,7 @@ extend(Application.prototype, {
   }
 });
 
-exports.Application = Application;
+exports.Controller = Controller;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

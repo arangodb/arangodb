@@ -99,7 +99,7 @@ function BaseMiddlewareSpec () {
         error = e;
       }
 
-      assertEqual(error, new Error("No template collection has been provided when creating a new FoxxApplication"));
+      assertEqual(error, new Error("No template collection has been provided when creating a new FoxxController"));
     },
 
     testMiddlewareCallsTheAction: function () {
