@@ -590,6 +590,11 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& HttpRequest::databaseName () const {
+  if (_databaseName == "") {
+    static const string defaultName("_system");
+ 
+    return defaultName;
+  }
   return _databaseName;
 }
 

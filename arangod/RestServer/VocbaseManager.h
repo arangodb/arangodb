@@ -87,10 +87,10 @@ namespace triagens {
           _freeVocbases() {
 
           // allocate some space for collection pointers that we need to remove later
-          _freeCollections = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+          _freeCollections = (TRI_vector_pointer_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
           if (_freeCollections != 0) {
-            TRI_InitVectorPointer(_freeCollections, TRI_UNKNOWN_MEM_ZONE);
+            TRI_InitVectorPointer(_freeCollections, TRI_CORE_MEM_ZONE);
           }
         };
 
@@ -98,7 +98,7 @@ namespace triagens {
           // if we have buffered some collections, we must now free them
           if (_freeCollections != 0) {
             TRI_FreeCollectionsVocBase(_freeCollections);
-            TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, _freeCollections);
+            TRI_FreeVectorPointer(TRI_CORE_MEM_ZONE, _freeCollections);
           }
           
           // on shutdown, we'll free all vocbases we had collected

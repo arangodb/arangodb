@@ -124,7 +124,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete(location)
 
@@ -157,7 +157,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         cmd = "/_api/document/#{did}"
         doc = ArangoDB.log_get("#{prefix}-complex", cmd)
@@ -197,7 +197,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         cmd = "/_api/document/#{did}"
         doc = ArangoDB.log_get("#{prefix}-umlaut", cmd)
@@ -243,7 +243,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         cmd = "/_api/document/#{did}"
         doc = ArangoDB.log_get("#{prefix}-umlaut", cmd)
@@ -294,7 +294,7 @@ describe ArangoDB do
 
         match[1].should eq("#{@cn}")
 
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
@@ -361,7 +361,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete(location)
 
@@ -394,7 +394,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete(location)
 
@@ -427,7 +427,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete(location)
 
@@ -475,7 +475,7 @@ describe ArangoDB do
         match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete(location)
 
@@ -530,7 +530,7 @@ describe ArangoDB do
         did.should be_kind_of(String)
         
         etag.should eq("\"#{rev}\"")
-        location.should eq("/_api/document/#{did}")
+        location.should eq("/_db/_system/_api/document/#{did}")
 
         ArangoDB.delete(location)
 
