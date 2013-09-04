@@ -42,6 +42,36 @@ var API = "_api/database";
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieves a list of all existing databases
+///
+/// @RESTHEADER{GET /_api/database,retrieves a list of all existing databases}
+///
+/// @RESTDESCRIPTION
+/// Retrieves a list of all existing databases
+///
+/// Note: retrieving the list of databases is only possible from within the `_system` database.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the database was dropped successfully.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the database could not be found.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGet}
+///     var url = "/_api/database";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
 function get_api_database (req, res) {
   if (req.suffix.length !== 0) { 
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
@@ -52,6 +82,41 @@ function get_api_database (req, res) {
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new database
+///
+/// @RESTHEADER{POST /_api/database,creates a new database}
+///
+/// @RESTDESCRIPTION
+/// Creates a new database
+///
+/// Note: creating a new database is only possible from within the `_system` database.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the database was created successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the request parameters are invalid or if a database with the 
+/// specified name or path already exists.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreate}
+///     var url = "/_api/database";
+///     var data = {
+///       name: "example"
+///     };
+///     var response = logCurlRequest('POST', url, JSON.stringify(data));
+///
+///     db._dropDatabase("example"); 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
 
 function post_api_database (req, res) {
   if (req.suffix.length !== 0) { 
@@ -81,6 +146,43 @@ function post_api_database (req, res) {
 
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop an existing database
+///
+/// @RESTHEADER{DELETE /_api/database/`database-name`,drops an existing database}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{database-name,string,required}
+/// The name of the database
+///
+/// @RESTDESCRIPTION
+/// Deletes the database along with all data stored in it.
+///
+/// Note: dropping a database is only possible from within the `_system` database.
+/// The `_system` database itself cannot be dropped.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the database was dropped successfully.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the database could not be found.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDatabaseDrop}
+///     var url = "/_api/database";
+///     db._createDatabase("example");
+///     var response = logCurlRequest('DELETE', url + "/test");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_database (req, res) {
   if (req.suffix.length !== 1) { 

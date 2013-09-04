@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, TRANSACTION */
+/*global require, exports, TRANSACTION, CREATE_DATABASE, DROP_DATABASE, USE_DATABASE, 
+  LIST_DATABASES */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -139,17 +140,17 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._createDatabase = function (name, path, options) { 
-  return CREATE_DATABASE(name, path, options);
-}
+ArangoDatabase.prototype._createDatabase = function (name, options) { 
+  return CREATE_DATABASE(name, options);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete an existing database
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropDatabase = function (name) {
-  return DELETE_DATABASE(name);
-}
+  return DROP_DATABASE(name);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists all existing databases
@@ -157,7 +158,7 @@ ArangoDatabase.prototype._dropDatabase = function (name) {
 
 ArangoDatabase.prototype._listDatabases = function () {
   return LIST_DATABASES();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a different database
@@ -165,7 +166,7 @@ ArangoDatabase.prototype._listDatabases = function () {
 
 ArangoDatabase.prototype._useDatabase = function (name) {
   return USE_DATABASE(name);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

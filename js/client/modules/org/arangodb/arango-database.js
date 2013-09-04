@@ -809,10 +809,9 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._createDatabase = function (name, path, options) {  
+ArangoDatabase.prototype._createDatabase = function (name, options) {  
   var data = {
     name: name,
-    path: path,
     options: options || { } 
   };
   

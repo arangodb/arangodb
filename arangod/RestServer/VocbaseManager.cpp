@@ -166,7 +166,7 @@ TRI_vocbase_t* VocbaseManager::lookupVocbaseByName (string const& name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if name and path is not used
+/// @brief check if name and path are not used
 ////////////////////////////////////////////////////////////////////////////////
 
 int VocbaseManager::canAddVocbase (std::string const& name, 

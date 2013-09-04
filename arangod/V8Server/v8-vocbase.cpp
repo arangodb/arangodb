@@ -7715,8 +7715,8 @@ static v8::Handle<v8::Value> saveToCollection (TRI_vocbase_t* vocbase,
 static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<name>, <path>, <options>)");
+  if (argv.Length() < 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_DATABASE(<name>, <options>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -7730,7 +7730,7 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   }
 
   const string name = TRI_ObjectToString(argv[0]);
-  const string path = TRI_ObjectToString(argv[1]);
+  const string path = string(vocbase->_path) + TRI_DIR_SEPARATOR_STR + "databases" + TRI_DIR_SEPARATOR_STR + name;
 
   // we need a lock around the checks and the actual creation, otherwise the
   // same database might be created multiple times
@@ -7759,8 +7759,8 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
   TRI_GetDefaultsVocBase(vocbase, &defaults);
   
   // overwrite database defaults from argv[2]
-  if (argv.Length() > 2 && argv[2]->IsObject()) {
-    v8::Handle<v8::Object> options = argv[2]->ToObject();
+  if (argv.Length() > 1 && argv[1]->IsObject()) {
+    v8::Handle<v8::Object> options = argv[1]->ToObject();
 
     if (options->Has(keyRemoveOnDrop)) {
       defaults.removeOnDrop = options->Get(keyRemoveOnDrop)->BooleanValue();
@@ -7875,14 +7875,14 @@ static v8::Handle<v8::Value> JS_CreateUserVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete an existing database
 ///
-/// @FUN{DELETE_DATABASE}
+/// @FUN{DROP_DATABASE}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DeleteUserVocbase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_DropUserVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "DELETE_DATABASE(<name>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "DROP_DATABASE(<name>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -8832,7 +8832,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase, true);  
   TRI_AddGlobalFunctionVocbase(context, "LIST_DATABASES", JS_ListVocbases, true);  
   TRI_AddGlobalFunctionVocbase(context, "CREATE_DATABASE", JS_CreateUserVocbase, true);
-  TRI_AddGlobalFunctionVocbase(context, "DELETE_DATABASE", JS_DeleteUserVocbase, true);
+  TRI_AddGlobalFunctionVocbase(context, "DROP_DATABASE", JS_DropUserVocbase, true);
   TRI_AddGlobalFunctionVocbase(context, "ADD_ENDPOINT", JS_AddEndpoint, true);
   
   // .............................................................................

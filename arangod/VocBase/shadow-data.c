@@ -579,6 +579,7 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const store,
             (unsigned long long) shadow->_id);
 
     TRI_LockMutex(&store->_lock);
+
     if (TRI_InsertKeyAssociativePointer(&store->_ids, &shadow->_id, shadow, false)) {
       // duplicate entry
       LOG_WARNING("storing shadow failed");

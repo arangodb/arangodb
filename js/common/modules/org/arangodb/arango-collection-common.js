@@ -154,7 +154,7 @@ ArangoCollection.prototype._PRINT = function (context) {
   if (useColor) { context.output += colors.COLOR_RESET; }
   context.output += ", \"";
   if (useColor) { context.output += colors.COLOR_STRING; }
-  context.output += name ? name : "unknown";
+  context.output += name || "unknown";
   if (useColor) { context.output += colors.COLOR_RESET; }
   context.output += "\" (type " + type + ", status " + status + ")]";
 };

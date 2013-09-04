@@ -98,7 +98,7 @@ Command-Line Options for arangod {#CommandLineArangod}
 
 @CLEARPAGE
 @anchor CommandLineArangoDisableAuthentication
-@copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+@copydetails triagens::arango::ArangoServer::_disableAuthentication
 
 @CLEARPAGE
 @anchor CommandLineArangoAuthenticateSystemOnly
