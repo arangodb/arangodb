@@ -486,6 +486,18 @@
       return result;
     });
 
+    addTask("removeOldFoxxRoutes", "Remove all old Foxx Routes", function () {
+      var potentialFoxxes = getCollection('_routing');
+
+      potentialFoxxes.iterate(function (maybeFoxx) {
+        if (maybeFoxx.foxxMount) {
+          // This is a Foxx! Let's delete it
+          potentialFoxxes.remove(maybeFoxx._id);
+        }
+      });
+
+      return true;
+    });
 
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "
