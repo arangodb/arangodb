@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, plusplus: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, plusplus: true, continue: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,12 +215,12 @@ generateToken = function () {
 
 cloneDocument = function (obj) {
   "use strict";
+  var copy, a;
 
   if (obj === null || typeof obj !== "object") {
     return obj;
   }
 
-  var copy, a;
   if (Array.isArray(obj)) {
     copy = [];
     obj.forEach(function (i) {
@@ -244,9 +244,8 @@ cloneDocument = function (obj) {
 
 checkPassword = function (plain, encoded) {
   'use strict';
-
-  var salted = encoded.substr(3, 8) + plain;
-  var hex = crypto.sha256(salted);
+  var salted = encoded.substr(3, 8) + plain,
+    hex = crypto.sha256(salted);
 
   return (encoded.substr(12) === hex);
 };
@@ -257,11 +256,11 @@ checkPassword = function (plain, encoded) {
 
 encodePassword = function (password) {
   'use strict';
+  var salt,
+    encoded,
+    random;
 
-  var salt;
-  var encoded;
-
-  var random = crypto.rand();
+  random = crypto.rand();
   if (random === undefined) {
     random = "time:" + internal.time();
   } else {
@@ -384,14 +383,14 @@ Users.prototype._validateIdentifier = function (identifier, allowObject) {
 
 Users.prototype.setup = function (options) {
   'use strict';
-
-  var journalSize;
+  var journalSize,
+    createOptions;
 
   if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
     journalSize = options.journalSize;
   }
 
-  var createOptions = {
+  createOptions = {
     journalSize : journalSize || 2 * 1024 * 1024
   };
 
@@ -408,7 +407,6 @@ Users.prototype.setup = function (options) {
 
 Users.prototype.teardown = function () {
   'use strict';
-
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -432,8 +430,9 @@ Users.prototype.flush = function () {
 
 Users.prototype.add = function (identifier, password, active, data) {
   'use strict';
+  var c = this.storage(),
+    user;
 
-  var c = this.storage();
   identifier = this._validateIdentifier(identifier, false);
 
   if (typeof password !== 'string') {
@@ -447,7 +446,7 @@ Users.prototype.add = function (identifier, password, active, data) {
     active = true;
   }
 
-  var user = {
+  user = {
     identifier: identifier,
     password:   encodePassword(password),
     active:     active,
@@ -459,8 +458,8 @@ Users.prototype.add = function (identifier, password, active, data) {
       write: c.name()
     },
     action: function (params) {
-      var c = db._collection(params.cn);
-      var u = c.firstExample({ identifier: params.user.identifier });
+      var c = db._collection(params.cn),
+        u = c.firstExample({ identifier: params.user.identifier });
 
       if (u === null) {
         c.save(params.user);
@@ -485,8 +484,8 @@ Users.prototype.add = function (identifier, password, active, data) {
 
 Users.prototype.updateData = function (identifier, data) {
   'use strict';
-
   var c = this.storage();
+
   identifier = this._validateIdentifier(identifier, true);
 
   db._executeTransaction({
@@ -494,8 +493,8 @@ Users.prototype.updateData = function (identifier, data) {
       write: c.name()
     },
     action: function (params) {
-      var c = db._collection(params.cn);
-      var u = c.firstExample({ identifier: params.identifier });
+      var c = db._collection(params.cn),
+        u = c.firstExample({ identifier: params.identifier });
 
       if (u === null) {
         throw new Error("user not found");
@@ -518,18 +517,20 @@ Users.prototype.updateData = function (identifier, data) {
 
 Users.prototype.setActive = function (identifier, active) {
   'use strict';
+  var c = this.storage(),
+    user,
+    doc;
 
-  var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
-  var user = c.firstExample({ identifier: identifier });
+  user = c.firstExample({ identifier: identifier });
 
   if (user === null) {
     return false;
   }
 
   // must clone because shaped json cannot be modified
-  var doc = cloneDocument(user);
+  doc = cloneDocument(user);
   doc.active = active;
   c.update(doc._key, doc, true, false);
 
@@ -542,21 +543,23 @@ Users.prototype.setActive = function (identifier, active) {
 
 Users.prototype.setPassword = function (identifier, password) {
   'use strict';
+  var c = this.storage(),
+    user,
+    doc;
 
-  var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
   if (typeof password !== 'string') {
     throw new TypeError("invalid type for 'password'");
   }
 
-  var user = c.firstExample({ identifier: identifier });
+  user = c.firstExample({ identifier: identifier });
 
   if (user === null) {
     return false;
   }
 
-  var doc = cloneDocument(user);
+  doc = cloneDocument(user);
   doc.password = encodePassword(password);
   c.update(doc._key, doc, true, false);
 
@@ -569,11 +572,12 @@ Users.prototype.setPassword = function (identifier, password) {
 
 Users.prototype.remove = function (identifier) {
   'use strict';
+  var c = this.storage(),
+    user;
 
-  var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
-  var user = c.firstExample({ identifier: identifier });
+  user = c.firstExample({ identifier: identifier });
 
   if (user === null) {
     return false;
@@ -593,11 +597,12 @@ Users.prototype.remove = function (identifier) {
 
 Users.prototype.get = function (identifier) {
   'use strict';
+  var c = this.storage(),
+    user;
 
-  var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
-  var user = c.firstExample({ identifier: identifier });
+  user = c.firstExample({ identifier: identifier });
 
   if (user === null) {
     throw new Error("user not found");
@@ -614,11 +619,12 @@ Users.prototype.get = function (identifier) {
 
 Users.prototype.isValid = function (identifier, password) {
   'use strict';
+  var c = this.storage(),
+    user;
 
-  var c = this.storage();
   identifier = this._validateIdentifier(identifier, false);
 
-  var user = c.firstExample({ identifier: identifier });
+  user = c.firstExample({ identifier: identifier });
 
   if (user === null) {
     return false;
@@ -714,9 +720,11 @@ Sessions.prototype._toObject = function (session) {
     },
 
     update: function () {
+      var oldExpires, newExpires;
+
       if (!this._changed) {
-        var oldExpires = this.expires;
-        var newExpires = internal.time() + that._options.lifetime;
+        oldExpires = this.expires;
+        newExpires = internal.time() + that._options.lifetime;
 
         if (newExpires - oldExpires > that._options.minUpdateResolution) {
           this.expires = newExpires;
@@ -751,14 +759,14 @@ Sessions.prototype._toObject = function (session) {
 
 Sessions.prototype.setup = function (options) {
   'use strict';
-
-  var journalSize;
+  var journalSize,
+    createOptions;
 
   if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
     journalSize = options.journalSize;
   }
 
-  var createOptions = {
+  createOptions = {
     journalSize : journalSize || 4 * 1024 * 1024
   };
 
@@ -775,7 +783,6 @@ Sessions.prototype.setup = function (options) {
 
 Sessions.prototype.teardown = function () {
   'use strict';
-
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -807,6 +814,7 @@ Sessions.prototype.storage = function () {
 
 Sessions.prototype.generate = function (identifier, data) {
   'use strict';
+  var storage, token, session;
 
   if (typeof identifier !== "string" || identifier.length === 0) {
     throw new TypeError("invalid type for 'identifier'");
@@ -816,7 +824,7 @@ Sessions.prototype.generate = function (identifier, data) {
     throw new Error("no value specified for 'lifetime'");
   }
 
-  var storage = this.storage();
+  storage = this.storage();
 
   if (!this._options.allowMultiple) {
     // remove previous existing sessions
@@ -826,8 +834,8 @@ Sessions.prototype.generate = function (identifier, data) {
   }
 
   while (true) {
-    var token = generateToken();
-    var session = {
+    token = generateToken();
+    session = {
       _key: token,
       expires: internal.time() + this._options.lifetime,
       identifier: identifier,
@@ -883,16 +891,17 @@ Sessions.prototype.terminate = function (token) {
 
 Sessions.prototype.get = function (token) {
   'use strict';
-
-  var storage = this.storage();
+  var storage = this.storage(),
+    session,
+    lifetime;
 
   try {
-    var session = storage.document(token);
+    session = storage.document(token);
 
     if (session.expires >= internal.time()) {
       // session still valid
 
-      var lifetime = this._options.lifetime;
+      lifetime = this._options.lifetime;
 
       return {
         errorNum: internal.errors.ERROR_NO_ERROR,
@@ -991,9 +1000,12 @@ CookieAuthentication.prototype.getTokenFromRequest = function (req) {
 
 CookieAuthentication.prototype.setCookie = function (res, value) {
   'use strict';
+  var name = this._options.name,
+    cookie,
+    i,
+    n;
 
-  var name = this._options.name;
-  var cookie = {
+  cookie = {
     name: name,
     value: value,
     lifeTime: (value === null || value === "") ? 0 : this._options.lifetime,
@@ -1011,7 +1023,7 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
     res.cookies = [ res.cookies ];
   }
 
-  var i, n = res.cookies.length;
+  n = res.cookies.length;
   for (i = 0; i < n; ++i) {
     if (res.cookies[i].name === name) {
       // found existing cookie. overwrite it
@@ -1135,16 +1147,19 @@ Authentication = function (applicationContext, sessions, authenticators) {
 
 Authentication.prototype.authenticate = function (req) {
   'use strict';
-
-  var i, n = this._authenticators.length;
+  var i,
+    n = this._authenticators.length,
+    authenticator,
+    data,
+    session;
 
   for (i = 0; i < n; ++i) {
-    var authenticator = this._authenticators[i];
+    authenticator = this._authenticators[i];
 
-    var data = authenticator.getAuthenticationData(req);
+    data = authenticator.getAuthenticationData(req);
 
     if (data !== null) {
-      var session = this._sessions.get(data.token);
+      session = this._sessions.get(data.token);
 
       if (session) {
         return session;
@@ -1163,12 +1178,13 @@ Authentication.prototype.authenticate = function (req) {
 
 Authentication.prototype.beginSession = function (req, res, identifier, data) {
   'use strict';
-
-  var session = this._sessions.generate(identifier, data);
-  var i, n = this._authenticators.length;
+  var session = this._sessions.generate(identifier, data),
+    i,
+    n = this._authenticators.length,
+    authenticator;
 
   for (i = 0; i < n; ++i) {
-    var authenticator = this._authenticators[i];
+    authenticator = this._authenticators[i];
 
     if (authenticator.isResponsible(req) &&
         authenticator.beginSession) {
@@ -1185,11 +1201,12 @@ Authentication.prototype.beginSession = function (req, res, identifier, data) {
 
 Authentication.prototype.endSession = function (req, res, token) {
   'use strict';
-
-  var i, n = this._authenticators.length;
+  var i,
+    n = this._authenticators.length,
+    authenticator;
 
   for (i = 0; i < n; ++i) {
-    var authenticator = this._authenticators[i];
+    authenticator = this._authenticators[i];
 
     if (authenticator.isResponsible(req) &&
         authenticator.endSession) {
@@ -1206,11 +1223,12 @@ Authentication.prototype.endSession = function (req, res, token) {
 
 Authentication.prototype.updateSession = function (req, res, session) {
   'use strict';
-
-  var i, n = this._authenticators.length;
+  var i,
+    n = this._authenticators.length,
+    authenticator;
 
   for (i = 0; i < n; ++i) {
-    var authenticator = this._authenticators[i];
+    authenticator = this._authenticators[i];
 
     if (authenticator.isResponsible(req) &&
         authenticator.updateSession) {
