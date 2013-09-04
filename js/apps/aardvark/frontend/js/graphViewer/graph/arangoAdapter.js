@@ -85,11 +85,7 @@ function ArangoAdapter(nodes, edges, config) {
     },
 
     parseConfig = function(config) {
-      if (config.host === undefined) {
-        arangodb = "http://" + document.location.host;
-      } else {
-        arangodb = config.host;
-      }
+      arangodb = config.baseUrl;
       if (config.width !== undefined) {
         absAdapter.setWidth(config.width);
       }
@@ -105,9 +101,7 @@ function ArangoAdapter(nodes, edges, config) {
       } else {
         direction = "outbound";
       }
-      api.base = arangodb.lastIndexOf("http://", 0) === 0
-        ? arangodb + "/_api/"
-        : "http://" + arangodb + "/_api/";
+      api.base = arangodb + "_api/";
       api.cursor = api.base + "cursor";
       api.graph = api.base + "graph";
       api.collection = api.base + "collection/";

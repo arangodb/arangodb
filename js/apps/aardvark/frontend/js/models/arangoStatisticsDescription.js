@@ -9,6 +9,6 @@ window.StatisticsDescription = Backbone.Model.extend({
   url: function() {
     'use strict';
 
-    return "../statistics-description";
+    return "/_admin/statistics-description";
   }
 });

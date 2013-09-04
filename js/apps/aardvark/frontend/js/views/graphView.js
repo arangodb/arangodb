@@ -80,7 +80,8 @@ window.graphView = Backbone.View.extend({
       type: "arango",
       nodeCollection: ncol,
       edgeCollection: ecol,
-      undirected: undirected
+      undirected: undirected,
+      baseUrl: require("internal").arango.databasePrefix("/")
     };
     
     if (groupByAttribute.length > 0) {

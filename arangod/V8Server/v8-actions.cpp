@@ -383,6 +383,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   else {
     req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
   }
+  
+  // create database
+  string const& database = request->databaseName();
+  req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), database.size()));
 
   // set the full url
   string const& fullUrl = request->fullUrl();

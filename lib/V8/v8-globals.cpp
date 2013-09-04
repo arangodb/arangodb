@@ -63,6 +63,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     ClientKey(),
     CodeKey(),
     ContentTypeKey(),
+    DatabaseKey(),
     DoCompactKey(),
     DomainKey(),
     ErrorKey(),
@@ -128,6 +129,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
   CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
+  DatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("database"));
   DoCompactKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("doCompact"));
   DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
   ErrorKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("error"));

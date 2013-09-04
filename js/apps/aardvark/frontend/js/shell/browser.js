@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global $, jqconsole */
+/*global $, jqconsole, window */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB web browser shell
@@ -236,6 +236,23 @@ function print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ArangoConnection () {
+  this._databaseName = "_system";
+
+  var path = window.document.location.pathname;
+
+  if (path.substr(0, 5) === '/_db/') {
+    var i = 5, n = path.length;
+    while (i < n) {
+      if (path[i] === '/') {
+        break;
+      }
+      i++;
+    }
+
+    if (i > 5) {
+      this._databaseName = path.substring(5, i);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,6 +267,42 @@ function ArangoConnection () {
 /// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getDatabaseName 
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoConnection.prototype.getDatabaseName = function () {
+  return this._databaseName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setDatabaseName 
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoConnection.prototype.setDatabaseName = function (name) {
+  this._databaseName = name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief databasePrefix
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoConnection.prototype.databasePrefix = function (url) {
+  if (url.substr(0, 7) === 'http://' || url.substr(0, 8) === 'https://') {
+    return url;
+  }
+
+  if (url.substr(0, 5) !== '/_db/') {
+    if (url[0] === '/') {
+      // relative URL, starting at /
+      return "/_db/" + this.getDatabaseName() + url;
+    }
+  }
+
+  // everything else
+  return url;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get
@@ -502,6 +555,14 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
     jqconsole.Write('==> ' + internal.browserOutputBuffer + '\n', 'jssuccess');
     internal.browserOutputBuffer = "";
   };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief globally rewrite URLs for AJAX requests to contain the database name
+////////////////////////////////////////////////////////////////////////////////
+
+  $(document).ajaxSend(function(event, jqxhr, settings) {
+    settings.url = internal.arango.databasePrefix(settings.url);
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Backbone, EJS, window, SwaggerUi, hljs, document, $*/
+/*global require, exports, Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
 
 window.AppDocumentationView = Backbone.View.extend({
 
@@ -8,10 +8,9 @@ window.AppDocumentationView = Backbone.View.extend({
   
   initialize: function() {
     this.swaggerUi = new SwaggerUi({
-        discoveryUrl:"../aardvark/docu/" + this.options.key,
-
+        discoveryUrl: require("internal").arango.databasePrefix("/_admin/aardvark/docu/" + this.options.key),
         apiKey: false,
-        dom_id:"swagger-ui-container",
+        dom_id: "swagger-ui-container",
         supportHeaderParams: true,
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch', 'head'],
         onComplete: function(swaggerApi, swaggerUi){
