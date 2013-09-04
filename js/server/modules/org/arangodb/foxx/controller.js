@@ -35,158 +35,7 @@ var Controller,
   _ = require("underscore"),
   extend = _.extend,
   is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals"),
-  defaultsFor = {},
-  createStandardLoginHandler,
-  createStandardLogoutHandler,
-  createAuthenticationMiddleware,
-  createSessionUpdateMiddleware,
-  checkAuthenticationOptions,
-  createAuthObject;
-
-createAuthenticationMiddleware = function (auth, applicationContext) {
-  'use strict';
-  var foxxAuthentication = require("org/arangodb/foxx/authentication");
-
-  return function (req, res) {
-    var users = new foxxAuthentication.Users(applicationContext),
-      authResult = auth.authenticate(req);
-
-    if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
-      req.currentSession = authResult.session;
-      req.user = users.get(authResult.session.identifier);
-    } else {
-      req.currentSession = null;
-      req.user = null;
-    }
-  };
-};
-
-createSessionUpdateMiddleware = function () {
-  'use strict';
-  return function (req, res) {
-    var session = req.currentSession;
-
-    if (is.existy(session)) {
-      session.update();
-    }
-  };
-};
-
-createAuthObject = function (applicationContext, opts) {
-  'use strict';
-  var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-    sessions,
-    cookieAuth,
-    auth,
-    options = opts || {};
-
-  checkAuthenticationOptions(options);
-
-  sessions = new foxxAuthentication.Sessions(applicationContext, {
-    lifetime: options.sessionLifetime
-  });
-
-  cookieAuth = new foxxAuthentication.CookieAuthentication(applicationContext, {
-    lifetime: options.cookieLifetime,
-    name: options.cookieName
-  });
-
-  auth = new foxxAuthentication.Authentication(applicationContext, sessions, cookieAuth);
-
-  return auth;
-};
-
-
-checkAuthenticationOptions = function (options) {
-  'use strict';
-  if (options.type !== "cookie") {
-    throw new Error("Currently only the following auth types are supported: cookie");
-  }
-  if (is.falsy(options.cookieLifetime)) {
-    throw new Error("Please provide the cookieLifetime");
-  }
-  if (is.falsy(options.cookieName)) {
-    throw new Error("Please provide the cookieName");
-  }
-  if (is.falsy(options.sessionLifetime)) {
-    throw new Error("Please provide the sessionLifetime");
-  }
-};
-
-
-defaultsFor.login = {
-  usernameField: "username",
-  passwordField: "password",
-
-  onSuccess: function (req, res) {
-    'use strict';
-    res.json({
-      user: req.user.identifier,
-      key: req.currentSession._key
-    });
-  },
-
-  onError: function (req, res) {
-    'use strict';
-    res.status(401);
-    res.json({
-      error: "Username or Password was wrong"
-    });
-  }
-};
-
-createStandardLoginHandler = function (auth, users, opts) {
-  'use strict';
-  var options = _.defaults(opts || {}, defaultsFor.login);
-
-  return function (req, res) {
-    var username = req.body()[options.usernameField],
-      password = req.body()[options.passwordField];
-
-    if (users.isValid(username, password)) {
-      req.currentSession = auth.beginSession(req, res, username, {});
-      req.user = users.get(req.currentSession.identifier);
-      options.onSuccess(req, res);
-    } else {
-      options.onError(req, res);
-    }
-  };
-};
-
-defaultsFor.logout = {
-  onSuccess: function (req, res) {
-    'use strict';
-    res.json({
-      notice: "Logged out!",
-    });
-  },
-
-  onError: function (req, res) {
-    'use strict';
-    res.status(401);
-    res.json({
-      error: "No session was found"
-    });
-  }
-};
-
-createStandardLogoutHandler = function (auth, opts) {
-  'use strict';
-  var options = _.defaults(opts || {}, defaultsFor.logout);
-
-  return function (req, res) {
-    if (is.existy(req.currentSession)) {
-      auth.endSession(req, res, req.currentSession._key);
-      req.user = null;
-      req.currentSession = null;
-      options.onSuccess(req, res);
-    } else {
-      options.onError(req, res);
-    }
-  };
-};
-
+  internal = require("org/arangodb/foxx/internals");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Controller
@@ -595,9 +444,11 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     'use strict';
-    this.auth = createAuthObject(this.applicationContext, opts);
-    this.before("/*", createAuthenticationMiddleware(this.auth, this.applicationContext));
-    this.after("/*", createSessionUpdateMiddleware());
+    var authentication = require("org/arangodb/foxx/authentication");
+
+    this.auth = authentication.createAuthObject(this.applicationContext, opts);
+    this.before("/*", authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
+    this.after("/*", authentication.createSessionUpdateMiddleware());
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -633,7 +484,8 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
     'use strict';
-    this.post(route, createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
+    var authentication = require("org/arangodb/foxx/authentication");
+    this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -667,7 +519,8 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
     'use strict';
-    this.post(route, createStandardLogoutHandler(this.getAuth(), opts));
+    var authentication = require("org/arangodb/foxx/authentication");
+    this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
   }
 });
 
