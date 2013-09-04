@@ -38,7 +38,7 @@ var TemplateMiddleware,
 ///
 /// Initialize with the name of a collection or a collection and optionally
 /// a set of helper functions.
-/// Then use `before` to attach the initialized middleware to your Foxx.Application
+/// Then use `before` to attach the initialized middleware to your Foxx.Controller
 ///
 /// @EXAMPLES
 ///
@@ -69,7 +69,7 @@ TemplateMiddleware = function (templateCollection, helper) {
 ///
 /// When the TemplateMiddleware is included, you will have access to the
 /// `render` function on the response object.
-/// If you call render, Application will look into the this collection and
+/// If you call render, Controller will look into the this collection and
 /// search by the path attribute.  It will then render the template with the
 /// given data.
 ///

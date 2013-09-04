@@ -20,7 +20,7 @@ var collectionView = Backbone.View.extend({
     this.fillModal();
 
     $('.modalTooltips, .glyphicon-info-sign').tooltip({
-      placement: "top"
+      placement: "left"
     });
 
     $('#collectionTab a').click(function (e) {
@@ -88,7 +88,7 @@ var collectionView = Backbone.View.extend({
       );
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
-      //
+      $('#tab-content-collection-edit tab-pane').css("border-top",0);
     }
     else if (this.myCollection.status === 'loaded') {
       $('#colFooter').prepend(

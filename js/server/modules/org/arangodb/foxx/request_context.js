@@ -33,9 +33,11 @@ var RequestContext,
   extend = require("underscore").extend,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
-  createBubbleWrap;
+  UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
+  createErrorBubbleWrap,
+  addCheck;
 
-createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
+createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
   'use strict';
   if (is.notExisty(errorHandler)) {
     errorHandler = function () {
@@ -54,6 +56,14 @@ createBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
         throw e;
       }
     }
+  };
+};
+
+addCheck = function (handler, check) {
+  'use strict';
+  return function (req, res) {
+    check(req);
+    handler(req, res);
   };
 };
 
@@ -157,7 +167,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_queryParam
 /// @brief Describe a Query Parameter
 ///
-/// @FUN{FoxxApplication::queryParam(@FA{id}, @FA{options})}
+/// @FUN{FoxxController::queryParam(@FA{id}, @FA{options})}
 ///
 /// Describe a query parameter:
 ///
@@ -201,7 +211,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
-/// @FUN{FoxxApplication::summary(@FA{description})}
+/// @FUN{FoxxController::summary(@FA{description})}
 ///
 /// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
@@ -220,7 +230,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_notes
 /// @brief Set the notes for this route in the documentation
 ///
-/// @FUN{FoxxApplication::notes(@FA{description})}
+/// @FUN{FoxxController::notes(@FA{description})}
 ///
 /// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +245,7 @@ extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_errorResponse
 /// @brief Define an error response
 ///
-/// @FUN{FoxxApplication::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+/// @FUN{FoxxController::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
 ///
 /// Define a reaction to a thrown error for this route: If your handler throws an error
 /// of the defined errorClass, it will be caught and the response will have the given
@@ -266,12 +276,79 @@ extend(RequestContext.prototype, {
 ///     });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-
   errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
     var handler = this.route.action.callback;
-    this.route.action.callback = createBubbleWrap(handler, errorClass, code, reason, errorHandler);
+    this.route.action.callback = createErrorBubbleWrap(handler, errorClass, code, reason, errorHandler);
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_onlyIf
+/// @brief Only let the request get through if a condition holds
+///
+/// @FUN{FoxxController::onlyIf(@FA{check})}
+///
+/// Provide it with a function that throws an exception if the normal processing should
+/// not be executed. Provide an `errorResponse` to define the behavior in this case.
+/// This can be used for authentication or authorization for example.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       // Do something
+///     }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  onlyIf: function (check, ErrorClass) {
+    'use strict';
+    var handler = this.route.action.callback;
+    this.route.action.callback = addCheck(handler, check);
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_onlyIfAuthenticated
+/// @brief Only let the request get through if the user is logged in
+///
+/// @FUN{FoxxController::onlyIf(@FA{code}, @FA{reason})}
+///
+/// Please activate authentification for this app if you want to use this function.
+/// If the user is logged in, it will do nothing. Otherwise it will respond with
+/// the status code and the reason you provided (the route handler won't be called).
+/// This will also add the according documentation for this route.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.get("/foxx", function {
+///       // Do something
+///     }).onlyIfAuthenticated(401, "You need to be authenticated");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  onlyIfAuthenticated: function (code, reason) {
+    'use strict';
+    var handler = this.route.action.callback,
+      check;
+
+    check = function(req) {
+      if (!(req.user && req.currentSession)) {
+        throw new UnauthorizedError();
+      }
+    };
+
+    if (is.notExisty(code)) {
+      code = 401;
+    }
+    if (is.notExisty(reason)) {
+      reason = "Not authorized";
+    }
+
+    this.onlyIf(check);
+    this.errorResponse(UnauthorizedError, code, reason);
+
     return this;
   }
 });

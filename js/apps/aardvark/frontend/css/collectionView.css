@@ -23,15 +23,19 @@
 #change-collection .glyphicon-plus-sign,
 #change-collection .glyphicon-remove-circle {
   float: right;
-  font-size: 22px;
+  font-size: 27px;
   color: #788F3D;
   position: absolute;
-  right: 30px;
-  top: 59px;
+  right: 15px;
+  top: 55px;
 }
 
 #newIndexView .glyphicon-remove-circle {
   color: #DA4F49;
+}
+
+#newIndexView table {
+  width: 100%;
 }
 
 #change-collection .glyphicon-minus-sign {
@@ -48,16 +52,16 @@
 }
 
 #change-collection .glyphicon-ban-circle:hover {
-  cursor: default;
-  float: right;
+  cursor: default !important;
 }
 
 #change-collection #collectionEditIndexTable {
   margin-top: 20px;
 }
 
-#change-collection #newIndexView {
-  margin-top: 20px;
+#change-collection #newIndexView,
+#change-collection #indexEditView {
+  margin-top: 0px;
 }
 
 #newIndexType {
@@ -66,8 +70,24 @@
 
 #createIndex {
   margin-top: 15px !important;
+  margin-left: 0;
 }
 
 #tab-content-collection-edit {
   max-height: 300px !important;
+}
+
+#newIndexHeader {
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 400;
+  color: black;
+}
+
+#newIndexView select {
+  margin-left: -10px;
+}
+
+#newIndexView input[type='checkbox'] {
+  margin-left: -20px;
 }
