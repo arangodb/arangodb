@@ -38,7 +38,82 @@ var Controller,
   internal = require("org/arangodb/foxx/internals"),
   defaultsFor = {},
   createStandardLoginHandler,
-  createStandardLogoutHandler;
+  createStandardLogoutHandler,
+  createAuthenticationMiddleware,
+  createSessionUpdateMiddleware,
+  checkAuthenticationOptions,
+  createAuthObject;
+
+createAuthenticationMiddleware = function (auth, applicationContext) {
+  'use strict';
+  var foxxAuthentication = require("org/arangodb/foxx/authentication");
+
+  return function (req, res) {
+    var users = new foxxAuthentication.Users(applicationContext),
+      authResult = auth.authenticate(req);
+
+    if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
+      req.currentSession = authResult.session;
+      req.user = users.get(authResult.session.identifier);
+    } else {
+      req.currentSession = null;
+      req.user = null;
+    }
+  };
+};
+
+createSessionUpdateMiddleware = function () {
+  'use strict';
+  return function (req, res) {
+    var session = req.currentSession;
+
+    if (is.existy(session)) {
+      session.update();
+    }
+  };
+};
+
+createAuthObject = function (applicationContext, opts) {
+  'use strict';
+  var foxxAuthentication = require("org/arangodb/foxx/authentication"),
+    sessions,
+    cookieAuth,
+    auth,
+    options = opts || {};
+
+  checkAuthenticationOptions(options);
+
+  sessions = new foxxAuthentication.Sessions(applicationContext, {
+    lifetime: options.sessionLifetime
+  });
+
+  cookieAuth = new foxxAuthentication.CookieAuthentication(applicationContext, {
+    lifetime: options.cookieLifetime,
+    name: options.cookieName
+  });
+
+  auth = new foxxAuthentication.Authentication(applicationContext, sessions, cookieAuth);
+
+  return auth;
+};
+
+
+checkAuthenticationOptions = function (options) {
+  'use strict';
+  if (options.type !== "cookie") {
+    throw new Error("Currently only the following auth types are supported: cookie");
+  }
+  if (is.falsy(options.cookieLifetime)) {
+    throw new Error("Please provide the cookieLifetime");
+  }
+  if (is.falsy(options.cookieName)) {
+    throw new Error("Please provide the cookieName");
+  }
+  if (is.falsy(options.sessionLifetime)) {
+    throw new Error("Please provide the sessionLifetime");
+  }
+};
+
 
 defaultsFor.login = {
   usernameField: "username",
@@ -61,8 +136,10 @@ defaultsFor.login = {
   }
 };
 
-createStandardLoginHandler = function (auth, users, options) {
+createStandardLoginHandler = function (auth, users, opts) {
   'use strict';
+  var options = _.defaults(opts || {}, defaultsFor.login);
+
   return function (req, res) {
     var username = req.body()[options.usernameField],
       password = req.body()[options.passwordField];
@@ -94,8 +171,10 @@ defaultsFor.logout = {
   }
 };
 
-createStandardLogoutHandler = function (auth, options) {
+createStandardLogoutHandler = function (auth, opts) {
   'use strict';
+  var options = _.defaults(opts || {}, defaultsFor.logout);
+
   return function (req, res) {
     if (is.existy(req.currentSession)) {
       auth.endSession(req, res, req.currentSession._key);
@@ -516,57 +595,9 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     'use strict';
-    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-      sessions,
-      cookieAuth,
-      app = this,
-      applicationContext = this.applicationContext,
-      options = opts || {};
-
-    if (options.type !== "cookie") {
-      throw new Error("Currently only the following auth types are supported: cookie");
-    }
-    if (is.falsy(options.cookieLifetime)) {
-      throw new Error("Please provide the cookieLifetime");
-    }
-    if (is.falsy(options.cookieName)) {
-      throw new Error("Please provide the cookieName");
-    }
-    if (is.falsy(options.sessionLifetime)) {
-      throw new Error("Please provide the sessionLifetime");
-    }
-
-    sessions = new foxxAuthentication.Sessions(this.applicationContext, {
-      lifetime: options.sessionLifetime
-    });
-
-    cookieAuth = new foxxAuthentication.CookieAuthentication(this.applicationContext, {
-      lifetime: options.cookieLifetime,
-      name: options.cookieName
-    });
-
-    this.auth = new foxxAuthentication.Authentication(this.applicationContext, sessions, cookieAuth);
-
-    this.before("/*", function (req, res) {
-      var users = new foxxAuthentication.Users(applicationContext),
-        authResult = app.auth.authenticate(req);
-
-      if (authResult.errorNum === require("internal").errors.ERROR_NO_ERROR) {
-        req.currentSession = authResult.session;
-        req.user = users.get(authResult.session.identifier);
-      } else {
-        req.currentSession = null;
-        req.user = null;
-      }
-    });
-
-    this.after("/*", function (req, res) {
-      var session = req.currentSession;
-
-      if (is.existy(session)) {
-        session.update();
-      }
-    });
+    this.auth = createAuthObject(this.applicationContext, opts);
+    this.before("/*", createAuthenticationMiddleware(this.auth, this.applicationContext));
+    this.after("/*", createSessionUpdateMiddleware());
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -602,11 +633,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
     'use strict';
-    this.post(route, createStandardLoginHandler(
-      this.getAuth(),
-      this.getUsers(),
-      _.defaults(opts || {}, defaultsFor.login)
-    ));
+    this.post(route, createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,10 +667,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
     'use strict';
-    this.post(route, createStandardLogoutHandler(
-      this.getAuth(),
-      _.defaults(opts || {}, defaultsFor.logout)
-    ));
+    this.post(route, createStandardLogoutHandler(this.getAuth(), opts));
   }
 });
 
