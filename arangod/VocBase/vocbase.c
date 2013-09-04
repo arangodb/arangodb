@@ -1908,7 +1908,10 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase,
   // shutdown timestamp and the last tick value the server used.
   // if writing the file fails, it is not a problem as in this case we'll scan the
   // collections for the tick value on startup
-  WriteShutdownInfo(vocbase->_shutdownFilename);
+
+  if (vocbase->_isSystem) {
+    WriteShutdownInfo(vocbase->_shutdownFilename);
+  }
 
   // free the auth info
   TRI_DestroyAuthInfo(vocbase);
