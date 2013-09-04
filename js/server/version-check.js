@@ -495,6 +495,8 @@
           potentialFoxxes.remove(maybeFoxx._id);
         }
       });
+
+      return true;
     });
 
     // loop through all tasks and execute them
