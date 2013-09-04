@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, plusplus: true, continue: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,19 +216,18 @@ generateToken = function () {
 cloneDocument = function (obj) {
   "use strict";
 
-  if (obj === null || typeof(obj) !== "object") {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
- 
-  var copy, a; 
+
+  var copy, a;
   if (Array.isArray(obj)) {
-    copy = [ ];
+    copy = [];
     obj.forEach(function (i) {
       copy.push(cloneDocument(i));
     });
-  }
-  else if (obj instanceof Object) {
-    copy = { };
+  } else if (obj instanceof Object) {
+    copy = {};
     for (a in obj) {
       if (obj.hasOwnProperty(a)) {
         copy[a] = cloneDocument(obj[a]);
@@ -265,16 +264,15 @@ encodePassword = function (password) {
   var random = crypto.rand();
   if (random === undefined) {
     random = "time:" + internal.time();
-  }
-  else {
+  } else {
     random = "random:" + random;
   }
 
   salt = crypto.sha256(random);
-  salt = salt.substr(0,8);
+  salt = salt.substr(0, 8);
 
   encoded = "$1$" + salt + "$" + crypto.sha256(salt + password);
-   
+
   return encoded;
 };
 
@@ -302,13 +300,12 @@ encodePassword = function (password) {
 Users = function (applicationContext, options) {
   'use strict';
 
-  this._options = options || { };
+  this._options = options || {};
   this._collection = null;
-  
+
   if (this._options.hasOwnProperty("collectionName")) {
     this._collectionName = this._options.collectionName;
-  }
-  else {
+  } else {
     this._collectionName = applicationContext.collectionName("users");
   }
 };
@@ -335,8 +332,8 @@ Users.prototype.storage = function () {
 
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
-  
-    if (! this._collection) { 
+
+    if (!this._collection) {
       throw new Error("users collection not found");
     }
   }
@@ -398,10 +395,10 @@ Users.prototype.setup = function (options) {
     journalSize : journalSize || 2 * 1024 * 1024
   };
 
-  if (! db._collection(this._collectionName)) {
+  if (!db._collection(this._collectionName)) {
     db._create(this._collectionName, createOptions);
   }
- 
+
   this.storage().ensureUniqueConstraint("identifier");
 };
 
@@ -425,7 +422,7 @@ Users.prototype.teardown = function () {
 
 Users.prototype.flush = function () {
   'use strict';
- 
+
   this.storage().truncate();
 };
 
@@ -435,10 +432,10 @@ Users.prototype.flush = function () {
 
 Users.prototype.add = function (identifier, password, active, data) {
   'use strict';
- 
+
   var c = this.storage();
   identifier = this._validateIdentifier(identifier, false);
-  
+
   if (typeof password !== 'string') {
     throw new TypeError("invalid type for 'password'");
   }
@@ -454,7 +451,7 @@ Users.prototype.add = function (identifier, password, active, data) {
     identifier: identifier,
     password:   encodePassword(password),
     active:     active,
-    data:       data || { }
+    data:       data || {}
   };
 
   db._executeTransaction({
@@ -467,8 +464,7 @@ Users.prototype.add = function (identifier, password, active, data) {
 
       if (u === null) {
         c.save(params.user);
-      }
-      else {
+      } else {
         c.replace(u._key, params.user);
       }
     },
@@ -509,7 +505,7 @@ Users.prototype.updateData = function (identifier, data) {
     params: {
       cn: c.name(),
       identifier: identifier,
-      data: data || { }
+      data: data || {}
     }
   });
 
@@ -522,7 +518,7 @@ Users.prototype.updateData = function (identifier, data) {
 
 Users.prototype.setActive = function (identifier, active) {
   'use strict';
- 
+
   var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
@@ -546,10 +542,10 @@ Users.prototype.setActive = function (identifier, active) {
 
 Users.prototype.setPassword = function (identifier, password) {
   'use strict';
- 
+
   var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
-  
+
   if (typeof password !== 'string') {
     throw new TypeError("invalid type for 'password'");
   }
@@ -573,7 +569,7 @@ Users.prototype.setPassword = function (identifier, password) {
 
 Users.prototype.remove = function (identifier) {
   'use strict';
- 
+
   var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
@@ -585,8 +581,7 @@ Users.prototype.remove = function (identifier) {
 
   try {
     c.remove(user._key);
-  }
-  catch (err) {
+  } catch (err) {
   }
 
   return true;
@@ -598,7 +593,7 @@ Users.prototype.remove = function (identifier) {
 
 Users.prototype.get = function (identifier) {
   'use strict';
- 
+
   var c = this.storage();
   identifier = this._validateIdentifier(identifier, true);
 
@@ -609,7 +604,7 @@ Users.prototype.get = function (identifier) {
   }
 
   delete user.password;
-  
+
   return user;
 };
 
@@ -619,7 +614,7 @@ Users.prototype.get = function (identifier) {
 
 Users.prototype.isValid = function (identifier, password) {
   'use strict';
- 
+
   var c = this.storage();
   identifier = this._validateIdentifier(identifier, false);
 
@@ -629,16 +624,16 @@ Users.prototype.isValid = function (identifier, password) {
     return false;
   }
 
-  if (! user.active) {
+  if (!user.active) {
     return false;
   }
 
-  if (! checkPassword(password, user.password)) {
+  if (!checkPassword(password, user.password)) {
     return false;
   }
 
   delete user.password;
-  
+
   return user;
 };
 
@@ -662,22 +657,21 @@ Users.prototype.isValid = function (identifier, password) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 Sessions = function (applicationContext, options) {
   'use strict';
 
   this._applicationContext = applicationContext;
-  this._options = options || { };
+  this._options = options || {};
   this._collection = null;
 
-  if (! this._options.hasOwnProperty("minUpdateResoultion")) {
+  if (!this._options.hasOwnProperty("minUpdateResoultion")) {
     this._options.minUpdateResolution = 10;
   }
-  
+
   if (this._options.hasOwnProperty("collectionName")) {
     this._collectionName = this._options.collectionName;
-  }
-  else {
+  } else {
     this._collectionName = applicationContext.collectionName("sessions");
   }
 };
@@ -720,7 +714,7 @@ Sessions.prototype._toObject = function (session) {
     },
 
     update: function () {
-      if (! this._changed) {
+      if (!this._changed) {
         var oldExpires = this.expires;
         var newExpires = internal.time() + that._options.lifetime;
 
@@ -757,7 +751,7 @@ Sessions.prototype._toObject = function (session) {
 
 Sessions.prototype.setup = function (options) {
   'use strict';
-  
+
   var journalSize;
 
   if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
@@ -768,7 +762,7 @@ Sessions.prototype.setup = function (options) {
     journalSize : journalSize || 4 * 1024 * 1024
   };
 
-  if (! db._collection(this._collectionName)) {
+  if (!db._collection(this._collectionName)) {
     db._create(this._collectionName, createOptions);
   }
 
@@ -781,7 +775,7 @@ Sessions.prototype.setup = function (options) {
 
 Sessions.prototype.teardown = function () {
   'use strict';
-  
+
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -798,8 +792,8 @@ Sessions.prototype.storage = function () {
 
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
-    
-    if (! this._collection) { 
+
+    if (!this._collection) {
       throw new Error("sessions collection not found");
     }
   }
@@ -817,34 +811,33 @@ Sessions.prototype.generate = function (identifier, data) {
   if (typeof identifier !== "string" || identifier.length === 0) {
     throw new TypeError("invalid type for 'identifier'");
   }
-  
-  if (! this._options.hasOwnProperty("lifetime")) {
+
+  if (!this._options.hasOwnProperty("lifetime")) {
     throw new Error("no value specified for 'lifetime'");
   }
 
   var storage = this.storage();
 
-  if (! this._options.allowMultiple) {
+  if (!this._options.allowMultiple) {
     // remove previous existing sessions
     storage.byExample({ identifier: identifier }).toArray().forEach(function (s) {
       storage.remove(s);
     });
   }
 
-  while (true) { 
+  while (true) {
     var token = generateToken();
     var session = {
-      _key: token, 
+      _key: token,
       expires: internal.time() + this._options.lifetime,
       identifier: identifier,
-      data: data || { }
+      data: data || {}
     };
 
     try {
       storage.save(session);
       return this._toObject(session);
-    }
-    catch (err) {
+    } catch (err) {
       // we might have generated the same key again
       if (err.hasOwnProperty("errorNum") &&
           err.errorNum === internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
@@ -863,10 +856,10 @@ Sessions.prototype.generate = function (identifier, data) {
 
 Sessions.prototype.update = function (token, data) {
   'use strict';
-      
-  this.storage().update(token, { 
+
+  this.storage().update(token, {
     expires: internal.time() + this._options.lifetime,
-    data: data 
+    data: data
   }, true, false);
 };
 
@@ -879,8 +872,7 @@ Sessions.prototype.terminate = function (token) {
 
   try {
     this.storage().remove(token);
-  }
-  catch (err) {
+  } catch (err) {
     // some error, e.g. document not found. we don't care
   }
 };
@@ -909,11 +901,10 @@ Sessions.prototype.get = function (token) {
     }
 
     // expired
-    return { 
+    return {
       errorNum: internal.errors.ERROR_SESSION_EXPIRED.code
     };
-  }
-  catch (err) {
+  } catch (err) {
     // document not found etc.
   }
 
@@ -946,8 +937,8 @@ Sessions.prototype.get = function (token) {
 CookieAuthentication = function (applicationContext, options) {
   'use strict';
 
-  options = options || { };
-    
+  options = options || {};
+
   this._applicationContext = applicationContext;
 
   this._options = {
@@ -958,7 +949,7 @@ CookieAuthentication = function (applicationContext, options) {
     secure: options.secure || false,
     httpOnly: options.httpOnly || false
   };
-  
+
   this._collectionName = applicationContext.collectionName("sessions");
   this._collection = null;
 };
@@ -983,11 +974,11 @@ CookieAuthentication = function (applicationContext, options) {
 CookieAuthentication.prototype.getTokenFromRequest = function (req) {
   'use strict';
 
-  if (! req.hasOwnProperty("cookies")) {
+  if (!req.hasOwnProperty("cookies")) {
     return null;
   }
 
-  if (! req.cookies.hasOwnProperty(this._options.name)) {
+  if (!req.cookies.hasOwnProperty(this._options.name)) {
     return null;
   }
 
@@ -1000,7 +991,7 @@ CookieAuthentication.prototype.getTokenFromRequest = function (req) {
 
 CookieAuthentication.prototype.setCookie = function (res, value) {
   'use strict';
-  
+
   var name = this._options.name;
   var cookie = {
     name: name,
@@ -1012,11 +1003,11 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
     httpOnly: this._options.httpOnly
   };
 
-  if (! res.hasOwnProperty("cookies")) {
+  if (!res.hasOwnProperty("cookies")) {
     res.cookies = [ ];
   }
 
-  if (! Array.isArray(res.cookies)) {
+  if (!Array.isArray(res.cookies)) {
     res.cookies = [ res.cookies ];
   }
 
@@ -1056,7 +1047,7 @@ CookieAuthentication.prototype.getAuthenticationData = function (req) {
 
 CookieAuthentication.prototype.beginSession = function (req, res, token, identifier, data) {
   'use strict';
- 
+
   this.setCookie(res, token);
 };
 
@@ -1118,7 +1109,7 @@ Authentication = function (applicationContext, sessions, authenticators) {
   this._applicationContext = applicationContext;
   this._sessions = sessions;
 
-  if (! Array.isArray(authenticators)) {
+  if (!Array.isArray(authenticators)) {
     authenticators = [ authenticators ];
   }
 
