@@ -333,7 +333,7 @@ extend(RequestContext.prototype, {
     var handler = this.route.action.callback,
       check;
 
-    check = function(req) {
+    check = function (req) {
       if (!(req.user && req.currentSession)) {
         throw new UnauthorizedError();
       }

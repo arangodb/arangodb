@@ -165,7 +165,7 @@ defaultsFor.logout = {
   onSuccess: function (req, res) {
     'use strict';
     res.json({
-      notice: "Logged out!",
+      notice: "Logged out!"
     });
   },
 

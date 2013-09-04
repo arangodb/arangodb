@@ -7,8 +7,10 @@ window.AppDocumentationView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/appDocumentationView.ejs'}),
   
   initialize: function() {
+    var internal = require("internal");
+    var url = internal.arango.databasePrefix("/_admin/aardvark/docu/" + this.options.key);
     this.swaggerUi = new SwaggerUi({
-        discoveryUrl: require("internal").arango.databasePrefix("/_admin/aardvark/docu/" + this.options.key),
+        discoveryUrl: url,
         apiKey: false,
         dom_id: "swagger-ui-container",
         supportHeaderParams: true,

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global $, jqconsole, window */
+/*global $, jqconsole, window, document */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB web browser shell
@@ -274,7 +274,7 @@ function ArangoConnection () {
 
 ArangoConnection.prototype.getDatabaseName = function () {
   return this._databaseName;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setDatabaseName 
@@ -282,7 +282,7 @@ ArangoConnection.prototype.getDatabaseName = function () {
 
 ArangoConnection.prototype.setDatabaseName = function (name) {
   this._databaseName = name;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief databasePrefix
@@ -302,7 +302,7 @@ ArangoConnection.prototype.databasePrefix = function (url) {
 
   // everything else
   return url;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get

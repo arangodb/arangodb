@@ -317,7 +317,7 @@
     });
     
     // create the default route in the _routing collection
-    addTask("insertRedirectionForAllAdminInterfaces", "insert default route for admin interface", function () {
+    addTask("insertRedirectionsAll", "insert default routes for admin interface", function () {
       var routing = getCollection("_routing");
 
       if (! routing) {
