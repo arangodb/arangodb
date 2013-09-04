@@ -503,11 +503,11 @@ function routingAalApp (app, mount, options) {
     });
 
     // mount all applications
-    var apps = app._manifest.apps;
+    var controllers = app._manifest.controllers;
 
-    for (i in apps) {
-      if (apps.hasOwnProperty(i)) {
-        var file = apps[i];
+    for (i in controllers) {
+      if (controllers.hasOwnProperty(i)) {
+        var file = controllers[i];
         var devel = false;
         var root;
 
