@@ -37,7 +37,7 @@ var _ = require("underscore");
 
 var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 var checkParameter = arangodb.checkParameter;
-var transformScript = require("org/arangodb/foxx/transformer").transform;
+var transformScript = require("org/arangodb/foxx/preprocessor").preprocess;
 
 var developmentMode = require("internal").developmentMode;
 
