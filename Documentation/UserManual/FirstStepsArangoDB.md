@@ -517,7 +517,7 @@ more information see @ref CommandLineLogging "here".
 @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 
 
-@copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+@copydetails triagens::arango::ArangoServer::_disableAuthentication
 
 
 @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout

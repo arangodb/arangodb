@@ -1561,7 +1561,31 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   res = TRI_CreateLockFile(lockFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_FATAL_AND_EXIT("cannot lock the database, please check the lock file '%s': %s", lockFile, TRI_last_error());
+    LOG_FATAL_AND_EXIT("cannot lock the database, please check the lock file '%s': %s", 
+                       lockFile, 
+                       TRI_errno_string(res));
+  }
+
+  if (isSystem) {
+    char* databaseDirectory = TRI_Concatenate2File(path, "databases");
+
+    if (databaseDirectory != NULL) {
+      if (! TRI_IsDirectory(databaseDirectory)) {
+        res = TRI_CreateDirectory(databaseDirectory);
+      }
+    
+      if (! TRI_IsWritable(databaseDirectory)) {
+        res = TRI_ERROR_INTERNAL;
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_FATAL_AND_EXIT("cannot create or write database directory '%s': %s", 
+                           databaseDirectory, 
+                           TRI_errno_string(res));
+      }
+      
+      TRI_Free(TRI_CORE_MEM_ZONE, databaseDirectory);
+    }
   }
 
   // .............................................................................
@@ -1577,6 +1601,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path,
   vocbase->_authInfoLoaded = false;
 
   vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
+
   if (vocbase->_cursors == NULL) {
     LOG_FATAL_AND_EXIT("cannot create cursors");
   }

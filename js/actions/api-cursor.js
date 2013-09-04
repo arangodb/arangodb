@@ -218,7 +218,6 @@ var internal = require("internal");
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-///
 /// Bad queries:
 ///
 /// Missing body:
