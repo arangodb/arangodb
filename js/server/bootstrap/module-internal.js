@@ -154,7 +154,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.initializeFoxx = function () {
-    var fm = require("org/arangodb/foxx-manager");
+    var fm = require("org/arangodb/foxx/manager");
 
     try {
       fm.scanAppDirectory();

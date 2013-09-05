@@ -34,7 +34,7 @@ var fs = require("fs");
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-var foxxManager = require("org/arangodb/foxx-manager");
+var foxxManager = require("org/arangodb/foxx/manager");
 
 var easyPostCallback = actions.easyPostCallback;
 
