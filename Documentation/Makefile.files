@@ -30,6 +30,7 @@ WIKI = \
 	Glossary \
 	Graphs \
 	HandlingCollections \
+	HandlingDatabases \
 	HandlingDocuments \
 	HandlingEdges \
 	HandlingIndexes \
@@ -39,6 +40,7 @@ WIKI = \
 	HttpCollection \
 	HttpCurrentDatabase \
 	HttpCursor \
+	HttpDatabase \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
@@ -134,6 +136,7 @@ DOXYGEN = \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-current-database.c \
 	Doxygen/js/actions/api-cursor.c \
+	Doxygen/js/actions/api-database.c \
 	Doxygen/js/actions/api-edges.c \
 	Doxygen/js/actions/api-explain.c \
 	Doxygen/js/actions/api-foxx.c \
@@ -160,7 +163,9 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/arango-database.c \
 	Doxygen/js/server/modules/org/arangodb/foxx.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/application.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/authentication.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/base_middleware.c \
+	Doxygen/js/server/modules/org/arangodb/foxx/controller.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/format_middleware.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/internals.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/model.c \

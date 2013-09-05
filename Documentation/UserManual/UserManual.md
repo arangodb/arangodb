@@ -7,6 +7,7 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{FirstStepsArangoDB}
 @CHAPTER_REF{UserManualArangosh}
 @CHAPTER_REF{UserManualWebInterface}
+@CHAPTER_REF{HandlingDatabases}
 @CHAPTER_REF{HandlingCollections}
 @CHAPTER_REF{HandlingDocuments}
 @CHAPTER_REF{HandlingEdges}

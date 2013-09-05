@@ -1,6 +1,81 @@
 v1.4
 ----
 
+* introduced `--server.database` option for arangosh, arangoimp, and arangob.
+
+  The option allows these client tools to use a certain database for their actions.
+  In arangosh, the current database can be switched at any time using the command
+
+      db._useDatabase(<name>);
+
+  When no database is specified, all client tools will assume they should use the
+  default database `_system`. This is done for downwards-compatibility reasons.
+
+* added basic multi database support (alpha)
+
+  New databases can be created using the REST API POST `/_api/database` and the
+  shell command `db._createDatabase(<name>)`.
+
+  The default database in ArangoDB is called `_system`. This database is always
+  present and cannot be deleted by the user. When an older version of ArangoDB is
+  upgraded to 1.4, the previously only database will automatically become the
+  `_system` database.
+
+  New databases can be created with the above commands, and can be deleted with the
+  REST API DELETE `/_api/database/<name>` or the shell command `db._dropDatabase(<name>);`.
+
+  Deleting databases is still unstable in ArangoDB 1.4 alpha and might crash the
+  server. This will be fixed until 1.4 stable.
+
+  To access a specific database via the HTTP REST API, the `/_db/<name>/` prefix 
+  can be used in all URLs. ArangoDB will check if an incoming request starts with
+  this prefix, and will automatically pick the database name from it. If the prefix
+  is not there, ArangoDB will assume the request is made for the default database 
+  (`_system`). This is done for downwards-compatibility reasons.
+
+  That means, the following URL pathnames are logically identical:
+
+      /_api/document/mycollection/1234
+      /_db/_system/document/mycollection/1234
+
+  To access a different database (e.g. `test`), the URL pathname would look like this:
+
+      /_db/test/document/mycollection/1234
+
+
+  New databases can also be created and existing databases can only be dropped from
+  within the default database (`_system`). It is not possible to drop the `_system`
+  database itself.
+
+  Cross-database operations are unintended and unsupported. The intention of the
+  multi-database feature is to have the possibility to have a few databases managed
+  by ArangoDB in parallel, but to only access one database at a time from a connection 
+  or a request.
+
+  When accessing the web interface via the URL pathname `/_admin/html/` or `/_admin/aardvark`,
+  the web interface for the default database (`_system`) will be displayed.
+  To access the web interface for a different database, the database name can be
+  put into the URLs as a prefix, e.g. `/_db/test/_admin/html` or 
+  `/_db/test/_admin/aardvark`.
+
+  All internal request handlers and also all user-defined request handlers and actions
+  (including Foxx) will only get to see the unprefixed URL pathnames (i.e. excluding
+  any database name prefix). This is to ensure downwards-compatibility.
+
+  To access the name of the requested database from any action (including Foxx), use
+  use `req.database`.
+
+  For example, when calling the URL `/myapp/myaction`, the content of `req.database`
+  will be `_system` (the default database because no database got specified) and the
+  content of `req.url` will be `/myapp/myaction`.
+  
+  When calling the URL `/_db/test/myapp/myaction`, the content of `req.database` will be 
+  `test`, and the content of `req.url` will still be `/myapp/myaction`.
+   
+* Foxx now excludes files starting with . (dot) when bundling assets
+
+  This mitigates problems with editor swap files etc.
+
 * made the web interface a Foxx application
 
   This change caused the files for the web interface to be moved from `html/admin` to

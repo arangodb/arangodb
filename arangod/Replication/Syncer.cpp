@@ -92,6 +92,8 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _endpoint(0),
   _connection(0),
   _client(0) {
+
+  _databaseName = string(vocbase->_name);
     
   // get our own server-id 
   _localServerId       = TRI_GetServerId();
@@ -129,6 +131,7 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
         }
 
         _client->setUserNamePassword("/", username, password);
+        _client->setLocationRewriter(this, &rewriteLocation);
       }
     }
   }
@@ -154,6 +157,41 @@ Syncer::~Syncer () {
 
   TRI_DestroyMasterInfoReplication(&_masterInfo);
   TRI_DestroyConfigurationReplicationApplier(&_configuration);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request location rewriter (injects database name)
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Replication
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+string Syncer::rewriteLocation (void* data, const string& location) {
+  Syncer* s = static_cast<Syncer*>(data);
+
+  assert(s != 0);
+
+  if (location.substr(0, 5) == "/_db/") {
+    // location already contains /_db/
+    return location;
+  }
+
+  if (location[0] == '/') {
+    return "/_db/" + s->_databaseName + location;
+  }
+  else {
+    return "/_db/" + s->_databaseName + "/" + location;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -36,7 +36,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/SimpleClient.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -82,7 +81,8 @@ namespace triagens {
                          const string& username,
                          const string& password,
                          double requestTimeout,
-                         double connectTimeout)
+                         double connectTimeout,
+                         bool keepAlive)
           : Thread("arangob"),
             _operation(operation),
             _startCondition(condition),
@@ -92,11 +92,13 @@ namespace triagens {
             _warningCount(0),
             _operationsCounter(operationsCounter),
             _endpoint(endpoint),
+            _headers(),
             _databaseName(databaseName),
             _username(username),
             _password(password),
             _requestTimeout(requestTimeout),
             _connectTimeout(connectTimeout),
+            _keepAlive(keepAlive),
             _client(0),
             _connection(0),
             _offset(0),
@@ -146,7 +148,7 @@ namespace triagens {
           if (_connection == 0) {
             LOGGER_FATAL_AND_EXIT("out of memory");
           }
-
+         
           _client = new SimpleHttpClient(_connection, 10.0, true);
 
           if (_client == 0) {
@@ -156,14 +158,14 @@ namespace triagens {
           _client->setLocationRewriter(this, &rewriteLocation);
           
           _client->setUserNamePassword("/", _username, _password);
+          _client->setKeepAlive(_keepAlive);
 
           // test the connection
-          map<string, string> headerFields;
           SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET,
                                                       "/_api/version",
                                                       0,
                                                       0,
-                                                      headerFields);
+                                                      _headers);
 
           if (! result || ! result->isComplete()) {
             if (result) {
@@ -174,6 +176,10 @@ namespace triagens {
           }
 
           delete result;
+
+          if (! _keepAlive) {
+            _client->close();
+          }
 
 
           // if we're the first thread, set up the test
@@ -203,6 +209,10 @@ namespace triagens {
             }
             else {
               executeBatchRequest(numOps);
+            }
+
+            if (! _keepAlive) {
+              _client->close();
             }
           }
         }
@@ -268,16 +278,11 @@ namespace triagens {
             size_t payloadLength = 0;
             bool mustFree = false;
             const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
-            const map<string, string>& headers = _operation->headers();
             const HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
 
             // headline, e.g. POST /... HTTP/1.1
             HttpRequest::appendMethod(type, &batchPayload);
             batchPayload.appendText(url + " HTTP/1.1\r\n");
-            // extra headers
-            for (map<string, string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-              batchPayload.appendText((*it).first + ": " + (*it).second + "\r\n");
-            }
             batchPayload.appendText("\r\n", 2);
 
             // body
@@ -292,24 +297,27 @@ namespace triagens {
           // end of MIME
           batchPayload.appendText("--" + boundary + "--\r\n");
 
-          map<string, string> batchHeaders;
-          batchHeaders["Content-Type"] = HttpRequest::getMultipartContentType() +
-                                         "; boundary=" + boundary;
+          _headers.erase("Content-Type");
+          _headers["Content-Type"] = HttpRequest::getMultipartContentType() +
+                                     "; boundary=" + boundary;
 
           Timing timer(Timing::TI_WALLCLOCK);
           SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST,
                                                       "/_api/batch",
                                                       batchPayload.c_str(),
                                                       batchPayload.length(),
-                                                      batchHeaders);
+                                                      _headers);
           _time += ((double) timer.time()) / 1000000.0;
 
           if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(numOperations);
+            if (result != 0) {
+              delete result;
+            }
             return;
           }
 
-          if (result->getHttpReturnCode() >= 400) {
+          if (result->wasHttpError()) {
             _operationsCounter->incFailures(numOperations);
 
             _warningCount++;
@@ -326,7 +334,10 @@ namespace triagens {
 
             if (it != headers.end()) {
               size_t errorCount = (size_t) StringUtils::uint32((*it).second);
-              _operationsCounter->incFailures(errorCount);
+
+              if (errorCount > 0) {
+                _operationsCounter->incFailures(errorCount);
+              }
             }
           }
           delete result;
@@ -346,14 +357,13 @@ namespace triagens {
 
           // std::cout << "thread number #" << _threadNumber << ", threadCounter " << threadCounter << ", globalCounter " << globalCounter << "\n";
           const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
-          const map<string, string>& headers = _operation->headers();
 
           Timing timer(Timing::TI_WALLCLOCK);
           SimpleHttpResult* result = _client->request(type,
                                                       url,
                                                       payload,
                                                       payloadLength,
-                                                      headers);
+                                                      _headers);
           _time += ((double) timer.time()) / 1000000.0;
 
           if (mustFree) {
@@ -362,10 +372,13 @@ namespace triagens {
 
           if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
+            if (result != 0) {
+              delete result;
+            }
             return;
           }
 
-          if (result->getHttpReturnCode() >= 400) {
+          if (result->wasHttpError()) {
             _operationsCounter->incFailures(1);
 
             _warningCount++;
@@ -474,6 +487,12 @@ namespace triagens {
         Endpoint* _endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extra request headers
+////////////////////////////////////////////////////////////////////////////////
+
+        map<string, string> _headers;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief database name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -502,6 +521,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _connectTimeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use HTTP keep-alive
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _keepAlive;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief underlying client

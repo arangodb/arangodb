@@ -39,6 +39,7 @@ var arangodb = require("org/arangodb"),
   checkAuthenticationOptions,
   createStandardLoginHandler,
   createStandardLogoutHandler,
+  createStandardRegistrationHandler,
   createAuthenticationMiddleware,
   createSessionUpdateMiddleware,
   createAuthObject,
@@ -50,6 +51,7 @@ var arangodb = require("org/arangodb"),
   Sessions,
   CookieAuthentication,
   Authentication,
+  UserAlreadyExistsError,
   UnauthorizedError;
 
 // -----------------------------------------------------------------------------
@@ -191,6 +193,54 @@ createStandardLogoutHandler = function (auth, opts) {
     } else {
       options.onError(req, res);
     }
+  };
+};
+
+defaultsFor.registration = {
+  usernameField: "username",
+  passwordField: "password",
+  acceptedAttributes: [],
+  defaultAttributes: {},
+
+  onSuccess: function (req, res) {
+    'use strict';
+    res.json({
+      user: req.user
+    });
+  },
+
+  onError: function (req, res) {
+    'use strict';
+    res.status(401);
+    res.json({
+      error: "Registration failed"
+    });
+  }
+};
+
+createStandardRegistrationHandler = function (auth, users, opts) {
+  'use strict';
+  var options = _.defaults(opts || {}, defaultsFor.registration);
+
+  return function (req, res) {
+    var username = req.body()[options.usernameField],
+      password = req.body()[options.passwordField],
+      data = _.defaults({}, options.defaultAttributes);
+
+    options.acceptedAttributes.forEach(function (attributeName) {
+      var val = req.body()[attributeName];
+      if (is.existy(val)) {
+        data[attributeName] = val;
+      }
+    });
+
+    if (users.exists(username)) {
+      throw new UserAlreadyExistsError();
+    }
+
+    req.user = users.add(username, password, true, data);
+    req.currentSession = auth.beginSession(req, res, username, {});
+    options.onSuccess(req, res);
   };
 };
 
@@ -611,6 +661,20 @@ Users.prototype.get = function (identifier) {
   delete user.password;
 
   return user;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a user exists
+////////////////////////////////////////////////////////////////////////////////
+
+Users.prototype.exists = function (identifier) {
+  'use strict';
+  var c = this.storage(),
+    user;
+
+  identifier = this._validateIdentifier(identifier, true);
+  user = c.firstExample({ identifier: identifier });
+  return (user !== null);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1247,6 +1311,8 @@ Authentication.prototype.updateSession = function (req, res, session) {
 // --SECTION--                                                     custom errors
 // -----------------------------------------------------------------------------
 
+// http://stackoverflow.com/questions/783818/how-do-i-create-a-custom-error-in-javascript
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Foxx
 /// @{
@@ -1256,13 +1322,20 @@ Authentication.prototype.updateSession = function (req, res, session) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
+UserAlreadyExistsError = function (message) {
+  'use strict';
+  this.message = message || "User already exists";
+  this.statusCode = 400;
+};
+
+UserAlreadyExistsError.prototype = new Error();
+
 UnauthorizedError = function (message) {
   'use strict';
   this.message = message || "Unauthorized";
   this.statusCode = 401;
 };
 
-// http://stackoverflow.com/questions/783818/how-do-i-create-a-custom-error-in-javascript
 UnauthorizedError.prototype = new Error();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1278,16 +1351,18 @@ UnauthorizedError.prototype = new Error();
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Users                          = Users;
-exports.Sessions                       = Sessions;
-exports.CookieAuthentication           = CookieAuthentication;
-exports.Authentication                 = Authentication;
-exports.UnauthorizedError              = UnauthorizedError;
-exports.createStandardLoginHandler     = createStandardLoginHandler;
-exports.createStandardLogoutHandler    = createStandardLogoutHandler;
-exports.createAuthenticationMiddleware = createAuthenticationMiddleware;
-exports.createSessionUpdateMiddleware  = createSessionUpdateMiddleware;
-exports.createAuthObject               = createAuthObject;
+exports.Users                             = Users;
+exports.Sessions                          = Sessions;
+exports.CookieAuthentication              = CookieAuthentication;
+exports.Authentication                    = Authentication;
+exports.UnauthorizedError                 = UnauthorizedError;
+exports.UserAlreadyExistsError            = UserAlreadyExistsError;
+exports.createStandardLoginHandler        = createStandardLoginHandler;
+exports.createStandardLogoutHandler       = createStandardLogoutHandler;
+exports.createStandardRegistrationHandler = createStandardRegistrationHandler;
+exports.createAuthenticationMiddleware    = createAuthenticationMiddleware;
+exports.createSessionUpdateMiddleware     = createSessionUpdateMiddleware;
+exports.createAuthObject                  = createAuthObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -3,6 +3,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 
 @NAVIGATE_ImplementorManual
 
+@CHAPTER_REF{HttpDatabase}
 @CHAPTER_REF{RestDocument}
 @CHAPTER_REF{RestEdge}
 @CHAPTER_REF{HttpCursor}

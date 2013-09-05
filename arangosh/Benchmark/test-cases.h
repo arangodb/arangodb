@@ -32,13 +32,13 @@ using namespace triagens::httpclient;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool DeleteCollection (SimpleClient*, const string&);
+static bool DeleteCollection (SimpleHttpClient*, const string&);
 
-static bool CreateCollection (SimpleClient*, const string&, const int);
+static bool CreateCollection (SimpleHttpClient*, const string&, const int);
 
-static bool CreateDocument (SimpleClient*, const string&, const string&);
+static bool CreateDocument (SimpleHttpClient*, const string&, const string&);
 
-static bool CreateIndex (SimpleClient*, const string&, const string&, const string&);
+static bool CreateIndex (SimpleHttpClient*, const string&, const string&, const string&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              benchmark test cases
@@ -61,7 +61,7 @@ struct VersionTest : public BenchmarkOperation {
   ~VersionTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return true;
   }
 
@@ -86,10 +86,6 @@ struct VersionTest : public BenchmarkOperation {
     return payload;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +109,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
   ~DocumentCrudAppendTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
   }
@@ -202,10 +198,6 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +221,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
   ~DocumentCrudTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
   }
@@ -321,10 +313,6 @@ struct DocumentCrudTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,7 +336,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
   ~EdgeCrudTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 3);
   }
@@ -442,10 +430,6 @@ struct EdgeCrudTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -469,7 +453,7 @@ struct SkiplistTest : public BenchmarkOperation {
   ~SkiplistTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2) &&
            CreateIndex(client, Collection, "skiplist", "[\"value\"]");
@@ -549,10 +533,6 @@ struct SkiplistTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,7 +556,7 @@ struct HashTest : public BenchmarkOperation {
   ~HashTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2) &&
            CreateIndex(client, Collection, "hash", "[\"value\"]");
@@ -656,10 +636,6 @@ struct HashTest : public BenchmarkOperation {
     }
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -705,7 +681,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
   }
@@ -725,11 +701,6 @@ struct DocumentCreationTest : public BenchmarkOperation {
     *mustFree = false;
     *length = _length;
     return (const char*) _buffer->_buffer;
-  }
-
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
   }
 
   string _url;
@@ -771,7 +742,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return _counter;
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return true;
   }
 
@@ -811,11 +782,6 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return (const char*) data;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
   static BenchmarkCounter<uint64_t>* _counter;
 
   string _url;
@@ -838,7 +804,7 @@ struct TransactionAqlTest : public BenchmarkOperation {
   ~TransactionAqlTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     _c1 = string(Collection + "1");
     _c2 = string(Collection + "2");
     _c3 = string(Collection + "3");
@@ -928,11 +894,6 @@ struct TransactionAqlTest : public BenchmarkOperation {
     return (const char*) ptr;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
   string _c1;
   string _c2;
   string _c3;
@@ -959,7 +920,7 @@ struct TransactionCountTest : public BenchmarkOperation {
   ~TransactionCountTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
   }
@@ -993,11 +954,6 @@ struct TransactionCountTest : public BenchmarkOperation {
     return (const char*) ptr;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1021,7 +977,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
   ~TransactionMultiTest () {
   }
 
-  bool setUp (SimpleClient* client) {
+  bool setUp (SimpleHttpClient* client) {
     _c1 = string(Collection + "1");
     _c2 = string(Collection + "2");
 
@@ -1084,11 +1040,6 @@ struct TransactionMultiTest : public BenchmarkOperation {
     return (const char*) ptr;
   }
 
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
   string _c1;
   string _c2;
 };
@@ -1121,7 +1072,7 @@ BenchmarkCounter<uint64_t>* CollectionCreationTest::_counter = 0;
 /// @brief delete a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DeleteCollection (SimpleClient* client, const string& name) {
+static bool DeleteCollection (SimpleHttpClient* client, const string& name) {
   map<string, string> headerFields;
   SimpleHttpResult* result = 0;
 
@@ -1147,7 +1098,7 @@ static bool DeleteCollection (SimpleClient* client, const string& name) {
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateCollection (SimpleClient* client,
+static bool CreateCollection (SimpleHttpClient* client,
                               const string& name,
                               const int type) {
   map<string, string> headerFields;
@@ -1177,7 +1128,7 @@ static bool CreateCollection (SimpleClient* client,
 /// @brief create an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateIndex (SimpleClient* client,
+static bool CreateIndex (SimpleHttpClient* client,
                          const string& name,
                          const string& type,
                          const string& fields) {
@@ -1208,7 +1159,7 @@ static bool CreateIndex (SimpleClient* client,
 /// @brief create a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateDocument (SimpleClient* client,
+static bool CreateDocument (SimpleHttpClient* client,
                             const string& collection,
                             const string& payload) {
   map<string, string> headerFields;

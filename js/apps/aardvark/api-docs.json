@@ -15,6 +15,10 @@
             "description": "cursor API"
         }, 
         {
+            "path": "api-docs/database.{format}", 
+            "description": "database API"
+        }, 
+        {
             "path": "api-docs/document.{format}", 
             "description": "document API"
         }, 
