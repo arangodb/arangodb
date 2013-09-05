@@ -80,13 +80,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>$(OutDir)\Exe</OutDir>
     <TargetName>arangosh32</TargetName>
     <LibraryPath>$(SolutionDir)Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
+    <OutDir>$(OutDir)\Exe</OutDir>
     <TargetName>arangosh64</TargetName>
     <LibraryPath>$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -145,7 +145,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_ALLOW_KEYWORD_MACROS=1;TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=2048;WIN32;TRI_BITS=32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\2012-icu\include;$(SolutionDir)..\arangosh;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\2012-openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\2012-V8\include;$(SolutionDir)..\3rdParty\VisualStudio\2012-zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\2012-icu\include;$(SolutionDir)..\arangosh;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\2012-openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\2012-V8\include;$(SolutionDir)..\3rdParty\VisualStudio\2012-zlib\1.2.7\include</AdditionalIncludeDirectories>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -170,7 +170,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_ALLOW_KEYWORD_MACROS=1;TRI_HAVE_ICU=1;U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;TRI_BITS=64;FD_SETSIZE=2048;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;TRI_MISSING_MEMRCHR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\arangosh;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\zlib\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\icu\include;$(SolutionDir)..\arangosh;$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..\3rdParty\VisualStudio\2012-zlib\1.2.7\include</AdditionalIncludeDirectories>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
