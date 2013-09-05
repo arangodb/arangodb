@@ -199,7 +199,6 @@
     <ClInclude Include="..\..\lib\HttpServer\HttpServer.h" />
     <ClInclude Include="..\..\lib\HttpServer\HttpsServer.h" />
     <ClInclude Include="..\..\lib\HttpServer\PathHandler.h" />
-    <ClInclude Include="..\..\lib\HttpServer\RedirectHandler.h" />
     <ClInclude Include="..\..\lib\HttpServer\ServiceUnavailableHandler.h" />
     <ClInclude Include="..\..\lib\Scheduler\ApplicationScheduler.h" />
     <ClInclude Include="..\..\lib\Scheduler\AsyncTask.h" />
@@ -233,7 +232,6 @@
     <ClCompile Include="..\..\lib\HttpServer\HttpHandler.cpp" />
     <ClCompile Include="..\..\lib\HttpServer\HttpHandlerFactory.cpp" />
     <ClCompile Include="..\..\lib\HttpServer\PathHandler.cpp" />
-    <ClCompile Include="..\..\lib\HttpServer\RedirectHandler.cpp" />
     <ClCompile Include="..\..\lib\HttpServer\ServiceUnavailableHandler.cpp" />
     <ClCompile Include="..\..\lib\Scheduler\ApplicationScheduler.cpp" />
     <ClCompile Include="..\..\lib\Scheduler\AsyncTask.cpp" />

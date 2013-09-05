@@ -51,9 +51,6 @@
     <ClCompile Include="..\..\lib\SimpleHttpClient\GeneralClientConnection.cpp">
       <Filter>SimpleHttpClient Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleClient.cpp">
-      <Filter>SimpleHttpClient Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\SimpleHttpClient\SimpleHttpClient.cpp">
       <Filter>SimpleHttpClient Source</Filter>
     </ClCompile>
@@ -96,9 +93,6 @@
       <Filter>SimpleHttpClient Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\SimpleHttpClient\GeneralClientConnection.h">
-      <Filter>SimpleHttpClient Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleClient.h">
       <Filter>SimpleHttpClient Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\SimpleHttpClient\SimpleHttpClient.h">

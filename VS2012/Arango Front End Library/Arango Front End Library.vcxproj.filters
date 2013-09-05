@@ -110,9 +110,6 @@
     <ClInclude Include="..\..\lib\HttpServer\PathHandler.h">
       <Filter>Http Server Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\HttpServer\RedirectHandler.h">
-      <Filter>Http Server Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\HttpServer\ServiceUnavailableHandler.h">
       <Filter>Http Server Header</Filter>
     </ClInclude>
@@ -236,9 +233,6 @@
       <Filter>Http Server Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\HttpServer\PathHandler.cpp">
-      <Filter>Http Server Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\HttpServer\RedirectHandler.cpp">
       <Filter>Http Server Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\HttpServer\ServiceUnavailableHandler.cpp">
