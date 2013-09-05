@@ -161,9 +161,6 @@ extern "C" {
 /// - 1222: @LIT{unexpected document key}
 ///   Will be raised when a user-defined document key is supplied for
 ///   collections with auto key generation.
-/// - 1223: @LIT{index needs resizing}
-///   Will be raised when an index is full and should be resized to contain
-///   more data.
 /// - 1224: @LIT{database directory not writable}
 ///   Will be raised when the database directory is not writable for the
 ///   current user.
@@ -1177,17 +1174,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED                          (1222)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1223: ERROR_ARANGO_INDEX_NEEDS_RESIZE
-///
-/// index needs resizing
-///
-/// Will be raised when an index is full and should be resized to contain more
-/// data.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE                               (1223)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1224: ERROR_ARANGO_DATADIR_NOT_WRITABLE
