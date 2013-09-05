@@ -1427,6 +1427,46 @@ bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a database name is allowed
+///
+/// Returns true if the name is allowed and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedDatabaseName (bool allowSystem, char const* name) {
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is allowed
+  for (ptr = name;  *ptr;  ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z');
+      }
+      else {
+        ok = ('a' <= *ptr && *ptr <= 'z');
+      }
+    }
+    else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z');
+    }
+
+    if (! ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
 

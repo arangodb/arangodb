@@ -11,7 +11,7 @@ ArangoDB will automatically assume the default database `_system` is
 accessed. This is done for downwards-compatibility reasons.
 
 The database name is a string consisting of only lower-case letters, digits 
-and the `_` (underscore) character. User-defined database names must not
-start with an underscore.
+and the `_` (underscore) and `-` (dash) characters. User-defined database 
+names must always start with a letter.
 Please refer to @ref NamingConventions for more information on valid 
 database names.
